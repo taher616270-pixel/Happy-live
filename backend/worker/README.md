@@ -19,11 +19,11 @@ Free allowances and product limits can change. This architecture is intended to 
 No registration, login, OTP delivery, profile mutation, wallet, gifts, or room endpoints are implemented yet. The health route is not an authentication system.
 
 ## Cloudflare setup (one-time)
-1. Create a D1 database named `happy-live-db` in the Cloudflare dashboard.
-2. Copy its database ID into `wrangler.toml`, replacing `REPLACE_WITH_D1_DATABASE_ID`.
-3. Create an R2 bucket named `happy-live-media`.
+1. The D1 database `happy-live-db` has already been created in the Cloudflare account in APAC, and the initial schema has been applied and verified. Its database ID is already in `wrangler.toml`.
+2. Enable R2 Object Storage in the Cloudflare dashboard. The account currently returns an R2-not-enabled response, so the `happy-live-media` bucket cannot be created yet.
+3. After R2 is enabled, create an R2 bucket named `happy-live-media`.
 4. Install dependencies in this directory with `npm install`.
-5. Apply the migration locally first, then remotely only after reviewing the target database:
+5. Apply the checked-in migration locally first, then remotely only after reviewing the target database. The schema has already been applied directly to the remote D1 database; the checked-in migration is idempotent and can safely register the same initial schema with Wrangler.
    - `npm run db:local`
    - `npm run db:remote`
 6. Run `npm run typecheck` and `npm run dev`.
