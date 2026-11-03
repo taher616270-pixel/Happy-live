@@ -102,6 +102,118 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  void _showPhoneCountryPicker() {
+    const countries = <(String, String, String)>[
+      ('الجنوب العربي', '🇾🇪', '+969'),
+      ('السعودية', '🇸🇦', '+966'),
+      ('الإمارات', '🇦🇪', '+971'),
+      ('عُمان', '🇴🇲', '+968'),
+      ('اليمن', '🇾🇪', '+967'),
+      ('البحرين', '🇧🇭', '+973'),
+      ('الكويت', '🇰🇼', '+965'),
+      ('قطر', '🇶🇦', '+974'),
+      ('مصر', '🇪🇬', '+20'),
+      ('الأردن', '🇯🇴', '+962'),
+      ('العراق', '🇮🇶', '+964'),
+      ('لبنان', '🇱🇧', '+961'),
+      ('المغرب', '🇲🇦', '+212'),
+      ('الجزائر', '🇩🇿', '+213'),
+      ('تونس', '🇹🇳', '+216'),
+      ('تركيا', '🇹🇷', '+90'),
+      ('المملكة المتحدة', '🇬🇧', '+44'),
+      ('الولايات المتحدة', '🇺🇸', '+1'),
+      ('كندا', '🇨🇦', '+1'),
+      ('فرنسا', '🇫🇷', '+33'),
+      ('ألمانيا', '🇩🇪', '+49'),
+      ('الهند', '🇮🇳', '+91'),
+      ('باكستان', '🇵🇰', '+92'),
+      ('إندونيسيا', '🇮🇩', '+62'),
+    ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: HappyLiveApp.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(sheetContext).size.height * 0.72,
+          child: Column(
+            children: [
+              const SizedBox(height: 14),
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF655A70),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'اختر دولة رمز الاتصال',
+                style: TextStyle(
+                  color: HappyLiveApp.gold,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: countries.length,
+                  separatorBuilder: (_, __) => const Divider(
+                    height: 1,
+                    color: Color(0xFF30283A),
+                    indent: 18,
+                    endIndent: 18,
+                  ),
+                  itemBuilder: (context, index) {
+                    final selectedCountry = countries[index];
+                    final isSouthArabia = index == 0;
+                    return ListTile(
+                      leading: Text(selectedCountry.$2, style: const TextStyle(fontSize: 25)),
+                      title: Text(
+                        selectedCountry.$1,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      trailing: Text(
+                        selectedCountry.$3,
+                        textDirection: TextDirection.ltr,
+                        style: const TextStyle(
+                          color: HappyLiveApp.gold,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        if (isSouthArabia) {
+                          _showValidationNotice(
+                            'قريباً ستتم إضافة خدمة الاتصال برمز دولة الجنوب العربي',
+                          );
+                        } else {
+                          _showValidationNotice(
+                            'تم اختيار ' + selectedCountry.$1 + ' ' + selectedCountry.$3 +
+                            '، وسيتم تفعيل التحقق عبر الهاتف عند ربط الخدمة',
+                          );
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showValidationNotice(String message) {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
@@ -541,7 +653,7 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             Expanded(
                               child: OutlinedButton.icon(
-                                onPressed: _showNotConnected,
+                                onPressed: _showPhoneCountryPicker,
                                 icon: const Icon(Icons.phone_iphone_rounded, color: HappyLiveApp.gold, size: 25),
                                 label: const SizedBox.shrink(),
                                 style: OutlinedButton.styleFrom(
