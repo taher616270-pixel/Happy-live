@@ -51,7 +51,15 @@ export default {
     }
 
     if (request.method === "OPTIONS") {
-      return json({ ok: true }, 204, origin, env);
+      const headers = new Headers();
+      if (origin) {
+        headers.set("access-control-allow-origin", origin);
+        headers.set("vary", "Origin");
+        headers.set("access-control-allow-credentials", "true");
+        headers.set("access-control-allow-headers", "Content-Type, Authorization");
+        headers.set("access-control-allow-methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+      }
+      return new Response(null, { status: 204, headers });
     }
 
     if (url.pathname === "/api/v1/health" && request.method === "GET") {
