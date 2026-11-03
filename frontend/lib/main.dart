@@ -92,7 +92,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
 
-  // Detect the visitor's country from their public IP. This does not request GPS permission.
+  // Detect the visitor's country and, for Yemen, distinguish southern governorates.
+  // This uses public-IP geolocation only; no GPS permission is requested.
   Future<void> _detectPhoneCountryFromIp() async {
     try {
       final response = await http
@@ -103,13 +104,51 @@ class _LoginPageState extends State<LoginPage> {
       final isoCode = (data['country_code'] ?? '').toString().toUpperCase();
       if (isoCode.isEmpty || !mounted) return;
 
-      // +969 is a custom South Arabia selection; public IP databases normally
-      // identify this geographic area as Yemen, so keep Yemen as +967 here.
+      if (isoCode == 'YE') {
+        final region = (data['region'] ?? '').toString().toLowerCase().trim();
+        final regionCode = (data['region_code'] ?? '').toString().toUpperCase().trim();
+        final southernRegionCodes = <String>{
+          'YE-AD', // Aden
+          'YE-AB', // Abyan
+          'YE-LA', // Lahij
+          'YE-SH', // Shabwah
+          'YE-HD', // Hadramawt
+          'YE-MA', // Al Mahrah
+          'YE-SU', // Socotra
+          'YE-DA', // Al Dhale'e
+        };
+        const southernRegionNames = <String>[
+          'aden', 'عدن',
+          'abyan', 'أبين', 'ابين',
+          'lahij', 'lahj', 'لحج',
+          'shabwah', 'شبوة',
+          'hadramawt', 'hadramout', 'حضرموت',
+          'al mahrah', 'al-mahrah', 'المهرة', 'المهره',
+          'socotra', 'سقطرى',
+          'al dhale', 'al dhalea', 'ad dale', 'الضالع',
+        ];
+        final isSouthernYemen = southernRegionCodes.contains(regionCode) ||
+            southernRegionNames.any((name) => region.contains(name));
+
+        if (isSouthernYemen) {
+          if (!mounted) return;
+          setState(() {
+            _phoneCountryName = 'الجنوب العربي';
+            _phoneCountryCode = '+969';
+            _phoneCountryCodeInput.text = '+969';
+            _phoneCountryFlag = '🇾🇪';
+            _isSouthArabiaPhone = true;
+          });
+          return;
+        }
+        // Other Yemeni governorates are displayed as Yemen (+967).
+      }
+
       final country = CountryService().getAll().cast<Country?>().firstWhere(
         (item) => item != null && item.countryCode.toUpperCase() == isoCode,
         orElse: () => null,
       );
-      if (country == null) return;
+      if (country == null || !mounted) return;
       final translatedName = country.getTranslatedName(context) ?? country.name;
       final callingCode = '+${country.phoneCode}';
       setState(() {
@@ -120,7 +159,7 @@ class _LoginPageState extends State<LoginPage> {
         _isSouthArabiaPhone = false;
       });
     } catch (_) {
-      // Keep the current default (+969) if the IP lookup is unavailable.
+      // Keep the current default (+969) if IP geolocation is unavailable.
     }
   }
 
