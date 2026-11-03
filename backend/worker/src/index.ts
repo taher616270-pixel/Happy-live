@@ -2,6 +2,8 @@ export interface Env {
   DB?: D1Database;
   APP_ENV?: string;
   ALLOWED_ORIGINS?: string;
+  IMAGEKIT_PUBLIC_KEY?: string;
+  IMAGEKIT_PRIVATE_KEY?: string;
 }
 
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -82,12 +84,47 @@ export default {
       }, healthy ? 200 : 503, origin, env);
     }
 
+    if (url.pathname === "/api/v1/imagekit/health" && request.method === "GET") {
+      const publicKeyConfigured = Boolean(env.IMAGEKIT_PUBLIC_KEY?.trim());
+      const privateKey = env.IMAGEKIT_PRIVATE_KEY?.trim() ?? "";
+      let signing = "not_configured";
+
+      if (privateKey) {
+        try {
+          const key = await crypto.subtle.importKey(
+            "raw",
+            new TextEncoder().encode(privateKey),
+            { name: "HMAC", hash: "SHA-1" },
+            false,
+            ["sign"]
+          );
+          await crypto.subtle.sign(
+            "HMAC",
+            key,
+            new TextEncoder().encode("happy-live-imagekit-configuration-check")
+          );
+          signing = "ready";
+        } catch {
+          signing = "error";
+        }
+      }
+
+      const ok = publicKeyConfigured && signing === "ready";
+      return json({
+        ok,
+        service: "imagekit",
+        public_key: publicKeyConfigured ? "configured" : "missing",
+        private_key: privateKey ? "configured" : "missing",
+        signing
+      }, ok ? 200 : 503, origin, env);
+    }
+
     if (url.pathname === "/api/v1" && request.method === "GET") {
       return json({
         name: "Happy Live API",
         version: "v1",
         status: "scaffold",
-        endpoints: ["/api/v1/health"]
+        endpoints: ["/api/v1/health", "/api/v1/imagekit/health"]
       }, 200, origin, env);
     }
 
