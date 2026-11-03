@@ -92,7 +92,7 @@ export default {
       // Require a live application session before issuing upload credentials.
       // Session tokens are stored only as SHA-256 hashes in D1.
       const authorization = request.headers.get("Authorization") ?? "";
-      const bearerMatch = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
+      const bearerMatch = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
       if (!bearerMatch) {
         return json({ error: "authentication_required" }, 401, origin, env);
       }
