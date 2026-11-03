@@ -58,7 +58,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
   bool _acceptedTerms = false;
-  bool _isAdult = false;
+  DateTime? _birthDate;
   bool _hasRegisteredOnThisDevice = false;
 
   static const _registeredDeviceKey = 'happy_live_registered_on_device';
@@ -143,11 +143,41 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  int? _calculatedAge(DateTime birthDate) {
+    final today = DateTime.now();
+    var age = today.year - birthDate.year;
+    if (today.month < birthDate.month ||
+        (today.month == birthDate.month && today.day < birthDate.day)) {
+      age--;
+    }
+    return age;
+  }
+
+  Future<void> _pickBirthDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _birthDate ?? DateTime(now.year - 18, now.month, now.day),
+      firstDate: DateTime(1900),
+      lastDate: now,
+      helpText: 'اختر تاريخ ميلادك',
+      cancelText: 'إلغاء',
+      confirmText: 'تأكيد',
+      initialEntryMode: DatePickerEntryMode.calendar,
+    );
+    if (picked != null && mounted) {
+      setState(() => _birthDate = picked);
+    }
+  }
+
   void _submit() {
-    // Show the age and legal-consent notices before field validation so
-    // users always see why registration cannot continue.
-    if (_isRegister && !_isAdult) {
-      _showValidationNotice('يجب أن يكون عمرك 18 سنة أو أكثر لإنشاء حساب');
+    // Check the selected birth date and legal consent before other fields.
+    if (_isRegister && _birthDate == null) {
+      _showValidationNotice('يرجى تحديد تاريخ ميلادك');
+      return;
+    }
+    if (_isRegister && _calculatedAge(_birthDate!)! < 18) {
+      _showValidationNotice('عذراً، يجب أن يكون عمرك 18 سنة أو أكثر لإنشاء حساب');
       return;
     }
     if (_isRegister && !_acceptedTerms) {
@@ -337,18 +367,43 @@ class _LoginPageState extends State<LoginPage> {
                                 : null,
                           ),
                           const SizedBox(height: 12),
-                          CheckboxListTile(
-                            value: _isAdult,
-                            onChanged: (value) => setState(() => _isAdult = value ?? false),
-                            contentPadding: EdgeInsets.zero,
-                            controlAffinity: ListTileControlAffinity.leading,
-                            activeColor: HappyLiveApp.gold,
-                            checkColor: HappyLiveApp.background,
-                            title: const Text(
-                              'أؤكد أن عمري 18 سنة أو أكثر',
-                              style: TextStyle(color: HappyLiveApp.muted, fontSize: 12),
+                          const _FieldLabel('تاريخ الميلاد'),
+                          InkWell(
+                            onTap: _pickBirthDate,
+                            borderRadius: BorderRadius.circular(15),
+                            child: Container(
+                              height: 56,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF15121B),
+                                borderRadius: BorderRadius.circular(15),
+                                border: Border.all(color: const Color(0xFF30283A)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_month_rounded,
+                                      color: HappyLiveApp.gold, size: 20),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _birthDate == null
+                                          ? 'اختر تاريخ ميلادك'
+                                          : '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}',
+                                      style: TextStyle(
+                                        color: _birthDate == null
+                                            ? const Color(0xFF81798C)
+                                            : Colors.white,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                  const Icon(Icons.keyboard_arrow_down_rounded,
+                                      color: HappyLiveApp.muted),
+                                ],
+                              ),
                             ),
                           ),
+                          const SizedBox(height: 8),
                           CheckboxListTile(
                             value: _acceptedTerms,
                             onChanged: (value) => setState(() => _acceptedTerms = value ?? false),
@@ -750,7 +805,7 @@ class LegalDocumentPage extends StatelessWidget {
 
   static const _privacy = <(String, String)>[
     ('1. نطاق السياسة', 'توضح هذه السياسة كيفية تعامل Happy Live مع المعلومات عند إنشاء الحساب واستخدام ميزات التطبيق. قد تتغير التفاصيل مع إضافة ميزات جديدة أو ربط مزودي خدمات، وسنحدّث هذه الصفحة عند حدوث تغييرات جوهرية.'),
-    ('2. المعلومات التي قد نجمعها', 'قد تشمل المعلومات التي تقدمها مباشرة: الاسم والبريد الإلكتروني وصورة الملف الشخصي والنبذة والبلد ومعلومات الحساب. وقد تشمل المعلومات التي تنشأ أثناء الاستخدام: المنشورات والتعليقات والرسائل والبلاغات والتفاعلات وسجلات الأمان والدعم.'),
+    ('2. المعلومات التي قد نجمعها', 'قد تشمل المعلومات التي تقدمها مباشرة: الاسم والبريد الإلكتروني وتاريخ الميلاد وصورة الملف الشخصي والنبذة والبلد ومعلومات الحساب. وقد تشمل المعلومات التي تنشأ أثناء الاستخدام: المنشورات والتعليقات والرسائل والبلاغات والتفاعلات وسجلات الأمان والدعم.'),
     ('3. معلومات تقنية', 'قد تُعالج معلومات تقنية لازمة لتشغيل الخدمة وحمايتها، مثل نوع الجهاز والمتصفح وعنوان الشبكة وسجلات الأعطال ووقت الدخول ومعلومات الأداء. ويقتصر ذلك على ما يلزم للأغراض الموضحة في هذه السياسة وبما تسمح به الأنظمة.'),
     ('4. كيف نستخدم المعلومات', 'نستخدم المعلومات لإنشاء الحساب وإدارته، وتشغيل ميزات التواصل والمحتوى، وتخصيص التجربة، وتقديم الدعم، والتحقق من الأمان، واكتشاف الاحتيال والإساءة، وتحسين الأداء، والامتثال للمتطلبات النظامية.'),
     ('5. ما يراه الآخرون', 'قد تكون بعض معلومات الملف الشخصي والمنشورات والتعليقات والتفاعلات مرئية للمستخدمين الآخرين بحسب إعدادات وميزات التطبيق. الرسائل الخاصة مخصصة لأطراف المحادثة، لكن لا ينبغي اعتبار أي وسيلة اتصال رقمية ضمانًا مطلقًا للسرية؛ فقد نحتاج إلى معالجة بيانات محدودة لأسباب أمنية أو نظامية.'),
