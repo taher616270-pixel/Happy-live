@@ -1,6 +1,5 @@
 export interface Env {
   DB?: D1Database;
-  MEDIA?: R2Bucket;
   APP_ENV?: string;
   ALLOWED_ORIGINS?: string;
 }
@@ -79,8 +78,7 @@ export default {
         ok: healthy,
         service: "happy-live-api",
         environment: env.APP_ENV ?? "unknown",
-        database,
-        mediaStorage: env.MEDIA ? "configured" : "not_configured"
+        database
       }, healthy ? 200 : 503, origin, env);
     }
 
