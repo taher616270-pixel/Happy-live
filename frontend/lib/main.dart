@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 void main() => runApp(const HappyLiveApp());
 
@@ -360,7 +359,7 @@ class _LoginPageState extends State<LoginPage> {
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                FaIcon(FontAwesomeIcons.google, color: Color(0xFF4285F4), size: 19),
+                                const Text('G', style: TextStyle(color: Color(0xFF4285F4), fontSize: 23, fontWeight: FontWeight.w900)),
                                 SizedBox(width: 12),
                                 Text('سجل الدخول باستخدام Google', style: TextStyle(fontWeight: FontWeight.w700)),
                               ],
@@ -381,7 +380,7 @@ class _LoginPageState extends State<LoginPage> {
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                FaIcon(FontAwesomeIcons.apple, color: Colors.white, size: 22),
+                                const Icon(Icons.phone_iphone_rounded, color: Colors.white, size: 21),
                                 SizedBox(width: 12),
                                 Text('سجل الدخول باستخدام Apple', style: TextStyle(fontWeight: FontWeight.w700)),
                               ],
