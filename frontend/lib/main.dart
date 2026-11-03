@@ -102,20 +102,59 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  void _showValidationNotice(String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.info_outline_rounded, color: HappyLiveApp.gold, size: 21),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF241B2D),
+        elevation: 12,
+        duration: const Duration(seconds: 4),
+        margin: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          MediaQuery.of(context).padding.bottom + 24,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: HappyLiveApp.gold, width: 0.8),
+        ),
+      ),
+    );
+  }
+
   void _submit() {
-    if (!_formKey.currentState!.validate()) return;
+    // Show the age and legal-consent notices before field validation so
+    // users always see why registration cannot continue.
     if (_isRegister && !_isAdult) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يجب أن يكون عمرك 18 سنة أو أكثر لإنشاء حساب')),
-      );
+      _showValidationNotice('يجب أن يكون عمرك 18 سنة أو أكثر لإنشاء حساب');
       return;
     }
     if (_isRegister && !_acceptedTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى الموافقة على الشروط والأحكام وسياسة الخصوصية')),
-      );
+      _showValidationNotice('يرجى الموافقة على الشروط والأحكام وسياسة الخصوصية');
       return;
     }
+    if (!_formKey.currentState!.validate()) return;
     _showNotConnected();
   }
 
