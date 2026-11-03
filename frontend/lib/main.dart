@@ -317,7 +317,8 @@ class _LoginPageState extends State<LoginPage> {
                             width: 112,
                             child: TextField(
                               controller: _phoneCountryCodeInput,
-                              keyboardType: TextInputType.phone,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [PhoneCodeInputFormatter()],
                               textDirection: TextDirection.ltr,
                               textAlign: TextAlign.center,
                               onChanged: (value) => _syncPhoneCountryFromCode(value, refreshDialog),
