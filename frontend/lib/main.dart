@@ -712,8 +712,10 @@ class _BrandHeader extends StatelessWidget {
             ],
           ),
           child: const Center(
-            child: Text(
-              'H',
+            child: Transform.translate(
+              offset: const Offset(0, 5),
+              child: const Text(
+                'H',
               style: TextStyle(
                 fontSize: 66,
                 height: 1,
@@ -721,6 +723,7 @@ class _BrandHeader extends StatelessWidget {
                 color: HappyLiveApp.gold,
                 shadows: [Shadow(color: HappyLiveApp.purple, blurRadius: 16)],
               ),
+            ),
             ),
           ),
         ),
