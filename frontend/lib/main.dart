@@ -172,18 +172,20 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 8),
                         const _BrandHeader(),
                         const SizedBox(height: 34),
-                        if (_isRegister || _hasRegisteredOnThisDevice)
-                          Text(
-                            _isRegister ? 'أنشئ حسابك' : 'مرحباً بعودتك',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 27,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                            ),
+                        Text(
+                          _isRegister
+                              ? 'أنشئ حسابك'
+                              : (_hasRegisteredOnThisDevice
+                                  ? 'مرحباً بعودتك'
+                                  : 'أهلاً بك في Happy Live'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 27,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
                           ),
-                        if (_isRegister || _hasRegisteredOnThisDevice)
-                          const SizedBox(height: 9),
+                        ),
+                        const SizedBox(height: 9),
                         Text(
                           _isRegister
                               ? 'انضم إلى مجتمع Happy Live وابدأ رحلتك'
