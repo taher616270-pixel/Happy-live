@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(const HappyLiveApp());
 
@@ -56,6 +57,30 @@ class _LoginPageState extends State<LoginPage> {
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
   bool _acceptedTerms = false;
+  bool _hasRegisteredOnThisDevice = false;
+
+  static const _registeredDeviceKey = 'happy_live_registered_on_device';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDeviceRegistration();
+  }
+
+  Future<void> _loadDeviceRegistration() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _hasRegisteredOnThisDevice = prefs.getBool(_registeredDeviceKey) ?? false;
+    });
+  }
+
+  // Call this only after the server confirms a successful account registration.
+  Future<void> _rememberSuccessfulRegistrationOnThisDevice() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_registeredDeviceKey, true);
+    if (mounted) setState(() => _hasRegisteredOnThisDevice = true);
+  }
 
   @override
   void dispose() {
@@ -147,16 +172,18 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 8),
                         const _BrandHeader(),
                         const SizedBox(height: 34),
-                        Text(
-                          _isRegister ? 'أنشئ حسابك' : 'مرحباً بعودتك',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 27,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
+                        if (_isRegister || _hasRegisteredOnThisDevice)
+                          Text(
+                            _isRegister ? 'أنشئ حسابك' : 'مرحباً بعودتك',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 27,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 9),
+                        if (_isRegister || _hasRegisteredOnThisDevice)
+                          const SizedBox(height: 9),
                         Text(
                           _isRegister
                               ? 'انضم إلى مجتمع Happy Live وابدأ رحلتك'
