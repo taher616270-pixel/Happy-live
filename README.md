@@ -28,4 +28,4 @@ A fresh, web-first rebuild of the GABO LIVE product.
 ## Current scaffold
 The repository contains the Flutter RTL application shell, a TypeScript Worker API with health and metadata routes, an initial D1 migration, R2 binding configuration, a separate admin boundary, and architecture/roadmap documentation.
 
-The Cloudflare D1 database and R2 bucket still need to be created in the account. The Worker has not yet been installed, typechecked, locally run, or deployed. No production service has been changed.
+The Cloudflare D1 database `happy-live-db` has been created in the account (APAC) and the initial accounts/profile/admin schema has been applied and verified. Its ID is stored in the Worker configuration. R2 is not yet enabled on the Cloudflare account, so the `happy-live-media` bucket remains pending. The Worker has not yet been installed, typechecked, locally run, or deployed.
