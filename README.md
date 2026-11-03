@@ -27,6 +27,6 @@ A fresh, web-first rebuild of the GABO LIVE product.
 - `infra/` — Docker and local development infrastructure.
 - `docs/` — architecture, API contracts, and implementation notes.
 
-## Status
+## Current scaffold
 
-Repository initialized. Application scaffolding and runtime verification are the next steps.
+The repository contains the Flutter RTL application shell, Laravel API health route, local MySQL/Redis services, separate admin boundary, and architecture/roadmap documentation. Runtime checks have not yet been run in a Flutter/PHP/Docker environment.
