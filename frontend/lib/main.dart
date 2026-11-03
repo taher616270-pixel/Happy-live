@@ -715,7 +715,7 @@ class _BrandHeader extends StatelessWidget {
             child: Text(
               'H',
               style: TextStyle(
-                fontSize: 54,
+                fontSize: 66,
                 height: 1,
                 fontWeight: FontWeight.w900,
                 color: HappyLiveApp.gold,
