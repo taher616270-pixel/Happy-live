@@ -87,7 +87,7 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
-  void _syncPhoneCountryFromCode(String value) {
+  void _syncPhoneCountryFromCode(String value, StateSetter refreshDialog) {
     // Accept +966, 966, 00966, and values pasted with spaces or punctuation.
     var digits = value.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.startsWith('00')) digits = digits.substring(2);
@@ -95,7 +95,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (digits == '969') {
       if (!_isSouthArabiaPhone || _phoneCountryCode != '+969') {
-        setState(() {
+        refreshDialog(() {
           _phoneCountryName = 'الجنوب العربي';
           _phoneCountryCode = '+969';
           _phoneCountryFlag = '🇾🇪';
@@ -115,7 +115,7 @@ class _LoginPageState extends State<LoginPage> {
 
     final code = '+$digits';
     if (_phoneCountryCode == code && !_isSouthArabiaPhone) return;
-    setState(() {
+    refreshDialog(() {
       _phoneCountryName = country.getTranslatedName(context) ?? country.name;
       _phoneCountryCode = code;
       _phoneCountryFlag = country.flagEmoji;
@@ -320,7 +320,7 @@ class _LoginPageState extends State<LoginPage> {
                               keyboardType: TextInputType.phone,
                               textDirection: TextDirection.ltr,
                               textAlign: TextAlign.center,
-                              onChanged: _syncPhoneCountryFromCode,
+                              onChanged: (value) => _syncPhoneCountryFromCode(value, refreshDialog),
                               style: const TextStyle(color: HappyLiveApp.gold, fontSize: 16, fontWeight: FontWeight.w900),
                               decoration: InputDecoration(
                                 hintText: '+966',
