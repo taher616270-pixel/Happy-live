@@ -73,13 +73,17 @@ class _LoginPageState extends State<LoginPage> {
   bool _acceptedTerms = false;
   DateTime? _birthDate;
   bool _hasRegisteredOnThisDevice = false;
+  bool _isSubmitting = false;
 
+  static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
+  static const String _sessionTokenKey = 'happy_live_session_token';
   static const _registeredDeviceKey = 'happy_live_registered_on_device';
 
   @override
   void initState() {
     super.initState();
     _loadDeviceRegistration();
+    _restoreSession();
     _detectPhoneCountryFromIp();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -283,7 +287,7 @@ class _LoginPageState extends State<LoginPage> {
   void _showNotConnected() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('واجهة تسجيل الدخول جاهزة، وسيتم ربط الحسابات بالخادم في الخطوة التالية'),
+        content: Text('طريقة تسجيل الدخول هذه غير مفعلة بعد'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -609,8 +613,38 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _submit() {
-    // Validate the registration fields first, then age and legal consent.
+  Future<void> _restoreSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_sessionTokenKey);
+    if (token == null || token.isEmpty) return;
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiBase/auth/me'),
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 12));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final user = data['user'] as Map<String, dynamic>? ?? {};
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => SessionHomePage(
+              name: (user['name'] ?? '').toString(),
+              email: (user['email'] ?? '').toString(),
+              accessToken: token,
+            ),
+          ),
+        );
+      } else {
+        await prefs.remove(_sessionTokenKey);
+      }
+    } catch (_) {
+      // Keep the saved session if the API is temporarily unreachable.
+    }
+  }
+
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
     if (!_formKey.currentState!.validate()) return;
     if (_isRegister && _birthDate == null) {
       _showValidationNotice('يرجى تحديد تاريخ ميلادك');
@@ -624,7 +658,68 @@ class _LoginPageState extends State<LoginPage> {
       _showValidationNotice('يرجى الموافقة على الشروط والأحكام وسياسة الخصوصية');
       return;
     }
-    _showNotConnected();
+
+    setState(() => _isSubmitting = true);
+    try {
+      final isRegistering = _isRegister;
+      final endpoint = isRegistering ? 'register' : 'login';
+      final payload = <String, dynamic>{
+        'email': _email.text.trim(),
+        'password': _password.text,
+      };
+      if (isRegistering) {
+        final date = _birthDate!;
+        payload.addAll({
+          'name': _name.text.trim(),
+          'birthday': '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
+          'acceptedTerms': _acceptedTerms,
+        });
+      }
+
+      final response = await http.post(
+        Uri.parse('$_apiBase/auth/$endpoint'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 25));
+
+      Map<String, dynamic> data = {};
+      try {
+        data = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {}
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        final message = (data['message'] ?? 'تعذر إكمال العملية، حاول مرة أخرى').toString();
+        if (mounted) _showValidationNotice(message);
+        return;
+      }
+
+      final token = (data['accessToken'] ?? '').toString();
+      final user = data['user'] as Map<String, dynamic>? ?? {};
+      if (token.isEmpty) {
+        if (mounted) _showValidationNotice('استلم التطبيق ردًا غير مكتمل من الخادم');
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_sessionTokenKey, token);
+      if (isRegistering) await _rememberSuccessfulRegistrationOnThisDevice();
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => SessionHomePage(
+            name: (user['name'] ?? _name.text.trim()).toString(),
+            email: (user['email'] ?? _email.text.trim()).toString(),
+            accessToken: token,
+          ),
+        ),
+      );
+    } on http.ClientException {
+      if (mounted) _showValidationNotice('تعذر الاتصال بالخادم، تحقق من الإنترنت');
+    } catch (_) {
+      if (mounted) _showValidationNotice('حدث خطأ أثناء الاتصال، حاول مرة أخرى');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   InputDecoration _inputDecoration({
@@ -892,17 +987,19 @@ class _LoginPageState extends State<LoginPage> {
                               ],
                             ),
                             child: ElevatedButton(
-                              onPressed: _submit,
+                              onPressed: _isSubmitting ? null : _submit,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
                                 shadowColor: Colors.transparent,
                                 foregroundColor: const Color(0xFF171019),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                               ),
-                              child: Text(
-                                _isRegister ? 'إنشاء حساب' : 'تسجيل الدخول',
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-                              ),
+                              child: _isSubmitting
+                                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF171019)))
+                                  : Text(
+                                      _isRegister ? 'إنشاء حساب' : 'تسجيل الدخول',
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                                    ),
                             ),
                           ),
                         ),
@@ -1125,6 +1222,105 @@ class _LoginPageState extends State<LoginPage> {
         ],
       ),
     ).whenComplete(emailController.dispose);
+  }
+}
+
+class SessionHomePage extends StatelessWidget {
+  const SessionHomePage({
+    super.key,
+    required this.name,
+    required this.email,
+    required this.accessToken,
+  });
+
+  final String name;
+  final String email;
+  final String accessToken;
+
+  static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
+  static const String _sessionTokenKey = 'happy_live_session_token';
+
+  Future<void> _logout(BuildContext context) async {
+    try {
+      await http.post(
+        Uri.parse('$_apiBase/auth/logout'),
+        headers: {'Authorization': 'Bearer $accessToken'},
+      ).timeout(const Duration(seconds: 10));
+    } catch (_) {}
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sessionTokenKey);
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const LoginPage()),
+      (route) => false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: HappyLiveApp.background,
+        appBar: AppBar(
+          backgroundColor: HappyLiveApp.background,
+          foregroundColor: HappyLiveApp.gold,
+          title: const Text('HAPPY LIVE', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              tooltip: 'تسجيل الخروج',
+              onPressed: () => _logout(context),
+              icon: const Icon(Icons.logout_rounded),
+            ),
+          ],
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const _BrandHeader(),
+                  const SizedBox(height: 34),
+                  const Icon(Icons.verified_rounded, color: HappyLiveApp.gold, size: 48),
+                  const SizedBox(height: 14),
+                  Text(
+                    name.isEmpty ? 'تم تسجيل الدخول بنجاح' : 'أهلاً بك، $name',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 9),
+                  Text(email, style: const TextStyle(color: HappyLiveApp.muted, fontSize: 14)),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'تم ربط حسابك بالخادم وحفظ جلسة الدخول على هذا الجهاز.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: HappyLiveApp.muted, height: 1.7),
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _logout(context),
+                      icon: const Icon(Icons.logout_rounded),
+                      label: const Text('تسجيل الخروج'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: HappyLiveApp.gold,
+                        side: const BorderSide(color: HappyLiveApp.gold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
