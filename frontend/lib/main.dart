@@ -103,42 +103,46 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _showValidationNotice(String message) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF241B2D),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: HappyLiveApp.gold, width: 0.9),
+        ),
         content: Row(
           children: [
-            const Icon(Icons.info_outline_rounded, color: HappyLiveApp.gold, size: 21),
-            const SizedBox(width: 10),
+            const Icon(Icons.info_outline_rounded,
+                color: HappyLiveApp.gold, size: 25),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 message,
                 textAlign: TextAlign.right,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  height: 1.4,
+                  height: 1.5,
                 ),
               ),
             ),
           ],
         ),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF241B2D),
-        elevation: 12,
-        duration: const Duration(seconds: 4),
-        margin: EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          MediaQuery.of(context).padding.bottom + 24,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: HappyLiveApp.gold, width: 0.8),
-        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text(
+              'حسناً',
+              style: TextStyle(
+                color: HappyLiveApp.gold,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
