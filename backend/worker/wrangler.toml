@@ -10,7 +10,7 @@ APP_ENV = "development"
 binding = "DB"
 database_name = "happy-live-db"
 # Replace this placeholder with the database_id returned by Cloudflare after creating the D1 database.
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "ae09430d-71e9-420b-8362-a8e2bb947dff"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
