@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
   status TEXT NOT NULL DEFAULT 'active'
     CHECK (status IN ('active', 'suspended', 'deleted')),
   email_verified_at TEXT,
+  terms_accepted_at TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   UNIQUE (auth_provider, auth_subject)
