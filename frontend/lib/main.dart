@@ -31,7 +31,7 @@ class HappyLiveApp extends StatelessWidget {
           surface: surface,
         ),
         useMaterial3: true,
-        fontFamily: 'Arial',
+        fontFamily: 'Tajawal',
       ),
       home: const Directionality(
         textDirection: TextDirection.rtl,
