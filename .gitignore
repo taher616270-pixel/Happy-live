@@ -1,0 +1,24 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# PHP / Laravel
+/backend/vendor/
+/backend/.env
+/backend/.phpunit.cache/
+/backend/storage/*.key
+/backend/storage/framework/cache/*
+/backend/storage/framework/sessions/*
+/backend/storage/framework/views/*
+/backend/bootstrap/cache/*
+
+# Local infrastructure
+.env
+*.log
+.DS_Store
+.idea/
+.vscode/
