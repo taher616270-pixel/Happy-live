@@ -716,14 +716,14 @@ class _BrandHeader extends StatelessWidget {
               offset: const Offset(0, 5),
               child: const Text(
                 'H',
-              style: TextStyle(
-                fontSize: 66,
-                height: 1,
-                fontWeight: FontWeight.w900,
-                color: HappyLiveApp.gold,
-                shadows: [Shadow(color: HappyLiveApp.purple, blurRadius: 16)],
+                style: TextStyle(
+                  fontSize: 66,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
+                  color: HappyLiveApp.gold,
+                  shadows: [Shadow(color: HappyLiveApp.purple, blurRadius: 16)],
+                ),
               ),
-            ),
             ),
           ),
         ),
