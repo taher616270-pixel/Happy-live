@@ -713,7 +713,7 @@ class _BrandHeader extends StatelessWidget {
           ),
           child: Center(
             child: Transform.translate(
-              offset: const Offset(0, 5),
+              offset: const Offset(0, 10),
               child: const Text(
                 'H',
                 style: TextStyle(
