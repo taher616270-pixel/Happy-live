@@ -4,6 +4,8 @@ import 'package:country_picker/country_picker.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() => runApp(const HappyLiveApp());
 
@@ -78,6 +80,7 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     _loadDeviceRegistration();
+    _detectPhoneCountryFromIp();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         precacheImage(
@@ -86,6 +89,39 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     });
+  }
+
+
+  // Detect the visitor's country from their public IP. This does not request GPS permission.
+  Future<void> _detectPhoneCountryFromIp() async {
+    try {
+      final response = await http
+          .get(Uri.https('ipapi.co', 'json/'))
+          .timeout(const Duration(seconds: 6));
+      if (response.statusCode != 200) return;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final isoCode = (data['country_code'] ?? '').toString().toUpperCase();
+      if (isoCode.isEmpty || !mounted) return;
+
+      // +969 is a custom South Arabia selection; public IP databases normally
+      // identify this geographic area as Yemen, so keep Yemen as +967 here.
+      final country = CountryService().getAll().cast<Country?>().firstWhere(
+        (item) => item != null && item.countryCode.toUpperCase() == isoCode,
+        orElse: () => null,
+      );
+      if (country == null) return;
+      final translatedName = country.getTranslatedName(context) ?? country.name;
+      final callingCode = '+${country.phoneCode}';
+      setState(() {
+        _phoneCountryName = translatedName;
+        _phoneCountryCode = callingCode;
+        _phoneCountryCodeInput.text = callingCode;
+        _phoneCountryFlag = country.flagEmoji;
+        _isSouthArabiaPhone = false;
+      });
+    } catch (_) {
+      // Keep the current default (+969) if the IP lookup is unavailable.
+    }
   }
 
   void _syncPhoneCountryFromCode(String value, StateSetter refreshDialog) {
