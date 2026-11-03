@@ -1,15 +1,16 @@
 # Happy Live Roadmap
 
-## Phase 0 — foundation
+## Phase 0 — Cloudflare foundation
 - [x] Initialize clean repository and document the product direction.
 - [x] Add Flutter web-first app shell with Arabic RTL branding.
-- [x] Add Laravel API health endpoint scaffold.
-- [x] Add MySQL and Redis local services.
-- [x] Add separate admin shell.
-- [ ] Run Flutter, Composer and Docker checks in a real development environment.
+- [x] Select Cloudflare Workers + D1 + R2 as the canonical backend/hosting target.
+- [x] Add Worker API scaffold, D1 initial migration and R2 binding configuration.
+- [ ] Create the D1 database and R2 bucket in the user's Cloudflare account.
+- [ ] Run dependency installation, typecheck, local migration and Worker smoke tests.
+- [ ] Configure Pages builds for Flutter Web and the separate admin frontend.
 
 ## Phase 1 — accounts
-- [ ] Email registration, login, logout and session lifecycle.
+- [ ] Email registration, login, logout and secure session lifecycle.
 - [ ] Google sign-in with verified server-side token exchange.
 - [ ] Email OTP password recovery with expiry, resend throttling and attempt limits.
 - [ ] Profile, country, avatar, GABO ID and privacy settings.
