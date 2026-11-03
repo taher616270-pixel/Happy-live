@@ -95,6 +95,32 @@ class _LoginPageState extends State<LoginPage> {
   // Detect the visitor's country from public IP. Try two providers so one
   // provider outage or rate limit does not leave every visitor on the same country.
   Future<void> _detectPhoneCountryFromIp() async {
+    // Temporary QA override: ?testRegion=aden or ?testRegion=sanaa
+    // The override is only applied when explicitly present in the URL.
+    final testRegion = Uri.base.queryParameters['testRegion']?.toLowerCase().trim();
+    if (testRegion == 'aden') {
+      if (!mounted) return;
+      setState(() {
+        _phoneCountryName = 'الجنوب العربي — عدن (اختبار)';
+        _phoneCountryCode = '+969';
+        _phoneCountryCodeInput.text = '+969';
+        _phoneCountryFlag = '🇾🇪';
+        _isSouthArabiaPhone = true;
+      });
+      return;
+    }
+    if (testRegion == 'sanaa' || testRegion == 'sana') {
+      if (!mounted) return;
+      setState(() {
+        _phoneCountryName = 'اليمن — صنعاء (اختبار)';
+        _phoneCountryCode = '+967';
+        _phoneCountryCodeInput.text = '+967';
+        _phoneCountryFlag = '🇾🇪';
+        _isSouthArabiaPhone = false;
+      });
+      return;
+    }
+
     Map<String, dynamic>? data;
 
     final endpoints = <Uri>[
