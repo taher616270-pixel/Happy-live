@@ -89,11 +89,33 @@ export default {
         return json({ error: "imagekit_not_configured" }, 503, origin, env);
       }
 
-      const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
-      const now = Math.floor(Date.now() / 1000);
-      const windowStart = now - 60;
+      // Require a live application session before issuing upload credentials.
+      // Session tokens are stored only as SHA-256 hashes in D1.
+      const authorization = request.headers.get("Authorization") ?? "";
+      const bearerMatch = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
+      if (!bearerMatch) {
+        return json({ error: "authentication_required" }, 401, origin, env);
+      }
 
       try {
+        const tokenHashBytes = await crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(bearerMatch[1])
+        );
+        const tokenHash = Array.from(new Uint8Array(tokenHashBytes))
+          .map((byte) => byte.toString(16).padStart(2, "0"))
+          .join("");
+        const session = await env.DB.prepare(
+          "SELECT s.user_id FROM user_sessions s INNER JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
+        ).bind(tokenHash, new Date().toISOString()).first<{ user_id: string }>();
+
+        if (!session) {
+          return json({ error: "invalid_or_expired_session" }, 401, origin, env);
+        }
+
+        const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+        const now = Math.floor(Date.now() / 1000);
+        const windowStart = now - 60;
         const rate = await env.DB.prepare(
           "INSERT INTO imagekit_auth_rate_limits (ip, window_start, request_count) VALUES (?, ?, 1) ON CONFLICT(ip) DO UPDATE SET window_start = CASE WHEN imagekit_auth_rate_limits.window_start <= ? THEN excluded.window_start ELSE imagekit_auth_rate_limits.window_start END, request_count = CASE WHEN imagekit_auth_rate_limits.window_start <= ? THEN 1 ELSE imagekit_auth_rate_limits.request_count + 1 END RETURNING request_count"
         ).bind(ip, now, windowStart, windowStart).first<{ request_count: number }>();
