@@ -366,28 +366,30 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 52,
-                          child: OutlinedButton(
-                            onPressed: _showNotConnected,
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFF44394F)),
-                              backgroundColor: const Color(0xFF15121B),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.phone_iphone_rounded, color: Colors.white, size: 21),
-                                SizedBox(width: 12),
-                                Text('سجل الدخول باستخدام Apple', style: TextStyle(fontWeight: FontWeight.w700)),
-                              ],
+                        if (defaultTargetPlatform == TargetPlatform.iOS) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 52,
+                            child: OutlinedButton(
+                              onPressed: _showNotConnected,
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFF44394F)),
+                                backgroundColor: const Color(0xFF15121B),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.phone_iphone_rounded, color: Colors.white, size: 21),
+                                  SizedBox(width: 12),
+                                  Text('سجل الدخول باستخدام Apple', style: TextStyle(fontWeight: FontWeight.w700)),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
+                          const SizedBox(height: 24),
+                        ],
                         const Row(
                           children: [
                             Expanded(child: Divider(color: Color(0xFF393141))),
