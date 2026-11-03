@@ -19,7 +19,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - web/assets/south-arabia.png.png
+    - web/assets/south-arabia-v2.png
   fonts:
     - family: Tajawal
       fonts:
