@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -1194,6 +1195,29 @@ class LegalDocumentPage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Keeps the calling-code field to a '+' prefix and at most three digits.
+class PhoneCodeInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final limitedDigits = digits.length > 3 ? digits.substring(0, 3) : digits;
+    if (limitedDigits.isEmpty) {
+      return const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
+    final formatted = '+$limitedDigits';
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }
