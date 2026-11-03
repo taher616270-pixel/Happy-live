@@ -406,16 +406,54 @@ class _LoginPageState extends State<LoginPage> {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        contentPadding: const EdgeInsets.fromLTRB(24, 18, 24, 12),
+        actionsPadding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
         backgroundColor: HappyLiveApp.surface,
-        title: const Text('استعادة كلمة المرور'),
-        content: TextField(
-          controller: emailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(
-            hintText: 'البريد الإلكتروني',
-            filled: true,
-            fillColor: const Color(0xFF100E15),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: const BorderSide(color: Color(0xFF51405F), width: 1),
+        ),
+        title: const Text(
+          'استعادة كلمة المرور',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: HappyLiveApp.gold),
+        ),
+        content: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'أدخل بريدك الإلكتروني لاستعادة الوصول إلى حسابك',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: HappyLiveApp.muted, fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'البريد الإلكتروني',
+                  prefixIcon: const Icon(Icons.mail_outline_rounded, color: HappyLiveApp.gold),
+                  filled: true,
+                  fillColor: const Color(0xFF100E15),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF51405F)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF51405F)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: HappyLiveApp.gold, width: 1.3),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
