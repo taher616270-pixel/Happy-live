@@ -203,7 +203,7 @@ class _LoginPageState extends State<LoginPage> {
                                             final matchesSouth = query.isEmpty || 'الجنوب العربي'.contains(query) || '+969'.contains(query);
                                             if (!matchesSouth) return const SizedBox.shrink();
                                             return ListTile(
-                                              leading: const Text('🇾🇪', style: TextStyle(fontSize: 25)),
+                                              leading: ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.asset('web/assets/south-arabia.png.png', width: 34, height: 23, fit: BoxFit.cover)),
                                               title: const Text('الجنوب العربي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                                               trailing: const Text('+969', textDirection: TextDirection.ltr, style: TextStyle(color: HappyLiveApp.gold, fontWeight: FontWeight.w900)),
                                               onTap: () {
@@ -237,7 +237,7 @@ class _LoginPageState extends State<LoginPage> {
                         height: 52, padding: const EdgeInsets.symmetric(horizontal: 13),
                         decoration: BoxDecoration(color: const Color(0xFF100D15), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0xFF51415F))),
                         child: Row(children: [
-                          Text(_phoneCountryFlag, style: const TextStyle(fontSize: 23)),
+                          _isSouthArabiaPhone ? ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.asset('web/assets/south-arabia.png.png', width: 32, height: 22, fit: BoxFit.cover)) : Text(_phoneCountryFlag, style: const TextStyle(fontSize: 23)),
                           const SizedBox(width: 10),
                           Expanded(child: Text(_phoneCountryName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
                           Text(_phoneCountryCode, textDirection: TextDirection.ltr, style: const TextStyle(color: HappyLiveApp.gold, fontWeight: FontWeight.w900)),
