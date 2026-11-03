@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 void main() => runApp(const HappyLiveApp());
 
@@ -352,15 +353,37 @@ class _LoginPageState extends State<LoginPage> {
                             onPressed: _showNotConnected,
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: Color(0xFF44394F)),
+                              backgroundColor: const Color(0xFF15121B),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                               foregroundColor: Colors.white,
                             ),
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                _GoogleMark(),
-                                SizedBox(width: 10),
-                                Text('المتابعة باستخدام Google', style: TextStyle(fontWeight: FontWeight.w700)),
+                                FaIcon(FontAwesomeIcons.google, color: Color(0xFF4285F4), size: 19),
+                                SizedBox(width: 12),
+                                Text('سجل الدخول باستخدام Google', style: TextStyle(fontWeight: FontWeight.w700)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: _showNotConnected,
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFF44394F)),
+                              backgroundColor: const Color(0xFF15121B),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                FaIcon(FontAwesomeIcons.apple, color: Colors.white, size: 22),
+                                SizedBox(width: 12),
+                                Text('سجل الدخول باستخدام Apple', style: TextStyle(fontWeight: FontWeight.w700)),
                               ],
                             ),
                           ),
