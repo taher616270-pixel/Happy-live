@@ -388,6 +388,52 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 24),
+                        const Row(
+                          children: [
+                            Expanded(child: Divider(color: Color(0xFF393141))),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 14),
+                              child: Text(
+                                'طرق تسجيل دخول أخرى',
+                                style: TextStyle(color: HappyLiveApp.muted, fontSize: 12),
+                              ),
+                            ),
+                            Expanded(child: Divider(color: Color(0xFF393141))),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _showNotConnected,
+                                icon: const Icon(Icons.phone_iphone_rounded, color: HappyLiveApp.gold, size: 19),
+                                label: const Text('رقم الهاتف', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(50),
+                                  foregroundColor: Colors.white,
+                                  side: const BorderSide(color: Color(0xFF44394F)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _showNotConnected,
+                                icon: const Icon(Icons.badge_outlined, color: HappyLiveApp.gold, size: 19),
+                                label: const Text('معرّف المستخدم', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(50),
+                                  foregroundColor: Colors.white,
+                                  side: const BorderSide(color: Color(0xFF44394F)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 26),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
