@@ -96,7 +96,6 @@ class _LoginPageState extends State<LoginPage> {
   // provider outage or rate limit does not leave every visitor on the same country.
   Future<void> _detectPhoneCountryFromIp() async {
     // Temporary QA override: ?testRegion=aden or ?testRegion=sanaa
-    // The override is only applied when explicitly present in the URL.
     final testRegion = Uri.base.queryParameters['testRegion']?.toLowerCase().trim();
     if (testRegion == 'aden') {
       if (!mounted) return;
@@ -121,8 +120,9 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    Map<String, dynamic>? data;
-
+    // Do not stop at the first provider: it may know the country but omit
+    // the governorate. Compare both providers before deciding Yemen's region.
+    final results = <Map<String, dynamic>>[];
     final endpoints = <Uri>[
       Uri.https('ipwho.is', ''),
       Uri.https('ipapi.co', 'json/'),
@@ -134,27 +134,25 @@ class _LoginPageState extends State<LoginPage> {
         if (response.statusCode != 200) continue;
         final decoded = jsonDecode(response.body);
         if (decoded is! Map<String, dynamic>) continue;
-        if (decoded['success'] == false) continue;
-
-        final code = (decoded['country_code'] ?? '').toString().trim();
-        if (code.isNotEmpty) {
-          data = decoded;
-          break;
-        }
+        if (decoded['success'] == false || decoded['error'] == true) continue;
+        final code = (decoded['country_code'] ?? decoded['countryCode'] ?? '')
+            .toString().trim().toUpperCase();
+        if (code.isNotEmpty) results.add(decoded);
       } catch (_) {
-        // Try the next IP geolocation provider.
+        // Continue to the next independent geolocation provider.
       }
     }
 
-    if (data == null || !mounted) return;
+    if (results.isEmpty || !mounted) return;
 
-    final isoCode = (data['country_code'] ?? '').toString().toUpperCase().trim();
-    if (isoCode.isEmpty) return;
+    final isoCodes = results
+        .map((item) => (item['country_code'] ?? item['countryCode'] ?? '')
+            .toString().trim().toUpperCase())
+        .where((code) => code.isNotEmpty)
+        .toList();
+    final isoCode = isoCodes.first;
 
-    // Yemen is split into the custom South Arabia identity and Yemen.
     if (isoCode == 'YE') {
-      final region = (data['region'] ?? '').toString().toLowerCase().trim();
-      final regionCode = (data['region_code'] ?? '').toString().toUpperCase().trim();
       const southernRegionCodes = <String>{
         'YE-AD', 'YE-AB', 'YE-LA', 'YE-SH',
         'YE-HD', 'YE-MA', 'YE-SU', 'YE-DA',
@@ -162,27 +160,45 @@ class _LoginPageState extends State<LoginPage> {
       };
       const southernRegionNames = <String>[
         'aden', 'عدن', 'abyan', 'أبين', 'ابين',
-        'lahij', 'lahj', 'لحج', 'shabwah', 'شبوة',
+        'lahij', 'lahj', 'lahij governorate', 'لحج',
+        'shabwah', 'شبوة',
         'hadramawt', 'hadramout', 'حضرموت',
-        'al mahrah', 'al-mahrah', 'المهرة', 'المهره',
-        'socotra', 'سقطرى', 'al dhale', 'al dhalea',
-        'ad dale', 'الضالع',
+        'al mahrah', 'al-mahrah', 'mahra', 'المهرة', 'المهره',
+        'socotra', 'سقطرى',
+        'al dhale', 'al dhalea', 'ad dale', 'aldhale', 'الضالع',
       ];
-      final isSouthernYemen =
-          southernRegionCodes.contains(regionCode) ||
-          southernRegionNames.any((name) => region.contains(name));
+
+      var isSouthernYemen = false;
+      for (final item in results.where((item) =>
+          (item['country_code'] ?? item['countryCode'] ?? '')
+              .toString().trim().toUpperCase() == 'YE')) {
+        final region = (item['region'] ?? item['region_name'] ??
+                item['regionName'] ?? '').toString().toLowerCase().trim();
+        final regionCode = (item['region_code'] ?? item['regionCode'] ?? '')
+            .toString().toUpperCase().trim();
+        final city = (item['city'] ?? '').toString().toLowerCase().trim();
+        final subdivision = '$region $city';
+        final codeParts = regionCode.split('-');
+        final shortRegionCode = codeParts.isNotEmpty ? codeParts.last : regionCode;
+
+        if (southernRegionCodes.contains(regionCode) ||
+            southernRegionCodes.contains(shortRegionCode) ||
+            southernRegionNames.any((name) =>
+                region.contains(name) || subdivision.contains(name))) {
+          isSouthernYemen = true;
+          break;
+        }
+      }
 
       if (!mounted) return;
-      if (isSouthernYemen) {
-        setState(() {
-          _phoneCountryName = 'الجنوب العربي';
-          _phoneCountryCode = '+969';
-          _phoneCountryCodeInput.text = '+969';
-          _phoneCountryFlag = '🇾🇪';
-          _isSouthArabiaPhone = true;
-        });
-        return;
-      }
+      setState(() {
+        _phoneCountryName = isSouthernYemen ? 'الجنوب العربي' : 'اليمن';
+        _phoneCountryCode = isSouthernYemen ? '+969' : '+967';
+        _phoneCountryCodeInput.text = _phoneCountryCode;
+        _phoneCountryFlag = '🇾🇪';
+        _isSouthArabiaPhone = isSouthernYemen;
+      });
+      return;
     }
 
     final country = CountryService().getAll().cast<Country?>().firstWhere(
