@@ -711,7 +711,7 @@ class _BrandHeader extends StatelessWidget {
               BoxShadow(color: Color(0x449B63D9), blurRadius: 28, spreadRadius: 2),
             ],
           ),
-          child: const Center(
+          child: Center(
             child: Transform.translate(
               offset: const Offset(0, 5),
               child: const Text(
