@@ -160,18 +160,12 @@ class _LoginPageState extends State<LoginPage> {
             child: _GlowOrb(color: Color(0x22E8C477), size: 300),
           ),
           SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) => Center(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: constraints.maxWidth > 478 ? 478 : constraints.maxWidth,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 430),
-                        child: Form(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 430),
+                  child: Form(
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -469,15 +463,12 @@ class _LoginPageState extends State<LoginPage> {
                           style: TextStyle(color: Color(0xFF706779), fontSize: 10, letterSpacing: 1.2),
                         ),
                       ],
-                        ),
-                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
         ],
       ),
     );
