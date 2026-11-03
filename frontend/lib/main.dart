@@ -58,6 +58,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
   bool _acceptedTerms = false;
+  bool _isAdult = false;
   bool _hasRegisteredOnThisDevice = false;
 
   static const _registeredDeviceKey = 'happy_live_registered_on_device';
@@ -103,9 +104,15 @@ class _LoginPageState extends State<LoginPage> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+    if (_isRegister && !_isAdult) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('يجب أن يكون عمرك 18 سنة أو أكثر لإنشاء حساب')),
+      );
+      return;
+    }
     if (_isRegister && !_acceptedTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى الموافقة على الشروط والأحكام')),
+        const SnackBar(content: Text('يرجى الموافقة على الشروط والأحكام وسياسة الخصوصية')),
       );
       return;
     }
@@ -292,15 +299,38 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           const SizedBox(height: 12),
                           CheckboxListTile(
+                            value: _isAdult,
+                            onChanged: (value) => setState(() => _isAdult = value ?? false),
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            activeColor: HappyLiveApp.gold,
+                            checkColor: HappyLiveApp.background,
+                            title: const Text(
+                              'أؤكد أن عمري 18 سنة أو أكثر',
+                              style: TextStyle(color: HappyLiveApp.muted, fontSize: 12),
+                            ),
+                          ),
+                          CheckboxListTile(
                             value: _acceptedTerms,
                             onChanged: (value) => setState(() => _acceptedTerms = value ?? false),
                             contentPadding: EdgeInsets.zero,
                             controlAffinity: ListTileControlAffinity.leading,
                             activeColor: HappyLiveApp.gold,
                             checkColor: HappyLiveApp.background,
-                            title: const Text(
-                              'أوافق على الشروط والأحكام وسياسة الخصوصية',
-                              style: TextStyle(color: HappyLiveApp.muted, fontSize: 12),
+                            title: Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                const Text('أوافق على ', style: TextStyle(color: HappyLiveApp.muted, fontSize: 12)),
+                                InkWell(
+                                  onTap: () => _openLegalDocument('terms'),
+                                  child: const Text('الشروط والأحكام', style: TextStyle(color: HappyLiveApp.gold, fontSize: 12, decoration: TextDecoration.underline)),
+                                ),
+                                const Text(' و', style: TextStyle(color: HappyLiveApp.muted, fontSize: 12)),
+                                InkWell(
+                                  onTap: () => _openLegalDocument('privacy'),
+                                  child: const Text('سياسة الخصوصية', style: TextStyle(color: HappyLiveApp.gold, fontSize: 12, decoration: TextDecoration.underline)),
+                                ),
+                              ],
                             ),
                           ),
                         ] else ...[
@@ -483,6 +513,14 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  void _openLegalDocument(String type) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LegalDocumentPage(type: type),
+      ),
+    );
+  }
+
   void _showResetDialog(BuildContext context) {
     final emailController = TextEditingController(text: _email.text);
     showDialog<void>(
@@ -649,4 +687,108 @@ class _GlowOrb extends StatelessWidget {
       ),
     ),
   );
+}
+
+class LegalDocumentPage extends StatelessWidget {
+  const LegalDocumentPage({super.key, required this.type});
+
+  final String type;
+
+  bool get isPrivacy => type == 'privacy';
+
+  static const _terms = <(String, String)>[
+    ('1. الأهلية والعمر', 'خدمة Happy Live مخصصة للأشخاص الذين تبلغ أعمارهم 18 سنة أو أكثر. بإنشاء الحساب، تقر وتؤكد أنك بلغت هذا العمر، وتتعهد بتقديم معلومات صحيحة. لا يسمح للقاصرين بإنشاء حساب أو استخدام الخدمة.'),
+    ('2. الحساب وأمانه', 'أنت مسؤول عن سرية بيانات الدخول وعن جميع الأنشطة التي تتم عبر حسابك. يجب عدم مشاركة كلمة المرور أو رموز التحقق، وإبلاغ فريق الدعم عند الاشتباه في استخدام غير مصرح به. يحق لنا طلب التحقق من المعلومات أو تعليق الحساب عند وجود مؤشرات معقولة على إساءة الاستخدام.'),
+    ('3. السلوك والمحتوى', 'تتعهد بعدم نشر أو إرسال محتوى غير قانوني أو تهديدي أو تشهيري أو مضلل أو ينتهك حقوق الآخرين، أو يتضمن استغلالًا أو تحرشًا أو كراهية أو احتيالًا أو انتهاكًا للخصوصية أو حقوق الملكية الفكرية. كما يمنع انتحال الشخصيات أو استخدام الخدمة للإزعاج أو الإضرار بالآخرين.'),
+    ('4. المحتوى الذي تنشره', 'تحتفظ بملكية المحتوى الذي تنشئه، وتمنح Happy Live ترخيصًا محدودًا وغير حصري لاستضافته وعرضه ومعالجته بالقدر اللازم لتشغيل الخدمة وتقديم ميزاتها. أنت مسؤول عن امتلاك الحقوق والأذونات اللازمة لأي محتوى تنشره.'),
+    ('5. الإشراف والإبلاغ', 'يمكنك الإبلاغ عن المحتوى أو الحسابات المخالفة. ويجوز لنا مراجعة البلاغات واتخاذ إجراءات مناسبة، مثل إزالة المحتوى أو تقييد بعض الميزات أو تعليق الحساب أو إغلاقه، مع مراعاة الأنظمة المعمول بها. لا نضمن اكتشاف كل مخالفة أو منعها فورًا.'),
+    ('6. الاستخدامات المحظورة', 'يمنع استخدام الخدمة لنشر البرمجيات الضارة أو الاحتيال أو التهديد أو المضايقة أو جمع بيانات الآخرين دون إذن أو محاولة اختراق الخدمة أو تعطيلها أو التحايل على أنظمتها أو بيع الحسابات أو إساءة استخدام ميزات البث والتواصل.'),
+    ('7. توفر الخدمة والتعديلات', 'قد تتغير الميزات أو تتوقف مؤقتًا لأسباب تقنية أو أمنية أو تشغيلية. ونسعى إلى تحسين الخدمة، لكننا لا نضمن عملها دون انقطاع أو خلوها من الأخطاء. قد نحدّث هذه الشروط عند تطوير الخدمة أو عند الحاجة النظامية.'),
+    ('8. الإيقاف وإنهاء الحساب', 'يجوز تقييد الحساب أو تعليقه أو إنهاؤه عند مخالفة هذه الشروط أو الإضرار بالمستخدمين أو بالخدمة أو عند وجود التزام نظامي. ويمكنك التوقف عن استخدام الخدمة وطلب حذف حسابك عبر قنوات الدعم المتاحة عند إطلاقها.'),
+    ('9. حدود المسؤولية', 'إلى الحد الذي تسمح به الأنظمة، لا تتحمل Happy Live مسؤولية الأضرار الناتجة عن تصرفات المستخدمين أو المحتوى الذي ينشرونه أو انقطاع خارج عن السيطرة المعقولة. ولا يحد ذلك من أي حقوق أو مسؤوليات لا يجوز استبعادها بموجب النظام.'),
+    ('10. القانون والتواصل', 'تخضع هذه الشروط للأنظمة المعمول بها في المملكة العربية السعودية، وتختص الجهات القضائية المختصة بالنظر في النزاعات وفقًا لتلك الأنظمة. عند إطلاق قنوات الدعم الرسمية، سيتم نشر بيانات التواصل داخل التطبيق أو على موقعه.'),
+  ];
+
+  static const _privacy = <(String, String)>[
+    ('1. نطاق السياسة', 'توضح هذه السياسة كيفية تعامل Happy Live مع المعلومات عند إنشاء الحساب واستخدام ميزات التطبيق. قد تتغير التفاصيل مع إضافة ميزات جديدة أو ربط مزودي خدمات، وسنحدّث هذه الصفحة عند حدوث تغييرات جوهرية.'),
+    ('2. المعلومات التي قد نجمعها', 'قد تشمل المعلومات التي تقدمها مباشرة: الاسم والبريد الإلكتروني وصورة الملف الشخصي والنبذة والبلد ومعلومات الحساب. وقد تشمل المعلومات التي تنشأ أثناء الاستخدام: المنشورات والتعليقات والرسائل والبلاغات والتفاعلات وسجلات الأمان والدعم.'),
+    ('3. معلومات تقنية', 'قد تُعالج معلومات تقنية لازمة لتشغيل الخدمة وحمايتها، مثل نوع الجهاز والمتصفح وعنوان الشبكة وسجلات الأعطال ووقت الدخول ومعلومات الأداء. ويقتصر ذلك على ما يلزم للأغراض الموضحة في هذه السياسة وبما تسمح به الأنظمة.'),
+    ('4. كيف نستخدم المعلومات', 'نستخدم المعلومات لإنشاء الحساب وإدارته، وتشغيل ميزات التواصل والمحتوى، وتخصيص التجربة، وتقديم الدعم، والتحقق من الأمان، واكتشاف الاحتيال والإساءة، وتحسين الأداء، والامتثال للمتطلبات النظامية.'),
+    ('5. ما يراه الآخرون', 'قد تكون بعض معلومات الملف الشخصي والمنشورات والتعليقات والتفاعلات مرئية للمستخدمين الآخرين بحسب إعدادات وميزات التطبيق. الرسائل الخاصة مخصصة لأطراف المحادثة، لكن لا ينبغي اعتبار أي وسيلة اتصال رقمية ضمانًا مطلقًا للسرية؛ فقد نحتاج إلى معالجة بيانات محدودة لأسباب أمنية أو نظامية.'),
+    ('6. مشاركة المعلومات', 'لا نبيع المعلومات الشخصية. وقد تتم مشاركة الحد الأدنى اللازم مع مزودي الاستضافة والتشغيل والتخزين والأمان أو مزودي الخدمات الذين يساعدون في تشغيل Happy Live، أو مع الجهات المختصة عندما يوجب النظام ذلك، أو لحماية حقوق وسلامة المستخدمين والخدمة.'),
+    ('7. التخزين والحماية', 'نتخذ تدابير إدارية وتقنية معقولة لحماية المعلومات من الوصول أو الاستخدام أو التغيير غير المصرح به. لا توجد وسيلة نقل أو تخزين آمنة بصورة مطلقة، لذلك لا يمكن ضمان الأمان الكامل. تختلف مدة الاحتفاظ بحسب نوع البيانات والغرض منها والمتطلبات النظامية.'),
+    ('8. ملفات تعريف الارتباط والتقنيات المشابهة', 'قد يستخدم إصدار الويب التخزين المحلي أو تقنيات مشابهة لحفظ تفضيلات أساسية وحالة الاستخدام وتحسين الأداء. يمكنك إدارة بيانات الموقع من إعدادات المتصفح، وقد يؤثر حذفها في بعض الوظائف.'),
+    ('9. حقوقك وطلباتك', 'يمكنك طلب الوصول إلى معلوماتك أو تصحيحها أو تحديثها أو حذف حسابك، أو تقديم اعتراض أو شكوى، وفق الحقوق والإجراءات التي تقررها الأنظمة المعمول بها. سنوفر قناة تواصل مخصصة لهذه الطلبات عند إطلاق الخدمة رسميًا.'),
+    ('10. خصوصية من هم دون 18 عامًا', 'Happy Live غير موجه للقاصرين ولا يسمح باستخدامه لمن هم دون 18 عامًا. إذا علمنا أن حسابًا يعود إلى شخص دون هذا العمر، فقد نتخذ إجراءات لتعطيله وحذف المعلومات المرتبطة به وفق المتطلبات النظامية.'),
+    ('11. التغييرات والتواصل', 'قد نحدّث سياسة الخصوصية عند تغير طريقة عمل التطبيق أو المتطلبات النظامية. سنعرض تاريخ آخر تحديث وننبه المستخدمين إلى التغييرات الجوهرية عبر التطبيق متى كان ذلك مناسبًا.'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final sections = isPrivacy ? _privacy : _terms;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: HappyLiveApp.background,
+        appBar: AppBar(
+          backgroundColor: HappyLiveApp.background,
+          foregroundColor: HappyLiveApp.gold,
+          title: Text(isPrivacy ? 'سياسة الخصوصية' : 'الشروط والأحكام'),
+          centerTitle: true,
+        ),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(22, 12, 22, 32),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: HappyLiveApp.surface,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0x66513E65)),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.verified_user_outlined, color: HappyLiveApp.gold, size: 30),
+                    const SizedBox(height: 10),
+                    Text(
+                      isPrivacy ? 'خصوصيتك مهمة لنا' : 'مرحبًا بك في Happy Live',
+                      style: const TextStyle(color: HappyLiveApp.gold, fontSize: 19, fontWeight: FontWeight.w900),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      isPrivacy
+                          ? 'اقرأ كيف نتعامل مع معلوماتك عند استخدام التطبيق.'
+                          : 'باستخدامك للتطبيق، فإنك توافق على الالتزام بهذه الشروط.',
+                      style: const TextStyle(color: HappyLiveApp.muted, fontSize: 13, height: 1.6),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              ...sections.map((section) => Padding(
+                padding: const EdgeInsets.only(bottom: 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(section.$1, style: const TextStyle(color: HappyLiveApp.gold, fontSize: 16, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 7),
+                    Text(section.$2, style: const TextStyle(color: Color(0xFFE2DCE8), fontSize: 14, height: 1.85)),
+                  ],
+                ),
+              )),
+              const SizedBox(height: 8),
+              const Text(
+                'هذه صياغة أولية عامة، ويجب مراجعتها قانونيًا قبل الإطلاق الرسمي، خصوصًا بعد تحديد مزودي الخدمة وآليات جمع البيانات الفعلية.',
+                style: TextStyle(color: HappyLiveApp.muted, fontSize: 12, height: 1.7),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
