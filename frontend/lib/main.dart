@@ -405,6 +405,7 @@ class _LoginPageState extends State<LoginPage> {
     final emailController = TextEditingController(text: _email.text);
     showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
         insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         contentPadding: const EdgeInsets.fromLTRB(24, 18, 24, 12),
