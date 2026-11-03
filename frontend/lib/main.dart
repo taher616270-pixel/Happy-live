@@ -60,11 +60,11 @@ class _LoginPageState extends State<LoginPage> {
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
   final _phoneNumber = TextEditingController();
-  final _phoneCountryCodeInput = TextEditingController(text: '+966');
-  String _phoneCountryName = 'السعودية';
-  String _phoneCountryCode = '+966';
-  String _phoneCountryFlag = '🇸🇦';
-  bool _isSouthArabiaPhone = false;
+  final _phoneCountryCodeInput = TextEditingController(text: '+969');
+  String _phoneCountryName = 'الجنوب العربي';
+  String _phoneCountryCode = '+969';
+  String _phoneCountryFlag = '🇾🇪';
+  bool _isSouthArabiaPhone = true;
   bool _isRegister = false;
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
