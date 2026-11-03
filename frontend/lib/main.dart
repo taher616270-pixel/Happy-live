@@ -147,8 +147,13 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
+      backgroundColor: HappyLiveApp.background,
+      resizeToAvoidBottomInset: true,
+      body: ColoredBox(
+        color: HappyLiveApp.background,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
           const Positioned(
             top: -110,
             right: -90,
@@ -469,7 +474,8 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
