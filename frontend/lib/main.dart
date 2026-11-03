@@ -103,46 +103,42 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _showValidationNotice(String message) {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF241B2D),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: HappyLiveApp.gold, width: 0.9),
-        ),
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.info_outline_rounded,
-                color: HappyLiveApp.gold, size: 25),
-            const SizedBox(width: 12),
+            const Icon(Icons.info_outline_rounded, color: HappyLiveApp.gold, size: 21),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
                 textAlign: TextAlign.right,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  height: 1.5,
+                  height: 1.4,
                 ),
               ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text(
-              'حسناً',
-              style: TextStyle(
-                color: HappyLiveApp.gold,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF241B2D),
+        elevation: 12,
+        duration: const Duration(seconds: 4),
+        margin: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          MediaQuery.of(context).padding.bottom + 24,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: HappyLiveApp.gold, width: 0.8),
+        ),
       ),
     );
   }
@@ -175,7 +171,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _submit() {
-    // Check the selected birth date and legal consent before other fields.
+    // Validate the registration fields first, then age and legal consent.
+    if (!_formKey.currentState!.validate()) return;
     if (_isRegister && _birthDate == null) {
       _showValidationNotice('يرجى تحديد تاريخ ميلادك');
       return;
@@ -188,7 +185,6 @@ class _LoginPageState extends State<LoginPage> {
       _showValidationNotice('يرجى الموافقة على الشروط والأحكام وسياسة الخصوصية');
       return;
     }
-    if (!_formKey.currentState!.validate()) return;
     _showNotConnected();
   }
 
