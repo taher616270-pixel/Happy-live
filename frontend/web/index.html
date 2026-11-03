@@ -41,41 +41,6 @@
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
-  <script>
-    // Chrome on iOS (CriOS) only: keep the Flutter surface aligned to
-    // the visible viewport when the software keyboard opens/closes.
-    // Safari is deliberately left completely untouched.
-    (() => {
-      if (!/CriOS\//.test(navigator.userAgent) || !window.visualViewport) return;
 
-      const viewport = window.visualViewport;
-      let frame = 0;
-
-      const syncChromeViewport = () => {
-        cancelAnimationFrame(frame);
-        frame = requestAnimationFrame(() => {
-          const height = Math.max(1, Math.round(viewport.height));
-          const top = Math.round(viewport.offsetTop);
-
-          document.documentElement.style.height = height + 'px';
-          document.body.style.position = 'fixed';
-          document.body.style.inset = 'auto 0 auto 0';
-          document.body.style.top = top + 'px';
-          document.body.style.height = height + 'px';
-          document.body.style.minHeight = height + 'px';
-
-          const pane = document.querySelector('flt-glass-pane');
-          const flutterView = document.querySelector('#flutter-view');
-          if (pane) pane.style.height = height + 'px';
-          if (flutterView) flutterView.style.height = height + 'px';
-        });
-      };
-
-      syncChromeViewport();
-      viewport.addEventListener('resize', syncChromeViewport, { passive: true });
-      viewport.addEventListener('scroll', syncChromeViewport, { passive: true });
-      window.addEventListener('orientationchange', syncChromeViewport, { passive: true });
-    })();
-  </script>
 </body>
 </html>
