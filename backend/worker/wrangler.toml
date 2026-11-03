@@ -4,15 +4,10 @@ compatibility_date = "2026-11-03"
 workers_dev = true
 
 [vars]
-APP_ENV = "development"
+APP_ENV = "production"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "happy-live-db"
-# Replace this placeholder with the database_id returned by Cloudflare after creating the D1 database.
 database_id = "ae09430d-71e9-420b-8362-a8e2bb947dff"
 migrations_dir = "migrations"
-
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "happy-live-media"
