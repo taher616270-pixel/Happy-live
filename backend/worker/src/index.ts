@@ -6,6 +6,91 @@ export interface Env {
   IMAGEKIT_PRIVATE_KEY?: string;
 }
 
+
+const SESSION_TTL_DAYS = 30;
+const PASSWORD_ITERATIONS = 210000;
+const AUTH_RATE_WINDOW_SECONDS = 900;
+const AUTH_RATE_MAX_ATTEMPTS = 8;
+
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function fromHex(value: string): Uint8Array {
+  const bytes = new Uint8Array(value.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(value.slice(i * 2, i * 2 + 2), 16);
+  return bytes;
+}
+
+async function sha256(value: string): Promise<string> {
+  return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))));
+}
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations: PASSWORD_ITERATIONS, hash: "SHA-256" },
+    key,
+    256
+  );
+  return `pbkdf2_sha256${PASSWORD_ITERATIONS}${toHex(salt)}${toHex(new Uint8Array(bits))}`;
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  const parts = stored.split("$");
+  if (parts.length !== 4 || parts[0] !== "pbkdf2_sha256") return false;
+  const iterations = Number(parts[1]);
+  if (!Number.isInteger(iterations) || iterations < 100000 || iterations > 500000) return false;
+  const expected = fromHex(parts[3]);
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: fromHex(parts[2]), iterations, hash: "SHA-256" },
+    key,
+    expected.length * 8
+  ));
+  if (bits.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < bits.length; i++) diff |= bits[i] ^ expected[i];
+  return diff === 0;
+}
+
+function calculateAge(dateValue: string): number | null {
+  const date = new Date(`${dateValue}T00:00:00.000Z`);
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateValue) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== dateValue) return null;
+  const now = new Date();
+  let age = now.getUTCFullYear() - date.getUTCFullYear();
+  if (now.getUTCMonth() < date.getUTCMonth() || (now.getUTCMonth() === date.getUTCMonth() && now.getUTCDate() < date.getUTCDate())) age--;
+  return age;
+}
+
+async function createSession(db: D1Database, userId: string): Promise<{ accessToken: string; expiresAt: string }> {
+  const accessToken = `${crypto.randomUUID()}.${crypto.randomUUID()}`;
+  const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 86400000).toISOString();
+  await db.prepare("INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)")
+    .bind(crypto.randomUUID(), userId, await sha256(accessToken), expiresAt).run();
+  return { accessToken, expiresAt };
+}
+
+async function authenticatedUser(request: Request, db: D1Database) {
+  const authorization = request.headers.get("Authorization") ?? "";
+  const match = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
+  if (!match) return null;
+  const row = await db.prepare(
+    "SELECT u.id, u.email, p.display_name FROM user_sessions s INNER JOIN users u ON u.id = s.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
+  ).bind(await sha256(match[1]), new Date().toISOString()).first<{ id: string; email: string; display_name: string | null }>();
+  return row ?? null;
+}
+
+async function checkAuthRateLimit(db: D1Database, ip: string): Promise<boolean> {
+  const now = Math.floor(Date.now() / 1000);
+  const cutoff = now - AUTH_RATE_WINDOW_SECONDS;
+  const row = await db.prepare(
+    "INSERT INTO auth_rate_limits (ip, window_start, request_count) VALUES (?, ?, 1) ON CONFLICT(ip) DO UPDATE SET window_start = CASE WHEN auth_rate_limits.window_start <= ? THEN excluded.window_start ELSE auth_rate_limits.window_start END, request_count = CASE WHEN auth_rate_limits.window_start <= ? THEN 1 ELSE auth_rate_limits.request_count + 1 END RETURNING request_count"
+  ).bind(ip, now, cutoff, cutoff).first<{ request_count: number }>();
+  return Boolean(row && row.request_count <= AUTH_RATE_MAX_ATTEMPTS);
+}
+
 const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -61,6 +146,92 @@ export default {
         headers.set("access-control-allow-methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
       }
       return new Response(null, { status: 204, headers });
+    }
+
+
+    if (url.pathname === "/api/v1/auth/register" && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+      try {
+        if (!await checkAuthRateLimit(env.DB, ip)) return json({ error: "too_many_attempts" }, 429, origin, env);
+        const body = await request.json() as Record<string, unknown>;
+        const name = typeof body.name === "string" ? body.name.trim() : "";
+        const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+        const password = typeof body.password === "string" ? body.password : "";
+        const birthday = typeof body.birthday === "string" ? body.birthday : "";
+        const acceptedTerms = body.acceptedTerms === true;
+        if (name.length < 2 || name.length > 50) return json({ error: "invalid_name", message: "الاسم يجب أن يكون بين حرفين و50 حرفًا" }, 400, origin, env);
+        if (email.length > 254 || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return json({ error: "invalid_email", message: "البريد الإلكتروني غير صحيح" }, 400, origin, env);
+        if (password.length < 8 || password.length > 128) return json({ error: "invalid_password", message: "كلمة المرور يجب أن تكون 8 أحرف على الأقل" }, 400, origin, env);
+        const age = calculateAge(birthday);
+        if (age === null || age < 18) return json({ error: "age_restriction", message: "يجب أن يكون عمرك 18 سنة أو أكثر" }, 400, origin, env);
+        if (!acceptedTerms) return json({ error: "terms_required", message: "يجب الموافقة على الشروط والأحكام" }, 400, origin, env);
+
+        const userId = crypto.randomUUID();
+        const passwordHash = await hashPassword(password);
+        const now = new Date().toISOString();
+        const sessionToken = `${crypto.randomUUID()}.${crypto.randomUUID()}`;
+        const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 86400000).toISOString();
+        const tokenHash = await sha256(sessionToken);
+        try {
+          await env.DB.batch([
+            env.DB.prepare("INSERT INTO users (id, email, password_hash, auth_provider, status, terms_accepted_at) VALUES (?, ?, ?, 'email', 'active', ?)").bind(userId, email, passwordHash, now),
+            env.DB.prepare("INSERT INTO profiles (user_id, display_name, birthday) VALUES (?, ?, ?)").bind(userId, name, birthday),
+            env.DB.prepare("INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)").bind(crypto.randomUUID(), userId, tokenHash, expiresAt)
+          ]);
+        } catch (error) {
+          const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ? LIMIT 1").bind(email).first();
+          if (existing) return json({ error: "email_already_registered", message: "هذا البريد مسجل بالفعل، سجّل الدخول بدلًا من ذلك" }, 409, origin, env);
+          throw error;
+        }
+        return json({ ok: true, accessToken: sessionToken, expiresAt, user: { id: userId, email, name } }, 201, origin, env);
+      } catch (error) {
+        return json({ error: "registration_failed", message: "تعذر إنشاء الحساب حاليًا" }, 500, origin, env);
+      }
+    }
+
+    if (url.pathname === "/api/v1/auth/login" && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+      try {
+        if (!await checkAuthRateLimit(env.DB, ip)) return json({ error: "too_many_attempts" }, 429, origin, env);
+        const body = await request.json() as Record<string, unknown>;
+        const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+        const password = typeof body.password === "string" ? body.password : "";
+        if (!email || !password || password.length > 128) return json({ error: "invalid_credentials", message: "البريد أو كلمة المرور غير صحيحة" }, 401, origin, env);
+        const user = await env.DB.prepare(
+          "SELECT u.id, u.email, u.password_hash, u.status, p.display_name FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.email = ? AND u.auth_provider = 'email' LIMIT 1"
+        ).bind(email).first<{ id: string; email: string; password_hash: string | null; status: string; display_name: string | null }>();
+        if (!user || user.status !== "active" || !user.password_hash || !await verifyPassword(password, user.password_hash)) {
+          return json({ error: "invalid_credentials", message: "البريد أو كلمة المرور غير صحيحة" }, 401, origin, env);
+        }
+        const session = await createSession(env.DB, user.id);
+        return json({ ok: true, ...session, user: { id: user.id, email: user.email, name: user.display_name ?? "" } }, 200, origin, env);
+      } catch {
+        return json({ error: "login_failed", message: "تعذر تسجيل الدخول حاليًا" }, 500, origin, env);
+      }
+    }
+
+    if (url.pathname === "/api/v1/auth/me" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        return json({ ok: true, user: { id: user.id, email: user.email, name: user.display_name ?? "" } }, 200, origin, env);
+      } catch {
+        return json({ error: "session_check_failed" }, 503, origin, env);
+      }
+    }
+
+    if (url.pathname === "/api/v1/auth/logout" && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      const authorization = request.headers.get("Authorization") ?? "";
+      const match = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
+      if (match) {
+        await env.DB.prepare("UPDATE user_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL")
+          .bind(new Date().toISOString(), await sha256(match[1])).run();
+      }
+      return json({ ok: true }, 200, origin, env);
     }
 
     if (url.pathname === "/api/v1/health" && request.method === "GET") {
@@ -193,7 +364,7 @@ export default {
         name: "Happy Live API",
         version: "v1",
         status: "scaffold",
-        endpoints: ["/api/v1/health", "/api/v1/imagekit/health", "/api/v1/imagekit/auth"]
+        endpoints: ["/api/v1/health", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/me", "/api/v1/auth/logout", "/api/v1/imagekit/health", "/api/v1/imagekit/auth"]
       }, 200, origin, env);
     }
 
