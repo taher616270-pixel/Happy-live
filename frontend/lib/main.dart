@@ -22,7 +22,10 @@ class HappyLiveApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar'), Locale('en')],
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      localizationsDelegates: [
+        CountryLocalizations.delegate,
+        ...GlobalMaterialLocalizations.delegates,
+      ],
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: background,
@@ -153,78 +156,94 @@ class _LoginPageState extends State<LoginPage> {
                     InkWell(
                       borderRadius: BorderRadius.circular(13),
                       onTap: () {
-                        showCountryPicker(
+                        String searchQuery = '';
+                        showModalBottomSheet<void>(
                           context: dialogContext,
-                          showPhoneCode: true,
-                          countryListTheme: CountryListThemeData(
-                            backgroundColor: HappyLiveApp.surface,
-                            textStyle: const TextStyle(color: Colors.white, fontFamily: 'Tajawal'),
-                            searchTextStyle: const TextStyle(color: Colors.white, fontFamily: 'Tajawal'),
-                            inputDecoration: InputDecoration(
-                              hintText: 'ابحث عن اسم الدولة',
-                              hintStyle: const TextStyle(color: HappyLiveApp.muted),
-                              prefixIcon: const Icon(Icons.search, color: HappyLiveApp.gold),
-                              filled: true,
-                              fillColor: const Color(0xFF100D15),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          isScrollControlled: true,
+                          backgroundColor: HappyLiveApp.surface,
+                          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                          builder: (countryContext) => StatefulBuilder(
+                            builder: (countryContext, refreshCountries) {
+                              final countries = CountryService().getAll()
+                                ..sort((a, b) => (a.getTranslatedName(countryContext) ?? a.name).compareTo(b.getTranslatedName(countryContext) ?? b.name));
+                              final filteredCountries = countries.where((country) {
+                                final translated = country.getTranslatedName(countryContext) ?? country.name;
+                                final query = searchQuery.trim().toLowerCase();
+                                return query.isEmpty || translated.toLowerCase().contains(query) || country.name.toLowerCase().contains(query) || country.phoneCode.contains(query);
+                              }).toList();
+                              return SafeArea(
+                                child: SizedBox(
+                                  height: MediaQuery.of(countryContext).size.height * 0.78,
+                                  child: Column(children: [
+                                    const SizedBox(height: 16),
+                                    const Text('اختر الدولة', style: TextStyle(color: HappyLiveApp.gold, fontSize: 18, fontWeight: FontWeight.w900)),
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                                      child: TextField(
+                                        autofocus: true,
+                                        textDirection: TextDirection.rtl,
+                                        onChanged: (value) => refreshCountries(() => searchQuery = value),
+                                        style: const TextStyle(color: Colors.white),
+                                        decoration: InputDecoration(
+                                          hintText: 'ابحث عن اسم الدولة',
+                                          hintStyle: const TextStyle(color: HappyLiveApp.muted),
+                                          prefixIcon: const Icon(Icons.search, color: HappyLiveApp.gold),
+                                          filled: true, fillColor: const Color(0xFF100D15),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF51415F))),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: ListView.builder(
+                                        itemCount: filteredCountries.length + 1,
+                                        itemBuilder: (countryContext, index) {
+                                          if (index == 0) {
+                                            final query = searchQuery.trim().toLowerCase();
+                                            final matchesSouth = query.isEmpty || 'الجنوب العربي'.contains(query) || '+969'.contains(query);
+                                            if (!matchesSouth) return const SizedBox.shrink();
+                                            return ListTile(
+                                              leading: const Text('🇾🇪', style: TextStyle(fontSize: 25)),
+                                              title: const Text('الجنوب العربي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                                              trailing: const Text('+969', textDirection: TextDirection.ltr, style: TextStyle(color: HappyLiveApp.gold, fontWeight: FontWeight.w900)),
+                                              onTap: () {
+                                                refreshDialog(() { _phoneCountryName = 'الجنوب العربي'; _phoneCountryCode = '+969'; _phoneCountryFlag = '🇾🇪'; _isSouthArabiaPhone = true; });
+                                                Navigator.pop(countryContext);
+                                              },
+                                            );
+                                          }
+                                          final country = filteredCountries[index - 1];
+                                          final translatedName = country.getTranslatedName(countryContext) ?? country.name;
+                                          return ListTile(
+                                            leading: Text(country.flagEmoji, style: const TextStyle(fontSize: 24)),
+                                            title: Text(translatedName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                                            trailing: Text('+' + country.phoneCode, textDirection: TextDirection.ltr, style: const TextStyle(color: HappyLiveApp.gold, fontWeight: FontWeight.w800)),
+                                            onTap: () {
+                                              refreshDialog(() { _phoneCountryName = translatedName; _phoneCountryCode = '+' + country.phoneCode; _phoneCountryFlag = country.flagEmoji; _isSouthArabiaPhone = false; });
+                                              Navigator.pop(countryContext);
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ]),
+                                ),
+                              );
+                            },
                           ),
-                          onSelect: (country) {
-                            refreshDialog(() {
-                              _phoneCountryName = country.name;
-                              _phoneCountryCode = '+${country.phoneCode}';
-                              _phoneCountryFlag = country.flagEmoji;
-                              _isSouthArabiaPhone = false;
-                            });
-                          },
                         );
                       },
                       child: Container(
-                        height: 52,
-                        padding: const EdgeInsets.symmetric(horizontal: 13),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF100D15),
-                          borderRadius: BorderRadius.circular(13),
-                          border: Border.all(color: const Color(0xFF51415F)),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(_phoneCountryFlag, style: const TextStyle(fontSize: 23)),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _phoneCountryName,
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-                              ),
-                            ),
-                            Text(_phoneCountryCode, textDirection: TextDirection.ltr,
-                              style: const TextStyle(color: HappyLiveApp.gold, fontWeight: FontWeight.w900)),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.keyboard_arrow_down_rounded, color: HappyLiveApp.gold),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      onTap: () => refreshDialog(() {
-                        _phoneCountryName = 'الجنوب العربي';
-                        _phoneCountryCode = '+969';
-                        _phoneCountryFlag = '🇾🇪';
-                        _isSouthArabiaPhone = true;
-                      }),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
-                        child: Row(
-                          children: [
-                            const Text('🇾🇪', style: TextStyle(fontSize: 19)),
-                            const SizedBox(width: 8),
-                            const Expanded(child: Text('الجنوب العربي', style: TextStyle(color: Colors.white70, fontSize: 12))),
-                            Text('+‎969', style: TextStyle(color: _isSouthArabiaPhone ? HappyLiveApp.gold : HappyLiveApp.muted, fontSize: 12, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
+                        height: 52, padding: const EdgeInsets.symmetric(horizontal: 13),
+                        decoration: BoxDecoration(color: const Color(0xFF100D15), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0xFF51415F))),
+                        child: Row(children: [
+                          Text(_phoneCountryFlag, style: const TextStyle(fontSize: 23)),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(_phoneCountryName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+                          Text(_phoneCountryCode, textDirection: TextDirection.ltr, style: const TextStyle(color: HappyLiveApp.gold, fontWeight: FontWeight.w900)),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.keyboard_arrow_down_rounded, color: HappyLiveApp.gold),
+                        ]),
                       ),
                     ),
                     const SizedBox(height: 12),
