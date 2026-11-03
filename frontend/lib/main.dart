@@ -88,8 +88,11 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _syncPhoneCountryFromCode(String value) {
-    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    // Accept +966, 966, 00966, and values pasted with spaces or punctuation.
+    var digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.startsWith('00')) digits = digits.substring(2);
     if (digits.isEmpty) return;
+
     if (digits == '969') {
       if (!_isSouthArabiaPhone || _phoneCountryCode != '+969') {
         setState(() {
@@ -101,9 +104,15 @@ class _LoginPageState extends State<LoginPage> {
       }
       return;
     }
-    final matches = CountryService().getAll().where((country) => country.phoneCode == digits).toList();
-    if (matches.isEmpty) return;
-    final country = matches.first;
+
+    final countries = CountryService().getAll();
+    final country = countries.cast<Country?>().firstWhere(
+      (item) => item != null &&
+          item.phoneCode.replaceAll(RegExp(r'[^0-9]'), '') == digits,
+      orElse: () => null,
+    );
+    if (country == null) return;
+
     final code = '+$digits';
     if (_phoneCountryCode == code && !_isSouthArabiaPhone) return;
     setState(() {
