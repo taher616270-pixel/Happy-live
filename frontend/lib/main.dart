@@ -146,10 +146,12 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
     return Scaffold(
       backgroundColor: HappyLiveApp.background,
-      resizeToAvoidBottomInset: true,
-      body: ColoredBox(
+      resizeToAvoidBottomInset: false,
+      body: Container(
         color: HappyLiveApp.background,
         child: Stack(
           fit: StackFit.expand,
@@ -165,9 +167,10 @@ class _LoginPageState extends State<LoginPage> {
             child: _GlowOrb(color: Color(0x22E8C477), size: 300),
           ),
           SafeArea(
+            bottom: false,
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+                padding: EdgeInsets.fromLTRB(24, 28, 24, bottomInset + 28),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 430),
                   child: Form(
