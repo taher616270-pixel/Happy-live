@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:country_picker/country_picker.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -54,6 +55,11 @@ class _LoginPageState extends State<LoginPage> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
+  final _phoneNumber = TextEditingController();
+  String _phoneCountryName = 'السعودية';
+  String _phoneCountryCode = '+966';
+  String _phoneCountryFlag = '🇸🇦';
+  bool _isSouthArabiaPhone = false;
   bool _isRegister = false;
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
@@ -90,6 +96,7 @@ class _LoginPageState extends State<LoginPage> {
     _email.dispose();
     _password.dispose();
     _confirmPassword.dispose();
+    _phoneNumber.dispose();
     super.dispose();
   }
 
@@ -103,111 +110,192 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _showPhoneCountryPicker() {
-    const countries = <(String, String, String)>[
-      ('الجنوب العربي', '🇾🇪', '+969'),
-      ('السعودية', '🇸🇦', '+966'),
-      ('الإمارات', '🇦🇪', '+971'),
-      ('عُمان', '🇴🇲', '+968'),
-      ('اليمن', '🇾🇪', '+967'),
-      ('البحرين', '🇧🇭', '+973'),
-      ('الكويت', '🇰🇼', '+965'),
-      ('قطر', '🇶🇦', '+974'),
-      ('مصر', '🇪🇬', '+20'),
-      ('الأردن', '🇯🇴', '+962'),
-      ('العراق', '🇮🇶', '+964'),
-      ('لبنان', '🇱🇧', '+961'),
-      ('المغرب', '🇲🇦', '+212'),
-      ('الجزائر', '🇩🇿', '+213'),
-      ('تونس', '🇹🇳', '+216'),
-      ('تركيا', '🇹🇷', '+90'),
-      ('المملكة المتحدة', '🇬🇧', '+44'),
-      ('الولايات المتحدة', '🇺🇸', '+1'),
-      ('كندا', '🇨🇦', '+1'),
-      ('فرنسا', '🇫🇷', '+33'),
-      ('ألمانيا', '🇩🇪', '+49'),
-      ('الهند', '🇮🇳', '+91'),
-      ('باكستان', '🇵🇰', '+92'),
-      ('إندونيسيا', '🇮🇩', '+62'),
-    ];
-
-    showModalBottomSheet<void>(
+    _phoneNumber.clear();
+    showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: HappyLiveApp.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.of(sheetContext).size.height * 0.72,
-          child: Column(
-            children: [
-              const SizedBox(height: 14),
-              Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF655A70),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'اختر دولة رمز الاتصال',
-                style: TextStyle(
-                  color: HappyLiveApp.gold,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: countries.length,
-                  separatorBuilder: (_, __) => const Divider(
-                    height: 1,
-                    color: Color(0xFF30283A),
-                    indent: 18,
-                    endIndent: 18,
-                  ),
-                  itemBuilder: (context, index) {
-                    final selectedCountry = countries[index];
-                    final isSouthArabia = index == 0;
-                    return ListTile(
-                      leading: Text(selectedCountry.$2, style: const TextStyle(fontSize: 25)),
-                      title: Text(
-                        selectedCountry.$1,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
+      barrierDismissible: true,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Dialog(
+          backgroundColor: HappyLiveApp.surface,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: const BorderSide(color: Color(0xFF51415F)),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 390),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+              child: StatefulBuilder(
+                builder: (context, refreshDialog) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'الدخول برقم الهاتف',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: HappyLiveApp.gold,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
                       ),
-                      trailing: Text(
-                        selectedCountry.$3,
-                        textDirection: TextDirection.ltr,
-                        style: const TextStyle(
-                          color: HappyLiveApp.gold,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'اختر رمز الدولة ثم أدخل رقم هاتفك',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: HappyLiveApp.muted, fontSize: 12),
+                    ),
+                    const SizedBox(height: 22),
+                    const Text('رمز الدولة', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const SizedBox(height: 7),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(13),
                       onTap: () {
-                        Navigator.pop(sheetContext);
-                        if (isSouthArabia) {
-                          _showValidationNotice(
-                            'قريباً ستتم إضافة خدمة الاتصال برمز دولة الجنوب العربي',
-                          );
-                        } else {
-                          _showValidationNotice(
-                            'تم اختيار ' + selectedCountry.$1 + ' ' + selectedCountry.$3 +
-                            '، وسيتم تفعيل التحقق عبر الهاتف عند ربط الخدمة',
-                          );
-                        }
+                        showCountryPicker(
+                          context: dialogContext,
+                          showPhoneCode: true,
+                          countryListTheme: CountryListThemeData(
+                            backgroundColor: HappyLiveApp.surface,
+                            textStyle: const TextStyle(color: Colors.white, fontFamily: 'Tajawal'),
+                            searchTextStyle: const TextStyle(color: Colors.white, fontFamily: 'Tajawal'),
+                            inputDecoration: InputDecoration(
+                              hintText: 'ابحث عن اسم الدولة',
+                              hintStyle: const TextStyle(color: HappyLiveApp.muted),
+                              prefixIcon: const Icon(Icons.search, color: HappyLiveApp.gold),
+                              filled: true,
+                              fillColor: const Color(0xFF100D15),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          onSelect: (country) {
+                            refreshDialog(() {
+                              _phoneCountryName = country.name;
+                              _phoneCountryCode = '+${country.phoneCode}';
+                              _phoneCountryFlag = country.flagEmoji;
+                              _isSouthArabiaPhone = false;
+                            });
+                          },
+                        );
                       },
-                    );
-                  },
+                      child: Container(
+                        height: 52,
+                        padding: const EdgeInsets.symmetric(horizontal: 13),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF100D15),
+                          borderRadius: BorderRadius.circular(13),
+                          border: Border.all(color: const Color(0xFF51415F)),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(_phoneCountryFlag, style: const TextStyle(fontSize: 23)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _phoneCountryName,
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            Text(_phoneCountryCode, textDirection: TextDirection.ltr,
+                              style: const TextStyle(color: HappyLiveApp.gold, fontWeight: FontWeight.w900)),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.keyboard_arrow_down_rounded, color: HappyLiveApp.gold),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () => refreshDialog(() {
+                        _phoneCountryName = 'الجنوب العربي';
+                        _phoneCountryCode = '+969';
+                        _phoneCountryFlag = '🇾🇪';
+                        _isSouthArabiaPhone = true;
+                      }),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+                        child: Row(
+                          children: [
+                            const Text('🇾🇪', style: TextStyle(fontSize: 19)),
+                            const SizedBox(width: 8),
+                            const Expanded(child: Text('الجنوب العربي', style: TextStyle(color: Colors.white70, fontSize: 12))),
+                            Text('+‎969', style: TextStyle(color: _isSouthArabiaPhone ? HappyLiveApp.gold : HappyLiveApp.muted, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('رقم الهاتف', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const SizedBox(height: 7),
+                    TextField(
+                      controller: _phoneNumber,
+                      keyboardType: TextInputType.phone,
+                      textDirection: TextDirection.ltr,
+                      style: const TextStyle(color: Colors.white, fontSize: 17, letterSpacing: 1),
+                      decoration: InputDecoration(
+                        hintText: 'أدخل رقم الهاتف',
+                        hintStyle: const TextStyle(color: HappyLiveApp.muted, fontSize: 14),
+                        filled: true,
+                        fillColor: const Color(0xFF100D15),
+                        prefixIcon: const Icon(Icons.phone_rounded, color: HappyLiveApp.gold, size: 20),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(13),
+                          borderSide: const BorderSide(color: Color(0xFF51415F)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(13),
+                          borderSide: const BorderSide(color: Color(0xFF51415F)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white70,
+                              side: const BorderSide(color: Color(0xFF51415F)),
+                              minimumSize: const Size.fromHeight(47),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text('إلغاء'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (_phoneNumber.text.trim().isEmpty) {
+                                _showValidationNotice('أدخل رقم الهاتف أولاً');
+                                return;
+                              }
+                              Navigator.pop(dialogContext);
+                              if (_isSouthArabiaPhone) {
+                                _showValidationNotice('قريباً ستتم إضافة خدمة الاتصال برمز دولة الجنوب العربي');
+                              } else {
+                                _showValidationNotice('تم إدخال الرقم، وسيتم تفعيل تسجيل الدخول بالهاتف عند ربط خدمة التحقق');
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: HappyLiveApp.gold,
+                              foregroundColor: const Color(0xFF17131F),
+                              minimumSize: const Size.fromHeight(47),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text('متابعة', style: TextStyle(fontWeight: FontWeight.w900)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
