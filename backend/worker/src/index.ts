@@ -34,7 +34,7 @@ async function hashPassword(password: string): Promise<string> {
     key,
     256
   );
-  return `pbkdf2_sha256${PASSWORD_ITERATIONS}${toHex(salt)}${toHex(new Uint8Array(bits))}`;
+  return "pbkdf2_sha256$" + PASSWORD_ITERATIONS + "$" + toHex(salt) + "$" + toHex(new Uint8Array(bits));
 }
 
 async function verifyPassword(password: string, stored: string): Promise<boolean> {
@@ -57,7 +57,7 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
 
 function calculateAge(dateValue: string): number | null {
   const date = new Date(`${dateValue}T00:00:00.000Z`);
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateValue) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== dateValue) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== dateValue) return null;
   const now = new Date();
   let age = now.getUTCFullYear() - date.getUTCFullYear();
   if (now.getUTCMonth() < date.getUTCMonth() || (now.getUTCMonth() === date.getUTCMonth() && now.getUTCDate() < date.getUTCDate())) age--;
@@ -74,7 +74,7 @@ async function createSession(db: D1Database, userId: string): Promise<{ accessTo
 
 async function authenticatedUser(request: Request, db: D1Database) {
   const authorization = request.headers.get("Authorization") ?? "";
-  const match = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
+  const match = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
   if (!match) return null;
   const row = await db.prepare(
     "SELECT u.id, u.email, p.display_name FROM user_sessions s INNER JOIN users u ON u.id = s.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
@@ -161,7 +161,7 @@ export default {
         const birthday = typeof body.birthday === "string" ? body.birthday : "";
         const acceptedTerms = body.acceptedTerms === true;
         if (name.length < 2 || name.length > 50) return json({ error: "invalid_name", message: "الاسم يجب أن يكون بين حرفين و50 حرفًا" }, 400, origin, env);
-        if (email.length > 254 || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return json({ error: "invalid_email", message: "البريد الإلكتروني غير صحيح" }, 400, origin, env);
+        if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "invalid_email", message: "البريد الإلكتروني غير صحيح" }, 400, origin, env);
         if (password.length < 8 || password.length > 128) return json({ error: "invalid_password", message: "كلمة المرور يجب أن تكون 8 أحرف على الأقل" }, 400, origin, env);
         const age = calculateAge(birthday);
         if (age === null || age < 18) return json({ error: "age_restriction", message: "يجب أن يكون عمرك 18 سنة أو أكثر" }, 400, origin, env);
@@ -226,7 +226,7 @@ export default {
     if (url.pathname === "/api/v1/auth/logout" && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       const authorization = request.headers.get("Authorization") ?? "";
-      const match = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
+      const match = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
       if (match) {
         await env.DB.prepare("UPDATE user_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL")
           .bind(new Date().toISOString(), await sha256(match[1])).run();
