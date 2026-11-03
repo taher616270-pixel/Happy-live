@@ -62,11 +62,11 @@ class _LoginPageState extends State<LoginPage> {
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
   final _phoneNumber = TextEditingController();
-  final _phoneCountryCodeInput = TextEditingController(text: '+969');
-  String _phoneCountryName = 'الجنوب العربي';
-  String _phoneCountryCode = '+969';
-  String _phoneCountryFlag = '🇾🇪';
-  bool _isSouthArabiaPhone = true;
+  final _phoneCountryCodeInput = TextEditingController();
+  String _phoneCountryName = 'جار تحديد الدولة...';
+  String _phoneCountryCode = '';
+  String _phoneCountryFlag = '🌐';
+  bool _isSouthArabiaPhone = false;
   bool _isRegister = false;
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
@@ -92,75 +92,88 @@ class _LoginPageState extends State<LoginPage> {
   }
 
 
-  // Detect the visitor's country and, for Yemen, distinguish southern governorates.
-  // This uses public-IP geolocation only; no GPS permission is requested.
+  // Detect the visitor's country from public IP. Try two providers so one
+  // provider outage or rate limit does not leave every visitor on the same country.
   Future<void> _detectPhoneCountryFromIp() async {
-    try {
-      final response = await http
-          .get(Uri.https('ipapi.co', 'json/'))
-          .timeout(const Duration(seconds: 6));
-      if (response.statusCode != 200) return;
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final isoCode = (data['country_code'] ?? '').toString().toUpperCase();
-      if (isoCode.isEmpty || !mounted) return;
+    Map<String, dynamic>? data;
 
-      if (isoCode == 'YE') {
-        final region = (data['region'] ?? '').toString().toLowerCase().trim();
-        final regionCode = (data['region_code'] ?? '').toString().toUpperCase().trim();
-        final southernRegionCodes = <String>{
-          'YE-AD', // Aden
-          'YE-AB', // Abyan
-          'YE-LA', // Lahij
-          'YE-SH', // Shabwah
-          'YE-HD', // Hadramawt
-          'YE-MA', // Al Mahrah
-          'YE-SU', // Socotra
-          'YE-DA', // Al Dhale'e
-        };
-        const southernRegionNames = <String>[
-          'aden', 'عدن',
-          'abyan', 'أبين', 'ابين',
-          'lahij', 'lahj', 'لحج',
-          'shabwah', 'شبوة',
-          'hadramawt', 'hadramout', 'حضرموت',
-          'al mahrah', 'al-mahrah', 'المهرة', 'المهره',
-          'socotra', 'سقطرى',
-          'al dhale', 'al dhalea', 'ad dale', 'الضالع',
-        ];
-        final isSouthernYemen = southernRegionCodes.contains(regionCode) ||
-            southernRegionNames.any((name) => region.contains(name));
+    final endpoints = <Uri>[
+      Uri.https('ipwho.is', ''),
+      Uri.https('ipapi.co', 'json/'),
+    ];
 
-        if (isSouthernYemen) {
-          if (!mounted) return;
-          setState(() {
-            _phoneCountryName = 'الجنوب العربي';
-            _phoneCountryCode = '+969';
-            _phoneCountryCodeInput.text = '+969';
-            _phoneCountryFlag = '🇾🇪';
-            _isSouthArabiaPhone = true;
-          });
-          return;
+    for (final endpoint in endpoints) {
+      try {
+        final response = await http.get(endpoint).timeout(const Duration(seconds: 7));
+        if (response.statusCode != 200) continue;
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map<String, dynamic>) continue;
+        if (decoded['success'] == false) continue;
+
+        final code = (decoded['country_code'] ?? '').toString().trim();
+        if (code.isNotEmpty) {
+          data = decoded;
+          break;
         }
-        // Other Yemeni governorates are displayed as Yemen (+967).
+      } catch (_) {
+        // Try the next IP geolocation provider.
       }
-
-      final country = CountryService().getAll().cast<Country?>().firstWhere(
-        (item) => item != null && item.countryCode.toUpperCase() == isoCode,
-        orElse: () => null,
-      );
-      if (country == null || !mounted) return;
-      final translatedName = country.getTranslatedName(context) ?? country.name;
-      final callingCode = '+${country.phoneCode}';
-      setState(() {
-        _phoneCountryName = translatedName;
-        _phoneCountryCode = callingCode;
-        _phoneCountryCodeInput.text = callingCode;
-        _phoneCountryFlag = country.flagEmoji;
-        _isSouthArabiaPhone = false;
-      });
-    } catch (_) {
-      // Keep the current default (+969) if IP geolocation is unavailable.
     }
+
+    if (data == null || !mounted) return;
+
+    final isoCode = (data['country_code'] ?? '').toString().toUpperCase().trim();
+    if (isoCode.isEmpty) return;
+
+    // Yemen is split into the custom South Arabia identity and Yemen.
+    if (isoCode == 'YE') {
+      final region = (data['region'] ?? '').toString().toLowerCase().trim();
+      final regionCode = (data['region_code'] ?? '').toString().toUpperCase().trim();
+      const southernRegionCodes = <String>{
+        'YE-AD', 'YE-AB', 'YE-LA', 'YE-SH',
+        'YE-HD', 'YE-MA', 'YE-SU', 'YE-DA',
+        'AD', 'AB', 'LA', 'SH', 'HD', 'MA', 'SU', 'DA',
+      };
+      const southernRegionNames = <String>[
+        'aden', 'عدن', 'abyan', 'أبين', 'ابين',
+        'lahij', 'lahj', 'لحج', 'shabwah', 'شبوة',
+        'hadramawt', 'hadramout', 'حضرموت',
+        'al mahrah', 'al-mahrah', 'المهرة', 'المهره',
+        'socotra', 'سقطرى', 'al dhale', 'al dhalea',
+        'ad dale', 'الضالع',
+      ];
+      final isSouthernYemen =
+          southernRegionCodes.contains(regionCode) ||
+          southernRegionNames.any((name) => region.contains(name));
+
+      if (!mounted) return;
+      if (isSouthernYemen) {
+        setState(() {
+          _phoneCountryName = 'الجنوب العربي';
+          _phoneCountryCode = '+969';
+          _phoneCountryCodeInput.text = '+969';
+          _phoneCountryFlag = '🇾🇪';
+          _isSouthArabiaPhone = true;
+        });
+        return;
+      }
+    }
+
+    final country = CountryService().getAll().cast<Country?>().firstWhere(
+      (item) => item != null && item.countryCode.toUpperCase() == isoCode,
+      orElse: () => null,
+    );
+    if (country == null || !mounted) return;
+
+    final translatedName = country.getTranslatedName(context) ?? country.name;
+    final callingCode = '+${country.phoneCode}';
+    setState(() {
+      _phoneCountryName = translatedName;
+      _phoneCountryCode = callingCode;
+      _phoneCountryCodeInput.text = callingCode;
+      _phoneCountryFlag = country.flagEmoji;
+      _isSouthArabiaPhone = false;
+    });
   }
 
   void _syncPhoneCountryFromCode(String value, StateSetter refreshDialog) {
