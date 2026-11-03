@@ -407,8 +407,8 @@ class _LoginPageState extends State<LoginPage> {
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: _showNotConnected,
-                                icon: const Icon(Icons.phone_iphone_rounded, color: HappyLiveApp.gold, size: 19),
-                                label: const Text('رقم الهاتف', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                                icon: const Icon(Icons.phone_iphone_rounded, color: HappyLiveApp.gold, size: 25),
+                                label: const SizedBox.shrink(),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(50),
                                   foregroundColor: Colors.white,
@@ -422,7 +422,7 @@ class _LoginPageState extends State<LoginPage> {
                               child: OutlinedButton.icon(
                                 onPressed: _showNotConnected,
                                 icon: const Icon(Icons.badge_outlined, color: HappyLiveApp.gold, size: 19),
-                                label: const Text('معرّف المستخدم', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                                label: const Text('ID', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 1.8, color: HappyLiveApp.gold)),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(50),
                                   foregroundColor: Colors.white,
