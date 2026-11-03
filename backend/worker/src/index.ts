@@ -84,6 +84,53 @@ export default {
       }, healthy ? 200 : 503, origin, env);
     }
 
+    if (url.pathname === "/api/v1/imagekit/auth" && request.method === "GET") {
+      if (!env.DB || !env.IMAGEKIT_PUBLIC_KEY?.trim() || !env.IMAGEKIT_PRIVATE_KEY?.trim()) {
+        return json({ error: "imagekit_not_configured" }, 503, origin, env);
+      }
+
+      const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+      const now = Math.floor(Date.now() / 1000);
+      const windowStart = now - 60;
+
+      try {
+        const rate = await env.DB.prepare(
+          "INSERT INTO imagekit_auth_rate_limits (ip, window_start, request_count) VALUES (?, ?, 1) ON CONFLICT(ip) DO UPDATE SET window_start = CASE WHEN imagekit_auth_rate_limits.window_start <= ? THEN excluded.window_start ELSE imagekit_auth_rate_limits.window_start END, request_count = CASE WHEN imagekit_auth_rate_limits.window_start <= ? THEN 1 ELSE imagekit_auth_rate_limits.request_count + 1 END RETURNING request_count"
+        ).bind(ip, now, windowStart, windowStart).first<{ request_count: number }>();
+
+        if (!rate || rate.request_count > 8) {
+          return json({ error: "rate_limit_exceeded", retry_after_seconds: 60 }, 429, origin, env);
+        }
+
+        const token = crypto.randomUUID();
+        const expire = now + 300;
+        const key = await crypto.subtle.importKey(
+          "raw",
+          new TextEncoder().encode(env.IMAGEKIT_PRIVATE_KEY),
+          { name: "HMAC", hash: "SHA-1" },
+          false,
+          ["sign"]
+        );
+        const signatureBytes = await crypto.subtle.sign(
+          "HMAC",
+          key,
+          new TextEncoder().encode(token + expire)
+        );
+        const signature = Array.from(new Uint8Array(signatureBytes))
+          .map((byte) => byte.toString(16).padStart(2, "0"))
+          .join("");
+
+        return json({
+          token,
+          expire,
+          signature,
+          publicKey: env.IMAGEKIT_PUBLIC_KEY
+        }, 200, origin, env);
+      } catch {
+        return json({ error: "imagekit_auth_unavailable" }, 503, origin, env);
+      }
+    }
+
     if (url.pathname === "/api/v1/imagekit/health" && request.method === "GET") {
       const publicKeyConfigured = Boolean(env.IMAGEKIT_PUBLIC_KEY?.trim());
       const privateKey = env.IMAGEKIT_PRIVATE_KEY?.trim() ?? "";
@@ -124,7 +171,7 @@ export default {
         name: "Happy Live API",
         version: "v1",
         status: "scaffold",
-        endpoints: ["/api/v1/health", "/api/v1/imagekit/health"]
+        endpoints: ["/api/v1/health", "/api/v1/imagekit/health", "/api/v1/imagekit/auth"]
       }, 200, origin, env);
     }
 
