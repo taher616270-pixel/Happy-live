@@ -1521,16 +1521,19 @@ class _HappyHomeTabState extends State<_HappyHomeTab> {
     children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _topButton(0, Icons.meeting_room_outlined, 'غرفتي'),
-            const SizedBox(width: 5),
-            _topButton(1, Icons.explore_outlined, 'استكشف'),
-            const SizedBox(width: 5),
-            _topButton(2, Icons.public_rounded, _countryName),
-          ],
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _topButton(0, Icons.meeting_room_outlined, 'غرفتي'),
+              const SizedBox(width: 5),
+              _topButton(1, Icons.explore_outlined, 'استكشف'),
+              const SizedBox(width: 5),
+              _topButton(2, Icons.public_rounded, _countryName),
+            ],
+          ),
         ),
       ),
       Expanded(
