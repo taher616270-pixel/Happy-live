@@ -1357,21 +1357,9 @@ class _SessionHomePageState extends State<SessionHomePage> {
       body: SafeArea(child: Column(children: [
         Expanded(child: IndexedStack(index: _tab, children: pages)),
       ])),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(color: Color(0xFF120F18), border: Border(top: BorderSide(color: Color(0xFF30263A)))),
-        child: SafeArea(top: false, child: BottomNavigationBar(
-          currentIndex: _tab, onTap: (index) => setState(() => _tab = index),
-          type: BottomNavigationBarType.fixed, backgroundColor: const Color(0xFF120F18),
-          selectedItemColor: HappyLiveApp.gold, unselectedItemColor: HappyLiveApp.muted,
-          selectedFontSize: 11, unselectedFontSize: 10, elevation: 0,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'الرئيسية'),
-            BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline_rounded, size: 29), label: 'إنشاء'),
-            BottomNavigationBarItem(icon: Icon(Icons.explore_outlined), label: 'اكتشف'),
-            BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline_rounded), label: 'الرسائل'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'حسابي'),
-          ],
-        )),
+      bottomNavigationBar: _HappyLiveBottomNav(
+        currentIndex: _tab,
+        onTap: (index) => setState(() => _tab = index),
       ),
     ));
   }
@@ -1749,3 +1737,62 @@ class PhoneCodeInputFormatter extends TextInputFormatter {
     );
   }
 }
+
+class _HappyLiveBottomNav extends StatelessWidget {
+  const _HappyLiveBottomNav({
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+
+  static const Color _bar = Color(0xFF1A1F1F);
+  static const Color _teal = Color(0xFF1FD1B8);
+  static const Color _grey = Color(0xFF8A9A98);
+
+  @override
+  Widget build(BuildContext context) {
+    const items = <(String, IconData)>[
+      ('Happy Live', Icons.sports_esports),
+      ('غرفة', Icons.graphic_eq),
+      ('المنشورات', Icons.explore_outlined),
+      ('الرسائل', Icons.chat_bubble_outline),
+      ('الخاص بي', Icons.person),
+    ];
+
+    return Container(
+      height: 70 + MediaQuery.of(context).padding.bottom,
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+      decoration: const BoxDecoration(
+        color: _bar,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < items.length; i++)
+            Expanded(
+              child: InkWell(
+                onTap: () => onTap(i),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(items[i].$2, color: currentIndex == i ? _teal : _grey, size: 26),
+                    const SizedBox(height: 4),
+                    Text(
+                      items[i].$1,
+                      style: TextStyle(
+                        color: currentIndex == i ? _teal : _grey,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
