@@ -75,6 +75,8 @@ class _LoginPageState extends State<LoginPage> {
   DateTime? _birthDate;
   bool _hasRegisteredOnThisDevice = false;
   bool _isSubmitting = false;
+  bool _isRestoringSession = true;
+  String? _sessionRestoreError;
 
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
   static const String _sessionTokenKey = 'happy_live_session_token';
@@ -615,14 +617,25 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _restoreSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_sessionTokenKey);
-    if (token == null || token.isEmpty) return;
+    if (mounted) {
+      setState(() {
+        _isRestoringSession = true;
+        _sessionRestoreError = null;
+      });
+    }
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_sessionTokenKey);
+      if (token == null || token.isEmpty) {
+        if (mounted) setState(() => _isRestoringSession = false);
+        return;
+      }
+
       final response = await http.get(
         Uri.parse('$_apiBase/auth/me'),
         headers: {'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 12));
+      ).timeout(const Duration(seconds: 15));
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final user = data['user'] as Map<String, dynamic>? ?? {};
@@ -636,11 +649,33 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         );
-      } else {
+        return;
+      }
+
+      // Only discard a saved session when the server explicitly says that
+      // the token is invalid or expired. Temporary server errors must not log
+      // the user out on refresh.
+      if (response.statusCode == 401 || response.statusCode == 403) {
         await prefs.remove(_sessionTokenKey);
+        if (mounted) setState(() => _isRestoringSession = false);
+        return;
+      }
+
+      if (mounted) {
+        setState(() {
+          _sessionRestoreError = 'تعذر التحقق من جلستك الآن. حاول مرة أخرى.';
+          _isRestoringSession = false;
+        });
       }
     } catch (_) {
-      // Keep the saved session if the API is temporarily unreachable.
+      // Keep the saved token and show a retry state if the API is temporarily
+      // unreachable, rather than displaying the login form.
+      if (mounted) {
+        setState(() {
+          _sessionRestoreError = 'تعذر الاتصال بالخادم للتحقق من جلستك.';
+          _isRestoringSession = false;
+        });
+      }
     }
   }
 
@@ -758,6 +793,50 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    if (_isRestoringSession || _sessionRestoreError != null) {
+      return Scaffold(
+        backgroundColor: HappyLiveApp.background,
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 340),
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const _BrandHeader(),
+                  const SizedBox(height: 28),
+                  if (_isRestoringSession) ...[
+                    const CircularProgressIndicator(color: HappyLiveApp.gold),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'جارٍ استعادة جلستك...',
+                      style: TextStyle(color: HappyLiveApp.muted, fontSize: 13),
+                    ),
+                  ] else ...[
+                    Text(
+                      _sessionRestoreError!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: HappyLiveApp.muted, fontSize: 13),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: _restoreSession,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: HappyLiveApp.gold,
+                        foregroundColor: HappyLiveApp.background,
+                      ),
+                      child: const Text('إعادة المحاولة'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: HappyLiveApp.background,
