@@ -179,7 +179,7 @@ class _Header extends StatelessWidget {
             height: 70,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const AppColors.primary,
+              color: AppColors.avatarBackground,
               image: data.photoUrl != null ? DecorationImage(image: NetworkImage(data.photoUrl!), fit: BoxFit.cover) : null,
             ),
             child: data.photoUrl == null ? const Icon(Icons.person, color: AppColors.textPrimary, size: 38) : null,
@@ -275,7 +275,7 @@ class _TribeBanner extends StatelessWidget {
             height: 34,
             child: ElevatedButton(
               onPressed: () {},
-              style: ElevatedButton.styleFrom(backgroundColor: const AppColors.primary, foregroundColor: AppColors.textPrimary, elevation: 0, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 18)),
+              style: ElevatedButton.styleFrom(backgroundColor: const AppColors.primary, foregroundColor: AppColors.textOnPrimary, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), padding: const EdgeInsets.symmetric(horizontal: 18)),
               child: const Text('اذهب إلى', style: TextStyle(fontSize: 13)),
             ),
           ),
@@ -408,7 +408,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         backgroundColor: _C.bg,
         appBar: AppBar(
           backgroundColor: _C.bg,
-          foregroundColor: AppColors.textPrimary,
+          foregroundColor: AppColors.textOnPrimary,
           elevation: 0,
           centerTitle: true,
           title: const Text('تعديل الملف الشخصي', style: TextStyle(fontWeight: FontWeight.w800)),
