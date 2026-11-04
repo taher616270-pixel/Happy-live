@@ -373,21 +373,7 @@ class _RoomPageState extends State<RoomPage> {
             ),
           ),
           const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: const Color(0x3325C58A),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: const Color(0x6651D5A4)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.circle, color: Color(0xFF51D5A4), size: 6),
-                SizedBox(width: 5),
-                Text('مباشر', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
-              ],
-            ),
-          ),
+
         ],
       ),
     );
