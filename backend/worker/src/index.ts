@@ -1,5 +1,6 @@
 export interface Env {
   DB?: D1Database;
+  ROOM_CHAT?: DurableObjectNamespace;
   APP_ENV?: string;
   ALLOWED_ORIGINS?: string;
   IMAGEKIT_PUBLIC_KEY?: string;
@@ -80,6 +81,21 @@ async function authenticatedUser(request: Request, db: D1Database) {
     "SELECT u.id, u.email, p.display_name FROM user_sessions s INNER JOIN users u ON u.id = s.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
   ).bind(await sha256(match[1]), new Date().toISOString()).first<{ id: string; email: string; display_name: string | null }>();
   return row ?? null;
+}
+
+async function broadcastRoomChat(env: Env, roomId: string, payload: Record<string, unknown>): Promise<void> {
+  if (!env.ROOM_CHAT) return;
+  try {
+    const id = env.ROOM_CHAT.idFromName(roomId);
+    const stub = env.ROOM_CHAT.get(id);
+    await stub.fetch("https://room-chat.internal/broadcast", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } catch (error) {
+    console.error("[rooms.chat-broadcast] failed", error instanceof Error ? error.message : "UnknownError");
+  }
 }
 
 async function checkAuthRateLimit(db: D1Database, ip: string): Promise<boolean> {
@@ -230,6 +246,36 @@ export default {
 
 
     // Authenticated text and image chat scoped to a single active room.
+    const chatStreamRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/chat-stream$/);
+    if (chatStreamRoute && request.method === "GET") {
+      if (!env.DB || !env.ROOM_CHAT) return json({ error: "chat_realtime_unavailable" }, 503, origin, env);
+      try {
+        const protocols = (request.headers.get("Sec-WebSocket-Protocol") ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+        const streamToken = protocols.find((value) => value !== "happy-live-chat");
+        if (!streamToken) return json({ error: "authentication_required" }, 401, origin, env);
+        const authHeaders = new Headers(request.headers);
+        authHeaders.set("Authorization", `Bearer ${streamToken}`);
+        const authRequest = new Request(request, { headers: authHeaders });
+        const user = await authenticatedUser(authRequest, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = decodeURIComponent(chatStreamRoute[1]);
+        const room = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
+          .bind(roomId).first<{ id: string }>();
+        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        const visit = await env.DB.prepare(
+          "SELECT id FROM room_chat_visits WHERE room_id = ? AND user_id = ? AND exited_at IS NULL ORDER BY entered_at DESC LIMIT 1"
+        ).bind(roomId, user.id).first<{ id: string }>();
+        if (!visit) return json({ error: "chat_session_not_active" }, 409, origin, env);
+        const id = env.ROOM_CHAT.idFromName(roomId);
+        const stub = env.ROOM_CHAT.get(id);
+        const upgradeHeaders = new Headers({ "Upgrade": "websocket", "Sec-WebSocket-Protocol": "happy-live-chat" });
+        return await stub.fetch(new Request("https://room-chat.internal/connect", { method: "GET", headers: upgradeHeaders }));
+      } catch (error) {
+        console.error("[rooms.chat-stream] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "chat_stream_failed" }, 503, origin, env);
+      }
+    }
+
     const chatSessionRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/chat-session$/);
     if (chatSessionRoute && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
@@ -257,11 +303,27 @@ export default {
           await env.DB.prepare(
             "INSERT INTO room_chat_visits (id, room_id, user_id, entered_at) VALUES (?, ?, ?, ?)"
           ).bind(visitId, roomId, user.id, now).run();
+          await broadcastRoomChat(env, roomId, {
+            type: "system",
+            message: {
+              id: crypto.randomUUID(), userId: user.id,
+              name: user.display_name?.trim() || "مستخدم",
+              message: "انضم للغرفة", imageUrl: null, createdAt: now, isMe: false
+            }
+          });
           return json({ ok: true, enteredAt: now }, 200, origin, env);
         }
         await env.DB.prepare(
           "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
         ).bind(now, roomId, user.id).run();
+        await broadcastRoomChat(env, roomId, {
+          type: "system",
+          message: {
+            id: crypto.randomUUID(), userId: user.id,
+            name: user.display_name?.trim() || "مستخدم",
+            message: "غادر الغرفة", imageUrl: null, createdAt: now, isMe: false
+          }
+        });
         return json({ ok: true }, 200, origin, env);
       } catch (error) {
         const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
@@ -292,7 +354,7 @@ export default {
           catch { return json({ error: "invalid_json" }, 400, origin, env); }
           const message = typeof body.message === "string" ? body.message.trim() : "";
           const imageUrl = typeof body.imageUrl === "string" ? body.imageUrl.trim() : "";
-          if (message.length > 1000) return json({ error: "message_too_long" }, 400, origin, env);
+          if (message.length > 200) return json({ error: "message_too_long", message: "الرسالة يجب ألا تتجاوز 200 حرف" }, 400, origin, env);
           if (imageUrl) {
             try {
               const parsed = new URL(imageUrl);
@@ -304,11 +366,21 @@ export default {
             }
           }
           if (!message && !imageUrl) return json({ error: "empty_message" }, 400, origin, env);
+          const now = new Date().toISOString();
+          const cutoff = new Date(Date.now() - 1000).toISOString();
+          const rate = await env.DB.prepare(
+            "INSERT INTO room_chat_rate_limits (room_id, user_id, last_sent_at) VALUES (?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET last_sent_at = excluded.last_sent_at WHERE room_chat_rate_limits.last_sent_at <= ? RETURNING last_sent_at"
+          ).bind(roomId, user.id, now, cutoff).first<{ last_sent_at: string }>();
+          if (!rate) return json({ error: "chat_rate_limited", message: "انتظر ثانية قبل إرسال رسالة أخرى" }, 429, origin, env);
           const id = crypto.randomUUID();
-          const createdAt = new Date().toISOString();
           await env.DB.prepare(
             "INSERT INTO room_messages (id, room_id, user_id, message, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-          ).bind(id, roomId, user.id, message, imageUrl || null, createdAt).run();
+          ).bind(id, roomId, user.id, message, imageUrl || null, now).run();
+          const createdMessage = {
+            id, userId: user.id, name: user.display_name?.trim() || "مستخدم",
+            message, imageUrl: imageUrl || null, createdAt: now, isMe: false
+          };
+          await broadcastRoomChat(env, roomId, { type: "message", message: createdMessage });
         }
 
         const result = await env.DB.prepare(
@@ -321,6 +393,10 @@ export default {
           id: item.id,
           userId: item.user_id,
           name: item.display_name?.trim() || "مستخدم",
+          senderId: item.user_id,
+          senderName: item.display_name?.trim() || "مستخدم",
+          senderAvatar: "",
+          text: item.message,
           message: item.message,
           imageUrl: item.image_url,
           createdAt: item.created_at,
@@ -712,3 +788,36 @@ export default {
     return json({ error: "not_found" }, 404, origin, env);
   }
 };
+export class RoomChatHub {
+  private readonly sockets = new Set<WebSocket>();
+
+  constructor(private readonly state: DurableObjectState, private readonly env: Env) {}
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname === "/broadcast" && request.method === "POST") {
+      const payload = await request.text();
+      for (const socket of this.sockets) {
+        try { socket.send(payload); } catch { this.sockets.delete(socket); }
+      }
+      return new Response(null, { status: 204 });
+    }
+
+    if (url.pathname !== "/connect" || request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+      return new Response("Not found", { status: 404 });
+    }
+
+    const pair = new WebSocketPair();
+    const client = pair[0];
+    const server = pair[1];
+    server.accept();
+    this.sockets.add(server);
+    server.addEventListener("close", () => this.sockets.delete(server));
+    server.addEventListener("error", () => this.sockets.delete(server));
+    return new Response(null, {
+      status: 101,
+      headers: { "Sec-WebSocket-Protocol": "happy-live-chat" },
+      webSocket: client
+    });
+  }
+}
