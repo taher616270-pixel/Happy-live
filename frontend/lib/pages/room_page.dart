@@ -216,34 +216,18 @@ class _RoomPageState extends State<RoomPage> {
                       children: [
                         _topBar(),
                         const SizedBox(height: 26),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 5),
-                                  Text(
-                                    'اختر المايك المناسب وشاركنا الحديث',
-                                    style: TextStyle(color: _muted, fontSize: 11),
-                                  ),
-                                ],
+                        if (_isLoading || _isChangingSeat)
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: SizedBox(
+                              width: 15,
+                              height: 15,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.7,
+                                color: _gold,
                               ),
                             ),
-                            if (_isLoading || _isChangingSeat) ...[
-                              const SizedBox(width: 9),
-                              const SizedBox(
-                                width: 15,
-                                height: 15,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 1.7,
-                                  color: _gold,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+                          ),
                         const SizedBox(height: 17),
                         if (_loadError != null && _seats.isEmpty) _errorPanel(),
                         _microphoneStage(),
