@@ -1345,7 +1345,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      HappyHomeTab(name: _name, onDiscover: () => setState(() => _tab = 2), onSoon: _soon),
+      HappyHomeTab(name: _name, accessToken: widget.accessToken, onDiscover: () => setState(() => _tab = 2), onSoon: _soon),
       _HappyCreateTab(onSoon: _soon),
       _HappyPlaceholderTab(title: 'اكتشف', subtitle: 'اعثر على مجتمعات واهتمامات جديدة', icon: Icons.explore_outlined, onSoon: _soon),
       const _HappyPlaceholderTab(title: 'الرسائل', subtitle: 'محادثاتك الخاصة في مكان واحد', icon: Icons.forum_outlined),
