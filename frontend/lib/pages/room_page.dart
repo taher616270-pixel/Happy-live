@@ -62,8 +62,7 @@ class _RoomPageState extends State<RoomPage> {
   void initState() {
     super.initState();
     _refreshSeats();
-    _refreshMessages();
-    _chatRefreshTimer = Timer.periodic(const Duration(seconds: 2), (_) => _refreshMessages());
+    _startChatSession();
     // Refresh shared seats twice per second so other members appear almost immediately.
     _refreshTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       _refreshSeats();
@@ -78,6 +77,7 @@ class _RoomPageState extends State<RoomPage> {
     _refreshTimer?.cancel();
     _chatRefreshTimer?.cancel();
     _messageController.dispose();
+    _leaveChatSession();
     if (_mySeat != null) {
       // Best-effort release; the server-side lease also expires automatically.
       http.post(_seatsUri, headers: _headers, body: jsonEncode({'seatNumber': null}))
@@ -143,9 +143,46 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Uri get _messagesUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/messages');
+  Uri get _chatSessionUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/chat-session');
+  bool _chatSessionReady = false;
+
+  Future<void> _startChatSession() async {
+    if (_roomId.isEmpty || widget.accessToken.isEmpty) return;
+    try {
+      final response = await http.post(
+        _chatSessionUri,
+        headers: _headers,
+        body: jsonEncode({'action': 'join'}),
+      ).timeout(const Duration(seconds: 8));
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
+        if (mounted) setState(() => _chatLoading = false);
+        return;
+      }
+      _chatSessionReady = true;
+      await _refreshMessages();
+      if (mounted) {
+        _chatRefreshTimer = Timer.periodic(const Duration(seconds: 2), (_) => _refreshMessages());
+      }
+    } catch (_) {
+      if (mounted) setState(() => _chatLoading = false);
+    }
+  }
+
+  Future<void> _leaveChatSession() async {
+    if (!_chatSessionReady) return;
+    _chatSessionReady = false;
+    try {
+      await http.post(
+        _chatSessionUri,
+        headers: _headers,
+        body: jsonEncode({'action': 'leave'}),
+      ).timeout(const Duration(seconds: 3));
+    } catch (_) {}
+  }
 
   Future<void> _refreshMessages() async {
-    if (_chatRefreshing || _roomId.isEmpty || widget.accessToken.isEmpty) return;
+    if (!_chatSessionReady || _chatRefreshing || _roomId.isEmpty || widget.accessToken.isEmpty) return;
     _chatRefreshing = true;
     try {
       final response = await http.get(_messagesUri, headers: _headers).timeout(const Duration(seconds: 8));
@@ -233,7 +270,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Future<void> _sendRoomMessage() async {
-    if (_chatSending) return;
+    if (_chatSending || !_chatSessionReady) return;
     final message = _messageController.text.trim();
     if (message.isEmpty && _pendingChatImage == null) return;
     if (message.length > 1000) {
