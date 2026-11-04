@@ -354,7 +354,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                                   bottom: 8,
                                   child: Container(
                                     padding: const EdgeInsets.all(7),
-                                    decoration: const BoxDecoration(
+                                    decoration: BoxDecoration(
                                       color: AppColors.primary.withOpacity(0.651),
                                       shape: BoxShape.circle,
                                     ),
