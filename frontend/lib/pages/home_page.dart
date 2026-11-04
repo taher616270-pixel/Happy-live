@@ -270,8 +270,8 @@ class MyPartyRoomButton extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
                         color: Colors.transparent,
                         shape: BoxShape.circle,
@@ -283,7 +283,7 @@ class MyPartyRoomButton extends StatelessWidget {
                       child: Icon(
                         hasRoom ? Icons.arrow_forward_ios_rounded : Icons.add,
                         color: const Color(0xFFE6C87A),
-                        size: hasRoom ? 20 : 28,
+                        size: hasRoom ? 15 : 21,
                       ),
                     ),
                   ],
