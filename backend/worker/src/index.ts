@@ -233,9 +233,10 @@ export default {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
         const result = await env.DB.prepare(
-          "SELECT id, owner_user_id, name, description, image_url, visibility, created_at FROM rooms WHERE status = 'active' AND visibility = 'public' ORDER BY created_at DESC LIMIT 100"
+          "SELECT id, room_code, owner_user_id, name, description, image_url, visibility, created_at FROM rooms WHERE status = 'active' AND visibility = 'public' ORDER BY created_at DESC LIMIT 100"
         ).all<{
           id: string;
+          room_code: string;
           owner_user_id: string;
           name: string;
           description: string;
@@ -245,6 +246,7 @@ export default {
         }>();
         const rooms = (result.results ?? []).map((room) => ({
           id: room.id,
+          roomCode: room.room_code,
           ownerId: room.owner_user_id,
           name: room.name,
           description: room.description,
@@ -291,7 +293,7 @@ export default {
         }
 
         if (!name) return json({ error: "room_name_required", message: "اكتب اسم الغرفة" }, 400, origin, env);
-        if (name.length > 30) return json({ error: "invalid_room_name", message: "اسم الغرفة يجب ألا يتجاوز 30 حرفًا" }, 400, origin, env);
+        if (name.length > 20) return json({ error: "invalid_room_name", message: "اسم الغرفة يجب ألا يتجاوز 20 حرفًا" }, 400, origin, env);
         if (description.length > 120) return json({ error: "invalid_description", message: "الوصف يجب ألا يتجاوز 120 حرفًا" }, 400, origin, env);
 
         const roomId = crypto.randomUUID();
