@@ -307,10 +307,10 @@ class _RoomPageState extends State<RoomPage> {
 
   Widget _profileHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xCC17121F),
-        borderRadius: BorderRadius.circular(23),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0x66E8C477), width: 1),
         boxShadow: const [
           BoxShadow(color: Color(0x22100A18), blurRadius: 20, offset: Offset(0, 8)),
@@ -319,8 +319,8 @@ class _RoomPageState extends State<RoomPage> {
       child: Row(
         children: [
           Container(
-            width: 54,
-            height: 54,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFF30213D),
@@ -336,7 +336,7 @@ class _RoomPageState extends State<RoomPage> {
                 ? const Icon(Icons.headphones_rounded, color: _gold, size: 27)
                 : null,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,7 +356,7 @@ class _RoomPageState extends State<RoomPage> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _gold,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -374,7 +374,7 @@ class _RoomPageState extends State<RoomPage> {
           ),
           const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
               color: const Color(0x3325C58A),
               borderRadius: BorderRadius.circular(30),
