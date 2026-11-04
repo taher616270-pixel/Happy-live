@@ -348,6 +348,9 @@ class _RoomPageState extends State<RoomPage> {
       _chatReconnectTimer = null;
       _chatFallbackTimer?.cancel();
       _chatFallbackTimer = null;
+      // Reconcile history after every initial connection or reconnect so messages
+      // sent while this client was offline are not missed.
+      unawaited(_loadRoomMessages());
     } catch (_) {
       if (channel != null && identical(_chatChannel, channel)) {
         _chatChannel = null;
