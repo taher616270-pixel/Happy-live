@@ -18,4 +18,4 @@ class_name = "RoomChatHub"
 
 [[migrations]]
 tag = "v1-room-chat"
-new_classes = ["RoomChatHub"]
+new_sqlite_classes = ["RoomChatHub"]
