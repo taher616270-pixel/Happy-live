@@ -26,6 +26,7 @@ class _RoomPageState extends State<RoomPage> {
   Timer? _refreshTimer;
   DateTime _lastHeartbeat = DateTime.fromMillisecondsSinceEpoch(0);
   bool _isLoading = true;
+  bool _isRefreshing = false;
   bool _isChangingSeat = false;
   String? _loadError;
   int? _mySeat;
@@ -74,6 +75,8 @@ class _RoomPageState extends State<RoomPage> {
       if (mounted) setState(() { _isLoading = false; _loadError = 'بيانات الغرفة أو جلسة الدخول غير مكتملة'; });
       return;
     }
+    if (_isRefreshing) return;
+    _isRefreshing = true;
     try {
       final response = await http.get(_seatsUri, headers: _headers).timeout(const Duration(seconds: 8));
       final data = jsonDecode(response.body);
@@ -90,7 +93,6 @@ class _RoomPageState extends State<RoomPage> {
         _seats = seats;
         _mySeat = data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null;
         final owner = data['owner'];
-        final me = data['me'];
         if (owner is Map && owner['name'] != null) _ownerName = owner['name'].toString();
         _isLoading = false;
         _loadError = null;
@@ -98,6 +100,8 @@ class _RoomPageState extends State<RoomPage> {
     } catch (_) {
       if (!mounted) return;
       if (_isLoading) setState(() { _isLoading = false; _loadError = 'تعذر الاتصال بالغرفة، تحقق من الإنترنت'; });
+    } finally {
+      _isRefreshing = false;
     }
   }
 
