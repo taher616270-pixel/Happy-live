@@ -77,6 +77,10 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
             resetAspectRatioEnabled: false,
             aspectRatioPresets: [CropAspectRatioPreset.square],
           ),
+          WebUiSettings(
+            context: context,
+            presentStyle: WebPresentStyle.page,
+          ),
         ],
       );
 
