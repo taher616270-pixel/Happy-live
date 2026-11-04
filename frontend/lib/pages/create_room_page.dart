@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 class CreateRoomPage extends StatefulWidget {
   const CreateRoomPage({super.key, required this.accessToken});
@@ -22,6 +24,9 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
   final _descriptionController = TextEditingController();
   bool _isPrivate = false;
   bool _isSubmitting = false;
+  XFile? _roomImage;
+  Uint8List? _roomImageBytes;
+  final ImagePicker _imagePicker = ImagePicker();
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
 
   @override
@@ -31,10 +36,84 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
     super.dispose();
   }
 
+  Future<void> _pickRoomImage() async {
+    if (_isSubmitting) return;
+    try {
+      final image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1600,
+        maxHeight: 1600,
+      );
+      if (image == null) return;
+      final bytes = await image.readAsBytes();
+      if (bytes.length > 5 * 1024 * 1024) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('حجم الصورة يجب ألا يتجاوز 5 ميجابايت')),
+        );
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _roomImage = image;
+        _roomImageBytes = bytes;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر اختيار الصورة، حاول مرة أخرى')),
+      );
+    }
+  }
+
+  Future<String> _uploadRoomImage() async {
+    final image = _roomImage;
+    final bytes = _roomImageBytes;
+    if (image == null || bytes == null) return '';
+
+    final authResponse = await http.get(
+      Uri.parse('$_apiBase/imagekit/auth'),
+      headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+    ).timeout(const Duration(seconds: 15));
+    if (authResponse.statusCode != 200) {
+      throw Exception('image_auth_failed');
+    }
+    final auth = jsonDecode(authResponse.body) as Map<String, dynamic>;
+    final upload = http.MultipartRequest(
+      'POST',
+      Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
+    );
+    upload.fields.addAll({
+      'fileName': 'happy-room-${DateTime.now().millisecondsSinceEpoch}.jpg',
+      'publicKey': auth['publicKey'].toString(),
+      'token': auth['token'].toString(),
+      'expire': auth['expire'].toString(),
+      'signature': auth['signature'].toString(),
+      'useUniqueFileName': 'true',
+      'folder': '/happy-live/rooms',
+    });
+    upload.files.add(http.MultipartFile.fromBytes(
+      'file',
+      bytes,
+      filename: image.name.isEmpty ? 'room.jpg' : image.name,
+    ));
+    final streamed = await upload.send().timeout(const Duration(seconds: 60));
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('image_upload_failed');
+    }
+    final result = jsonDecode(response.body) as Map<String, dynamic>;
+    final imageUrl = result['url']?.toString() ?? '';
+    if (!imageUrl.startsWith('https://')) throw Exception('invalid_image_url');
+    return imageUrl;
+  }
+
   Future<void> _submit() async {
     if (_isSubmitting || !_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
     try {
+      final imageUrl = await _uploadRoomImage();
       final response = await http.post(
         Uri.parse('$_apiBase/rooms'),
         headers: {
@@ -45,6 +124,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
           'name': _nameController.text.trim(),
           'description': _descriptionController.text.trim(),
           'isPrivate': _isPrivate,
+          'imageUrl': imageUrl,
         }),
       ).timeout(const Duration(seconds: 15));
 
@@ -87,7 +167,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('تعذر الاتصال بالخادم، تحقق من الإنترنت وحاول مجددًا'),
+            content: Text('تعذر رفع الصورة أو الاتصال بالخادم، تحقق من الإنترنت وحاول مجددًا'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -138,6 +218,67 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
+                Center(
+                  child: Column(
+                    children: [
+                      GestureDetector(
+                        onTap: _pickRoomImage,
+                        child: Container(
+                          width: 142,
+                          height: 142,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF100E15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _gold, width: 1.4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _purple.withValues(alpha: 0.20),
+                                blurRadius: 18,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: _roomImageBytes != null
+                              ? Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Image.memory(_roomImageBytes!, fit: BoxFit.cover),
+                                    Positioned(
+                                      left: 8,
+                                      bottom: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(7),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(alpha: 0.65),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.edit_rounded, color: _gold, size: 17),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add_photo_alternate_outlined, color: _gold, size: 38),
+                                    SizedBox(height: 9),
+                                    Text('إضافة صورة الغرفة', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                                    SizedBox(height: 4),
+                                    Text('اضغط لاختيار صورة', style: TextStyle(color: _muted, fontSize: 10)),
+                                  ],
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'ستظهر الصورة لجميع من يشاهد الغرفة',
+                        style: TextStyle(color: _muted, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
