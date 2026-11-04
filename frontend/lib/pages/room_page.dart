@@ -184,99 +184,191 @@ class _RoomPageState extends State<RoomPage> {
 
   @override
   Widget build(BuildContext context) {
+    final occupiedCount = _seats.length;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: _background,
-        appBar: AppBar(
-          backgroundColor: _surface,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          title: Text(_roomName, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: _gold, fontWeight: FontWeight.w900)),
-          centerTitle: true,
-        ),
-        body: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-                  children: [
-                    _roomHeader(),
-                    const SizedBox(height: 13),
-                    _roomCodeCard(),
-                    const SizedBox(height: 23),
-                    Row(
-                      children: [
-                        const Text('المايكات', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900)),
-                        const Spacer(),
-                        Text('${_seats.length} / 6 مستخدمين', style: const TextStyle(color: _muted, fontSize: 12)),
-                        const SizedBox(width: 8),
-                        if (_isLoading || _isChangingSeat)
-                          const SizedBox(width: 13, height: 13, child: CircularProgressIndicator(strokeWidth: 1.5, color: _gold)),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    const Text('اضغط على المايك الفارغ للدخول، واضغط على مايكك لمغادرته',
-                      style: TextStyle(color: _muted, fontSize: 11, height: 1.5)),
-                    const SizedBox(height: 14),
-                    if (_loadError != null && _seats.isEmpty) _errorPanel(),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: 6,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 10,
-                        childAspectRatio: 0.92,
-                      ),
-                      itemBuilder: (context, index) => _micCard(index + 1),
-                    ),
-                    const SizedBox(height: 17),
-                    _ownerCard(),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(11),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF120E19),
-                        borderRadius: BorderRadius.circular(13),
-                        border: Border.all(color: const Color(0x554B3A5C)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.info_outline_rounded, color: _gold, size: 17),
-                          SizedBox(width: 8),
-                          Expanded(child: Text('المقاعد متزامنة بين المستخدمين. الاتصال الصوتي المباشر لم يُربط بعد.',
-                            style: TextStyle(color: _muted, fontSize: 11, height: 1.5))),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (_mySeat != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                  decoration: const BoxDecoration(
-                    color: _surface,
-                    border: Border(top: BorderSide(color: Color(0x665F4775))),
-                  ),
+        body: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF171020), Color(0xFF0B0910), Color(0xFF08070B)],
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 5, 12, 10),
                   child: Row(
                     children: [
-                      const Icon(Icons.mic_rounded, color: _gold, size: 20),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+                        color: Colors.white,
+                        tooltip: 'رجوع',
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0x3325C58A),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(color: const Color(0x6651D5A4)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.circle, color: Color(0xFF51D5A4), size: 7),
+                            SizedBox(width: 6),
+                            Text('غرفة صوتية', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                      ),
                       const SizedBox(width: 8),
-                      Expanded(child: Text('أنت على المايك $_mySeat', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12))),
-                      TextButton(
-                        onPressed: _isChangingSeat ? null : _leaveSeat,
-                        child: const Text('مغادرة المايك', style: TextStyle(color: _gold, fontSize: 12)),
+                      IconButton(
+                        onPressed: _copyRoomCode,
+                        icon: const Icon(Icons.ios_share_rounded, size: 19),
+                        color: _gold,
+                        tooltip: 'نسخ رقم الغرفة',
                       ),
                     ],
                   ),
                 ),
-            ],
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                    children: [
+                      _roomHeader(),
+                      const SizedBox(height: 15),
+                      _roomCodeCard(),
+                      const SizedBox(height: 25),
+                      Row(
+                        children: [
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('منصة المتحدثين', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                              SizedBox(height: 3),
+                              Text('اختر مقعدًا وابدأ المشاركة', style: TextStyle(color: _muted, fontSize: 11)),
+                            ],
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF21172B),
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(color: const Color(0x665F4775)),
+                            ),
+                            child: Text('$occupiedCount / 6', style: const TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.w900)),
+                          ),
+                          if (_isLoading || _isChangingSeat) ...[
+                            const SizedBox(width: 9),
+                            const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.6, color: _gold)),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (_loadError != null && _seats.isEmpty) _errorPanel(),
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(10, 18, 10, 17),
+                        decoration: BoxDecoration(
+                          color: const Color(0x66140F1C),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: const Color(0x334E3B60)),
+                        ),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: 6,
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 5,
+                            childAspectRatio: 0.82,
+                          ),
+                          itemBuilder: (context, index) => _micCard(index + 1),
+                        ),
+                      ),
+                      const SizedBox(height: 17),
+                      _ownerCard(),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF17121E),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0x334E3B60)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.info_outline_rounded, color: _gold, size: 17),
+                            SizedBox(width: 9),
+                            Expanded(
+                              child: Text(
+                                'المقاعد تتحدث تلقائيًا. الصوت المباشر لم يتم تفعيله بعد.',
+                                style: TextStyle(color: _muted, fontSize: 11, height: 1.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_mySeat != null)
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 11, 16, 12),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF15101C),
+                      border: Border(top: BorderSide(color: Color(0x665F4775))),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 37,
+                          height: 37,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(colors: [Color(0xFF9B63D9), Color(0xFF56347A)]),
+                          ),
+                          child: const Icon(Icons.mic_rounded, color: Colors.white, size: 19),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text('أنت على المقعد $_mySeat', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                        ),
+                        FilledButton(
+                          onPressed: _isChangingSeat ? null : _leaveSeat,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF38213F),
+                            foregroundColor: const Color(0xFFFFD98B),
+                            padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 11),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13), side: const BorderSide(color: Color(0x77E8C477))),
+                          ),
+                          child: const Text('مغادرة المايك', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 13),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF15101C),
+                      border: Border(top: BorderSide(color: Color(0x334E3B60))),
+                    ),
+                    child: const Text(
+                      'اضغط على أحد المقاعد الفارغة للانضمام إلى الحديث',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -284,42 +376,78 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _roomHeader() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0x665F4775)),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(13),
-            child: SizedBox(
-              width: 60,
-              height: 60,
-              child: _imageUrl == null
-                  ? const ColoredBox(color: Color(0xFF241A32), child: Icon(Icons.groups_rounded, color: _gold, size: 29))
-                  : Image.network(_imageUrl!, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF241A32), child: Icon(Icons.groups_rounded, color: _gold, size: 29))),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(23),
+      child: SizedBox(
+        height: 174,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (_imageUrl != null)
+              Image.network(
+                _imageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF30213C)),
+              )
+            else
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [Color(0xFF59366E), Color(0xFF21152F), Color(0xFF120F19)],
+                  ),
+                ),
+                child: Center(child: Icon(Icons.graphic_eq_rounded, color: Color(0x66E8C477), size: 76)),
+              ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x11000000), Color(0xEE09070D)],
+                  stops: [0.15, 1],
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_roomName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
-                if ((widget.room['description'] ?? '').toString().trim().isNotEmpty) ...[
-                  const SizedBox(height: 5),
-                  Text(widget.room['description'].toString(), maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: _muted, fontSize: 12, height: 1.4)),
+            Positioned(
+              right: 15,
+              left: 15,
+              bottom: 15,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    width: 45,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      color: const Color(0xCC21172B),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0x88E8C477)),
+                    ),
+                    child: const Icon(Icons.headphones_rounded, color: _gold, size: 25),
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_roomName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, shadows: [Shadow(color: Colors.black, blurRadius: 8)])),
+                        if ((widget.room['description'] ?? '').toString().trim().isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(widget.room['description'].toString(), maxLines: 2, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Color(0xFFD8CEDF), fontSize: 11, height: 1.4)),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -329,22 +457,22 @@ class _RoomPageState extends State<RoomPage> {
       onTap: _copyRoomCode,
       borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          color: const Color(0xFF120E19),
+          color: const Color(0xFF17121E),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0x665F4775)),
+          border: Border.all(color: const Color(0x554F3B60)),
         ),
         child: Row(
           children: [
-            const Icon(Icons.tag_rounded, color: _gold, size: 19),
+            const Icon(Icons.tag_rounded, color: _gold, size: 18),
             const SizedBox(width: 8),
-            const Text('رقم الغرفة', style: TextStyle(color: _muted, fontSize: 13)),
+            const Text('رقم الغرفة', style: TextStyle(color: _muted, fontSize: 12)),
             const Spacer(),
             Text(_roomCode.length == 8 ? _roomCode : '--------',
-              style: const TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 2)),
+              style: const TextStyle(color: _gold, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 2)),
             const SizedBox(width: 8),
-            const Icon(Icons.copy_rounded, color: _purple, size: 17),
+            const Icon(Icons.copy_rounded, color: _purple, size: 16),
           ],
         ),
       ),
@@ -356,47 +484,92 @@ class _RoomPageState extends State<RoomPage> {
     final occupied = seat != null;
     final mine = seat?['isMe'] == true;
     final name = (seat?['name'] ?? '').toString();
-    final canTap = !occupied || mine;
+    final isLocked = occupied && !mine;
     return InkWell(
-      onTap: !canTap || _isChangingSeat ? null : () => _selectSeat(number),
-      borderRadius: BorderRadius.circular(18),
+      onTap: (!occupied || mine) && !_isChangingSeat ? () => _selectSeat(number) : null,
+      borderRadius: BorderRadius.circular(19),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
+        duration: const Duration(milliseconds: 220),
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 7),
         decoration: BoxDecoration(
-          color: mine ? const Color(0xFF2A1B3C) : _surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: mine ? _gold : occupied ? _purple.withOpacity(0.75) : const Color(0x665F4775),
-            width: mine ? 1.6 : 1),
+          color: mine ? const Color(0x332D1E3D) : Colors.transparent,
+          borderRadius: BorderRadius.circular(19),
+          border: Border.all(
+            color: mine ? _gold : occupied ? const Color(0x665F4775) : const Color(0x224F3B60),
+            width: mine ? 1.4 : 1,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: mine ? _purple.withOpacity(0.25) : const Color(0xFF241A32),
-                border: Border.all(color: mine ? _gold : occupied ? _purple : const Color(0x665F4775)),
-              ),
-              child: Center(
-                child: occupied
-                    ? Text(name.isEmpty ? '؟' : name.characters.first,
-                        style: const TextStyle(color: _gold, fontSize: 20, fontWeight: FontWeight.w900))
-                    : const Icon(Icons.add_rounded, color: _gold, size: 31),
-              ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: 66,
+                  height: 66,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: mine
+                          ? const [Color(0xFFB98AF0), Color(0xFF65408E)]
+                          : occupied
+                              ? const [Color(0xFF67477C), Color(0xFF30213D)]
+                              : const [Color(0xFF302638), Color(0xFF19141F)],
+                    ),
+                    border: Border.all(
+                      color: mine ? _gold : occupied ? const Color(0xFF9B63D9) : const Color(0x665F4775),
+                      width: mine ? 2.2 : 1.5,
+                    ),
+                    boxShadow: mine
+                        ? const [BoxShadow(color: Color(0x559B63D9), blurRadius: 15, spreadRadius: 1)]
+                        : const [],
+                  ),
+                  child: Center(
+                    child: occupied
+                        ? Text(name.isEmpty ? '؟' : name.characters.first,
+                            style: const TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900))
+                        : const Icon(Icons.add_rounded, color: _gold, size: 29),
+                  ),
+                ),
+                Positioned(
+                  bottom: -2,
+                  right: -3,
+                  child: Container(
+                    width: 23,
+                    height: 23,
+                    decoration: BoxDecoration(
+                      color: mine ? _gold : occupied ? const Color(0xFF9B63D9) : const Color(0xFF29212F),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFF100C15), width: 2),
+                    ),
+                    child: Icon(
+                      occupied ? (isLocked ? Icons.mic_off_rounded : Icons.mic_rounded) : Icons.add_rounded,
+                      color: mine ? const Color(0xFF21152B) : Colors.white,
+                      size: 12,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text('مايك $number', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+            Text(
+              'مقعد $number',
+              style: TextStyle(color: mine ? _gold : Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 4),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(occupied ? (mine ? 'أنت هنا' : name) : 'فارغ',
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: mine ? _gold : occupied ? _muted : _gold.withOpacity(0.8), fontSize: 10)),
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Text(
+                occupied ? (mine ? 'أنت هنا' : name) : 'متاح',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: mine ? const Color(0xFFFFD98B) : occupied ? _muted : const Color(0xFFB9A8C8), fontSize: 10),
+              ),
             ),
-            if (occupied && !mine)
-              const Padding(padding: EdgeInsets.only(top: 3), child: Icon(Icons.lock_rounded, color: _muted, size: 11)),
           ],
         ),
       ),
@@ -404,21 +577,23 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _ownerCard() {
-    final isOwner = widget.room['ownerId'] != null;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF211A31),
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(colors: [Color(0xFF2A1D34), Color(0xFF1B1423)]),
+        borderRadius: BorderRadius.circular(17),
         border: Border.all(color: const Color(0x88E8C477)),
       ),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
-            decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF352541)),
-            child: const Icon(Icons.workspace_premium_rounded, color: _gold, size: 24),
+            width: 43,
+            height: 43,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(colors: [Color(0xFFE8C477), Color(0xFF9D7137)]),
+            ),
+            child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFF2A1D24), size: 23),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -428,14 +603,11 @@ class _RoomPageState extends State<RoomPage> {
                 Text(_ownerName, maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 3),
-                Text(isOwner ? 'صاحب الغرفة • مكانه أسفل المايكات' : 'صاحب الغرفة',
-                  style: const TextStyle(color: _muted, fontSize: 11)),
+                const Text('مضيف الغرفة', style: TextStyle(color: _gold, fontSize: 10, fontWeight: FontWeight.w700)),
               ],
             ),
           ),
-          if (widget.room['ownerId']?.toString() == _seats.firstWhere(
-            (seat) => seat['isMe'] == true, orElse: () => <String, dynamic>{})['userId']?.toString())
-            const Text('أنت المالك', style: TextStyle(color: _gold, fontSize: 10, fontWeight: FontWeight.w800)),
+          const Icon(Icons.verified_rounded, color: _gold, size: 19),
         ],
       ),
     );
@@ -454,4 +626,5 @@ class _RoomPageState extends State<RoomPage> {
       ),
     );
   }
+}
 }
