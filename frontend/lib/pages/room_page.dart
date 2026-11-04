@@ -276,7 +276,7 @@ class _RoomPageState extends State<RoomPage> {
             _profileHeader(),
             const SizedBox(width: 8),
             _roundAction(
-              icon: Icons.chevron_right_rounded,
+              icon: Icons.arrow_forward_ios_rounded,
               onTap: () => Navigator.of(context).maybePop(),
               tooltip: 'رجوع',
             ),
@@ -295,17 +295,16 @@ class _RoomPageState extends State<RoomPage> {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: const Color(0xFF211A2B),
-        shape: const CircleBorder(
-          side: BorderSide(color: Color(0x554F3B60)),
-        ),
+        color: Colors.transparent,
         child: InkWell(
-          customBorder: const CircleBorder(),
+          customBorder: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
           onTap: onTap,
           child: SizedBox(
             width: 40,
             height: 40,
-            child: Icon(icon, color: iconColor, size: 18),
+            child: Icon(icon, color: iconColor, size: 20),
           ),
         ),
       ),
