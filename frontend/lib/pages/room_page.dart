@@ -30,6 +30,10 @@ class _RoomPageState extends State<RoomPage> {
   final TextEditingController _messageController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
   final List<Map<String, dynamic>> _messages = [];
+  final ScrollController _roomMessagesController = ScrollController();
+  int? _messageDragPointer;
+  double? _messageDragStartY;
+  double _messageDragStartOffset = 0;
   Uint8List? _pendingChatImage;
   String _pendingChatImageName = 'room-chat.jpg';
   bool _chatLoading = true;
@@ -91,6 +95,7 @@ class _RoomPageState extends State<RoomPage> {
     _refreshTimer?.cancel();
     _chatRefreshTimer?.cancel();
     _messageController.dispose();
+    _roomMessagesController.dispose();
     _leaveChatSession();
     if (_mySeat != null) {
       // Best-effort release; the server-side lease also expires automatically.
@@ -318,7 +323,6 @@ class _RoomPageState extends State<RoomPage> {
     if (_messages.isEmpty) {
       return const SizedBox.shrink();
     }
-    final visibleCount = _messages.length > 8 ? 8 : _messages.length;
     return IgnorePointer(
       child: ShaderMask(
         shaderCallback: (bounds) => const LinearGradient(
@@ -329,10 +333,11 @@ class _RoomPageState extends State<RoomPage> {
         ).createShader(bounds),
         blendMode: BlendMode.dstIn,
         child: ListView.builder(
+          controller: _roomMessagesController,
           reverse: true,
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
-          itemCount: visibleCount,
+          itemCount: _messages.length,
           itemBuilder: (context, index) {
             final item = _messages[_messages.length - 1 - index];
             final mine = item['isMe'] == true;
@@ -457,11 +462,44 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _microphoneStageWithMessages() {
-    return Stack(
-      children: [
-        Positioned.fill(child: _roomMessagesBehindMics()),
-        _microphoneStage(),
-      ],
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (event) {
+        if (!_roomMessagesController.hasClients) return;
+        _messageDragPointer = event.pointer;
+        _messageDragStartY = event.position.dy;
+        _messageDragStartOffset = _roomMessagesController.offset;
+      },
+      onPointerMove: (event) {
+        if (_messageDragPointer != event.pointer || _messageDragStartY == null) return;
+        if (!_roomMessagesController.hasClients) return;
+        final delta = event.position.dy - _messageDragStartY!;
+        final position = _roomMessagesController.position;
+        final nextOffset = (_messageDragStartOffset - delta)
+            .clamp(position.minScrollExtent, position.maxScrollExtent)
+            .toDouble();
+        if ((nextOffset - _roomMessagesController.offset).abs() > 0.5) {
+          _roomMessagesController.jumpTo(nextOffset);
+        }
+      },
+      onPointerUp: (event) {
+        if (_messageDragPointer == event.pointer) {
+          _messageDragPointer = null;
+          _messageDragStartY = null;
+        }
+      },
+      onPointerCancel: (event) {
+        if (_messageDragPointer == event.pointer) {
+          _messageDragPointer = null;
+          _messageDragStartY = null;
+        }
+      },
+      child: Stack(
+        children: [
+          Positioned.fill(child: _roomMessagesBehindMics()),
+          _microphoneStage(),
+        ],
+      ),
     );
   }
 
