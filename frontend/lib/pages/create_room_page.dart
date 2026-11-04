@@ -239,10 +239,12 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: _background,
+        resizeToAvoidBottomInset: false,
         appBar: AppBar(
           backgroundColor: const Color(0xFF17121F),
           foregroundColor: Colors.white,
@@ -252,11 +254,14 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
             style: TextStyle(color: _gold, fontWeight: FontWeight.w900),
           ),
         ),
-        body: SafeArea(
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.all(20),
+        body: Container(
+          color: _background,
+          child: SafeArea(
+            bottom: false,
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(20, 20, 20, bottomInset + 20),
               children: [
                 Container(
                   width: double.infinity,
@@ -372,7 +377,8 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                     ),
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
