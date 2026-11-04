@@ -13,6 +13,7 @@ class _C {
 
 // ================== الموديل ==================
 class ProfileData {
+  final String displayName;
   final String userId;
   final String? photoUrl;
   final bool isMale;
@@ -24,6 +25,7 @@ class ProfileData {
   final int unreadMessages;
 
   const ProfileData({
+    this.displayName = '',
     required this.userId,
     this.photoUrl,
     this.isMale = true,
@@ -104,10 +106,7 @@ class ProfilePage extends StatelessWidget {
   const ProfilePage({
     super.key,
     this.data = const ProfileData(
-      userId: '117215141',
-      viewersCount: 1,
-      offersCount: 0,
-      unreadMessages: 6,
+      userId: '',
     ),
   });
 
@@ -191,6 +190,8 @@ class _Header extends StatelessWidget {
                 const SizedBox(height: 2),
                 Row(
                   children: [
+                    Flexible(child: Text(data.displayName.isEmpty ? 'مستخدم Happy Live' : data.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800))),
+                    const SizedBox(width: 6),
                     Icon(data.isMale ? Icons.male : Icons.female, color: data.isMale ? const Color(0xFF3AA0FF) : const Color(0xFFFF5C93), size: 16),
                     const SizedBox(width: 4),
                     Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
@@ -351,6 +352,7 @@ class HappyProfilePage extends StatelessWidget {
     super.key,
     required this.name,
     required this.email,
+    required this.userId,
     required this.initial,
     required this.onLogout,
     required this.onSoon,
@@ -358,6 +360,7 @@ class HappyProfilePage extends StatelessWidget {
 
   final String name;
   final String email;
+  final String userId;
   final String initial;
   final VoidCallback onLogout;
   final ValueChanged<String> onSoon;
@@ -365,7 +368,7 @@ class HappyProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ProfilePage(
-      data: const ProfileData(userId: '117215141', viewersCount: 1, unreadMessages: 6),
+      data: ProfileData(displayName: name, userId: userId),
     );
   }
 }
