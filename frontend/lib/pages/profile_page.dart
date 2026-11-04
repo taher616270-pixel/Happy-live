@@ -222,7 +222,11 @@ class _Header extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               OutlinedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => ProfileEditPage(data: data),
+                  ));
+                },
                 icon: const Icon(Icons.edit_outlined, size: 14, color: _C.grey),
                 label: const Text('تعديل', style: TextStyle(color: _C.grey, fontSize: 12)),
                 style: OutlinedButton.styleFrom(side: BorderSide(color: _C.grey.withOpacity(0.5)), shape: const StadiumBorder(), minimumSize: const Size(0, 30), padding: const EdgeInsets.symmetric(horizontal: 10)),
@@ -372,4 +376,117 @@ class HappyProfilePage extends StatelessWidget {
       data: ProfileData(displayName: name, userId: userId),
     );
   }
+}
+
+
+// صفحة مستقلة لتعديل بيانات الملف الشخصي.
+class ProfileEditPage extends StatefulWidget {
+  const ProfileEditPage({super.key, required this.data});
+  final ProfileData data;
+
+  @override
+  State<ProfileEditPage> createState() => _ProfileEditPageState();
+}
+
+class _ProfileEditPageState extends State<ProfileEditPage> {
+  late final TextEditingController _nameController = TextEditingController(text: widget.data.displayName);
+  late final TextEditingController _bioController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _bioController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: _C.bg,
+        appBar: AppBar(
+          backgroundColor: _C.bg,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          title: const Text('تعديل الملف الشخصي', style: TextStyle(fontWeight: FontWeight.w800)),
+        ),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Center(
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 48,
+                      backgroundColor: const Color(0xFF263532),
+                      backgroundImage: widget.data.photoUrl == null ? null : NetworkImage(widget.data.photoUrl!),
+                      child: widget.data.photoUrl == null ? const Icon(Icons.person, size: 48, color: Colors.white70) : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: const BoxDecoration(color: _C.teal, shape: BoxShape.circle),
+                        child: const Icon(Icons.camera_alt, size: 17, color: Colors.black),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+              _editLabel('الاسم'),
+              _editField(_nameController, hint: 'اكتب اسمك'),
+              const SizedBox(height: 18),
+              _editLabel('النبذة الشخصية'),
+              _editField(_bioController, hint: 'اكتب نبذة قصيرة عنك', maxLines: 4),
+              const SizedBox(height: 18),
+              _editLabel('معرّف الحساب'),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 16),
+                decoration: BoxDecoration(color: _C.nav, borderRadius: BorderRadius.circular(13), border: Border.all(color: Colors.white12)),
+                child: Text('ID: ${widget.data.userId}', textDirection: TextDirection.ltr, style: const TextStyle(color: _C.grey, fontSize: 14)),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('واجهة التعديل جاهزة، وسيتم ربط الحفظ بالخادم لاحقًا')),
+                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: _C.teal, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+                  child: const Text('حفظ التعديلات', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _editLabel(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+  );
+
+  Widget _editField(TextEditingController controller, {required String hint, int maxLines = 1}) => TextField(
+    controller: controller,
+    maxLines: maxLines,
+    style: const TextStyle(color: Colors.white, fontSize: 14),
+    decoration: InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: _C.grey),
+      filled: true,
+      fillColor: _C.nav,
+      contentPadding: const EdgeInsets.all(15),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: Colors.white12)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: _C.teal)),
+    ),
+  );
 }
