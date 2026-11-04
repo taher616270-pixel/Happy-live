@@ -324,7 +324,10 @@ class _RoomPageState extends State<RoomPage> {
           padding: EdgeInsets.zero,
           decoration: BoxDecoration(
             color: const Color(0xCC17121F),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(18),
+              bottomLeft: Radius.circular(18),
+            ),
             border: Border.all(color: const Color(0x66E8C477), width: 1),
             boxShadow: const [
               BoxShadow(color: Color(0x22100A18), blurRadius: 12, offset: Offset(0, 4)),
