@@ -72,7 +72,7 @@ class _RoomPageState extends State<RoomPage> {
     _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? 'مرحباً بكم في الغرفة، نتمنى لكم وقتاً ممتعاً').toString();
     _messages.addAll([
       Message(id: 'demo-1', type: 'text', senderId: 'demo-user-1', senderName: 'سالم', senderAvatar: '', text: 'يا هلا بالجميع 🌸', createdAt: DateTime.now().subtract(const Duration(minutes: 2))),
-      Message(id: 'demo-2', type: 'system', senderId: 'demo-owner', senderName: _ownerName, senderAvatar: '', text: 'دخل الغرفة', createdAt: DateTime.now().subtract(const Duration(minutes: 1))),
+      Message(id: 'demo-2', type: 'join', senderId: 'demo-owner', senderName: _ownerName, senderAvatar: '', text: 'دخل الغرفة', createdAt: DateTime.now().subtract(const Duration(minutes: 1))),
       Message(id: 'demo-3', type: 'text', senderId: 'demo-user-2', senderName: 'نور', senderAvatar: '', text: 'نورتوا المكان 🤍', createdAt: DateTime.now().subtract(const Duration(seconds: 35))),
     ]);
     _scrollChatToBottom(animated: false);
@@ -234,7 +234,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _roomMessageItem(Message message) {
-    if (message.type == 'system') {
+    if (message.type == 'system' || message.type == 'join') {
       final isWelcome = message.text.contains('دخل الغرفة') || message.text.contains('انضم');
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
@@ -393,7 +393,7 @@ class _RoomPageState extends State<RoomPage> {
           children: [
             Stack(clipBehavior: Clip.none, children: [
               IconButton(onPressed: () => _showChatToolMessage('الرسائل الخاصة'), icon: const Icon(Icons.mail_outline_rounded, color: Colors.white, size: 22)),
-              Positioned(top: 4, left: 4, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle))),
+              Positioned(top: 1, left: 1, child: Container(width: 15, height: 15, alignment: Alignment.center, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Text('3', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)))),
             ]),
             IconButton(onPressed: () => _showChatToolMessage('الهدايا'), icon: const Icon(Icons.card_giftcard_rounded, color: _gold, size: 22)),
             IconButton(onPressed: _showRoomChatMenu, icon: const Icon(Icons.menu_rounded, color: Colors.white70, size: 22)),
