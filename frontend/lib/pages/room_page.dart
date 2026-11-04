@@ -43,6 +43,7 @@ class _RoomPageState extends State<RoomPage> {
   String? _loadError;
   int? _mySeat;
   String _ownerName = 'صاحب الغرفة';
+  String _ownerId = '';
   List<Map<String, dynamic>> _seats = [];
 
   String get _roomId => (widget.room['id'] ?? '').toString();
@@ -133,9 +134,13 @@ class _RoomPageState extends State<RoomPage> {
     final nextOwnerName = owner is Map && owner['name'] != null
         ? owner['name'].toString()
         : _ownerName;
+    final nextOwnerId = owner is Map
+        ? (owner['id'] ?? owner['userId'] ?? owner['uid'] ?? '').toString()
+        : _ownerId;
     final changed = jsonEncode(_seats) != jsonEncode(seats) ||
         _mySeat != nextMySeat ||
         _ownerName != nextOwnerName ||
+        _ownerId != nextOwnerId ||
         _isLoading ||
         _loadError != null;
     if (!mounted || !changed) return;
@@ -143,6 +148,7 @@ class _RoomPageState extends State<RoomPage> {
       _seats = seats;
       _mySeat = nextMySeat;
       _ownerName = nextOwnerName;
+      _ownerId = nextOwnerId;
       _isLoading = false;
       _loadError = null;
     });
@@ -158,7 +164,7 @@ class _RoomPageState extends State<RoomPage> {
 
   bool get _isRoomOwner {
     if (widget.room['isOwner'] == true) return true;
-    final ownerId = (widget.room['ownerId'] ?? widget.room['owner_id'] ?? widget.room['createdBy'] ?? widget.room['created_by'] ?? '').toString();
+    final ownerId = (widget.room['ownerId'] ?? widget.room['owner_id'] ?? widget.room['createdBy'] ?? widget.room['created_by'] ?? _ownerId).toString();
     if (ownerId.isEmpty) return false;
     try {
       final parts = widget.accessToken.split('.');
@@ -207,7 +213,7 @@ class _RoomPageState extends State<RoomPage> {
     _lastLocalMessageAt = now;
     _messageController.clear();
     _appendLocalMessage(Message(
-      id: 'local-\u0024{now.microsecondsSinceEpoch}',
+      id: 'local-${now.microsecondsSinceEpoch}',
       type: 'text',
       senderId: 'demo-current-user',
       senderName: 'أنت',
@@ -245,7 +251,7 @@ class _RoomPageState extends State<RoomPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(color: Colors.black.withOpacity(0.42), borderRadius: BorderRadius.circular(14)),
-                child: Text('\u0024{message.senderName} @ \u0024{message.text}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                child: Text('${message.senderName} @ ${message.text}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
               ),
             ),
           ],
@@ -370,7 +376,7 @@ class _RoomPageState extends State<RoomPage> {
     if (result == null || result.isEmpty || !mounted) return;
     setState(() => _roomAnnouncement = result);
     _appendLocalMessage(Message(
-      id: 'announcement-\u0024{DateTime.now().microsecondsSinceEpoch}',
+      id: 'announcement-${DateTime.now().microsecondsSinceEpoch}',
       type: 'announcement', senderId: 'demo-owner', senderName: _ownerName,
       senderAvatar: '', text: result, createdAt: DateTime.now(),
     ));
