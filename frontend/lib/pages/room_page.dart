@@ -330,23 +330,26 @@ class _RoomPageState extends State<RoomPage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF30213D),
-                  border: Border.all(color: _gold.withOpacity(0.75), width: 1),
-                  image: _imageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(_imageUrl!),
-                          fit: BoxFit.cover,
-                        )
+              ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF30213D),
+                    border: Border.all(color: _gold.withOpacity(0.75), width: 1),
+                    borderRadius: BorderRadius.circular(7),
+                    image: _imageUrl != null
+                        ? DecorationImage(
+                            image: NetworkImage(_imageUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: _imageUrl == null
+                      ? const Icon(Icons.image_outlined, color: _gold, size: 17)
                       : null,
                 ),
-                child: _imageUrl == null
-                    ? const Icon(Icons.headphones_rounded, color: _gold, size: 17)
-                    : null,
               ),
               const SizedBox(width: 6),
               Flexible(
