@@ -147,7 +147,7 @@ class MyPartyRoomButton extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
