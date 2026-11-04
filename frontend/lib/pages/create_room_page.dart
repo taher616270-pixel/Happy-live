@@ -219,63 +219,82 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
               padding: const EdgeInsets.all(20),
               children: [
                 Center(
-                  child: Column(
-                    children: [
-                      GestureDetector(
-                        onTap: _pickRoomImage,
-                        child: Container(
-                          width: 142,
-                          height: 142,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF100E15),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: _gold, width: 1.4),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0x339B63D9),
-                                blurRadius: 18,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: _roomImageBytes != null
-                              ? Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    Image.memory(_roomImageBytes!, fit: BoxFit.cover),
-                                    Positioned(
-                                      left: 8,
-                                      bottom: 8,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(7),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xA6000000),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(Icons.edit_rounded, color: _gold, size: 17),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.add_photo_alternate_outlined, color: _gold, size: 38),
-                                    SizedBox(height: 9),
-                                    Text('إضافة صورة الغرفة', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
-                                    SizedBox(height: 4),
-                                    Text('اضغط لاختيار صورة', style: TextStyle(color: _muted, fontSize: 10)),
-                                  ],
-                                ),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0x665F4775)),
+                    ),
+                    child: const Column(
+                      children: [
+                        Icon(Icons.groups_rounded, color: _gold, size: 42),
+                        SizedBox(height: 10),
+                        Text(
+                          'أنشئ غرفتك واجمع أصدقاءك',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
                         ),
+                        SizedBox(height: 5),
+                        Text(
+                          'أدخل تفاصيل الغرفة قبل إنشائها',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: _muted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Center(
+                  child: GestureDetector(
+                    onTap: _pickRoomImage,
+                    child: Container(
+                      width: 142,
+                      height: 142,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF100E15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: _gold, width: 1.4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0x339B63D9),
+                            blurRadius: 18,
+                            spreadRadius: 1,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'ستظهر الصورة لجميع من يشاهد الغرفة',
-                        style: TextStyle(color: _muted, fontSize: 11),
-                      ),
-                    ],
+                      clipBehavior: Clip.antiAlias,
+                      child: _roomImageBytes != null
+                          ? Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.memory(_roomImageBytes!, fit: BoxFit.cover),
+                                Positioned(
+                                  left: 8,
+                                  bottom: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(7),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xA6000000),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.edit_rounded, color: _gold, size: 17),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_photo_alternate_outlined, color: _gold, size: 38),
+                                SizedBox(height: 9),
+                                Text('إضافة صورة الغرفة', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                                SizedBox(height: 4),
+                                Text('اضغط لاختيار صورة', style: TextStyle(color: _muted, fontSize: 10)),
+                              ],
+                            ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
