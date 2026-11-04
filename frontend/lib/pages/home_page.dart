@@ -168,24 +168,7 @@ class MyPartyRoomButton extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFF8B5CF6),
-                          width: 1.8,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.add,
-                        color: Color(0xFFE6C87A),
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 80),
                     const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,7 +192,23 @@ class MyPartyRoomButton extends StatelessWidget {
                       ],
                     ),
                     const Spacer(),
-                    const SizedBox(width: 80),
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF8B5CF6),
+                          width: 1.8,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        color: Color(0xFFE6C87A),
+                        size: 28,
+                      ),
+                    ),
                   ],
                 ),
               ),
