@@ -229,7 +229,7 @@ export default {
     }
 
 
-    // Live microphone seats. A seat is leased for 45 seconds and renewed by
+    // Eight shared microphone seats. A seat is leased for 45 seconds and renewed by
     // authenticated clients, so abandoned seats disappear after disconnects.
     const seatRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/seats$/);
     if (seatRoute && (request.method === "GET" || request.method === "POST")) {
