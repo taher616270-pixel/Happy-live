@@ -7,8 +7,9 @@ import 'package:image_cropper/image_cropper.dart';
 import 'room_page.dart';
 
 class CreateRoomPage extends StatefulWidget {
-  const CreateRoomPage({super.key, required this.accessToken});
+  const CreateRoomPage({super.key, required this.accessToken, this.onRoomCreated});
   final String accessToken;
+  final ValueChanged<Map<String, dynamic>>? onRoomCreated;
 
   @override
   State<CreateRoomPage> createState() => _CreateRoomPageState();
@@ -186,9 +187,10 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
         if (decoded is Map<String, dynamic>) data = decoded;
       } catch (_) {}
 
-      if (response.statusCode == 201 && data['ok'] == true) {
+      if ((response.statusCode == 201 || response.statusCode == 200) && data['ok'] == true && data['room'] is Map) {
         if (!mounted) return;
         final room = Map<String, dynamic>.from(data['room'] as Map);
+        widget.onRoomCreated?.call(room);
         Navigator.of(context).pushReplacement(
           MaterialPageRoute<void>(
             builder: (_) => RoomPage(room: room, accessToken: widget.accessToken),
