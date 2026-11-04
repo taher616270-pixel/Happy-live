@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 class RoomPage extends StatefulWidget {
   const RoomPage({super.key, required this.room, required this.accessToken});
@@ -24,6 +25,15 @@ class _RoomPageState extends State<RoomPage> {
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
 
   Timer? _refreshTimer;
+  Timer? _chatRefreshTimer;
+  final TextEditingController _messageController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
+  final List<Map<String, dynamic>> _messages = [];
+  Uint8List? _pendingChatImage;
+  String _pendingChatImageName = 'room-chat.jpg';
+  bool _chatLoading = true;
+  bool _chatSending = false;
+  bool _chatRefreshing = false;
   DateTime _lastHeartbeat = DateTime.fromMillisecondsSinceEpoch(0);
   bool _isLoading = true;
   bool _isRefreshing = false;
@@ -51,6 +61,8 @@ class _RoomPageState extends State<RoomPage> {
   void initState() {
     super.initState();
     _refreshSeats();
+    _refreshMessages();
+    _chatRefreshTimer = Timer.periodic(const Duration(seconds: 2), (_) => _refreshMessages());
     // Refresh shared seats twice per second so other members appear almost immediately.
     _refreshTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       _refreshSeats();
@@ -63,6 +75,8 @@ class _RoomPageState extends State<RoomPage> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _chatRefreshTimer?.cancel();
+    _messageController.dispose();
     if (_mySeat != null) {
       // Best-effort release; the server-side lease also expires automatically.
       http.post(_seatsUri, headers: _headers, body: jsonEncode({'seatNumber': null}))
@@ -125,6 +139,266 @@ class _RoomPageState extends State<RoomPage> {
       await http.post(_seatsUri, headers: _headers, body: jsonEncode({'heartbeat': true}))
           .timeout(const Duration(seconds: 5));
     } catch (_) {}
+  }
+
+  Uri get _messagesUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/messages');
+
+  Future<void> _refreshMessages() async {
+    if (_chatRefreshing || _roomId.isEmpty || widget.accessToken.isEmpty) return;
+    _chatRefreshing = true;
+    try {
+      final response = await http.get(_messagesUri, headers: _headers).timeout(const Duration(seconds: 8));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data is Map && data['ok'] == true && data['messages'] is List) {
+        final next = (data['messages'] as List)
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+        if (mounted && jsonEncode(_messages) != jsonEncode(next)) {
+          setState(() {
+            _messages
+              ..clear()
+              ..addAll(next);
+            _chatLoading = false;
+          });
+        } else if (mounted && _chatLoading) {
+          setState(() => _chatLoading = false);
+        }
+      } else if (mounted && _chatLoading) {
+        setState(() => _chatLoading = false);
+      }
+    } catch (_) {
+      if (mounted && _chatLoading) setState(() => _chatLoading = false);
+    } finally {
+      _chatRefreshing = false;
+    }
+  }
+
+  Future<void> _pickChatImage() async {
+    if (_chatSending) return;
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 86,
+        maxWidth: 1600,
+        maxHeight: 1600,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      if (bytes.length > 5 * 1024 * 1024) {
+        _showMessage('حجم الصورة يجب ألا يتجاوز 5 ميجابايت');
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _pendingChatImage = bytes;
+        _pendingChatImageName = picked.name.isEmpty ? 'room-chat.jpg' : picked.name;
+      });
+    } catch (_) {
+      _showMessage('تعذر اختيار الصورة');
+    }
+  }
+
+  Future<String> _uploadChatImage() async {
+    final bytes = _pendingChatImage;
+    if (bytes == null) return '';
+    final authResponse = await http.get(
+      Uri.parse('$_apiBase/imagekit/auth'),
+      headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+    ).timeout(const Duration(seconds: 15));
+    if (authResponse.statusCode != 200) throw Exception('image_auth_failed');
+    final auth = jsonDecode(authResponse.body) as Map<String, dynamic>;
+    final upload = http.MultipartRequest(
+      'POST',
+      Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
+    );
+    upload.fields.addAll({
+      'fileName': 'room-chat-${DateTime.now().millisecondsSinceEpoch}-$_pendingChatImageName',
+      'publicKey': auth['publicKey'].toString(),
+      'token': auth['token'].toString(),
+      'expire': auth['expire'].toString(),
+      'signature': auth['signature'].toString(),
+      'useUniqueFileName': 'true',
+      'folder': '/happy-live/room-chat',
+    });
+    upload.files.add(http.MultipartFile.fromBytes('file', bytes, filename: _pendingChatImageName));
+    final streamed = await upload.send().timeout(const Duration(seconds: 60));
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('image_upload_failed');
+    final result = jsonDecode(response.body) as Map<String, dynamic>;
+    final url = result['url']?.toString() ?? '';
+    if (!url.startsWith('https://')) throw Exception('invalid_image_url');
+    return url;
+  }
+
+  Future<void> _sendRoomMessage() async {
+    if (_chatSending) return;
+    final message = _messageController.text.trim();
+    if (message.isEmpty && _pendingChatImage == null) return;
+    if (message.length > 1000) {
+      _showMessage('الرسالة طويلة جدًا');
+      return;
+    }
+    setState(() => _chatSending = true);
+    try {
+      final imageUrl = await _uploadChatImage();
+      final response = await http.post(
+        _messagesUri,
+        headers: _headers,
+        body: jsonEncode({'message': message, 'imageUrl': imageUrl}),
+      ).timeout(const Duration(seconds: 15));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+        _messageController.clear();
+        if (mounted) setState(() => _pendingChatImage = null);
+        await _refreshMessages();
+      } else {
+        _showMessage(response.statusCode == 401 ? 'انتهت جلسة الدخول' : 'تعذر إرسال الرسالة');
+      }
+    } catch (_) {
+      _showMessage('تعذر إرسال الرسالة أو الصورة، تحقق من الإنترنت');
+    } finally {
+      if (mounted) setState(() => _chatSending = false);
+    }
+  }
+
+  Widget _roomChat() {
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.fromLTRB(12, 13, 12, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xD916111F),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0x665F4775)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.chat_bubble_outline_rounded, color: _gold, size: 18),
+              const SizedBox(width: 8),
+              const Text('دردشة الغرفة', style: TextStyle(color: _gold, fontSize: 13, fontWeight: FontWeight.w900)),
+              const Spacer(),
+              Text('${_messages.length}', style: const TextStyle(color: _muted, fontSize: 11)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 235,
+            child: _chatLoading && _messages.isEmpty
+                ? const Center(child: CircularProgressIndicator(strokeWidth: 1.8, color: _gold))
+                : _messages.isEmpty
+                    ? const Center(child: Text('ابدأ الحديث مع الموجودين في الغرفة', style: TextStyle(color: _muted, fontSize: 11)))
+                    : ListView.builder(
+                        reverse: true,
+                        itemCount: _messages.length,
+                        itemBuilder: (context, index) {
+                          final item = _messages[_messages.length - 1 - index];
+                          final mine = item['isMe'] == true;
+                          final imageUrl = item['imageUrl']?.toString() ?? '';
+                          final text = item['message']?.toString() ?? '';
+                          return Align(
+                            alignment: mine ? Alignment.centerLeft : Alignment.centerRight,
+                            child: Container(
+                              constraints: const BoxConstraints(maxWidth: 285),
+                              margin: const EdgeInsets.only(bottom: 9),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: mine ? const Color(0xFF382448) : const Color(0xFF211B2A),
+                                borderRadius: BorderRadius.circular(13),
+                                border: Border.all(color: mine ? const Color(0x557F59A6) : const Color(0x334F3B60)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item['name']?.toString() ?? 'مستخدم',
+                                    style: const TextStyle(color: _gold, fontSize: 10, fontWeight: FontWeight.w800)),
+                                  if (text.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
+                                    Text(text, style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.4)),
+                                  ],
+                                  if (imageUrl.startsWith('https://')) ...[
+                                    const SizedBox(height: 6),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(9),
+                                      child: Image.network(
+                                        imageUrl,
+                                        width: 220,
+                                        height: 160,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => const SizedBox(
+                                          width: 220, height: 70,
+                                          child: Center(child: Icon(Icons.broken_image_outlined, color: _muted)),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+          if (_pendingChatImage != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(_pendingChatImage!, width: 58, height: 58, fit: BoxFit.cover),
+                ),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('الصورة جاهزة للإرسال', style: TextStyle(color: _muted, fontSize: 11))),
+                IconButton(
+                  tooltip: 'إزالة الصورة',
+                  onPressed: _chatSending ? null : () => setState(() => _pendingChatImage = null),
+                  icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 18),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'إرفاق صورة',
+                onPressed: _chatSending ? null : _pickChatImage,
+                icon: const Icon(Icons.image_outlined, color: _gold),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _messageController,
+                  minLines: 1,
+                  maxLines: 3,
+                  maxLength: 1000,
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  decoration: InputDecoration(
+                    hintText: 'اكتب رسالة...',
+                    hintStyle: const TextStyle(color: _muted, fontSize: 11),
+                    counterText: '',
+                    filled: true,
+                    fillColor: const Color(0xFF100D16),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide.none),
+                  ),
+                  onSubmitted: (_) => _sendRoomMessage(),
+                ),
+              ),
+              const SizedBox(width: 6),
+              IconButton(
+                tooltip: 'إرسال',
+                onPressed: _chatSending ? null : _sendRoomMessage,
+                icon: _chatSending
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: _gold))
+                    : const Icon(Icons.send_rounded, color: _gold),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _copyRoomCode() async {
@@ -265,6 +539,7 @@ class _RoomPageState extends State<RoomPage> {
                         _hostPanel(),
                         const SizedBox(height: 13),
                         _roomNotice(),
+                        _roomChat(),
                       ],
                     ),
                   ),
