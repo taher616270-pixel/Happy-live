@@ -100,8 +100,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
     children: [
       const SizedBox(height: 24),
-      const HappySectionTitle(title: 'مساحة الأصدقاء', subtitle: 'قصص وتحديثات الأشخاص الذين تتابعهم'),
-      const SizedBox(height: 12),
       Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
         decoration: BoxDecoration(color: HappyHomeColors.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF30263A))),
         child: Row(children: [
