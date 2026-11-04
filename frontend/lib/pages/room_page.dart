@@ -225,15 +225,7 @@ class _RoomPageState extends State<RoomPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'منصة المتحدثين',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  SizedBox(height: 5),
+                                  const SizedBox(height: 5),
                                   Text(
                                     'اختر المايك المناسب وشاركنا الحديث',
                                     style: TextStyle(color: _muted, fontSize: 11),
@@ -282,23 +274,6 @@ class _RoomPageState extends State<RoomPage> {
           icon: Icons.arrow_forward_rounded,
           onTap: () => Navigator.of(context).maybePop(),
           tooltip: 'رجوع',
-        ),
-        const Spacer(),
-        const Text(
-          'المجلس الصوتي',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.2,
-          ),
-        ),
-        const Spacer(),
-        _roundAction(
-          icon: Icons.copy_rounded,
-          onTap: _copyRoomCode,
-          tooltip: 'نسخ رقم الغرفة',
-          iconColor: _gold,
         ),
       ],
     );
