@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class CreateRoomPage extends StatefulWidget {
-  const CreateRoomPage({super.key});
+  const CreateRoomPage({super.key, required this.accessToken});
+  final String accessToken;
 
   @override
   State<CreateRoomPage> createState() => _CreateRoomPageState();
@@ -18,6 +21,8 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   bool _isPrivate = false;
+  bool _isSubmitting = false;
+  static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
 
   @override
   void dispose() {
@@ -26,14 +31,70 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
     super.dispose();
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('تم تجهيز بيانات الغرفة، وسيتم ربط الحفظ بالخادم في الخطوة التالية'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _submit() async {
+    if (_isSubmitting || !_formKey.currentState!.validate()) return;
+    setState(() => _isSubmitting = true);
+    try {
+      final response = await http.post(
+        Uri.parse('$_apiBase/rooms'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.accessToken}',
+        },
+        body: jsonEncode({
+          'name': _nameController.text.trim(),
+          'description': _descriptionController.text.trim(),
+          'isPrivate': _isPrivate,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      Map<String, dynamic> data = {};
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) data = decoded;
+      } catch (_) {}
+
+      if (response.statusCode == 201 && data['ok'] == true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم إنشاء الغرفة وحفظها بنجاح'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.of(context).pop(data['room']);
+        return;
+      }
+
+      final message = (data['message'] ?? data['error'] ?? '').toString();
+      final friendlyMessage = response.statusCode == 401
+          ? 'انتهت جلسة الدخول، سجّل الدخول مرة أخرى'
+          : response.statusCode == 503
+              ? 'الخادم أو قاعدة البيانات غير متاحين حاليًا'
+              : message == 'room_name_required'
+                  ? 'اكتب اسم الغرفة'
+                  : message == 'invalid_room_name'
+                      ? 'اسم الغرفة يجب ألا يتجاوز 30 حرفًا'
+                      : message == 'invalid_description'
+                          ? 'الوصف يجب ألا يتجاوز 120 حرفًا'
+                          : 'تعذر إنشاء الغرفة، حاول مرة أخرى';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(friendlyMessage), behavior: SnackBarBehavior.floating),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تعذر الاتصال بالخادم، تحقق من الإنترنت وحاول مجددًا'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   InputDecoration _decoration(String label, IconData icon) => InputDecoration(
@@ -143,9 +204,11 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                 SizedBox(
                   height: 52,
                   child: FilledButton.icon(
-                    onPressed: _submit,
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('إنشاء الغرفة', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
+                    onPressed: _isSubmitting ? null : _submit,
+                    icon: _isSubmitting
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.add_rounded),
+                    label: Text(_isSubmitting ? 'جارٍ إنشاء الغرفة...' : 'إنشاء الغرفة', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
                     style: FilledButton.styleFrom(
                       backgroundColor: _purple,
                       foregroundColor: Colors.white,
