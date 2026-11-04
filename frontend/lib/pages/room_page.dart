@@ -351,15 +351,18 @@ class _RoomPageState extends State<RoomPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _roomName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _gold,
-                    fontSize: 10.5,
-                    height: 1.1,
-                    fontWeight: FontWeight.w900,
+                Transform.translate(
+                  offset: const Offset(0, -2),
+                  child: Text(
+                    _roomName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _gold,
+                      fontSize: 10.5,
+                      height: 1.1,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
                 Text(
