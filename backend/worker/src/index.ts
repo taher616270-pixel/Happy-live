@@ -229,6 +229,81 @@ export default {
     }
 
 
+    // Live microphone seats. A seat is leased for 45 seconds and renewed by
+    // authenticated clients, so abandoned seats disappear after disconnects.
+    const seatRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/([^/]+)\\/seats$/);
+    if (seatRoute && (request.method === "GET" || request.method === "POST")) {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = decodeURIComponent(seatRoute[1]);
+        const now = new Date().toISOString();
+        const room = await env.DB.prepare(
+          "SELECT r.id, r.owner_user_id, r.name, r.description, r.image_url, r.room_code, p.display_name AS owner_name FROM rooms r LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; image_url: string | null; room_code: string; owner_name: string | null }>();
+        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+
+        // Expired leases are never shown as occupied.
+        await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND expires_at <= ?").bind(roomId, now).run();
+
+        if (request.method === "POST") {
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; }
+          catch { return json({ error: "invalid_json" }, 400, origin, env); }
+
+          if (body.heartbeat === true) {
+            await env.DB.prepare(
+              "UPDATE room_seats SET updated_at = ?, expires_at = ? WHERE room_id = ? AND user_id = ?"
+            ).bind(now, new Date(Date.now() + 45000).toISOString(), roomId, user.id).run();
+          } else if (body.seatNumber === null) {
+            await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, user.id).run();
+          } else {
+            const seatNumber = Number(body.seatNumber);
+            if (!Number.isInteger(seatNumber) || seatNumber < 1 || seatNumber > 6) {
+              return json({ error: "invalid_seat_number" }, 400, origin, env);
+            }
+            const expiresAt = new Date(Date.now() + 45000).toISOString();
+            try {
+              const result = await env.DB.prepare(
+                "INSERT INTO room_seats (room_id, seat_number, user_id, joined_at, updated_at, expires_at) SELECT ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM room_seats WHERE room_id = ? AND seat_number = ? AND user_id <> ?) ON CONFLICT(room_id, user_id) DO UPDATE SET seat_number = excluded.seat_number, updated_at = excluded.updated_at, expires_at = excluded.expires_at WHERE NOT EXISTS (SELECT 1 FROM room_seats WHERE room_id = excluded.room_id AND seat_number = excluded.seat_number AND user_id <> excluded.user_id) RETURNING seat_number"
+              ).bind(roomId, seatNumber, user.id, now, now, expiresAt, roomId, seatNumber, user.id).first<{ seat_number: number }>();
+              if (!result) {
+                return json({ error: "seat_occupied", message: "هذا المايك مشغول" }, 409, origin, env);
+              }
+            } catch {
+              // The unique seat constraint is the final guard against simultaneous claims.
+              return json({ error: "seat_occupied", message: "هذا المايك مشغول" }, 409, origin, env);
+            }
+          }
+        }
+
+        const seatsResult = await env.DB.prepare(
+          "SELECT s.seat_number, s.user_id, s.joined_at, p.display_name FROM room_seats s LEFT JOIN profiles p ON p.user_id = s.user_id WHERE s.room_id = ? AND s.expires_at > ? ORDER BY s.seat_number"
+        ).bind(roomId, new Date().toISOString()).all<{ seat_number: number; user_id: string; joined_at: string; display_name: string | null }>();
+        const seats = (seatsResult.results ?? []).map((seat) => ({
+          seatNumber: seat.seat_number,
+          userId: seat.user_id,
+          name: seat.display_name?.trim() || "مستخدم",
+          joinedAt: seat.joined_at,
+          isMe: seat.user_id === user.id
+        }));
+        const mySeat = seats.find((seat) => seat.userId === user.id)?.seatNumber ?? null;
+        return json({
+          ok: true,
+          room: { id: room.id, name: room.name, description: room.description, imageUrl: room.image_url, roomCode: room.room_code },
+          owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة" },
+          me: { id: user.id, name: user.display_name?.trim() || "مستخدم" },
+          mySeat,
+          seats
+        }, 200, origin, env);
+      } catch (error) {
+        const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[rooms.seats] failed", diagnostic);
+        return json({ error: "room_seats_failed" }, 500, origin, env);
+      }
+    }
+
     if (url.pathname === "/api/v1/rooms" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
