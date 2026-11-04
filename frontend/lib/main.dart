@@ -1265,9 +1265,9 @@ class _SessionHomePageState extends State<SessionHomePage> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      _HappyHomeTab(name: _name, onDiscover: () => setState(() => _tab = 1), onSoon: _soon),
-      _HappyPlaceholderTab(title: 'اكتشف', subtitle: 'اعثر على مجتمعات واهتمامات جديدة', icon: Icons.explore_outlined, onSoon: _soon),
+      _HappyHomeTab(name: _name, onDiscover: () => setState(() => _tab = 2), onSoon: _soon),
       _HappyCreateTab(onSoon: _soon),
+      _HappyPlaceholderTab(title: 'اكتشف', subtitle: 'اعثر على مجتمعات واهتمامات جديدة', icon: Icons.explore_outlined, onSoon: _soon),
       const _HappyPlaceholderTab(title: 'الرسائل', subtitle: 'محادثاتك الخاصة في مكان واحد', icon: Icons.forum_outlined),
       _HappyProfileTab(name: _name, email: widget.email, initial: _initial, onLogout: _logout, onSoon: _soon),
     ];
@@ -1285,8 +1285,8 @@ class _SessionHomePageState extends State<SessionHomePage> {
           selectedFontSize: 11, unselectedFontSize: 10, elevation: 0,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'الرئيسية'),
-            BottomNavigationBarItem(icon: Icon(Icons.explore_outlined), label: 'اكتشف'),
             BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline_rounded, size: 29), label: 'إنشاء'),
+            BottomNavigationBarItem(icon: Icon(Icons.explore_outlined), label: 'اكتشف'),
             BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline_rounded), label: 'الرسائل'),
             BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'حسابي'),
           ],
