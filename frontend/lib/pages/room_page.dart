@@ -666,7 +666,7 @@ class _RoomPageState extends State<RoomPage> {
               ),
             ),
             Transform.translate(
-              offset: const Offset(17, 0),
+              offset: const Offset(93, 0),
               child: _profileHeader(),
             ),
           ],
