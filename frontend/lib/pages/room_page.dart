@@ -318,7 +318,8 @@ class _RoomPageState extends State<RoomPage> {
       child: IntrinsicWidth(
         child: Container(
           height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+          clipBehavior: Clip.antiAlias,
+          padding: EdgeInsets.zero,
           decoration: BoxDecoration(
             color: const Color(0xCC17121F),
             borderRadius: BorderRadius.circular(18),
@@ -330,17 +331,16 @@ class _RoomPageState extends State<RoomPage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Transform.translate(
-                offset: const Offset(5, 0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(7),
-                  child: Container(
-                    width: 30,
-                    height: 30,
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(17),
+                  bottomRight: Radius.circular(17),
+                ),
+                child: Container(
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: const Color(0xFF30213D),
-                    border: Border.all(color: _gold.withOpacity(0.75), width: 1),
-                    borderRadius: BorderRadius.circular(7),
                     image: _imageUrl != null
                         ? DecorationImage(
                             image: NetworkImage(_imageUrl!),
@@ -348,10 +348,9 @@ class _RoomPageState extends State<RoomPage> {
                           )
                         : null,
                   ),
-                    child: _imageUrl == null
-                        ? const Icon(Icons.image_outlined, color: _gold, size: 17)
-                        : null,
-                  ),
+                  child: _imageUrl == null
+                      ? const Icon(Icons.image_outlined, color: _gold, size: 18)
+                      : null,
                 ),
               ),
               const SizedBox(width: 6),
