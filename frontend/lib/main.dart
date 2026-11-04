@@ -963,7 +963,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ] else ...[
                           Align(
-                            alignment: Alignment.centerLeft,
+                            alignment: Alignment.centerRight,
                             child: TextButton(
                               onPressed: () => _showResetDialog(context),
                               child: const Text(
@@ -1294,7 +1294,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
         );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
-        final slide = Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
+        final slide = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
             .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
         return SlideTransition(position: slide, child: child);
       },
@@ -1354,7 +1354,7 @@ class _HappyHomeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 12, 18, 28), children: [
     Align(
-      alignment: Alignment.centerLeft,
+      alignment: Alignment.centerRight,
       child: OutlinedButton.icon(
         onPressed: () => (context.findAncestorStateOfType<_SessionHomePageState>())?._openMySidePanel(),
         icon: const Icon(Icons.menu_rounded, size: 18),
