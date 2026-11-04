@@ -1356,7 +1356,6 @@ class _HappyHomeTab extends StatelessWidget {
           SizedBox(height: 4), Text('ستظهر القصص والتحديثات هنا عند تفعيل المتابعة.', style: TextStyle(color: HappyLiveApp.muted, fontSize: 11, height: 1.6)),
         ])),
       ])),
-,
   ]);
 }
 
