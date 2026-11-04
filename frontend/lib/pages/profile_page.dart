@@ -1,5 +1,413 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+// ================== الألوان ==================
+class _C {
+  static const bg = Color(0xFF06130F);
+  static const divider = Color(0xFF030A08);
+  static const grey = Color(0xFF8A9A98);
+  static const nav = Color(0xFF1A1F1F);
+  static const teal = Color(0xFF1FD1B8);
+  static const red = Color(0xFFFF3B5C);
+}
+
+// ================== الموديل ==================
+class ProfileData {
+  final String userId;
+  final String? photoUrl;
+  final bool isMale;
+  final int viewersCount;
+  final int offersCount;
+  final String vipText;
+  final String mineText;
+  final String nobleText;
+  final int unreadMessages;
+
+  const ProfileData({
+    required this.userId,
+    this.photoUrl,
+    this.isMale = true,
+    this.viewersCount = 0,
+    this.offersCount = 0,
+    this.vipText = 'ليس VIP بعد',
+    this.mineText = 'غير مشغل',
+    this.nobleText = 'لست نوبل بعد',
+    this.unreadMessages = 0,
+  });
+
+  factory ProfileData.fromJson(Map<String, dynamic> j) {
+    int toInt(dynamic v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
+    return ProfileData(
+      userId: '${j['id'] ?? j['user_id'] ?? ''}',
+      photoUrl: (j['avatar'] ?? j['photo_url']) as String?,
+      isMale: (j['gender'] ?? 'male') != 'female',
+      viewersCount: toInt(j['viewers_count']),
+      offersCount: toInt(j['offers_count']),
+      vipText: (j['vip_text'] as String?) ?? 'ليس VIP بعد',
+      mineText: (j['mine_text'] as String?) ?? 'غير مشغل',
+      nobleText: (j['noble_text'] as String?) ?? 'لست نوبل بعد',
+      unreadMessages: toInt(j['unread_messages']),
+    );
+  }
+}
+
+// ================== تحميل البيانات الحقيقية ==================
+class ProfileLoader extends StatefulWidget {
+  final Future<ProfileData> Function() load;
+  const ProfileLoader({super.key, required this.load});
+
+  @override
+  State<ProfileLoader> createState() => _ProfileLoaderState();
+}
+
+class _ProfileLoaderState extends State<ProfileLoader> {
+  late Future<ProfileData> _future = widget.load();
+
+  void _retry() => setState(() => _future = widget.load());
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<ProfileData>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            backgroundColor: _C.bg,
+            body: Center(child: CircularProgressIndicator(color: _C.teal)),
+          );
+        }
+        if (snap.hasError || !snap.hasData) {
+          return Scaffold(
+            backgroundColor: _C.bg,
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('تعذر تحميل البيانات', style: TextStyle(color: Colors.white)),
+                  const SizedBox(height: 12),
+                  ElevatedButton(onPressed: _retry, child: const Text('إعادة المحاولة')),
+                ],
+              ),
+            ),
+          );
+        }
+        return ProfilePage(data: snap.data!);
+      },
+    );
+  }
+}
+
+// ================== الصفحة ==================
+class ProfilePage extends StatelessWidget {
+  final ProfileData data;
+
+  const ProfilePage({
+    super.key,
+    this.data = const ProfileData(
+      userId: '117215141',
+      viewersCount: 1,
+      offersCount: 0,
+      unreadMessages: 6,
+    ),
+  });
+
+  void _soon(BuildContext context, String name) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(name), duration: const Duration(seconds: 1)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: _C.bg,
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    children: [
+                      _Header(data: data),
+                      const _TribeBanner(),
+                      const SizedBox(height: 4),
+                      MenuTile(title: 'من الذي رآني', color: const Color(0xFF1E9BFF), icon: Icons.visibility, badge: data.viewersCount, onTap: () => _soon(context, 'من الذي رآني')),
+                      MenuTile(title: 'منشوراتي', color: const Color(0xFFFF4D8D), icon: Icons.bolt, onTap: () => _soon(context, 'منشوراتي')),
+                      const _Divider(),
+                      MenuTile(title: 'محفظتي', color: const Color(0xFFFF8A2B), icon: Icons.account_balance_wallet, onTap: () => _soon(context, 'محفظتي')),
+                      MenuTile(title: 'مركز العروض', color: const Color(0xFFFF4F9A), icon: Icons.local_activity, trailingText: 'تفعيل : ${data.offersCount}', showDot: true, onTap: () => _soon(context, 'مركز العروض')),
+                      MenuTile(title: 'VIP', color: const Color(0xFFFFB300), icon: Icons.workspace_premium, trailingText: data.vipText, onTap: () => _soon(context, 'VIP')),
+                      MenuTile(title: 'تشغيل المنجم', color: const Color(0xFFFF7A2F), icon: Icons.hardware, trailingText: data.mineText, onTap: () => _soon(context, 'تشغيل المنجم')),
+                      MenuTile(title: 'ترتيب الرتبة', color: const Color(0xFFFFC02E), icon: Icons.emoji_events, onTap: () => _soon(context, 'ترتيب الرتبة')),
+                      MenuTile(title: 'نوبل', color: const Color(0xFF7B5CFF), icon: Icons.shield, trailingText: data.nobleText, onTap: () => _soon(context, 'نوبل')),
+                      MenuTile(title: 'المركز التجاري', color: const Color(0xFFFF5C93), icon: Icons.storefront, onTap: () => _soon(context, 'المركز التجاري')),
+                      MenuTile(title: 'ادعو الأصدقاء', color: const Color(0xFF2DD4BF), icon: Icons.share, onTap: () => _soon(context, 'ادعو الأصدقاء')),
+                      const _Divider(),
+                      MenuTile(title: 'المساعدة', outlineIcon: Icons.help_outline, onTap: () => _soon(context, 'المساعدة')),
+                      MenuTile(title: 'الاعدادات', outlineIcon: Icons.settings_outlined, onTap: () => _soon(context, 'الاعدادات')),
+                    ],
+                  ),
+                ),
+              ),
+              _BottomNav(unread: data.unreadMessages),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ================== الرأس ==================
+class _Header extends StatelessWidget {
+  final ProfileData data;
+  const _Header({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFD9D9D9),
+              image: data.photoUrl != null ? DecorationImage(image: NetworkImage(data.photoUrl!), fit: BoxFit.cover) : null,
+            ),
+            child: data.photoUrl == null ? const Icon(Icons.person, color: Colors.white, size: 38) : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Icon(data.isMale ? Icons.male : Icons.female, color: data.isMale ? const Color(0xFF3AA0FF) : const Color(0xFFFF5C93), size: 16),
+                    const SizedBox(width: 4),
+                    Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: data.userId));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ الـ ID'), duration: Duration(seconds: 1)));
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.copy, color: _C.grey, size: 14),
+                      const SizedBox(width: 4),
+                      Text('ID:${data.userId}', textDirection: TextDirection.ltr, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(children: const [Icon(Icons.help_outline, color: _C.grey, size: 14), SizedBox(width: 6), Icon(Icons.star, color: Color(0xFFFFC107), size: 14)]),
+              ],
+            ),
+          ),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.edit_outlined, size: 14, color: _C.grey),
+                label: const Text('تعديل', style: TextStyle(color: _C.grey, fontSize: 12)),
+                style: OutlinedButton.styleFrom(side: BorderSide(color: _C.grey.withOpacity(0.5)), shape: const StadiumBorder(), minimumSize: const Size(0, 30), padding: const EdgeInsets.symmetric(horizontal: 10)),
+              ),
+              Positioned(top: -2, right: -2, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: _C.red, shape: BoxShape.circle))),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ================== بطاقة القبيلة ==================
+class _TribeBanner extends StatelessWidget {
+  const _TribeBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 90,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        gradient: const LinearGradient(colors: [Color(0xFF0F2A2A), Color(0xFF0B1B1B)], begin: Alignment.topRight, end: Alignment.bottomLeft),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.shield, color: Color(0xFF4C8DFF), size: 44),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text('انضم إلى القبيلة', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                SizedBox(height: 4),
+                Text('اعثر على الأصدقاء لتحصل على مكافأة', style: TextStyle(color: _C.grey, fontSize: 11)),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 34,
+            child: ElevatedButton(
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5B7CFA), foregroundColor: Colors.white, elevation: 0, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 18)),
+              child: const Text('اذهب إلى', style: TextStyle(fontSize: 13)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ================== صف القائمة ==================
+class MenuTile extends StatelessWidget {
+  final String title;
+  final Color? color;
+  final IconData? icon;
+  final IconData? outlineIcon;
+  final String? trailingText;
+  final int badge;
+  final bool showDot;
+  final VoidCallback? onTap;
+
+  const MenuTile({
+    super.key,
+    required this.title,
+    this.color,
+    this.icon,
+    this.outlineIcon,
+    this.trailingText,
+    this.badge = 0,
+    this.showDot = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: SizedBox(
+        height: 56,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              if (color != null)
+                Container(width: 36, height: 36, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: Colors.white, size: 20))
+              else
+                SizedBox(width: 36, height: 36, child: Icon(outlineIcon, color: _C.grey, size: 26)),
+              const SizedBox(width: 12),
+              Expanded(child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 15))),
+              if (trailingText != null) Text(trailingText!, style: const TextStyle(color: _C.grey, fontSize: 12)),
+              if (showDot) Container(margin: const EdgeInsets.symmetric(horizontal: 6), width: 8, height: 8, decoration: const BoxDecoration(color: _C.red, shape: BoxShape.circle)),
+              if (badge > 0)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  width: 18,
+                  height: 18,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(color: _C.red, shape: BoxShape.circle),
+                  child: Text('$badge', style: const TextStyle(color: Colors.white, fontSize: 11)),
+                ),
+              const Icon(Icons.chevron_left, color: _C.grey, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  const _Divider();
+
+  @override
+  Widget build(BuildContext context) => Container(height: 6, margin: const EdgeInsets.symmetric(vertical: 4), color: _C.divider);
+}
+
+// ================== الشريط السفلي ==================
+class _BottomNav extends StatelessWidget {
+  final int unread;
+  const _BottomNav({required this.unread});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <_NavItem>[
+      const _NavItem('Happy Live', Icons.sports_esports),
+      const _NavItem('غرفة', Icons.graphic_eq),
+      const _NavItem('المنشورات', Icons.explore_outlined),
+      _NavItem('الرسائل', Icons.chat_bubble_outline, badge: unread),
+      const _NavItem('الخاص بي', Icons.person, active: true),
+    ];
+
+    return Container(
+      height: 70 + MediaQuery.of(context).padding.bottom,
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+      decoration: const BoxDecoration(color: _C.nav, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      child: Row(
+        children: items.map((e) {
+          final color = e.active ? _C.teal : _C.grey;
+          return Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(e.icon, color: color, size: 26),
+                    if (e.badge > 0)
+                      Positioned(
+                        top: -6,
+                        right: -8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(color: _C.red, borderRadius: BorderRadius.circular(10)),
+                          child: Text('${e.badge}', style: const TextStyle(color: Colors.white, fontSize: 10)),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(e.label, style: TextStyle(color: color, fontSize: 11)),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _NavItem {
+  final String label;
+  final IconData icon;
+  final int badge;
+  final bool active;
+  const _NavItem(this.label, this.icon, {this.badge = 0, this.active = false});
+}
+
+// جسر مؤقت للتوافق مع استدعاء الصفحة الحالي في main.dart.
+// سنربط بيانات الحساب الحقيقية ونزيل الشريط السفلي المكرر عند مرحلة التعديل.
 class HappyProfilePage extends StatelessWidget {
   const HappyProfilePage({
     super.key,
@@ -16,149 +424,10 @@ class HappyProfilePage extends StatelessWidget {
   final VoidCallback onLogout;
   final ValueChanged<String> onSoon;
 
-  static const Color _background = Color(0xFF09080D);
-  static const Color _surface = Color(0xFF17131F);
-  static const Color _gold = Color(0xFFE8C477);
-  static const Color _muted = Color(0xFFAAA2B5);
-
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 22, 18, 30),
-        children: [
-          const Text(
-            'الملف الشخصي',
-            style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF38234B), Color(0xFF17121F)],
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-              ),
-              border: Border.all(color: const Color(0x665F4775)),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: _gold, width: 1.5),
-                    boxShadow: const [BoxShadow(color: Color(0x449B63D9), blurRadius: 18)],
-                  ),
-                  child: CircleAvatar(
-                    radius: 43,
-                    backgroundColor: const Color(0xFF241B2D),
-                    child: Text(initial, style: const TextStyle(color: _gold, fontSize: 32, fontWeight: FontWeight.w900)),
-                  ),
-                ),
-                const SizedBox(height: 13),
-                Text(name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 6),
-                Text(email, textAlign: TextAlign.center, style: const TextStyle(color: _muted, fontSize: 12)),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: () => onSoon('تعديل الملف الشخصي'),
-                  icon: const Icon(Icons.edit_outlined, size: 17),
-                  label: const Text('تعديل الملف الشخصي'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _gold,
-                    side: const BorderSide(color: _gold),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          _ProfileAction(
-            icon: Icons.shield_outlined,
-            title: 'الخصوصية والأمان',
-            subtitle: 'إعدادات الحساب والحماية',
-            onTap: () => onSoon('إعدادات الخصوصية'),
-          ),
-          const SizedBox(height: 10),
-          _ProfileAction(
-            icon: Icons.help_outline_rounded,
-            title: 'المساعدة والدعم',
-            subtitle: 'نحن هنا لمساعدتك',
-            onTap: () => onSoon('الدعم'),
-          ),
-          const SizedBox(height: 10),
-          _ProfileAction(
-            icon: Icons.logout_rounded,
-            title: 'تسجيل الخروج',
-            subtitle: 'الخروج من هذا الجهاز',
-            onTap: onLogout,
-            danger: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileAction extends StatelessWidget {
-  const _ProfileAction({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.danger = false,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final bool danger;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = danger ? const Color(0xFFFF7777) : const Color(0xFFE8C477);
-    return Material(
-      color: const Color(0xFF17131F),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0x665F4775)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 43,
-                height: 43,
-                decoration: BoxDecoration(color: const Color(0xFF352541), borderRadius: BorderRadius.circular(13)),
-                child: Icon(icon, color: color),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: TextStyle(color: danger ? color : Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
-                    const SizedBox(height: 4),
-                    Text(subtitle, style: const TextStyle(color: Color(0xFFAAA2B5), fontSize: 11)),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_left_rounded, color: Color(0xFFAAA2B5)),
-            ],
-          ),
-        ),
-      ),
+    return ProfilePage(
+      data: const ProfileData(userId: '117215141', viewersCount: 1, unreadMessages: 6),
     );
   }
 }
