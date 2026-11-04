@@ -421,13 +421,8 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _microphoneStage() {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(8, 17, 8, 17),
-      decoration: BoxDecoration(
-        color: const Color(0x66140F1C),
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: const Color(0x445C456C)),
-      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final tileWidth = (constraints.maxWidth - 24) / 4;
