@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'create_room_page.dart';
+import 'room_page.dart';
 
 /// Theme colors kept local so this page can be maintained independently.
 class HappyHomeColors {
@@ -27,11 +28,15 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   final PageController _pageController = PageController();
   String _countryName = 'الدولة';
   int _currentPage = 0;
+  Map<String, dynamic>? _myRoom;
+  bool _loadingMyRoom = true;
+  static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
 
   @override
   void initState() {
     super.initState();
     _loadCountry();
+    _loadMyRoom();
   }
 
   @override
@@ -49,6 +54,50 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         if (mounted && country.isNotEmpty) setState(() => _countryName = country);
       }
     } catch (_) {}
+  }
+
+  Future<void> _loadMyRoom() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiBase/rooms/mine'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+      ).timeout(const Duration(seconds: 12));
+      if (response.statusCode != 200) return;
+      final data = jsonDecode(response.body);
+      if (data is Map && data['ok'] == true) {
+        final value = data['room'];
+        if (!mounted) return;
+        setState(() {
+          _myRoom = value is Map ? Map<String, dynamic>.from(value) : null;
+          _loadingMyRoom = false;
+        });
+      }
+    } catch (_) {
+      // The create endpoint is idempotent too, so a temporary lookup failure
+      // cannot create a duplicate room.
+    } finally {
+      if (mounted && _loadingMyRoom) setState(() => _loadingMyRoom = false);
+    }
+  }
+
+  Future<void> _openMyRoom() async {
+    final room = _myRoom;
+    if (room != null) {
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => RoomPage(room: room, accessToken: widget.accessToken),
+      ));
+      await _loadMyRoom();
+      return;
+    }
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => CreateRoomPage(
+        accessToken: widget.accessToken,
+        onRoomCreated: (createdRoom) {
+          if (mounted) setState(() => _myRoom = createdRoom);
+        },
+      ),
+    ));
+    await _loadMyRoom();
   }
 
   void _goToPage(int index) {
@@ -102,11 +151,11 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     padding: const EdgeInsets.fromLTRB(0, 8, 0, 28),
     children: [
       const SizedBox(height: 24),
-      MyPartyRoomButton(onTap: () {
-        Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => CreateRoomPage(accessToken: widget.accessToken),
-        ));
-      }),
+      MyPartyRoomButton(
+        room: _myRoom,
+        loading: _loadingMyRoom,
+        onTap: _openMyRoom,
+      ),
     ],
   );
 
@@ -146,90 +195,86 @@ class HappyHomeTabState extends State<HappyHomeTab> {
 }
 class MyPartyRoomButton extends StatelessWidget {
   final VoidCallback? onTap;
-  const MyPartyRoomButton({super.key, this.onTap});
+  final Map<String, dynamic>? room;
+  final bool loading;
+  const MyPartyRoomButton({super.key, this.onTap, this.room, this.loading = false});
 
   @override
   Widget build(BuildContext context) {
+    final hasRoom = room != null;
+    final imageUrl = (room?['imageUrl'] ?? '').toString();
+    final roomName = (room?['name'] ?? '').toString().trim();
+    final roomCode = (room?['roomCode'] ?? '').toString();
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                width: double.infinity,
-                height: 74,
-                padding: const EdgeInsets.only(left: 16, right: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF211A31),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFFE6C87A).withOpacity(0.5),
-                    width: 1,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(19),
+            child: Container(
+              width: double.infinity,
+              height: 86,
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF211A31),
+                borderRadius: BorderRadius.circular(19),
+                border: Border.all(color: const Color(0xFFE6C87A).withOpacity(0.52)),
+              ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(13),
+                    child: SizedBox(
+                      width: 62,
+                      height: 62,
+                      child: imageUrl.startsWith('https://')
+                          ? Image.network(imageUrl, fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _roomPlaceholder())
+                          : _roomPlaceholder(),
+                    ),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 61),
-                    const Column(
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'غرفة الحفلة الخاصة بي',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          hasRoom ? (roomName.isEmpty ? 'غرفتي' : roomName) : (loading ? 'جارٍ تحميل غرفتك...' : 'إنشاء غرفتي'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 5),
                         Text(
-                          'دردش مع أي شخص',
-                          style: TextStyle(
-                            color: Color(0xFF9A8DB0),
-                            fontSize: 11,
-                          ),
+                          hasRoom ? 'غرفتك الخاصة  •  $roomCode' : 'غرفتك تبقى محفوظة دائمًا',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Color(0xFFB9A9CC), fontSize: 11),
                         ),
                       ],
                     ),
-                    const Spacer(),
-                    Container(
-                      width: 35,
-                      height: 35,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF8B5CF6),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.add,
-                        color: Color(0xFFE6C87A),
-                        size: 25,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(hasRoom ? Icons.arrow_back_ios_new_rounded : Icons.add_circle_rounded,
+                    color: const Color(0xFFE6C87A), size: 23),
+                ],
               ),
             ),
-            Positioned(
-              right: -15,
-              top: -54,
-              bottom: -20,
-              child: Image.asset(
-                'assets/images/boy_headset.png.png',
-                width: 105,
-                fit: BoxFit.contain,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _roomPlaceholder() => Container(
+    color: const Color(0xFF342546),
+    alignment: Alignment.center,
+    child: const Icon(Icons.meeting_room_rounded, color: Color(0xFFE6C87A), size: 30),
+  );
 }
 
 class HappySectionTitle extends StatelessWidget {
