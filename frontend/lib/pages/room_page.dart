@@ -574,8 +574,9 @@ class _RoomPageState extends State<RoomPage> {
                           child: _countBadge(occupiedCount),
                         ),
                         const SizedBox(height: 13),
-                        _roomNotice(),
                         _roomChat(),
+                        const SizedBox(height: 10),
+                        _roomNotice(),
                       ],
                     ),
                   ),
@@ -631,7 +632,7 @@ class _RoomPageState extends State<RoomPage> {
           child: SizedBox(
             width: 40,
             height: 40,
-            child: Icon(icon, color: iconColor, size: 20, textDirection: TextDirection.ltr),
+            child: Icon(icon, color: iconColor, size: 23, textDirection: TextDirection.ltr),
           ),
         ),
       ),
@@ -1027,43 +1028,6 @@ class _RoomPageState extends State<RoomPage> {
             const Icon(Icons.copy_rounded, color: _purple, size: 16),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _ownerCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF2A1D34), Color(0xFF1B1423)]),
-        borderRadius: BorderRadius.circular(17),
-        border: Border.all(color: const Color(0x88E8C477)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 43,
-            height: 43,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(colors: [Color(0xFFE8C477), Color(0xFF9D7137)]),
-            ),
-            child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFF2A1D24), size: 23),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_ownerName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 3),
-                const Text('مضيف الغرفة', style: TextStyle(color: _gold, fontSize: 10, fontWeight: FontWeight.w700)),
-              ],
-            ),
-          ),
-          const Icon(Icons.verified_rounded, color: _gold, size: 19),
-        ],
       ),
     );
   }
