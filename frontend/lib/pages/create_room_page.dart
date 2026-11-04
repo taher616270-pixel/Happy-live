@@ -191,7 +191,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
         final room = Map<String, dynamic>.from(data['room'] as Map);
         Navigator.of(context).pushReplacement(
           MaterialPageRoute<void>(
-            builder: (_) => RoomPage(room: room),
+            builder: (_) => RoomPage(room: room, accessToken: widget.accessToken),
           ),
         );
         return;
