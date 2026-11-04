@@ -317,7 +317,7 @@ class _RoomPageState extends State<RoomPage> {
 
   Widget _profileHeader() {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 105, maxWidth: 160),
+      constraints: const BoxConstraints(minWidth: 110, maxWidth: 170),
       child: IntrinsicWidth(
         child: Container(
           height: 36,
@@ -333,21 +333,24 @@ class _RoomPageState extends State<RoomPage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF30213D),
-                  image: _imageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(_imageUrl!),
-                          fit: BoxFit.cover,
-                        )
+              Transform.translate(
+                offset: const Offset(5, 0),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF30213D),
+                    image: _imageUrl != null
+                        ? DecorationImage(
+                            image: NetworkImage(_imageUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: _imageUrl == null
+                      ? const Icon(Icons.image_outlined, color: _gold, size: 18)
                       : null,
                 ),
-                child: _imageUrl == null
-                    ? const Icon(Icons.image_outlined, color: _gold, size: 18)
-                    : null,
               ),
               const SizedBox(width: 6),
               Flexible(
