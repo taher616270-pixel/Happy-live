@@ -153,7 +153,6 @@ class ProfilePage extends StatelessWidget {
                   ),
                 ),
               ),
-              _BottomNav(unread: data.unreadMessages),
             ],
           ),
         ),
@@ -343,67 +342,6 @@ class _Divider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(height: 6, margin: const EdgeInsets.symmetric(vertical: 4), color: _C.divider);
-}
-
-// ================== الشريط السفلي ==================
-class _BottomNav extends StatelessWidget {
-  final int unread;
-  const _BottomNav({required this.unread});
-
-  @override
-  Widget build(BuildContext context) {
-    final items = <_NavItem>[
-      const _NavItem('Happy Live', Icons.sports_esports),
-      const _NavItem('غرفة', Icons.graphic_eq),
-      const _NavItem('المنشورات', Icons.explore_outlined),
-      _NavItem('الرسائل', Icons.chat_bubble_outline, badge: unread),
-      const _NavItem('الخاص بي', Icons.person, active: true),
-    ];
-
-    return Container(
-      height: 70 + MediaQuery.of(context).padding.bottom,
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-      decoration: const BoxDecoration(color: _C.nav, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      child: Row(
-        children: items.map((e) {
-          final color = e.active ? _C.teal : _C.grey;
-          return Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Icon(e.icon, color: color, size: 26),
-                    if (e.badge > 0)
-                      Positioned(
-                        top: -6,
-                        right: -8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(color: _C.red, borderRadius: BorderRadius.circular(10)),
-                          child: Text('${e.badge}', style: const TextStyle(color: Colors.white, fontSize: 10)),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(e.label, style: TextStyle(color: color, fontSize: 11)),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _NavItem {
-  final String label;
-  final IconData icon;
-  final int badge;
-  final bool active;
-  const _NavItem(this.label, this.icon, {this.badge = 0, this.active = false});
 }
 
 // جسر مؤقت للتوافق مع استدعاء الصفحة الحالي في main.dart.
