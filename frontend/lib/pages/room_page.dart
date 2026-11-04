@@ -197,7 +197,10 @@ class _RoomPageState extends State<RoomPage> {
               colors: [Color(0xFF171020), Color(0xFF0B0910), Color(0xFF08070B)],
             ),
           ),
-          child: SafeArea(
+          child: Stack(
+            children: [
+              const Positioned.fill(child: _StarBackground()),
+              SafeArea(
             child: Column(
               children: [
                 Padding(
@@ -262,7 +265,7 @@ class _RoomPageState extends State<RoomPage> {
                               borderRadius: BorderRadius.circular(30),
                               border: Border.all(color: const Color(0x665F4775)),
                             ),
-                            child: Text('$occupiedCount / 6', style: const TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.w900)),
+                            child: Text('$occupiedCount / 8', style: const TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.w900)),
                           ),
                           if (_isLoading || _isChangingSeat) ...[
                             const SizedBox(width: 9),
@@ -282,11 +285,11 @@ class _RoomPageState extends State<RoomPage> {
                         child: GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: 6,
+                          itemCount: 8,
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 5,
+                            crossAxisCount: 4,
+                            mainAxisSpacing: 28,
+                            crossAxisSpacing: 8,
                             childAspectRatio: 0.82,
                           ),
                           itemBuilder: (context, index) => _micCard(index + 1),
@@ -369,6 +372,8 @@ class _RoomPageState extends State<RoomPage> {
                   ),
               ],
             ),
+              ),
+            ],
           ),
         ),
       ),
@@ -507,8 +512,8 @@ class _RoomPageState extends State<RoomPage> {
               children: [
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 220),
-                  width: 66,
-                  height: 66,
+                  width: 74,
+                  height: 74,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
@@ -557,7 +562,7 @@ class _RoomPageState extends State<RoomPage> {
             ),
             const SizedBox(height: 10),
             Text(
-              'مقعد $number',
+              '$number',
               style: TextStyle(color: mine ? _gold : Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 4),
@@ -626,4 +631,31 @@ class _RoomPageState extends State<RoomPage> {
       ),
     );
   }
+}
+
+
+class _StarBackground extends StatelessWidget {
+  const _StarBackground();
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(painter: _StarsPainter());
+}
+
+class _StarsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (int i = 0; i < 130; i++) {
+      final isGold = i % 4 == 0;
+      final paint = Paint()
+        ..color = isGold
+            ? const Color(0xFFE6C87A).withOpacity(0.22)
+            : Colors.white.withOpacity(0.18);
+      final x = (i * 53.7) % size.width;
+      final y = (i * 91.3) % size.height;
+      canvas.drawCircle(Offset(x, y), isGold ? 1.2 : 0.8, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
