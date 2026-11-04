@@ -99,22 +99,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   Widget _buildOriginalHomeContent() => ListView(
     padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
     children: [
-      Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(23),
-        gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF38234B), Color(0xFF1D1726), Color(0xFF121018)]),
-        border: Border.all(color: const Color(0x665F4775))),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(color: const Color(0x33E8C477), borderRadius: BorderRadius.circular(30)),
-            child: const Text('مرحباً بك في مجتمعك', style: TextStyle(color: HappyHomeColors.gold, fontSize: 11, fontWeight: FontWeight.w800))),
-          const SizedBox(height: 15),
-          const SizedBox(height: 8),
-          const Text('اكتشف أشخاصاً جدد، وشارك اهتماماتك، وكن جزءاً من مجتمع Happy Live.', style: TextStyle(color: Color(0xFFD0C7D8), fontSize: 12, height: 1.8)),
-          const SizedBox(height: 17),
-          SizedBox(height: 43, child: FilledButton.icon(onPressed: widget.onDiscover, icon: const Icon(Icons.arrow_back_rounded, size: 17),
-            label: const Text('اكتشف Happy Live'),
-            style: FilledButton.styleFrom(backgroundColor: HappyHomeColors.gold, foregroundColor: const Color(0xFF17121F), textStyle: const TextStyle(fontWeight: FontWeight.w900)))),
-        ])),
       const SizedBox(height: 24),
       const HappySectionTitle(title: 'اختصاراتك', subtitle: 'كل ما تحتاجه في مكان واحد'),
       const SizedBox(height: 12),
