@@ -644,7 +644,7 @@ class _RoomPageState extends State<RoomPage> {
           children: [
             Stack(clipBehavior: Clip.none, children: [
               IconButton(onPressed: () => _showChatToolMessage('الرسائل الخاصة'), icon: const Icon(Icons.mail_outline_rounded, color: AppColors.textPrimary, size: 22)),
-              Positioned(top: 1, left: 1, child: Container(width: 15, height: 15, alignment: Alignment.center, decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle), child: const Text('3', style: TextStyle(color: AppColors.textPrimary, fontSize: 8, fontWeight: FontWeight.w900)))),
+              Positioned(top: 1, left: 1, child: Container(width: 15, height: 15, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.danger, shape: BoxShape.circle), child: const Text('3', style: TextStyle(color: AppColors.textPrimary, fontSize: 8, fontWeight: FontWeight.w900)))),
             ]),
             IconButton(onPressed: () => _showChatToolMessage('الهدايا'), icon: const Icon(Icons.card_giftcard_rounded, color: _gold, size: 22)),
             IconButton(onPressed: _showRoomChatMenu, icon: const Icon(Icons.menu_rounded, color: AppColors.iconLight, size: 22)),
@@ -1269,7 +1269,7 @@ class _RoomPageState extends State<RoomPage> {
     if (_mySeat != null) {
       return Container(
         padding: const EdgeInsets.fromLTRB(16, 11, 16, 13),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.primary,
           border: Border(top: BorderSide(color: AppColors.primary.withOpacity(0.4))),
         ),
@@ -1278,7 +1278,7 @@ class _RoomPageState extends State<RoomPage> {
             Container(
               width: 38,
               height: 38,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(colors: [AppColors.primary, AppColors.primary]),
               ),
@@ -1416,7 +1416,7 @@ class _RoomPageState extends State<RoomPage> {
                 errorBuilder: (_, __, ___) => const ColoredBox(color: AppColors.primary),
               )
             else
-              const DecoratedBox(
+              DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topRight,
@@ -1426,7 +1426,7 @@ class _RoomPageState extends State<RoomPage> {
                 ),
                 child: Center(child: Icon(Icons.graphic_eq_rounded, color: AppColors.primary.withOpacity(0.4), size: 76)),
               ),
-            const DecoratedBox(
+            DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
