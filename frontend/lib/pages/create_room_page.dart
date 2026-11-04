@@ -13,7 +13,7 @@ class CreateRoomPage extends StatefulWidget {
   State<CreateRoomPage> createState() => _CreateRoomPageState();
 }
 
-class _CreateRoomPageState extends State<CreateRoomPage> {
+class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProviderStateMixin {
   static const _background = Color(0xFF09080D);
   static const _surface = Color(0xFF17131F);
   static const _gold = Color(0xFFE8C477);
@@ -24,13 +24,24 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   bool _isSubmitting = false;
+  late final AnimationController _backgroundMotion;
   XFile? _roomImage;
   Uint8List? _roomImageBytes;
   final ImagePicker _imagePicker = ImagePicker();
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
 
   @override
+  void initState() {
+    super.initState();
+    _backgroundMotion = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 24),
+    )..repeat(reverse: true);
+  }
+
+  @override
   void dispose() {
+    _backgroundMotion.dispose();
     _nameController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -254,8 +265,29 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
             style: TextStyle(color: _gold, fontWeight: FontWeight.w900),
           ),
         ),
-        body: Container(
-          color: _background,
+        body: AnimatedBuilder(
+          animation: _backgroundMotion,
+          builder: (context, child) {
+            final t = _backgroundMotion.value;
+            final begin = Alignment.lerp(Alignment.topLeft, Alignment.bottomRight, t)!;
+            final end = Alignment.lerp(Alignment.bottomRight, Alignment.topLeft, t)!;
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: begin,
+                  end: end,
+                  colors: const [
+                    Color(0xFF09080D),
+                    Color(0xFF100B18),
+                    Color(0xFF160D22),
+                    Color(0xFF0B0911),
+                  ],
+                  stops: const [0.0, 0.38, 0.72, 1.0],
+                ),
+              ),
+              child: child,
+            );
+          },
           child: SafeArea(
             bottom: false,
             child: Form(
