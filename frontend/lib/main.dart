@@ -646,6 +646,7 @@ class _LoginPageState extends State<LoginPage> {
             builder: (_) => SessionHomePage(
               name: (user['name'] ?? '').toString(),
               email: (user['email'] ?? '').toString(),
+              userId: (user['id'] ?? '').toString(),
               accessToken: token,
             ),
           ),
@@ -746,6 +747,7 @@ class _LoginPageState extends State<LoginPage> {
           builder: (_) => SessionHomePage(
             name: (user['name'] ?? _name.text.trim()).toString(),
             email: (user['email'] ?? _email.text.trim()).toString(),
+            userId: (user['id'] ?? '').toString(),
             accessToken: token,
           ),
         ),
@@ -1307,9 +1309,10 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 class SessionHomePage extends StatefulWidget {
-  const SessionHomePage({super.key, required this.name, required this.email, required this.accessToken});
+  const SessionHomePage({super.key, required this.name, required this.email, required this.userId, required this.accessToken});
   final String name;
   final String email;
+  final String userId;
   final String accessToken;
   @override
   State<SessionHomePage> createState() => _SessionHomePageState();
@@ -1350,7 +1353,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
       HappyHomeTab(name: _name, accessToken: widget.accessToken, onDiscover: () => setState(() => _tab = 2), onSoon: _soon),
       _HappyPlaceholderTab(title: 'اكتشف', subtitle: 'اعثر على مجتمعات واهتمامات جديدة', icon: Icons.explore_outlined, onSoon: _soon),
       const _HappyPlaceholderTab(title: 'الرسائل', subtitle: 'محادثاتك الخاصة في مكان واحد', icon: Icons.forum_outlined),
-      HappyProfilePage(name: _name, email: widget.email, initial: _initial, onLogout: _logout, onSoon: _soon),
+      HappyProfilePage(name: _name, email: widget.email, userId: widget.userId, initial: _initial, onLogout: _logout, onSoon: _soon),
     ];
     return Directionality(textDirection: TextDirection.rtl, child: Scaffold(
       backgroundColor: HappyLiveApp.background,
