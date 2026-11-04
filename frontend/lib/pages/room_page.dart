@@ -337,7 +337,7 @@ class _RoomPageState extends State<RoomPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Transform.translate(
-                offset: const Offset(5, 0),
+                offset: const Offset(0, 0),
                 child: Container(
                   width: 36,
                   height: 36,
