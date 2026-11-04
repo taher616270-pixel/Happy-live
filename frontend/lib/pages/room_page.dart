@@ -38,6 +38,10 @@ class _RoomPageState extends State<RoomPage> {
   DateTime _lastHeartbeat = DateTime.fromMillisecondsSinceEpoch(0);
   bool _isLoading = true;
   bool _isRefreshing = false;
+  bool _isMinimized = false;
+  bool _showRoomActions = false;
+  bool _isClosingRoom = false;
+  Offset _miniOffset = const Offset(18, 170);
   bool _isChangingSeat = false;
   String? _loadError;
   int? _mySeat;
@@ -524,11 +528,11 @@ class _RoomPageState extends State<RoomPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: _background,
+        backgroundColor: _isMinimized ? Colors.transparent : _background,
         body: Stack(
           children: [
-            const Positioned.fill(child: _StarBackground()),
-            Positioned.fill(
+            if (!_isMinimized) const Positioned.fill(child: _StarBackground()),
+            if (!_isMinimized) Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -543,7 +547,7 @@ class _RoomPageState extends State<RoomPage> {
                 ),
               ),
             ),
-            SafeArea(
+            if (!_isMinimized) SafeArea(
               child: Column(
                 children: [
                   Expanded(
@@ -584,6 +588,54 @@ class _RoomPageState extends State<RoomPage> {
                 ],
               ),
             ),
+            if (_isMinimized)
+              Positioned.fill(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final padding = MediaQuery.of(context).padding;
+                    const miniWidth = 156.0;
+                    const miniHeight = 158.0;
+                    final maxLeft = (constraints.maxWidth - miniWidth).clamp(0.0, constraints.maxWidth).toDouble();
+                    final minTop = padding.top;
+                    final maxTop = (constraints.maxHeight - miniHeight - padding.bottom).clamp(minTop, constraints.maxHeight).toDouble();
+                    final left = _miniOffset.dx.clamp(0.0, maxLeft).toDouble();
+                    final top = _miniOffset.dy.clamp(minTop, maxTop).toDouble();
+                    return Stack(children: [
+                      Positioned(
+                        left: left,
+                        top: top,
+                        child: GestureDetector(
+                          onPanUpdate: (details) => setState(() {
+                            _miniOffset = Offset(
+                              (_miniOffset.dx + details.delta.dx).clamp(0.0, maxLeft).toDouble(),
+                              (_miniOffset.dy + details.delta.dy).clamp(minTop, maxTop).toDouble(),
+                            );
+                          }),
+                          child: _miniRoomWindow(),
+                        ),
+                      ),
+                    ]);
+                  },
+                ),
+              ),
+            if (!_isMinimized)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  bottom: false,
+                  child: AnimatedSlide(
+                    offset: _showRoomActions ? Offset.zero : const Offset(0, -1.2),
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                    child: IgnorePointer(
+                      ignoring: !_showRoomActions,
+                      child: _roomActionSheet(),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -604,14 +656,135 @@ class _RoomPageState extends State<RoomPage> {
               offset: const Offset(152, 0),
               child: _roundAction(
                 icon: Icons.arrow_forward_ios_rounded,
-                onTap: () => Navigator.of(context).maybePop(),
-                tooltip: 'رجوع',
+                onTap: () => setState(() => _showRoomActions = !_showRoomActions),
+                tooltip: 'خيارات الغرفة',
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _roomActionSheet() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
+      decoration: BoxDecoration(
+        color: const Color(0xF21A1422),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
+        border: Border.all(color: const Color(0x88E8C477)),
+        boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 22, offset: Offset(0, 9))],
+      ),
+      child: Row(children: [
+        Expanded(child: _roomActionButton(
+          icon: Icons.picture_in_picture_alt_rounded,
+          label: 'تصغير الغرفة',
+          color: _purple,
+          onTap: () => setState(() {
+            _showRoomActions = false;
+            _isMinimized = true;
+            _miniOffset = Offset(18, MediaQuery.of(context).padding.top + 90);
+          }),
+        )),
+        const SizedBox(width: 10),
+        Expanded(child: _roomActionButton(
+          icon: Icons.logout_rounded,
+          label: 'إغلاق الغرفة',
+          color: const Color(0xFFBD5361),
+          onTap: _closeRoom,
+        )),
+      ]),
+    );
+  }
+
+  Widget _roomActionButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return Material(
+      color: color.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(15),
+      child: InkWell(
+        onTap: _isClosingRoom ? null : onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: Container(
+          height: 72,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), border: Border.all(color: color.withOpacity(0.55))),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: color, size: 25),
+            const SizedBox(height: 6),
+            Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _miniRoomWindow() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => setState(() => _isMinimized = false),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: 156,
+          height: 158,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xF2171220),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _gold, width: 1.4),
+            boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 20, offset: Offset(0, 8))],
+            image: _imageUrl == null ? null : DecorationImage(
+              image: NetworkImage(_imageUrl!), fit: BoxFit.cover,
+              colorFilter: const ColorFilter.mode(Color(0xAA09070D), BlendMode.darken),
+            ),
+            gradient: _imageUrl == null ? const LinearGradient(
+              begin: Alignment.topRight, end: Alignment.bottomLeft,
+              colors: [Color(0xFF49305D), Color(0xFF17121F)],
+            ) : null,
+          ),
+          child: Column(children: [
+            Row(children: [
+              const Icon(Icons.graphic_eq_rounded, color: _gold, size: 17),
+              const SizedBox(width: 5),
+              const Expanded(child: Text('الغرفة المصغرة', maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800))),
+              GestureDetector(
+                onTap: _closeRoom,
+                child: const Padding(padding: EdgeInsets.all(2), child: Icon(Icons.close_rounded, color: Colors.white, size: 19)),
+              ),
+            ]),
+            const Spacer(),
+            Text(_roomName, maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: _gold, fontSize: 13, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text('ID: $_roomCode', style: const TextStyle(color: Colors.white70, fontSize: 9)),
+            const Spacer(),
+            Container(
+              height: 29, width: double.infinity,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: _purple, borderRadius: BorderRadius.circular(9)),
+              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.open_in_full_rounded, size: 13, color: Colors.white),
+                SizedBox(width: 5),
+                Text('تكبير الغرفة', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _closeRoom() async {
+    if (_isClosingRoom) return;
+    setState(() { _isClosingRoom = true; _showRoomActions = false; });
+    try {
+      if (_mySeat != null) await _leaveSeat();
+      await _leaveChatSession();
+      if (mounted) Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _isClosingRoom = false);
+    }
   }
 
   Widget _roundAction({
