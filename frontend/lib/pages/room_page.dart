@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import '../app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -18,11 +19,11 @@ class RoomPage extends StatefulWidget {
 }
 
 class _RoomPageState extends State<RoomPage> {
-  static const _background = Color(0xFF09080D);
-  static const _surface = Color(0xFF17131F);
-  static const _purple = Color(0xFF9B63D9);
-  static const _gold = Color(0xFFE8C477);
-  static const _muted = Color(0xFFAAA2B5);
+  static const _background = AppColors.background;
+  static const _surface = AppColors.surface;
+  static const _purple = AppColors.primary;
+  static const _gold = AppColors.primary;
+  static const _muted = AppColors.textSecondary;
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
 
   Timer? _refreshTimer;
@@ -477,9 +478,9 @@ class _RoomPageState extends State<RoomPage> {
     final hasImage = avatar.startsWith('https://');
     return CircleAvatar(
       radius: size / 2,
-      backgroundColor: const Color(0xFF46304F),
+      backgroundColor: const AppColors.primary,
       backgroundImage: hasImage ? NetworkImage(avatar) : null,
-      child: hasImage ? null : Text(name.isEmpty ? '؟' : name.characters.first, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+      child: hasImage ? null : Text(name.isEmpty ? '؟' : name.characters.first, style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w800)),
     );
   }
 
@@ -493,15 +494,15 @@ class _RoomPageState extends State<RoomPage> {
           children: [
             CircleAvatar(
               radius: 15,
-              backgroundColor: const Color(0xFF3A2948),
+              backgroundColor: const AppColors.primary,
               child: Icon(isWelcome ? Icons.waving_hand_rounded : Icons.campaign_rounded, color: _gold, size: 16),
             ),
             const SizedBox(width: 8),
             Flexible(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(color: Colors.black.withOpacity(0.42), borderRadius: BorderRadius.circular(14)),
-                child: Text('${message.senderName} @ ${message.text}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                decoration: BoxDecoration(color: AppColors.textOnPrimary.withOpacity(0.42), borderRadius: BorderRadius.circular(14)),
+                child: Text('${message.senderName} @ ${message.text}', style: const TextStyle(color: AppColors.iconLight, fontSize: 11)),
               ),
             ),
           ],
@@ -514,12 +515,12 @@ class _RoomPageState extends State<RoomPage> {
         child: Row(
           textDirection: TextDirection.rtl,
           children: [
-            const CircleAvatar(radius: 15, backgroundColor: Color(0xFF3A2948), child: Icon(Icons.notifications_active_rounded, color: _gold, size: 16)),
+            const CircleAvatar(radius: 15, backgroundColor: AppColors.primary, child: Icon(Icons.notifications_active_rounded, color: _gold, size: 16)),
             const SizedBox(width: 8),
             Flexible(child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(color: const Color(0xAA34233E), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x66E8C477))),
-              child: Text(message.text, style: const TextStyle(color: Colors.white, fontSize: 11, height: 1.4)),
+              decoration: BoxDecoration(color: const AppColors.primary.withOpacity(0.667), borderRadius: BorderRadius.circular(14), border: Border.all(color: const AppColors.primary.withOpacity(0.4))),
+              child: Text(message.text, style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, height: 1.4)),
             )),
           ],
         ),
@@ -539,14 +540,14 @@ class _RoomPageState extends State<RoomPage> {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(color: const Color(0xFFE88BAE), borderRadius: BorderRadius.circular(9)),
-                  child: Text(message.senderName, style: const TextStyle(color: Color(0xFF321624), fontSize: 10, fontWeight: FontWeight.w900)),
+                  decoration: BoxDecoration(color: const AppColors.primary, borderRadius: BorderRadius.circular(9)),
+                  child: Text(message.senderName, style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.w900)),
                 ),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.58), borderRadius: BorderRadius.circular(14)),
-                  child: Text(message.text, style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.4)),
+                  decoration: BoxDecoration(color: AppColors.textOnPrimary.withOpacity(0.58), borderRadius: BorderRadius.circular(14)),
+                  child: Text(message.text, style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, height: 1.4)),
                 ),
               ],
             ),
@@ -560,7 +561,7 @@ class _RoomPageState extends State<RoomPage> {
     return Container(
       height: 250,
       margin: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-      decoration: BoxDecoration(color: Colors.black.withOpacity(0.10), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: AppColors.textOnPrimary.withOpacity(0.10), borderRadius: BorderRadius.circular(16)),
       child: ListView.builder(
         controller: _roomMessagesController,
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
@@ -574,7 +575,7 @@ class _RoomPageState extends State<RoomPage> {
     return Container(
       margin: const EdgeInsets.fromLTRB(4, 2, 4, 8),
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-      decoration: BoxDecoration(color: const Color(0xAA17121E), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x55E8C477))),
+      decoration: BoxDecoration(color: const AppColors.primary.withOpacity(0.667), borderRadius: BorderRadius.circular(14), border: Border.all(color: const AppColors.primary.withOpacity(0.333))),
       child: Row(
         textDirection: TextDirection.rtl,
         children: [
@@ -585,14 +586,14 @@ class _RoomPageState extends State<RoomPage> {
             children: [
               const Text('إعلان:', style: TextStyle(color: _gold, fontSize: 11, fontWeight: FontWeight.w900)),
               const SizedBox(height: 3),
-              Text(_roomAnnouncement, style: const TextStyle(color: Colors.white, fontSize: 11, height: 1.4)),
+              Text(_roomAnnouncement, style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, height: 1.4)),
             ],
           )),
           if (_isRoomOwner) ...[
             const SizedBox(width: 8),
             TextButton(
               onPressed: _editRoomAnnouncement,
-              style: TextButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF21152B), minimumSize: const Size(54, 34), padding: const EdgeInsets.symmetric(horizontal: 10)),
+              style: TextButton.styleFrom(backgroundColor: AppColors.textPrimary, foregroundColor: const AppColors.primary, minimumSize: const Size(54, 34), padding: const EdgeInsets.symmetric(horizontal: 10)),
               child: const Text('تعديل', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
             ),
           ],
@@ -606,14 +607,14 @@ class _RoomPageState extends State<RoomPage> {
     final result = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF21182B),
-        title: const Text('تعديل إعلان الغرفة', style: TextStyle(color: Colors.white, fontSize: 16)),
+        backgroundColor: const AppColors.primary,
+        title: const Text('تعديل إعلان الغرفة', style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLength: 200,
           maxLines: 4,
-          style: const TextStyle(color: Colors.white, fontSize: 13),
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
           decoration: const InputDecoration(hintText: 'اكتب الإعلان...', hintStyle: TextStyle(color: _muted)),
         ),
         actions: [
@@ -635,18 +636,18 @@ class _RoomPageState extends State<RoomPage> {
   Widget _roomChatComposer() {
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
-      decoration: BoxDecoration(color: const Color(0xEE15101C), border: Border(top: BorderSide(color: const Color(0x445F4775)))),
+      decoration: BoxDecoration(color: const AppColors.primary.withOpacity(0.933), border: Border(top: BorderSide(color: const AppColors.primary.withOpacity(0.267)))),
       child: SafeArea(
         top: false,
         child: Row(
           textDirection: TextDirection.rtl,
           children: [
             Stack(clipBehavior: Clip.none, children: [
-              IconButton(onPressed: () => _showChatToolMessage('الرسائل الخاصة'), icon: const Icon(Icons.mail_outline_rounded, color: Colors.white, size: 22)),
-              Positioned(top: 1, left: 1, child: Container(width: 15, height: 15, alignment: Alignment.center, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Text('3', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)))),
+              IconButton(onPressed: () => _showChatToolMessage('الرسائل الخاصة'), icon: const Icon(Icons.mail_outline_rounded, color: AppColors.textPrimary, size: 22)),
+              Positioned(top: 1, left: 1, child: Container(width: 15, height: 15, alignment: Alignment.center, decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle), child: const Text('3', style: TextStyle(color: AppColors.textPrimary, fontSize: 8, fontWeight: FontWeight.w900)))),
             ]),
             IconButton(onPressed: () => _showChatToolMessage('الهدايا'), icon: const Icon(Icons.card_giftcard_rounded, color: _gold, size: 22)),
-            IconButton(onPressed: _showRoomChatMenu, icon: const Icon(Icons.menu_rounded, color: Colors.white70, size: 22)),
+            IconButton(onPressed: _showRoomChatMenu, icon: const Icon(Icons.menu_rounded, color: AppColors.iconLight, size: 22)),
             Expanded(
               child: TextField(
                 controller: _messageController,
@@ -655,10 +656,10 @@ class _RoomPageState extends State<RoomPage> {
                 maxLength: 200,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _sendRoomMessage(),
-                style: const TextStyle(color: Colors.white, fontSize: 12),
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
                 decoration: InputDecoration(
                   hintText: 'قل شيئاً...', hintStyle: const TextStyle(color: _muted, fontSize: 12), counterText: '',
-                  filled: true, fillColor: const Color(0xFF29212F), contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+                  filled: true, fillColor: const AppColors.primary, contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
                 ),
               ),
@@ -677,10 +678,10 @@ class _RoomPageState extends State<RoomPage> {
   void _showRoomChatMenu() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF21182B),
+      backgroundColor: const AppColors.primary,
       builder: (context) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        ListTile(leading: const Icon(Icons.people_outline, color: _gold), title: const Text('أعضاء الغرفة', style: TextStyle(color: Colors.white)), onTap: () { Navigator.pop(context); _showChatToolMessage('أعضاء الغرفة'); }),
-        ListTile(leading: const Icon(Icons.flag_outlined, color: _gold), title: const Text('إبلاغ', style: TextStyle(color: Colors.white)), onTap: () { Navigator.pop(context); _showChatToolMessage('الإبلاغ'); }),
+        ListTile(leading: const Icon(Icons.people_outline, color: _gold), title: const Text('أعضاء الغرفة', style: TextStyle(color: AppColors.textPrimary)), onTap: () { Navigator.pop(context); _showChatToolMessage('أعضاء الغرفة'); }),
+        ListTile(leading: const Icon(Icons.flag_outlined, color: _gold), title: const Text('إبلاغ', style: TextStyle(color: AppColors.textPrimary)), onTap: () { Navigator.pop(context); _showChatToolMessage('الإبلاغ'); }),
       ])),
     );
   }
@@ -782,8 +783,8 @@ class _RoomPageState extends State<RoomPage> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      const Color(0xFF171020).withOpacity(0.92),
-                      const Color(0xFF0A0910).withOpacity(0.97),
+                      const AppColors.primary.withOpacity(0.92),
+                      const AppColors.primary.withOpacity(0.97),
                       _background,
                     ],
                   ),
@@ -967,10 +968,10 @@ class _RoomPageState extends State<RoomPage> {
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
       decoration: BoxDecoration(
-        color: const Color(0xF21A1422),
+        color: const AppColors.primary.withOpacity(0.949),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
-        border: Border.all(color: const Color(0x88E8C477)),
-        boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 22, offset: Offset(0, 9))],
+        border: Border.all(color: const AppColors.primary.withOpacity(0.533)),
+        boxShadow: const [BoxShadow(color: AppColors.primary.withOpacity(0.533), blurRadius: 22, offset: Offset(0, 9))],
       ),
       child: Row(children: [
         Expanded(child: _roomActionButton(
@@ -983,7 +984,7 @@ class _RoomPageState extends State<RoomPage> {
         Expanded(child: _roomActionButton(
           icon: Icons.logout_rounded,
           label: 'إغلاق الغرفة',
-          color: const Color(0xFFBD5361),
+          color: const AppColors.primary,
           onTap: _closeRoom,
         )),
       ]),
@@ -1003,7 +1004,7 @@ class _RoomPageState extends State<RoomPage> {
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             Icon(icon, color: color, size: 25),
             const SizedBox(height: 6),
-            Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+            Text(label, style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w800)),
           ]),
         ),
       ),
@@ -1021,17 +1022,17 @@ class _RoomPageState extends State<RoomPage> {
           height: 158,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xF2171220),
+            color: const AppColors.primary.withOpacity(0.949),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: _gold, width: 1.4),
-            boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 20, offset: Offset(0, 8))],
+            boxShadow: const [BoxShadow(color: AppColors.primary.withOpacity(0.6), blurRadius: 20, offset: Offset(0, 8))],
             image: _imageUrl == null ? null : DecorationImage(
               image: NetworkImage(_imageUrl!), fit: BoxFit.cover,
-              colorFilter: const ColorFilter.mode(Color(0xAA09070D), BlendMode.darken),
+              colorFilter: const ColorFilter.mode(AppColors.primary.withOpacity(0.667), BlendMode.darken),
             ),
             gradient: _imageUrl == null ? const LinearGradient(
               begin: Alignment.topRight, end: Alignment.bottomLeft,
-              colors: [Color(0xFF49305D), Color(0xFF17121F)],
+              colors: [AppColors.primary, AppColors.primary],
             ) : null,
           ),
           child: Column(children: [
@@ -1039,26 +1040,26 @@ class _RoomPageState extends State<RoomPage> {
               const Icon(Icons.graphic_eq_rounded, color: _gold, size: 17),
               const SizedBox(width: 5),
               const Expanded(child: Text('الغرفة المصغرة', maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800))),
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 10, fontWeight: FontWeight.w800))),
               GestureDetector(
                 onTap: _closeRoom,
-                child: const Padding(padding: EdgeInsets.all(2), child: Icon(Icons.close_rounded, color: Colors.white, size: 19)),
+                child: const Padding(padding: EdgeInsets.all(2), child: Icon(Icons.close_rounded, color: AppColors.textPrimary, size: 19)),
               ),
             ]),
             const Spacer(),
             Text(_roomName, maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: _gold, fontSize: 13, fontWeight: FontWeight.w900)),
             const SizedBox(height: 4),
-            Text('ID: $_roomCode', style: const TextStyle(color: Colors.white70, fontSize: 9)),
+            Text('ID: $_roomCode', style: const TextStyle(color: AppColors.iconLight, fontSize: 9)),
             const Spacer(),
             Container(
               height: 29, width: double.infinity,
               alignment: Alignment.center,
               decoration: BoxDecoration(color: _purple, borderRadius: BorderRadius.circular(9)),
               child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.open_in_full_rounded, size: 13, color: Colors.white),
+                Icon(Icons.open_in_full_rounded, size: 13, color: AppColors.textPrimary),
                 SizedBox(width: 5),
-                Text('تكبير الغرفة', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
+                Text('تكبير الغرفة', style: TextStyle(color: AppColors.textPrimary, fontSize: 10, fontWeight: FontWeight.w800)),
               ]),
             ),
           ]),
@@ -1090,7 +1091,7 @@ class _RoomPageState extends State<RoomPage> {
     required IconData icon,
     required VoidCallback onTap,
     required String tooltip,
-    Color iconColor = Colors.white,
+    Color iconColor = AppColors.textPrimary,
   }) {
     return Tooltip(
       message: tooltip,
@@ -1119,14 +1120,14 @@ class _RoomPageState extends State<RoomPage> {
           height: 36,
           padding: EdgeInsets.zero,
           decoration: BoxDecoration(
-            color: const Color(0xCC17121F),
+            color: const AppColors.primary.withOpacity(0.8),
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(18),
               bottomLeft: Radius.circular(18),
             ),
-            border: Border.all(color: const Color(0x66E8C477), width: 1),
+            border: Border.all(color: const AppColors.primary.withOpacity(0.4), width: 1),
             boxShadow: const [
-              BoxShadow(color: Color(0x22100A18), blurRadius: 12, offset: Offset(0, 4)),
+              BoxShadow(color: AppColors.primary.withOpacity(0.133), blurRadius: 12, offset: Offset(0, 4)),
             ],
           ),
           child: Row(
@@ -1138,7 +1139,7 @@ class _RoomPageState extends State<RoomPage> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF30213D),
+                    color: const AppColors.primary,
                     image: _imageUrl != null
                         ? DecorationImage(
                             image: NetworkImage(_imageUrl!),
@@ -1179,7 +1180,7 @@ class _RoomPageState extends State<RoomPage> {
                       softWrap: false,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.62),
+                        color: AppColors.textPrimary.withOpacity(0.62),
                         fontSize: 8.5,
                         height: 1.1,
                         letterSpacing: 0.2,
@@ -1199,9 +1200,9 @@ class _RoomPageState extends State<RoomPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF21172B),
+        color: const AppColors.primary,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const Color(0x88E8C477)),
+        border: Border.all(color: const AppColors.primary.withOpacity(0.533)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1245,9 +1246,9 @@ class _RoomPageState extends State<RoomPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF17121E),
+        color: const AppColors.primary,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: const Color(0x334E3B60)),
+        border: Border.all(color: const AppColors.primary.withOpacity(0.2)),
       ),
       child: const Row(
         children: [
@@ -1269,8 +1270,8 @@ class _RoomPageState extends State<RoomPage> {
       return Container(
         padding: const EdgeInsets.fromLTRB(16, 11, 16, 13),
         decoration: const BoxDecoration(
-          color: Color(0xFF15101C),
-          border: Border(top: BorderSide(color: Color(0x665F4775))),
+          color: AppColors.primary,
+          border: Border(top: BorderSide(color: AppColors.primary.withOpacity(0.4))),
         ),
         child: Row(
           children: [
@@ -1279,26 +1280,26 @@ class _RoomPageState extends State<RoomPage> {
               height: 38,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(colors: [Color(0xFF9B63D9), Color(0xFF56347A)]),
+                gradient: LinearGradient(colors: [AppColors.primary, AppColors.primary]),
               ),
-              child: const Icon(Icons.mic_rounded, color: Colors.white, size: 19),
+              child: const Icon(Icons.mic_rounded, color: AppColors.textPrimary, size: 19),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 'أنت على المايك $_mySeat',
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w800),
               ),
             ),
             FilledButton(
               onPressed: _isChangingSeat ? null : _leaveSeat,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF38213F),
-                foregroundColor: const Color(0xFFFFD98B),
+                backgroundColor: const AppColors.primary,
+                foregroundColor: const AppColors.primary,
                 padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 11),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(13),
-                  side: const BorderSide(color: Color(0x77E8C477)),
+                  side: const BorderSide(color: AppColors.primary.withOpacity(0.467)),
                 ),
               ),
               child: const Text('مغادرة المايك', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
@@ -1335,24 +1336,24 @@ class _RoomPageState extends State<RoomPage> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: mine
-                        ? const [Color(0xFFB98AF0), Color(0xFF65408E)]
+                        ? const [AppColors.primary, AppColors.primary]
                         : occupied
-                            ? const [Color(0xFF67477C), Color(0xFF30213D)]
-                            : const [Color(0xFF302638), Color(0xFF19141F)],
+                            ? const [AppColors.primary, AppColors.primary]
+                            : const [AppColors.primary, AppColors.primary],
                   ),
                   border: Border.all(
-                    color: mine ? _gold : occupied ? const Color(0xFF9B63D9) : const Color(0x665F4775),
+                    color: mine ? _gold : occupied ? const AppColors.primary : const AppColors.primary.withOpacity(0.4),
                     width: mine ? 2.2 : 1.5,
                   ),
                   boxShadow: mine
-                      ? const [BoxShadow(color: Color(0x559B63D9), blurRadius: 15, spreadRadius: 1)]
+                      ? const [BoxShadow(color: AppColors.primary.withOpacity(0.333), blurRadius: 15, spreadRadius: 1)]
                       : const [],
                 ),
                 child: Center(
                   child: occupied
                       ? Text(
                           name.isEmpty ? '؟' : name.characters.first,
-                          style: TextStyle(color: Colors.white, fontSize: micSize * 0.34, fontWeight: FontWeight.w900),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: micSize * 0.34, fontWeight: FontWeight.w900),
                         )
                       : Icon(Icons.add_rounded, color: _gold.withOpacity(0.9), size: micSize * 0.46),
                 ),
@@ -1364,13 +1365,13 @@ class _RoomPageState extends State<RoomPage> {
                   width: 22,
                   height: 22,
                   decoration: BoxDecoration(
-                    color: mine ? _gold : occupied ? const Color(0xFF9B63D9) : const Color(0xFF29212F),
+                    color: mine ? _gold : occupied ? const AppColors.primary : const AppColors.primary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF100C15), width: 2),
+                    border: Border.all(color: const AppColors.primary, width: 2),
                   ),
                   child: Icon(
                     occupied ? (isLocked ? Icons.mic_off_rounded : Icons.mic_rounded) : Icons.add_rounded,
-                    color: mine ? const Color(0xFF21152B) : Colors.white,
+                    color: mine ? const AppColors.primary : AppColors.textPrimary,
                     size: 11,
                   ),
                 ),
@@ -1380,7 +1381,7 @@ class _RoomPageState extends State<RoomPage> {
           const SizedBox(height: 8),
           Text(
             '$number',
-            style: TextStyle(color: mine ? _gold : Colors.white.withOpacity(0.78), fontSize: 12, fontWeight: FontWeight.w800),
+            style: TextStyle(color: mine ? _gold : AppColors.textPrimary.withOpacity(0.78), fontSize: 12, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 3),
           Padding(
@@ -1390,7 +1391,7 @@ class _RoomPageState extends State<RoomPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: mine ? const Color(0xFFFFD98B) : occupied ? _muted : const Color(0xFFB9A8C8),
+                color: mine ? const AppColors.primary : occupied ? _muted : const AppColors.primary,
                 fontSize: 10,
               ),
             ),
@@ -1412,7 +1413,7 @@ class _RoomPageState extends State<RoomPage> {
               Image.network(
                 _imageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF30213C)),
+                errorBuilder: (_, __, ___) => const ColoredBox(color: AppColors.primary),
               )
             else
               const DecoratedBox(
@@ -1420,17 +1421,17 @@ class _RoomPageState extends State<RoomPage> {
                   gradient: LinearGradient(
                     begin: Alignment.topRight,
                     end: Alignment.bottomLeft,
-                    colors: [Color(0xFF59366E), Color(0xFF21152F), Color(0xFF120F19)],
+                    colors: [AppColors.primary, AppColors.primary, AppColors.primary],
                   ),
                 ),
-                child: Center(child: Icon(Icons.graphic_eq_rounded, color: Color(0x66E8C477), size: 76)),
+                child: Center(child: Icon(Icons.graphic_eq_rounded, color: AppColors.primary.withOpacity(0.4), size: 76)),
               ),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0x11000000), Color(0xEE09070D)],
+                  colors: [AppColors.primary.withOpacity(0.067), AppColors.primary.withOpacity(0.933)],
                   stops: [0.15, 1],
                 ),
               ),
@@ -1446,9 +1447,9 @@ class _RoomPageState extends State<RoomPage> {
                     width: 45,
                     height: 45,
                     decoration: BoxDecoration(
-                      color: const Color(0xCC21172B),
+                      color: const AppColors.primary.withOpacity(0.8),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0x88E8C477)),
+                      border: Border.all(color: const AppColors.primary.withOpacity(0.533)),
                     ),
                     child: const Icon(Icons.headphones_rounded, color: _gold, size: 25),
                   ),
@@ -1459,11 +1460,11 @@ class _RoomPageState extends State<RoomPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(_roomName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, shadows: [Shadow(color: Colors.black, blurRadius: 8)])),
+                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w900, shadows: [Shadow(color: AppColors.textOnPrimary, blurRadius: 8)])),
                         if ((widget.room['description'] ?? '').toString().trim().isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(widget.room['description'].toString(), maxLines: 2, overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Color(0xFFD8CEDF), fontSize: 11, height: 1.4)),
+                            style: const TextStyle(color: AppColors.primary, fontSize: 11, height: 1.4)),
                         ],
                       ],
                     ),
@@ -1484,9 +1485,9 @@ class _RoomPageState extends State<RoomPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          color: const Color(0xFF17121E),
+          color: const AppColors.primary,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0x554F3B60)),
+          border: Border.all(color: const AppColors.primary.withOpacity(0.333)),
         ),
         child: Row(
           children: [
@@ -1508,10 +1509,10 @@ class _RoomPageState extends State<RoomPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: const Color(0xFF241820), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: const AppColors.primary, borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [
-          const Expanded(child: Text('تعذر تحديث المقاعد. حاول إعادة الاتصال.', style: TextStyle(color: Colors.white, fontSize: 12))),
+          const Expanded(child: Text('تعذر تحديث المقاعد. حاول إعادة الاتصال.', style: TextStyle(color: AppColors.textPrimary, fontSize: 12))),
           TextButton(onPressed: _refreshSeats, child: const Text('إعادة المحاولة', style: TextStyle(color: _gold))),
         ],
       ),
@@ -1534,8 +1535,8 @@ class _StarsPainter extends CustomPainter {
       final isGold = i % 4 == 0;
       final paint = Paint()
         ..color = isGold
-            ? const Color(0xFFE6C87A).withOpacity(0.22)
-            : Colors.white.withOpacity(0.18);
+            ? const AppColors.primary.withOpacity(0.22)
+            : AppColors.textPrimary.withOpacity(0.18);
       final x = (i * 53.7) % size.width;
       final y = (i * 91.3) % size.height;
       canvas.drawCircle(Offset(x, y), isGold ? 1.2 : 0.8, paint);
