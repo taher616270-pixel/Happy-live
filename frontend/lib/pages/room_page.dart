@@ -42,6 +42,7 @@ class _RoomPageState extends State<RoomPage> {
   bool _showRoomActions = false;
   bool _isClosingRoom = false;
   Offset _miniOffset = const Offset(18, 170);
+  OverlayEntry? _miniOverlayEntry;
   bool _isChangingSeat = false;
   String? _loadError;
   int? _mySeat;
@@ -78,6 +79,8 @@ class _RoomPageState extends State<RoomPage> {
 
   @override
   void dispose() {
+    _miniOverlayEntry?.remove();
+    _miniOverlayEntry = null;
     _refreshTimer?.cancel();
     _chatRefreshTimer?.cancel();
     _messageController.dispose();
@@ -588,36 +591,6 @@ class _RoomPageState extends State<RoomPage> {
                 ],
               ),
             ),
-            if (_isMinimized)
-              Positioned.fill(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final padding = MediaQuery.of(context).padding;
-                    const miniWidth = 156.0;
-                    const miniHeight = 158.0;
-                    final maxLeft = (constraints.maxWidth - miniWidth).clamp(0.0, constraints.maxWidth).toDouble();
-                    final minTop = padding.top;
-                    final maxTop = (constraints.maxHeight - miniHeight - padding.bottom).clamp(minTop, constraints.maxHeight).toDouble();
-                    final left = _miniOffset.dx.clamp(0.0, maxLeft).toDouble();
-                    final top = _miniOffset.dy.clamp(minTop, maxTop).toDouble();
-                    return Stack(children: [
-                      Positioned(
-                        left: left,
-                        top: top,
-                        child: GestureDetector(
-                          onPanUpdate: (details) => setState(() {
-                            _miniOffset = Offset(
-                              (_miniOffset.dx + details.delta.dx).clamp(0.0, maxLeft).toDouble(),
-                              (_miniOffset.dy + details.delta.dy).clamp(minTop, maxTop).toDouble(),
-                            );
-                          }),
-                          child: _miniRoomWindow(),
-                        ),
-                      ),
-                    ]);
-                  },
-                ),
-              ),
             if (!_isMinimized)
               Positioned(
                 top: 0,
@@ -666,6 +639,55 @@ class _RoomPageState extends State<RoomPage> {
     );
   }
 
+  void _minimizeRoom() {
+    if (_isMinimized) return;
+    setState(() {
+      _showRoomActions = false;
+      _isMinimized = true;
+      _miniOffset = Offset(18, MediaQuery.of(context).padding.top + 90);
+    });
+    final overlay = Overlay.of(context, rootOverlay: true);
+    _miniOverlayEntry = OverlayEntry(
+      builder: (overlayContext) => Positioned.fill(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final padding = MediaQuery.of(overlayContext).padding;
+            const miniWidth = 156.0;
+            const miniHeight = 158.0;
+            final maxLeft = (constraints.maxWidth - miniWidth).clamp(0.0, constraints.maxWidth).toDouble();
+            final minTop = padding.top;
+            final maxTop = (constraints.maxHeight - miniHeight - padding.bottom).clamp(minTop, constraints.maxHeight).toDouble();
+            final left = _miniOffset.dx.clamp(0.0, maxLeft).toDouble();
+            final top = _miniOffset.dy.clamp(minTop, maxTop).toDouble();
+            return Stack(children: [
+              Positioned(
+                left: left,
+                top: top,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    _miniOffset = Offset(
+                      (_miniOffset.dx + details.delta.dx).clamp(0.0, maxLeft).toDouble(),
+                      (_miniOffset.dy + details.delta.dy).clamp(minTop, maxTop).toDouble(),
+                    );
+                    _miniOverlayEntry?.markNeedsBuild();
+                  },
+                  child: _miniRoomWindow(),
+                ),
+              ),
+            ]);
+          },
+        ),
+      ),
+    );
+    overlay.insert(_miniOverlayEntry!);
+  }
+
+  void _restoreRoom() {
+    _miniOverlayEntry?.remove();
+    _miniOverlayEntry = null;
+    if (mounted) setState(() => _isMinimized = false);
+  }
+
   Widget _roomActionSheet() {
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
@@ -681,11 +703,7 @@ class _RoomPageState extends State<RoomPage> {
           icon: Icons.picture_in_picture_alt_rounded,
           label: 'تصغير الغرفة',
           color: _purple,
-          onTap: () => setState(() {
-            _showRoomActions = false;
-            _isMinimized = true;
-            _miniOffset = Offset(18, MediaQuery.of(context).padding.top + 90);
-          }),
+          onTap: _minimizeRoom,
         )),
         const SizedBox(width: 10),
         Expanded(child: _roomActionButton(
@@ -722,7 +740,7 @@ class _RoomPageState extends State<RoomPage> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => setState(() => _isMinimized = false),
+        onTap: _restoreRoom,
         borderRadius: BorderRadius.circular(20),
         child: Container(
           width: 156,
