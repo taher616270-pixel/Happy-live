@@ -163,7 +163,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 onPressed: () {
                   final room = Map<String, dynamic>.from(foundRoom!);
                   Navigator.pop(dialogContext);
-                  Navigator.of(context).push(PageRouteBuilder<void>(
+                  Navigator.of(this.context).push(PageRouteBuilder<void>(
                     opaque: false, barrierColor: Colors.transparent,
                     pageBuilder: (_, __, ___) => RoomPage(room: room, accessToken: widget.accessToken),
                     transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
