@@ -205,7 +205,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
               : message == 'room_name_required'
                   ? 'اكتب اسم الغرفة'
                   : message == 'invalid_room_name'
-                      ? 'اسم الغرفة يجب ألا يتجاوز 30 حرفًا'
+                      ? 'اسم الغرفة يجب ألا يتجاوز 20 حرفًا'
                       : message == 'invalid_description'
                           ? 'الوصف يجب ألا يتجاوز 120 حرفًا'
                           : 'تعذر إنشاء الغرفة، حاول مرة أخرى';
@@ -377,7 +377,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                 const SizedBox(height: 22),
                 TextFormField(
                   controller: _nameController,
-                  maxLength: 30,
+                  maxLength: 20,
                   style: const TextStyle(color: Colors.white),
                   decoration: _decoration('اسم الغرفة', Icons.meeting_room_outlined),
                   validator: (value) => value == null || value.trim().isEmpty
@@ -390,7 +390,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                   maxLength: 120,
                   maxLines: 3,
                   style: const TextStyle(color: Colors.white),
-                  decoration: _decoration('وصف الغرفة (اختياري)', Icons.edit_note_rounded),
+                  decoration: _decoration('إعلان الغرفة (اختياري)', Icons.edit_note_rounded),
                 ),
                 const SizedBox(height: 10),
                 const SizedBox(height: 26),
