@@ -304,7 +304,7 @@ class _RoomPageState extends State<RoomPage> {
           child: SizedBox(
             width: 40,
             height: 40,
-            child: Icon(icon, color: iconColor, size: 20),
+            child: Icon(icon, color: iconColor, size: 20, textDirection: TextDirection.ltr),
           ),
         ),
       ),
