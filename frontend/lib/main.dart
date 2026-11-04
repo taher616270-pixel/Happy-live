@@ -1340,8 +1340,6 @@ class _HappyHomeTab extends StatelessWidget {
     Row(children: [
       Expanded(child: _HappyShortcut(icon: Icons.groups_rounded, title: 'المجتمعات', tint: HappyLiveApp.purple, onTap: onDiscover)),
       const SizedBox(width: 10),
-      Expanded(child: _HappyShortcut(icon: Icons.edit_note_rounded, title: 'المنشورات', tint: HappyLiveApp.gold, onTap: () => onSoon('المنشورات'))),
-      const SizedBox(width: 10),
       Expanded(child: _HappyShortcut(icon: Icons.mic_none_rounded, title: 'البث المباشر', tint: const Color(0xFF55B7C8), onTap: () => onSoon('البث المباشر'))),
     ]),
     const SizedBox(height: 25),
@@ -1358,10 +1356,7 @@ class _HappyHomeTab extends StatelessWidget {
           SizedBox(height: 4), Text('ستظهر القصص والتحديثات هنا عند تفعيل المتابعة.', style: TextStyle(color: HappyLiveApp.muted, fontSize: 11, height: 1.6)),
         ])),
       ])),
-    const SizedBox(height: 25),
-    const _HappySectionTitle(title: 'آخر المنشورات', subtitle: 'مشاركات المجتمع تظهر هنا'),
-    const SizedBox(height: 12),
-    const _HappyEmptyState(icon: Icons.dynamic_feed_outlined, title: 'لا توجد منشورات حتى الآن', message: 'ستظهر المشاركات هنا بعد تفعيل خدمة المنشورات.'),
+,
   ]);
 }
 
