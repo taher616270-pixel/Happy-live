@@ -593,7 +593,7 @@ class _RoomPageState extends State<RoomPage> {
             const SizedBox(width: 8),
             TextButton(
               onPressed: _editRoomAnnouncement,
-              style: TextButton.styleFrom(backgroundColor: AppColors.textPrimary, foregroundColor: const AppColors.primary, minimumSize: const Size(54, 34), padding: const EdgeInsets.symmetric(horizontal: 10)),
+              style: TextButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: AppColors.textOnPrimary, minimumSize: const Size(54, 34), padding: const EdgeInsets.symmetric(horizontal: 10)),
               child: const Text('تعديل', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
             ),
           ],
@@ -1295,7 +1295,7 @@ class _RoomPageState extends State<RoomPage> {
               onPressed: _isChangingSeat ? null : _leaveSeat,
               style: FilledButton.styleFrom(
                 backgroundColor: const AppColors.primary,
-                foregroundColor: const AppColors.primary,
+                foregroundColor: AppColors.textOnPrimary,
                 padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 11),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(13),
