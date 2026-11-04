@@ -51,7 +51,8 @@ class _RoomPageState extends State<RoomPage> {
   void initState() {
     super.initState();
     _refreshSeats();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+    // Refresh shared seats twice per second so other members appear almost immediately.
+    _refreshTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       _refreshSeats();
       if (_mySeat != null && DateTime.now().difference(_lastHeartbeat).inSeconds >= 15) {
         _sendHeartbeat();
@@ -84,25 +85,38 @@ class _RoomPageState extends State<RoomPage> {
         if (mounted && _isLoading) setState(() { _isLoading = false; _loadError = response.statusCode == 401 ? 'انتهت جلسة الدخول، سجّل الدخول مجددًا' : 'تعذر تحميل مقاعد الغرفة'; });
         return;
       }
-      final rawSeats = data['seats'];
-      final seats = rawSeats is List
-          ? rawSeats.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
-          : <Map<String, dynamic>>[];
-      if (!mounted) return;
-      setState(() {
-        _seats = seats;
-        _mySeat = data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null;
-        final owner = data['owner'];
-        if (owner is Map && owner['name'] != null) _ownerName = owner['name'].toString();
-        _isLoading = false;
-        _loadError = null;
-      });
+      _applySeatData(data);
     } catch (_) {
       if (!mounted) return;
       if (_isLoading) setState(() { _isLoading = false; _loadError = 'تعذر الاتصال بالغرفة، تحقق من الإنترنت'; });
     } finally {
       _isRefreshing = false;
     }
+  }
+
+  void _applySeatData(Map<String, dynamic> data) {
+    final rawSeats = data['seats'];
+    final seats = rawSeats is List
+        ? rawSeats.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+        : <Map<String, dynamic>>[];
+    final nextMySeat = data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null;
+    final owner = data['owner'];
+    final nextOwnerName = owner is Map && owner['name'] != null
+        ? owner['name'].toString()
+        : _ownerName;
+    final changed = jsonEncode(_seats) != jsonEncode(seats) ||
+        _mySeat != nextMySeat ||
+        _ownerName != nextOwnerName ||
+        _isLoading ||
+        _loadError != null;
+    if (!mounted || !changed) return;
+    setState(() {
+      _seats = seats;
+      _mySeat = nextMySeat;
+      _ownerName = nextOwnerName;
+      _isLoading = false;
+      _loadError = null;
+    });
   }
 
   Future<void> _sendHeartbeat() async {
@@ -137,12 +151,18 @@ class _RoomPageState extends State<RoomPage> {
         body: jsonEncode({'seatNumber': target}),
       ).timeout(const Duration(seconds: 8));
       final data = jsonDecode(response.body);
-      if (response.statusCode == 409) {
-        _showMessage('هذا المايك مشغول، اختر مايكًا آخر');
-      } else if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
-        _showMessage('تعذر تغيير المايك، حاول مرة أخرى');
+      if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+        // The POST response already contains the authoritative seat list.
+        // Apply it immediately instead of waiting for an additional GET.
+        _applySeatData(Map<String, dynamic>.from(data));
+      } else {
+        if (response.statusCode == 409) {
+          _showMessage('هذا المايك مشغول، اختر مايكًا آخر');
+        } else {
+          _showMessage('تعذر تغيير المايك، حاول مرة أخرى');
+        }
+        await _refreshSeats();
       }
-      await _refreshSeats();
     } catch (_) {
       _showMessage('تعذر الاتصال بالخادم، لم يتم تغيير المايك');
     } finally {
@@ -159,8 +179,13 @@ class _RoomPageState extends State<RoomPage> {
         headers: _headers,
         body: jsonEncode({'seatNumber': null}),
       ).timeout(const Duration(seconds: 8));
-      if (response.statusCode != 200) _showMessage('تعذر مغادرة المايك');
-      await _refreshSeats();
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+        _applySeatData(Map<String, dynamic>.from(data));
+      } else {
+        _showMessage('تعذر مغادرة المايك');
+        await _refreshSeats();
+      }
     } catch (_) {
       _showMessage('تعذر الاتصال بالخادم');
     } finally {
