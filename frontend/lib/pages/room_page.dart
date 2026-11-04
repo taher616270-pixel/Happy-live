@@ -28,7 +28,6 @@ class _RoomPageState extends State<RoomPage> {
   final TextEditingController _messageController = TextEditingController();
   final List<Message> _messages = [];
   final ScrollController _roomMessagesController = ScrollController();
-  bool _chatSending = false;
   DateTime _lastLocalMessageAt = DateTime.fromMillisecondsSinceEpoch(0);
   late String _roomAnnouncement;
   DateTime _lastHeartbeat = DateTime.fromMillisecondsSinceEpoch(0);
@@ -194,7 +193,6 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _sendRoomMessage() {
-    if (_chatSending) return;
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
     if (text.length > 200) {
