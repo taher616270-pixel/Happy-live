@@ -43,6 +43,7 @@ class _RoomPageState extends State<RoomPage> {
   bool _isClosingRoom = false;
   Offset _miniOffset = const Offset(18, 170);
   OverlayEntry? _miniOverlayEntry;
+  Route<dynamic>? _roomRoute;
   bool _isChangingSeat = false;
   String? _loadError;
   int? _mySeat;
@@ -62,6 +63,12 @@ class _RoomPageState extends State<RoomPage> {
     'Authorization': 'Bearer ${widget.accessToken}',
     'Content-Type': 'application/json',
   };
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _roomRoute ??= ModalRoute.of(context);
+  }
 
   @override
   void initState() {
@@ -685,7 +692,14 @@ class _RoomPageState extends State<RoomPage> {
   void _restoreRoom() {
     _miniOverlayEntry?.remove();
     _miniOverlayEntry = null;
-    if (mounted) setState(() => _isMinimized = false);
+    if (mounted) {
+      final navigator = Navigator.of(context);
+      final route = _roomRoute;
+      if (route != null && route.isActive) {
+        navigator.popUntil((candidate) => identical(candidate, route));
+      }
+      setState(() => _isMinimized = false);
+    }
   }
 
   Widget _roomActionSheet() {
@@ -799,7 +813,15 @@ class _RoomPageState extends State<RoomPage> {
     try {
       if (_mySeat != null) await _leaveSeat();
       await _leaveChatSession();
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        final route = _roomRoute;
+        final navigator = Navigator.of(context);
+        if (route != null && route.isActive) {
+          navigator.removeRoute(route);
+        } else {
+          navigator.maybePop();
+        }
+      }
     } finally {
       if (mounted) setState(() => _isClosingRoom = false);
     }
