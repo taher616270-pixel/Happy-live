@@ -13,8 +13,9 @@ class HappyHomeColors {
 }
 
 class HappyHomeTab extends StatefulWidget {
-  const HappyHomeTab({required this.name, required this.onDiscover, required this.onSoon});
+  const HappyHomeTab({required this.name, required this.accessToken, required this.onDiscover, required this.onSoon});
   final String name;
+  final String accessToken;
   final VoidCallback onDiscover;
   final ValueChanged<String> onSoon;
 
@@ -103,7 +104,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       const SizedBox(height: 24),
       MyPartyRoomButton(onTap: () {
         Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => const CreateRoomPage(),
+          builder: (_) => CreateRoomPage(accessToken: widget.accessToken),
         ));
       }),
     ],
