@@ -520,7 +520,7 @@ export default {
     }
 
     // Find one active room by its public eight-digit room code.
-    const roomCodeRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/by-code\\/(\\d{8})$/);
+    const roomCodeRoute = url.pathname.match(/^\/api\/v1\/rooms\/by-code\/(\d{8})$/);
     if (roomCodeRoute && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
