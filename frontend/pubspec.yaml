@@ -20,6 +20,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/images/boy_headset.png.png
     - web/assets/south-arabia-v2.png
   fonts:
     - family: Tajawal
