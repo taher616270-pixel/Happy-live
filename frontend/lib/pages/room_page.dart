@@ -276,7 +276,7 @@ class _RoomPageState extends State<RoomPage> {
             _profileHeader(),
             const SizedBox(width: 8),
             _roundAction(
-              icon: Icons.arrow_forward_rounded,
+              icon: Icons.chevron_right_rounded,
               onTap: () => Navigator.of(context).maybePop(),
               tooltip: 'رجوع',
             ),
