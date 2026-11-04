@@ -557,19 +557,7 @@ class _RoomPageState extends State<RoomPage> {
         ),
       );
     }
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 13, 18, 14),
-      decoration: const BoxDecoration(
-        color: Color(0xFF15101C),
-        border: Border(top: BorderSide(color: Color(0x334E3B60))),
-      ),
-      child: const Text(
-        'اضغط على أحد المقاعد الفارغة للانضمام إلى الحديث',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w600),
-      ),
-    );
+    return const SizedBox.shrink();
   }
 
   Widget _micCard(int number, double micSize) {
