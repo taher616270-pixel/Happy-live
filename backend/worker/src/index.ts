@@ -229,6 +229,67 @@ export default {
     }
 
 
+    // Authenticated text and image chat scoped to a single active room.
+    const chatRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/([^/]+)\\/messages$/);
+    if (chatRoute && (request.method === "GET" || request.method === "POST")) {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = decodeURIComponent(chatRoute[1]);
+        const room = await env.DB.prepare(
+          "SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string }>();
+        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+
+        if (request.method === "POST") {
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; }
+          catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const message = typeof body.message === "string" ? body.message.trim() : "";
+          const imageUrl = typeof body.imageUrl === "string" ? body.imageUrl.trim() : "";
+          if (message.length > 1000) return json({ error: "message_too_long" }, 400, origin, env);
+          if (imageUrl) {
+            try {
+              const parsed = new URL(imageUrl);
+              if (parsed.protocol !== "https:" || !parsed.hostname.endsWith("imagekit.io")) {
+                return json({ error: "invalid_message_image" }, 400, origin, env);
+              }
+            } catch {
+              return json({ error: "invalid_message_image" }, 400, origin, env);
+            }
+          }
+          if (!message && !imageUrl) return json({ error: "empty_message" }, 400, origin, env);
+          const id = crypto.randomUUID();
+          const createdAt = new Date().toISOString();
+          await env.DB.prepare(
+            "INSERT INTO room_messages (id, room_id, user_id, message, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+          ).bind(id, roomId, user.id, message, imageUrl || null, createdAt).run();
+        }
+
+        const result = await env.DB.prepare(
+          "SELECT m.id, m.user_id, m.message, m.image_url, m.created_at, p.display_name FROM room_messages m LEFT JOIN profiles p ON p.user_id = m.user_id WHERE m.room_id = ? ORDER BY m.created_at DESC LIMIT 60"
+        ).bind(roomId).all<{
+          id: string; user_id: string; message: string; image_url: string | null;
+          created_at: string; display_name: string | null;
+        }>();
+        const messages = (result.results ?? []).reverse().map((item) => ({
+          id: item.id,
+          userId: item.user_id,
+          name: item.display_name?.trim() || "مستخدم",
+          message: item.message,
+          imageUrl: item.image_url,
+          createdAt: item.created_at,
+          isMe: item.user_id === user.id
+        }));
+        return json({ ok: true, messages }, 200, origin, env);
+      } catch (error) {
+        const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[rooms.messages] failed", diagnostic);
+        return json({ error: "room_messages_failed" }, 500, origin, env);
+      }
+    }
+
     // Eight shared microphone seats. A seat is leased for 45 seconds and renewed by
     // authenticated clients, so abandoned seats disappear after disconnects.
     const seatRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/seats$/);
