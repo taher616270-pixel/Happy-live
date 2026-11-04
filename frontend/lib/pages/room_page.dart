@@ -301,14 +301,10 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _roomChat() {
+    // Inline room chat: part of the room's content, not a separate panel or page.
     return Container(
-      margin: const EdgeInsets.only(top: 14),
-      padding: const EdgeInsets.fromLTRB(12, 13, 12, 10),
-      decoration: BoxDecoration(
-        color: const Color(0xD916111F),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0x665F4775)),
-      ),
+      margin: const EdgeInsets.only(top: 18),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -321,9 +317,11 @@ class _RoomPageState extends State<RoomPage> {
               Text('${_messages.length}', style: const TextStyle(color: _muted, fontSize: 11)),
             ],
           ),
+          const SizedBox(height: 9),
+          Container(height: 1, color: const Color(0x445F4775)),
           const SizedBox(height: 10),
           SizedBox(
-            height: 235,
+            height: 205,
             child: _chatLoading && _messages.isEmpty
                 ? const Center(child: CircularProgressIndicator(strokeWidth: 1.8, color: _gold))
                 : _messages.isEmpty
@@ -417,9 +415,10 @@ class _RoomPageState extends State<RoomPage> {
                     hintStyle: const TextStyle(color: _muted, fontSize: 11),
                     counterText: '',
                     filled: true,
-                    fillColor: const Color(0xFF100D16),
+                    fillColor: const Color(0xFF17121E),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: Color(0x445F4775))),
                   ),
                   onSubmitted: (_) => _sendRoomMessage(),
                 ),
