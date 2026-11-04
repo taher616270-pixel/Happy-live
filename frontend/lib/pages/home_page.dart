@@ -100,14 +100,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
     children: [
       const SizedBox(height: 24),
-      const HappySectionTitle(title: 'اختصاراتك', subtitle: 'كل ما تحتاجه في مكان واحد'),
-      const SizedBox(height: 12),
-      Row(children: [
-        Expanded(child: HappyShortcut(icon: Icons.groups_rounded, title: 'المجتمعات', tint: HappyHomeColors.purple, onTap: widget.onDiscover)),
-        const SizedBox(width: 10),
-        Expanded(child: HappyShortcut(icon: Icons.mic_none_rounded, title: 'البث المباشر', tint: const Color(0xFF55B7C8), onTap: () => widget.onSoon('البث المباشر'))),
-      ]),
-      const SizedBox(height: 25),
       const HappySectionTitle(title: 'مساحة الأصدقاء', subtitle: 'قصص وتحديثات الأشخاص الذين تتابعهم'),
       const SizedBox(height: 12),
       Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
