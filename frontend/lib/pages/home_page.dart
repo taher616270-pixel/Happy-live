@@ -280,6 +280,18 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             mainAxisAlignment: MainAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              Material(
+                color: const Color(0xFF17131F),
+                shape: const CircleBorder(),
+                child: IconButton(
+                  tooltip: 'البحث عن غرفة بواسطة ID',
+                  onPressed: _searchRoomById,
+                  icon: const Icon(Icons.search_rounded, color: HappyHomeColors.gold, size: 21),
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+                ),
+              ),
+              const SizedBox(width: 5),
               _topButton(0, Icons.meeting_room_outlined, 'غرفتي'),
               const SizedBox(width: 5),
               _topButton(1, Icons.explore_outlined, 'استكشف'),
