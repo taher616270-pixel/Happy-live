@@ -230,6 +230,46 @@ export default {
 
 
     // Authenticated text and image chat scoped to a single active room.
+    const chatSessionRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/chat-session$/);
+    if (chatSessionRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = decodeURIComponent(chatSessionRoute[1]);
+        const room = await env.DB.prepare(
+          "SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string }>();
+        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; }
+        catch { return json({ error: "invalid_json" }, 400, origin, env); }
+        const action = body.action === "leave" ? "leave" : body.action === "join" ? "join" : "";
+        if (!action) return json({ error: "invalid_chat_session_action" }, 400, origin, env);
+        const now = new Date().toISOString();
+        if (action === "join") {
+          // A new visit starts with a clean view of chat history. Any abandoned
+          // visit (for example after a closed browser tab) is ended first.
+          await env.DB.prepare(
+            "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
+          ).bind(now, roomId, user.id).run();
+          const visitId = crypto.randomUUID();
+          await env.DB.prepare(
+            "INSERT INTO room_chat_visits (id, room_id, user_id, entered_at) VALUES (?, ?, ?, ?)"
+          ).bind(visitId, roomId, user.id, now).run();
+          return json({ ok: true, enteredAt: now }, 200, origin, env);
+        }
+        await env.DB.prepare(
+          "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
+        ).bind(now, roomId, user.id).run();
+        return json({ ok: true }, 200, origin, env);
+      } catch (error) {
+        const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[rooms.chat-session] failed", diagnostic);
+        return json({ error: "room_chat_session_failed" }, 500, origin, env);
+      }
+    }
+
     const chatRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/messages$/);
     if (chatRoute && (request.method === "GET" || request.method === "POST")) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
@@ -241,6 +281,10 @@ export default {
           "SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        const visit = await env.DB.prepare(
+          "SELECT entered_at FROM room_chat_visits WHERE room_id = ? AND user_id = ? AND exited_at IS NULL ORDER BY entered_at DESC LIMIT 1"
+        ).bind(roomId, user.id).first<{ entered_at: string }>();
+        if (!visit) return json({ error: "chat_session_not_active" }, 409, origin, env);
 
         if (request.method === "POST") {
           let body: Record<string, unknown>;
@@ -268,8 +312,8 @@ export default {
         }
 
         const result = await env.DB.prepare(
-          "SELECT m.id, m.user_id, m.message, m.image_url, m.created_at, p.display_name FROM room_messages m LEFT JOIN profiles p ON p.user_id = m.user_id WHERE m.room_id = ? ORDER BY m.created_at DESC LIMIT 60"
-        ).bind(roomId).all<{
+          "SELECT m.id, m.user_id, m.message, m.image_url, m.created_at, p.display_name FROM room_messages m LEFT JOIN profiles p ON p.user_id = m.user_id WHERE m.room_id = ? AND m.created_at >= ? ORDER BY m.created_at DESC LIMIT 60"
+        ).bind(roomId, visit.entered_at).all<{
           id: string; user_id: string; message: string; image_url: string | null;
           created_at: string; display_name: string | null;
         }>();
@@ -282,7 +326,7 @@ export default {
           createdAt: item.created_at,
           isMe: item.user_id === user.id
         }));
-        return json({ ok: true, messages }, 200, origin, env);
+        return json({ ok: true, messages, enteredAt: visit.entered_at }, 200, origin, env);
       } catch (error) {
         const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
         console.error("[rooms.messages] failed", diagnostic);
