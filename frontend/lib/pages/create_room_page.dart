@@ -217,15 +217,15 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: _surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0x665F4775)),
-                    ),
-                    child: const Column(
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0x665F4775)),
+                  ),
+                  child: const Column(
                       children: [
                         Icon(Icons.groups_rounded, color: _gold, size: 42),
                         SizedBox(height: 10),
@@ -243,14 +243,13 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                       ],
                     ),
                   ),
-                ),
                 const SizedBox(height: 18),
                 Center(
                   child: GestureDetector(
                     onTap: _pickRoomImage,
                     child: Container(
-                      width: 180,
-                      height: 180,
+                      width: 142,
+                      height: 142,
                       decoration: BoxDecoration(
                         color: const Color(0xFF100E15),
                         borderRadius: BorderRadius.circular(20),
