@@ -230,7 +230,7 @@ export default {
 
 
     // Authenticated text and image chat scoped to a single active room.
-    const chatRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/([^/]+)\\/messages$/);
+    const chatRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/messages$/);
     if (chatRoute && (request.method === "GET" || request.method === "POST")) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
