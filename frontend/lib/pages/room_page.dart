@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
+import 'package:happy_live/models/message.dart';
 
 class RoomPage extends StatefulWidget {
   const RoomPage({super.key, required this.room, required this.accessToken});
@@ -26,19 +25,12 @@ class _RoomPageState extends State<RoomPage> {
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
 
   Timer? _refreshTimer;
-  Timer? _chatRefreshTimer;
   final TextEditingController _messageController = TextEditingController();
-  final ImagePicker _imagePicker = ImagePicker();
-  final List<Map<String, dynamic>> _messages = [];
+  final List<Message> _messages = [];
   final ScrollController _roomMessagesController = ScrollController();
-  int? _messageDragPointer;
-  double? _messageDragStartY;
-  double _messageDragStartOffset = 0;
-  Uint8List? _pendingChatImage;
-  String _pendingChatImageName = 'room-chat.jpg';
-  bool _chatLoading = true;
   bool _chatSending = false;
-  bool _chatRefreshing = false;
+  DateTime _lastLocalMessageAt = DateTime.fromMillisecondsSinceEpoch(0);
+  late String _roomAnnouncement;
   DateTime _lastHeartbeat = DateTime.fromMillisecondsSinceEpoch(0);
   bool _isLoading = true;
   bool _isRefreshing = false;
@@ -77,8 +69,14 @@ class _RoomPageState extends State<RoomPage> {
   @override
   void initState() {
     super.initState();
+    _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? 'مرحباً بكم في الغرفة، نتمنى لكم وقتاً ممتعاً').toString();
+    _messages.addAll([
+      Message(id: 'demo-1', type: 'text', senderId: 'demo-user-1', senderName: 'سالم', senderAvatar: '', text: 'يا هلا بالجميع 🌸', createdAt: DateTime.now().subtract(const Duration(minutes: 2))),
+      Message(id: 'demo-2', type: 'system', senderId: 'demo-owner', senderName: _ownerName, senderAvatar: '', text: 'دخل الغرفة', createdAt: DateTime.now().subtract(const Duration(minutes: 1))),
+      Message(id: 'demo-3', type: 'text', senderId: 'demo-user-2', senderName: 'نور', senderAvatar: '', text: 'نورتوا المكان 🤍', createdAt: DateTime.now().subtract(const Duration(seconds: 35))),
+    ]);
+    _scrollChatToBottom(animated: false);
     _refreshSeats();
-    _startChatSession();
     // Refresh shared seats twice per second so other members appear almost immediately.
     _refreshTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       _refreshSeats();
@@ -93,10 +91,8 @@ class _RoomPageState extends State<RoomPage> {
     _miniOverlayEntry?.remove();
     _miniOverlayEntry = null;
     _refreshTimer?.cancel();
-    _chatRefreshTimer?.cancel();
     _messageController.dispose();
     _roomMessagesController.dispose();
-    _leaveChatSession();
     if (_mySeat != null) {
       // Best-effort release; the server-side lease also expires automatically.
       http.post(_seatsUri, headers: _headers, body: jsonEncode({'seatNumber': null}))
@@ -161,345 +157,277 @@ class _RoomPageState extends State<RoomPage> {
     } catch (_) {}
   }
 
-  Uri get _messagesUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/messages');
-  Uri get _chatSessionUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/chat-session');
-  bool _chatSessionReady = false;
-
-  Future<void> _startChatSession() async {
-    if (_roomId.isEmpty || widget.accessToken.isEmpty) return;
+  bool get _isRoomOwner {
+    if (widget.room['isOwner'] == true) return true;
+    final ownerId = (widget.room['ownerId'] ?? widget.room['owner_id'] ?? widget.room['createdBy'] ?? widget.room['created_by'] ?? '').toString();
+    if (ownerId.isEmpty) return false;
     try {
-      final response = await http.post(
-        _chatSessionUri,
-        headers: _headers,
-        body: jsonEncode({'action': 'join'}),
-      ).timeout(const Duration(seconds: 8));
-      final data = jsonDecode(response.body);
-      if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
-        if (mounted) setState(() => _chatLoading = false);
-        return;
-      }
-      _chatSessionReady = true;
-      await _refreshMessages();
-      if (mounted) {
-        _chatRefreshTimer = Timer.periodic(const Duration(seconds: 2), (_) => _refreshMessages());
-      }
+      final parts = widget.accessToken.split('.');
+      if (parts.length < 2) return false;
+      final payload = jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))));
+      if (payload is! Map) return false;
+      final userId = (payload['sub'] ?? payload['userId'] ?? payload['uid'] ?? '').toString();
+      return userId.isNotEmpty && userId == ownerId;
     } catch (_) {
-      if (mounted) setState(() => _chatLoading = false);
+      return false;
     }
   }
 
-  Future<void> _leaveChatSession() async {
-    if (!_chatSessionReady) return;
-    _chatSessionReady = false;
-    try {
-      await http.post(
-        _chatSessionUri,
-        headers: _headers,
-        body: jsonEncode({'action': 'leave'}),
-      ).timeout(const Duration(seconds: 3));
-    } catch (_) {}
-  }
-
-  Future<void> _refreshMessages() async {
-    if (!_chatSessionReady || _chatRefreshing || _roomId.isEmpty || widget.accessToken.isEmpty) return;
-    _chatRefreshing = true;
-    try {
-      final response = await http.get(_messagesUri, headers: _headers).timeout(const Duration(seconds: 8));
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200 && data is Map && data['ok'] == true && data['messages'] is List) {
-        final next = (data['messages'] as List)
-            .whereType<Map>()
-            .map((item) => Map<String, dynamic>.from(item))
-            .toList();
-        if (mounted && jsonEncode(_messages) != jsonEncode(next)) {
-          setState(() {
-            _messages
-              ..clear()
-              ..addAll(next);
-            _chatLoading = false;
-          });
-        } else if (mounted && _chatLoading) {
-          setState(() => _chatLoading = false);
-        }
-      } else if (mounted && _chatLoading) {
-        setState(() => _chatLoading = false);
+  void _scrollChatToBottom({bool animated = true}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_roomMessagesController.hasClients) return;
+      final target = _roomMessagesController.position.maxScrollExtent;
+      if (animated) {
+        _roomMessagesController.animateTo(target, duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+      } else {
+        _roomMessagesController.jumpTo(target);
       }
-    } catch (_) {
-      if (mounted && _chatLoading) setState(() => _chatLoading = false);
-    } finally {
-      _chatRefreshing = false;
-    }
-  }
-
-  Future<void> _pickChatImage() async {
-    if (_chatSending) return;
-    try {
-      final picked = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 86,
-        maxWidth: 1600,
-        maxHeight: 1600,
-      );
-      if (picked == null) return;
-      final bytes = await picked.readAsBytes();
-      if (bytes.length > 5 * 1024 * 1024) {
-        _showMessage('حجم الصورة يجب ألا يتجاوز 5 ميجابايت');
-        return;
-      }
-      if (!mounted) return;
-      setState(() {
-        _pendingChatImage = bytes;
-        _pendingChatImageName = picked.name.isEmpty ? 'room-chat.jpg' : picked.name;
-      });
-    } catch (_) {
-      _showMessage('تعذر اختيار الصورة');
-    }
-  }
-
-  Future<String> _uploadChatImage() async {
-    final bytes = _pendingChatImage;
-    if (bytes == null) return '';
-    final authResponse = await http.get(
-      Uri.parse('$_apiBase/imagekit/auth'),
-      headers: {'Authorization': 'Bearer ${widget.accessToken}'},
-    ).timeout(const Duration(seconds: 15));
-    if (authResponse.statusCode != 200) throw Exception('image_auth_failed');
-    final auth = jsonDecode(authResponse.body) as Map<String, dynamic>;
-    final upload = http.MultipartRequest(
-      'POST',
-      Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
-    );
-    upload.fields.addAll({
-      'fileName': 'room-chat-${DateTime.now().millisecondsSinceEpoch}-$_pendingChatImageName',
-      'publicKey': auth['publicKey'].toString(),
-      'token': auth['token'].toString(),
-      'expire': auth['expire'].toString(),
-      'signature': auth['signature'].toString(),
-      'useUniqueFileName': 'true',
-      'folder': '/happy-live/room-chat',
     });
-    upload.files.add(http.MultipartFile.fromBytes('file', bytes, filename: _pendingChatImageName));
-    final streamed = await upload.send().timeout(const Duration(seconds: 60));
-    final response = await http.Response.fromStream(streamed);
-    if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('image_upload_failed');
-    final result = jsonDecode(response.body) as Map<String, dynamic>;
-    final url = result['url']?.toString() ?? '';
-    if (!url.startsWith('https://')) throw Exception('invalid_image_url');
-    return url;
   }
 
-  Future<void> _sendRoomMessage() async {
-    if (_chatSending || !_chatSessionReady) return;
-    final message = _messageController.text.trim();
-    if (message.isEmpty && _pendingChatImage == null) return;
-    if (message.length > 1000) {
-      _showMessage('الرسالة طويلة جدًا');
+  void _appendLocalMessage(Message message) {
+    setState(() {
+      _messages.add(message);
+      if (_messages.length > 50) _messages.removeRange(0, _messages.length - 50);
+    });
+    _scrollChatToBottom();
+  }
+
+  void _sendRoomMessage() {
+    if (_chatSending) return;
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+    if (text.length > 200) {
+      _showMessage('الرسالة يجب ألا تتجاوز 200 حرف');
       return;
     }
-    setState(() => _chatSending = true);
-    try {
-      final imageUrl = await _uploadChatImage();
-      final response = await http.post(
-        _messagesUri,
-        headers: _headers,
-        body: jsonEncode({'message': message, 'imageUrl': imageUrl}),
-      ).timeout(const Duration(seconds: 15));
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200 && data is Map && data['ok'] == true) {
-        _messageController.clear();
-        if (mounted) setState(() => _pendingChatImage = null);
-        await _refreshMessages();
-      } else {
-        _showMessage(response.statusCode == 401 ? 'انتهت جلسة الدخول' : 'تعذر إرسال الرسالة');
-      }
-    } catch (_) {
-      _showMessage('تعذر إرسال الرسالة أو الصورة، تحقق من الإنترنت');
-    } finally {
-      if (mounted) setState(() => _chatSending = false);
+    final now = DateTime.now();
+    if (now.difference(_lastLocalMessageAt).inMilliseconds < 1000) {
+      _showMessage('انتظر ثانية قبل إرسال رسالة أخرى');
+      return;
     }
+    _lastLocalMessageAt = now;
+    _messageController.clear();
+    _appendLocalMessage(Message(
+      id: 'local-\u0024{now.microsecondsSinceEpoch}',
+      type: 'text',
+      senderId: 'demo-current-user',
+      senderName: 'أنت',
+      senderAvatar: (widget.room['currentUserAvatar'] ?? '').toString(),
+      text: text,
+      createdAt: now,
+    ));
   }
 
-  Widget _roomMessagesBehindMics() {
-    if (_messages.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return IgnorePointer(
-      child: ShaderMask(
-        shaderCallback: (bounds) => const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
-          stops: [0.0, 0.18, 0.82, 1.0],
-        ).createShader(bounds),
-        blendMode: BlendMode.dstIn,
-        child: ListView.builder(
-          controller: _roomMessagesController,
-          reverse: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
-          itemCount: _messages.length,
-          itemBuilder: (context, index) {
-            final item = _messages[_messages.length - 1 - index];
-            final mine = item['isMe'] == true;
-            final imageUrl = item['imageUrl']?.toString() ?? '';
-            final message = item['message']?.toString() ?? '';
-            return Align(
-              alignment: mine ? Alignment.centerLeft : Alignment.centerRight,
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 190),
-                margin: const EdgeInsets.only(bottom: 7),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: (mine ? const Color(0xFF67477C) : const Color(0xFF292131)).withOpacity(0.48),
-                  borderRadius: BorderRadius.circular(11),
-                  border: Border.all(color: const Color(0x55E8C477)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      item['name']?.toString() ?? 'مستخدم',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: _gold, fontSize: 9, fontWeight: FontWeight.w800),
-                    ),
-                    if (message.isNotEmpty)
-                      Text(
-                        message,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white, fontSize: 10, height: 1.25),
-                      ),
-                    if (imageUrl.startsWith('https://'))
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.network(
-                            imageUrl,
-                            width: 82,
-                            height: 42,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ),
+  Widget _chatAvatar(String avatar, String name, {double size = 34}) {
+    final hasImage = avatar.startsWith('https://');
+    return CircleAvatar(
+      radius: size / 2,
+      backgroundColor: const Color(0xFF46304F),
+      backgroundImage: hasImage ? NetworkImage(avatar) : null,
+      child: hasImage ? null : Text(name.isEmpty ? '؟' : name.characters.first, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
     );
   }
 
-  Widget _roomChatComposer() {
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _roomMessageItem(Message message) {
+    if (message.type == 'system') {
+      final isWelcome = message.text.contains('دخل الغرفة') || message.text.contains('انضم');
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          textDirection: TextDirection.rtl,
+          children: [
+            CircleAvatar(
+              radius: 15,
+              backgroundColor: const Color(0xFF3A2948),
+              child: Icon(isWelcome ? Icons.waving_hand_rounded : Icons.campaign_rounded, color: _gold, size: 16),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.42), borderRadius: BorderRadius.circular(14)),
+                child: Text('\u0024{message.senderName} @ \u0024{message.text}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (message.type == 'announcement') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          textDirection: TextDirection.rtl,
+          children: [
+            const CircleAvatar(radius: 15, backgroundColor: Color(0xFF3A2948), child: Icon(Icons.notifications_active_rounded, color: _gold, size: 16)),
+            const SizedBox(width: 8),
+            Flexible(child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(color: const Color(0xAA34233E), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x66E8C477))),
+              child: Text(message.text, style: const TextStyle(color: Colors.white, fontSize: 11, height: 1.4)),
+            )),
+          ],
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        textDirection: TextDirection.rtl,
         children: [
-          if (_pendingChatImage != null) ...[
-            const SizedBox(height: 8),
-            Row(
+          _chatAvatar(message.senderAvatar, message.senderName),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(_pendingChatImage!, width: 58, height: 58, fit: BoxFit.cover),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(color: const Color(0xFFE88BAE), borderRadius: BorderRadius.circular(9)),
+                  child: Text(message.senderName, style: const TextStyle(color: Color(0xFF321624), fontSize: 10, fontWeight: FontWeight.w900)),
                 ),
-                const SizedBox(width: 8),
-                const Expanded(child: Text('الصورة جاهزة للإرسال', style: TextStyle(color: _muted, fontSize: 11))),
-                IconButton(
-                  tooltip: 'إزالة الصورة',
-                  onPressed: _chatSending ? null : () => setState(() => _pendingChatImage = null),
-                  icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 18),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.58), borderRadius: BorderRadius.circular(14)),
+                  child: Text(message.text, style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.4)),
                 ),
               ],
             ),
-          ],
-          Row(
-            children: [
-              IconButton(
-                tooltip: 'إرفاق صورة',
-                onPressed: _chatSending ? null : _pickChatImage,
-                icon: const Icon(Icons.image_outlined, color: _gold),
-              ),
-              Expanded(
-                child: TextField(
-                  controller: _messageController,
-                  minLines: 1,
-                  maxLines: 3,
-                  maxLength: 1000,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                  decoration: InputDecoration(
-                    hintText: 'اكتب رسالة...',
-                    hintStyle: const TextStyle(color: _muted, fontSize: 11),
-                    counterText: '',
-                    filled: true,
-                    fillColor: const Color(0xFF17121E),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: Color(0x445F4775))),
-                  ),
-                  onSubmitted: (_) => _sendRoomMessage(),
-                ),
-              ),
-              const SizedBox(width: 6),
-              IconButton(
-                tooltip: 'إرسال',
-                onPressed: _chatSending ? null : _sendRoomMessage,
-                icon: _chatSending
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: _gold))
-                    : const Icon(Icons.send_rounded, color: _gold),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _microphoneStageWithMessages() {
-    return Listener(
-      behavior: HitTestBehavior.translucent,
-      onPointerDown: (event) {
-        if (!_roomMessagesController.hasClients) return;
-        _messageDragPointer = event.pointer;
-        _messageDragStartY = event.position.dy;
-        _messageDragStartOffset = _roomMessagesController.offset;
-      },
-      onPointerMove: (event) {
-        if (_messageDragPointer != event.pointer || _messageDragStartY == null) return;
-        if (!_roomMessagesController.hasClients) return;
-        final delta = event.position.dy - _messageDragStartY!;
-        final position = _roomMessagesController.position;
-        final nextOffset = (_messageDragStartOffset - delta)
-            .clamp(position.minScrollExtent, position.maxScrollExtent)
-            .toDouble();
-        if ((nextOffset - _roomMessagesController.offset).abs() > 0.5) {
-          _roomMessagesController.jumpTo(nextOffset);
-        }
-      },
-      onPointerUp: (event) {
-        if (_messageDragPointer == event.pointer) {
-          _messageDragPointer = null;
-          _messageDragStartY = null;
-        }
-      },
-      onPointerCancel: (event) {
-        if (_messageDragPointer == event.pointer) {
-          _messageDragPointer = null;
-          _messageDragStartY = null;
-        }
-      },
-      child: Stack(
+  Widget _roomMessagesPanel() {
+    return Container(
+      height: 250,
+      margin: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+      decoration: BoxDecoration(color: Colors.black.withOpacity(0.10), borderRadius: BorderRadius.circular(16)),
+      child: ListView.builder(
+        controller: _roomMessagesController,
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+        itemCount: _messages.length,
+        itemBuilder: (context, index) => _roomMessageItem(_messages[index]),
+      ),
+    );
+  }
+
+  Widget _roomAnnouncementCard() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      decoration: BoxDecoration(color: const Color(0xAA17121E), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x55E8C477))),
+      child: Row(
+        textDirection: TextDirection.rtl,
         children: [
-          Positioned.fill(child: _roomMessagesBehindMics()),
-          _microphoneStage(),
+          const Icon(Icons.campaign_rounded, color: _gold, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('إعلان:', style: TextStyle(color: _gold, fontSize: 11, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 3),
+              Text(_roomAnnouncement, style: const TextStyle(color: Colors.white, fontSize: 11, height: 1.4)),
+            ],
+          )),
+          if (_isRoomOwner) ...[
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: _editRoomAnnouncement,
+              style: TextButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF21152B), minimumSize: const Size(54, 34), padding: const EdgeInsets.symmetric(horizontal: 10)),
+              child: const Text('تعديل', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Future<void> _editRoomAnnouncement() async {
+    final controller = TextEditingController(text: _roomAnnouncement);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF21182B),
+        title: const Text('تعديل إعلان الغرفة', style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 200,
+          maxLines: 4,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: const InputDecoration(hintText: 'اكتب الإعلان...', hintStyle: TextStyle(color: _muted)),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('حفظ')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result == null || result.isEmpty || !mounted) return;
+    setState(() => _roomAnnouncement = result);
+    _appendLocalMessage(Message(
+      id: 'announcement-\u0024{DateTime.now().microsecondsSinceEpoch}',
+      type: 'announcement', senderId: 'demo-owner', senderName: _ownerName,
+      senderAvatar: '', text: result, createdAt: DateTime.now(),
+    ));
+  }
+
+  Widget _roomChatComposer() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
+      decoration: BoxDecoration(color: const Color(0xEE15101C), border: Border(top: BorderSide(color: const Color(0x445F4775)))),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          textDirection: TextDirection.rtl,
+          children: [
+            Stack(clipBehavior: Clip.none, children: [
+              IconButton(onPressed: () => _showChatToolMessage('الرسائل الخاصة'), icon: const Icon(Icons.mail_outline_rounded, color: Colors.white, size: 22)),
+              Positioned(top: 4, left: 4, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle))),
+            ]),
+            IconButton(onPressed: () => _showChatToolMessage('الهدايا'), icon: const Icon(Icons.card_giftcard_rounded, color: _gold, size: 22)),
+            IconButton(onPressed: _showRoomChatMenu, icon: const Icon(Icons.menu_rounded, color: Colors.white70, size: 22)),
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                minLines: 1,
+                maxLines: 2,
+                maxLength: 200,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _sendRoomMessage(),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+                decoration: InputDecoration(
+                  hintText: 'قل شيئاً...', hintStyle: const TextStyle(color: _muted, fontSize: 12), counterText: '',
+                  filled: true, fillColor: const Color(0xFF29212F), contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
+                ),
+              ),
+            ),
+            IconButton(onPressed: _sendRoomMessage, icon: const Icon(Icons.send_rounded, color: _gold, size: 21)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showChatToolMessage(String label) {
+    _showMessage('$label — واجهة تجريبية للمرحلة الأولى');
+  }
+
+  void _showRoomChatMenu() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF21182B),
+      builder: (context) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        ListTile(leading: const Icon(Icons.people_outline, color: _gold), title: const Text('أعضاء الغرفة', style: TextStyle(color: Colors.white)), onTap: () { Navigator.pop(context); _showChatToolMessage('أعضاء الغرفة'); }),
+        ListTile(leading: const Icon(Icons.flag_outlined, color: _gold), title: const Text('إبلاغ', style: TextStyle(color: Colors.white)), onTap: () { Navigator.pop(context); _showChatToolMessage('الإبلاغ'); }),
+      ])),
     );
   }
 
@@ -631,7 +559,9 @@ class _RoomPageState extends State<RoomPage> {
                           ),
                         const SizedBox(height: 17),
                         if (_loadError != null && _seats.isEmpty) _errorPanel(),
-                        _microphoneStageWithMessages(),
+                        _microphoneStage(),
+                        _roomAnnouncementCard(),
+                        _roomMessagesPanel(),
                         const SizedBox(height: 10),
                         const SizedBox(height: 20),
                         Align(
@@ -878,7 +808,6 @@ class _RoomPageState extends State<RoomPage> {
     setState(() { _isClosingRoom = true; _showRoomActions = false; });
     try {
       if (_mySeat != null) await _leaveSeat();
-      await _leaveChatSession();
       if (mounted) {
         final route = _roomRoute;
         final navigator = Navigator.of(context);
