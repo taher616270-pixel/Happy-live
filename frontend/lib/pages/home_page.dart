@@ -108,11 +108,16 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             SizedBox(height: 4), Text('دردش مع أي شخص', style: TextStyle(color: HappyHomeColors.muted, fontSize: 11, height: 1.6)),
           ])),
           const SizedBox(width: 12),
-          SizedBox(width: 48, height: 48, child: Stack(
+          SizedBox(width: 48, height: 48, child: DecoratedBox(
+            decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF30233D), border: Border.all(color: HappyHomeColors.purple)),
+            child: const Center(child: Icon(Icons.add_rounded, color: HappyHomeColors.gold, size: 26)),
+          )),
+          const SizedBox(width: 10),
+          SizedBox(width: 42, height: 48, child: Stack(
             alignment: Alignment.center,
             children: [
               const Text('H', style: TextStyle(color: HappyHomeColors.gold, fontSize: 34, fontWeight: FontWeight.w900, height: 1)),
-              Positioned(right: 1, top: 5, child: Transform.rotate(
+              Positioned(right: 0, top: 5, child: Transform.rotate(
                 angle: -0.35,
                 child: const Icon(Icons.mic_rounded, color: HappyHomeColors.purple, size: 19),
               )),
