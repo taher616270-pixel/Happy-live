@@ -1296,8 +1296,63 @@ class _SessionHomePageState extends State<SessionHomePage> {
   }
 }
 
-class _HappyMySpacePage extends StatelessWidget {
+class _HappyMySpacePage extends StatefulWidget {
   const _HappyMySpacePage();
+
+  @override
+  State<_HappyMySpacePage> createState() => _HappyMySpacePageState();
+}
+
+class _HappyMySpacePageState extends State<_HappyMySpacePage> {
+  String _countryName = 'جارٍ تحديد الدولة...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCountry();
+  }
+
+  Future<void> _loadCountry() async {
+    try {
+      final response = await http
+          .get(Uri.https('ipwho.is', ''))
+          .timeout(const Duration(seconds: 7));
+      if (response.statusCode != 200) throw Exception('Country lookup failed');
+      final data = jsonDecode(response.body);
+      if (data is! Map<String, dynamic> || data['success'] == false) {
+        throw Exception('Country lookup failed');
+      }
+      final country = (data['country'] ?? '').toString().trim();
+      if (mounted && country.isNotEmpty) {
+        setState(() => _countryName = country);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _countryName = 'دولتي');
+    }
+  }
+
+  Widget _roomButton({
+    required IconData icon,
+    required String label,
+    bool isCountry = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: HappyLiveApp.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x665F4775)),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: HappyLiveApp.gold),
+        title: Text(label, style: const TextStyle(
+          color: Colors.white, fontWeight: FontWeight.w800,
+        )),
+        trailing: const Icon(Icons.chevron_left_rounded, color: HappyLiveApp.muted),
+        onTap: () {},
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1309,30 +1364,22 @@ class _HappyMySpacePage extends StatelessWidget {
           backgroundColor: const Color(0xFF17121F),
           foregroundColor: Colors.white,
           elevation: 0,
-          title: const Text('الخاص بي', style: TextStyle(
+          title: const Text('غرفتي', style: TextStyle(
             color: HappyLiveApp.gold, fontWeight: FontWeight.w900,
           )),
         ),
-        body: const SafeArea(
-          child: Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.widgets_outlined, color: HappyLiveApp.gold, size: 48),
-                  SizedBox(height: 14),
-                  Text('الخاص بي', style: TextStyle(
-                    color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900,
-                  )),
-                  SizedBox(height: 8),
-                  Text('هذه صفحتك الخاصة، وسنضيف محتوياتها وميزاتها لاحقاً.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: HappyLiveApp.muted, fontSize: 13, height: 1.7),
-                  ),
-                ],
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(18),
+            children: [
+              _roomButton(icon: Icons.meeting_room_outlined, label: 'غرفتي'),
+              _roomButton(icon: Icons.explore_outlined, label: 'استكشف'),
+              _roomButton(
+                icon: Icons.public_rounded,
+                label: _countryName,
+                isCountry: true,
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -1352,7 +1399,7 @@ class _HappyHomeTab extends StatelessWidget {
       child: OutlinedButton.icon(
         onPressed: () => (context.findAncestorStateOfType<_SessionHomePageState>())?._openMySidePanel(),
         icon: const Icon(Icons.menu_rounded, size: 18),
-        label: const Text('الخاص بي'),
+        label: const Text('غرفتي'),
         style: OutlinedButton.styleFrom(
           foregroundColor: HappyLiveApp.gold,
           side: const BorderSide(color: Color(0x665F4775)),
