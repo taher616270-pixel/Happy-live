@@ -11,3 +11,11 @@ binding = "DB"
 database_name = "happy-live-db"
 database_id = "ae09430d-71e9-420b-8362-a8e2bb947dff"
 migrations_dir = "migrations"
+
+[[durable_objects.bindings]]
+name = "ROOM_CHAT"
+class_name = "RoomChatHub"
+
+[[migrations]]
+tag = "v1-room-chat"
+new_classes = ["RoomChatHub"]
