@@ -132,7 +132,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     counterText: '',
                     hintText: 'أدخل ID الغرفة',
                     hintStyle: const TextStyle(color: HappyHomeColors.muted, fontSize: 14, letterSpacing: 0),
-                    filled: true, fillColor: const AppColors.primary,
+                    filled: true, fillColor: AppColors.primary,
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide(color: AppColors.border.withOpacity(0.4))),
                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: HappyHomeColors.gold)),
                   ),
@@ -145,7 +145,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity, padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const AppColors.primary, borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeColors.gold.withOpacity(.5))),
+                    decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeColors.gold.withOpacity(.5))),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       Text((foundRoom!['name'] ?? 'غرفة صوتية').toString(), textAlign: TextAlign.right, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
@@ -282,7 +282,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Material(
-                color: const AppColors.primary,
+                color: AppColors.primary,
                 shape: const CircleBorder(),
                 child: IconButton(
                   tooltip: 'البحث عن غرفة بواسطة ID',
@@ -348,7 +348,7 @@ class MyPartyRoomButton extends StatelessWidget {
                 height: 74,
                 padding: const EdgeInsets.only(left: 16, right: 16),
                 decoration: BoxDecoration(
-                  color: const AppColors.primary,
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: AppColors.primary.withOpacity(0.5),
@@ -396,16 +396,16 @@ class MyPartyRoomButton extends StatelessWidget {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: const AppColors.primary,
+                        color: AppColors.primary,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: const AppColors.primary,
+                          color: AppColors.primary,
                           width: 1.8,
                         ),
                       ),
                       child: Icon(
                         hasRoom ? Icons.arrow_forward_ios_rounded : Icons.add,
-                        color: const AppColors.primary,
+                        color: AppColors.primary,
                         size: hasRoom ? 15 : 21,
                       ),
                     ),
@@ -449,7 +449,7 @@ class HappyShortcut extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(onTap: onTap, borderRadius: BorderRadius.circular(17),
     child: Container(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-      decoration: BoxDecoration(color: HappyHomeColors.surface, borderRadius: BorderRadius.circular(17), border: Border.all(color: const AppColors.primary)),
+      decoration: BoxDecoration(color: HappyHomeColors.surface, borderRadius: BorderRadius.circular(17), border: Border.all(color: AppColors.primary)),
       child: Column(children: [Icon(icon, color: tint, size: 26), const SizedBox(height: 8),
         Text(title, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w800))])));
 }
