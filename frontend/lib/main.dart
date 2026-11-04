@@ -1268,22 +1268,6 @@ class _SessionHomePageState extends State<SessionHomePage> {
     return Directionality(textDirection: TextDirection.rtl, child: Scaffold(
       backgroundColor: HappyLiveApp.background,
       body: SafeArea(child: Column(children: [
-        Padding(padding: const EdgeInsets.fromLTRB(18, 12, 18, 10), child: Row(children: [
-          Container(width: 43, height: 43, decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            gradient: const LinearGradient(colors: [Color(0xFF49305E), Color(0xFF17121F)]),
-            border: Border.all(color: HappyLiveApp.gold.withValues(alpha: .7))),
-            child: const Center(child: Text('H', style: TextStyle(color: HappyLiveApp.gold, fontSize: 29, fontWeight: FontWeight.w900)))),
-          const SizedBox(width: 11),
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('HAPPY LIVE', style: TextStyle(color: HappyLiveApp.gold, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.4)),
-            SizedBox(height: 2), Text('عالمك الاجتماعي', style: TextStyle(color: HappyLiveApp.muted, fontSize: 11)),
-          ])),
-          IconButton(onPressed: () => _soon('الإشعارات'), icon: const Icon(Icons.notifications_none_rounded, color: Colors.white)),
-          GestureDetector(onTap: () => setState(() => _tab = 4),
-            child: CircleAvatar(radius: 19, backgroundColor: const Color(0xFF49305E),
-              child: Text(_initial, style: const TextStyle(color: HappyLiveApp.gold, fontWeight: FontWeight.w900)))),
-        ])),
         Expanded(child: IndexedStack(index: _tab, children: pages)),
       ])),
       bottomNavigationBar: Container(
@@ -1313,10 +1297,7 @@ class _HappyHomeTab extends StatelessWidget {
   final ValueChanged<String> onSoon;
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 12, 18, 28), children: [
-    const Text('مرحباً بعودتك 👋', style: TextStyle(color: HappyLiveApp.muted, fontSize: 13)),
-    const SizedBox(height: 5),
-    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
-    const SizedBox(height: 19),
+    const SizedBox(height: 8),
     Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(23),
       gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF38234B), Color(0xFF1D1726), Color(0xFF121018)]),
@@ -1326,7 +1307,6 @@ class _HappyHomeTab extends StatelessWidget {
           decoration: BoxDecoration(color: const Color(0x33E8C477), borderRadius: BorderRadius.circular(30)),
           child: const Text('مرحباً بك في مجتمعك', style: TextStyle(color: HappyLiveApp.gold, fontSize: 11, fontWeight: FontWeight.w800))),
         const SizedBox(height: 15),
-        const Text('عالمك الاجتماعي\nفي مكان واحد', style: TextStyle(color: Colors.white, fontSize: 25, height: 1.35, fontWeight: FontWeight.w900)),
         const SizedBox(height: 8),
         const Text('اكتشف أشخاصاً جدد، وشارك اهتماماتك، وكن جزءاً من مجتمع Happy Live.', style: TextStyle(color: Color(0xFFD0C7D8), fontSize: 12, height: 1.8)),
         const SizedBox(height: 17),
