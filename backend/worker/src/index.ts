@@ -228,6 +228,55 @@ export default {
       }
     }
 
+
+    if (url.pathname === "/api/v1/rooms" && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+
+        let body: Record<string, unknown>;
+        try {
+          body = await request.json() as Record<string, unknown>;
+        } catch {
+          return json({ error: "invalid_json" }, 400, origin, env);
+        }
+
+        const name = typeof body.name === "string" ? body.name.trim() : "";
+        const description = typeof body.description === "string" ? body.description.trim() : "";
+        const isPrivate = body.isPrivate === true;
+
+        if (!name) return json({ error: "room_name_required", message: "اكتب اسم الغرفة" }, 400, origin, env);
+        if (name.length > 30) return json({ error: "invalid_room_name", message: "اسم الغرفة يجب ألا يتجاوز 30 حرفًا" }, 400, origin, env);
+        if (description.length > 120) return json({ error: "invalid_description", message: "الوصف يجب ألا يتجاوز 120 حرفًا" }, 400, origin, env);
+
+        const roomId = crypto.randomUUID();
+        const createdAt = new Date().toISOString();
+        await env.DB.prepare(
+          "INSERT INTO rooms (id, owner_user_id, name, description, visibility, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'active', ?, ?)"
+        ).bind(roomId, user.id, name, description, isPrivate ? "private" : "public", createdAt, createdAt).run();
+
+        return json({
+          ok: true,
+          room: {
+            id: roomId,
+            ownerId: user.id,
+            name,
+            description,
+            isPrivate,
+            status: "active",
+            createdAt
+          }
+        }, 201, origin, env);
+      } catch (error) {
+        const diagnostic = error instanceof Error
+          ? { name: error.name, message: error.message }
+          : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[rooms.create] failed", diagnostic);
+        return json({ error: "room_creation_failed", message: "تعذر إنشاء الغرفة حاليًا" }, 500, origin, env);
+      }
+    }
+
     if (url.pathname === "/api/v1/auth/logout" && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       const authorization = request.headers.get("Authorization") ?? "";
@@ -369,7 +418,7 @@ export default {
         name: "Happy Live API",
         version: "v1",
         status: "scaffold",
-        endpoints: ["/api/v1/health", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/me", "/api/v1/auth/logout", "/api/v1/imagekit/health", "/api/v1/imagekit/auth"]
+        endpoints: ["/api/v1/health", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/me", "/api/v1/auth/logout", "/api/v1/rooms", "/api/v1/imagekit/health", "/api/v1/imagekit/auth"]
       }, 200, origin, env);
     }
 
