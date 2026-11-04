@@ -298,31 +298,6 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: _surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0x665F4775)),
-                  ),
-                  child: const Column(
-                    children: [
-                      Icon(Icons.groups_rounded, color: _gold, size: 42),
-                      SizedBox(height: 10),
-                      Text(
-                        'أنشئ غرفتك واجمع أصدقاءك',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
-                      ),
-                      SizedBox(height: 5),
-                      Text(
-                        'أدخل تفاصيل الغرفة قبل إنشائها',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: _muted, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
                 const SizedBox(height: 22),
                 TextFormField(
                   controller: _nameController,
