@@ -391,7 +391,7 @@ class _LoginPageState extends State<LoginPage> {
                                           prefixIcon: const Icon(Icons.search, color: HappyLiveApp.gold),
                                           filled: true, fillColor: const AppColors.primary,
                                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+                                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
                                         ),
                                       ),
                                     ),
@@ -488,7 +488,7 @@ class _LoginPageState extends State<LoginPage> {
 
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
-                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
                                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: HappyLiveApp.gold)),
                               ),
                             ),
@@ -508,7 +508,7 @@ class _LoginPageState extends State<LoginPage> {
                                 prefixIcon: const Icon(Icons.phone_rounded, color: HappyLiveApp.gold, size: 20),
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
-                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
                                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: HappyLiveApp.gold)),
                               ),
                             ),
@@ -548,7 +548,7 @@ class _LoginPageState extends State<LoginPage> {
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: HappyLiveApp.gold,
-                              foregroundColor: const AppColors.primary,
+                              foregroundColor: AppColors.textOnPrimary,
                               minimumSize: const Size.fromHeight(47),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
@@ -1092,7 +1092,7 @@ class _LoginPageState extends State<LoginPage> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
                                 shadowColor: Colors.transparent,
-                                foregroundColor: const AppColors.primary,
+                                foregroundColor: AppColors.textOnPrimary,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                               ),
                               child: _isSubmitting
@@ -1124,7 +1124,7 @@ class _LoginPageState extends State<LoginPage> {
                               side: const BorderSide(color: AppColors.primary),
                               backgroundColor: const AppColors.primary,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                              foregroundColor: AppColors.textPrimary,
+                              foregroundColor: AppColors.textOnPrimary,
                             ),
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -1146,7 +1146,7 @@ class _LoginPageState extends State<LoginPage> {
                                 side: const BorderSide(color: AppColors.primary),
                                 backgroundColor: const AppColors.primary,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                                foregroundColor: AppColors.textPrimary,
+                                foregroundColor: AppColors.textOnPrimary,
                               ),
                               child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1183,7 +1183,7 @@ class _LoginPageState extends State<LoginPage> {
                                 label: const SizedBox.shrink(),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(50),
-                                  foregroundColor: AppColors.textPrimary,
+                                  foregroundColor: AppColors.textOnPrimary,
                                   side: const BorderSide(color: AppColors.primary),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                 ),
@@ -1197,7 +1197,7 @@ class _LoginPageState extends State<LoginPage> {
                                 label: const Text('ID', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 1.8, color: HappyLiveApp.gold)),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(50),
-                                  foregroundColor: AppColors.textPrimary,
+                                  foregroundColor: AppColors.textOnPrimary,
                                   side: const BorderSide(color: AppColors.primary),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                 ),
@@ -1452,7 +1452,7 @@ class _HappyMySpacePageState extends State<_HappyMySpacePage> {
         backgroundColor: HappyLiveApp.background,
         appBar: AppBar(
           backgroundColor: const AppColors.primary,
-          foregroundColor: AppColors.textPrimary,
+          foregroundColor: AppColors.textOnPrimary,
           elevation: 0,
           title: const Text('غرفتي', style: TextStyle(
             color: HappyLiveApp.gold, fontWeight: FontWeight.w900,
