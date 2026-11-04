@@ -598,6 +598,17 @@ class _RoomPageState extends State<RoomPage> {
                 ],
               ),
             ),
+            if (!_isMinimized && _showRoomActions)
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (!mounted) return;
+                    setState(() => _showRoomActions = false);
+                  },
+                  child: const SizedBox.expand(),
+                ),
+              ),
             if (!_isMinimized)
               Positioned(
                 top: 0,
