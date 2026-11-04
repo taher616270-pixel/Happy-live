@@ -11,16 +11,16 @@ class HappyHomeColors {
 }
 
 class HappyHomeTab extends StatefulWidget {
-  const _HappyHomeTab({required this.name, required this.onDiscover, required this.onSoon});
+  const HappyHomeTab({required this.name, required this.onDiscover, required this.onSoon});
   final String name;
   final VoidCallback onDiscover;
   final ValueChanged<String> onSoon;
 
   @override
-  State<_HappyHomeTab> createState() => HappyHomeTabState();
+  State<HappyHomeTab> createState() => HappyHomeTabState();
 }
 
-class HappyHomeTabState extends State<_HappyHomeTab> {
+class HappyHomeTabState extends State<HappyHomeTab> {
   final PageController _pageController = PageController();
   String _countryName = 'الدولة';
   int _currentPage = 0;
