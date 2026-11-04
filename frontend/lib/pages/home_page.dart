@@ -177,16 +177,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 style: ElevatedButton.styleFrom(backgroundColor: HappyHomeColors.purple, foregroundColor: Colors.white),
                 onPressed: searching ? null : () async {
                   final code = controller.text.trim();
-                  if (!RegExp(r'^\\d{8}
-    if (index < 0 || index > 2) return;
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeInOutCubic,
-    );
-  }
-
-  Widget _topButton(int index, IconData icon, String label) {
+                  if (!RegExp(r'^\d{8}$').hasMatch(code)) {
     final selected = _currentPage == index;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
