@@ -793,27 +793,37 @@ class _RoomPageState extends State<RoomPage> {
             if (!_isMinimized) SafeArea(
               child: Column(
                 children: [
+                  // Keep the room identity bar and all eight microphone seats
+                  // anchored in place. Only the content below them may scroll.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: _topBar(),
+                  ),
+                  if (_isLoading || _isChangingSeat)
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: EdgeInsets.only(left: 16, top: 4),
+                        child: SizedBox(
+                          width: 15,
+                          height: 15,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.7,
+                            color: _gold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: _microphoneStage(),
+                  ),
                   Expanded(
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
                       children: [
-                        _topBar(),
-                        const SizedBox(height: 26),
-                        if (_isLoading || _isChangingSeat)
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: SizedBox(
-                              width: 15,
-                              height: 15,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.7,
-                                color: _gold,
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 17),
                         if (_loadError != null && _seats.isEmpty) _errorPanel(),
-                        _microphoneStage(),
                         _roomAnnouncementCard(),
                         _roomMessagesPanel(),
                         const SizedBox(height: 10),
