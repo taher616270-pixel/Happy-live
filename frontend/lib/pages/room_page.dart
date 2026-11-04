@@ -348,17 +348,6 @@ class _RoomPageState extends State<RoomPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _roomCode.length == 8 ? 'ID الغرفة: $_roomCode' : 'غرفة صوتية',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.58),
-                          fontSize: 11,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
                         _roomName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -366,6 +355,17 @@ class _RoomPageState extends State<RoomPage> {
                           color: _gold,
                           fontSize: 15,
                           fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        _roomCode.length == 8 ? 'ID الغرفة: $_roomCode' : 'غرفة صوتية',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.58),
+                          fontSize: 11,
+                          letterSpacing: 0.4,
                         ),
                       ),
                       if ((widget.room['description'] ?? '').toString().trim().isNotEmpty) ...[
