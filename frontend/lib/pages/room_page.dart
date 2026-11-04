@@ -314,12 +314,12 @@ class _RoomPageState extends State<RoomPage> {
 
   Widget _profileHeader() {
     return Container(
-      width: 160,
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+      width: 170,
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
       decoration: BoxDecoration(
         color: const Color(0xCC17121F),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0x66E8C477), width: 1),
         boxShadow: const [
           BoxShadow(color: Color(0x22100A18), blurRadius: 12, offset: Offset(0, 4)),
@@ -328,8 +328,8 @@ class _RoomPageState extends State<RoomPage> {
       child: Row(
         children: [
           Container(
-            width: 28,
-            height: 28,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFF30213D),
@@ -342,7 +342,7 @@ class _RoomPageState extends State<RoomPage> {
                   : null,
             ),
             child: _imageUrl == null
-                ? const Icon(Icons.headphones_rounded, color: _gold, size: 16)
+                ? const Icon(Icons.headphones_rounded, color: _gold, size: 17)
                 : null,
           ),
           const SizedBox(width: 6),
@@ -357,7 +357,7 @@ class _RoomPageState extends State<RoomPage> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _gold,
-                    fontSize: 10,
+                    fontSize: 10.5,
                     height: 1.1,
                     fontWeight: FontWeight.w900,
                   ),
@@ -368,7 +368,7 @@ class _RoomPageState extends State<RoomPage> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.62),
-                    fontSize: 8,
+                    fontSize: 8.5,
                     height: 1.1,
                     letterSpacing: 0.2,
                   ),
@@ -645,7 +645,6 @@ class _RoomPageState extends State<RoomPage> {
       ),
     );
   }
-
 
   Widget _roomHeader() {
     return ClipRRect(
