@@ -328,19 +328,20 @@ class _RoomPageState extends State<RoomPage> {
     _chatConnecting = true;
     WebSocketChannel? channel;
     try {
-      channel = WebSocketChannel.connect(
+      final connectedChannel = WebSocketChannel.connect(
         _chatStreamUri,
         protocols: ['happy-live-chat', widget.accessToken],
       );
-      _chatChannel = channel;
-      _chatSubscription = channel.stream.listen(
+      channel = connectedChannel;
+      _chatChannel = connectedChannel;
+      _chatSubscription = connectedChannel.stream.listen(
         _handleRoomChatEvent,
-        onError: (_) => _handleChatSocketClosed(channel!),
-        onDone: () => _handleChatSocketClosed(channel!),
+        onError: (_) => _handleChatSocketClosed(connectedChannel),
+        onDone: () => _handleChatSocketClosed(connectedChannel),
         cancelOnError: true,
       );
-      await channel.ready.timeout(const Duration(seconds: 8));
-      if (!mounted || !identical(_chatChannel, channel)) return;
+      await connectedChannel.ready.timeout(const Duration(seconds: 8));
+      if (!mounted || !identical(_chatChannel, connectedChannel)) return;
       _chatSocketConnected = true;
       _chatReconnectAttempts = 0;
       _chatReconnectTimer?.cancel();
