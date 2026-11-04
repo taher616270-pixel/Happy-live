@@ -76,7 +76,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
             toolbarColor: const AppColors.primary,
             toolbarWidgetColor: AppColors.textPrimary,
             activeControlsWidgetColor: _gold,
-            dimmedLayerColor: const AppColors.primary.withOpacity(0.8),
+            dimmedLayerColor: AppColors.primary.withOpacity(0.8),
             cropFrameColor: _gold,
             cropGridColor: _gold,
             initAspectRatio: CropAspectRatioPreset.square,
@@ -239,11 +239,11 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
     fillColor: const AppColors.primary,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(15),
-      borderSide: const BorderSide(color: AppColors.primary.withOpacity(0.4)),
+      borderSide: BorderSide(color: AppColors.primary.withOpacity(0.4)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(15),
-      borderSide: const BorderSide(color: AppColors.primary.withOpacity(0.4)),
+      borderSide: BorderSide(color: AppColors.primary.withOpacity(0.4)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(15),
@@ -304,7 +304,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                   decoration: BoxDecoration(
                     color: _surface,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const AppColors.primary.withOpacity(0.4)),
+                    border: Border.all(color: AppColors.primary.withOpacity(0.4)),
                   ),
                   child: const Column(
                       children: [
@@ -337,7 +337,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                         border: Border.all(color: _gold, width: 1.4),
                         boxShadow: [
                           BoxShadow(
-                            color: const AppColors.primary.withOpacity(0.2),
+                            color: AppColors.primary.withOpacity(0.2),
                             blurRadius: 18,
                             spreadRadius: 1,
                           ),
