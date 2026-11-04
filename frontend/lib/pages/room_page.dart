@@ -359,7 +359,7 @@ class _RoomPageState extends State<RoomPage> {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        _roomCode.length == 8 ? 'ID الغرفة: $_roomCode' : 'غرفة صوتية',
+                        'ID: $_roomCode',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
