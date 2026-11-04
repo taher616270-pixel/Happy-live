@@ -273,7 +273,7 @@ class MyPartyRoomButton extends StatelessWidget {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: Colors.transparent,
+                        color: const Color(0xFF8B5CF6),
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: const Color(0xFF8B5CF6),
@@ -292,7 +292,7 @@ class MyPartyRoomButton extends StatelessWidget {
             ),
             Positioned(
               right: -15,
-              top: -44,
+              top: -49,
               bottom: -20,
               child: Image.asset(
                 'assets/images/boy_headset.png.png',
