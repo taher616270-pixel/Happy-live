@@ -1387,26 +1387,60 @@ class _HappyMySpacePageState extends State<_HappyMySpacePage> {
   }
 }
 
-class _HappyHomeTab extends StatelessWidget {
+class _HappyHomeTab extends StatefulWidget {
   const _HappyHomeTab({required this.name, required this.onDiscover, required this.onSoon});
   final String name;
   final VoidCallback onDiscover;
   final ValueChanged<String> onSoon;
+
   @override
-  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 12, 18, 28), children: [
-    Align(
-      alignment: Alignment.centerRight,
-      child: OutlinedButton.icon(
-        onPressed: () => (context.findAncestorStateOfType<_SessionHomePageState>())?._openMySidePanel(),
-        icon: const Icon(Icons.menu_rounded, size: 18),
-        label: const Text('غرفتي'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: HappyLiveApp.gold,
-          side: const BorderSide(color: Color(0x665F4775)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
+  State<_HappyHomeTab> createState() => _HappyHomeTabState();
+}
+
+class _HappyHomeTabState extends State<_HappyHomeTab> {
+  String _countryName = 'الدولة';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCountry();
+  }
+
+  Future<void> _loadCountry() async {
+    try {
+      final response = await http.get(Uri.https('ipwho.is', '')).timeout(const Duration(seconds: 7));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data is Map && data['success'] != false) {
+        final country = (data['country'] ?? '').toString().trim();
+        if (mounted && country.isNotEmpty) setState(() => _countryName = country);
+      }
+    } catch (_) {}
+  }
+
+  Widget _topButton(IconData icon, String label) => Expanded(
+    child: OutlinedButton.icon(
+      onPressed: () {},
+      icon: Icon(icon, size: 16),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: HappyLiveApp.gold,
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 11),
+        side: const BorderSide(color: Color(0x665F4775)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
       ),
     ),
+  );
+
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 12, 18, 28), children: [
+    Row(children: [
+      _topButton(Icons.meeting_room_outlined, 'غرفتي'),
+      const SizedBox(width: 7),
+      _topButton(Icons.explore_outlined, 'استكشف'),
+      const SizedBox(width: 7),
+      _topButton(Icons.public_rounded, _countryName),
+    ]),
     const SizedBox(height: 8),
     Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(23),
@@ -1420,7 +1454,7 @@ class _HappyHomeTab extends StatelessWidget {
         const SizedBox(height: 8),
         const Text('اكتشف أشخاصاً جدد، وشارك اهتماماتك، وكن جزءاً من مجتمع Happy Live.', style: TextStyle(color: Color(0xFFD0C7D8), fontSize: 12, height: 1.8)),
         const SizedBox(height: 17),
-        SizedBox(height: 43, child: FilledButton.icon(onPressed: onDiscover, icon: const Icon(Icons.arrow_back_rounded, size: 17),
+        SizedBox(height: 43, child: FilledButton.icon(onPressed: widget.onDiscover, icon: const Icon(Icons.arrow_back_rounded, size: 17),
           label: const Text('اكتشف Happy Live'),
           style: FilledButton.styleFrom(backgroundColor: HappyLiveApp.gold, foregroundColor: const Color(0xFF17121F), textStyle: const TextStyle(fontWeight: FontWeight.w900)))),
       ])),
@@ -1428,9 +1462,9 @@ class _HappyHomeTab extends StatelessWidget {
     const _HappySectionTitle(title: 'اختصاراتك', subtitle: 'كل ما تحتاجه في مكان واحد'),
     const SizedBox(height: 12),
     Row(children: [
-      Expanded(child: _HappyShortcut(icon: Icons.groups_rounded, title: 'المجتمعات', tint: HappyLiveApp.purple, onTap: onDiscover)),
+      Expanded(child: _HappyShortcut(icon: Icons.groups_rounded, title: 'المجتمعات', tint: HappyLiveApp.purple, onTap: widget.onDiscover)),
       const SizedBox(width: 10),
-      Expanded(child: _HappyShortcut(icon: Icons.mic_none_rounded, title: 'البث المباشر', tint: const Color(0xFF55B7C8), onTap: () => onSoon('البث المباشر'))),
+      Expanded(child: _HappyShortcut(icon: Icons.mic_none_rounded, title: 'البث المباشر', tint: const Color(0xFF55B7C8), onTap: () => widget.onSoon('البث المباشر'))),
     ]),
     const SizedBox(height: 25),
     const _HappySectionTitle(title: 'مساحة الأصدقاء', subtitle: 'قصص وتحديثات الأشخاص الذين تتابعهم'),
