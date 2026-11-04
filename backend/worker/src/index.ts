@@ -296,14 +296,29 @@ export default {
 
         const roomId = crypto.randomUUID();
         const createdAt = new Date().toISOString();
-        await env.DB.prepare(
-          "INSERT INTO rooms (id, owner_user_id, name, description, image_url, visibility, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)"
-        ).bind(roomId, user.id, name, description, imageUrl || null, isPrivate ? "private" : "public", createdAt, createdAt).run();
+        let roomCode = "";
+        let roomCreated = false;
+        for (let attempt = 0; attempt < 12; attempt++) {
+          const random = new Uint32Array(1);
+          crypto.getRandomValues(random);
+          roomCode = String(10000000 + (random[0] % 90000000));
+          const inserted = await env.DB.prepare(
+            "INSERT INTO rooms (id, room_code, owner_user_id, name, description, image_url, visibility, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?) ON CONFLICT(room_code) DO NOTHING"
+          ).bind(roomId, roomCode, user.id, name, description, imageUrl || null, isPrivate ? "private" : "public", createdAt, createdAt).run();
+          if ((inserted.meta?.changes ?? 0) === 1) {
+            roomCreated = true;
+            break;
+          }
+        }
+        if (!roomCreated) {
+          return json({ error: "room_code_generation_failed", message: "تعذر توليد رقم الغرفة، حاول مرة أخرى" }, 503, origin, env);
+        }
 
         return json({
           ok: true,
           room: {
             id: roomId,
+            roomCode,
             ownerId: user.id,
             name,
             description,
