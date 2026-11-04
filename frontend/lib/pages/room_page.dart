@@ -306,75 +306,84 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _profileHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xCC17121F),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0x66E8C477), width: 1),
-        boxShadow: const [
-          BoxShadow(color: Color(0x22100A18), blurRadius: 20, offset: Offset(0, 8)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
+    return Align(
+      alignment: Alignment.centerRight,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.82),
+        child: IntrinsicWidth(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF30213D),
-              border: Border.all(color: _gold.withOpacity(0.75), width: 1.6),
-              image: _imageUrl != null
-                  ? DecorationImage(
-                      image: NetworkImage(_imageUrl!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
+              color: const Color(0xCC17121F),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0x66E8C477), width: 1),
+              boxShadow: const [
+                BoxShadow(color: Color(0x22100A18), blurRadius: 20, offset: Offset(0, 8)),
+              ],
             ),
-            child: _imageUrl == null
-                ? const Icon(Icons.headphones_rounded, color: _gold, size: 27)
-                : null,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  _roomCode.length == 8 ? 'ID الغرفة: $_roomCode' : 'غرفة صوتية',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.58),
-                    fontSize: 11,
-                    letterSpacing: 0.4,
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF30213D),
+                    border: Border.all(color: _gold.withOpacity(0.75), width: 1.6),
+                    image: _imageUrl != null
+                        ? DecorationImage(
+                            image: NetworkImage(_imageUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: _imageUrl == null
+                      ? const Icon(Icons.headphones_rounded, color: _gold, size: 27)
+                      : null,
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _roomCode.length == 8 ? 'ID الغرفة: $_roomCode' : 'غرفة صوتية',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.58),
+                          fontSize: 11,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        _roomName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _gold,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      if ((widget.room['description'] ?? '').toString().trim().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.room['description'].toString(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: _muted, fontSize: 10),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  _roomName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _gold,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                if ((widget.room['description'] ?? '').toString().trim().isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.room['description'].toString(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: _muted, fontSize: 10),
-                  ),
-                ],
               ],
             ),
           ),
-          const SizedBox(width: 8),
-
-        ],
+        ),
       ),
     );
   }
