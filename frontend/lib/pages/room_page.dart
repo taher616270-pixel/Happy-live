@@ -314,83 +314,88 @@ class _RoomPageState extends State<RoomPage> {
     }
   }
 
-  Widget _roomChat() {
-    // Inline room chat: part of the room's content, not a separate panel or page.
+  Widget _roomMessagesBehindMics() {
+    if (_messages.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final visibleCount = _messages.length > 8 ? 8 : _messages.length;
+    return IgnorePointer(
+      child: ShaderMask(
+        shaderCallback: (bounds) => const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
+          stops: [0.0, 0.18, 0.82, 1.0],
+        ).createShader(bounds),
+        blendMode: BlendMode.dstIn,
+        child: ListView.builder(
+          reverse: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
+          itemCount: visibleCount,
+          itemBuilder: (context, index) {
+            final item = _messages[_messages.length - 1 - index];
+            final mine = item['isMe'] == true;
+            final imageUrl = item['imageUrl']?.toString() ?? '';
+            final message = item['message']?.toString() ?? '';
+            return Align(
+              alignment: mine ? Alignment.centerLeft : Alignment.centerRight,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 190),
+                margin: const EdgeInsets.only(bottom: 7),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: (mine ? const Color(0xFF67477C) : const Color(0xFF292131)).withOpacity(0.48),
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(color: const Color(0x55E8C477)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item['name']?.toString() ?? 'مستخدم',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: _gold, fontSize: 9, fontWeight: FontWeight.w800),
+                    ),
+                    if (message.isNotEmpty)
+                      Text(
+                        message,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontSize: 10, height: 1.25),
+                      ),
+                    if (imageUrl.startsWith('https://'))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.network(
+                            imageUrl,
+                            width: 82,
+                            height: 42,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _roomChatComposer() {
     return Container(
-      margin: const EdgeInsets.only(top: 18),
-      padding: EdgeInsets.zero,
+      margin: const EdgeInsets.only(top: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.chat_bubble_outline_rounded, color: _gold, size: 18),
-              const SizedBox(width: 8),
-              const Text('دردشة الغرفة', style: TextStyle(color: _gold, fontSize: 13, fontWeight: FontWeight.w900)),
-              const Spacer(),
-              Text('${_messages.length}', style: const TextStyle(color: _muted, fontSize: 11)),
-            ],
-          ),
-          const SizedBox(height: 9),
-          Container(height: 1, color: const Color(0x445F4775)),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 205,
-            child: _chatLoading && _messages.isEmpty
-                ? const Center(child: CircularProgressIndicator(strokeWidth: 1.8, color: _gold))
-                : _messages.isEmpty
-                    ? const Center(child: Text('ابدأ الحديث مع الموجودين في الغرفة', style: TextStyle(color: _muted, fontSize: 11)))
-                    : ListView.builder(
-                        reverse: true,
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final item = _messages[_messages.length - 1 - index];
-                          final mine = item['isMe'] == true;
-                          final imageUrl = item['imageUrl']?.toString() ?? '';
-                          final text = item['message']?.toString() ?? '';
-                          return Align(
-                            alignment: mine ? Alignment.centerLeft : Alignment.centerRight,
-                            child: Container(
-                              constraints: const BoxConstraints(maxWidth: 285),
-                              margin: const EdgeInsets.only(bottom: 9),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: mine ? const Color(0xFF382448) : const Color(0xFF211B2A),
-                                borderRadius: BorderRadius.circular(13),
-                                border: Border.all(color: mine ? const Color(0x557F59A6) : const Color(0x334F3B60)),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(item['name']?.toString() ?? 'مستخدم',
-                                    style: const TextStyle(color: _gold, fontSize: 10, fontWeight: FontWeight.w800)),
-                                  if (text.isNotEmpty) ...[
-                                    const SizedBox(height: 3),
-                                    Text(text, style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.4)),
-                                  ],
-                                  if (imageUrl.startsWith('https://')) ...[
-                                    const SizedBox(height: 6),
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(9),
-                                      child: Image.network(
-                                        imageUrl,
-                                        width: 220,
-                                        height: 160,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => const SizedBox(
-                                          width: 220, height: 70,
-                                          child: Center(child: Icon(Icons.broken_image_outlined, color: _muted)),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-          ),
           if (_pendingChatImage != null) ...[
             const SizedBox(height: 8),
             Row(
@@ -409,7 +414,6 @@ class _RoomPageState extends State<RoomPage> {
               ],
             ),
           ],
-          const SizedBox(height: 8),
           Row(
             children: [
               IconButton(
@@ -449,6 +453,15 @@ class _RoomPageState extends State<RoomPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _microphoneStageWithMessages() {
+    return Stack(
+      children: [
+        Positioned.fill(child: _roomMessagesBehindMics()),
+        _microphoneStage(),
+      ],
     );
   }
 
@@ -580,7 +593,7 @@ class _RoomPageState extends State<RoomPage> {
                           ),
                         const SizedBox(height: 17),
                         if (_loadError != null && _seats.isEmpty) _errorPanel(),
-                        _microphoneStage(),
+                        _microphoneStageWithMessages(),
                         const SizedBox(height: 10),
                         const SizedBox(height: 20),
                         Align(
@@ -588,7 +601,7 @@ class _RoomPageState extends State<RoomPage> {
                           child: _countBadge(occupiedCount),
                         ),
                         const SizedBox(height: 13),
-                        _roomChat(),
+                        _roomChatComposer(),
                         const SizedBox(height: 10),
                         _roomNotice(),
                       ],
