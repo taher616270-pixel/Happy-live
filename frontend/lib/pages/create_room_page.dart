@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 class CreateRoomPage extends StatefulWidget {
   const CreateRoomPage({super.key, required this.accessToken});
@@ -40,28 +41,64 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
     try {
       final image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85,
-        maxWidth: 1600,
-        maxHeight: 1600,
+        imageQuality: 95,
+        maxWidth: 2400,
+        maxHeight: 2400,
       );
-      if (image == null) return;
-      final bytes = await image.readAsBytes();
+      if (image == null || !mounted) return;
+
+      // Open a square crop editor matching the room image preview.
+      // The selected image is not applied until the user confirms the crop.
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: image.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        maxWidth: 1200,
+        maxHeight: 1200,
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 88,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'قص صورة الغرفة',
+            toolbarColor: const Color(0xFF17121F),
+            toolbarWidgetColor: Colors.white,
+            activeControlsWidgetColor: _gold,
+            dimmedLayerColor: const Color(0xCC09080D),
+            cropFrameColor: _gold,
+            cropGridColor: _gold,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+            aspectRatioPresets: [CropAspectRatioPreset.square],
+          ),
+          IOSUiSettings(
+            title: 'قص صورة الغرفة',
+            doneButtonTitle: 'اعتماد',
+            cancelButtonTitle: 'إلغاء',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            aspectRatioPresets: [CropAspectRatioPreset.square],
+          ),
+        ],
+      );
+
+      // Cancel keeps the previously approved room image unchanged.
+      if (cropped == null || !mounted) return;
+      final bytes = await cropped.readAsBytes();
       if (bytes.length > 5 * 1024 * 1024) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حجم الصورة يجب ألا يتجاوز 5 ميجابايت')),
+          const SnackBar(content: Text('حجم الصورة بعد القص يجب ألا يتجاوز 5 ميجابايت')),
         );
         return;
       }
       if (!mounted) return;
       setState(() {
-        _roomImage = image;
+        _roomImage = XFile(cropped.path, name: 'happy-room.jpg');
         _roomImageBytes = bytes;
       });
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر اختيار الصورة، حاول مرة أخرى')),
+        const SnackBar(content: Text('تعذر اختيار الصورة أو قصها، حاول مرة أخرى')),
       );
     }
   }
