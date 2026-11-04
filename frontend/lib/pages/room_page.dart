@@ -231,7 +231,6 @@ class _RoomPageState extends State<RoomPage> {
                                 ],
                               ),
                             ),
-                            _countBadge(occupiedCount),
                             if (_isLoading || _isChangingSeat) ...[
                               const SizedBox(width: 9),
                               const SizedBox(
@@ -248,6 +247,11 @@ class _RoomPageState extends State<RoomPage> {
                         const SizedBox(height: 17),
                         if (_loadError != null && _seats.isEmpty) _errorPanel(),
                         _microphoneStage(),
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: _countBadge(occupiedCount),
+                        ),
                         const SizedBox(height: 20),
                         _hostPanel(),
                         const SizedBox(height: 13),
