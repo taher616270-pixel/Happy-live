@@ -478,7 +478,7 @@ class _RoomPageState extends State<RoomPage> {
     final hasImage = avatar.startsWith('https://');
     return CircleAvatar(
       radius: size / 2,
-      backgroundColor: const AppColors.primary,
+      backgroundColor: AppColors.primary,
       backgroundImage: hasImage ? NetworkImage(avatar) : null,
       child: hasImage ? null : Text(name.isEmpty ? '؟' : name.characters.first, style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w800)),
     );
@@ -494,7 +494,7 @@ class _RoomPageState extends State<RoomPage> {
           children: [
             CircleAvatar(
               radius: 15,
-              backgroundColor: const AppColors.primary,
+              backgroundColor: AppColors.primary,
               child: Icon(isWelcome ? Icons.waving_hand_rounded : Icons.campaign_rounded, color: _gold, size: 16),
             ),
             const SizedBox(width: 8),
@@ -540,7 +540,7 @@ class _RoomPageState extends State<RoomPage> {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(color: const AppColors.primary, borderRadius: BorderRadius.circular(9)),
+                  decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(9)),
                   child: Text(message.senderName, style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.w900)),
                 ),
                 const SizedBox(height: 4),
@@ -607,7 +607,7 @@ class _RoomPageState extends State<RoomPage> {
     final result = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: const AppColors.primary,
+        backgroundColor: AppColors.primary,
         title: const Text('تعديل إعلان الغرفة', style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
         content: TextField(
           controller: controller,
@@ -659,7 +659,7 @@ class _RoomPageState extends State<RoomPage> {
                 style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
                 decoration: InputDecoration(
                   hintText: 'قل شيئاً...', hintStyle: const TextStyle(color: _muted, fontSize: 12), counterText: '',
-                  filled: true, fillColor: const AppColors.primary, contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+                  filled: true, fillColor: AppColors.primary, contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
                 ),
               ),
@@ -678,7 +678,7 @@ class _RoomPageState extends State<RoomPage> {
   void _showRoomChatMenu() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const AppColors.primary,
+      backgroundColor: AppColors.primary,
       builder: (context) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
         ListTile(leading: const Icon(Icons.people_outline, color: _gold), title: const Text('أعضاء الغرفة', style: TextStyle(color: AppColors.textPrimary)), onTap: () { Navigator.pop(context); _showChatToolMessage('أعضاء الغرفة'); }),
         ListTile(leading: const Icon(Icons.flag_outlined, color: _gold), title: const Text('إبلاغ', style: TextStyle(color: AppColors.textPrimary)), onTap: () { Navigator.pop(context); _showChatToolMessage('الإبلاغ'); }),
@@ -984,7 +984,7 @@ class _RoomPageState extends State<RoomPage> {
         Expanded(child: _roomActionButton(
           icon: Icons.logout_rounded,
           label: 'إغلاق الغرفة',
-          color: const AppColors.primary,
+          color: AppColors.primary,
           onTap: _closeRoom,
         )),
       ]),
@@ -1139,7 +1139,7 @@ class _RoomPageState extends State<RoomPage> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const AppColors.primary,
+                    color: AppColors.primary,
                     image: _imageUrl != null
                         ? DecorationImage(
                             image: NetworkImage(_imageUrl!),
@@ -1200,7 +1200,7 @@ class _RoomPageState extends State<RoomPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const AppColors.primary,
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: AppColors.primary.withOpacity(0.533)),
       ),
@@ -1246,7 +1246,7 @@ class _RoomPageState extends State<RoomPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
       decoration: BoxDecoration(
-        color: const AppColors.primary,
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: AppColors.primary.withOpacity(0.2)),
       ),
@@ -1294,7 +1294,7 @@ class _RoomPageState extends State<RoomPage> {
             FilledButton(
               onPressed: _isChangingSeat ? null : _leaveSeat,
               style: FilledButton.styleFrom(
-                backgroundColor: const AppColors.primary,
+                backgroundColor: AppColors.primary,
                 foregroundColor: AppColors.textOnPrimary,
                 padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 11),
                 shape: RoundedRectangleBorder(
@@ -1342,7 +1342,7 @@ class _RoomPageState extends State<RoomPage> {
                             : const [AppColors.primary, AppColors.primary],
                   ),
                   border: Border.all(
-                    color: mine ? _gold : occupied ? const AppColors.primary : AppColors.primary.withOpacity(0.4),
+                    color: mine ? _gold : occupied ? AppColors.primary : AppColors.primary.withOpacity(0.4),
                     width: mine ? 2.2 : 1.5,
                   ),
                   boxShadow: mine
@@ -1365,13 +1365,13 @@ class _RoomPageState extends State<RoomPage> {
                   width: 22,
                   height: 22,
                   decoration: BoxDecoration(
-                    color: mine ? _gold : occupied ? const AppColors.primary : const AppColors.primary,
+                    color: mine ? _gold : occupied ? AppColors.primary : AppColors.primary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: const AppColors.primary, width: 2),
+                    border: Border.all(color: AppColors.primary, width: 2),
                   ),
                   child: Icon(
                     occupied ? (isLocked ? Icons.mic_off_rounded : Icons.mic_rounded) : Icons.add_rounded,
-                    color: mine ? const AppColors.primary : AppColors.textPrimary,
+                    color: mine ? AppColors.primary : AppColors.textPrimary,
                     size: 11,
                   ),
                 ),
@@ -1391,7 +1391,7 @@ class _RoomPageState extends State<RoomPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: mine ? const AppColors.primary : occupied ? _muted : const AppColors.primary,
+                color: mine ? AppColors.primary : occupied ? _muted : AppColors.primary,
                 fontSize: 10,
               ),
             ),
@@ -1485,7 +1485,7 @@ class _RoomPageState extends State<RoomPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          color: const AppColors.primary,
+          color: AppColors.primary,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.primary.withOpacity(0.333)),
         ),
@@ -1509,7 +1509,7 @@ class _RoomPageState extends State<RoomPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: const AppColors.primary, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [
           const Expanded(child: Text('تعذر تحديث المقاعد. حاول إعادة الاتصال.', style: TextStyle(color: AppColors.textPrimary, fontSize: 12))),
