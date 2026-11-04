@@ -1431,7 +1431,7 @@ class _HappyMySpacePageState extends State<_HappyMySpacePage> {
       decoration: BoxDecoration(
         color: HappyLiveApp.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const AppColors.primary.withOpacity(0.4)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.4)),
       ),
       child: ListTile(
         leading: Icon(icon, color: HappyLiveApp.gold),
@@ -1552,7 +1552,7 @@ class _BrandHeader extends StatelessWidget {
               end: Alignment.bottomLeft,
               colors: [AppColors.primary, AppColors.primary],
             ),
-            border: Border.all(color: const AppColors.primary.withOpacity(0.6), width: 1.2),
+            border: Border.all(color: AppColors.primary.withOpacity(0.6), width: 1.2),
             boxShadow: const [
               BoxShadow(color: AppColors.primary.withOpacity(0.267), blurRadius: 28, spreadRadius: 2),
             ],
@@ -1688,7 +1688,7 @@ class LegalDocumentPage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: HappyLiveApp.surface,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const AppColors.primary.withOpacity(0.4)),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.4)),
                 ),
                 child: Column(
                   children: [
