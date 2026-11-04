@@ -155,6 +155,25 @@ export default {
       try {
         if (!await checkAuthRateLimit(env.DB, ip)) return json({ error: "too_many_attempts" }, 429, origin, env);
         const body = await request.json() as Record<string, unknown>;
+        // A user owns one permanent room. Leaving it never deletes it, and
+        // pressing create again returns the original room instead of duplicating it.
+        const existingRoom = await env.DB.prepare(
+          "SELECT id, room_code, owner_user_id, name, description, image_url, visibility, status, created_at FROM rooms WHERE owner_user_id = ? ORDER BY created_at ASC LIMIT 1"
+        ).bind(user.id).first<{
+          id: string; room_code: string; owner_user_id: string; name: string;
+          description: string; image_url: string | null; visibility: string;
+          status: string; created_at: string;
+        }>();
+        if (existingRoom) {
+          return json({ ok: true, existing: true, room: {
+            id: existingRoom.id, roomCode: existingRoom.room_code,
+            ownerId: existingRoom.owner_user_id, name: existingRoom.name,
+            description: existingRoom.description, imageUrl: existingRoom.image_url,
+            isPrivate: existingRoom.visibility === "private", status: existingRoom.status,
+            createdAt: existingRoom.created_at
+          } }, 200, origin, env);
+        }
+
         const name = typeof body.name === "string" ? body.name.trim() : "";
         const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
         const password = typeof body.password === "string" ? body.password : "";
@@ -301,6 +320,32 @@ export default {
         const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
         console.error("[rooms.seats] failed", diagnostic);
         return json({ error: "room_seats_failed" }, 500, origin, env);
+      }
+    }
+
+    // Return the signed-in user's permanent room, if one has already been created.
+    if (url.pathname === "/api/v1/rooms/mine" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const room = await env.DB.prepare(
+          "SELECT id, room_code, owner_user_id, name, description, image_url, visibility, status, created_at FROM rooms WHERE owner_user_id = ? ORDER BY created_at ASC LIMIT 1"
+        ).bind(user.id).first<{
+          id: string; room_code: string; owner_user_id: string; name: string;
+          description: string; image_url: string | null; visibility: string;
+          status: string; created_at: string;
+        }>();
+        if (!room) return json({ ok: true, room: null }, 200, origin, env);
+        return json({ ok: true, room: {
+          id: room.id, roomCode: room.room_code, ownerId: room.owner_user_id,
+          name: room.name, description: room.description, imageUrl: room.image_url,
+          isPrivate: room.visibility === "private", status: room.status, createdAt: room.created_at
+        } }, 200, origin, env);
+      } catch (error) {
+        const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[rooms.mine] failed", diagnostic);
+        return json({ error: "my_room_lookup_failed" }, 500, origin, env);
       }
     }
 
