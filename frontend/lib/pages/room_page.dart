@@ -652,7 +652,10 @@ class _RoomPageState extends State<RoomPage> {
                 tooltip: 'خيارات الغرفة',
               ),
             ),
-            _profileHeader(),
+            Transform.translate(
+              offset: const Offset(17, 0),
+              child: _profileHeader(),
+            ),
           ],
         ),
       ),
