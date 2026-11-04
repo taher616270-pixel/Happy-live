@@ -519,6 +519,35 @@ export default {
       }
     }
 
+    // Find one active room by its public eight-digit room code.
+    const roomCodeRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/by-code\\/(\\d{8})$/);
+    if (roomCodeRoute && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const room = await env.DB.prepare(
+          "SELECT r.id, r.room_code, r.owner_user_id, r.name, r.description, r.image_url, r.visibility, r.status, r.created_at, p.display_name AS owner_name FROM rooms r LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.room_code = ? AND r.status = 'active' LIMIT 1"
+        ).bind(roomCodeRoute[1]).first<{
+          id: string; room_code: string; owner_user_id: string; name: string;
+          description: string; image_url: string | null; visibility: string;
+          status: string; created_at: string; owner_name: string | null;
+        }>();
+        if (!room) return json({ error: "room_not_found", message: "لم يتم العثور على غرفة نشطة بهذا ID" }, 404, origin, env);
+        return json({ ok: true, room: {
+          id: room.id, roomCode: room.room_code, ownerId: room.owner_user_id,
+          ownerName: room.owner_name?.trim() || "صاحب الغرفة",
+          name: room.name, description: room.description, imageUrl: room.image_url,
+          isPrivate: room.visibility === "private", status: room.status,
+          createdAt: room.created_at
+        } }, 200, origin, env);
+      } catch (error) {
+        const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[rooms.by-code] failed", diagnostic);
+        return json({ error: "room_lookup_failed" }, 500, origin, env);
+      }
+    }
+
     if (url.pathname === "/api/v1/rooms" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
