@@ -147,7 +147,7 @@ class MyPartyRoomButton extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -156,7 +156,7 @@ class MyPartyRoomButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               child: Container(
                 width: double.infinity,
-                height: 88,
+                height: 82,
                 padding: const EdgeInsets.only(left: 16, right: 16),
                 decoration: BoxDecoration(
                   color: const Color(0xFF211A31),
