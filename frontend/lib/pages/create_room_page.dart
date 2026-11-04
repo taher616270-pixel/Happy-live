@@ -261,7 +261,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
         resizeToAvoidBottomInset: false,
         appBar: AppBar(
           backgroundColor: const AppColors.primary,
-          foregroundColor: AppColors.textPrimary,
+          foregroundColor: AppColors.textOnPrimary,
           elevation: 0,
           title: const Text(
             'إنشاء غرفة حفلة',
@@ -407,7 +407,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                     label: Text(_isSubmitting ? 'جارٍ إنشاء الغرفة...' : 'إنشاء الغرفة', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
                     style: FilledButton.styleFrom(
                       backgroundColor: _purple,
-                      foregroundColor: AppColors.textPrimary,
+                      foregroundColor: AppColors.textOnPrimary,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                     ),
                   ),
