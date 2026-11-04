@@ -279,10 +279,13 @@ class _RoomPageState extends State<RoomPage> {
           children: [
             _profileHeader(),
             const SizedBox(width: 8),
-            _roundAction(
-              icon: Icons.arrow_forward_ios_rounded,
-              onTap: () => Navigator.of(context).maybePop(),
-              tooltip: 'رجوع',
+            Transform.translate(
+              offset: const Offset(190, 0),
+              child: _roundAction(
+                icon: Icons.arrow_forward_ios_rounded,
+                onTap: () => Navigator.of(context).maybePop(),
+                tooltip: 'رجوع',
+              ),
             ),
           ],
         ),
