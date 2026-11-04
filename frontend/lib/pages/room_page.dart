@@ -641,13 +641,16 @@ class _RoomPageState extends State<RoomPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _roundAction(
-              icon: Icons.arrow_forward_ios_rounded,
-              onTap: () {
-                if (!mounted) return;
-                setState(() => _showRoomActions = !_showRoomActions);
-              },
-              tooltip: 'خيارات الغرفة',
+            Transform.translate(
+              offset: const Offset(5, 0),
+              child: _roundAction(
+                icon: Icons.arrow_forward_ios_rounded,
+                onTap: () {
+                  if (!mounted) return;
+                  setState(() => _showRoomActions = !_showRoomActions);
+                },
+                tooltip: 'خيارات الغرفة',
+              ),
             ),
             _profileHeader(),
           ],
