@@ -30,7 +30,6 @@ class _RoomPageState extends State<RoomPage> {
   String? _loadError;
   int? _mySeat;
   String _ownerName = 'صاحب الغرفة';
-  String _myName = 'أنت';
   List<Map<String, dynamic>> _seats = [];
 
   String get _roomId => (widget.room['id'] ?? '').toString();
@@ -93,7 +92,6 @@ class _RoomPageState extends State<RoomPage> {
         final owner = data['owner'];
         final me = data['me'];
         if (owner is Map && owner['name'] != null) _ownerName = owner['name'].toString();
-        if (me is Map && me['name'] != null) _myName = me['name'].toString();
         _isLoading = false;
         _loadError = null;
       });
@@ -122,7 +120,7 @@ class _RoomPageState extends State<RoomPage> {
 
   Future<void> _selectSeat(int seatNumber) async {
     if (_isChangingSeat) return;
-    final current = _seats.where((seat) => seat['seatNumber'] == seatNumber).firstOrNull;
+    final current = _seatAt(seatNumber);
     final occupiedByOther = current != null && current['isMe'] != true;
     if (occupiedByOther) return;
 
