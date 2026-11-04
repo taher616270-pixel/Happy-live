@@ -1417,30 +1417,59 @@ class _HappyHomeTabState extends State<_HappyHomeTab> {
     } catch (_) {}
   }
 
-  Widget _topButton(IconData icon, String label) => Expanded(
-    child: OutlinedButton.icon(
-      onPressed: () {},
-      icon: Icon(icon, size: 16),
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: HappyLiveApp.gold,
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 11),
-        side: const BorderSide(color: Color(0x665F4775)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+  int _selectedTopButton = -1;
+
+  Widget _topButton(int index, IconData icon, String label) {
+    final selected = _selectedTopButton == index;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      width: selected ? null : 43,
+      constraints: BoxConstraints(minWidth: selected ? 104 : 43, maxWidth: selected ? 150 : 43),
+      height: 40,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(13),
+          onTap: () => setState(() => _selectedTopButton = selected ? -1 : index),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: selected ? 11 : 0),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: const Color(0x665F4775)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 17, color: HappyLiveApp.gold),
+                if (selected) ...[
+                  const SizedBox(width: 7),
+                  Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: HappyLiveApp.gold, fontSize: 11, fontWeight: FontWeight.w800))),
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 12, 18, 28), children: [
-    Row(children: [
-      _topButton(Icons.meeting_room_outlined, 'غرفتي'),
-      const SizedBox(width: 7),
-      _topButton(Icons.explore_outlined, 'استكشف'),
-      const SizedBox(width: 7),
-      _topButton(Icons.public_rounded, _countryName),
-    ]),
+    Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _topButton(0, Icons.meeting_room_outlined, 'غرفتي'),
+        const SizedBox(width: 5),
+        _topButton(1, Icons.explore_outlined, 'استكشف'),
+        const SizedBox(width: 5),
+        _topButton(2, Icons.public_rounded, _countryName),
+      ],
+    ),
     const SizedBox(height: 8),
     Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(23),
