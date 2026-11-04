@@ -867,12 +867,12 @@ class _LoginPageState extends State<LoginPage> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-          const Positioned(
+          Positioned(
             top: -110,
             right: -90,
             child: _GlowOrb(color: AppColors.primary.withOpacity(0.2), size: 280),
           ),
-          const Positioned(
+          Positioned(
             bottom: -140,
             left: -100,
             child: _GlowOrb(color: AppColors.primary.withOpacity(0.133), size: 300),
