@@ -1,16 +1,17 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../app_theme.dart';
 import 'package:http/http.dart' as http;
 import 'create_room_page.dart';
 import 'room_page.dart';
 
 /// Theme colors kept local so this page can be maintained independently.
 class HappyHomeColors {
-  static const background = Color(0xFF09080D);
-  static const surface = Color(0xFF17131F);
-  static const gold = Color(0xFFE8C477);
-  static const purple = Color(0xFF9B63D9);
-  static const muted = Color(0xFFAAA2B5);
+  static const background = AppColors.background;
+  static const surface = AppColors.surface;
+  static const gold = AppColors.primary;
+  static const purple = AppColors.primary;
+  static const muted = AppColors.textSecondary;
 }
 
 class HappyHomeTab extends StatefulWidget {
@@ -113,9 +114,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: HappyHomeColors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0x665F4775))),
-          title: const Text('البحث عن غرفة', textAlign: TextAlign.right, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+          backgroundColor: HappyHomeAppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: AppColors.primary.withOpacity(0.4))),
+          title: const Text('البحث عن غرفة', textAlign: TextAlign.right, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800)),
           content: Directionality(
             textDirection: TextDirection.rtl,
             child: Column(
@@ -126,29 +127,29 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   keyboardType: TextInputType.number,
                   maxLength: 8,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 3, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 20, letterSpacing: 3, fontWeight: FontWeight.bold),
                   decoration: InputDecoration(
                     counterText: '',
                     hintText: 'أدخل ID الغرفة',
-                    hintStyle: const TextStyle(color: HappyHomeColors.muted, fontSize: 14, letterSpacing: 0),
-                    filled: true, fillColor: const Color(0xFF0E0B14),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: Color(0x665F4775))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: HappyHomeColors.gold)),
+                    hintStyle: const TextStyle(color: HappyHomeAppColors.textSecondary, fontSize: 14, letterSpacing: 0),
+                    filled: true, fillColor: const AppColors.primary,
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.primary.withOpacity(0.4))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: HappyHomeAppColors.primary)),
                   ),
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 10),
-                  Text(error!, style: const TextStyle(color: Color(0xFFFF7777), fontSize: 12), textAlign: TextAlign.center),
+                  Text(error!, style: const TextStyle(color: AppColors.primary, fontSize: 12), textAlign: TextAlign.center),
                 ],
                 if (foundRoom != null) ...[
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity, padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const Color(0xFF211A31), borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeColors.gold.withOpacity(.5))),
+                    decoration: BoxDecoration(color: const AppColors.primary, borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeAppColors.primary.withOpacity(.5))),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      Text((foundRoom!['name'] ?? 'غرفة صوتية').toString(), textAlign: TextAlign.right, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      Text((foundRoom!['name'] ?? 'غرفة صوتية').toString(), textAlign: TextAlign.right, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text('ID: ${foundRoom!['roomCode'] ?? controller.text.trim()}', textAlign: TextAlign.right, style: const TextStyle(color: HappyHomeColors.gold, fontSize: 12)),
+                      Text('ID: ${foundRoom!['roomCode'] ?? controller.text.trim()}', textAlign: TextAlign.right, style: const TextStyle(color: HappyHomeAppColors.primary, fontSize: 12)),
                     ]),
                   ),
                 ],
@@ -156,10 +157,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             ),
           ),
           actions: [
-            TextButton(onPressed: searching ? null : () => Navigator.pop(dialogContext), child: const Text('إغلاق', style: TextStyle(color: HappyHomeColors.muted))),
+            TextButton(onPressed: searching ? null : () => Navigator.pop(dialogContext), child: const Text('إغلاق', style: TextStyle(color: HappyHomeAppColors.textSecondary))),
             if (foundRoom != null)
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeColors.gold, foregroundColor: Colors.black),
+                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeAppColors.primary, foregroundColor: AppColors.textOnPrimary),
                 onPressed: () {
                   final room = Map<String, dynamic>.from(foundRoom!);
                   Navigator.pop(dialogContext);
@@ -174,7 +175,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               )
             else
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeColors.purple, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeAppColors.primary, foregroundColor: AppColors.textPrimary),
                 onPressed: searching ? null : () async {
                   final code = controller.text.trim();
                   if (!RegExp(r'^\d{8}$').hasMatch(code)) {
@@ -200,7 +201,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   }
                 },
                 child: searching
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textPrimary))
                   : const Text('بحث', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
           ],
@@ -237,17 +238,17 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             decoration: BoxDecoration(
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: const Color(0x665F4775)),
+              border: Border.all(color: const AppColors.primary.withOpacity(0.4)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 17, color: HappyHomeColors.gold),
+                Icon(icon, size: 17, color: HappyHomeAppColors.primary),
                 if (selected) ...[
                   const SizedBox(width: 7),
                   Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: HappyHomeColors.gold, fontSize: 12, fontWeight: FontWeight.w800))),
+                    style: const TextStyle(color: HappyHomeAppColors.primary, fontSize: 12, fontWeight: FontWeight.w800))),
                 ],
               ],
             ),
@@ -281,12 +282,12 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Material(
-                color: const Color(0xFF17131F),
+                color: const AppColors.primary,
                 shape: const CircleBorder(),
                 child: IconButton(
                   tooltip: 'البحث عن غرفة بواسطة ID',
                   onPressed: _searchRoomById,
-                  icon: const Icon(Icons.search_rounded, color: HappyHomeColors.gold, size: 21),
+                  icon: const Icon(Icons.search_rounded, color: HappyHomeAppColors.primary, size: 21),
                   visualDensity: VisualDensity.compact,
                   constraints: const BoxConstraints.tightFor(width: 40, height: 40),
                 ),
@@ -347,10 +348,10 @@ class MyPartyRoomButton extends StatelessWidget {
                 height: 74,
                 padding: const EdgeInsets.only(left: 16, right: 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF211A31),
+                  color: const AppColors.primary,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: const Color(0xFFE6C87A).withOpacity(0.5),
+                    color: const AppColors.primary.withOpacity(0.5),
                     width: 1,
                   ),
                 ),
@@ -371,7 +372,7 @@ class MyPartyRoomButton extends StatelessWidget {
                               softWrap: true,
                               overflow: TextOverflow.fade,
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 fontSize: 15,
                                 height: 1.15,
                                 fontWeight: FontWeight.bold,
@@ -383,7 +384,7 @@ class MyPartyRoomButton extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: Color(0xFF9A8DB0),
+                                color: AppColors.primary,
                                 fontSize: 10,
                               ),
                             ),
@@ -395,16 +396,16 @@ class MyPartyRoomButton extends StatelessWidget {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF8B5CF6),
+                        color: const AppColors.primary,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: const Color(0xFF8B5CF6),
+                          color: const AppColors.primary,
                           width: 1.8,
                         ),
                       ),
                       child: Icon(
                         hasRoom ? Icons.arrow_forward_ios_rounded : Icons.add,
-                        color: const Color(0xFFE6C87A),
+                        color: const AppColors.primary,
                         size: hasRoom ? 15 : 21,
                       ),
                     ),
@@ -435,10 +436,10 @@ class HappySectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(children: [
     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
-      const SizedBox(height: 3), Text(subtitle, style: const TextStyle(color: HappyHomeColors.muted, fontSize: 10)),
+      Text(title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 3), Text(subtitle, style: const TextStyle(color: HappyHomeAppColors.textSecondary, fontSize: 10)),
     ])),
-    const Icon(Icons.more_horiz_rounded, color: HappyHomeColors.muted),
+    const Icon(Icons.more_horiz_rounded, color: HappyHomeAppColors.textSecondary),
   ]);
 }
 
@@ -448,8 +449,8 @@ class HappyShortcut extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(onTap: onTap, borderRadius: BorderRadius.circular(17),
     child: Container(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-      decoration: BoxDecoration(color: HappyHomeColors.surface, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFF30263A))),
+      decoration: BoxDecoration(color: HappyHomeAppColors.surface, borderRadius: BorderRadius.circular(17), border: Border.all(color: const AppColors.primary)),
       child: Column(children: [Icon(icon, color: tint, size: 26), const SizedBox(height: 8),
-        Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800))])));
+        Text(title, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w800))])));
 }
 
