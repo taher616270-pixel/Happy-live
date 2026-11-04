@@ -280,7 +280,7 @@ class _RoomPageState extends State<RoomPage> {
             _profileHeader(),
             const SizedBox(width: 8),
             Transform.translate(
-              offset: const Offset(190, 0),
+              offset: const Offset(76, 0),
               child: _roundAction(
                 icon: Icons.arrow_forward_ios_rounded,
                 onTap: () => Navigator.of(context).maybePop(),
