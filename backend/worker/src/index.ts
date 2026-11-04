@@ -229,6 +229,39 @@ export default {
     }
 
 
+    if (url.pathname === "/api/v1/rooms" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const result = await env.DB.prepare(
+          "SELECT id, owner_user_id, name, description, image_url, visibility, created_at FROM rooms WHERE status = 'active' AND visibility = 'public' ORDER BY created_at DESC LIMIT 100"
+        ).all<{
+          id: string;
+          owner_user_id: string;
+          name: string;
+          description: string;
+          image_url: string | null;
+          visibility: string;
+          created_at: string;
+        }>();
+        const rooms = (result.results ?? []).map((room) => ({
+          id: room.id,
+          ownerId: room.owner_user_id,
+          name: room.name,
+          description: room.description,
+          imageUrl: room.image_url,
+          isPrivate: room.visibility === "private",
+          createdAt: room.created_at
+        }));
+        return json({ ok: true, rooms }, 200, origin, env);
+      } catch (error) {
+        const diagnostic = error instanceof Error
+          ? { name: error.name, message: error.message }
+          : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[rooms.list] failed", diagnostic);
+        return json({ error: "room_list_failed" }, 500, origin, env);
+      }
+    }
+
     if (url.pathname === "/api/v1/rooms" && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
@@ -245,6 +278,17 @@ export default {
         const name = typeof body.name === "string" ? body.name.trim() : "";
         const description = typeof body.description === "string" ? body.description.trim() : "";
         const isPrivate = body.isPrivate === true;
+        const imageUrl = typeof body.imageUrl === "string" ? body.imageUrl.trim() : "";
+        if (imageUrl) {
+          try {
+            const parsedImageUrl = new URL(imageUrl);
+            if (parsedImageUrl.protocol !== "https:" || !parsedImageUrl.hostname.endsWith("imagekit.io")) {
+              return json({ error: "invalid_room_image" }, 400, origin, env);
+            }
+          } catch {
+            return json({ error: "invalid_room_image" }, 400, origin, env);
+          }
+        }
 
         if (!name) return json({ error: "room_name_required", message: "اكتب اسم الغرفة" }, 400, origin, env);
         if (name.length > 30) return json({ error: "invalid_room_name", message: "اسم الغرفة يجب ألا يتجاوز 30 حرفًا" }, 400, origin, env);
@@ -253,8 +297,8 @@ export default {
         const roomId = crypto.randomUUID();
         const createdAt = new Date().toISOString();
         await env.DB.prepare(
-          "INSERT INTO rooms (id, owner_user_id, name, description, visibility, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'active', ?, ?)"
-        ).bind(roomId, user.id, name, description, isPrivate ? "private" : "public", createdAt, createdAt).run();
+          "INSERT INTO rooms (id, owner_user_id, name, description, image_url, visibility, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)"
+        ).bind(roomId, user.id, name, description, imageUrl || null, isPrivate ? "private" : "public", createdAt, createdAt).run();
 
         return json({
           ok: true,
@@ -263,6 +307,7 @@ export default {
             ownerId: user.id,
             name,
             description,
+            imageUrl: imageUrl || null,
             isPrivate,
             status: "active",
             createdAt
