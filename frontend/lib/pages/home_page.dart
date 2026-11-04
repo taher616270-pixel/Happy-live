@@ -292,7 +292,7 @@ class MyPartyRoomButton extends StatelessWidget {
             ),
             Positioned(
               right: -15,
-              top: -38,
+              top: -44,
               bottom: -20,
               child: Image.asset(
                 'assets/images/boy_headset.png.png',
