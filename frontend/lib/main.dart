@@ -1246,58 +1246,8 @@ class _SessionHomePageState extends State<SessionHomePage> {
   }
 
   void _openMySidePanel() {
-    showGeneralDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'إغلاق',
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 240),
-      pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: Material(
-            color: const Color(0xFF17121F),
-            child: SafeArea(
-              child: SizedBox(
-                width: MediaQuery.of(dialogContext).size.width * .78,
-                height: double.infinity,
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(children: [
-                        const Expanded(child: Text('الخاص بي', style: TextStyle(
-                          color: HappyLiveApp.gold, fontSize: 20, fontWeight: FontWeight.w900))),
-                        IconButton(
-                          onPressed: () => Navigator.of(dialogContext).pop(),
-                          icon: const Icon(Icons.close_rounded, color: Colors.white),
-                        ),
-                      ]),
-                      const Divider(color: Color(0xFF30263A)),
-                      const SizedBox(height: 8),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.person_outline_rounded, color: HappyLiveApp.gold),
-                        title: const Text('حسابي', style: TextStyle(color: Colors.white)),
-                        onTap: () {
-                          Navigator.of(dialogContext).pop();
-                          if (mounted) setState(() => _tab = 4);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        final slide = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
-            .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
-        return SlideTransition(position: slide, child: child);
-      },
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const _HappyMySpacePage()),
     );
   }
 
@@ -1343,6 +1293,50 @@ class _SessionHomePageState extends State<SessionHomePage> {
         )),
       ),
     ));
+  }
+}
+
+class _HappyMySpacePage extends StatelessWidget {
+  const _HappyMySpacePage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: HappyLiveApp.background,
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF17121F),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          title: const Text('الخاص بي', style: TextStyle(
+            color: HappyLiveApp.gold, fontWeight: FontWeight.w900,
+          )),
+        ),
+        body: const SafeArea(
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.widgets_outlined, color: HappyLiveApp.gold, size: 48),
+                  SizedBox(height: 14),
+                  Text('الخاص بي', style: TextStyle(
+                    color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900,
+                  )),
+                  SizedBox(height: 8),
+                  Text('هذه صفحتك الخاصة، وسنضيف محتوياتها وميزاتها لاحقاً.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: HappyLiveApp.muted, fontSize: 13, height: 1.7),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
