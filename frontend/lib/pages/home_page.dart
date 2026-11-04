@@ -193,8 +193,8 @@ class MyPartyRoomButton extends StatelessWidget {
                     ),
                     const Spacer(),
                     Container(
-                      width: 42,
-                      height: 42,
+                      width: 38,
+                      height: 38,
                       decoration: const BoxDecoration(
                         color: Color(0xFF8B5CF6),
                         shape: BoxShape.circle,
