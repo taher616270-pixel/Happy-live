@@ -100,29 +100,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
     children: [
       const SizedBox(height: 24),
-      Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
-        decoration: BoxDecoration(color: HappyHomeColors.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF30263A))),
-        child: Row(children: [
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('غرفة الحفلة الخاصة بي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
-            SizedBox(height: 4), Text('دردش مع أي شخص', style: TextStyle(color: HappyHomeColors.muted, fontSize: 11, height: 1.6)),
-          ])),
-          const SizedBox(width: 12),
-          SizedBox(width: 42, height: 48, child: Stack(
-            alignment: Alignment.center,
-            children: [
-              const Text('H', style: TextStyle(color: HappyHomeColors.gold, fontSize: 34, fontWeight: FontWeight.w900, height: 1)),
-              Positioned(right: 0, top: 5, child: Transform.rotate(
-                angle: -0.35,
-                child: const Icon(Icons.mic_rounded, color: HappyHomeColors.purple, size: 19),
-              )),
-          SizedBox(width: 48, height: 48, child: DecoratedBox(
-            decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF30233D), border: Border.all(color: HappyHomeColors.purple)),
-            child: const Center(child: Icon(Icons.add_rounded, color: HappyHomeColors.gold, size: 26)),
-          )),
-            ],
-          )),
-        ])),
+      const MyPartyRoomButton(),
     ],
   );
 
@@ -160,6 +138,99 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     ],
   );
 }
+class MyPartyRoomButton extends StatelessWidget {
+  final VoidCallback? onTap;
+  const MyPartyRoomButton({super.key, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: double.infinity,
+                height: 88,
+                padding: const EdgeInsets.only(left: 16, right: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF211A31),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFFE6C87A).withOpacity(0.5),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF8B5CF6),
+                          width: 1.8,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        color: Color(0xFFE6C87A),
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'غرفة الحفلة الخاصة بي',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'دردش مع أي شخص',
+                          style: TextStyle(
+                            color: Color(0xFF9A8DB0),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    const SizedBox(width: 80),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              right: -5,
+              top: -20,
+              bottom: -20,
+              child: Image.asset(
+                'assets/images/boy_headset.png.png',
+                width: 105,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class HappySectionTitle extends StatelessWidget {
   const HappySectionTitle({required this.title, required this.subtitle});
   final String title, subtitle;
