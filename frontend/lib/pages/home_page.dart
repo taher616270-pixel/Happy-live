@@ -108,7 +108,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           const SizedBox(width: 12),
           const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('غرفة الحفلة الخاصة بي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
-            SizedBox(height: 4), Text('ستظهر القصص والتحديثات هنا عند تفعيل المتابعة.', style: TextStyle(color: HappyHomeColors.muted, fontSize: 11, height: 1.6)),
+            SizedBox(height: 4), Text('دردش مع أي شخص', style: TextStyle(color: HappyHomeColors.muted, fontSize: 11, height: 1.6)),
           ])),
         ])),
     ],
