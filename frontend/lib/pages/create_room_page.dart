@@ -73,7 +73,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'قص صورة الغرفة',
-            toolbarColor: const AppColors.primary,
+            toolbarColor: AppColors.primary,
             toolbarWidgetColor: AppColors.textPrimary,
             activeControlsWidgetColor: _gold,
             dimmedLayerColor: AppColors.primary.withOpacity(0.8),
@@ -236,7 +236,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
     labelStyle: const TextStyle(color: _muted),
     prefixIcon: Icon(icon, color: _gold),
     filled: true,
-    fillColor: const AppColors.primary,
+    fillColor: AppColors.primary,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(15),
       borderSide: BorderSide(color: AppColors.primary.withOpacity(0.4)),
@@ -260,7 +260,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
         backgroundColor: _background,
         resizeToAvoidBottomInset: false,
         appBar: AppBar(
-          backgroundColor: const AppColors.primary,
+          backgroundColor: AppColors.primary,
           foregroundColor: AppColors.textOnPrimary,
           elevation: 0,
           title: const Text(
@@ -332,7 +332,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                       width: 142,
                       height: 142,
                       decoration: BoxDecoration(
-                        color: const AppColors.primary,
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: _gold, width: 1.4),
                         boxShadow: [
