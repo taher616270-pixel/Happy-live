@@ -623,23 +623,22 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _topBar() {
-    return Padding(
-      padding: const EdgeInsets.only(right: 16),
-      child: Align(
-        alignment: Alignment.centerRight,
+    return SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _profileHeader(),
-            const SizedBox(width: 8),
-            Transform.translate(
-              offset: const Offset(152, 0),
-              child: _roundAction(
-                icon: Icons.arrow_forward_ios_rounded,
-                onTap: () => setState(() => _showRoomActions = !_showRoomActions),
-                tooltip: 'خيارات الغرفة',
-              ),
+            _roundAction(
+              icon: Icons.arrow_forward_ios_rounded,
+              onTap: () {
+                if (!mounted) return;
+                setState(() => _showRoomActions = !_showRoomActions);
+              },
+              tooltip: 'خيارات الغرفة',
             ),
+            _profileHeader(),
           ],
         ),
       ),
