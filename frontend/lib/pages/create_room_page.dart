@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'room_page.dart';
 
 class CreateRoomPage extends StatefulWidget {
   const CreateRoomPage({super.key, required this.accessToken});
@@ -187,13 +188,12 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
 
       if (response.statusCode == 201 && data['ok'] == true) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إنشاء الغرفة وحفظها بنجاح'),
-            behavior: SnackBarBehavior.floating,
+        final room = Map<String, dynamic>.from(data['room'] as Map);
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => RoomPage(room: room),
           ),
         );
-        Navigator.of(context).pop(data['room']);
         return;
       }
 
