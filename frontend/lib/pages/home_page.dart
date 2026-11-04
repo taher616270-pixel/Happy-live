@@ -133,7 +133,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     hintText: 'أدخل ID الغرفة',
                     hintStyle: const TextStyle(color: HappyHomeColors.muted, fontSize: 14, letterSpacing: 0),
                     filled: true, fillColor: const AppColors.primary,
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide(color: AppColors.primary.withOpacity(0.4))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide(color: AppColors.border.withOpacity(0.4))),
                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: HappyHomeColors.gold)),
                   ),
                 ),
@@ -175,7 +175,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               )
             else
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeColors.gold, foregroundColor: AppColors.textPrimary),
+                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeColors.gold, foregroundColor: AppColors.textOnPrimary),
                 onPressed: searching ? null : () async {
                   final code = controller.text.trim();
                   if (!RegExp(r'^\d{8}$').hasMatch(code)) {
