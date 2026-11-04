@@ -1225,103 +1225,253 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-class SessionHomePage extends StatelessWidget {
-  const SessionHomePage({
-    super.key,
-    required this.name,
-    required this.email,
-    required this.accessToken,
-  });
-
+class SessionHomePage extends StatefulWidget {
+  const SessionHomePage({super.key, required this.name, required this.email, required this.accessToken});
   final String name;
   final String email;
   final String accessToken;
+  @override
+  State<SessionHomePage> createState() => _SessionHomePageState();
+}
 
+class _SessionHomePageState extends State<SessionHomePage> {
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
   static const String _sessionTokenKey = 'happy_live_session_token';
+  int _tab = 0;
+  String get _name => widget.name.trim().isEmpty ? 'عضو Happy Live' : widget.name.trim();
+  String get _initial => _name.characters.first.toUpperCase();
 
-  Future<void> _logout(BuildContext context) async {
+  void _soon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$feature قيد التجهيز وستتوفر قريباً'), behavior: SnackBarBehavior.floating));
+  }
+
+  Future<void> _logout() async {
     try {
-      await http.post(
-        Uri.parse('$_apiBase/auth/logout'),
-        headers: {'Authorization': 'Bearer $accessToken'},
-      ).timeout(const Duration(seconds: 10));
+      await http.post(Uri.parse('$_apiBase/auth/logout'),
+        headers: {'Authorization': 'Bearer ' + widget.accessToken}).timeout(const Duration(seconds: 10));
     } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_sessionTokenKey);
-    if (!context.mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const LoginPage()),
-      (route) => false,
-    );
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => const LoginPage()), (route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: HappyLiveApp.background,
-        appBar: AppBar(
-          backgroundColor: HappyLiveApp.background,
-          foregroundColor: HappyLiveApp.gold,
-          title: const Text('HAPPY LIVE', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              tooltip: 'تسجيل الخروج',
-              onPressed: () => _logout(context),
-              icon: const Icon(Icons.logout_rounded),
-            ),
+    final pages = <Widget>[
+      _HappyHomeTab(name: _name, onDiscover: () => setState(() => _tab = 1), onSoon: _soon),
+      _HappyPlaceholderTab(title: 'اكتشف', subtitle: 'اعثر على مجتمعات واهتمامات جديدة', icon: Icons.explore_outlined, onSoon: _soon),
+      _HappyCreateTab(onSoon: _soon),
+      const _HappyPlaceholderTab(title: 'الرسائل', subtitle: 'محادثاتك الخاصة في مكان واحد', icon: Icons.forum_outlined),
+      _HappyProfileTab(name: _name, email: widget.email, initial: _initial, onLogout: _logout, onSoon: _soon),
+    ];
+    return Directionality(textDirection: TextDirection.rtl, child: Scaffold(
+      backgroundColor: HappyLiveApp.background,
+      body: SafeArea(child: Column(children: [
+        Padding(padding: const EdgeInsets.fromLTRB(18, 12, 18, 10), child: Row(children: [
+          Container(width: 43, height: 43, decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: const LinearGradient(colors: [Color(0xFF49305E), Color(0xFF17121F)]),
+            border: Border.all(color: HappyLiveApp.gold.withValues(alpha: .7))),
+            child: const Center(child: Text('H', style: TextStyle(color: HappyLiveApp.gold, fontSize: 29, fontWeight: FontWeight.w900)))),
+          const SizedBox(width: 11),
+          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('HAPPY LIVE', style: TextStyle(color: HappyLiveApp.gold, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.4)),
+            SizedBox(height: 2), Text('عالمك الاجتماعي', style: TextStyle(color: HappyLiveApp.muted, fontSize: 11)),
+          ])),
+          IconButton(onPressed: () => _soon('الإشعارات'), icon: const Icon(Icons.notifications_none_rounded, color: Colors.white)),
+          GestureDetector(onTap: () => setState(() => _tab = 4),
+            child: CircleAvatar(radius: 19, backgroundColor: const Color(0xFF49305E),
+              child: Text(_initial, style: const TextStyle(color: HappyLiveApp.gold, fontWeight: FontWeight.w900)))),
+        ])),
+        Expanded(child: IndexedStack(index: _tab, children: pages)),
+      ])),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(color: Color(0xFF120F18), border: Border(top: BorderSide(color: Color(0xFF30263A)))),
+        child: SafeArea(top: false, child: BottomNavigationBar(
+          currentIndex: _tab, onTap: (index) => setState(() => _tab = index),
+          type: BottomNavigationBarType.fixed, backgroundColor: const Color(0xFF120F18),
+          selectedItemColor: HappyLiveApp.gold, unselectedItemColor: HappyLiveApp.muted,
+          selectedFontSize: 11, unselectedFontSize: 10, elevation: 0,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'الرئيسية'),
+            BottomNavigationBarItem(icon: Icon(Icons.explore_outlined), label: 'اكتشف'),
+            BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline_rounded, size: 29), label: 'إنشاء'),
+            BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline_rounded), label: 'الرسائل'),
+            BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'حسابي'),
           ],
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const _BrandHeader(),
-                  const SizedBox(height: 34),
-                  const Icon(Icons.verified_rounded, color: HappyLiveApp.gold, size: 48),
-                  const SizedBox(height: 14),
-                  Text(
-                    name.isEmpty ? 'تم تسجيل الدخول بنجاح' : 'أهلاً بك، $name',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 9),
-                  Text(email, style: const TextStyle(color: HappyLiveApp.muted, fontSize: 14)),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'تم ربط حسابك بالخادم وحفظ جلسة الدخول على هذا الجهاز.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: HappyLiveApp.muted, height: 1.7),
-                  ),
-                  const SizedBox(height: 28),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _logout(context),
-                      icon: const Icon(Icons.logout_rounded),
-                      label: const Text('تسجيل الخروج'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: HappyLiveApp.gold,
-                        side: const BorderSide(color: HappyLiveApp.gold),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        )),
       ),
-    );
+    ));
   }
+}
+
+class _HappyHomeTab extends StatelessWidget {
+  const _HappyHomeTab({required this.name, required this.onDiscover, required this.onSoon});
+  final String name;
+  final VoidCallback onDiscover;
+  final ValueChanged<String> onSoon;
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 12, 18, 28), children: [
+    const Text('مرحباً بعودتك 👋', style: TextStyle(color: HappyLiveApp.muted, fontSize: 13)),
+    const SizedBox(height: 5),
+    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
+    const SizedBox(height: 19),
+    Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(23),
+      gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF38234B), Color(0xFF1D1726), Color(0xFF121018)]),
+      border: Border.all(color: const Color(0x665F4775))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(color: const Color(0x33E8C477), borderRadius: BorderRadius.circular(30)),
+          child: const Text('مرحباً بك في مجتمعك', style: TextStyle(color: HappyLiveApp.gold, fontSize: 11, fontWeight: FontWeight.w800))),
+        const SizedBox(height: 15),
+        const Text('عالمك الاجتماعي\nفي مكان واحد', style: TextStyle(color: Colors.white, fontSize: 25, height: 1.35, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 8),
+        const Text('اكتشف أشخاصاً جدد، وشارك اهتماماتك، وكن جزءاً من مجتمع Happy Live.', style: TextStyle(color: Color(0xFFD0C7D8), fontSize: 12, height: 1.8)),
+        const SizedBox(height: 17),
+        SizedBox(height: 43, child: FilledButton.icon(onPressed: onDiscover, icon: const Icon(Icons.arrow_back_rounded, size: 17),
+          label: const Text('اكتشف Happy Live'),
+          style: FilledButton.styleFrom(backgroundColor: HappyLiveApp.gold, foregroundColor: const Color(0xFF17121F), textStyle: const TextStyle(fontWeight: FontWeight.w900)))),
+      ])),
+    const SizedBox(height: 24),
+    const _HappySectionTitle(title: 'اختصاراتك', subtitle: 'كل ما تحتاجه في مكان واحد'),
+    const SizedBox(height: 12),
+    Row(children: [
+      Expanded(child: _HappyShortcut(icon: Icons.groups_rounded, title: 'المجتمعات', tint: HappyLiveApp.purple, onTap: onDiscover)),
+      const SizedBox(width: 10),
+      Expanded(child: _HappyShortcut(icon: Icons.edit_note_rounded, title: 'المنشورات', tint: HappyLiveApp.gold, onTap: () => onSoon('المنشورات'))),
+      const SizedBox(width: 10),
+      Expanded(child: _HappyShortcut(icon: Icons.mic_none_rounded, title: 'البث المباشر', tint: const Color(0xFF55B7C8), onTap: () => onSoon('البث المباشر'))),
+    ]),
+    const SizedBox(height: 25),
+    const _HappySectionTitle(title: 'مساحة الأصدقاء', subtitle: 'قصص وتحديثات الأشخاص الذين تتابعهم'),
+    const SizedBox(height: 12),
+    Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+      decoration: BoxDecoration(color: HappyLiveApp.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF30263A))),
+      child: Row(children: [
+        Container(width: 48, height: 48, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF30233D), border: Border.all(color: HappyLiveApp.purple)),
+          child: const Icon(Icons.add_rounded, color: HappyLiveApp.gold, size: 26)),
+        const SizedBox(width: 12),
+        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('ابدأ مساحتك الاجتماعية', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+          SizedBox(height: 4), Text('ستظهر القصص والتحديثات هنا عند تفعيل المتابعة.', style: TextStyle(color: HappyLiveApp.muted, fontSize: 11, height: 1.6)),
+        ])),
+      ])),
+    const SizedBox(height: 25),
+    const _HappySectionTitle(title: 'آخر المنشورات', subtitle: 'مشاركات المجتمع تظهر هنا'),
+    const SizedBox(height: 12),
+    const _HappyEmptyState(icon: Icons.dynamic_feed_outlined, title: 'لا توجد منشورات حتى الآن', message: 'ستظهر المشاركات هنا بعد تفعيل خدمة المنشورات.'),
+  ]);
+}
+
+class _HappySectionTitle extends StatelessWidget {
+  const _HappySectionTitle({required this.title, required this.subtitle});
+  final String title, subtitle;
+  @override
+  Widget build(BuildContext context) => Row(children: [
+    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 3), Text(subtitle, style: const TextStyle(color: HappyLiveApp.muted, fontSize: 10)),
+    ])),
+    const Icon(Icons.more_horiz_rounded, color: HappyLiveApp.muted),
+  ]);
+}
+
+class _HappyShortcut extends StatelessWidget {
+  const _HappyShortcut({required this.icon, required this.title, required this.tint, required this.onTap});
+  final IconData icon; final String title; final Color tint; final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(onTap: onTap, borderRadius: BorderRadius.circular(17),
+    child: Container(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+      decoration: BoxDecoration(color: HappyLiveApp.surface, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFF30263A))),
+      child: Column(children: [Icon(icon, color: tint, size: 26), const SizedBox(height: 8),
+        Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800))])));
+}
+
+class _HappyEmptyState extends StatelessWidget {
+  const _HappyEmptyState({required this.icon, required this.title, required this.message});
+  final IconData icon; final String title, message;
+  @override
+  Widget build(BuildContext context) => Container(width: double.infinity, padding: const EdgeInsets.fromLTRB(20, 25, 20, 25),
+    decoration: BoxDecoration(color: HappyLiveApp.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF30263A))),
+    child: Column(children: [Icon(icon, color: HappyLiveApp.purple, size: 34), const SizedBox(height: 10),
+      Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+      const SizedBox(height: 6), Text(message, textAlign: TextAlign.center, style: const TextStyle(color: HappyLiveApp.muted, fontSize: 11, height: 1.7))]));
+}
+
+class _HappyPlaceholderTab extends StatelessWidget {
+  const _HappyPlaceholderTab({required this.title, required this.subtitle, required this.icon, this.onSoon});
+  final String title, subtitle; final IconData icon; final ValueChanged<String>? onSoon;
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 18, 18, 28), children: [
+    Text(title, style: const TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900)),
+    const SizedBox(height: 5), Text(subtitle, style: const TextStyle(color: HappyLiveApp.muted, fontSize: 12)),
+    const SizedBox(height: 22),
+    _HappyEmptyState(icon: icon, title: title == 'الرسائل' ? 'لا توجد محادثات بعد' : 'هذه المساحة قيد التجهيز',
+      message: title == 'الرسائل' ? 'ستظهر محادثاتك هنا عند تفعيل نظام الرسائل الخاصة.' : 'نعمل على تجهيز هذه المساحة لتكون جاهزة للاستخدام.'),
+    if (onSoon != null) ...[const SizedBox(height: 15), OutlinedButton(onPressed: () => onSoon!(title), child: const Text('معرفة المزيد'))],
+  ]);
+}
+
+class _HappyCreateTab extends StatelessWidget {
+  const _HappyCreateTab({required this.onSoon}); final ValueChanged<String> onSoon;
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 18, 18, 28), children: [
+    const Text('إنشاء', style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900)),
+    const SizedBox(height: 5), const Text('شارك لحظاتك مع مجتمع Happy Live', style: TextStyle(color: HappyLiveApp.muted, fontSize: 12)),
+    const SizedBox(height: 22),
+    _HappyCreateAction(icon: Icons.post_add_rounded, title: 'منشور جديد', subtitle: 'شارك فكرة أو صورة مع المجتمع', onTap: () => onSoon('إنشاء المنشورات')),
+    const SizedBox(height: 11),
+    _HappyCreateAction(icon: Icons.auto_awesome_motion_rounded, title: 'قصة جديدة', subtitle: 'شارك لحظة قصيرة مع أصدقائك', onTap: () => onSoon('القصص')),
+    const SizedBox(height: 11),
+    _HappyCreateAction(icon: Icons.mic_rounded, title: 'بدء بث مباشر', subtitle: 'تواصل صوتياً مع الآخرين', onTap: () => onSoon('البث المباشر')),
+  ]);
+}
+
+class _HappyCreateAction extends StatelessWidget {
+  const _HappyCreateAction({required this.icon, required this.title, required this.subtitle, required this.onTap});
+  final IconData icon; final String title, subtitle; final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(onTap: onTap, borderRadius: BorderRadius.circular(17),
+    child: Container(padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(color: HappyLiveApp.surface, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFF30263A))),
+      child: Row(children: [
+        Container(width: 45, height: 45, decoration: BoxDecoration(color: const Color(0xFF352541), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: HappyLiveApp.gold)),
+        const SizedBox(width: 13),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+          const SizedBox(height: 4), Text(subtitle, style: const TextStyle(color: HappyLiveApp.muted, fontSize: 11)),
+        ])),
+        const Icon(Icons.chevron_left_rounded, color: HappyLiveApp.muted),
+      ])));
+}
+
+class _HappyProfileTab extends StatelessWidget {
+  const _HappyProfileTab({required this.name, required this.email, required this.initial, required this.onLogout, required this.onSoon});
+  final String name, email, initial; final VoidCallback onLogout; final ValueChanged<String> onSoon;
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 18, 18, 28), children: [
+    const Text('حسابي', style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900)),
+    const SizedBox(height: 20),
+    Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
+      gradient: const LinearGradient(colors: [Color(0xFF38234B), Color(0xFF17121F)], begin: Alignment.topRight, end: Alignment.bottomLeft),
+      border: Border.all(color: const Color(0x665F4775))),
+      child: Column(children: [
+        CircleAvatar(radius: 38, backgroundColor: const Color(0xFF241B2D), child: Text(initial, style: const TextStyle(color: HappyLiveApp.gold, fontSize: 30, fontWeight: FontWeight.w900))),
+        const SizedBox(height: 12), Text(name, style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 5), Text(email, textAlign: TextAlign.center, style: const TextStyle(color: HappyLiveApp.muted, fontSize: 12)),
+        const SizedBox(height: 14),
+        OutlinedButton.icon(onPressed: () => onSoon('تعديل الملف الشخصي'), icon: const Icon(Icons.edit_outlined, size: 17), label: const Text('تعديل الملف الشخصي'),
+          style: OutlinedButton.styleFrom(foregroundColor: HappyLiveApp.gold, side: const BorderSide(color: HappyLiveApp.gold))),
+      ])),
+    const SizedBox(height: 18),
+    _HappyCreateAction(icon: Icons.shield_outlined, title: 'الخصوصية والأمان', subtitle: 'إعدادات الحساب والحماية', onTap: () => onSoon('إعدادات الخصوصية')),
+    const SizedBox(height: 10),
+    _HappyCreateAction(icon: Icons.help_outline_rounded, title: 'المساعدة والدعم', subtitle: 'نحن هنا لمساعدتك', onTap: () => onSoon('الدعم')),
+    const SizedBox(height: 10),
+    _HappyCreateAction(icon: Icons.logout_rounded, title: 'تسجيل الخروج', subtitle: 'الخروج من هذا الجهاز', onTap: onLogout),
+  ]);
 }
 
 class _BrandHeader extends StatelessWidget {
