@@ -147,20 +147,20 @@ class MyPartyRoomButton extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 22),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             InkWell(
               onTap: onTap,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(17),
               child: Container(
                 width: double.infinity,
-                height: 82,
+                height: 74,
                 padding: const EdgeInsets.only(left: 16, right: 16),
                 decoration: BoxDecoration(
                   color: const Color(0xFF211A31),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(17),
                   border: Border.all(
                     color: const Color(0xFFE6C87A).withOpacity(0.5),
                     width: 1,
@@ -168,7 +168,7 @@ class MyPartyRoomButton extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const SizedBox(width: 92),
+                    const SizedBox(width: 78),
                     const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,7 +177,7 @@ class MyPartyRoomButton extends StatelessWidget {
                           'غرفة الحفلة الخاصة بي',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 17,
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -186,15 +186,15 @@ class MyPartyRoomButton extends StatelessWidget {
                           'دردش مع أي شخص',
                           style: TextStyle(
                             color: Color(0xFF9A8DB0),
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
                       ],
                     ),
                     const Spacer(),
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
                         color: Colors.transparent,
                         shape: BoxShape.circle,
@@ -206,7 +206,7 @@ class MyPartyRoomButton extends StatelessWidget {
                       child: const Icon(
                         Icons.add,
                         color: Color(0xFFE6C87A),
-                        size: 28,
+                        size: 24,
                       ),
                     ),
                   ],
@@ -214,12 +214,12 @@ class MyPartyRoomButton extends StatelessWidget {
               ),
             ),
             Positioned(
-              right: -15,
-              top: -38,
-              bottom: -20,
+              right: -12,
+              top: -31,
+              bottom: -16,
               child: Image.asset(
                 'assets/images/boy_headset.png.png',
-                width: 105,
+                width: 90,
                 fit: BoxFit.contain,
               ),
             ),
