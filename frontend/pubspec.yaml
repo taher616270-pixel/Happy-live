@@ -24,9 +24,3 @@ flutter:
   assets:
     - assets/images/boy_headset.png.png
     - web/assets/south-arabia-v2.png
-  fonts:
-    - family: Tajawal
-      fonts:
-        - asset: assets/fonts/Tajawal-Regular.ttf
-          weight: 400
-
