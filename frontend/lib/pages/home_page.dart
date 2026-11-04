@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'create_room_page.dart';
 
 /// Theme colors kept local so this page can be maintained independently.
 class HappyHomeColors {
@@ -100,7 +101,11 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     padding: const EdgeInsets.fromLTRB(0, 8, 0, 28),
     children: [
       const SizedBox(height: 24),
-      const MyPartyRoomButton(),
+      MyPartyRoomButton(onTap: () {
+        Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => const CreateRoomPage(),
+        ));
+      }),
     ],
   );
 
