@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'pages/home_page.dart';
+import 'pages/profile_page.dart';
 import 'package:flutter/services.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
@@ -1349,7 +1350,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
       _HappyCreateTab(onSoon: _soon),
       _HappyPlaceholderTab(title: 'اكتشف', subtitle: 'اعثر على مجتمعات واهتمامات جديدة', icon: Icons.explore_outlined, onSoon: _soon),
       const _HappyPlaceholderTab(title: 'الرسائل', subtitle: 'محادثاتك الخاصة في مكان واحد', icon: Icons.forum_outlined),
-      _HappyProfileTab(name: _name, email: widget.email, initial: _initial, onLogout: _logout, onSoon: _soon),
+      HappyProfilePage(name: _name, email: widget.email, initial: _initial, onLogout: _logout, onSoon: _soon),
     ];
     return Directionality(textDirection: TextDirection.rtl, child: Scaffold(
       backgroundColor: HappyLiveApp.background,
@@ -1523,33 +1524,6 @@ class _HappyCreateAction extends StatelessWidget {
         ])),
         const Icon(Icons.chevron_left_rounded, color: HappyLiveApp.muted),
       ])));
-}
-
-class _HappyProfileTab extends StatelessWidget {
-  const _HappyProfileTab({required this.name, required this.email, required this.initial, required this.onLogout, required this.onSoon});
-  final String name, email, initial; final VoidCallback onLogout; final ValueChanged<String> onSoon;
-  @override
-  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 18, 18, 28), children: [
-    const Text('حسابي', style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900)),
-    const SizedBox(height: 20),
-    Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
-      gradient: const LinearGradient(colors: [Color(0xFF38234B), Color(0xFF17121F)], begin: Alignment.topRight, end: Alignment.bottomLeft),
-      border: Border.all(color: const Color(0x665F4775))),
-      child: Column(children: [
-        CircleAvatar(radius: 38, backgroundColor: const Color(0xFF241B2D), child: Text(initial, style: const TextStyle(color: HappyLiveApp.gold, fontSize: 30, fontWeight: FontWeight.w900))),
-        const SizedBox(height: 12), Text(name, style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 5), Text(email, textAlign: TextAlign.center, style: const TextStyle(color: HappyLiveApp.muted, fontSize: 12)),
-        const SizedBox(height: 14),
-        OutlinedButton.icon(onPressed: () => onSoon('تعديل الملف الشخصي'), icon: const Icon(Icons.edit_outlined, size: 17), label: const Text('تعديل الملف الشخصي'),
-          style: OutlinedButton.styleFrom(foregroundColor: HappyLiveApp.gold, side: const BorderSide(color: HappyLiveApp.gold))),
-      ])),
-    const SizedBox(height: 18),
-    _HappyCreateAction(icon: Icons.shield_outlined, title: 'الخصوصية والأمان', subtitle: 'إعدادات الحساب والحماية', onTap: () => onSoon('إعدادات الخصوصية')),
-    const SizedBox(height: 10),
-    _HappyCreateAction(icon: Icons.help_outline_rounded, title: 'المساعدة والدعم', subtitle: 'نحن هنا لمساعدتك', onTap: () => onSoon('الدعم')),
-    const SizedBox(height: 10),
-    _HappyCreateAction(icon: Icons.logout_rounded, title: 'تسجيل الخروج', subtitle: 'الخروج من هذا الجهاز', onTap: onLogout),
-  ]);
 }
 
 class _BrandHeader extends StatelessWidget {
