@@ -168,7 +168,7 @@ class MyPartyRoomButton extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const SizedBox(width: 92),
+                    const SizedBox(width: 76),
                     const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
