@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import '../app_theme.dart';
 import 'package:flutter/services.dart';
 
 // ================== الألوان ==================
 class _C {
-  static const bg = Color(0xFF06130F);
-  static const divider = Color(0xFF030A08);
-  static const grey = Color(0xFF8A9A98);
-  static const nav = Color(0xFF1A1F1F);
-  static const teal = Color(0xFF1FD1B8);
-  static const red = Color(0xFFFF3B5C);
+  static const bg = AppColors.background;
+  static const divider = AppColors.border;
+  static const grey = AppColors.textSecondary;
+  static const nav = AppColors.surface;
+  static const teal = AppColors.primary;
+  static const red = AppColors.danger;
 }
 
 // ================== الموديل ==================
@@ -86,7 +87,7 @@ class _ProfileLoaderState extends State<ProfileLoader> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('تعذر تحميل البيانات', style: TextStyle(color: Colors.white)),
+                  const Text('تعذر تحميل البيانات', style: TextStyle(color: AppColors.textPrimary)),
                   const SizedBox(height: 12),
                   ElevatedButton(onPressed: _retry, child: const Text('إعادة المحاولة')),
                 ],
@@ -135,17 +136,17 @@ class ProfilePage extends StatelessWidget {
                       _Header(data: data),
                       const _TribeBanner(),
                       const SizedBox(height: 4),
-                      MenuTile(title: 'من الذي رآني', color: const Color(0xFF1E9BFF), icon: Icons.visibility, badge: data.viewersCount, onTap: () => _soon(context, 'من الذي رآني')),
-                      MenuTile(title: 'منشوراتي', color: const Color(0xFFFF4D8D), icon: Icons.bolt, onTap: () => _soon(context, 'منشوراتي')),
+                      MenuTile(title: 'من الذي رآني', color: const AppColors.primary, icon: Icons.visibility, badge: data.viewersCount, onTap: () => _soon(context, 'من الذي رآني')),
+                      MenuTile(title: 'منشوراتي', color: const AppColors.primary, icon: Icons.bolt, onTap: () => _soon(context, 'منشوراتي')),
                       const _Divider(),
-                      MenuTile(title: 'محفظتي', color: const Color(0xFFFF8A2B), icon: Icons.account_balance_wallet, onTap: () => _soon(context, 'محفظتي')),
-                      MenuTile(title: 'مركز العروض', color: const Color(0xFFFF4F9A), icon: Icons.local_activity, trailingText: 'تفعيل : ${data.offersCount}', showDot: true, onTap: () => _soon(context, 'مركز العروض')),
-                      MenuTile(title: 'VIP', color: const Color(0xFFFFB300), icon: Icons.workspace_premium, trailingText: data.vipText, onTap: () => _soon(context, 'VIP')),
-                      MenuTile(title: 'تشغيل المنجم', color: const Color(0xFFFF7A2F), icon: Icons.hardware, trailingText: data.mineText, onTap: () => _soon(context, 'تشغيل المنجم')),
-                      MenuTile(title: 'ترتيب الرتبة', color: const Color(0xFFFFC02E), icon: Icons.emoji_events, onTap: () => _soon(context, 'ترتيب الرتبة')),
-                      MenuTile(title: 'نوبل', color: const Color(0xFF7B5CFF), icon: Icons.shield, trailingText: data.nobleText, onTap: () => _soon(context, 'نوبل')),
-                      MenuTile(title: 'المركز التجاري', color: const Color(0xFFFF5C93), icon: Icons.storefront, onTap: () => _soon(context, 'المركز التجاري')),
-                      MenuTile(title: 'ادعو الأصدقاء', color: const Color(0xFF2DD4BF), icon: Icons.share, onTap: () => _soon(context, 'ادعو الأصدقاء')),
+                      MenuTile(title: 'محفظتي', color: const AppColors.primary, icon: Icons.account_balance_wallet, onTap: () => _soon(context, 'محفظتي')),
+                      MenuTile(title: 'مركز العروض', color: const AppColors.primary, icon: Icons.local_activity, trailingText: 'تفعيل : ${data.offersCount}', showDot: true, onTap: () => _soon(context, 'مركز العروض')),
+                      MenuTile(title: 'VIP', color: const AppColors.primary, icon: Icons.workspace_premium, trailingText: data.vipText, onTap: () => _soon(context, 'VIP')),
+                      MenuTile(title: 'تشغيل المنجم', color: const AppColors.primary, icon: Icons.hardware, trailingText: data.mineText, onTap: () => _soon(context, 'تشغيل المنجم')),
+                      MenuTile(title: 'ترتيب الرتبة', color: const AppColors.primary, icon: Icons.emoji_events, onTap: () => _soon(context, 'ترتيب الرتبة')),
+                      MenuTile(title: 'نوبل', color: const AppColors.primary, icon: Icons.shield, trailingText: data.nobleText, onTap: () => _soon(context, 'نوبل')),
+                      MenuTile(title: 'المركز التجاري', color: const AppColors.primary, icon: Icons.storefront, onTap: () => _soon(context, 'المركز التجاري')),
+                      MenuTile(title: 'ادعو الأصدقاء', color: const AppColors.primary, icon: Icons.share, onTap: () => _soon(context, 'ادعو الأصدقاء')),
                       const _Divider(),
                       MenuTile(title: 'المساعدة', outlineIcon: Icons.help_outline, onTap: () => _soon(context, 'المساعدة')),
                       MenuTile(title: 'الاعدادات', outlineIcon: Icons.settings_outlined, onTap: () => _soon(context, 'الاعدادات')),
@@ -178,10 +179,10 @@ class _Header extends StatelessWidget {
             height: 70,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFFD9D9D9),
+              color: const AppColors.primary,
               image: data.photoUrl != null ? DecorationImage(image: NetworkImage(data.photoUrl!), fit: BoxFit.cover) : null,
             ),
-            child: data.photoUrl == null ? const Icon(Icons.person, color: Colors.white, size: 38) : null,
+            child: data.photoUrl == null ? const Icon(Icons.person, color: AppColors.textPrimary, size: 38) : null,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -191,11 +192,11 @@ class _Header extends StatelessWidget {
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    Flexible(child: Text(data.displayName.isEmpty ? 'مستخدم Happy Live' : data.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800))),
+                    Flexible(child: Text(data.displayName.isEmpty ? 'مستخدم Happy Live' : data.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w800))),
                     const SizedBox(width: 6),
-                    Icon(data.isMale ? Icons.male : Icons.female, color: data.isMale ? const Color(0xFF3AA0FF) : const Color(0xFFFF5C93), size: 16),
+                    Icon(data.isMale ? Icons.male : Icons.female, color: data.isMale ? const AppColors.primary : const AppColors.primary, size: 16),
                     const SizedBox(width: 4),
-                    Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+                    Container(width: 4, height: 4, decoration: const BoxDecoration(color: AppColors.textPrimary, shape: BoxShape.circle)),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -209,12 +210,12 @@ class _Header extends StatelessWidget {
                     children: [
                       const Icon(Icons.copy, color: _C.grey, size: 14),
                       const SizedBox(width: 4),
-                      Text('ID:${data.userId}', textDirection: TextDirection.ltr, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                      Text('ID:${data.userId}', textDirection: TextDirection.ltr, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 6),
-                Row(children: const [Icon(Icons.help_outline, color: _C.grey, size: 14), SizedBox(width: 6), Icon(Icons.star, color: Color(0xFFFFC107), size: 14)]),
+                Row(children: const [Icon(Icons.help_outline, color: _C.grey, size: 14), SizedBox(width: 6), Icon(Icons.star, color: AppColors.primary, size: 14)]),
               ],
             ),
           ),
@@ -252,19 +253,19 @@ class _TribeBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-        gradient: const LinearGradient(colors: [Color(0xFF0F2A2A), Color(0xFF0B1B1B)], begin: Alignment.topRight, end: Alignment.bottomLeft),
+        border: Border.all(color: AppColors.textPrimary.withOpacity(0.06)),
+        gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primary], begin: Alignment.topRight, end: Alignment.bottomLeft),
       ),
       child: Row(
         children: [
-          const Icon(Icons.shield, color: Color(0xFF4C8DFF), size: 44),
+          const Icon(Icons.shield, color: AppColors.primary, size: 44),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
-                Text('انضم إلى القبيلة', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                Text('انضم إلى القبيلة', style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
                 SizedBox(height: 4),
                 Text('اعثر على الأصدقاء لتحصل على مكافأة', style: TextStyle(color: _C.grey, fontSize: 11)),
               ],
@@ -274,7 +275,7 @@ class _TribeBanner extends StatelessWidget {
             height: 34,
             child: ElevatedButton(
               onPressed: () {},
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5B7CFA), foregroundColor: Colors.white, elevation: 0, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 18)),
+              style: ElevatedButton.styleFrom(backgroundColor: const AppColors.primary, foregroundColor: AppColors.textPrimary, elevation: 0, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 18)),
               child: const Text('اذهب إلى', style: TextStyle(fontSize: 13)),
             ),
           ),
@@ -318,11 +319,11 @@ class MenuTile extends StatelessWidget {
           child: Row(
             children: [
               if (color != null)
-                Container(width: 36, height: 36, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: Colors.white, size: 20))
+                Container(width: 36, height: 36, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: AppColors.textPrimary, size: 20))
               else
                 SizedBox(width: 36, height: 36, child: Icon(outlineIcon, color: _C.grey, size: 26)),
               const SizedBox(width: 12),
-              Expanded(child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 15))),
+              Expanded(child: Text(title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 15))),
               if (trailingText != null) Text(trailingText!, style: const TextStyle(color: _C.grey, fontSize: 12)),
               if (showDot) Container(margin: const EdgeInsets.symmetric(horizontal: 6), width: 8, height: 8, decoration: const BoxDecoration(color: _C.red, shape: BoxShape.circle)),
               if (badge > 0)
@@ -332,7 +333,7 @@ class MenuTile extends StatelessWidget {
                   height: 18,
                   alignment: Alignment.center,
                   decoration: const BoxDecoration(color: _C.red, shape: BoxShape.circle),
-                  child: Text('$badge', style: const TextStyle(color: Colors.white, fontSize: 11)),
+                  child: Text('$badge', style: const TextStyle(color: AppColors.textPrimary, fontSize: 11)),
                 ),
               const Icon(Icons.chevron_left, color: _C.grey, size: 22),
             ],
@@ -407,7 +408,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         backgroundColor: _C.bg,
         appBar: AppBar(
           backgroundColor: _C.bg,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.textPrimary,
           elevation: 0,
           centerTitle: true,
           title: const Text('تعديل الملف الشخصي', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -421,9 +422,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   children: [
                     CircleAvatar(
                       radius: 48,
-                      backgroundColor: const Color(0xFF263532),
+                      backgroundColor: const AppColors.primary,
                       backgroundImage: widget.data.photoUrl == null ? null : NetworkImage(widget.data.photoUrl!),
-                      child: widget.data.photoUrl == null ? const Icon(Icons.person, size: 48, color: Colors.white70) : null,
+                      child: widget.data.photoUrl == null ? const Icon(Icons.person, size: 48, color: AppColors.iconLight) : null,
                     ),
                     Positioned(
                       bottom: 0,
@@ -432,7 +433,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                         width: 30,
                         height: 30,
                         decoration: const BoxDecoration(color: _C.teal, shape: BoxShape.circle),
-                        child: const Icon(Icons.camera_alt, size: 17, color: Colors.black),
+                        child: const Icon(Icons.camera_alt, size: 17, color: AppColors.textOnPrimary),
                       ),
                     ),
                   ],
@@ -448,7 +449,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
               _editLabel('معرّف الحساب'),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 16),
-                decoration: BoxDecoration(color: _C.nav, borderRadius: BorderRadius.circular(13), border: Border.all(color: Colors.white12)),
+                decoration: BoxDecoration(color: _C.nav, borderRadius: BorderRadius.circular(13), border: Border.all(color: AppColors.border)),
                 child: Text('ID: ${widget.data.userId}', textDirection: TextDirection.ltr, style: const TextStyle(color: _C.grey, fontSize: 14)),
               ),
               const SizedBox(height: 28),
@@ -458,7 +459,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('واجهة التعديل جاهزة، وسيتم ربط الحفظ بالخادم لاحقًا')),
                   ),
-                  style: ElevatedButton.styleFrom(backgroundColor: _C.teal, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+                  style: ElevatedButton.styleFrom(backgroundColor: _C.teal, foregroundColor: AppColors.textOnPrimary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
                   child: const Text('حفظ التعديلات', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
                 ),
               ),
@@ -471,13 +472,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
   Widget _editLabel(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+    child: Text(text, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 14)),
   );
 
   Widget _editField(TextEditingController controller, {required String hint, int maxLines = 1}) => TextField(
     controller: controller,
     maxLines: maxLines,
-    style: const TextStyle(color: Colors.white, fontSize: 14),
+    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
     decoration: InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: _C.grey),
@@ -485,7 +486,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       fillColor: _C.nav,
       contentPadding: const EdgeInsets.all(15),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: Colors.white12)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.border)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: _C.teal)),
     ),
   );
