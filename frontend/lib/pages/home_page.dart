@@ -97,7 +97,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _buildOriginalHomeContent() => ListView(
-    padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
+    padding: const EdgeInsets.fromLTRB(0, 8, 0, 28),
     children: [
       const SizedBox(height: 24),
       const MyPartyRoomButton(),
@@ -147,7 +147,7 @@ class MyPartyRoomButton extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 0),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
