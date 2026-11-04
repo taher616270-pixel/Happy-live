@@ -22,7 +22,6 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
-  bool _isPrivate = false;
   bool _isSubmitting = false;
   XFile? _roomImage;
   Uint8List? _roomImageBytes;
@@ -123,7 +122,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
         body: jsonEncode({
           'name': _nameController.text.trim(),
           'description': _descriptionController.text.trim(),
-          'isPrivate': _isPrivate,
+          'isPrivate': false,
           'imageUrl': imageUrl,
         }),
       ).timeout(const Duration(seconds: 15));
@@ -250,8 +249,8 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                   child: GestureDetector(
                     onTap: _pickRoomImage,
                     child: Container(
-                      width: 142,
-                      height: 142,
+                      width: 180,
+                      height: 180,
                       decoration: BoxDecoration(
                         color: const Color(0xFF100E15),
                         borderRadius: BorderRadius.circular(20),
@@ -317,24 +316,6 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                   decoration: _decoration('وصف الغرفة (اختياري)', Icons.edit_note_rounded),
                 ),
                 const SizedBox(height: 10),
-                Container(
-                  decoration: BoxDecoration(
-                    color: _surface,
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: const Color(0x665F4775)),
-                  ),
-                  child: SwitchListTile(
-                    value: _isPrivate,
-                    onChanged: (value) => setState(() => _isPrivate = value),
-                    activeColor: _purple,
-                    title: const Text('غرفة خاصة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                    subtitle: Text(
-                      _isPrivate ? 'الغرفة خاصة' : 'الغرفة متاحة للجميع',
-                      style: const TextStyle(color: _muted, fontSize: 11),
-                    ),
-                    secondary: const Icon(Icons.lock_outline_rounded, color: _gold),
-                  ),
-                ),
                 const SizedBox(height: 26),
                 SizedBox(
                   height: 52,
