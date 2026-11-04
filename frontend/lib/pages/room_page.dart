@@ -317,7 +317,7 @@ class _RoomPageState extends State<RoomPage> {
 
   Widget _profileHeader() {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 110, maxWidth: 170),
+      constraints: const BoxConstraints(minWidth: 105, maxWidth: 160),
       child: IntrinsicWidth(
         child: Container(
           height: 36,
