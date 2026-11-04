@@ -103,7 +103,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
         decoration: BoxDecoration(color: HappyHomeColors.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF30263A))),
         child: Row(children: [
-          Container(width: 48, height: 48, decoration: BoxDecoration(shape: BoxShape.rectangle, borderRadius: BorderRadius.circular(12), color: const Color(0xFF30233D), border: Border.all(color: HappyHomeColors.purple)),
+          Container(width: 48, height: 48, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF30233D), border: Border.all(color: HappyHomeColors.purple)),
             child: const Icon(Icons.add_rounded, color: HappyHomeColors.gold, size: 26)),
           const SizedBox(width: 12),
           const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
