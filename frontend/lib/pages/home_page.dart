@@ -114,8 +114,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: HappyHomeAppColors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: AppColors.primary.withOpacity(0.4))),
+          backgroundColor: HappyHomeColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: AppColors.primary.withOpacity(0.4))),
           title: const Text('البحث عن غرفة', textAlign: TextAlign.right, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800)),
           content: Directionality(
             textDirection: TextDirection.rtl,
@@ -131,10 +131,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   decoration: InputDecoration(
                     counterText: '',
                     hintText: 'أدخل ID الغرفة',
-                    hintStyle: const TextStyle(color: HappyHomeAppColors.textSecondary, fontSize: 14, letterSpacing: 0),
+                    hintStyle: const TextStyle(color: HappyHomeColors.muted, fontSize: 14, letterSpacing: 0),
                     filled: true, fillColor: const AppColors.primary,
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.primary.withOpacity(0.4))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: HappyHomeAppColors.primary)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide(color: AppColors.primary.withOpacity(0.4))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: HappyHomeColors.gold)),
                   ),
                 ),
                 if (error != null) ...[
@@ -145,11 +145,11 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity, padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const AppColors.primary, borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeAppColors.primary.withOpacity(.5))),
+                    decoration: BoxDecoration(color: const AppColors.primary, borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeColors.gold.withOpacity(.5))),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       Text((foundRoom!['name'] ?? 'غرفة صوتية').toString(), textAlign: TextAlign.right, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text('ID: ${foundRoom!['roomCode'] ?? controller.text.trim()}', textAlign: TextAlign.right, style: const TextStyle(color: HappyHomeAppColors.primary, fontSize: 12)),
+                      Text('ID: ${foundRoom!['roomCode'] ?? controller.text.trim()}', textAlign: TextAlign.right, style: const TextStyle(color: HappyHomeColors.gold, fontSize: 12)),
                     ]),
                   ),
                 ],
@@ -157,10 +157,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             ),
           ),
           actions: [
-            TextButton(onPressed: searching ? null : () => Navigator.pop(dialogContext), child: const Text('إغلاق', style: TextStyle(color: HappyHomeAppColors.textSecondary))),
+            TextButton(onPressed: searching ? null : () => Navigator.pop(dialogContext), child: const Text('إغلاق', style: TextStyle(color: HappyHomeColors.muted))),
             if (foundRoom != null)
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeAppColors.primary, foregroundColor: AppColors.textOnPrimary),
+                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeColors.gold, foregroundColor: AppColors.textOnPrimary),
                 onPressed: () {
                   final room = Map<String, dynamic>.from(foundRoom!);
                   Navigator.pop(dialogContext);
@@ -175,7 +175,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               )
             else
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeAppColors.primary, foregroundColor: AppColors.textPrimary),
+                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeColors.gold, foregroundColor: AppColors.textPrimary),
                 onPressed: searching ? null : () async {
                   final code = controller.text.trim();
                   if (!RegExp(r'^\d{8}$').hasMatch(code)) {
@@ -238,17 +238,17 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             decoration: BoxDecoration(
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: const AppColors.primary.withOpacity(0.4)),
+              border: Border.all(color: AppColors.primary.withOpacity(0.4)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 17, color: HappyHomeAppColors.primary),
+                Icon(icon, size: 17, color: HappyHomeColors.gold),
                 if (selected) ...[
                   const SizedBox(width: 7),
                   Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: HappyHomeAppColors.primary, fontSize: 12, fontWeight: FontWeight.w800))),
+                    style: const TextStyle(color: HappyHomeColors.gold, fontSize: 12, fontWeight: FontWeight.w800))),
                 ],
               ],
             ),
@@ -287,7 +287,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 child: IconButton(
                   tooltip: 'البحث عن غرفة بواسطة ID',
                   onPressed: _searchRoomById,
-                  icon: const Icon(Icons.search_rounded, color: HappyHomeAppColors.primary, size: 21),
+                  icon: const Icon(Icons.search_rounded, color: HappyHomeColors.gold, size: 21),
                   visualDensity: VisualDensity.compact,
                   constraints: const BoxConstraints.tightFor(width: 40, height: 40),
                 ),
@@ -351,7 +351,7 @@ class MyPartyRoomButton extends StatelessWidget {
                   color: const AppColors.primary,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: const AppColors.primary.withOpacity(0.5),
+                    color: AppColors.primary.withOpacity(0.5),
                     width: 1,
                   ),
                 ),
@@ -437,9 +437,9 @@ class HappySectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Row(children: [
     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w900)),
-      const SizedBox(height: 3), Text(subtitle, style: const TextStyle(color: HappyHomeAppColors.textSecondary, fontSize: 10)),
+      const SizedBox(height: 3), Text(subtitle, style: const TextStyle(color: HappyHomeColors.muted, fontSize: 10)),
     ])),
-    const Icon(Icons.more_horiz_rounded, color: HappyHomeAppColors.textSecondary),
+    const Icon(Icons.more_horiz_rounded, color: HappyHomeColors.muted),
   ]);
 }
 
@@ -449,7 +449,7 @@ class HappyShortcut extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(onTap: onTap, borderRadius: BorderRadius.circular(17),
     child: Container(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-      decoration: BoxDecoration(color: HappyHomeAppColors.surface, borderRadius: BorderRadius.circular(17), border: Border.all(color: const AppColors.primary)),
+      decoration: BoxDecoration(color: HappyHomeColors.surface, borderRadius: BorderRadius.circular(17), border: Border.all(color: const AppColors.primary)),
       child: Column(children: [Icon(icon, color: tint, size: 26), const SizedBox(height: 8),
         Text(title, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w800))])));
 }
