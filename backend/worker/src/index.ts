@@ -279,7 +279,7 @@ export default {
             await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, user.id).run();
           } else {
             const seatNumber = Number(body.seatNumber);
-            if (!Number.isInteger(seatNumber) || seatNumber < 1 || seatNumber > 6) {
+            if (!Number.isInteger(seatNumber) || seatNumber < 1 || seatNumber > 8) {
               return json({ error: "invalid_seat_number" }, 400, origin, env);
             }
             const expiresAt = new Date(Date.now() + 45000).toISOString();
