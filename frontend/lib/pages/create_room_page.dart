@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../app_theme.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -16,11 +17,11 @@ class CreateRoomPage extends StatefulWidget {
 }
 
 class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProviderStateMixin {
-  static const _background = Color(0xFF09080D);
-  static const _surface = Color(0xFF17131F);
-  static const _gold = Color(0xFFE8C477);
-  static const _purple = Color(0xFF9B63D9);
-  static const _muted = Color(0xFFAAA2B5);
+  static const _background = AppColors.background;
+  static const _surface = AppColors.surface;
+  static const _gold = AppColors.primary;
+  static const _purple = AppColors.primary;
+  static const _muted = AppColors.textSecondary;
 
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -72,10 +73,10 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'قص صورة الغرفة',
-            toolbarColor: const Color(0xFF17121F),
-            toolbarWidgetColor: Colors.white,
+            toolbarColor: const AppColors.primary,
+            toolbarWidgetColor: AppColors.textPrimary,
             activeControlsWidgetColor: _gold,
-            dimmedLayerColor: const Color(0xCC09080D),
+            dimmedLayerColor: const AppColors.primary.withOpacity(0.8),
             cropFrameColor: _gold,
             cropGridColor: _gold,
             initAspectRatio: CropAspectRatioPreset.square,
@@ -235,14 +236,14 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
     labelStyle: const TextStyle(color: _muted),
     prefixIcon: Icon(icon, color: _gold),
     filled: true,
-    fillColor: const Color(0xFF100E15),
+    fillColor: const AppColors.primary,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(15),
-      borderSide: const BorderSide(color: Color(0x665F4775)),
+      borderSide: const BorderSide(color: AppColors.primary.withOpacity(0.4)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(15),
-      borderSide: const BorderSide(color: Color(0x665F4775)),
+      borderSide: const BorderSide(color: AppColors.primary.withOpacity(0.4)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(15),
@@ -259,8 +260,8 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
         backgroundColor: _background,
         resizeToAvoidBottomInset: false,
         appBar: AppBar(
-          backgroundColor: const Color(0xFF17121F),
-          foregroundColor: Colors.white,
+          backgroundColor: const AppColors.primary,
+          foregroundColor: AppColors.textPrimary,
           elevation: 0,
           title: const Text(
             'إنشاء غرفة حفلة',
@@ -279,10 +280,10 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                   begin: begin,
                   end: end,
                   colors: const [
-                    Color(0xFF09080D),
-                    Color(0xFF100B18),
-                    Color(0xFF160D22),
-                    Color(0xFF0B0911),
+                    AppColors.primary,
+                    AppColors.primary,
+                    AppColors.primary,
+                    AppColors.primary,
                   ],
                   stops: const [0.0, 0.38, 0.72, 1.0],
                 ),
@@ -303,7 +304,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                   decoration: BoxDecoration(
                     color: _surface,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0x665F4775)),
+                    border: Border.all(color: const AppColors.primary.withOpacity(0.4)),
                   ),
                   child: const Column(
                       children: [
@@ -312,7 +313,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                         Text(
                           'أنشئ غرفتك واجمع أصدقاءك',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w900),
                         ),
                         SizedBox(height: 5),
                         Text(
@@ -331,12 +332,12 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                       width: 142,
                       height: 142,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF100E15),
+                        color: const AppColors.primary,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: _gold, width: 1.4),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0x339B63D9),
+                            color: const AppColors.primary.withOpacity(0.2),
                             blurRadius: 18,
                             spreadRadius: 1,
                           ),
@@ -354,7 +355,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                                   child: Container(
                                     padding: const EdgeInsets.all(7),
                                     decoration: const BoxDecoration(
-                                      color: Color(0xA6000000),
+                                      color: AppColors.primary.withOpacity(0.651),
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(Icons.edit_rounded, color: _gold, size: 17),
@@ -367,7 +368,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                               children: [
                                 Icon(Icons.add_photo_alternate_outlined, color: _gold, size: 38),
                                 SizedBox(height: 9),
-                                Text('إضافة صورة الغرفة', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                                Text('إضافة صورة الغرفة', style: TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w800)),
                                 SizedBox(height: 4),
                                 Text('اضغط لاختيار صورة', style: TextStyle(color: _muted, fontSize: 10)),
                               ],
@@ -380,7 +381,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                 TextFormField(
                   controller: _nameController,
                   maxLength: 20,
-                  style: const TextStyle(color: Colors.white),
+                  style: const TextStyle(color: AppColors.textPrimary),
                   decoration: _decoration('اسم الغرفة', Icons.meeting_room_outlined),
                   validator: (value) => value == null || value.trim().isEmpty
                       ? 'اكتب اسم الغرفة'
@@ -391,7 +392,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                   controller: _descriptionController,
                   maxLength: 120,
                   maxLines: 3,
-                  style: const TextStyle(color: Colors.white),
+                  style: const TextStyle(color: AppColors.textPrimary),
                   decoration: _decoration('إعلان الغرفة (اختياري)', Icons.edit_note_rounded),
                 ),
                 const SizedBox(height: 10),
@@ -401,12 +402,12 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                   child: FilledButton.icon(
                     onPressed: _isSubmitting ? null : _submit,
                     icon: _isSubmitting
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textPrimary))
                         : const Icon(Icons.add_rounded),
                     label: Text(_isSubmitting ? 'جارٍ إنشاء الغرفة...' : 'إنشاء الغرفة', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
                     style: FilledButton.styleFrom(
                       backgroundColor: _purple,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.textPrimary,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                     ),
                   ),
