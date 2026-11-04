@@ -85,7 +85,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
       Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
     );
     upload.fields.addAll({
-      'fileName': 'happy-room-${DateTime.now().millisecondsSinceEpoch}.jpg',
+      'fileName': 'happy-room-${DateTime.now().millisecondsSinceEpoch}-${image.name}',
       'publicKey': auth['publicKey'].toString(),
       'token': auth['token'].toString(),
       'expire': auth['expire'].toString(),
@@ -232,7 +232,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                             border: Border.all(color: _gold, width: 1.4),
                             boxShadow: [
                               BoxShadow(
-                                color: _purple.withValues(alpha: 0.20),
+                                color: const Color(0x339B63D9),
                                 blurRadius: 18,
                                 spreadRadius: 1,
                               ),
@@ -250,7 +250,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                                       child: Container(
                                         padding: const EdgeInsets.all(7),
                                         decoration: BoxDecoration(
-                                          color: Colors.black.withValues(alpha: 0.65),
+                                          color: const Color(0xA6000000),
                                           shape: BoxShape.circle,
                                         ),
                                         child: const Icon(Icons.edit_rounded, color: _gold, size: 17),
