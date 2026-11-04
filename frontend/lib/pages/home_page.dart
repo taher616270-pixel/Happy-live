@@ -181,10 +181,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     setDialogState(() { error = 'أدخل ID صحيحاً مكوّناً من 8 أرقام'; });
                     return;
                   }
-).hasMatch(code)) {
-                    setDialogState(() { error = 'أدخل ID صحيحاً مكوّناً من 8 أرقام'; });
-                    return;
-                  }
                   setDialogState(() { searching = true; error = null; });
                   try {
                     final response = await http.get(
