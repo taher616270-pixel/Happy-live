@@ -1245,6 +1245,62 @@ class _SessionHomePageState extends State<SessionHomePage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$feature قيد التجهيز وستتوفر قريباً'), behavior: SnackBarBehavior.floating));
   }
 
+  void _openMySidePanel() {
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'إغلاق',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 240),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: Material(
+            color: const Color(0xFF17121F),
+            child: SafeArea(
+              child: SizedBox(
+                width: MediaQuery.of(dialogContext).size.width * .78,
+                height: double.infinity,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(children: [
+                        const Expanded(child: Text('الخاص بي', style: TextStyle(
+                          color: HappyLiveApp.gold, fontSize: 20, fontWeight: FontWeight.w900))),
+                        IconButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          icon: const Icon(Icons.close_rounded, color: Colors.white),
+                        ),
+                      ]),
+                      const Divider(color: Color(0xFF30263A)),
+                      const SizedBox(height: 8),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.person_outline_rounded, color: HappyLiveApp.gold),
+                        title: const Text('حسابي', style: TextStyle(color: Colors.white)),
+                        onTap: () {
+                          Navigator.of(dialogContext).pop();
+                          if (mounted) setState(() => _tab = 4);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final slide = Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
+            .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+        return SlideTransition(position: slide, child: child);
+      },
+    );
+  }
+
   Future<void> _logout() async {
     try {
       await http.post(Uri.parse('$_apiBase/auth/logout'),
@@ -1297,6 +1353,19 @@ class _HappyHomeTab extends StatelessWidget {
   final ValueChanged<String> onSoon;
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 12, 18, 28), children: [
+    Align(
+      alignment: Alignment.centerLeft,
+      child: OutlinedButton.icon(
+        onPressed: () => (context.findAncestorStateOfType<_SessionHomePageState>())?._openMySidePanel(),
+        icon: const Icon(Icons.menu_rounded, size: 18),
+        label: const Text('الخاص بي'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: HappyLiveApp.gold,
+          side: const BorderSide(color: Color(0x665F4775)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+    ),
     const SizedBox(height: 8),
     Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(23),
