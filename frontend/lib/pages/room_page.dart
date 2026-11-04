@@ -317,7 +317,6 @@ class _RoomPageState extends State<RoomPage> {
       child: IntrinsicWidth(
         child: Container(
           height: 36,
-          clipBehavior: Clip.antiAlias,
           padding: EdgeInsets.zero,
           decoration: BoxDecoration(
             color: const Color(0xCC17121F),
