@@ -519,7 +519,7 @@ class _RoomPageState extends State<RoomPage> {
             const SizedBox(width: 8),
             Flexible(child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(color: const AppColors.primary.withOpacity(0.667), borderRadius: BorderRadius.circular(14), border: Border.all(color: const AppColors.primary.withOpacity(0.4))),
+              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.667), borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.primary.withOpacity(0.4))),
               child: Text(message.text, style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, height: 1.4)),
             )),
           ],
@@ -575,7 +575,7 @@ class _RoomPageState extends State<RoomPage> {
     return Container(
       margin: const EdgeInsets.fromLTRB(4, 2, 4, 8),
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-      decoration: BoxDecoration(color: const AppColors.primary.withOpacity(0.667), borderRadius: BorderRadius.circular(14), border: Border.all(color: const AppColors.primary.withOpacity(0.333))),
+      decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.667), borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.primary.withOpacity(0.333))),
       child: Row(
         textDirection: TextDirection.rtl,
         children: [
@@ -636,7 +636,7 @@ class _RoomPageState extends State<RoomPage> {
   Widget _roomChatComposer() {
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
-      decoration: BoxDecoration(color: const AppColors.primary.withOpacity(0.933), border: Border(top: BorderSide(color: const AppColors.primary.withOpacity(0.267)))),
+      decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.933), border: Border(top: BorderSide(color: AppColors.primary.withOpacity(0.267)))),
       child: SafeArea(
         top: false,
         child: Row(
@@ -783,8 +783,8 @@ class _RoomPageState extends State<RoomPage> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      const AppColors.primary.withOpacity(0.92),
-                      const AppColors.primary.withOpacity(0.97),
+                      AppColors.primary.withOpacity(0.92),
+                      AppColors.primary.withOpacity(0.97),
                       _background,
                     ],
                   ),
@@ -968,10 +968,10 @@ class _RoomPageState extends State<RoomPage> {
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
       decoration: BoxDecoration(
-        color: const AppColors.primary.withOpacity(0.949),
+        color: AppColors.primary.withOpacity(0.949),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
-        border: Border.all(color: const AppColors.primary.withOpacity(0.533)),
-        boxShadow: const [BoxShadow(color: AppColors.primary.withOpacity(0.533), blurRadius: 22, offset: Offset(0, 9))],
+        border: Border.all(color: AppColors.primary.withOpacity(0.533)),
+        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.533), blurRadius: 22, offset: Offset(0, 9))],
       ),
       child: Row(children: [
         Expanded(child: _roomActionButton(
@@ -1022,13 +1022,13 @@ class _RoomPageState extends State<RoomPage> {
           height: 158,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const AppColors.primary.withOpacity(0.949),
+            color: AppColors.primary.withOpacity(0.949),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: _gold, width: 1.4),
-            boxShadow: const [BoxShadow(color: AppColors.primary.withOpacity(0.6), blurRadius: 20, offset: Offset(0, 8))],
+            boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.6), blurRadius: 20, offset: Offset(0, 8))],
             image: _imageUrl == null ? null : DecorationImage(
               image: NetworkImage(_imageUrl!), fit: BoxFit.cover,
-              colorFilter: const ColorFilter.mode(AppColors.primary.withOpacity(0.667), BlendMode.darken),
+              colorFilter: ColorFilter.mode(AppColors.primary.withOpacity(0.667), BlendMode.darken),
             ),
             gradient: _imageUrl == null ? const LinearGradient(
               begin: Alignment.topRight, end: Alignment.bottomLeft,
@@ -1120,12 +1120,12 @@ class _RoomPageState extends State<RoomPage> {
           height: 36,
           padding: EdgeInsets.zero,
           decoration: BoxDecoration(
-            color: const AppColors.primary.withOpacity(0.8),
+            color: AppColors.primary.withOpacity(0.8),
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(18),
               bottomLeft: Radius.circular(18),
             ),
-            border: Border.all(color: const AppColors.primary.withOpacity(0.4), width: 1),
+            border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 1),
             boxShadow: const [
               BoxShadow(color: AppColors.primary.withOpacity(0.133), blurRadius: 12, offset: Offset(0, 4)),
             ],
@@ -1202,7 +1202,7 @@ class _RoomPageState extends State<RoomPage> {
       decoration: BoxDecoration(
         color: const AppColors.primary,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const AppColors.primary.withOpacity(0.533)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.533)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1248,7 +1248,7 @@ class _RoomPageState extends State<RoomPage> {
       decoration: BoxDecoration(
         color: const AppColors.primary,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: const AppColors.primary.withOpacity(0.2)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
       ),
       child: const Row(
         children: [
@@ -1299,7 +1299,7 @@ class _RoomPageState extends State<RoomPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 11),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(13),
-                  side: const BorderSide(color: AppColors.primary.withOpacity(0.467)),
+                  side: BorderSide(color: AppColors.primary.withOpacity(0.467)),
                 ),
               ),
               child: const Text('مغادرة المايك', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
@@ -1342,11 +1342,11 @@ class _RoomPageState extends State<RoomPage> {
                             : const [AppColors.primary, AppColors.primary],
                   ),
                   border: Border.all(
-                    color: mine ? _gold : occupied ? const AppColors.primary : const AppColors.primary.withOpacity(0.4),
+                    color: mine ? _gold : occupied ? const AppColors.primary : AppColors.primary.withOpacity(0.4),
                     width: mine ? 2.2 : 1.5,
                   ),
                   boxShadow: mine
-                      ? const [BoxShadow(color: AppColors.primary.withOpacity(0.333), blurRadius: 15, spreadRadius: 1)]
+                      ? [BoxShadow(color: AppColors.primary.withOpacity(0.333), blurRadius: 15, spreadRadius: 1)]
                       : const [],
                 ),
                 child: Center(
@@ -1447,9 +1447,9 @@ class _RoomPageState extends State<RoomPage> {
                     width: 45,
                     height: 45,
                     decoration: BoxDecoration(
-                      color: const AppColors.primary.withOpacity(0.8),
+                      color: AppColors.primary.withOpacity(0.8),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const AppColors.primary.withOpacity(0.533)),
+                      border: Border.all(color: AppColors.primary.withOpacity(0.533)),
                     ),
                     child: const Icon(Icons.headphones_rounded, color: _gold, size: 25),
                   ),
@@ -1487,7 +1487,7 @@ class _RoomPageState extends State<RoomPage> {
         decoration: BoxDecoration(
           color: const AppColors.primary,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const AppColors.primary.withOpacity(0.333)),
+          border: Border.all(color: AppColors.primary.withOpacity(0.333)),
         ),
         child: Row(
           children: [
@@ -1535,7 +1535,7 @@ class _StarsPainter extends CustomPainter {
       final isGold = i % 4 == 0;
       final paint = Paint()
         ..color = isGold
-            ? const AppColors.primary.withOpacity(0.22)
+            ? AppColors.primary.withOpacity(0.22)
             : AppColors.textPrimary.withOpacity(0.18);
       final x = (i * 53.7) % size.width;
       final y = (i * 91.3) % size.height;
