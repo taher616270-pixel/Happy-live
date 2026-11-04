@@ -331,27 +331,21 @@ class _RoomPageState extends State<RoomPage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(17),
-                  bottomRight: Radius.circular(17),
-                ),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF30213D),
-                    image: _imageUrl != null
-                        ? DecorationImage(
-                            image: NetworkImage(_imageUrl!),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: _imageUrl == null
-                      ? const Icon(Icons.image_outlined, color: _gold, size: 18)
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF30213D),
+                  image: _imageUrl != null
+                      ? DecorationImage(
+                          image: NetworkImage(_imageUrl!),
+                          fit: BoxFit.cover,
+                        )
                       : null,
                 ),
+                child: _imageUrl == null
+                    ? const Icon(Icons.image_outlined, color: _gold, size: 18)
+                    : null,
               ),
               const SizedBox(width: 6),
               Flexible(
