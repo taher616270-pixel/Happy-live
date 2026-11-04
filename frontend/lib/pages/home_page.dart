@@ -86,7 +86,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 if (selected) ...[
                   const SizedBox(width: 7),
                   Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: HappyHomeColors.gold, fontSize: 11, fontWeight: FontWeight.w800))),
+                    style: const TextStyle(color: HappyHomeColors.gold, fontSize: 12, fontWeight: FontWeight.w800))),
                 ],
               ],
             ),
@@ -147,20 +147,20 @@ class MyPartyRoomButton extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 22),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             InkWell(
               onTap: onTap,
-              borderRadius: BorderRadius.circular(17),
+              borderRadius: BorderRadius.circular(20),
               child: Container(
                 width: double.infinity,
                 height: 74,
                 padding: const EdgeInsets.only(left: 16, right: 16),
                 decoration: BoxDecoration(
                   color: const Color(0xFF211A31),
-                  borderRadius: BorderRadius.circular(17),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: const Color(0xFFE6C87A).withOpacity(0.5),
                     width: 1,
@@ -168,7 +168,7 @@ class MyPartyRoomButton extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const SizedBox(width: 78),
+                    const SizedBox(width: 92),
                     const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,7 +177,7 @@ class MyPartyRoomButton extends StatelessWidget {
                           'غرفة الحفلة الخاصة بي',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 15,
+                            fontSize: 17,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -193,8 +193,8 @@ class MyPartyRoomButton extends StatelessWidget {
                     ),
                     const Spacer(),
                     Container(
-                      width: 42,
-                      height: 42,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
                         color: Colors.transparent,
                         shape: BoxShape.circle,
@@ -206,7 +206,7 @@ class MyPartyRoomButton extends StatelessWidget {
                       child: const Icon(
                         Icons.add,
                         color: Color(0xFFE6C87A),
-                        size: 24,
+                        size: 28,
                       ),
                     ),
                   ],
@@ -214,12 +214,12 @@ class MyPartyRoomButton extends StatelessWidget {
               ),
             ),
             Positioned(
-              right: -12,
-              top: -31,
-              bottom: -16,
+              right: -15,
+              top: -38,
+              bottom: -20,
               child: Image.asset(
                 'assets/images/boy_headset.png.png',
-                width: 90,
+                width: 105,
                 fit: BoxFit.contain,
               ),
             ),
