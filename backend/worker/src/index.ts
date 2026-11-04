@@ -250,9 +250,17 @@ export default {
     if (chatStreamRoute && request.method === "GET") {
       if (!env.DB || !env.ROOM_CHAT) return json({ error: "chat_realtime_unavailable" }, 503, origin, env);
       try {
+        if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+          return json({ error: "websocket_upgrade_required" }, 426, origin, env);
+        }
         const protocols = (request.headers.get("Sec-WebSocket-Protocol") ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+        if (!protocols.includes("happy-live-chat")) {
+          return json({ error: "websocket_protocol_required" }, 400, origin, env);
+        }
         const streamToken = protocols.find((value) => value !== "happy-live-chat");
-        if (!streamToken) return json({ error: "authentication_required" }, 401, origin, env);
+        if (!streamToken || !/^[A-Za-z0-9._~-]{32,512}$/.test(streamToken)) {
+          return json({ error: "authentication_required" }, 401, origin, env);
+        }
         const authHeaders = new Headers(request.headers);
         authHeaders.set("Authorization", `Bearer ${streamToken}`);
         const authRequest = new Request(request, { headers: authHeaders });

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:happy_live/models/message.dart';
 
 class RoomPage extends StatefulWidget {
@@ -25,6 +26,18 @@ class _RoomPageState extends State<RoomPage> {
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
 
   Timer? _refreshTimer;
+  WebSocketChannel? _chatChannel;
+  StreamSubscription<dynamic>? _chatSubscription;
+  Timer? _chatReconnectTimer;
+  Timer? _chatFallbackTimer;
+  bool _chatSessionActive = false;
+  bool _chatStarting = false;
+  bool _chatConnecting = false;
+  bool _chatSocketConnected = false;
+  bool _chatSending = false;
+  bool _chatHistoryLoading = false;
+  int _chatReconnectAttempts = 0;
+  final Set<String> _messageIds = <String>{};
   final TextEditingController _messageController = TextEditingController();
   final List<Message> _messages = [];
   final ScrollController _roomMessagesController = ScrollController();
@@ -55,6 +68,17 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Uri get _seatsUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/seats');
+  Uri get _chatSessionUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/chat-session');
+  Uri get _messagesUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/messages');
+  Uri get _chatStreamUri {
+    final base = Uri.parse(_apiBase);
+    return base.replace(
+      scheme: base.scheme == 'https' ? 'wss' : 'ws',
+      path: '${base.path}/rooms/${Uri.encodeComponent(_roomId)}/chat-stream',
+      query: null,
+      fragment: null,
+    );
+  }
   Map<String, String> get _headers => {
     'Authorization': 'Bearer ${widget.accessToken}',
     'Content-Type': 'application/json',
@@ -70,13 +94,8 @@ class _RoomPageState extends State<RoomPage> {
   void initState() {
     super.initState();
     _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? 'مرحباً بكم في الغرفة، نتمنى لكم وقتاً ممتعاً').toString();
-    _messages.addAll([
-      Message(id: 'demo-1', type: 'text', senderId: 'demo-user-1', senderName: 'سالم', senderAvatar: '', text: 'يا هلا بالجميع 🌸', createdAt: DateTime.now().subtract(const Duration(minutes: 2))),
-      Message(id: 'demo-2', type: 'join', senderId: 'demo-owner', senderName: _ownerName, senderAvatar: '', text: 'دخل الغرفة', createdAt: DateTime.now().subtract(const Duration(minutes: 1))),
-      Message(id: 'demo-3', type: 'text', senderId: 'demo-user-2', senderName: 'نور', senderAvatar: '', text: 'نورتوا المكان 🤍', createdAt: DateTime.now().subtract(const Duration(seconds: 35))),
-    ]);
-    _scrollChatToBottom(animated: false);
     _refreshSeats();
+    unawaited(_startRoomChat());
     // Refresh shared seats twice per second so other members appear almost immediately.
     _refreshTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       _refreshSeats();
@@ -91,6 +110,19 @@ class _RoomPageState extends State<RoomPage> {
     _miniOverlayEntry?.remove();
     _miniOverlayEntry = null;
     _refreshTimer?.cancel();
+    _chatReconnectTimer?.cancel();
+    _chatFallbackTimer?.cancel();
+    _chatSubscription?.cancel();
+    _chatChannel?.sink.close();
+    _chatSocketConnected = false;
+    if (_chatSessionActive) {
+      _chatSessionActive = false;
+      http.post(
+        _chatSessionUri,
+        headers: _headers,
+        body: jsonEncode({'action': 'leave'}),
+      ).timeout(const Duration(seconds: 4)).catchError((_) => http.Response('', 500));
+    }
     _messageController.dispose();
     _roomMessagesController.dispose();
     if (_mySeat != null) {
@@ -191,18 +223,212 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _appendLocalMessage(Message message) {
-    setState(() {
+    _mergeRoomMessages([message]);
+  }
+
+  void _mergeRoomMessages(Iterable<Message> incoming) {
+    if (!mounted) return;
+    var changed = false;
+    for (final message in incoming) {
+      if (message.id.isEmpty || !_messageIds.add(message.id)) continue;
       _messages.add(message);
-      if (_messages.length > 50) _messages.removeRange(0, _messages.length - 50);
-    });
+      changed = true;
+    }
+    if (!changed) return;
+    _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    if (_messages.length > 50) {
+      _messages.removeRange(0, _messages.length - 50);
+      _messageIds
+        ..clear()
+        ..addAll(_messages.map((message) => message.id));
+    }
+    setState(() {});
     _scrollChatToBottom();
   }
 
-  void _sendRoomMessage() {
+  Message _messageFromApi(Map<String, dynamic> item, {String type = 'text'}) {
+    return Message(
+      id: (item['id'] ?? '').toString(),
+      type: type,
+      senderId: (item['userId'] ?? item['senderId'] ?? '').toString(),
+      senderName: (item['name'] ?? item['senderName'] ?? 'مستخدم').toString(),
+      senderAvatar: (item['senderAvatar'] ?? '').toString(),
+      text: (item['message'] ?? item['text'] ?? '').toString(),
+      createdAt: DateTime.tryParse((item['createdAt'] ?? '').toString()) ?? DateTime.now(),
+    );
+  }
+
+  void _handleRoomChatEvent(dynamic rawEvent) {
+    try {
+      final decoded = jsonDecode(rawEvent.toString());
+      if (decoded is! Map) return;
+      final eventType = (decoded['type'] ?? 'message').toString();
+      final rawMessage = decoded['message'];
+      if (rawMessage is! Map) return;
+      final item = Map<String, dynamic>.from(rawMessage);
+      final type = eventType == 'system'
+          ? 'system'
+          : eventType == 'announcement'
+              ? 'announcement'
+              : 'text';
+      _appendLocalMessage(_messageFromApi(item, type: type));
+    } catch (_) {
+      // Ignore malformed or unrelated stream frames without interrupting the chat.
+    }
+  }
+
+  Future<void> _startRoomChat() async {
+    if (_chatStarting || _chatSessionActive || _roomId.isEmpty || widget.accessToken.isEmpty) return;
+    _chatStarting = true;
+    try {
+      final response = await http.post(
+        _chatSessionUri,
+        headers: _headers,
+        body: jsonEncode({'action': 'join'}),
+      ).timeout(const Duration(seconds: 10));
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
+        if (mounted) {
+          final error = data is Map ? (data['message'] ?? data['error'] ?? '').toString() : '';
+          _showMessage(error.isNotEmpty ? error : 'تعذر الاتصال بدردشة الغرفة');
+        }
+        return;
+      }
+      if (!mounted) {
+        http.post(_chatSessionUri, headers: _headers, body: jsonEncode({'action': 'leave'}))
+            .timeout(const Duration(seconds: 4)).catchError((_) => http.Response('', 500));
+        return;
+      }
+      _chatSessionActive = true;
+      _appendLocalMessage(Message(
+        id: 'local-join-${DateTime.now().microsecondsSinceEpoch}',
+        type: 'system',
+        senderId: 'self',
+        senderName: (widget.room['currentUserName'] ?? 'أنت').toString(),
+        senderAvatar: '',
+        text: 'انضم للغرفة',
+        createdAt: DateTime.now(),
+      ));
+      await _connectRoomChatSocket();
+      await _loadRoomMessages();
+      if (!_chatSocketConnected) _startChatFallbackPolling();
+    } catch (_) {
+      if (mounted) _showMessage('تعذر الاتصال بدردشة الغرفة، جارٍ إعادة المحاولة');
+      if (_chatSessionActive) {
+        _scheduleChatReconnect();
+        _startChatFallbackPolling();
+      }
+    } finally {
+      _chatStarting = false;
+    }
+  }
+
+  Future<void> _connectRoomChatSocket() async {
+    if (!_chatSessionActive || _chatConnecting || !mounted) return;
+    _chatConnecting = true;
+    WebSocketChannel? channel;
+    try {
+      final connectedChannel = WebSocketChannel.connect(
+        _chatStreamUri,
+        protocols: ['happy-live-chat', widget.accessToken],
+      );
+      channel = connectedChannel;
+      _chatChannel = connectedChannel;
+      _chatSubscription = connectedChannel.stream.listen(
+        _handleRoomChatEvent,
+        onError: (_) => _handleChatSocketClosed(connectedChannel),
+        onDone: () => _handleChatSocketClosed(connectedChannel),
+        cancelOnError: true,
+      );
+      await connectedChannel.ready.timeout(const Duration(seconds: 8));
+      if (!mounted || !identical(_chatChannel, connectedChannel)) return;
+      _chatSocketConnected = true;
+      _chatReconnectAttempts = 0;
+      _chatReconnectTimer?.cancel();
+      _chatReconnectTimer = null;
+      _chatFallbackTimer?.cancel();
+      _chatFallbackTimer = null;
+    } catch (_) {
+      if (channel != null && identical(_chatChannel, channel)) {
+        _chatChannel = null;
+        _chatSocketConnected = false;
+        _chatSubscription?.cancel();
+        _chatSubscription = null;
+        channel.sink.close();
+      }
+      if (_chatSessionActive && mounted) {
+        _scheduleChatReconnect();
+        _startChatFallbackPolling();
+      }
+    } finally {
+      _chatConnecting = false;
+    }
+  }
+
+  void _handleChatSocketClosed(WebSocketChannel channel) {
+    if (!identical(_chatChannel, channel)) return;
+    _chatChannel = null;
+    _chatSocketConnected = false;
+    _chatSubscription?.cancel();
+    _chatSubscription = null;
+    if (_chatSessionActive && mounted) {
+      _scheduleChatReconnect();
+      _startChatFallbackPolling();
+    }
+  }
+
+  void _scheduleChatReconnect() {
+    if (!_chatSessionActive || !mounted || (_chatReconnectTimer?.isActive ?? false)) return;
+    const delays = [1, 2, 4, 8, 16, 30];
+    final index = _chatReconnectAttempts < delays.length ? _chatReconnectAttempts : delays.length - 1;
+    final delay = delays[index];
+    _chatReconnectAttempts++;
+    _chatReconnectTimer = Timer(Duration(seconds: delay), () {
+      _chatReconnectTimer = null;
+      _connectRoomChatSocket();
+    });
+  }
+
+  void _startChatFallbackPolling() {
+    if (!_chatSessionActive || (_chatFallbackTimer?.isActive ?? false)) return;
+    _chatFallbackTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (_chatSessionActive && !_chatSocketConnected) _loadRoomMessages();
+    });
+  }
+
+  Future<void> _loadRoomMessages() async {
+    if (!_chatSessionActive || _chatHistoryLoading) return;
+    _chatHistoryLoading = true;
+    try {
+      final response = await http.get(_messagesUri, headers: _headers)
+          .timeout(const Duration(seconds: 8));
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200 || data is! Map || data['ok'] != true) return;
+      final rawMessages = data['messages'];
+      if (rawMessages is! List) return;
+      final messages = rawMessages
+          .whereType<Map>()
+          .map((item) => _messageFromApi(Map<String, dynamic>.from(item)))
+          .where((message) => message.id.isNotEmpty)
+          .toList();
+      _mergeRoomMessages(messages);
+    } catch (_) {
+      // Keep the current conversation visible; the next fallback poll retries.
+    } finally {
+      _chatHistoryLoading = false;
+    }
+  }
+
+  Future<void> _sendRoomMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _chatSending) return;
     if (text.length > 200) {
       _showMessage('الرسالة يجب ألا تتجاوز 200 حرف');
+      return;
+    }
+    if (!_chatSessionActive) {
+      _showMessage('الدردشة قيد الاتصال، حاول بعد لحظة');
+      unawaited(_startRoomChat());
       return;
     }
     final now = DateTime.now();
@@ -210,17 +436,38 @@ class _RoomPageState extends State<RoomPage> {
       _showMessage('انتظر ثانية قبل إرسال رسالة أخرى');
       return;
     }
-    _lastLocalMessageAt = now;
-    _messageController.clear();
-    _appendLocalMessage(Message(
-      id: 'local-${now.microsecondsSinceEpoch}',
-      type: 'text',
-      senderId: 'demo-current-user',
-      senderName: 'أنت',
-      senderAvatar: (widget.room['currentUserAvatar'] ?? '').toString(),
-      text: text,
-      createdAt: now,
-    ));
+    _chatSending = true;
+    try {
+      final response = await http.post(
+        _messagesUri,
+        headers: _headers,
+        body: jsonEncode({'message': text}),
+      ).timeout(const Duration(seconds: 10));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+        _lastLocalMessageAt = now;
+        if (_messageController.text.trim() == text) _messageController.clear();
+        final rawMessages = data['messages'];
+        if (rawMessages is List) {
+          _mergeRoomMessages(rawMessages
+              .whereType<Map>()
+              .map((item) => _messageFromApi(Map<String, dynamic>.from(item))));
+        }
+      } else {
+        final serverMessage = data is Map ? (data['message'] ?? '').toString() : '';
+        if (mounted) {
+          _showMessage(serverMessage.isNotEmpty
+              ? serverMessage
+              : response.statusCode == 401
+                  ? 'انتهت جلسة الدخول، سجّل الدخول مجددًا'
+                  : 'تعذر إرسال الرسالة، حاول مرة أخرى');
+        }
+      }
+    } catch (_) {
+      if (mounted) _showMessage('تعذر إرسال الرسالة، تحقق من الاتصال');
+    } finally {
+      _chatSending = false;
+    }
   }
 
   Widget _chatAvatar(String avatar, String name, {double size = 34}) {
