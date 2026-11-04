@@ -202,79 +202,104 @@ class MyPartyRoomButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasRoom = room != null;
-    final imageUrl = (room?['imageUrl'] ?? '').toString();
     final roomName = (room?['name'] ?? '').toString().trim();
-    final roomCode = (room?['roomCode'] ?? '').toString();
+    final title = hasRoom
+        ? (roomName.isEmpty ? 'غرفة الحفلة الخاصة بي' : roomName)
+        : 'غرفة الحفلة الخاصة بي';
+    final subtitle = hasRoom
+        ? 'اضغط لفتح غرفتك'
+        : (loading ? 'جارٍ تحميل غرفتك...' : 'دردش مع أي شخص');
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(19),
-            child: Container(
-              width: double.infinity,
-              height: 86,
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF211A31),
-                borderRadius: BorderRadius.circular(19),
-                border: Border.all(color: const Color(0xFFE6C87A).withOpacity(0.52)),
-              ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(13),
-                    child: SizedBox(
-                      width: 62,
-                      height: 62,
-                      child: imageUrl.startsWith('https://')
-                          ? Image.network(imageUrl, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _roomPlaceholder())
-                          : _roomPlaceholder(),
-                    ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: double.infinity,
+                height: 74,
+                padding: const EdgeInsets.only(left: 16, right: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF211A31),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFFE6C87A).withOpacity(0.5),
+                    width: 1,
                   ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          hasRoom ? (roomName.isEmpty ? 'غرفتي' : roomName) : (loading ? 'جارٍ تحميل غرفتك...' : 'إنشاء غرفتي'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          hasRoom ? 'غرفتك الخاصة  •  $roomCode' : 'غرفتك تبقى محفوظة دائمًا',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Color(0xFFB9A9CC), fontSize: 11),
-                        ),
-                      ],
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 92),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF9A8DB0),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(hasRoom ? Icons.arrow_back_ios_new_rounded : Icons.add_circle_rounded,
-                    color: const Color(0xFFE6C87A), size: 23),
-                ],
+                    const Spacer(),
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF8B5CF6),
+                          width: 1.8,
+                        ),
+                      ),
+                      child: Icon(
+                        hasRoom ? Icons.arrow_forward_ios_rounded : Icons.add,
+                        color: const Color(0xFFE6C87A),
+                        size: hasRoom ? 20 : 28,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
+            Positioned(
+              right: -15,
+              top: -38,
+              bottom: -20,
+              child: Image.asset(
+                'assets/images/boy_headset.png.png',
+                width: 105,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
-
-  Widget _roomPlaceholder() => Container(
-    color: const Color(0xFF342546),
-    alignment: Alignment.center,
-    child: const Icon(Icons.meeting_room_rounded, color: Color(0xFFE6C87A), size: 30),
-  );
 }
 
 class HappySectionTitle extends StatelessWidget {
