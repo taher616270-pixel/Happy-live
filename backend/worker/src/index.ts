@@ -186,6 +186,11 @@ export default {
         }
         return json({ ok: true, accessToken: sessionToken, expiresAt, user: { id: userId, email, name } }, 201, origin, env);
       } catch (error) {
+        // Diagnostic only: never log request bodies, email addresses, passwords, or session tokens.
+        const diagnostic = error instanceof Error
+          ? { name: error.name, message: error.message }
+          : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[auth.register] failed", diagnostic);
         return json({ error: "registration_failed", message: "تعذر إنشاء الحساب حاليًا" }, 500, origin, env);
       }
     }
