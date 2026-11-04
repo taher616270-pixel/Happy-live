@@ -40,7 +40,8 @@ class ProfileData {
   factory ProfileData.fromJson(Map<String, dynamic> j) {
     int toInt(dynamic v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
     return ProfileData(
-      userId: '${j['id'] ?? j['user_id'] ?? ''}',
+      displayName: '${j['name'] ?? j['display_name'] ?? ''}',
+      userId: '${j['gabo_id'] ?? j['id'] ?? j['user_id'] ?? ''}',
       photoUrl: (j['avatar'] ?? j['photo_url']) as String?,
       isMale: (j['gender'] ?? 'male') != 'female',
       viewersCount: toInt(j['viewers_count']),
