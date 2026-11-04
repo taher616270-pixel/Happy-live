@@ -83,8 +83,12 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   Future<void> _openMyRoom() async {
     final room = _myRoom;
     if (room != null) {
-      await Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => RoomPage(room: room, accessToken: widget.accessToken),
+      await Navigator.of(context).push(PageRouteBuilder<void>(
+        opaque: false,
+        barrierColor: Colors.transparent,
+        pageBuilder: (_, __, ___) => RoomPage(room: room, accessToken: widget.accessToken),
+        transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 180),
       ));
       await _loadMyRoom();
       return;
