@@ -781,21 +781,37 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                   onSelected: _changeProfileTab,
                                 ),
                               ),
-                              SliverToBoxAdapter(
-                                child: Container(
-                                  width: double.infinity,
-                                  color: Colors.white,
-                                  child: _tabContent(),
+                              if (_tab == 1)
+                                SliverFillRemaining(
+                                  hasScrollBody: false,
+                                  child: Container(
+                                    width: double.infinity,
+                                    color: Colors.white,
+                                    alignment: Alignment.center,
+                                    child: _emptySection(
+                                      key: const ValueKey('agencies'),
+                                      icon: Icons.apartment_rounded,
+                                      title: 'لا توجد وكالة مرتبطة',
+                                      subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
+                                    ),
+                                  ),
+                                )
+                              else
+                                SliverToBoxAdapter(
+                                  child: Container(
+                                    width: double.infinity,
+                                    color: Colors.white,
+                                    child: _tabContent(),
+                                  ),
                                 ),
-                              ),
-                              SliverToBoxAdapter(
-                                // يوفر مجال تمرير حتى عندما تكون بيانات التبويب قصيرة،
-                                // مع بقاء موضع الصفحة ثابتاً بعد رفع الإصبع.
-                                child: SizedBox(
-                                  height: MediaQuery.of(context).size.height * .75 +
-                                      MediaQuery.of(context).padding.bottom,
+                              if (_tab != 1)
+                                SliverToBoxAdapter(
+                                  // يوفر مجال تمرير حتى عندما تكون بيانات التبويب قصيرة.
+                                  child: SizedBox(
+                                    height: MediaQuery.of(context).size.height * .75 +
+                                        MediaQuery.of(context).padding.bottom,
+                                  ),
                                 ),
-                              ),
                               ],
                             ),
                             ),
