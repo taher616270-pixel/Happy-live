@@ -84,11 +84,11 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
     _toast('تم نشر منشورك بنجاح');
   }
 
-  Future<String?> _submitPost(String text) async {
+  Future<String?> _submitPost(String text, String? imageUrl) async {
     final response = await http.post(
       Uri.parse('$_api/posts'),
       headers: _headers,
-      body: jsonEncode({'content': text}),
+      body: jsonEncode({'content': text, if (imageUrl != null) 'imageUrl': imageUrl}),
     ).timeout(const Duration(seconds: 15));
     final data = jsonDecode(response.body);
     if (response.statusCode != 201 || data is! Map || data['ok'] != true) {
@@ -496,7 +496,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
             const Icon(Icons.verified_user_outlined, color: _gold, size: 19),
         ]),
         const SizedBox(height: 13),
-        Text((post['content'] ?? '').toString(), textDirection: TextDirection.rtl, style: const TextStyle(color: _ink, fontSize: 14, height: 1.7)),
+        Text((post['content'] ?? '').toString(), textDirection: TextDirection.rtl, style: const TextStyle(color: _ink, fontSize: 14, height: 1.7)),\n        if ((post['imageUrl'] ?? '').toString().isNotEmpty) ...[\n          const SizedBox(height: 10),\n          ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(\n            post['imageUrl'].toString(), width: double.infinity, fit: BoxFit.cover,\n            errorBuilder: (_, __, ___) => const SizedBox(height: 120, child: Center(child: Icon(Icons.broken_image_outlined))),\n          )),\n        ],
         const SizedBox(height: 13),
         const Divider(height: 1, color: Color(0xFFF0EBDD)),
         Row(children: [
@@ -519,7 +519,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
 class _CreatePostPage extends StatefulWidget {
   const _CreatePostPage({required this.name, required this.onPublish});
   final String name;
-  final Future<String?> Function(String content) onPublish;
+  final Future<String?> Function(String content, String? imageUrl) onPublish;
   @override
   State<_CreatePostPage> createState() => _CreatePostPageState();
 }
@@ -535,6 +535,37 @@ class _CreatePostPageState extends State<_CreatePostPage> {
   String _visibility = 'عام';
   final ImagePicker _imagePicker = ImagePicker();
   Uint8List? _selectedImageBytes;
+
+  Future<String> _uploadPostImage() async {
+    final bytes = _selectedImageBytes;
+    if (bytes == null) throw Exception('اختر صورة أولاً');
+    final authResponse = await http.get(
+      Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/imagekit/auth'),
+      headers: {'Authorization': 'Bearer ${widget.name.isEmpty ? '' : ''}'},
+    );
+    if (authResponse.statusCode != 200) {
+      throw Exception('خدمة رفع الصور غير مكتملة الإعداد. تحقق من مفاتيح ImageKit.');
+    }
+    final auth = jsonDecode(authResponse.body) as Map<String, dynamic>;
+    final request = http.MultipartRequest('POST', Uri.parse('https://upload.imagekit.io/api/v1/files/upload'));
+    request.fields.addAll({
+      'publicKey': auth['publicKey'].toString(),
+      'token': auth['token'].toString(),
+      'expire': auth['expire'].toString(),
+      'signature': auth['signature'].toString(),
+      'fileName': 'happy-live-post-${DateTime.now().millisecondsSinceEpoch}.jpg',
+      'useUniqueFileName': 'true',
+      'folder': '/happy-live/posts',
+    });
+    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: 'happy-live-post.jpg'));
+    final streamed = await request.send().timeout(const Duration(seconds: 60));
+    final response = await http.Response.fromStream(streamed);
+    final data = jsonDecode(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300 || data is! Map || data['url'] is! String) {
+      throw Exception('تعذر رفع الصورة إلى مساحة التخزين');
+    }
+    return data['url'] as String;
+  }
 
   Future<void> _pickPostImage() async {
     try {
@@ -570,11 +601,12 @@ class _CreatePostPageState extends State<_CreatePostPage> {
 
   Future<void> _publish() async {
     final content = _controller.text.trim();
-    if (content.isEmpty || _publishing) return;
+    if ((content.isEmpty && _selectedImageBytes == null) || _publishing) return;
     _focusNode.unfocus();
     setState(() => _publishing = true);
     try {
-      final published = await widget.onPublish(content);
+      final imageUrl = _selectedImageBytes == null ? null : await _uploadPostImage();
+      final published = await widget.onPublish(content, imageUrl);
       if (!mounted || published == null) return;
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_draftKey);
