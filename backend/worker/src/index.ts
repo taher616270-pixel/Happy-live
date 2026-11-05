@@ -621,7 +621,7 @@ export default {
       }
     }
 
-    const postLikeRoute = url.pathname.match(/^\\/api\\/v1\\/posts\\/([0-9a-f-]{36})\\/like$/i);
+    const postLikeRoute = url.pathname.match(/^\/api\/v1\/posts\/([0-9a-f-]{36})\/like$/i);
     if (postLikeRoute && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
@@ -640,7 +640,7 @@ export default {
       }
     }
 
-    const postCommentsRoute = url.pathname.match(/^\\/api\\/v1\\/posts\\/([0-9a-f-]{36})\\/comments$/i);
+    const postCommentsRoute = url.pathname.match(/^\/api\/v1\/posts\/([0-9a-f-]{36})\/comments$/i);
     if (postCommentsRoute && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
@@ -677,7 +677,7 @@ export default {
       }
     }
 
-    const followRoute = url.pathname.match(/^\\/api\\/v1\\/users\\/([0-9a-f-]{36})\\/follow$/i);
+    const followRoute = url.pathname.match(/^\/api\/v1\/users\/([0-9a-f-]{36})\/follow$/i);
     if (followRoute && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
