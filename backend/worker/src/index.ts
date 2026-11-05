@@ -299,7 +299,7 @@ export default {
         const avatarUrl = body.avatarUrl == null ? null : typeof body.avatarUrl === "string" ? body.avatarUrl.trim() : "";
         if (name.length < 2 || name.length > 30) return json({ error: "invalid_name", message: "الاسم يجب أن يكون بين حرفين و30 حرفًا" }, 400, origin, env);
         if (bio.length > 100) return json({ error: "invalid_bio", message: "النبذة يجب ألا تتجاوز 100 حرف" }, 400, origin, env);
-        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(birthday) || Number.isNaN(Date.parse(birthday)) || Date.parse(birthday) > Date.now()) return json({ error: "invalid_birthday", message: "تاريخ الميلاد غير صالح" }, 400, origin, env);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday) || Number.isNaN(Date.parse(birthday)) || Date.parse(birthday) > Date.now()) return json({ error: "invalid_birthday", message: "تاريخ الميلاد غير صالح" }, 400, origin, env);
         if (!gender) return json({ error: "invalid_gender", message: "اختر الجنس بشكل صحيح" }, 400, origin, env);
         if (!countryName || countryName.length > 80) return json({ error: "invalid_country", message: "الدولة غير صالحة" }, 400, origin, env);
         if (avatarUrl !== null) {
