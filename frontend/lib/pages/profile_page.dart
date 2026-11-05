@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// ================== الألوان ==================
-class _C {
-  static const bg = Colors.transparent;
-  static const divider = Color(0xFF030A08);
-  static const grey = Color(0xFF8A9A98);
-  static const nav = Color(0xFF1A1F1F);
-  static const teal = Color(0xFF1FD1B8);
-  static const red = Color(0xFFFF3B5C);
-}
+const _ink = Color(0xFF1E2233);
+const _grey = Color(0xFF9A98AD);
+const _red = Color(0xFFE53E4D);
 
-// ================== الموديل ==================
+// يحتفظ هذا الموديل بالتوافق مع تحميل بيانات الحساب الحالي.
 class ProfileData {
   final String displayName;
   final String userId;
@@ -54,304 +48,7 @@ class ProfileData {
   }
 }
 
-// ================== تحميل البيانات الحقيقية ==================
-class ProfileLoader extends StatefulWidget {
-  final Future<ProfileData> Function() load;
-  const ProfileLoader({super.key, required this.load});
-
-  @override
-  State<ProfileLoader> createState() => _ProfileLoaderState();
-}
-
-class _ProfileLoaderState extends State<ProfileLoader> {
-  late Future<ProfileData> _future = widget.load();
-
-  void _retry() => setState(() => _future = widget.load());
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<ProfileData>(
-      future: _future,
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return const Scaffold(
-            backgroundColor: _C.bg,
-            body: Center(child: CircularProgressIndicator(color: _C.teal)),
-          );
-        }
-        if (snap.hasError || !snap.hasData) {
-          return Scaffold(
-            backgroundColor: _C.bg,
-            body: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('تعذر تحميل البيانات', style: TextStyle(color: Colors.white)),
-                  const SizedBox(height: 12),
-                  ElevatedButton(onPressed: _retry, child: const Text('إعادة المحاولة')),
-                ],
-              ),
-            ),
-          );
-        }
-        return ProfilePage(data: snap.data!);
-      },
-    );
-  }
-}
-
-// ================== الصفحة ==================
-class ProfilePage extends StatelessWidget {
-  final ProfileData data;
-
-  const ProfilePage({
-    super.key,
-    this.data = const ProfileData(
-      userId: '',
-    ),
-  });
-
-  void _soon(BuildContext context, String name) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(name), duration: const Duration(seconds: 1)),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      // This page is hosted inside SessionHomePage's IndexedStack.
-      // Do not create a nested Scaffold here: the parent Scaffold owns
-      // the persistent bottom navigation bar.
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Column(
-                  children: [
-                    _Header(data: data),
-                    const _TribeBanner(),
-                    const SizedBox(height: 4),
-                    MenuTile(title: 'من الذي رآني', color: const Color(0xFF1E9BFF), icon: Icons.visibility, badge: data.viewersCount, onTap: () => _soon(context, 'من الذي رآني')),
-                    MenuTile(title: 'منشوراتي', color: const Color(0xFFFF4D8D), icon: Icons.bolt, onTap: () => _soon(context, 'منشوراتي')),
-                    const _Divider(),
-                    MenuTile(title: 'محفظتي', color: const Color(0xFFFF8A2B), icon: Icons.account_balance_wallet, onTap: () => _soon(context, 'محفظتي')),
-                    MenuTile(title: 'مركز العروض', color: const Color(0xFFFF4F9A), icon: Icons.local_activity, trailingText: 'تفعيل : ${data.offersCount}', showDot: true, onTap: () => _soon(context, 'مركز العروض')),
-                    MenuTile(title: 'VIP', color: const Color(0xFFFFB300), icon: Icons.workspace_premium, trailingText: data.vipText, onTap: () => _soon(context, 'VIP')),
-                    MenuTile(title: 'تشغيل المنجم', color: const Color(0xFFFF7A2F), icon: Icons.hardware, trailingText: data.mineText, onTap: () => _soon(context, 'تشغيل المنجم')),
-                    MenuTile(title: 'ترتيب الرتبة', color: const Color(0xFFFFC02E), icon: Icons.emoji_events, onTap: () => _soon(context, 'ترتيب الرتبة')),
-                    MenuTile(title: 'نوبل', color: const Color(0xFF7B5CFF), icon: Icons.shield, trailingText: data.nobleText, onTap: () => _soon(context, 'نوبل')),
-                    MenuTile(title: 'المركز التجاري', color: const Color(0xFFFF5C93), icon: Icons.storefront, onTap: () => _soon(context, 'المركز التجاري')),
-                    MenuTile(title: 'ادعو الأصدقاء', color: const Color(0xFF2DD4BF), icon: Icons.share, onTap: () => _soon(context, 'ادعو الأصدقاء')),
-                    const _Divider(),
-                    MenuTile(title: 'المساعدة', outlineIcon: Icons.help_outline, onTap: () => _soon(context, 'المساعدة')),
-                    MenuTile(title: 'الاعدادات', outlineIcon: Icons.settings_outlined, onTap: () => _soon(context, 'الاعدادات')),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ================== الرأس ==================
-class _Header extends StatelessWidget {
-  final ProfileData data;
-  const _Header({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFD9D9D9),
-              image: data.photoUrl != null ? DecorationImage(image: NetworkImage(data.photoUrl!), fit: BoxFit.cover) : null,
-            ),
-            child: data.photoUrl == null ? const Icon(Icons.person, color: Colors.white, size: 38) : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Flexible(child: Text(data.displayName.isEmpty ? 'مستخدم Happy Live' : data.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800))),
-                    const SizedBox(width: 6),
-                    Icon(data.isMale ? Icons.male : Icons.female, color: data.isMale ? const Color(0xFF3AA0FF) : const Color(0xFFFF5C93), size: 16),
-                    const SizedBox(width: 4),
-                    Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                InkWell(
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(text: data.userId));
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ الـ ID'), duration: Duration(seconds: 1)));
-                  },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.copy, color: _C.grey, size: 14),
-                      const SizedBox(width: 4),
-                      Text('ID:${data.userId}', textDirection: TextDirection.ltr, style: const TextStyle(color: Colors.white, fontSize: 13)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(children: const [Icon(Icons.help_outline, color: _C.grey, size: 14), SizedBox(width: 6), Icon(Icons.star, color: Color(0xFFFFC107), size: 14)]),
-              ],
-            ),
-          ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => ProfileEditPage(data: data),
-                  ));
-                },
-                icon: const Icon(Icons.edit_outlined, size: 14, color: _C.grey),
-                label: const Text('تعديل', style: TextStyle(color: _C.grey, fontSize: 12)),
-                style: OutlinedButton.styleFrom(side: BorderSide(color: _C.grey.withOpacity(0.5)), shape: const StadiumBorder(), minimumSize: const Size(0, 30), padding: const EdgeInsets.symmetric(horizontal: 10)),
-              ),
-              Positioned(top: -2, right: -2, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: _C.red, shape: BoxShape.circle))),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ================== بطاقة القبيلة ==================
-class _TribeBanner extends StatelessWidget {
-  const _TribeBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 90,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-        gradient: const LinearGradient(colors: [Color(0xFF0F2A2A), Color(0xFF0B1B1B)], begin: Alignment.topRight, end: Alignment.bottomLeft),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.shield, color: Color(0xFF4C8DFF), size: 44),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text('انضم إلى القبيلة', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-                SizedBox(height: 4),
-                Text('اعثر على الأصدقاء لتحصل على مكافأة', style: TextStyle(color: _C.grey, fontSize: 11)),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 34,
-            child: ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5B7CFA), foregroundColor: Colors.white, elevation: 0, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 18)),
-              child: const Text('اذهب إلى', style: TextStyle(fontSize: 13)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ================== صف القائمة ==================
-class MenuTile extends StatelessWidget {
-  final String title;
-  final Color? color;
-  final IconData? icon;
-  final IconData? outlineIcon;
-  final String? trailingText;
-  final int badge;
-  final bool showDot;
-  final VoidCallback? onTap;
-
-  const MenuTile({
-    super.key,
-    required this.title,
-    this.color,
-    this.icon,
-    this.outlineIcon,
-    this.trailingText,
-    this.badge = 0,
-    this.showDot = false,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: SizedBox(
-        height: 56,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              if (color != null)
-                Container(width: 36, height: 36, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: Colors.white, size: 20))
-              else
-                SizedBox(width: 36, height: 36, child: Icon(outlineIcon, color: _C.grey, size: 26)),
-              const SizedBox(width: 12),
-              Expanded(child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 15))),
-              if (trailingText != null) Text(trailingText!, style: const TextStyle(color: _C.grey, fontSize: 12)),
-              if (showDot) Container(margin: const EdgeInsets.symmetric(horizontal: 6), width: 8, height: 8, decoration: const BoxDecoration(color: _C.red, shape: BoxShape.circle)),
-              if (badge > 0)
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  width: 18,
-                  height: 18,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(color: _C.red, shape: BoxShape.circle),
-                  child: Text('$badge', style: const TextStyle(color: Colors.white, fontSize: 11)),
-                ),
-              const Icon(Icons.chevron_left, color: _C.grey, size: 22),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  const _Divider();
-
-  @override
-  Widget build(BuildContext context) => Container(height: 6, margin: const EdgeInsets.symmetric(vertical: 4), color: _C.divider);
-}
-
-// جسر مؤقت للتوافق مع استدعاء الصفحة الحالي في main.dart.
-// سنربط بيانات الحساب الحقيقية ونزيل الشريط السفلي المكرر عند مرحلة التعديل.
+// واجهة التوافق مع الصفحة المستدعاة من main.dart.
 class HappyProfilePage extends StatelessWidget {
   const HappyProfilePage({
     super.key,
@@ -374,119 +71,429 @@ class HappyProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProfilePage(
       data: ProfileData(displayName: name, userId: userId),
+      onPrestige: () => onSoon('برستيج'),
+      onSvip: () => onSoon('SVIP'),
+      onAgency: () => onSoon('الوكالة'),
+      onMedals: () => onSoon('الأوسمة'),
+      onLevel: () => onSoon('المستوى'),
+      onStore: () => onSoon('المتجر'),
+      onWallet: () => onSoon('المحفظة'),
+      onTasks: () => onSoon('مركز المهام'),
+      onSettings: () => onSoon('الإعدادات'),
     );
   }
 }
 
-
-// صفحة مستقلة لتعديل بيانات الملف الشخصي.
-class ProfileEditPage extends StatefulWidget {
-  const ProfileEditPage({super.key, required this.data});
+class ProfilePage extends StatelessWidget {
   final ProfileData data;
+  final int followers, likes, visitors;
+  final int followersBadge, visitorsBadge;
+  final int balance;
+  final VoidCallback? onBack, onSvip, onPrestige, onAgency, onMedals,
+      onLevel, onStore, onWallet, onTasks, onSettings;
 
-  @override
-  State<ProfileEditPage> createState() => _ProfileEditPageState();
-}
-
-class _ProfileEditPageState extends State<ProfileEditPage> {
-  late final TextEditingController _nameController = TextEditingController(text: widget.data.displayName);
-  late final TextEditingController _bioController = TextEditingController();
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _bioController.dispose();
-    super.dispose();
-  }
+  const ProfilePage({
+    super.key,
+    this.data = const ProfileData(userId: ''),
+    this.followers = 0,
+    this.likes = 0,
+    this.visitors = 0,
+    this.followersBadge = 0,
+    this.visitorsBadge = 0,
+    this.balance = 0,
+    this.onBack,
+    this.onSvip,
+    this.onPrestige,
+    this.onAgency,
+    this.onMedals,
+    this.onLevel,
+    this.onStore,
+    this.onWallet,
+    this.onTasks,
+    this.onSettings,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: _C.bg,
-        appBar: AppBar(
-          backgroundColor: _C.bg,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
-          title: const Text('تعديل الملف الشخصي', style: TextStyle(fontWeight: FontWeight.w800)),
-        ),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Center(
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 48,
-                      backgroundColor: const Color(0xFF263532),
-                      backgroundImage: widget.data.photoUrl == null ? null : NetworkImage(widget.data.photoUrl!),
-                      child: widget.data.photoUrl == null ? const Icon(Icons.person, size: 48, color: Colors.white70) : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      child: Container(
-                        width: 30,
-                        height: 30,
-                        decoration: const BoxDecoration(color: _C.teal, shape: BoxShape.circle),
-                        child: const Icon(Icons.camera_alt, size: 17, color: Colors.black),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 28),
-              _editLabel('الاسم'),
-              _editField(_nameController, hint: 'اكتب اسمك'),
-              const SizedBox(height: 18),
-              _editLabel('النبذة الشخصية'),
-              _editField(_bioController, hint: 'اكتب نبذة قصيرة عنك', maxLines: 4),
-              const SizedBox(height: 18),
-              _editLabel('معرّف الحساب'),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 16),
-                decoration: BoxDecoration(color: _C.nav, borderRadius: BorderRadius.circular(13), border: Border.all(color: Colors.white12)),
-                child: Text('ID: ${widget.data.userId}', textDirection: TextDirection.ltr, style: const TextStyle(color: _C.grey, fontSize: 14)),
-              ),
-              const SizedBox(height: 28),
-              SizedBox(
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('واجهة التعديل جاهزة، وسيتم ربط الحفظ بالخادم لاحقًا')),
+        backgroundColor: const Color(0xFFF6F7FB),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFFF7EBCB), Color(0xFFFAF6EA), Color(0xFFF6F7FB)],
+              stops: [0.0, 0.3, 0.55],
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                children: [
+                  _header(context),
+                  const SizedBox(height: 26),
+                  _stats(),
+                  const SizedBox(height: 22),
+                  _banners(),
+                  const SizedBox(height: 14),
+                  _iconsCard(),
+                  _tile(
+                    const [Color(0xFFF3BC5E), Color(0xFFE39A2E)],
+                    Icons.account_balance_wallet_rounded,
+                    'المحفظة',
+                    onWallet,
+                    trailingCoin: true,
                   ),
-                  style: ElevatedButton.styleFrom(backgroundColor: _C.teal, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
-                  child: const Text('حفظ التعديلات', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-                ),
+                  _tile(
+                    const [Color(0xFFF59A80), Color(0xFFE8604A)],
+                    Icons.event_note_rounded,
+                    'مركز المهام',
+                    onTasks,
+                  ),
+                  _tile(
+                    const [Color(0xFF9DB4DC), Color(0xFF5E86C8)],
+                    Icons.settings_rounded,
+                    'الإعدادات',
+                    onSettings,
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _editLabel(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-  );
+  Widget _header(BuildContext context) {
+    final avatar = data.photoUrl ?? '';
+    final displayName = data.displayName.trim().isEmpty
+        ? 'مستخدم Happy Live'
+        : data.displayName;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 18, 18, 0),
+      child: Row(
+        children: [
+          ClipOval(
+            child: SizedBox(
+              width: 60,
+              height: 60,
+              child: avatar.isEmpty
+                  ? _avatarFallback()
+                  : Image.network(
+                      avatar,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _avatarFallback(),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: data.userId));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('تم النسخ')),
+                    );
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Text(
+                          'ID:${data.userId}',
+                          style: const TextStyle(
+                            color: _grey,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.copy_rounded, size: 16, color: _grey),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: onBack ?? () {},
+            child: const Icon(Icons.chevron_left, size: 34, color: _grey),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget _editField(TextEditingController controller, {required String hint, int maxLines = 1}) => TextField(
-    controller: controller,
-    maxLines: maxLines,
-    style: const TextStyle(color: Colors.white, fontSize: 14),
-    decoration: InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: _C.grey),
-      filled: true,
-      fillColor: _C.nav,
-      contentPadding: const EdgeInsets.all(15),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: Colors.white12)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: _C.teal)),
-    ),
-  );
+  Widget _avatarFallback() => Container(
+        color: const Color(0xFFE4E4EC),
+        child: const Icon(Icons.person, color: Colors.white, size: 30),
+      );
+
+  Widget _stats() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _stat('متابعون', followers, badge: followersBadge),
+        _stat('إعجاب', likes),
+        _stat('زائر', visitors, badge: visitorsBadge),
+      ],
+    );
+  }
+
+  Widget _stat(String label, int value, {int badge = 0}) {
+    return Column(
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Text(
+              '$value',
+              style: const TextStyle(
+                color: _ink,
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (badge > 0)
+              Positioned(left: -22, top: -6, child: _badge(badge)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(color: _grey, fontSize: 13)),
+      ],
+    );
+  }
+
+  Widget _badge(int n) => Container(
+        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: _red,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          '$n',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+
+  Widget _banners() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: _banner(
+              'برستيج',
+              'assets/profile/prestige.png',
+              onPrestige,
+              const [Color(0xFF5A4630), Color(0xFF2A1F14)],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _banner(
+              'SVIP',
+              'assets/profile/svip.png',
+              onSvip,
+              const [Color(0xFF3A4150), Color(0xFF14171F)],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _banner(
+    String text,
+    String asset,
+    VoidCallback? onTap,
+    List<Color> colors,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AspectRatio(
+        aspectRatio: 2.17,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFD9A93C), width: 2),
+            gradient: LinearGradient(colors: colors),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.asset(
+              asset,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (_, __, ___) => Center(
+                child: Text(
+                  text,
+                  style: const TextStyle(
+                    color: Color(0xFFE9C26A),
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _iconsCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: _cardDeco(),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _gridItem('الوكالة', 'assets/profile/agency.png',
+              Icons.shield_rounded, onAgency),
+          _gridItem('وسام', 'assets/profile/medal.png',
+              Icons.workspace_premium_rounded, onMedals),
+          _gridItem('المستوى', 'assets/profile/level.png',
+              Icons.military_tech_rounded, onLevel),
+          _gridItem('المتجر', 'assets/profile/store.png',
+              Icons.storefront_rounded, onStore),
+        ],
+      ),
+    );
+  }
+
+  Widget _gridItem(
+    String label,
+    String asset,
+    IconData fallback,
+    VoidCallback? onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        children: [
+          Image.asset(
+            asset,
+            width: 40,
+            height: 40,
+            errorBuilder: (_, __, ___) =>
+                Icon(fallback, size: 40, color: const Color(0xFFD9A93C)),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tile(
+    List<Color> colors,
+    IconData icon,
+    String title,
+    VoidCallback? onTap, {
+    bool trailingCoin = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: _cardDeco(),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: colors,
+                ),
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Text(
+              title,
+              style: const TextStyle(
+                color: _ink,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const Spacer(),
+            if (trailingCoin) ...[
+              Container(
+                width: 16,
+                height: 16,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFF6D27A), Color(0xFFD9A93C)],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$balance',
+                style: const TextStyle(
+                  color: _grey,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            const Icon(Icons.chevron_left, color: _grey, size: 26),
+          ],
+        ),
+      ),
+    );
+  }
+
+  BoxDecoration _cardDeco() => BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+      );
 }
