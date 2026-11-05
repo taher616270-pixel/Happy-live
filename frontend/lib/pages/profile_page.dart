@@ -152,8 +152,8 @@ class ProfilePage extends StatelessWidget {
                         icon: const Icon(Icons.edit_rounded, size: 17),
                         label: const Text('تعديل الملف الشخصي'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF7552A2),
-                          side: const BorderSide(color: Color(0xFFB99AD8)),
+                          foregroundColor: const Color(0xFFD9A93C),
+                          side: const BorderSide(color: Color(0xFFE9C26A)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
                         ),
                       ),
