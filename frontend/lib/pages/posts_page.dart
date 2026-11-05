@@ -638,6 +638,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
       pageBuilder: (_, __, ___) => PublicProfilePage(
         name: (post['name'] ?? 'مستخدم').toString(),
         userId: userId,
+        accessToken: widget.accessToken,
         userCode: (post['userCode'] ?? '').toString(),
         photoUrl: (post['avatarUrl'] ?? '').toString().trim().isEmpty
             ? null
