@@ -30,15 +30,13 @@ class CustomBottomNav extends StatelessWidget {
       width: double.infinity,
       child: Container(
         color: Colors.transparent,
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+        padding: EdgeInsets.zero,
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.fromLTRB(5, 8, 5, 8 + bottomInset),
           decoration: BoxDecoration(
             color: const Color(0xFF191326),
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(28),
-            ),
+            borderRadius: BorderRadius.zero,
             border: Border.all(
               color: const Color(0xFF8B5CF6),
               width: 1.2,
