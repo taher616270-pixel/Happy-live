@@ -116,7 +116,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: HappyHomeColors.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0x66D9A93C))),
-          title: const Text('البحث عن غرفة', textAlign: TextAlign.right, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+          title: const Text('البحث عن غرفة', textAlign: TextAlign.right, style: TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.w800)),
           content: Directionality(
             textDirection: TextDirection.rtl,
             child: Column(
@@ -238,7 +238,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             decoration: BoxDecoration(
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: const Color(0x665F4775)),
+              border: Border.all(color: const Color(0xFFE4E4EC)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -492,7 +492,7 @@ class ExperimentalFeatureButton extends StatelessWidget {
                     'تجريبي',
                     textAlign: TextAlign.right,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFF1E2233),
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                     ),
