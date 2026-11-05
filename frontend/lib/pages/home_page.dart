@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'create_room_page.dart';
@@ -267,8 +268,13 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         onTap: _openMyRoom,
       ),
       const SizedBox(height: 14),
-      ExperimentalFeatureButton(
-        onTap: () => widget.onSoon('تجريبي'),
+      LiveHouseCard(
+        title: 'غرف صوتية',
+        subtitle: 'اكتشف الأجواء وشارك الجميع',
+        coverUrl: '',
+        avatarUrls: const [],
+        listeners: 0,
+        onTap: () => widget.onSoon('غرف صوتية'),
       ),
     ],
   );
@@ -531,3 +537,234 @@ class HappyShortcut extends StatelessWidget {
         Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800))])));
 }
 
+
+
+const kCardBg = Color(0xFF1B1230);
+const kNeon = Color(0xFF8B5CF6);
+const kNeonLight = Color(0xFFA78BFA);
+const kPill = Color(0xFFB794FF);
+const kPillText = Color(0xFF1A1030);
+const kSubtitle = Color(0xFFB0A6C0);
+
+class LiveHouseCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String coverUrl;
+  final List<String> avatarUrls;
+  final int listeners;
+  final VoidCallback? onTap;
+
+  const LiveHouseCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.coverUrl,
+    required this.avatarUrls,
+    required this.listeners,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: kCardBg,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: kNeon.withAlpha(190), width: 1.4),
+            boxShadow: [
+              BoxShadow(
+                color: kNeon.withAlpha(90),
+                blurRadius: 18,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 88,
+                    height: 88,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: kNeonLight, width: 2.5),
+                      boxShadow: [
+                        BoxShadow(color: kNeon.withAlpha(150), blurRadius: 14),
+                      ],
+                    ),
+                    child: ClipOval(child: _buildCover()),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: kSubtitle, fontSize: 11),
+                        ),
+                        const SizedBox(height: 9),
+                        if (avatarUrls.isNotEmpty)
+                          SizedBox(
+                            height: 27,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              reverse: true,
+                              itemCount: math.min(avatarUrls.length, 7),
+                              separatorBuilder: (_, __) => const SizedBox(width: 5),
+                              itemBuilder: (context, index) => ClipOval(
+                                child: Image.network(
+                                  avatarUrls[index],
+                                  width: 27,
+                                  height: 27,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _avatarFallback(),
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 27),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              Positioned(
+                left: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: kPill,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$listeners',
+                        style: const TextStyle(
+                          color: kPillText,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.headphones_rounded, color: kPillText, size: 14),
+                      const SizedBox(width: 6),
+                      const _Equalizer(),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCover() {
+    if (coverUrl.trim().isEmpty) {
+      return Container(
+        color: const Color(0xFF302044),
+        child: const Icon(Icons.graphic_eq_rounded, color: kNeonLight, size: 38),
+      );
+    }
+    return Image.network(
+      coverUrl,
+      width: 82,
+      height: 82,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: const Color(0xFF302044),
+        child: const Icon(Icons.graphic_eq_rounded, color: kNeonLight, size: 38),
+      ),
+    );
+  }
+
+  Widget _avatarFallback() => Container(
+    width: 27,
+    height: 27,
+    color: const Color(0xFF302044),
+    child: const Icon(Icons.person, color: kNeonLight, size: 16),
+  );
+}
+
+class _Equalizer extends StatefulWidget {
+  const _Equalizer();
+
+  @override
+  State<_Equalizer> createState() => _EqualizerState();
+}
+
+class _EqualizerState extends State<_Equalizer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return SizedBox(
+          width: 19,
+          height: 15,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: List.generate(4, (index) {
+              final phase = (_controller.value + index * 0.19) % 1.0;
+              final height = 4 + (math.sin(phase * math.pi) * 10);
+              return Container(
+                width: 3,
+                height: height,
+                decoration: BoxDecoration(
+                  color: kPillText,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+        );
+      },
+    );
+  }
+}
