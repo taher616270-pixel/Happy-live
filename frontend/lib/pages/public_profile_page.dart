@@ -158,53 +158,54 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   Future<void> _refreshProfile() => _loadProfile(showErrorView: false);
 
   @override
-  Widget build(BuildContext context) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          backgroundColor: _paper,
-          body: SafeArea(
-            bottom: false,
-            child: _loading
-                ? const Center(child: CircularProgressIndicator(color: _brownLight))
-                : _loadError != null
-                    ? _errorView()
-                    : Stack(
-                        children: [
-                          RefreshIndicator(
-                            onRefresh: _refreshProfile,
-                            color: _brownLight,
-                            backgroundColor: Colors.white,
-                            child: NestedScrollView(
-                              controller: _profileScrollController,
-                              physics: const AlwaysScrollableScrollPhysics(
-                                parent: ClampingScrollPhysics(),
-                              ),
-                              headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                                SliverAppBar(
-                                  pinned: true,
-                                  primary: false,
-                                  toolbarHeight: 56,
-                                  collapsedHeight: 56,
-                                  expandedHeight: 270,
-                                  backgroundColor: Color.lerp(
-                                    Colors.transparent,
-                                    Colors.white,
-                                    _scrollProgress,
-                                  ),
-                                  surfaceTintColor: Colors.transparent,
-                                  elevation: 0,
-                                  scrolledUnderElevation: 0,
-                                  automaticallyImplyLeading: false,
-                                  leadingWidth: 52,
-                                  leading: Padding(
+  @override
+  Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: _paper,
+        extendBodyBehindAppBar: true,
+        body: SafeArea(
+          top: false,
+          bottom: false,
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(color: _brownLight))
+              : _loadError != null
+                  ? _errorView()
+                  : Stack(
+                      children: [
+                        RefreshIndicator(
+                          onRefresh: _refreshProfile,
+                          color: _brownLight,
+                          backgroundColor: Colors.white,
+                          child: NestedScrollView(
+                            controller: _profileScrollController,
+                            physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
+                            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                              SliverAppBar(
+                                pinned: true,
+                                primary: false,
+                                toolbarHeight: 56,
+                                collapsedHeight: 56,
+                                expandedHeight: 360 + topPadding,
+                                backgroundColor: Color.lerp(Colors.transparent, Colors.white, _scrollProgress),
+                                surfaceTintColor: Colors.transparent,
+                                elevation: 0,
+                                scrolledUnderElevation: 0,
+                                automaticallyImplyLeading: false,
+                                leadingWidth: 52,
+                                leading: Padding(
+                                  padding: EdgeInsets.only(top: topPadding, left: 0),
+                                  child: Padding(
                                     padding: const EdgeInsetsDirectional.only(start: 10),
-                                    child: _roundButton(
-                                      Icons.arrow_forward_rounded,
-                                      () => Navigator.of(context).maybePop(),
-                                    ),
+                                    child: _roundButton(Icons.arrow_forward_rounded, () => Navigator.of(context).maybePop()),
                                   ),
-                                  actions: [
-                                    Padding(
+                                ),
+                                actions: [
+                                  Padding(
+                                    padding: EdgeInsets.only(top: topPadding),
+                                    child: Padding(
                                       padding: const EdgeInsetsDirectional.only(end: 12),
                                       child: _roundButton(Icons.more_horiz_rounded, () {
                                         ScaffoldMessenger.of(context).showSnackBar(
@@ -212,76 +213,58 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                         );
                                       }),
                                     ),
-                                  ],
-                                  title: Opacity(
-                                    opacity: _scrollProgress,
-                                    child: Text(
-                                      _firstText(['name', 'displayName', 'display_name'], widget.name),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Color(0xFF292929),
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w900,
+                                  ),
+                                ],
+                                title: Opacity(
+                                  opacity: _scrollProgress,
+                                  child: Text(
+                                    _firstText(['name', 'displayName', 'display_name'], widget.name),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: Color(0xFF292929), fontSize: 16, fontWeight: FontWeight.w900),
+                                  ),
+                                ),
+                                centerTitle: true,
+                                flexibleSpace: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    FlexibleSpaceBar(background: _heroHeader(), collapseMode: CollapseMode.parallax),
+                                    Positioned(
+                                      top: 0,
+                                      left: 0,
+                                      right: 0,
+                                      height: 56 + topPadding,
+                                      child: IgnorePointer(
+                                        child: ColoredBox(color: Color.lerp(Colors.transparent, Colors.white, _scrollProgress)!),
                                       ),
                                     ),
-                                  ),
-                                  centerTitle: true,
-                                  flexibleSpace: Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      FlexibleSpaceBar(
-                                        background: _heroHeader(),
-                                        collapseMode: CollapseMode.parallax,
-                                      ),
-                                      Positioned(
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        height: 56,
-                                        child: IgnorePointer(
-                                          child: ColoredBox(
-                                            color: Color.lerp(
-                                              Colors.transparent,
-                                              Colors.white,
-                                              _scrollProgress,
-                                            )!,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                  ],
                                 ),
-                                SliverPersistentHeader(
-                                  pinned: true,
-                                  delegate: _PublicProfileTabsDelegate(
-                                    selected: _tab,
-                                    onSelected: _changeProfileTab,
-                                  ),
-                                ),
-                              ],
-                              body: PageView(
-                                controller: _profileTabsController,
-                                onPageChanged: _onProfilePageChanged,
-                                children: [
-                                  _profileTabPage(0),
-                                  _profileTabPage(1),
-                                  _profileTabPage(2),
-                                ],
                               ),
+                              SliverPersistentHeader(
+                                pinned: true,
+                                delegate: _PublicProfileTabsDelegate(selected: _tab, onSelected: _changeProfileTab),
+                              ),
+                            ],
+                            body: PageView(
+                              controller: _profileTabsController,
+                              onPageChanged: _onProfilePageChanged,
+                              children: [_profileTabPage(0), _profileTabPage(1), _profileTabPage(2)],
                             ),
                           ),
-                          Positioned(
-                            left: 12,
-                            right: 12,
-                            bottom: 8 + MediaQuery.of(context).padding.bottom,
-                            child: _actionBar(),
-                          ),
-                        ],
-                      ),
-          ),
+                        ),
+                        Positioned(
+                          left: 12,
+                          right: 12,
+                          bottom: 8 + MediaQuery.of(context).padding.bottom,
+                          child: _actionBar(),
+                        ),
+                      ],
+                    ),
         ),
-      );
+      ),
+    );
+  }
 
   Widget _errorView() => Center(
         child: Padding(
@@ -317,7 +300,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     return SizedBox(
       width: double.infinity,
-      height: 270,
+      height: 360 + MediaQuery.of(context).padding.top,
       child: Stack(fit: StackFit.expand, children: [
         if (cover.isNotEmpty)
           Image.network(cover, fit: BoxFit.cover,
