@@ -75,11 +75,11 @@ async function createSession(db: D1Database, userId: string): Promise<{ accessTo
 
 async function authenticatedUser(request: Request, db: D1Database) {
   const authorization = request.headers.get("Authorization") ?? "";
-  const match = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
+  const match = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
   if (!match) return null;
   const row = await db.prepare(
-    "SELECT u.id, u.email, p.display_name FROM user_sessions s INNER JOIN users u ON u.id = s.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
-  ).bind(await sha256(match[1]), new Date().toISOString()).first<{ id: string; email: string; display_name: string | null }>();
+    "SELECT u.id, u.email, p.display_name, p.gabo_id FROM user_sessions s INNER JOIN users u ON u.id = s.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
+  ).bind(await sha256(match[1]), new Date().toISOString()).first<{ id: string; email: string; display_name: string | null; gabo_id: string | null }>();
   return row ?? null;
 }
 
@@ -184,6 +184,16 @@ export default {
         if (!acceptedTerms) return json({ error: "terms_required", message: "يجب الموافقة على الشروط والأحكام" }, 400, origin, env);
 
         const userId = crypto.randomUUID();
+        let publicId = "";
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const candidate = String(10000000 + crypto.getRandomValues(new Uint32Array(1))[0] % 90000000);
+          const existingId = await env.DB.prepare("SELECT 1 FROM profiles WHERE gabo_id = ? LIMIT 1").bind(candidate).first();
+          if (!existingId) {
+            publicId = candidate;
+            break;
+          }
+        }
+        if (!publicId) throw new Error("public_id_generation_failed");
         const passwordHash = await hashPassword(password);
         const now = new Date().toISOString();
         const sessionToken = `${crypto.randomUUID()}.${crypto.randomUUID()}`;
@@ -192,7 +202,7 @@ export default {
         try {
           await env.DB.batch([
             env.DB.prepare("INSERT INTO users (id, email, password_hash, auth_provider, status, terms_accepted_at) VALUES (?, ?, ?, 'email', 'active', ?)").bind(userId, email, passwordHash, now),
-            env.DB.prepare("INSERT INTO profiles (user_id, display_name, birthday) VALUES (?, ?, ?)").bind(userId, name, birthday),
+            env.DB.prepare("INSERT INTO profiles (user_id, display_name, birthday, gabo_id) VALUES (?, ?, ?, ?)").bind(userId, name, birthday, publicId),
             env.DB.prepare("INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)").bind(crypto.randomUUID(), userId, tokenHash, expiresAt)
           ]);
         } catch (error) {
@@ -200,7 +210,7 @@ export default {
           if (existing) return json({ error: "email_already_registered", message: "هذا البريد مسجل بالفعل، سجّل الدخول بدلًا من ذلك" }, 409, origin, env);
           throw error;
         }
-        return json({ ok: true, accessToken: sessionToken, expiresAt, user: { id: userId, email, name } }, 201, origin, env);
+        return json({ ok: true, accessToken: sessionToken, expiresAt, user: { id: userId, gabo_id: publicId, email, name } }, 201, origin, env);
       } catch (error) {
         // Diagnostic only: never log request bodies, email addresses, passwords, or session tokens.
         const diagnostic = error instanceof Error
@@ -221,13 +231,13 @@ export default {
         const password = typeof body.password === "string" ? body.password : "";
         if (!email || !password || password.length > 128) return json({ error: "invalid_credentials", message: "البريد أو كلمة المرور غير صحيحة" }, 401, origin, env);
         const user = await env.DB.prepare(
-          "SELECT u.id, u.email, u.password_hash, u.status, p.display_name FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.email = ? AND u.auth_provider = 'email' LIMIT 1"
-        ).bind(email).first<{ id: string; email: string; password_hash: string | null; status: string; display_name: string | null }>();
+          "SELECT u.id, u.email, u.password_hash, u.status, p.display_name, p.gabo_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.email = ? AND u.auth_provider = 'email' LIMIT 1"
+        ).bind(email).first<{ id: string; email: string; password_hash: string | null; status: string; display_name: string | null; gabo_id: string | null }>();
         if (!user || user.status !== "active" || !user.password_hash || !await verifyPassword(password, user.password_hash)) {
           return json({ error: "invalid_credentials", message: "البريد أو كلمة المرور غير صحيحة" }, 401, origin, env);
         }
         const session = await createSession(env.DB, user.id);
-        return json({ ok: true, ...session, user: { id: user.id, email: user.email, name: user.display_name ?? "" } }, 200, origin, env);
+        return json({ ok: true, ...session, user: { id: user.id, gabo_id: user.gabo_id ?? "", email: user.email, name: user.display_name ?? "" } }, 200, origin, env);
       } catch {
         return json({ error: "login_failed", message: "تعذر تسجيل الدخول حاليًا" }, 500, origin, env);
       }
@@ -238,7 +248,7 @@ export default {
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        return json({ ok: true, user: { id: user.id, email: user.email, name: user.display_name ?? "" } }, 200, origin, env);
+        return json({ ok: true, user: { id: user.id, gabo_id: user.gabo_id ?? "", email: user.email, name: user.display_name ?? "" } }, 200, origin, env);
       } catch {
         return json({ error: "session_check_failed" }, 503, origin, env);
       }
