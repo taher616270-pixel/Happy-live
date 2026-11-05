@@ -800,13 +800,14 @@ export default {
         const posts = canViewPosts ? await env.DB.prepare(
           "SELECT id, content, image_url, created_at, " +
           "(SELECT COUNT(*) FROM post_likes l WHERE l.post_id = posts.id) AS likes_count, " +
-          "(SELECT COUNT(*) FROM post_comments c WHERE c.post_id = posts.id) AS comments_count " +
+          "(SELECT COUNT(*) FROM post_comments c WHERE c.post_id = posts.id) AS comments_count, " +
+          "EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id = posts.id AND l.user_id = ?) AS liked " +
           "FROM posts WHERE user_id = ? AND status = 'published' " +
           "AND (visibility = 'public' OR (visibility = 'followers' AND ? = 1) OR (visibility = 'private' AND ? = 1)) " +
           "ORDER BY created_at DESC LIMIT 50"
-        ).bind(targetId, isFollowing ? 1 : 0, isMine ? 1 : 0).all<{
+        ).bind(targetId, isFollowing ? 1 : 0, isMine ? 1 : 0, viewer.id).all<{
           id: string; content: string; image_url: string | null; created_at: string;
-          likes_count: number; comments_count: number;
+          likes_count: number; comments_count: number; liked: number;
         }>() : { results: [] as Array<{id:string;content:string;image_url:string|null;created_at:string;likes_count:number;comments_count:number}> };
         const age = profile.birthday ? calculateAge(profile.birthday) : null;
         return json({ ok: true, profile: {
@@ -822,7 +823,8 @@ export default {
           },
           posts: (posts.results ?? []).map(p => ({
             id: p.id, userId: profile.id, content: p.content, imageUrl: p.image_url,
-            createdAt: p.created_at, likesCount: p.likes_count, commentsCount: p.comments_count
+            createdAt: p.created_at, likesCount: p.likes_count, commentsCount: p.comments_count,
+            liked: Boolean(p.liked)
           }))
         } }, 200, origin, env);
       } catch (error) {
