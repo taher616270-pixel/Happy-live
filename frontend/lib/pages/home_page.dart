@@ -7,11 +7,11 @@ import 'room_page.dart';
 
 /// Theme colors kept local so this page can be maintained independently.
 class HappyHomeColors {
-  static const background = Color(0xFF0B0912);
-  static const surface = Color(0xFF191326);
-  static const gold = Color(0xFFF0A62B);
+  static const background = Color(0xFFF6F7FB);
+  static const surface = Colors.white;
+  static const gold = Color(0xFFD9A93C);
   static const purple = Color(0xFFD9A93C);
-  static const muted = Color(0xFFAAA2B5);
+  static const muted = Color(0xFF9A98AD);
 }
 
 class HappyHomeTab extends StatefulWidget {
@@ -132,8 +132,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     counterText: '',
                     hintText: 'أدخل ID الغرفة',
                     hintStyle: const TextStyle(color: HappyHomeColors.muted, fontSize: 14, letterSpacing: 0),
-                    filled: true, fillColor: const Color(0xFF0E0B14),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: Color(0x665F4775))),
+                    filled: true, fillColor: const Color(0xFFFAF6EA),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: Color(0xFFE4E4EC))),
                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: HappyHomeColors.gold)),
                   ),
                 ),
@@ -145,7 +145,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity, padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const Color(0xFF191326), borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeColors.gold.withOpacity(.5))),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeColors.gold.withOpacity(.5))),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       Text((foundRoom!['name'] ?? 'غرفة صوتية').toString(), textAlign: TextAlign.right, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
@@ -280,7 +280,18 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   );
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    height: double.infinity,
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFFF7EBCB), Color(0xFFFAF6EA), Color(0xFFF6F7FB)],
+        stops: [0.0, 0.3, 0.55],
+      ),
+    ),
+    child: Column(
     children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
@@ -291,7 +302,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Material(
-                color: const Color(0xFF191326),
+                color: Colors.white,
                 shape: const CircleBorder(),
                 child: IconButton(
                   tooltip: 'البحث عن غرفة بواسطة ID',
@@ -323,6 +334,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         ),
       ),
     ],
+    ),
   );
 }
 class MyPartyRoomButton extends StatelessWidget {
@@ -357,7 +369,7 @@ class MyPartyRoomButton extends StatelessWidget {
                 height: 74,
                 padding: const EdgeInsets.only(left: 16, right: 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF211A31),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: const Color(0xFFF0A62B).withOpacity(0.5),
@@ -381,7 +393,7 @@ class MyPartyRoomButton extends StatelessWidget {
                               softWrap: true,
                               overflow: TextOverflow.fade,
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: Color(0xFF1E2233),
                                 fontSize: 15,
                                 height: 1.15,
                                 fontWeight: FontWeight.bold,
@@ -393,7 +405,7 @@ class MyPartyRoomButton extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: Color(0xFF9A8DB0),
+                                color: Color(0xFF9A98AD),
                                 fontSize: 10,
                               ),
                             ),
@@ -405,7 +417,7 @@ class MyPartyRoomButton extends StatelessWidget {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFD9A93C),
+                        color: const Color(0xFFFAEDC8),
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: const Color(0xFFD9A93C),
@@ -414,7 +426,7 @@ class MyPartyRoomButton extends StatelessWidget {
                       ),
                       child: Icon(
                         hasRoom ? Icons.arrow_forward_ios_rounded : Icons.add,
-                        color: const Color(0xFFE6C87A),
+                        color: const Color(0xFFD9A93C),
                         size: hasRoom ? 15 : 21,
                       ),
                     ),
@@ -459,7 +471,7 @@ class ExperimentalFeatureButton extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsetsDirectional.only(start: 16, end: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF191326),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: const Color(0xFFD9A93C).withOpacity(0.75),
@@ -491,7 +503,7 @@ class ExperimentalFeatureButton extends StatelessWidget {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF302044),
+                    color: const Color(0xFFFAF6EA),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: const Color(0xFFF0A62B).withOpacity(0.8),
@@ -519,7 +531,7 @@ class HappySectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(children: [
     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+      Text(title, style: const TextStyle(color: Color(0xFF1E2233), fontSize: 16, fontWeight: FontWeight.w900)),
       const SizedBox(height: 3), Text(subtitle, style: const TextStyle(color: HappyHomeColors.muted, fontSize: 10)),
     ])),
     const Icon(Icons.more_horiz_rounded, color: HappyHomeColors.muted),
@@ -532,19 +544,19 @@ class HappyShortcut extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(onTap: onTap, borderRadius: BorderRadius.circular(17),
     child: Container(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
-      decoration: BoxDecoration(color: HappyHomeColors.surface, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFF30263A))),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFE4E4EC))),
       child: Column(children: [Icon(icon, color: tint, size: 26), const SizedBox(height: 8),
-        Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800))])));
+        Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF1E2233), fontSize: 11, fontWeight: FontWeight.w800))])));
 }
 
 
 
-const kCardBg = Color(0xFF1B1230);
+const kCardBg = Colors.white;
 const kNeon = Color(0xFFD9A93C);
 const kNeonLight = Color(0xFFE9C26A);
 const kPill = Color(0xFFF6D27A);
-const kPillText = Color(0xFF1A1030);
-const kSubtitle = Color(0xFFB0A6C0);
+const kPillText = Color(0xFF5A4630);
+const kSubtitle = Color(0xFF9A98AD);
 
 class LiveHouseCard extends StatelessWidget {
   final String title;
@@ -613,7 +625,7 @@ class LiveHouseCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF1E2233),
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
                           ),
@@ -689,7 +701,7 @@ class LiveHouseCard extends StatelessWidget {
   Widget _buildCover() {
     if (coverUrl.trim().isEmpty) {
       return Container(
-        color: const Color(0xFF302044),
+        color: const Color(0xFFFAF6EA),
         child: const Icon(Icons.graphic_eq_rounded, color: kNeonLight, size: 38),
       );
     }
@@ -699,7 +711,7 @@ class LiveHouseCard extends StatelessWidget {
       height: 82,
       fit: BoxFit.cover,
       errorBuilder: (_, __, ___) => Container(
-        color: const Color(0xFF302044),
+        color: const Color(0xFFFAF6EA),
         child: const Icon(Icons.graphic_eq_rounded, color: kNeonLight, size: 38),
       ),
     );
@@ -708,7 +720,7 @@ class LiveHouseCard extends StatelessWidget {
   Widget _avatarFallback() => Container(
     width: 27,
     height: 27,
-    color: const Color(0xFF302044),
+    color: const Color(0xFFFAF6EA),
     child: const Icon(Icons.person, color: kNeonLight, size: 16),
   );
 }
