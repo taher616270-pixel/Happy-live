@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Shared dark-purple neon background used across Happy Live.
+/// Restored original Happy Live dark background with soft ambient color glows.
 class PurpleTechBackground extends StatelessWidget {
   const PurpleTechBackground({super.key, this.child});
 
@@ -8,64 +8,48 @@ class PurpleTechBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment(0.0, -0.35),
-          radius: 1.25,
-          colors: [
-            Color(0xFF211332),
-            Color(0xFF100B19),
-            Color(0xFF09080D),
-          ],
-          stops: [0.0, 0.58, 1.0],
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const ColoredBox(color: Color(0xFF07050F)),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(-0.85, -0.9),
+                radius: 1.05,
+                colors: [Color(0x1A7C3AED), Color(0x007C3AED)],
+                stops: [0.0, 1.0],
+              ),
+            ),
+          ),
         ),
-      ),
-      child: CustomPaint(
-        painter: _PurpleTechPainter(),
-        child: child == null ? const SizedBox.expand() : SizedBox.expand(child: child),
-      ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(0.9, -0.75),
+                radius: 1.0,
+                colors: [Color(0x16EC4899), Color(0x00EC4899)],
+                stops: [0.0, 1.0],
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(0.0, 1.0),
+                radius: 1.0,
+                colors: [Color(0x0CF59E0B), Color(0x00F59E0B)],
+                stops: [0.0, 1.0],
+              ),
+            ),
+          ),
+        ),
+        if (child != null) SizedBox.expand(child: child!),
+      ],
     );
   }
-}
-
-class _PurpleTechPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final glow = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0
-      ..color = const Color(0x268B5CF6);
-
-    final center = Offset(size.width * 0.5, size.height * 0.34);
-    for (var i = 0; i < 7; i++) {
-      final rect = Rect.fromCenter(
-        center: center,
-        width: size.width * (0.38 + i * 0.13),
-        height: size.width * (0.38 + i * 0.13),
-      );
-      canvas.drawOval(rect, glow);
-    }
-
-    final linePaint = Paint()
-      ..color = const Color(0x168B5CF6)
-      ..strokeWidth = 1;
-    for (var i = 0; i < 8; i++) {
-      final y = size.height * (0.16 + i * 0.105);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
-    }
-
-    final cornerPaint = Paint()
-      ..color = const Color(0x338B5CF6)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-    const corner = 28.0;
-    canvas.drawLine(const Offset(12, 12), const Offset(12 + corner, 12), cornerPaint);
-    canvas.drawLine(const Offset(12, 12), const Offset(12, 12 + corner), cornerPaint);
-    canvas.drawLine(Offset(size.width - 12, 12), Offset(size.width - 12 - corner, 12), cornerPaint);
-    canvas.drawLine(Offset(size.width - 12, 12), Offset(size.width - 12, 12 + corner), cornerPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _PurpleTechPainter oldDelegate) => false;
 }
