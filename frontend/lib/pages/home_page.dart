@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'create_room_page.dart';
 import 'room_page.dart';
-import '../widgets/purple_tech_background.dart';
 
 /// Theme colors kept local so this page can be maintained independently.
 class HappyHomeColors {
@@ -275,8 +274,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   );
 
   @override
-  Widget build(BuildContext context) => PurpleTechBackground(
-    child: Column(
+  Widget build(BuildContext context) => Column(
     children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
@@ -319,7 +317,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         ),
       ),
     ],
-    ),
   );
 }
 class MyPartyRoomButton extends StatelessWidget {
