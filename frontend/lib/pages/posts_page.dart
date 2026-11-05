@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HappyPostsPage extends StatefulWidget {
   const HappyPostsPage({super.key, required this.accessToken, required this.name});
@@ -514,14 +515,9 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
 
 
 class _CreatePostPage extends StatefulWidget {
-  const _CreatePostPage({
-    required this.name,
-    required this.onPublish,
-  });
-
+  const _CreatePostPage({required this.name, required this.onPublish});
   final String name;
   final Future<String?> Function(String content) onPublish;
-
   @override
   State<_CreatePostPage> createState() => _CreatePostPageState();
 }
@@ -529,14 +525,12 @@ class _CreatePostPage extends StatefulWidget {
 class _CreatePostPageState extends State<_CreatePostPage> {
   static const _gold = Color(0xFFD4A017);
   static const _ink = Color(0xFF242424);
-  static const _muted = Color(0xFF929292);
-
+  static const _draftKey = 'happy_live_create_post_draft';
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   bool _publishing = false;
   bool _emojiPanelOpen = false;
-
-
+  String _visibility = 'عام';
 
   @override
   void dispose() {
@@ -564,14 +558,13 @@ class _CreatePostPageState extends State<_CreatePostPage> {
     try {
       final published = await widget.onPublish(content);
       if (!mounted || published == null) return;
-      Navigator.of(context).pop(published);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_draftKey);
+      if (mounted) Navigator.of(context).pop(published);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-            error.toString().replaceFirst('Exception: ', ''),
-            textAlign: TextAlign.right,
-          ),
+          content: Text(error.toString().replaceFirst('Exception: ', ''), textAlign: TextAlign.right),
           behavior: SnackBarBehavior.floating,
           backgroundColor: const Color(0xFF393329),
         ));
@@ -581,205 +574,224 @@ class _CreatePostPageState extends State<_CreatePostPage> {
     }
   }
 
-  Widget _topicTag(String label, {bool primary = false}) {
-    return Container(
-      margin: const EdgeInsetsDirectional.only(end: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      decoration: BoxDecoration(
-        color: primary ? const Color(0xFFE6F2FF) : const Color(0xFFF1F2F4),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: primary ? const Color(0xFF3987D8) : const Color(0xFF666A70),
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+  Future<void> _closeComposer() async {
+    if (_publishing) return;
+    if (_controller.text.trim().isEmpty) {
+      Navigator.of(context).pop();
+      return;
+    }
+    _focusNode.unfocus();
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text('حفظ كمسودة', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: _ink)),
+              const SizedBox(height: 22),
+              Row(children: [
+                Expanded(child: SizedBox(height: 48, child: TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, 'discard'),
+                  style: TextButton.styleFrom(backgroundColor: const Color(0xFFF3F4F6), foregroundColor: _ink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  child: const Text('تجاهل المنشور', style: TextStyle(fontWeight: FontWeight.w700)),
+                ))),
+                const SizedBox(width: 10),
+                Expanded(child: SizedBox(height: 48, child: TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, 'save'),
+                  style: TextButton.styleFrom(backgroundColor: _gold, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  child: const Text('حفظ', style: TextStyle(fontWeight: FontWeight.w800)),
+                ))),
+              ]),
+            ]),
+          ),
         ),
       ),
     );
+    if (!mounted || choice == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (choice == 'discard') {
+      await prefs.remove(_draftKey);
+    } else {
+      await prefs.setString(_draftKey, _controller.text);
+    }
+    if (mounted) Navigator.of(context).pop();
   }
 
-  Widget _toolButton({
-    required Widget icon,
-    required VoidCallback onTap,
-    String? tooltip,
-  }) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onTap,
-      visualDensity: VisualDensity.compact,
-      splashRadius: 22,
-      icon: icon,
+  Future<void> _showVisibilitySheet() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        String current = _visibility;
+        return StatefulBuilder(builder: (context, setSheetState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: Container(
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + MediaQuery.of(context).viewPadding.bottom),
+            decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Stack(alignment: Alignment.center, children: [
+                const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('من يمكنه الرؤية', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _ink))),
+                Align(alignment: AlignmentDirectional.centerEnd, child: IconButton(onPressed: () => Navigator.pop(sheetContext), icon: const Icon(Icons.close_rounded, color: _ink))),
+              ]),
+              const SizedBox(height: 8),
+              _visibilityOption('عام', current, 'عام 🌍', 'كل المستخدمين يمكنهم رؤية منشورك', Icons.public_rounded, () => setSheetState(() => current = 'عام')),
+              _visibilityOption('الأصدقاء', current, 'الأصدقاء 👥', 'فقط الأصدقاء يمكنهم الرؤية', Icons.people_alt_outlined, () => setSheetState(() => current = 'الأصدقاء')),
+              _visibilityOption('خاص', current, 'خاص 🔒', 'أنا فقط من يمكنه الرؤية', Icons.lock_outline_rounded, () => setSheetState(() => current = 'خاص')),
+              const SizedBox(height: 14),
+              SizedBox(width: double.infinity, height: 52, child: ElevatedButton(
+                onPressed: () => Navigator.pop(sheetContext, current),
+                style: ElevatedButton.styleFrom(backgroundColor: _gold, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                child: const Text('تم', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              )),
+            ]),
+          ),
+        ));
+      },
+    );
+    if (selected != null && mounted) setState(() => _visibility = selected);
+  }
+
+  Widget _visibilityOption(String value, String current, String title, String subtitle, IconData icon, VoidCallback onTap) {
+    final selected = current == value;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        child: Row(children: [
+          Icon(selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, color: selected ? _gold : const Color(0xFFB8BBC1), size: 22),
+          const SizedBox(width: 12),
+          Icon(icon, color: const Color(0xFF777777), size: 21),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
+            const SizedBox(height: 3),
+            Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF888888))),
+          ])),
+        ]),
+      ),
     );
   }
 
+  Widget _topicTag(String label, {bool primary = false}) => Container(
+    margin: const EdgeInsetsDirectional.only(end: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    decoration: BoxDecoration(color: primary ? const Color(0xFFE6F2FF) : const Color(0xFFF1F2F4), borderRadius: BorderRadius.circular(18)),
+    child: Text(label, maxLines: 1, style: TextStyle(color: primary ? const Color(0xFF3987D8) : const Color(0xFF666A70), fontSize: 11, fontWeight: FontWeight.w600)),
+  );
+
+  Widget _toolButton({required Widget icon, required VoidCallback onTap, String? tooltip}) => IconButton(
+    tooltip: tooltip, onPressed: onTap, visualDensity: VisualDensity.compact, splashRadius: 21,
+    padding: EdgeInsets.zero, constraints: const BoxConstraints.tightFor(width: 34, height: 40), icon: icon,
+  );
+
   @override
   Widget build(BuildContext context) {
+    final hasText = _controller.text.trim().isNotEmpty;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.white,
         resizeToAvoidBottomInset: true,
-        body: SafeArea(
-          child: Column(
-            children: [
-              SizedBox(
-                height: 54,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        tooltip: 'إغلاق',
-                        onPressed: _publishing ? null : () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close_rounded, color: _ink, size: 25),
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: _publishing || _controller.text.trim().isEmpty
-                            ? null
-                            : _publish,
-                        style: TextButton.styleFrom(
-                          foregroundColor: _gold,
-                          disabledForegroundColor: const Color(0xFFC9C9C9),
-                          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                        ),
-                        child: _publishing
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: _gold),
-                              )
-                            : const Text('نشر'),
-                      ),
-                    ],
-                  ),
-                ),
+        body: SafeArea(child: Column(children: [
+          SizedBox(height: 54, child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(children: [
+              IconButton(tooltip: 'إغلاق', onPressed: _closeComposer, icon: const Icon(Icons.close_rounded, color: _ink, size: 25)),
+              const Spacer(),
+              TextButton(
+                onPressed: _publishing || !hasText ? null : _publish,
+                style: TextButton.styleFrom(foregroundColor: _gold, disabledForegroundColor: const Color(0xFF9CA3AF), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                child: _publishing ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: _gold)) : const Text('نشر'),
               ),
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(18, 8, 18, 0),
-                child: Align(
-                  alignment: AlignmentDirectional.topStart,
-                  child: Container(
-                    width: 100,
-                    height: 130,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {},
-                        child: const Center(
-                          child: Icon(Icons.add_rounded, color: Color(0xFF9A9DA3), size: 34),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(18, 12, 18, 4),
-                  child: TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    autofocus: true,
-                    minLines: null,
-                    maxLines: null,
-                    expands: true,
-                    maxLength: 2000,
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.right,
-                    textAlignVertical: TextAlignVertical.top,
-                    onChanged: (_) => setState(() {}),
-                    style: const TextStyle(color: _ink, fontSize: 17, height: 1.7),
-                    decoration: const InputDecoration(
-                      hintText: 'قول شي... ماذا تريد أن تشارك المجتمع اليوم؟',
-                      hintStyle: TextStyle(color: Color(0xFFB2B2B2), fontSize: 16),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      counterStyle: TextStyle(color: _muted, fontSize: 10),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(
-                height: 48,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        reverse: false,
-                        padding: const EdgeInsetsDirectional.only(start: 16),
-                        children: [
-                          _topicTag('#إضافة موضوع', primary: true),
-                          _topicTag('#OOTD'),
-                          _topicTag('#الصحه_النفسيه'),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'تمرير التاقات',
-                      onPressed: () {},
-                      icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF777777), size: 24),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                height: 46,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      _toolButton(
-                        tooltip: 'وسم',
-                        onTap: () {},
-                        icon: const Text('#️⃣', style: TextStyle(fontSize: 20)),
-                      ),
-                      _toolButton(
-                        tooltip: _emojiPanelOpen ? 'لوحة المفاتيح' : 'الإيموجي',
-                        onTap: _toggleEmojiPanel,
-                        icon: Icon(
-                          _emojiPanelOpen ? Icons.keyboard_alt_outlined : Icons.emoji_emotions_outlined,
-                          color: const Color(0xFF555A61),
-                          size: 23,
-                        ),
-                      ),
-                      const Spacer(),
-                    ],
-                  ),
-                ),
-              ),
-              if (_emojiPanelOpen)
-                SizedBox(
-                  height: 258,
-                  width: double.infinity,
-                  child: EmojiPicker(
-                    onEmojiSelected: (category, emoji) {},
-                    textEditingController: _controller,
-                    config: Config(
-                      height: 258,
-                      checkPlatformCompatibility: true,
-                      emojiViewConfig: const EmojiViewConfig(
-                        columns: 8,
-                        emojiSizeMax: 25,
-                        backgroundColor: Color(0xFFF7F7F8),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+            ]),
+          )),
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(18, 8, 18, 0),
+            child: Align(alignment: AlignmentDirectional.topStart, child: Container(
+              width: 100, height: 130,
+              decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
+              child: Material(color: Colors.transparent, borderRadius: BorderRadius.circular(12), child: InkWell(
+                borderRadius: BorderRadius.circular(12), onTap: () {},
+                child: const Center(child: Icon(Icons.add_rounded, color: Color(0xFF9A9DA3), size: 34)),
+              )),
+            )),
           ),
-        ),
+          Expanded(child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(18, 12, 18, 4),
+            child: TextField(
+              controller: _controller, focusNode: _focusNode, autofocus: true,
+              minLines: null, maxLines: null, expands: true, maxLength: 2000,
+              textDirection: TextDirection.rtl, textAlign: TextAlign.right, textAlignVertical: TextAlignVertical.top,
+              onChanged: (_) => setState(() {}),
+              style: const TextStyle(color: _ink, fontSize: 17, height: 1.7),
+              decoration: const InputDecoration(
+                hintText: 'قول شي... ماذا تريد أن تشارك المجتمع اليوم؟',
+                hintStyle: TextStyle(color: Color(0xFFB2B2B2), fontSize: 16),
+                border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none,
+                counterText: '', contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          )),
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 2, 16, 4),
+            child: Row(children: [
+              const Spacer(),
+              TextButton.icon(
+                onPressed: _showVisibilitySheet,
+                style: TextButton.styleFrom(foregroundColor: _gold, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5)),
+                icon: const Icon(Icons.public_rounded, size: 17),
+                label: Text(_visibility, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+              ),
+            ]),
+          ),
+          SizedBox(height: 46, child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(children: [
+              _toolButton(tooltip: 'وسم', onTap: () {}, icon: const Text('#', style: TextStyle(fontSize: 23, color: Color(0xFF555A61)))),
+              _toolButton(
+                tooltip: _emojiPanelOpen ? 'لوحة المفاتيح' : 'الإيموجي',
+                onTap: _toggleEmojiPanel,
+                icon: Icon(_emojiPanelOpen ? Icons.keyboard_alt_outlined : Icons.emoji_emotions_outlined, color: const Color(0xFF555A61), size: 22),
+              ),
+              const SizedBox(width: 4),
+              Expanded(child: SizedBox(height: 42, child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [_topicTag('#إضافة موضوع', primary: true), _topicTag('#OOTD'), _topicTag('#الصحه_النفسيه')],
+              ))),
+              const SizedBox(width: 5),
+              Text(_controller.text.length.toString() + '/2000', style: const TextStyle(fontSize: 11, color: Color(0xFF929292), fontWeight: FontWeight.w600)),
+            ]),
+          )),
+          if (_emojiPanelOpen) SizedBox(
+            height: 258, width: double.infinity,
+            child: EmojiPicker(
+              onEmojiSelected: (category, emoji) {},
+              textEditingController: _controller,
+              config: Config(
+                height: 258, checkPlatformCompatibility: true,
+                emojiViewConfig: const EmojiViewConfig(columns: 8, emojiSizeMax: 25, backgroundColor: Color(0xFFFFFBEB)),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: SizedBox(width: double.infinity, height: 52, child: ElevatedButton(
+              onPressed: _publishing || !hasText ? null : _publish,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _gold, disabledBackgroundColor: const Color(0xFF9CA3AF),
+                foregroundColor: Colors.white, disabledForegroundColor: Colors.white, elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: _publishing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('نشر المنشور', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            )),
+          ),
+        ])),
       ),
     );
   }
