@@ -688,113 +688,108 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     final level = _firstText(['levelName', 'level', 'userLevel']);
     final vip = _firstText(['vipText', 'vipLevel', 'vip_level']);
 
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [_brownDark, _brown, _brownMid],
-        ),
-      ),
-      child: Column(children: [
-        SizedBox(
-          height: 205,
-          width: double.infinity,
-          child: Stack(fit: StackFit.expand, children: [
-            if (cover.isNotEmpty)
-              Image.network(cover, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _coverFallback())
-            else
-              _coverFallback(),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.black.withOpacity(.30), Colors.transparent, _brownDark.withOpacity(.82)],
-                  stops: const [0, .45, 1],
-                ),
-              ),
-            ),
-            Positioned(top: 10, right: 12,
-                child: _roundButton(Icons.arrow_forward_rounded,
-                    () => Navigator.of(context).maybePop())),
-            Positioned(
-              top: 10,
-              left: 12,
-              child: _roundButton(Icons.more_horiz_rounded, () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('لا توجد خيارات إضافية حالياً')),
-                );
-              }),
-            ),
-            Positioned(
-              left: 13,
-              right: 13,
-              bottom: 10,
-              child: Row(children: [
-                _heroStat('متابعون', _number('followers')),
-                _heroStat('إعجاب', _number('likesReceived')),
-                _heroStat('زائر', _number('visitors')),
-              ]),
-            ),
-          ]),
-        ),
-        Transform.translate(
-          offset: const Offset(0, -42),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _avatar(88, avatar),
-                const SizedBox(width: 13),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(name.isEmpty ? 'مستخدم' : name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
-                        const SizedBox(height: 5),
-                        Row(children: [
-                          Flexible(
-                            child: Text(code.isEmpty ? 'ID: —' : 'ID:$code',
-                                textDirection: TextDirection.ltr,
-                                style: const TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.w700)),
-                          ),
-                          const SizedBox(width: 7),
-                          InkWell(
-                            onTap: () {
-                              Clipboard.setData(ClipboardData(text: code));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('تم نسخ المعرف')),
-                              );
-                            },
-                            child: const Icon(Icons.copy_rounded, color: _gold, size: 14),
-                          ),
-                        ]),
-                        if (badge.isNotEmpty || level.isNotEmpty || vip.isNotEmpty) ...[
-                          const SizedBox(height: 7),
-                          Wrap(spacing: 5, runSpacing: 5, children: [
-                            if (badge.isNotEmpty) _miniTag(badge, Icons.verified_rounded),
-                            if (level.isNotEmpty) _miniTag(level, Icons.military_tech_rounded),
-                            if (vip.isNotEmpty) _miniTag(vip, Icons.workspace_premium_rounded),
-                          ]),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Padding(padding: const EdgeInsets.only(bottom: 7), child: _roomButton()),
+      height: 340,
+      child: Stack(fit: StackFit.expand, children: [
+        if (cover.isNotEmpty)
+          Image.network(cover, fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _coverFallback())
+        else
+          _coverFallback(),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withOpacity(.30),
+                Colors.transparent,
+                Colors.black.withOpacity(.78),
               ],
+              stops: const [0, .40, 1],
             ),
           ),
+        ),
+        Positioned(
+          top: 10,
+          right: 12,
+          child: _roundButton(Icons.arrow_forward_rounded,
+              () => Navigator.of(context).maybePop()),
+        ),
+        Positioned(
+          top: 10,
+          left: 12,
+          child: _roundButton(Icons.more_horiz_rounded, () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('لا توجد خيارات إضافية حالياً')),
+            );
+          }),
+        ),
+        Positioned(
+          left: 18,
+          right: 18,
+          bottom: 68,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _avatar(88, avatar),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 5),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(name.isEmpty ? 'مستخدم' : name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 5),
+                      Row(children: [
+                        Flexible(
+                          child: Text(code.isEmpty ? 'ID: —' : 'ID:$code',
+                              textDirection: TextDirection.ltr,
+                              style: const TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.w700)),
+                        ),
+                        const SizedBox(width: 7),
+                        InkWell(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: code));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('تم نسخ المعرف')),
+                            );
+                          },
+                          child: const Icon(Icons.copy_rounded, color: _gold, size: 14),
+                        ),
+                      ]),
+                      if (badge.isNotEmpty || level.isNotEmpty || vip.isNotEmpty) ...[
+                        const SizedBox(height: 7),
+                        Wrap(spacing: 5, runSpacing: 5, children: [
+                          if (badge.isNotEmpty) _miniTag(badge, Icons.verified_rounded),
+                          if (level.isNotEmpty) _miniTag(level, Icons.military_tech_rounded),
+                          if (vip.isNotEmpty) _miniTag(vip, Icons.workspace_premium_rounded),
+                        ]),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(padding: const EdgeInsets.only(bottom: 7), child: _roomButton()),
+            ],
+          ),
+        ),
+        Positioned(
+          left: 13,
+          right: 13,
+          bottom: 12,
+          child: Row(children: [
+            _heroStat('متابعون', _number('followers')),
+            _heroStat('إعجاب', _number('likesReceived')),
+            _heroStat('زائر', _number('visitors')),
+          ]),
         ),
       ]),
     );
