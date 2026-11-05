@@ -52,7 +52,7 @@ class _NeonFrameOverlayPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.2
-        ..color = const Color(0xFFA78BFA),
+        ..color = const Color(0xFFE9C26A),
     );
   }
 
@@ -73,8 +73,8 @@ class _Particle {
 class _NeonPainter extends CustomPainter {
   const _NeonPainter();
 
-  static const _purple = Color(0xFF7C4DFF);
-  static const _light = Color(0xFFA78BFA);
+  static const _purple = Color(0xFFD9A93C);
+  static const _light = Color(0xFFE9C26A);
 
   @override
   void paint(Canvas canvas, Size size) {
