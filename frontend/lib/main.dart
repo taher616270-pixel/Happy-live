@@ -21,7 +21,7 @@ class HappyLiveApp extends StatelessWidget {
   static const background = Color(0xFF09080D);
   static const surface = Color(0xFF17131F);
   static const gold = Color(0xFFE8C477);
-  static const purple = Color(0xFF9B63D9);
+  static const purple = Color(0xFFD9A93C);
   static const muted = Color(0xFFAAA2B5);
 
   @override
@@ -844,7 +844,7 @@ class _LoginPageState extends State<LoginPage> {
           const Positioned(
             top: -110,
             right: -90,
-            child: _GlowOrb(color: Color(0x339B63D9), size: 280),
+            child: _GlowOrb(color: Color(0x33D9A93C), size: 280),
           ),
           const Positioned(
             bottom: -140,
@@ -1652,7 +1652,7 @@ class _BrandHeader extends StatelessWidget {
             ),
             border: Border.all(color: const Color(0x99E8C477), width: 1.2),
             boxShadow: const [
-              BoxShadow(color: Color(0x449B63D9), blurRadius: 28, spreadRadius: 2),
+              BoxShadow(color: Color(0x44D9A93C), blurRadius: 28, spreadRadius: 2),
             ],
           ),
           child: Center(
