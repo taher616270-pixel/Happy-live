@@ -90,7 +90,6 @@ class _LoginPageState extends State<LoginPage> {
   String? _sessionRestoreError;
 
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
-  static const String _sessionTokenKey = 'happy_live_session_token';
   static const _registeredDeviceKey = 'happy_live_registered_on_device';
 
   @override
@@ -1328,7 +1327,6 @@ class SessionHomePage extends StatefulWidget {
 
 class _SessionHomePageState extends State<SessionHomePage> {
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
-  static const String _sessionTokenKey = 'happy_live_session_token';
   String get _name => widget.name.trim().isEmpty ? 'عضو Happy Live' : widget.name.trim();
   String get _initial => _name.characters.first.toUpperCase();
 
