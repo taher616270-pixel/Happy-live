@@ -968,15 +968,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   Widget _personalDetails() {
     final bio = _firstText(['bio', 'about'], widget.bio);
-    final country = _firstText(['country', 'countryName']);
-    final gender = _text('gender');
-    final age = _profile['age'];
-    final joined = _firstText(['joinedAt', 'createdAt', 'created_at']);
-    final date = DateTime.tryParse(joined);
-    final joinedLabel = date == null ? 'غير متاح' :
-        '${date.year}-${date.month.toString().padLeft(2, '0')}';
-    final isPrivate = _profile['isPrivate'] == true || _profile['is_private'] == true;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -986,15 +977,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           Text(bio, style: const TextStyle(color: _brownMid, fontSize: 13, height: 1.6)),
           const SizedBox(height: 16),
         ],
-        _detailLine('الدولة', country.isEmpty ? 'غير متاح' : country),
-        _detailLine('الجنس', gender == 'male' ? 'ذكر' : gender == 'female' ? 'أنثى' : gender.isEmpty ? 'غير متاح' : gender),
-        if (age is num && age >= 0) _detailLine('العمر', '$age'),
-        _detailLine('تاريخ الانضمام', joinedLabel),
-        _detailLine('حالة الحساب', isPrivate ? 'خاص' : 'عام'),
-        _detailLine('المتابعون', '${_number('followers')}'),
-        _detailLine('يتابع', '${_number('following')}'),
-        _detailLine('الإعجابات المستلمة', '${_number('likesReceived')}'),
-        _detailLine('الزوار', '${_number('visitors')}'),
         const SizedBox(height: 18),
         const Text('المنشورات', style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
         const SizedBox(height: 9),
