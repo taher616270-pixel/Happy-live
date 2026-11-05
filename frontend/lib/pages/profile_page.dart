@@ -1429,6 +1429,12 @@ class _PublicProfileTabsDelegate extends SliverPersistentHeaderDelegate {
     return Material(
       color: Colors.white,
       elevation: overlapsContent ? 2 : 0,
+      clipBehavior: Clip.antiAlias,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(26),
+        ),
+      ),
       child: Column(
         children: [
           Expanded(
