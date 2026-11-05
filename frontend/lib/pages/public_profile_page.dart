@@ -7,6 +7,7 @@ const _ink = Color(0xFF1E2233);
 const _grey = Color(0xFF9A98AD);
 const _red = Color(0xFFE53E4D);
 
+
 class PublicProfilePage extends StatefulWidget {
   const PublicProfilePage({
     super.key,
@@ -46,7 +47,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   static const _muted = Color(0xFF9A8878);
 
   int _tab = 2;
-  double _tabSlideFromX = 1;
+  double _tabSlideFromX = 1; // Retained for the legacy tab builder.
   late final PageController _profileTabsController = PageController(initialPage: 2);
   final ScrollController _profileScrollController = ScrollController();
   double _scrollProgress = 0;
@@ -55,7 +56,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   Map<String, dynamic> _profile = {};
   List<Map<String, dynamic>> _posts = [];
 
-  Map<String, dynamic> get _stats => Map<String, dynamic>.from((_profile['stats'] as Map?) ?? const {});
+  Map<String, dynamic> get _stats =>
+      Map<String, dynamic>.from((_profile['stats'] as Map?) ?? const {});
 
   int _number(String key) {
     final value = _stats[key] ?? _profile[key];
@@ -63,7 +65,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     return int.tryParse('$value') ?? 0;
   }
 
-  String _text(String key, [String fallback = '']) => (_profile[key] ?? fallback).toString().trim();
+  String _text(String key, [String fallback = '']) =>
+      (_profile[key] ?? fallback).toString().trim();
 
   String _firstText(List<String> keys, [String fallback = '']) {
     for (final key in keys) {
@@ -88,9 +91,15 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
   }
 
+  // التنقل بين تبويبات الملف الشخصي بالسحب الأفقي.
+  // ترتيب التبويبات من اليمين إلى اليسار: الشخصية، الوكالات، المنشورات.
   void _changeProfileTab(int index) {
     if (index == _tab || !mounted) return;
-    _profileTabsController.animateToPage(index, duration: const Duration(milliseconds: 320), curve: Curves.easeInOutCubic);
+    _profileTabsController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   void _onProfilePageChanged(int index) {
@@ -108,87 +117,196 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   Future<void> _loadProfile({bool showErrorView = true}) async {
     try {
-      final response = await http.get(Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/users/${Uri.encodeComponent(widget.userId)}/profile'), headers: {'Authorization': 'Bearer ${widget.accessToken}'}).timeout(const Duration(seconds: 18));
+      final response = await http.get(
+        Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/users/${Uri.encodeComponent(widget.userId)}/profile'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+      ).timeout(const Duration(seconds: 18));
       final decoded = jsonDecode(response.body);
       if (response.statusCode != 200 || decoded is! Map || decoded['ok'] != true) {
-        throw Exception(decoded is Map ? (decoded['message'] ?? decoded['error'] ?? 'تعذر تحميل الملف الشخصي').toString() : 'تعذر تحميل الملف الشخصي');
+        throw Exception(decoded is Map
+            ? (decoded['message'] ?? decoded['error'] ?? 'تعذر تحميل الملف الشخصي').toString()
+            : 'تعذر تحميل الملف الشخصي');
       }
       final profile = Map<String, dynamic>.from(decoded['profile'] as Map);
-      final posts = (profile['posts'] as List? ?? const []).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+      final posts = (profile['posts'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
       if (!mounted) return;
-      setState(() { _profile = profile; _posts = posts; _loading = false; _loadError = null; });
+      setState(() {
+        _profile = profile;
+        _posts = posts;
+        _loading = false;
+        _loadError = null;
+      });
     } catch (_) {
       if (!mounted) return;
-      setState(() { _loading = false; if (showErrorView) { _loadError = 'تعذر تحميل البيانات الحقيقية. تحقق من اتصال الخادم.'; } });
-      if (!showErrorView) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر تحديث الملف الشخصي. حاول مرة أخرى.'))); }
+      setState(() {
+        _loading = false;
+        if (showErrorView) {
+          _loadError = 'تعذر تحميل البيانات الحقيقية. تحقق من اتصال الخادم.';
+        }
+      });
+      if (!showErrorView) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر تحديث الملف الشخصي. حاول مرة أخرى.')),
+        );
+      }
     }
   }
 
   Future<void> _refreshProfile() => _loadProfile(showErrorView: false);
 
   @override
-  Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: _paper,
-        extendBodyBehindAppBar: true, // <-- يطلع من فوق الجوال
-        body: SafeArea(
-          top: false, // <-- بدون فراغ علوي
-          bottom: false,
-          child: _loading
-              ? const Center(child: CircularProgressIndicator(color: _brownLight))
-              : _loadError != null
-                  ? _errorView()
-                  : Stack(
-                      children: [
-                        RefreshIndicator(
-                          onRefresh: _refreshProfile,
-                          color: _brownLight,
-                          backgroundColor: Colors.white,
-                          child: NestedScrollView(
-                            controller: _profileScrollController,
-                            physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
-                            headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                              SliverAppBar(
-                                pinned: true,
-                                primary: false,
-                                toolbarHeight: 56,
-                                collapsedHeight: 56,
-                                expandedHeight: 360 + topPadding, // <-- نفس حجم صورتك
-                                backgroundColor: Color.lerp(Colors.transparent, Colors.white, _scrollProgress),
-                                surfaceTintColor: Colors.transparent,
-                                elevation: 0,
-                                scrolledUnderElevation: 0,
-                                automaticallyImplyLeading: false,
-                                leadingWidth: 52,
-                                leading: Padding(padding: EdgeInsets.only(top: topPadding, left: 0), child: Padding(padding: const EdgeInsetsDirectional.only(start: 10), child: _roundButton(Icons.arrow_forward_rounded, () => Navigator.of(context).maybePop()))),
-                                actions: [Padding(padding: EdgeInsets.only(top: topPadding), child: Padding(padding: const EdgeInsetsDirectional.only(end: 12), child: _roundButton(Icons.more_horiz_rounded, () { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد خيارات إضافية حالياً'))); })))],
-                                title: Opacity(opacity: _scrollProgress, child: Text(_firstText(['name', 'displayName', 'display_name'], widget.name), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF292929), fontSize: 16, fontWeight: FontWeight.w900))),
-                                centerTitle: true,
-                                flexibleSpace: Stack(fit: StackFit.expand, children: [
-                                  FlexibleSpaceBar(background: _heroHeader(), collapseMode: CollapseMode.parallax),
-                                  Positioned(top: 0, left: 0, right: 0, height: 56 + topPadding, child: IgnorePointer(child: ColoredBox(color: Color.lerp(Colors.transparent, Colors.white, _scrollProgress)!))),
-                                ]),
+  Widget build(BuildContext context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: _paper,
+          body: SafeArea(
+            bottom: false,
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: _brownLight))
+                : _loadError != null
+                    ? _errorView()
+                    : Stack(
+                        children: [
+                          RefreshIndicator(
+                            onRefresh: _refreshProfile,
+                            color: _brownLight,
+                            backgroundColor: Colors.white,
+                            child: NestedScrollView(
+                              controller: _profileScrollController,
+                              physics: const AlwaysScrollableScrollPhysics(
+                                parent: ClampingScrollPhysics(),
                               ),
-                              SliverPersistentHeader(pinned: true, delegate: _PublicProfileTabsDelegate(selected: _tab, onSelected: _changeProfileTab)),
-                            ],
-                            body: PageView(controller: _profileTabsController, onPageChanged: _onProfilePageChanged, children: [_profileTabPage(0), _profileTabPage(1), _profileTabPage(2)]),
+                              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                                SliverAppBar(
+                                  pinned: true,
+                                  primary: false,
+                                  toolbarHeight: 56,
+                                  collapsedHeight: 56,
+                                  expandedHeight: 270,
+                                  backgroundColor: Color.lerp(
+                                    Colors.transparent,
+                                    Colors.white,
+                                    _scrollProgress,
+                                  ),
+                                  surfaceTintColor: Colors.transparent,
+                                  elevation: 0,
+                                  scrolledUnderElevation: 0,
+                                  automaticallyImplyLeading: false,
+                                  leadingWidth: 52,
+                                  leading: Padding(
+                                    padding: const EdgeInsetsDirectional.only(start: 10),
+                                    child: _roundButton(
+                                      Icons.arrow_forward_rounded,
+                                      () => Navigator.of(context).maybePop(),
+                                    ),
+                                  ),
+                                  actions: [
+                                    Padding(
+                                      padding: const EdgeInsetsDirectional.only(end: 12),
+                                      child: _roundButton(Icons.more_horiz_rounded, () {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('لا توجد خيارات إضافية حالياً')),
+                                        );
+                                      }),
+                                    ),
+                                  ],
+                                  title: Opacity(
+                                    opacity: _scrollProgress,
+                                    child: Text(
+                                      _firstText(['name', 'displayName', 'display_name'], widget.name),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFF292929),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                  centerTitle: true,
+                                  flexibleSpace: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      FlexibleSpaceBar(
+                                        background: _heroHeader(),
+                                        collapseMode: CollapseMode.parallax,
+                                      ),
+                                      Positioned(
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        height: 56,
+                                        child: IgnorePointer(
+                                          child: ColoredBox(
+                                            color: Color.lerp(
+                                              Colors.transparent,
+                                              Colors.white,
+                                              _scrollProgress,
+                                            )!,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SliverPersistentHeader(
+                                  pinned: true,
+                                  delegate: _PublicProfileTabsDelegate(
+                                    selected: _tab,
+                                    onSelected: _changeProfileTab,
+                                  ),
+                                ),
+                              ],
+                              body: PageView(
+                                controller: _profileTabsController,
+                                onPageChanged: _onProfilePageChanged,
+                                children: [
+                                  _profileTabPage(0),
+                                  _profileTabPage(1),
+                                  _profileTabPage(2),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                        Positioned(left: 12, right: 12, bottom: 8 + MediaQuery.of(context).padding.bottom, child: _actionBar()),
-                      ],
-                    ),
+                          Positioned(
+                            left: 12,
+                            right: 12,
+                            bottom: 8 + MediaQuery.of(context).padding.bottom,
+                            child: _actionBar(),
+                          ),
+                        ],
+                      ),
+          ),
         ),
-      ),
-    );
-  }
+      );
 
-  Widget _errorView() => Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.cloud_off_rounded, color: _brownLight, size: 42), const SizedBox(height: 12), Text(_loadError!, textAlign: TextAlign.center, style: const TextStyle(color: _brown, fontSize: 14)), const SizedBox(height: 14), OutlinedButton(onPressed: () { setState(() { _loading = true; _loadError = null; }); _loadProfile(); }, child: const Text('إعادة المحاولة'))])));
-  
+  Widget _errorView() => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.cloud_off_rounded, color: _brownLight, size: 42),
+            const SizedBox(height: 12),
+            Text(_loadError!, textAlign: TextAlign.center,
+                style: const TextStyle(color: _brown, fontSize: 14)),
+            const SizedBox(height: 14),
+            OutlinedButton(
+              onPressed: () {
+                setState(() {
+                  _loading = true;
+                  _loadError = null;
+                });
+                _loadProfile();
+              },
+              child: const Text('إعادة المحاولة'),
+            ),
+          ]),
+        ),
+      );
+
   Widget _heroHeader() {
-    final topPadding = MediaQuery.of(context).padding.top;
     final cover = _text('coverUrl');
     final name = _firstText(['name', 'displayName', 'display_name'], widget.name);
     final code = _firstText(['userCode', 'user_code', 'gabo_id'], widget.userCode);
@@ -199,68 +317,930 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     return SizedBox(
       width: double.infinity,
-      height: 360 + topPadding, // <-- نفس حجم صورتك
+      height: 270,
       child: Stack(fit: StackFit.expand, children: [
-        if (cover.isNotEmpty) Image.network(cover, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _coverFallback()) else _coverFallback(),
-        DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black.withOpacity(.30), Colors.transparent, Colors.black.withOpacity(.78)], stops: const [0, .40, 1]))),
+        if (cover.isNotEmpty)
+          Image.network(cover, fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _coverFallback())
+        else
+          _coverFallback(),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withOpacity(.30),
+                Colors.transparent,
+                Colors.black.withOpacity(.78),
+              ],
+              stops: const [0, .40, 1],
+            ),
+          ),
+        ),
         Positioned(
-          left: 18, right: 18, bottom: 68,
-          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            _avatar(88, avatar), const SizedBox(width: 13),
-            Expanded(child: Padding(padding: const EdgeInsets.only(bottom: 5), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(name.isEmpty ? 'مستخدم' : name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 5),
-              Row(children: [Flexible(child: Text(code.isEmpty ? 'ID: —' : 'ID:$code', textDirection: TextDirection.ltr, style: const TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.w700))), const SizedBox(width: 7), InkWell(onTap: () { Clipboard.setData(ClipboardData(text: code)); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ المعرف'))); }, child: const Icon(Icons.copy_rounded, color: _gold, size: 14))]),
-              if (badge.isNotEmpty || level.isNotEmpty || vip.isNotEmpty) ...[const SizedBox(height: 7), Wrap(spacing: 5, runSpacing: 5, children: [if (badge.isNotEmpty) _miniTag(badge, Icons.verified_rounded), if (level.isNotEmpty) _miniTag(level, Icons.military_tech_rounded), if (vip.isNotEmpty) _miniTag(vip, Icons.workspace_premium_rounded)])],
-            ]))),
-            const SizedBox(width: 8), Padding(padding: const EdgeInsets.only(bottom: 7), child: _roomButton()),
+          left: 18,
+          right: 18,
+          bottom: 68,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _avatar(88, avatar),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 5),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(name.isEmpty ? 'مستخدم' : name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 5),
+                      Row(children: [
+                        Flexible(
+                          child: Text(code.isEmpty ? 'ID: —' : 'ID:$code',
+                              textDirection: TextDirection.ltr,
+                              style: const TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.w700)),
+                        ),
+                        const SizedBox(width: 7),
+                        InkWell(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: code));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('تم نسخ المعرف')),
+                            );
+                          },
+                          child: const Icon(Icons.copy_rounded, color: _gold, size: 14),
+                        ),
+                      ]),
+                      if (badge.isNotEmpty || level.isNotEmpty || vip.isNotEmpty) ...[
+                        const SizedBox(height: 7),
+                        Wrap(spacing: 5, runSpacing: 5, children: [
+                          if (badge.isNotEmpty) _miniTag(badge, Icons.verified_rounded),
+                          if (level.isNotEmpty) _miniTag(level, Icons.military_tech_rounded),
+                          if (vip.isNotEmpty) _miniTag(vip, Icons.workspace_premium_rounded),
+                        ]),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(padding: const EdgeInsets.only(bottom: 7), child: _roomButton()),
+            ],
+          ),
+        ),
+        Positioned(
+          left: 13,
+          right: 13,
+          bottom: 12,
+          child: Row(children: [
+            _heroStat('متابعون', _number('followers')),
+            _heroStat('إعجاب', _number('likesReceived')),
+            _heroStat('زائر', _number('visitors')),
           ]),
         ),
-        Positioned(left: 13, right: 13, bottom: 12, child: Row(children: [_heroStat('متابعون', _number('followers')), _heroStat('إعجاب', _number('likesReceived')), _heroStat('زائر', _number('visitors'))])),
       ]),
     );
   }
 
-  Widget _coverFallback() => Image.asset('web/assets/images/profile_cover/profile_cover.jpg.JPG', fit: BoxFit.cover, errorBuilder: (_, __, ___) => const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [_brownLight, _brown, _brownDark]))));
-  Widget _roundButton(IconData icon, VoidCallback onTap) { final isScrolled = _scrollProgress >= .95; return Material(color: isScrolled ? Colors.white : const Color(0x99000000), shape: const CircleBorder(), child: InkWell(customBorder: const CircleBorder(), onTap: onTap, child: SizedBox(width: 38, height: 38, child: Icon(icon, color: isScrolled ? _brown : Colors.white, size: 21)))); }
-  Widget _avatar(double size, String photo) => Container(width: size, height: size, padding: const EdgeInsets.all(3), decoration: const BoxDecoration(shape: BoxShape.circle, color: _gold), child: ClipOval(child: photo.isEmpty ? Container(color: _cream, child: const Icon(Icons.person, color: _brownLight, size: 42)) : Image.network(photo, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: _cream, child: const Icon(Icons.person, color: _brownLight, size: 42)))));
-  Widget _miniTag(String label, IconData icon) => Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4), decoration: BoxDecoration(color: _gold.withOpacity(.16), borderRadius: BorderRadius.circular(20), border: Border.all(color: _gold.withOpacity(.65), width: .7)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: _gold, size: 11), const SizedBox(width: 4), Text(label, style: const TextStyle(color: _gold, fontSize: 10, fontWeight: FontWeight.w800))]));
-  Widget _roomButton() => InkWell(onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('الغرف غير متاحة من هذا الملف حالياً'))), borderRadius: BorderRadius.circular(20), child: Container(padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8), decoration: BoxDecoration(color: _gold, borderRadius: BorderRadius.circular(20)), child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.meeting_room_rounded, color: _brownDark, size: 15), SizedBox(width: 4), Text('غرفة', style: TextStyle(color: _brownDark, fontSize: 11, fontWeight: FontWeight.w900))])));
-  Widget _heroStat(String label, int value) => Expanded(child: Column(children: [Text('$value', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)), const SizedBox(height: 3), Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600))]));
-  Widget _profileTabsAndContent() { Widget tab(String title, int index) { final active = _tab == index; return Expanded(child: InkWell(onTap: () => _changeProfileTab(index), child: SizedBox(height: 54, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [FittedBox(fit: BoxFit.scaleDown, child: Text(title, maxLines: 1, style: TextStyle(color: active ? _brown : _muted, fontSize: 12, fontWeight: active ? FontWeight.w900 : FontWeight.w600))), const SizedBox(height: 6), Container(height: 3, width: 38, decoration: BoxDecoration(color: active ? _brownLight : Colors.transparent, borderRadius: BorderRadius.circular(8)))])))); } return Container(width: double.infinity, decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(26))), child: Column(mainAxisSize: MainAxisSize.min, children: [Row(children: [tab('الصفحة الشخصية', 2), tab('الوكالات', 1), tab('المنشورات', 0)]), Container(height: 1, color: const Color(0xFFF0E7DC)), _tabContent()])); }
-  Widget _profileTabPage(int index) { Widget content; if (index == 0) { content = Padding(padding: const EdgeInsets.fromLTRB(17, 17, 17, 28), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [const Text('المنشورات', style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)), const SizedBox(height: 9), _postsContent()])); } else if (index == 1) { content = LayoutBuilder(builder: (context, constraints) => ConstrainedBox(constraints: BoxConstraints(minHeight: constraints.maxHeight), child: Center(child: _emptySection(key: const ValueKey('agencies'), icon: Icons.apartment_rounded, title: 'لا توجد وكالة مرتبطة', subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.')))); } else { content = _personalDetails(); } return RefreshIndicator(onRefresh: _refreshProfile, color: _brownLight, backgroundColor: Colors.white, child: CustomScrollView(physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()), slivers: [SliverFillRemaining(hasScrollBody: false, child: Container(width: double.infinity, color: Colors.white, child: content))])); }
-  Widget _tabContent() => AnimatedSwitcher(duration: const Duration(milliseconds: 280), switchInCurve: Curves.easeOutCubic, switchOutCurve: Curves.easeInCubic, transitionBuilder: (child, animation) { final slide = Tween<Offset>(begin: Offset(_tabSlideFromX, 0), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)); return ClipRect(child: SlideTransition(position: slide, child: FadeTransition(opacity: animation, child: child))); }, child: _tab == 0 ? Padding(key: const ValueKey('posts'), padding: const EdgeInsets.fromLTRB(17, 17, 17, 28), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [const Text('المنشورات', style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)), const SizedBox(height: 9), _postsContent()])) : _tab == 1 ? _emptySection(key: const ValueKey('agencies'), icon: Icons.apartment_rounded, title: 'لا توجد وكالة مرتبطة', subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.') : _personalDetails());
-  Widget _emptySection({required Key key, required IconData icon, required String title, required String subtitle}) => Container(key: key, width: double.infinity, padding: const EdgeInsets.fromLTRB(24, 45, 24, 55), child: Column(children: [Container(width: 76, height: 76, decoration: const BoxDecoration(color: _cream, shape: BoxShape.circle), child: Icon(icon, color: _brownLight, size: 36)), const SizedBox(height: 15), Text(title, style: const TextStyle(color: _brown, fontSize: 15, fontWeight: FontWeight.w900)), const SizedBox(height: 7), Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: _muted, fontSize: 12, height: 1.6))]));
-  Widget _personalDetails() { final bio = _firstText(['bio', 'about'], widget.bio); return Padding(padding: const EdgeInsets.fromLTRB(17, 17, 17, 28), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [if (bio.isNotEmpty) ...[const Text('نبذة', style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)), const SizedBox(height: 7), Text(bio, style: const TextStyle(color: _brownMid, fontSize: 13, height: 1.6)), const SizedBox(height: 16)]])); }
-  Widget _detailLine(String label, String value) => Container(padding: const EdgeInsets.symmetric(vertical: 11), decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFEFE5D9)))), child: Row(children: [Text(label, style: const TextStyle(color: _muted, fontSize: 12)), const Spacer(), Flexible(child: Text(value, textAlign: TextAlign.end, style: const TextStyle(color: _brown, fontSize: 12, fontWeight: FontWeight.w800)))]));
-  Future<void> _toggleProfilePostLike(Map<String, dynamic> post) async { final id = (post['id'] ?? '').toString(); if (id.isEmpty || post['_likeBusy'] == true) return; final wasLiked = post['liked'] == true; final oldCount = (post['likesCount'] as num?)?.toInt() ?? (post['likes_count'] as num?)?.toInt() ?? 0; setState(() { post['_likeBusy'] = true; post['liked'] = !wasLiked; post['likesCount'] = (oldCount + (wasLiked ? -1 : 1)).clamp(0, 1 << 30); }); try { final response = await http.post(Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/like'), headers: {'Authorization': 'Bearer ${widget.accessToken}'}).timeout(const Duration(seconds: 12)); final data = jsonDecode(response.body); if (response.statusCode != 200 || data is! Map || data['ok'] != true) { throw Exception(); } if (!mounted) return; setState(() { post['liked'] = data['liked'] == true; post['likesCount'] = data['likesCount'] ?? oldCount; post['_likeBusy'] = false; }); } catch (_) { if (!mounted) return; setState(() { post['liked'] = wasLiked; post['likesCount'] = oldCount; post['_likeBusy'] = false; }); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر تسجيل الإعجاب'))); } }
-  Future<void> _openProfilePostComments(Map<String, dynamic> post) async { final id = (post['id'] ?? '').toString(); if (id.isEmpty) return; final input = TextEditingController(); bool loading = true; bool sending = false; String? error; List<Map<String, dynamic>> comments = []; await showModalBottomSheet<void>(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (sheetContext) => StatefulBuilder(builder: (context, setSheetState) { Future<void> loadComments() async { try { final response = await http.get(Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/comments'), headers: {'Authorization': 'Bearer ${widget.accessToken}'}).timeout(const Duration(seconds: 12)); final data = jsonDecode(response.body); if (response.statusCode != 200 || data is! Map || data['ok'] != true) { throw Exception(); } comments = (data['comments'] as List? ?? const []).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList(); error = null; } catch (_) { error = 'تعذر تحميل التعليقات'; } loading = false; setSheetState(() {}); } Future<void> sendComment() async { final content = input.text.trim(); if (content.isEmpty || sending) return; sending = true; setSheetState(() {}); try { final response = await http.post(Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/comments'), headers: {'Authorization': 'Bearer ${widget.accessToken}', 'Content-Type': 'application/json'}, body: jsonEncode({'content': content})).timeout(const Duration(seconds: 12)); final data = jsonDecode(response.body); if (response.statusCode != 201 || data is! Map || data['ok'] != true) { throw Exception(); } comments.add(Map<String, dynamic>.from(data['comment'] as Map)); input.clear(); post['commentsCount'] = ((post['commentsCount'] as num?)?.toInt() ?? 0) + 1; error = null; } catch (_) { error = 'تعذر إضافة التعليق'; } sending = false; setSheetState(() {}); if (mounted) setState(() {}); } if (loading && comments.isEmpty) loadComments(); return Directionality(textDirection: TextDirection.rtl, child: Container(height: MediaQuery.of(context).size.height * .72, padding: EdgeInsets.fromLTRB(18, 12, 18, 18 + MediaQuery.of(context).viewInsets.bottom), decoration: const BoxDecoration(color: _paper, borderRadius: BorderRadius.vertical(top: Radius.circular(26))), child: Column(children: [Container(width: 42, height: 4, decoration: BoxDecoration(color: const Color(0xFFE5DFD0), borderRadius: BorderRadius.circular(5))), const SizedBox(height: 16), Row(children: [const Expanded(child: Text('التعليقات', style: TextStyle(color: _brown, fontSize: 18, fontWeight: FontWeight.w900))), Text('${comments.length}', style: const TextStyle(color: _muted, fontWeight: FontWeight.bold))]), const SizedBox(height: 12), Expanded(child: loading ? const Center(child: CircularProgressIndicator(color: _brownLight)) : error != null && comments.isEmpty ? Center(child: Text(error!, style: const TextStyle(color: _muted))) : comments.isEmpty ? const Center(child: Text('كن أول من يعلّق على هذا المنشور', style: TextStyle(color: _muted))) : ListView.separated(itemCount: comments.length, separatorBuilder: (_, __) => const Divider(height: 18, color: Color(0xFFF0EBDD)), itemBuilder: (_, index) { final comment = comments[index]; return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text((comment['name'] ?? 'مستخدم').toString(), style: const TextStyle(color: _brown, fontWeight: FontWeight.w900, fontSize: 12)), const SizedBox(height: 4), Text((comment['content'] ?? '').toString(), style: const TextStyle(color: _brownMid, fontSize: 13, height: 1.5))]); })), if (error != null && comments.isNotEmpty) Align(alignment: Alignment.centerRight, child: Text(error!, style: const TextStyle(color: Colors.red, fontSize: 11))), Row(children: [Expanded(child: TextField(controller: input, maxLength: 500, textDirection: TextDirection.rtl, style: const TextStyle(color: _brown, fontSize: 13), decoration: InputDecoration(counterText: '', hintText: 'اكتب تعليقاً...', hintStyle: const TextStyle(color: _muted), filled: true, fillColor: _cream, contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none)))), const SizedBox(width: 8), IconButton.filled(onPressed: sending ? null : sendComment, style: IconButton.styleFrom(backgroundColor: _brownLight, foregroundColor: Colors.white), icon: sending ? const SizedBox(width: 17, height: 17, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send_rounded))])]))); })); input.dispose(); if (mounted) setState(() {}); }
-  Widget _postsContent() { if (_profile['canViewPosts'] != true) { return const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Center(child: Text('منشورات هذا الحساب غير متاحة للعرض', style: TextStyle(color: _muted, fontSize: 12), textAlign: TextAlign.center))); } if (_posts.isEmpty) { return const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Center(child: Text('لا توجد منشورات عامة حتى الآن', style: TextStyle(color: _muted, fontSize: 12)))); } return Column(children: _posts.map((post) { final imageUrl = (post['imageUrl'] ?? post['image_url'] ?? '').toString(); final liked = post['liked'] == true; final likes = (post['likesCount'] as num?)?.toInt() ?? (post['likes_count'] as num?)?.toInt() ?? 0; final comments = (post['commentsCount'] as num?)?.toInt() ?? (post['comments_count'] as num?)?.toInt() ?? 0; return Container(width: double.infinity, margin: const EdgeInsets.only(bottom: 20), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Text((post['content'] ?? '').toString(), style: const TextStyle(color: _brown, fontSize: 13, height: 1.6)), if (imageUrl.isNotEmpty) ...[const SizedBox(height: 9), Center(child: _ProfilePostImage(url: imageUrl))], const SizedBox(height: 9), Row(children: [InkWell(onTap: post['_likeBusy'] == true ? null : () => _toggleProfilePostLike(post), borderRadius: BorderRadius.circular(20), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(liked ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: liked ? const Color(0xFFE34D65) : _muted, size: 19), const SizedBox(width: 5), Text('$likes', style: TextStyle(color: liked ? const Color(0xFFE34D65) : _muted, fontSize: 12, fontWeight: FontWeight.w700))]))), const SizedBox(width: 16), InkWell(onTap: () => _openProfilePostComments(post), borderRadius: BorderRadius.circular(20), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7), child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.mode_comment_outlined, color: _muted, size: 18), const SizedBox(width: 5), Text('تعليق $comments', style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w700))])))] )])); }).toList()); }
-  Widget _actionBar() => Container(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4), child: Row(children: [Expanded(child: OutlinedButton.icon(onPressed: widget.onFollow ?? () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ميزة المتابعة قيد التجهيز'))), icon: const Icon(Icons.person_add_alt_1_rounded, size: 18), label: const Text('متابعة'), style: OutlinedButton.styleFrom(foregroundColor: _brown, side: const BorderSide(color: _brownLight, width: 1.2), minimumSize: const Size.fromHeight(48), shape: const StadiumBorder()))), const SizedBox(width: 10), Expanded(child: ElevatedButton.icon(onPressed: widget.onChat ?? () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('المحادثات الخاصة قيد التجهيز'))), icon: const Icon(Icons.chat_bubble_rounded, size: 18), label: const Text('الرسائل'), style: ElevatedButton.styleFrom(backgroundColor: _brown, foregroundColor: _gold, elevation: 0, minimumSize: const Size.fromHeight(48), shape: const StadiumBorder())))]));
+  Widget _coverFallback() => Image.asset(
+        'web/assets/images/profile_cover/profile_cover.jpg.JPG',
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [_brownLight, _brown, _brownDark],
+            ),
+          ),
+        ),
+      );
+
+  Widget _roundButton(IconData icon, VoidCallback onTap) {
+    final isScrolled = _scrollProgress >= .95;
+    return Material(
+      color: isScrolled ? Colors.white : const Color(0x99000000),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 38,
+          height: 38,
+          child: Icon(
+            icon,
+            color: isScrolled ? _brown : Colors.white,
+            size: 21,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _avatar(double size, String photo) => Container(
+        width: size,
+        height: size,
+        padding: const EdgeInsets.all(3),
+        decoration: const BoxDecoration(shape: BoxShape.circle, color: _gold),
+        child: ClipOval(
+          child: photo.isEmpty
+              ? Container(color: _cream,
+                  child: const Icon(Icons.person, color: _brownLight, size: 42))
+              : Image.network(photo, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(color: _cream,
+                      child: const Icon(Icons.person, color: _brownLight, size: 42))),
+        ),
+      );
+
+  Widget _miniTag(String label, IconData icon) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        decoration: BoxDecoration(
+          color: _gold.withOpacity(.16),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _gold.withOpacity(.65), width: .7),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: _gold, size: 11),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(color: _gold, fontSize: 10, fontWeight: FontWeight.w800)),
+        ]),
+      );
+
+  Widget _roomButton() => InkWell(
+        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('الغرف غير متاحة من هذا الملف حالياً')),
+        ),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+          decoration: BoxDecoration(color: _gold, borderRadius: BorderRadius.circular(20)),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.meeting_room_rounded, color: _brownDark, size: 15),
+            SizedBox(width: 4),
+            Text('غرفة', style: TextStyle(color: _brownDark, fontSize: 11, fontWeight: FontWeight.w900)),
+          ]),
+        ),
+      );
+
+  Widget _heroStat(String label, int value) => Expanded(
+        child: Column(children: [
+          Text('$value', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 3),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+        ]),
+      );
+
+  // شريط التبويبات ومحتواها داخل بطاقة بيضاء واحدة؛ بدون مربعات منفصلة للأزرار.
+  Widget _profileTabsAndContent() {
+    Widget tab(String title, int index) {
+      final active = _tab == index;
+      return Expanded(
+        child: InkWell(
+          onTap: () => _changeProfileTab(index),
+          child: SizedBox(
+            height: 54,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: active ? _brown : _muted,
+                      fontSize: 12,
+                      fontWeight: active ? FontWeight.w900 : FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  height: 3,
+                  width: 38,
+                  decoration: BoxDecoration(
+                    color: active ? _brownLight : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              tab('الصفحة الشخصية', 2),
+              tab('الوكالات', 1),
+              tab('المنشورات', 0),
+            ],
+          ),
+          Container(height: 1, color: const Color(0xFFF0E7DC)),
+          _tabContent(),
+        ],
+      ),
+    );
+  }
+
+  Widget _profileTabPage(int index) {
+    Widget content;
+    if (index == 0) {
+      content = Padding(
+        padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('المنشورات',
+                style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 9),
+            _postsContent(),
+          ],
+        ),
+      );
+    } else if (index == 1) {
+      content = LayoutBuilder(
+        builder: (context, constraints) => ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(
+            child: _emptySection(
+              key: const ValueKey('agencies'),
+              icon: Icons.apartment_rounded,
+              title: 'لا توجد وكالة مرتبطة',
+              subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
+            ),
+          ),
+        ),
+      );
+    } else {
+      content = _personalDetails();
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshProfile,
+      color: _brownLight,
+      backgroundColor: Colors.white,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: ClampingScrollPhysics(),
+        ),
+        slivers: [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Container(
+              width: double.infinity,
+              color: Colors.white,
+              child: content,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabContent() => AnimatedSwitcher(
+        duration: const Duration(milliseconds: 280),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final slide = Tween<Offset>(
+            begin: Offset(_tabSlideFromX, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+          return ClipRect(
+            child: SlideTransition(
+              position: slide,
+              child: FadeTransition(opacity: animation, child: child),
+            ),
+          );
+        },
+        child: _tab == 0
+            ? Padding(
+                key: const ValueKey('posts'),
+                padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('المنشورات',
+                        style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 9),
+                    _postsContent(),
+                  ],
+                ),
+              )
+            : _tab == 1
+                ? _emptySection(
+                    key: const ValueKey('agencies'),
+                    icon: Icons.apartment_rounded,
+                    title: 'لا توجد وكالة مرتبطة',
+                    subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
+                  )
+                : _personalDetails(),
+      );
+
+  Widget _emptySection({
+    required Key key,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) => Container(
+        key: key,
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(24, 45, 24, 55),
+        child: Column(children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: const BoxDecoration(color: _cream, shape: BoxShape.circle),
+            child: Icon(icon, color: _brownLight, size: 36),
+          ),
+          const SizedBox(height: 15),
+          Text(title, style: const TextStyle(color: _brown, fontSize: 15, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 7),
+          Text(subtitle, textAlign: TextAlign.center,
+              style: const TextStyle(color: _muted, fontSize: 12, height: 1.6)),
+        ]),
+      );
+
+  Widget _personalDetails() {
+    final bio = _firstText(['bio', 'about'], widget.bio);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (bio.isNotEmpty) ...[
+          const Text('نبذة', style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 7),
+          Text(bio, style: const TextStyle(color: _brownMid, fontSize: 13, height: 1.6)),
+          const SizedBox(height: 16),
+        ],
+      ]),
+    );
+  }
+
+  Widget _detailLine(String label, String value) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Color(0xFFEFE5D9))),
+        ),
+        child: Row(children: [
+          Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
+          const Spacer(),
+          Flexible(child: Text(value, textAlign: TextAlign.end,
+              style: const TextStyle(color: _brown, fontSize: 12, fontWeight: FontWeight.w800))),
+        ]),
+      );
+
+  Future<void> _toggleProfilePostLike(Map<String, dynamic> post) async {
+    final id = (post['id'] ?? '').toString();
+    if (id.isEmpty || post['_likeBusy'] == true) return;
+    final wasLiked = post['liked'] == true;
+    final oldCount = (post['likesCount'] as num?)?.toInt() ??
+        (post['likes_count'] as num?)?.toInt() ?? 0;
+    setState(() {
+      post['_likeBusy'] = true;
+      post['liked'] = !wasLiked;
+      post['likesCount'] = (oldCount + (wasLiked ? -1 : 1)).clamp(0, 1 << 30);
+    });
+    try {
+      final response = await http.post(
+        Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/like'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+      ).timeout(const Duration(seconds: 12));
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
+        throw Exception();
+      }
+      if (!mounted) return;
+      setState(() {
+        post['liked'] = data['liked'] == true;
+        post['likesCount'] = data['likesCount'] ?? oldCount;
+        post['_likeBusy'] = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        post['liked'] = wasLiked;
+        post['likesCount'] = oldCount;
+        post['_likeBusy'] = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر تسجيل الإعجاب')),
+      );
+    }
+  }
+
+  Future<void> _openProfilePostComments(Map<String, dynamic> post) async {
+    final id = (post['id'] ?? '').toString();
+    if (id.isEmpty) return;
+    final input = TextEditingController();
+    bool loading = true;
+    bool sending = false;
+    String? error;
+    List<Map<String, dynamic>> comments = [];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          Future<void> loadComments() async {
+            try {
+              final response = await http.get(
+                Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/comments'),
+                headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+              ).timeout(const Duration(seconds: 12));
+              final data = jsonDecode(response.body);
+              if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
+                throw Exception();
+              }
+              comments = (data['comments'] as List? ?? const [])
+                  .whereType<Map>()
+                  .map((item) => Map<String, dynamic>.from(item))
+                  .toList();
+              error = null;
+            } catch (_) {
+              error = 'تعذر تحميل التعليقات';
+            }
+            loading = false;
+            setSheetState(() {});
+          }
+
+          Future<void> sendComment() async {
+            final content = input.text.trim();
+            if (content.isEmpty || sending) return;
+            sending = true;
+            setSheetState(() {});
+            try {
+              final response = await http.post(
+                Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/comments'),
+                headers: {
+                  'Authorization': 'Bearer ${widget.accessToken}',
+                  'Content-Type': 'application/json',
+                },
+                body: jsonEncode({'content': content}),
+              ).timeout(const Duration(seconds: 12));
+              final data = jsonDecode(response.body);
+              if (response.statusCode != 201 || data is! Map || data['ok'] != true) {
+                throw Exception();
+              }
+              comments.add(Map<String, dynamic>.from(data['comment'] as Map));
+              input.clear();
+              post['commentsCount'] = ((post['commentsCount'] as num?)?.toInt() ?? 0) + 1;
+              error = null;
+            } catch (_) {
+              error = 'تعذر إضافة التعليق';
+            }
+            sending = false;
+            setSheetState(() {});
+            if (mounted) setState(() {});
+          }
+
+          if (loading && comments.isEmpty) loadComments();
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: Container(
+              height: MediaQuery.of(context).size.height * .72,
+              padding: EdgeInsets.fromLTRB(18, 12, 18, 18 + MediaQuery.of(context).viewInsets.bottom),
+              decoration: const BoxDecoration(
+                color: _paper,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+              ),
+              child: Column(children: [
+                Container(width: 42, height: 4,
+                    decoration: BoxDecoration(color: const Color(0xFFE5DFD0), borderRadius: BorderRadius.circular(5))),
+                const SizedBox(height: 16),
+                Row(children: [
+                  const Expanded(child: Text('التعليقات',
+                      style: TextStyle(color: _brown, fontSize: 18, fontWeight: FontWeight.w900))),
+                  Text('${comments.length}',
+                      style: const TextStyle(color: _muted, fontWeight: FontWeight.bold)),
+                ]),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: loading
+                      ? const Center(child: CircularProgressIndicator(color: _brownLight))
+                      : error != null && comments.isEmpty
+                          ? Center(child: Text(error!, style: const TextStyle(color: _muted)))
+                          : comments.isEmpty
+                              ? const Center(child: Text('كن أول من يعلّق على هذا المنشور',
+                                  style: TextStyle(color: _muted)))
+                              : ListView.separated(
+                                  itemCount: comments.length,
+                                  separatorBuilder: (_, __) => const Divider(height: 18, color: Color(0xFFF0EBDD)),
+                                  itemBuilder: (_, index) {
+                                    final comment = comments[index];
+                                    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                      Text((comment['name'] ?? 'مستخدم').toString(),
+                                          style: const TextStyle(color: _brown, fontWeight: FontWeight.w900, fontSize: 12)),
+                                      const SizedBox(height: 4),
+                                      Text((comment['content'] ?? '').toString(),
+                                          style: const TextStyle(color: _brownMid, fontSize: 13, height: 1.5)),
+                                    ]);
+                                  },
+                                ),
+                ),
+                if (error != null && comments.isNotEmpty)
+                  Align(alignment: Alignment.centerRight,
+                      child: Text(error!, style: const TextStyle(color: Colors.red, fontSize: 11))),
+                Row(children: [
+                  Expanded(child: TextField(
+                    controller: input,
+                    maxLength: 500,
+                    textDirection: TextDirection.rtl,
+                    style: const TextStyle(color: _brown, fontSize: 13),
+                    decoration: InputDecoration(
+                      counterText: '',
+                      hintText: 'اكتب تعليقاً...',
+                      hintStyle: const TextStyle(color: _muted),
+                      filled: true,
+                      fillColor: _cream,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                    ),
+                  )),
+                  const SizedBox(width: 8),
+                  IconButton.filled(
+                    onPressed: sending ? null : sendComment,
+                    style: IconButton.styleFrom(backgroundColor: _brownLight, foregroundColor: Colors.white),
+                    icon: sending
+                        ? const SizedBox(width: 17, height: 17, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.send_rounded),
+                  ),
+                ]),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+    input.dispose();
+    if (mounted) setState(() {});
+  }
+
+  Widget _postsContent() {
+    if (_profile['canViewPosts'] != true) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: Text('منشورات هذا الحساب غير متاحة للعرض',
+            style: TextStyle(color: _muted, fontSize: 12), textAlign: TextAlign.center)),
+      );
+    }
+    if (_posts.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: Text('لا توجد منشورات عامة حتى الآن',
+            style: TextStyle(color: _muted, fontSize: 12))),
+      );
+    }
+    return Column(
+      children: _posts.map((post) {
+        final imageUrl = (post['imageUrl'] ?? post['image_url'] ?? '').toString();
+        final liked = post['liked'] == true;
+        final likes = (post['likesCount'] as num?)?.toInt() ??
+            (post['likes_count'] as num?)?.toInt() ?? 0;
+        final comments = (post['commentsCount'] as num?)?.toInt() ??
+            (post['comments_count'] as num?)?.toInt() ?? 0;
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 20),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text((post['content'] ?? '').toString(),
+                style: const TextStyle(color: _brown, fontSize: 13, height: 1.6)),
+            if (imageUrl.isNotEmpty) ...[
+              const SizedBox(height: 9),
+              Center(child: _ProfilePostImage(url: imageUrl)),
+            ],
+            const SizedBox(height: 9),
+            Row(children: [
+              InkWell(
+                onTap: post['_likeBusy'] == true ? null : () => _toggleProfilePostLike(post),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        color: liked ? const Color(0xFFE34D65) : _muted, size: 19),
+                    const SizedBox(width: 5),
+                    Text('$likes', style: TextStyle(
+                        color: liked ? const Color(0xFFE34D65) : _muted,
+                        fontSize: 12, fontWeight: FontWeight.w700)),
+                  ]),
+                ),
+              ),
+              const SizedBox(width: 16),
+              InkWell(
+                onTap: () => _openProfilePostComments(post),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.mode_comment_outlined, color: _muted, size: 18),
+                    const SizedBox(width: 5),
+                    Text('تعليق $comments',
+                        style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w700)),
+                  ]),
+                ),
+              ),
+            ]),
+          ]),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _actionBar() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        decoration: const BoxDecoration(),
+        child: Row(children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: widget.onFollow ?? () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('ميزة المتابعة قيد التجهيز')),
+              ),
+              icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+              label: const Text('متابعة'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _brown,
+                side: const BorderSide(color: _brownLight, width: 1.2),
+                minimumSize: const Size.fromHeight(48),
+                shape: const StadiumBorder(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: widget.onChat ?? () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('المحادثات الخاصة قيد التجهيز')),
+              ),
+              icon: const Icon(Icons.chat_bubble_rounded, size: 18),
+              label: const Text('الرسائل'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _brown,
+                foregroundColor: _gold,
+                elevation: 0,
+                minimumSize: const Size.fromHeight(48),
+                shape: const StadiumBorder(),
+              ),
+            ),
+          ),
+        ]),
+      );
 }
+
 
 class _PublicProfileTabsDelegate extends SliverPersistentHeaderDelegate {
-  const _PublicProfileTabsDelegate({required this.selected, required this.onSelected});
-  final int selected; final ValueChanged<int> onSelected;
-  @override double get minExtent => 54; @override double get maxExtent => 54;
-  @override Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    Widget tab(String title, int index) { final active = selected == index; return Expanded(child: InkWell(onTap: () => onSelected(index), child: Padding(padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [FittedBox(fit: BoxFit.scaleDown, child: Text(title, maxLines: 1, style: TextStyle(color: active ? const Color(0xFF3D2314) : const Color(0xFF9A8878), fontSize: 12, fontWeight: active ? FontWeight.w900 : FontWeight.w600))), const SizedBox(height: 6), Container(height: 3, width: 38, decoration: BoxDecoration(color: active ? const Color(0xFF8B5A2B) : Colors.transparent, borderRadius: BorderRadius.circular(8)))])))); }
-    return Material(color: Colors.white, elevation: overlapsContent ? 2 : 0, clipBehavior: Clip.antiAlias, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))), child: Column(children: [Expanded(child: Row(children: [tab('الصفحة الشخصية', 2), tab('الوكالات', 1), tab('المنشورات', 0)])), Container(height: 1, color: const Color(0xFFF0E7DC))]));
+  const _PublicProfileTabsDelegate({
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final int selected;
+  final ValueChanged<int> onSelected;
+
+  @override
+  double get minExtent => 54;
+
+  @override
+  double get maxExtent => 54;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    Widget tab(String title, int index) {
+      final active = selected == index;
+      return Expanded(
+        child: InkWell(
+          onTap: () => onSelected(index),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: active ? const Color(0xFF3D2314) : const Color(0xFF9A8878),
+                      fontSize: 12,
+                      fontWeight: active ? FontWeight.w900 : FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  height: 3,
+                  width: 38,
+                  decoration: BoxDecoration(
+                    color: active ? const Color(0xFF8B5A2B) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Material(
+      color: Colors.white,
+      elevation: overlapsContent ? 2 : 0,
+      clipBehavior: Clip.antiAlias,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(32),
+        ),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                tab('الصفحة الشخصية', 2),
+                tab('الوكالات', 1),
+                tab('المنشورات', 0),
+              ],
+            ),
+          ),
+          Container(height: 1, color: const Color(0xFFF0E7DC)),
+        ],
+      ),
+    );
   }
-  @override bool shouldRebuild(covariant _PublicProfileTabsDelegate oldDelegate) => selected != oldDelegate.selected || onSelected != oldDelegate.onSelected;
+
+  @override
+  bool shouldRebuild(covariant _PublicProfileTabsDelegate oldDelegate) =>
+      selected != oldDelegate.selected || onSelected != oldDelegate.onSelected;
 }
 
-class _ProfilePostImage extends StatefulWidget { const _ProfilePostImage({required this.url}); final String url; @override State<_ProfilePostImage> createState() => _ProfilePostImageState(); }
+class _ProfilePostImage extends StatefulWidget {
+  const _ProfilePostImage({required this.url});
+  final String url;
+
+  @override
+  State<_ProfilePostImage> createState() => _ProfilePostImageState();
+}
+
 class _ProfilePostImageState extends State<_ProfilePostImage> {
-  ImageStream? _stream; ImageStreamListener? _listener; double? _width; double? _height; bool _failed = false;
-  @override void didChangeDependencies() { super.didChangeDependencies(); _resolve(); }
-  @override void didUpdateWidget(covariant _ProfilePostImage oldWidget) { super.didUpdateWidget(oldWidget); if (oldWidget.url != widget.url) { _width = null; _height = null; _failed = false; _resolve(); } }
-  void _resolve() { final next = NetworkImage(widget.url).resolve(createLocalImageConfiguration(context)); if (_stream?.key == next.key) return; if (_stream != null && _listener != null) _stream!.removeListener(_listener!); _stream = next; _listener = ImageStreamListener((ImageInfo info, bool synchronousCall) { if (!mounted) return; setState(() { _width = info.image.width.toDouble(); _height = info.image.height.toDouble(); _failed = false; }); }, onError: (Object error, StackTrace? stackTrace) { if (mounted) setState(() => _failed = true); }); _stream!.addListener(_listener!); }
-  @override void dispose() { if (_stream != null && _listener != null) _stream!.removeListener(_listener!); super.dispose(); }
-  @override Widget build(BuildContext context) {
-    if (_failed) { return const SizedBox(width: 190, height: 120, child: Center(child: Icon(Icons.broken_image_outlined, color: Colors.white54))); }
-    var boxWidth = 190.0; var boxHeight = 230.0;
-    if (_width != null && _height != null && _width! > 0) { final ratio = _height! / _width!; if (ratio > 1.6) { boxWidth = 175; boxHeight = (175 * ratio).clamp(380.0, 420.0).toDouble(); } else if (ratio >= .9 && ratio <= 1.05) { boxWidth = 210; boxHeight = 210; } else if (ratio > 1.05) { boxWidth = 190; boxHeight = 230; } else { boxWidth = 210; boxHeight = (210 * ratio).clamp(100.0, 230.0).toDouble(); } }
-    return ClipRRect(borderRadius: BorderRadius.circular(12), child: SizedBox(width: boxWidth.clamp(0.0, 210.0).toDouble(), height: boxHeight.clamp(0.0, 420.0).toDouble(), child: Image.network(widget.url, fit: BoxFit.contain, alignment: Alignment.center, errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined, color: Colors.white54)))));
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+  double? _width;
+  double? _height;
+  bool _failed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolve();
   }
+
+  @override
+  void didUpdateWidget(covariant _ProfilePostImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _width = null;
+      _height = null;
+      _failed = false;
+      _resolve();
+    }
+  }
+
+  void _resolve() {
+    final next = NetworkImage(widget.url).resolve(createLocalImageConfiguration(context));
+    if (_stream?.key == next.key) return;
+    if (_stream != null && _listener != null) _stream!.removeListener(_listener!);
+    _stream = next;
+    _listener = ImageStreamListener(
+      (ImageInfo info, bool synchronousCall) {
+        if (!mounted) return;
+        setState(() {
+          _width = info.image.width.toDouble();
+          _height = info.image.height.toDouble();
+          _failed = false;
+        });
+      },
+      onError: (Object error, StackTrace? stackTrace) {
+        if (mounted) setState(() => _failed = true);
+      },
+    );
+    _stream!.addListener(_listener!);
+  }
+
+  @override
+  void dispose() {
+    if (_stream != null && _listener != null) _stream!.removeListener(_listener!);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_failed) {
+      return const SizedBox(width: 190, height: 120,
+        child: Center(child: Icon(Icons.broken_image_outlined, color: Colors.white54)));
+    }
+    var boxWidth = 190.0;
+    var boxHeight = 230.0;
+    if (_width != null && _height != null && _width! > 0) {
+      final ratio = _height! / _width!;
+      if (ratio > 1.6) {
+        boxWidth = 175;
+        boxHeight = (175 * ratio).clamp(380.0, 420.0).toDouble();
+      } else if (ratio >= .9 && ratio <= 1.05) {
+        boxWidth = 210;
+        boxHeight = 210;
+      } else if (ratio > 1.05) {
+        boxWidth = 190;
+        boxHeight = 230;
+      } else {
+        boxWidth = 210;
+        boxHeight = (210 * ratio).clamp(100.0, 230.0).toDouble();
+      }
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: boxWidth.clamp(0.0, 210.0).toDouble(),
+        height: boxHeight.clamp(0.0, 420.0).toDouble(),
+        child: Image.network(widget.url, fit: BoxFit.contain, alignment: Alignment.center,
+          errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined, color: Colors.white54))),
+      ),
+    );
+  }
+}
+
+class _NightCampPainter extends CustomPainter {
+  const _NightCampPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(rect, Paint()..shader = const LinearGradient(
+      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      colors: [Color(0xFF10172B), Color(0xFF283044), Color(0xFF171B20)],
+      stops: [0, .58, 1],
+    ).createShader(rect));
+    final stars = Paint()..color = const Color(0xFFE5E7F4).withOpacity(.75);
+    for (var i = 0; i < 34; i++) {
+      canvas.drawCircle(Offset((i * 67.0 + 19) % size.width, (i * 29.0 + 13) % 95), i % 5 == 0 ? 1.5 : .8, stars);
+    }
+    canvas.drawCircle(Offset(size.width * .78, 47), 17, Paint()..color = const Color(0xFFD7D9E2).withOpacity(.8));
+    final ridge = Path()
+      ..moveTo(0, size.height * .68)
+      ..quadraticBezierTo(size.width * .22, size.height * .48, size.width * .42, size.height * .7)
+      ..quadraticBezierTo(size.width * .73, size.height * .48, size.width, size.height * .7)
+      ..lineTo(size.width, size.height)..lineTo(0, size.height)..close();
+    canvas.drawPath(ridge, Paint()..color = const Color(0xFF171D25));
+    final tent = Path()
+      ..moveTo(size.width * .08, size.height * .83)
+      ..lineTo(size.width * .24, size.height * .39)
+      ..lineTo(size.width * .43, size.height * .83)..close();
+    canvas.drawPath(tent, Paint()..color = const Color(0xFF5A493D));
+    canvas.drawPath(tent, Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = const Color(0xFFB59A70));
+    final door = Path()
+      ..moveTo(size.width * .22, size.height * .82)
+      ..lineTo(size.width * .245, size.height * .57)
+      ..lineTo(size.width * .34, size.height * .82)..close();
+    canvas.drawPath(door, Paint()..color = const Color(0xFF171B20));
+    final ground = size.height * .86;
+    canvas.drawOval(Rect.fromCenter(center: Offset(size.width * .68, ground + 10), width: 125, height: 19), Paint()..color = Colors.black45);
+    canvas.drawCircle(Offset(size.width * .67, ground - 13), 25, Paint()..color = const Color(0x66FF7B28)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18));
+    final fire = Path()
+      ..moveTo(size.width * .63, ground + 3)
+      ..quadraticBezierTo(size.width * .56, ground - 20, size.width * .67, ground - 46)
+      ..quadraticBezierTo(size.width * .69, ground - 22, size.width * .73, ground - 4)..close();
+    canvas.drawPath(fire, Paint()..color = const Color(0xFFFF8A32));
+    final inner = Path()
+      ..moveTo(size.width * .66, ground + 1)
+      ..quadraticBezierTo(size.width * .63, ground - 15, size.width * .68, ground - 29)
+      ..quadraticBezierTo(size.width * .71, ground - 11, size.width * .70, ground + 1)..close();
+    canvas.drawPath(inner, Paint()..color = const Color(0xFFFFD36A));
+    final person = Paint()..color = const Color(0xFF101318);
+    for (final x in [size.width * .48, size.width * .84]) {
+      canvas.drawCircle(Offset(x, ground - 26), 8, person);
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x - 13, ground - 18, 26, 25), const Radius.circular(9)), person);
+      canvas.drawLine(Offset(x - 7, ground + 3), Offset(x - 13, ground + 12), Paint()..color = const Color(0xFF101318)..strokeWidth = 4);
+      canvas.drawLine(Offset(x + 7, ground + 3), Offset(x + 13, ground + 12), Paint()..color = const Color(0xFF101318)..strokeWidth = 4);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _NightCampPainter oldDelegate) => false;
 }
