@@ -748,10 +748,13 @@ class _CreatePostPageState extends State<_CreatePostPage> {
                 icon: Icon(_emojiPanelOpen ? Icons.keyboard_alt_outlined : Icons.emoji_emotions_outlined, color: const Color(0xFF555A61), size: 22),
               ),
               const SizedBox(width: 4),
-              Expanded(child: SizedBox(height: 42, child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [_topicTag('#إضافة موضوع', primary: true), _topicTag('#OOTD'), _topicTag('#الصحه_النفسيه')],
-              ))),
+              Expanded(child: Transform.translate(
+                offset: const Offset(0, -7),
+                child: SizedBox(height: 42, child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [_topicTag('#إضافة موضوع', primary: true), _topicTag('#OOTD'), _topicTag('#الصحه_النفسيه')],
+                )),
+              )),
               const SizedBox(width: 5),
               TextButton.icon(
                 onPressed: _showVisibilitySheet,
