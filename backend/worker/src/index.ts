@@ -568,6 +568,134 @@ export default {
       }
     }
 
+
+    // Social posts: authenticated feed, likes, comments, and follows.
+    if (url.pathname === "/api/v1/posts" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const rows = await env.DB.prepare(
+          "SELECT p.id, p.user_id, p.content, p.created_at, pr.display_name, pr.gabo_id, " +
+          "EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS liked, " +
+          "(SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS likes_count, " +
+          "(SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id) AS comments_count, " +
+          "EXISTS(SELECT 1 FROM user_follows f WHERE f.following_id = p.user_id AND f.follower_id = ?) AS followed " +
+          "FROM posts p LEFT JOIN profiles pr ON pr.user_id = p.user_id " +
+          "WHERE p.status = 'published' ORDER BY p.created_at DESC LIMIT 50"
+        ).bind(user.id, user.id).all<{
+          id: string; user_id: string; content: string; created_at: string;
+          display_name: string | null; gabo_id: string | null;
+          liked: number; likes_count: number; comments_count: number; followed: number;
+        }>();
+        return json({ ok: true, posts: (rows.results ?? []).map(p => ({
+          id: p.id, userId: p.user_id, name: p.display_name?.trim() || "مستخدم",
+          userCode: p.gabo_id, content: p.content, createdAt: p.created_at,
+          liked: Boolean(p.liked), likesCount: p.likes_count,
+          commentsCount: p.comments_count, followed: Boolean(p.followed),
+          isMine: p.user_id === user.id
+        })) }, 200, origin, env);
+      } catch (error) {
+        console.error("[posts.list] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "posts_unavailable" }, 500, origin, env);
+      }
+    }
+
+    if (url.pathname === "/api/v1/posts" && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const body = await request.json() as Record<string, unknown>;
+        const content = typeof body.content === "string" ? body.content.trim() : "";
+        if (!content) return json({ error: "post_content_required", message: "اكتب شيئاً لمشاركته" }, 400, origin, env);
+        if (content.length > 2000) return json({ error: "post_too_long", message: "المنشور طويل جداً" }, 400, origin, env);
+        const id = crypto.randomUUID();
+        const createdAt = new Date().toISOString();
+        await env.DB.prepare("INSERT INTO posts (id, user_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+          .bind(id, user.id, content, createdAt, createdAt).run();
+        return json({ ok: true, post: { id, userId: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id, content, createdAt, liked: false, likesCount: 0, commentsCount: 0, followed: false, isMine: true } }, 201, origin, env);
+      } catch (error) {
+        console.error("[posts.create] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "post_creation_failed" }, 500, origin, env);
+      }
+    }
+
+    const postLikeRoute = url.pathname.match(/^\\/api\\/v1\\/posts\\/([0-9a-f-]{36})\\/like$/i);
+    if (postLikeRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const post = await env.DB.prepare("SELECT id FROM posts WHERE id = ? AND status = 'published'").bind(postLikeRoute[1]).first();
+        if (!post) return json({ error: "post_not_found" }, 404, origin, env);
+        const existing = await env.DB.prepare("SELECT 1 AS found FROM post_likes WHERE post_id = ? AND user_id = ?").bind(postLikeRoute[1], user.id).first();
+        if (existing) await env.DB.prepare("DELETE FROM post_likes WHERE post_id = ? AND user_id = ?").bind(postLikeRoute[1], user.id).run();
+        else await env.DB.prepare("INSERT INTO post_likes (post_id, user_id, created_at) VALUES (?, ?, ?)").bind(postLikeRoute[1], user.id, new Date().toISOString()).run();
+        const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM post_likes WHERE post_id = ?").bind(postLikeRoute[1]).first<{ total: number }>();
+        return json({ ok: true, liked: !existing, likesCount: count?.total ?? 0 }, 200, origin, env);
+      } catch (error) {
+        console.error("[posts.like] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "like_failed" }, 500, origin, env);
+      }
+    }
+
+    const postCommentsRoute = url.pathname.match(/^\\/api\\/v1\\/posts\\/([0-9a-f-]{36})\\/comments$/i);
+    if (postCommentsRoute && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const rows = await env.DB.prepare(
+          "SELECT c.id, c.content, c.created_at, p.display_name, p.gabo_id FROM post_comments c LEFT JOIN profiles p ON p.user_id = c.user_id WHERE c.post_id = ? ORDER BY c.created_at ASC LIMIT 100"
+        ).bind(postCommentsRoute[1]).all<{ id: string; content: string; created_at: string; display_name: string | null; gabo_id: string | null }>();
+        return json({ ok: true, comments: (rows.results ?? []).map(c => ({ id: c.id, content: c.content, createdAt: c.created_at, name: c.display_name?.trim() || "مستخدم", userCode: c.gabo_id })) }, 200, origin, env);
+      } catch (error) {
+        console.error("[posts.comments.list] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "comments_unavailable" }, 500, origin, env);
+      }
+    }
+
+    if (postCommentsRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const body = await request.json() as Record<string, unknown>;
+        const content = typeof body.content === "string" ? body.content.trim() : "";
+        if (!content || content.length > 500) return json({ error: "invalid_comment", message: "اكتب تعليقاً لا يتجاوز 500 حرف" }, 400, origin, env);
+        const post = await env.DB.prepare("SELECT id FROM posts WHERE id = ? AND status = 'published'").bind(postCommentsRoute[1]).first();
+        if (!post) return json({ error: "post_not_found" }, 404, origin, env);
+        const id = crypto.randomUUID();
+        const createdAt = new Date().toISOString();
+        await env.DB.prepare("INSERT INTO post_comments (id, post_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)")
+          .bind(id, postCommentsRoute[1], user.id, content, createdAt).run();
+        return json({ ok: true, comment: { id, content, createdAt, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id } }, 201, origin, env);
+      } catch (error) {
+        console.error("[posts.comments.create] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "comment_creation_failed" }, 500, origin, env);
+      }
+    }
+
+    const followRoute = url.pathname.match(/^\\/api\\/v1\\/users\\/([0-9a-f-]{36})\\/follow$/i);
+    if (followRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        if (followRoute[1] === user.id) return json({ error: "cannot_follow_self" }, 400, origin, env);
+        const target = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND status = 'active'").bind(followRoute[1]).first();
+        if (!target) return json({ error: "user_not_found" }, 404, origin, env);
+        const existing = await env.DB.prepare("SELECT 1 AS found FROM user_follows WHERE follower_id = ? AND following_id = ?").bind(user.id, followRoute[1]).first();
+        if (existing) await env.DB.prepare("DELETE FROM user_follows WHERE follower_id = ? AND following_id = ?").bind(user.id, followRoute[1]).run();
+        else await env.DB.prepare("INSERT INTO user_follows (follower_id, following_id, created_at) VALUES (?, ?, ?)").bind(user.id, followRoute[1], new Date().toISOString()).run();
+        return json({ ok: true, following: !existing }, 200, origin, env);
+      } catch (error) {
+        console.error("[users.follow] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "follow_failed" }, 500, origin, env);
+      }
+    }
+
     // Return the signed-in user's permanent room, if one has already been created.
     if (url.pathname === "/api/v1/rooms/mine" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
