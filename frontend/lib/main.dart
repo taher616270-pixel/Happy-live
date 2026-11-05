@@ -1605,7 +1605,22 @@ class _HappyCreateTab extends StatelessWidget {
   final ValueChanged<String> onSoon;
 
   @override
-  Widget build(BuildContext context) => ListView(
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    height: double.infinity,
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFFF7EBCB),
+          Color(0xFFFAF6EA),
+          Color(0xFFF6F7FB),
+        ],
+        stops: [0.0, 0.48, 1.0],
+      ),
+    ),
+    child: ListView(
     padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
     children: [
       Container(
@@ -1687,6 +1702,7 @@ class _HappyCreateTab extends StatelessWidget {
         onTap: () => onSoon('البث المباشر'),
       ),
     ],
+    ),
   );
 }
 
