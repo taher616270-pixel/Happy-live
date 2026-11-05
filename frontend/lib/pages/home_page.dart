@@ -484,26 +484,21 @@ class ExperimentalFeatureButton extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: SizedBox(
-                    width: 60,
-                    height: 60,
-                    child: Image.asset(
-                      'assets/images/boy_headset.png.png',
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Color(0xFF302044),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.science_outlined,
-                          color: Color(0xFFB58AFF),
-                          size: 30,
-                        ),
-                      ),
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF302044),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFB58AFF).withOpacity(0.8),
+                      width: 1.2,
                     ),
+                  ),
+                  child: const Icon(
+                    Icons.image_outlined,
+                    color: Color(0xFFB58AFF),
+                    size: 30,
                   ),
                 ),
               ],
