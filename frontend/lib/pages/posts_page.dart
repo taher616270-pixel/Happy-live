@@ -610,7 +610,7 @@ class _CreatePostPageState extends State<_CreatePostPage> {
 
   Future<void> _publish() async {
     final content = _controller.text.trim();
-    if (content.isEmpty || _publishing) return;
+    if ((content.isEmpty && _selectedImageBytes == null) || _publishing) return;
     _focusNode.unfocus();
     setState(() => _publishing = true);
     try {
