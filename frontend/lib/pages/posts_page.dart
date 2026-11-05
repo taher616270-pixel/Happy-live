@@ -780,7 +780,7 @@ class _CreatePostPageState extends State<_CreatePostPage> {
               ),
             ]),
           )),
-          )),
+          ),
           if (_emojiPanelOpen) SizedBox(
             height: 258,
             width: double.infinity,
