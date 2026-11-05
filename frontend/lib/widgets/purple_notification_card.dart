@@ -21,8 +21,8 @@ class PurpleTechBackground extends StatelessWidget {
   final bool showGlow;
 
   static const Color backgroundColor = Color(0xFF0B0912);
-  static const Color primaryPurple = Color(0xFF8B5CF6);
-  static const Color lightPurple = Color(0xFFB58AFF);
+  static const Color primaryPurple = Color(0xFFD9A93C);
+  static const Color lightPurple = Color(0xFFF0A62B);
 
   @override
   Widget build(BuildContext context) {
@@ -145,18 +145,18 @@ class PurpleNotificationCard extends StatelessWidget {
     width: double.infinity,
     padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 16),
     decoration: BoxDecoration(
-      color: const Color(0xFF1B1128).withOpacity(.94),
+      color: const Color(0xFFFAF6EA).withOpacity(.94),
       borderRadius: BorderRadius.circular(25),
-      border: Border.all(color: const Color(0xFFB58AFF), width: 1.5),
-      boxShadow: const [BoxShadow(color: Color(0x668B5CF6), blurRadius: 18, spreadRadius: 1)],
+      border: Border.all(color: const Color(0xFFF0A62B), width: 1.5),
+      boxShadow: const [BoxShadow(color: Color(0x66D9A93C), blurRadius: 18, spreadRadius: 1)],
     ),
     child: Row(children: [
       Container(width: 68, height: 68, padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFD9A8FF), width: 2),
-          boxShadow: const [BoxShadow(color: Color(0xAA9B63D9), blurRadius: 12)]),
+        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFD9A93C), width: 2),
+          boxShadow: const [BoxShadow(color: Color(0xAAD9A93C), blurRadius: 12)]),
         child: ClipOval(child: avatar ?? (avatarUrl == null || avatarUrl!.isEmpty
-          ? const ColoredBox(color: Color(0xFF302044), child: Icon(Icons.person, color: Colors.white, size: 34))
-          : Image.network(avatarUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF302044), child: Icon(Icons.person, color: Colors.white))))),
+          ? const ColoredBox(color: Color(0xFFF7EBCB), child: Icon(Icons.person, color: Colors.white, size: 34))
+          : Image.network(avatarUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFF7EBCB), child: Icon(Icons.person, color: Colors.white))))),
       ),
       const SizedBox(width: 13),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -166,7 +166,7 @@ class PurpleNotificationCard extends StatelessWidget {
       ])),
       const SizedBox(width: 8),
       Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7), decoration: BoxDecoration(color: const Color(0xFFB58AFF), borderRadius: BorderRadius.circular(24)), child: Text(time, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 12))),
+        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7), decoration: BoxDecoration(color: const Color(0xFFF0A62B), borderRadius: BorderRadius.circular(24)), child: Text(time, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 12))),
         if (unreadCount != null && unreadCount! > 0) ...[const SizedBox(height: 7), CircleAvatar(radius: 11, backgroundColor: const Color(0xFF9B63D9), child: Text('$unreadCount', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)))],
       ]),
     ]),
