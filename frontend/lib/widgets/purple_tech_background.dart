@@ -15,6 +15,9 @@ class NeonBackground extends StatelessWidget {
           child: CustomPaint(painter: _NeonPainter()),
         ),
         if (child != null) child!,
+        const IgnorePointer(
+          child: CustomPaint(painter: _NeonFrameOverlayPainter()),
+        ),
       ],
     );
   }
@@ -23,6 +26,28 @@ class NeonBackground extends StatelessWidget {
 /// Backwards-compatible name used by main.dart.
 class PurpleTechBackground extends NeonBackground {
   const PurpleTechBackground({super.key, super.child});
+}
+
+
+/// Draws the crisp purple screen frame above page content.
+class _NeonFrameOverlayPainter extends CustomPainter {
+  const _NeonFrameOverlayPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final border = (Offset.zero & size).deflate(size.width * 0.012);
+    canvas.drawRect(
+      border,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..color = const Color(0xFFA78BFA),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _NeonFrameOverlayPainter oldDelegate) => false;
 }
 
 class _Particle {
