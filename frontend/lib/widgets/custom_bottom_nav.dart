@@ -27,7 +27,7 @@ class CustomBottomNav extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: Container(
-        color: const Color(0xFF0B0912),
+        color: Colors.transparent,
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         child: SafeArea(
           top: false,
