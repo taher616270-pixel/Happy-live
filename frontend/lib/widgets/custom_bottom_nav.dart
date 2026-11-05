@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
+/// Owns the tab state, page stack, and bottom navigation as one self-contained shell.
 class CustomBottomNav extends StatefulWidget {
   const CustomBottomNav({
-    required this.currentIndex,
-    required this.onTap,
+    super.key,
+    required this.pagesBuilder,
   });
 
-  final int currentIndex;
-  final ValueChanged<int> onTap;
+  /// Builds the five tab pages and receives a callback for internal navigation.
+  final List<Widget> Function(ValueChanged<int> onTabSelected) pagesBuilder;
 
   @override
   State<CustomBottomNav> createState() => CustomBottomNavState();
@@ -16,8 +17,8 @@ class CustomBottomNav extends StatefulWidget {
 class CustomBottomNavState extends State<CustomBottomNav>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
+  int _currentIndex = 0;
 
-  // Page indexes are unchanged; all five navigation items stay mounted.
   static const items = <(int, IconData, String)>[
     (4, Icons.person_outline, 'الخاص بي'),
     (3, Icons.chat_bubble_outline_rounded, 'الرسائل'),
@@ -25,6 +26,11 @@ class CustomBottomNavState extends State<CustomBottomNav>
     (1, Icons.bed_outlined, 'غرفة'),
     (0, Icons.wifi_tethering_outlined, 'Happy Live'),
   ];
+
+  void _selectTab(int index) {
+    if (index < 0 || index >= items.length || index == _currentIndex) return;
+    setState(() => _currentIndex = index);
+  }
 
   @override
   void initState() {
@@ -43,6 +49,23 @@ class CustomBottomNavState extends State<CustomBottomNav>
 
   @override
   Widget build(BuildContext context) {
+    final pages = widget.pagesBuilder(_selectTab);
+    assert(pages.length == items.length,
+        'CustomBottomNav requires exactly five tab pages.');
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0912),
+      body: SafeArea(
+        child: IndexedStack(
+          index: _currentIndex,
+          children: pages,
+        ),
+      ),
+      bottomNavigationBar: _buildNavigationBar(),
+    );
+  }
+
+  Widget _buildNavigationBar() {
     return Container(
       color: const Color(0xFF0B0912),
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -80,8 +103,7 @@ class CustomBottomNavState extends State<CustomBottomNav>
     required IconData icon,
     required String label,
   }) {
-    final active = widget.currentIndex == index;
-
+    final active = _currentIndex == index;
     final content = AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       curve: Curves.easeOut,
@@ -123,11 +145,9 @@ class CustomBottomNavState extends State<CustomBottomNav>
       ),
     );
 
-    // Keep the same CustomPaint/child structure for active and inactive tabs.
-    // Only the painter changes, so selecting a tab cannot remove neighboring items.
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => widget.onTap(index),
+      onTap: () => _selectTab(index),
       child: CustomPaint(
         foregroundPainter: active
             ? _ActiveBorderPainter(animation: _ctrl)
