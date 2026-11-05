@@ -73,6 +73,25 @@ async function createSession(db: D1Database, userId: string): Promise<{ accessTo
   return { accessToken, expiresAt };
 }
 
+async function ensurePublicUserId(db: D1Database, userId: string, currentId?: string | null): Promise<string> {
+  if (currentId && /^\\d{8}$/.test(currentId)) return currentId;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const candidate = String(10000000 + crypto.getRandomValues(new Uint32Array(1))[0] % 90000000);
+    try {
+      const result = await db.prepare(
+        "UPDATE profiles SET gabo_id = ? WHERE user_id = ? AND (gabo_id IS NULL OR gabo_id = '')"
+      ).bind(candidate, userId).run();
+      if ((result.meta?.changes ?? 0) > 0) return candidate;
+      const existing = await db.prepare("SELECT gabo_id FROM profiles WHERE user_id = ? LIMIT 1")
+        .bind(userId).first<{ gabo_id: string | null }>();
+      if (existing?.gabo_id) return existing.gabo_id;
+    } catch {
+      // A duplicate public ID is extremely unlikely; safely try another.
+    }
+  }
+  throw new Error("public_id_generation_failed");
+}
+
 async function authenticatedUser(request: Request, db: D1Database) {
   const authorization = request.headers.get("Authorization") ?? "";
   const match = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
@@ -80,7 +99,9 @@ async function authenticatedUser(request: Request, db: D1Database) {
   const row = await db.prepare(
     "SELECT u.id, u.email, p.display_name, p.gabo_id FROM user_sessions s INNER JOIN users u ON u.id = s.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
   ).bind(await sha256(match[1]), new Date().toISOString()).first<{ id: string; email: string; display_name: string | null; gabo_id: string | null }>();
-  return row ?? null;
+  if (!row) return null;
+  row.gabo_id = await ensurePublicUserId(db, row.id, row.gabo_id);
+  return row;
 }
 
 async function broadcastRoomChat(env: Env, roomId: string, payload: Record<string, unknown>): Promise<void> {
@@ -236,6 +257,7 @@ export default {
         if (!user || user.status !== "active" || !user.password_hash || !await verifyPassword(password, user.password_hash)) {
           return json({ error: "invalid_credentials", message: "البريد أو كلمة المرور غير صحيحة" }, 401, origin, env);
         }
+        user.gabo_id = await ensurePublicUserId(env.DB, user.id, user.gabo_id);
         const session = await createSession(env.DB, user.id);
         return json({ ok: true, ...session, user: { id: user.id, gabo_id: user.gabo_id ?? "", email: user.email, name: user.display_name ?? "" } }, 200, origin, env);
       } catch {
