@@ -324,7 +324,9 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
             ..._posts.map(_postCard),
         ],
       ),
-      Positioned(
+    ),
+  ),
+  Positioned(
         left: 16,
         bottom: 20,
         child: SizedBox(
