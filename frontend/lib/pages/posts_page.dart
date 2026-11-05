@@ -752,6 +752,57 @@ class _CreatePostPageState extends State<_CreatePostPage> {
               ),
             ),
           )),
+          SizedBox(height: 46, child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(children: [
+              _toolButton(tooltip: 'وسم', onTap: () {}, icon: const Text('#', style: TextStyle(fontSize: 23, color: Color(0xFF555A61)))),
+              _toolButton(
+                tooltip: _emojiPanelOpen ? 'لوحة المفاتيح' : 'الإيموجي',
+                onTap: _toggleEmojiPanel,
+                icon: Icon(_emojiPanelOpen ? Icons.keyboard_alt_outlined : Icons.emoji_emotions_outlined, color: const Color(0xFF555A61), size: 22),
+              ),
+              const Spacer(),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _showVisibilitySheet,
+                  borderRadius: BorderRadius.circular(100),
+                  child: AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeInOut,
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5E6C8),
+                        borderRadius: BorderRadius.circular(100),
+                        border: Border.all(color: const Color(0xFFD4A017), width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.person_outline_rounded, size: 18, color: Color(0xFFD4A017)),
+                          const SizedBox(width: 6),
+                          Text(_visibility, style: const TextStyle(fontSize: 14, color: Color(0xFF3B3428), fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_back_ios_rounded, size: 14, color: Color(0xFFD4A017)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ]),
+          )),
+          if (_emojiPanelOpen) SizedBox(
+            height: 258, width: double.infinity,
+            child: EmojiPicker(
+              onEmojiSelected: (category, emoji) {},
+              textEditingController: _controller,
+              config: Config(
+                height: 258, checkPlatformCompatibility: true,
+                emojiViewConfig: const EmojiViewConfig(columns: 8, emojiSizeMax: 25, backgroundColor: Color(0xFFFFFBEB)),
+              ),
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeInOut,
@@ -762,66 +813,22 @@ class _CreatePostPageState extends State<_CreatePostPage> {
                 opacity: keyboardVisible ? 1 : 0,
                 child: Container(
                   height: 48,
+                  width: double.infinity,
                   color: const Color(0xFFFFFBEB),
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  padding: const EdgeInsetsDirectional.only(start: 10, end: 10),
                   child: Row(
                     textDirection: TextDirection.rtl,
                     children: [
-                      _toolButton(tooltip: 'وسم', onTap: () {}, icon: const Text('#', style: TextStyle(fontSize: 23, color: Color(0xFF555A61)))),
-                      _toolButton(
-                        tooltip: _emojiPanelOpen ? 'لوحة المفاتيح' : 'الإيموجي',
-                        onTap: _toggleEmojiPanel,
-                        icon: Icon(_emojiPanelOpen ? Icons.keyboard_alt_outlined : Icons.emoji_emotions_outlined, color: const Color(0xFF555A61), size: 22),
-                      ),
-                      const SizedBox(width: 4),
+                      _topicTag('#إضافة موضوع', primary: true),
                       Expanded(
-                        child: Row(
-                          textDirection: TextDirection.rtl,
-                          children: [
-                            _topicTag('#إضافة موضوع', primary: true),
-                            Expanded(
-                              child: SizedBox(
-                                height: 48,
-                                child: ListView(
-                                  scrollDirection: Axis.horizontal,
-                                  children: [
-                                    _topicTag('#OOTD'),
-                                    _topicTag('#الصحة_النفسية'),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: _showVisibilitySheet,
-                          borderRadius: BorderRadius.circular(100),
-                          child: AnimatedSize(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeInOut,
-                            alignment: AlignmentDirectional.centerEnd,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5E6C8),
-                                borderRadius: BorderRadius.circular(100),
-                                border: Border.all(color: const Color(0xFFD4A017), width: 1),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.person_outline_rounded, size: 18, color: Color(0xFFD4A017)),
-                                  const SizedBox(width: 6),
-                                  Text(_visibility, style: const TextStyle(fontSize: 14, color: Color(0xFF3B3428), fontWeight: FontWeight.w600)),
-                                  const SizedBox(width: 6),
-                                  const Icon(Icons.arrow_back_ios_rounded, size: 14, color: Color(0xFFD4A017)),
-                                ],
-                              ),
-                            ),
+                        child: SizedBox(
+                          height: 48,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              _topicTag('#OOTD'),
+                              _topicTag('#الصحة_النفسية'),
+                            ],
                           ),
                         ),
                       ),
@@ -831,15 +838,6 @@ class _CreatePostPageState extends State<_CreatePostPage> {
               ),
             ),
           ),
-          if (_emojiPanelOpen) SizedBox(
-            height: 258, width: double.infinity,
-            child: EmojiPicker(
-              onEmojiSelected: (category, emoji) {},
-              textEditingController: _controller,
-              config: Config(
-                height: 258, checkPlatformCompatibility: true,
-                emojiViewConfig: const EmojiViewConfig(columns: 8, emojiSizeMax: 25, backgroundColor: Color(0xFFFFFBEB)),
-              ),
             ),
           ),
         ])),
