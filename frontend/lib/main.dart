@@ -852,7 +852,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
           SafeArea(
             bottom: false,
-            child: Center(
+            child: SizedBox.expand(
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(24, 28, 24, bottomInset + 28),
                 child: ConstrainedBox(
