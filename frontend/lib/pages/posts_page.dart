@@ -655,10 +655,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
         Text((post['content'] ?? '').toString(), textDirection: TextDirection.rtl, style: const TextStyle(color: _ink, fontSize: 14, height: 1.7)),
         if ((post['imageUrl'] ?? '').toString().isNotEmpty) ...[
           const SizedBox(height: 10),
-          ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(
-            post['imageUrl'].toString(), width: double.infinity, fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const SizedBox(height: 120, child: Center(child: Icon(Icons.broken_image_outlined))),
-          )),
+          Center(child: _PostImage(url: post['imageUrl'].toString())),
         ],
         const SizedBox(height: 13),
         const Divider(height: 1, color: Color(0xFFF0EBDD)),
@@ -678,6 +675,121 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
   }
 }
 
+
+class _PostImage extends StatefulWidget {
+  const _PostImage({required this.url});
+
+  final String url;
+
+  @override
+  State<_PostImage> createState() => _PostImageState();
+}
+
+class _PostImageState extends State<_PostImage> {
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+  double? _sourceWidth;
+  double? _sourceHeight;
+  bool _failed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolveImage();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PostImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _sourceWidth = null;
+      _sourceHeight = null;
+      _failed = false;
+      _resolveImage();
+    }
+  }
+
+  void _resolveImage() {
+    final provider = NetworkImage(widget.url);
+    final nextStream = provider.resolve(createLocalImageConfiguration(context));
+    if (_stream?.key == nextStream.key) return;
+    if (_stream != null && _listener != null) {
+      _stream!.removeListener(_listener!);
+    }
+    _stream = nextStream;
+    _listener = ImageStreamListener(
+      (ImageInfo info, bool synchronousCall) {
+        if (!mounted) return;
+        setState(() {
+          _sourceWidth = info.image.width.toDouble();
+          _sourceHeight = info.image.height.toDouble();
+          _failed = false;
+        });
+      },
+      onError: (Object error, StackTrace? stackTrace) {
+        if (mounted) setState(() => _failed = true);
+      },
+    );
+    _stream!.addListener(_listener!);
+  }
+
+  @override
+  void dispose() {
+    if (_stream != null && _listener != null) {
+      _stream!.removeListener(_listener!);
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_failed) {
+      return const SizedBox(
+        width: 190,
+        height: 120,
+        child: Center(child: Icon(Icons.broken_image_outlined)),
+      );
+    }
+
+    final sourceWidth = _sourceWidth;
+    final sourceHeight = _sourceHeight;
+    double boxWidth = 190;
+    double boxHeight = 230;
+
+    if (sourceWidth != null && sourceHeight != null && sourceWidth > 0) {
+      final heightRatio = sourceHeight / sourceWidth;
+      if (heightRatio > 1.6) {
+        boxWidth = 175;
+        boxHeight = (175 * heightRatio).clamp(380.0, 420.0).toDouble();
+      } else if (heightRatio >= 0.9 && heightRatio <= 1.05) {
+        boxWidth = 210;
+        boxHeight = 210;
+      } else if (heightRatio > 1.05) {
+        boxWidth = 190;
+        boxHeight = 230;
+      } else {
+        boxWidth = 210;
+        boxHeight = (210 * heightRatio).clamp(100.0, 230.0).toDouble();
+      }
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: boxWidth.clamp(0.0, 240.0).toDouble(),
+        height: boxHeight.clamp(0.0, 420.0).toDouble(),
+        child: Image.network(
+          widget.url,
+          fit: BoxFit.contain,
+          alignment: Alignment.center,
+          errorBuilder: (_, __, ___) => const Center(
+            child: Icon(Icons.broken_image_outlined),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class CustomConfirmDialog extends StatelessWidget {
   const CustomConfirmDialog({
