@@ -832,50 +832,6 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    if (_isRestoringSession || _sessionRestoreError != null) {
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 340),
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const _BrandHeader(),
-                  const SizedBox(height: 28),
-                  if (_isRestoringSession) ...[
-                    const CircularProgressIndicator(color: HappyLiveApp.gold),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'جارٍ استعادة جلستك...',
-                      style: TextStyle(color: HappyLiveApp.muted, fontSize: 13),
-                    ),
-                  ] else ...[
-                    Text(
-                      _sessionRestoreError!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: HappyLiveApp.muted, fontSize: 13),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _restoreSession,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: HappyLiveApp.gold,
-                        foregroundColor: HappyLiveApp.background,
-                      ),
-                      child: const Text('إعادة المحاولة'),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
@@ -1810,4 +1766,3 @@ class PhoneCodeInputFormatter extends TextInputFormatter {
     );
   }
 }
-
