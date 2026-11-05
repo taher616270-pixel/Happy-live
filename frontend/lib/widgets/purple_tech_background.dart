@@ -1,7 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-/// Dark electronic background with a restrained purple neon frame.
+/// Static premium background for Happy Live's social and audio experience.
+/// It is drawn locally with Canvas: no image downloads, animation, or network work.
 class PurpleTechBackground extends StatelessWidget {
   const PurpleTechBackground({
     super.key,
@@ -14,24 +15,38 @@ class PurpleTechBackground extends StatelessWidget {
   final bool showBorder;
   final bool showGlow;
 
-  static const Color backgroundColor = Color(0xFF0B0912);
+  static const Color backgroundColor = Color(0xFF09070F);
   static const Color primaryPurple = Color(0xFF8B5CF6);
   static const Color lightPurple = Color(0xFFB58AFF);
+  static const Color softGold = Color(0xFFE8C477);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF100B1B),
+            Color(0xFF09070F),
+            Color(0xFF0D0915),
+          ],
+          stops: [0, 0.52, 1],
+        ),
         border: showBorder
-            ? Border.all(color: primaryPurple.withOpacity(0.78), width: 1.5)
+            ? Border.all(
+                color: primaryPurple.withOpacity(0.62),
+                width: 1.2,
+              )
             : null,
         boxShadow: showGlow
             ? [
                 BoxShadow(
-                  color: primaryPurple.withOpacity(0.22),
-                  blurRadius: 18,
-                  spreadRadius: 1,
+                  color: primaryPurple.withOpacity(0.14),
+                  blurRadius: 20,
+                  spreadRadius: 0.5,
                 ),
               ]
             : null,
@@ -39,13 +54,10 @@ class PurpleTechBackground extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const CustomPaint(
-            painter: _CircuitPatternPainter(),
-            isComplex: true,
-          ),
-          const CustomPaint(
-            painter: _PurpleBokehPainter(),
-            isComplex: true,
+          const RepaintBoundary(
+            child: CustomPaint(
+              painter: _HappyLiveAudioAtmospherePainter(),
+            ),
           ),
           if (child != null) child!,
         ],
@@ -54,66 +66,148 @@ class PurpleTechBackground extends StatelessWidget {
   }
 }
 
-class _CircuitPatternPainter extends CustomPainter {
-  const _CircuitPatternPainter();
+/// Restrained sound-wave contours and soft light, kept behind all UI content.
+class _HappyLiveAudioAtmospherePainter extends CustomPainter {
+  const _HappyLiveAudioAtmospherePainter();
 
   @override
   void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()
-      ..color = PurpleTechBackground.primaryPurple.withOpacity(0.065)
+    if (size.isEmpty) return;
+
+    final width = size.width;
+    final height = size.height;
+
+    // Soft ambient light in opposite corners.
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          PurpleTechBackground.primaryPurple.withOpacity(0.15),
+          PurpleTechBackground.primaryPurple.withOpacity(0.045),
+          Colors.transparent,
+        ],
+        stops: const [0, 0.48, 1],
+      ).createShader(
+        Rect.fromCircle(
+          center: Offset(width * 0.04, height * 0.16),
+          radius: math.max(width, height) * 0.62,
+        ),
+      );
+    canvas.drawRect(Offset.zero & size, glowPaint);
+
+    final lowerGlow = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF6540A8).withOpacity(0.12),
+          Colors.transparent,
+        ],
+      ).createShader(
+        Rect.fromCircle(
+          center: Offset(width * 0.98, height * 0.88),
+          radius: math.max(width, height) * 0.48,
+        ),
+      );
+    canvas.drawRect(Offset.zero & size, lowerGlow);
+
+    _drawSideSoundRings(canvas, size);
+    _drawSoftWaveLines(canvas, size);
+    _drawTinyLightPoints(canvas, size);
+  }
+
+  void _drawSideSoundRings(Canvas canvas, Size size) {
+    final ringPaint = Paint()
+      ..style = PaintingStyle.stroke
       ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
+      ..color = PurpleTechBackground.lightPurple.withOpacity(0.075);
 
-    final nodePaint = Paint()
-      ..color = PurpleTechBackground.lightPurple.withOpacity(0.13)
-      ..style = PaintingStyle.fill;
+    final faintRingPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = PurpleTechBackground.primaryPurple.withOpacity(0.045);
 
-    const spacingX = 58.0;
-    const spacingY = 52.0;
+    // Rings intentionally sit mostly outside the content area.
+    final centers = [
+      Offset(size.width * 1.015, size.height * 0.27),
+      Offset(size.width * -0.015, size.height * 0.79),
+    ];
 
-    for (double y = 14; y < size.height + spacingY; y += spacingY) {
-      for (double x = 12; x < size.width + spacingX; x += spacingX) {
-        final path = Path()
-          ..moveTo(x, y)
-          ..lineTo(x + 14, y)
-          ..lineTo(x + 14, y + 11)
-          ..lineTo(x + 32, y + 11);
-        canvas.drawPath(path, linePaint);
-        canvas.drawCircle(Offset(x + 32, y + 11), 1.35, nodePaint);
-
-        if ((x / spacingX).floor().isEven) {
-          final branch = Path()
-            ..moveTo(x + 14, y + 11)
-            ..lineTo(x + 14, y + 23);
-          canvas.drawPath(branch, linePaint);
-        }
+    for (var side = 0; side < centers.length; side++) {
+      final center = centers[side];
+      for (var i = 0; i < 6; i++) {
+        final radius = 62.0 + i * 25.0;
+        final rect = Rect.fromCircle(center: center, radius: radius);
+        canvas.drawArc(
+          rect,
+          side == 0 ? math.pi * 0.48 : -math.pi * 0.48,
+          math.pi * 1.04,
+          false,
+          i.isEven ? ringPaint : faintRingPaint,
+        );
       }
     }
   }
 
-  @override
-  bool shouldRepaint(covariant _CircuitPatternPainter oldDelegate) => false;
-}
+  void _drawSoftWaveLines(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.05
+      ..strokeCap = StrokeCap.round
+      ..color = PurpleTechBackground.primaryPurple.withOpacity(0.055);
 
-class _PurpleBokehPainter extends CustomPainter {
-  const _PurpleBokehPainter();
+    final highlight = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..strokeCap = StrokeCap.round
+      ..color = PurpleTechBackground.softGold.withOpacity(0.025);
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final random = math.Random(25);
-    for (var i = 0; i < 28; i++) {
-      final center = Offset(
-        random.nextDouble() * size.width,
-        random.nextDouble() * size.height,
-      );
-      final radius = 1.2 + random.nextDouble() * 2.8;
-      final paint = Paint()
-        ..color = PurpleTechBackground.lightPurple.withOpacity(0.09)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-      canvas.drawCircle(center, radius, paint);
+    for (var row = 0; row < 3; row++) {
+      final baseY = size.height * (0.19 + row * 0.31);
+      final path = Path();
+      for (var step = 0; step <= 100; step++) {
+        final x = size.width * step / 100;
+        final envelope = math.sin(math.pi * step / 100);
+        final wave = math.sin((step / 100 * math.pi * 5) + row * 0.9);
+        final y = baseY + wave * (5 + row * 1.4) * envelope;
+        if (step == 0) {
+          path.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+        }
+      }
+      canvas.drawPath(path, paint);
+
+      if (row == 1) {
+        final secondary = Path();
+        for (var step = 0; step <= 100; step++) {
+          final x = size.width * step / 100;
+          final envelope = math.sin(math.pi * step / 100);
+          final wave = math.sin((step / 100 * math.pi * 5) + 1.15);
+          final y = baseY + wave * 10 * envelope + 8;
+          if (step == 0) {
+            secondary.moveTo(x, y);
+          } else {
+            secondary.lineTo(x, y);
+          }
+        }
+        canvas.drawPath(secondary, highlight);
+      }
+    }
+  }
+
+  void _drawTinyLightPoints(Canvas canvas, Size size) {
+    final random = math.Random(42);
+    final pointPaint = Paint()
+      ..color = PurpleTechBackground.lightPurple.withOpacity(0.12)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+
+    for (var i = 0; i < 22; i++) {
+      final x = random.nextDouble() * size.width;
+      final y = random.nextDouble() * size.height;
+      final radius = 1 + random.nextDouble() * 1.5;
+      canvas.drawCircle(Offset(x, y), radius, pointPaint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _PurpleBokehPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _HappyLiveAudioAtmospherePainter oldDelegate) =>
+      false;
 }
