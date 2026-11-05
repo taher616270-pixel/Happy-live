@@ -31,29 +31,32 @@ class CustomBottomNav extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         child: SafeArea(
           top: false,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF191326),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: const Color(0xFF8B5CF6),
-                width: 1.2,
+          child: Transform.translate(
+            offset: const Offset(0, 7),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF191326),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: const Color(0xFF8B5CF6),
+                  width: 1.2,
+                ),
               ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                for (final item in items)
-                  Expanded(
-                    child: _buildItem(
-                      index: item.$1,
-                      icon: item.$2,
-                      label: item.$3,
+              child: Row(
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  for (final item in items)
+                    Expanded(
+                      child: _buildItem(
+                        index: item.$1,
+                        icon: item.$2,
+                        label: item.$3,
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
