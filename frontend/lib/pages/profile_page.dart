@@ -729,6 +729,16 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                 );
               }),
             ),
+            Positioned(
+              left: 13,
+              right: 13,
+              bottom: 10,
+              child: Row(children: [
+                _heroStat('متابعون', _number('followers')),
+                _heroStat('إعجاب', _number('likesReceived')),
+                _heroStat('زائر', _number('visitors')),
+              ]),
+            ),
           ]),
         ),
         Transform.translate(
@@ -784,17 +794,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                 Padding(padding: const EdgeInsets.only(bottom: 7), child: _roomButton()),
               ],
             ),
-          ),
-        ),
-        Transform.translate(
-          offset: const Offset(0, -25),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(13, 0, 13, 18),
-            child: Row(children: [
-              _heroStat('متابعون', _number('followers')),
-              _heroStat('إعجاب', _number('likesReceived')),
-              _heroStat('زائر', _number('visitors')),
-            ]),
           ),
         ),
       ]),
@@ -873,9 +872,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   Widget _heroStat(String label, int value) => Expanded(
         child: Column(children: [
-          Text('$value', style: const TextStyle(color: _gold, fontSize: 20, fontWeight: FontWeight.w900)),
+          Text('$value', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 3),
-          Text(label, style: TextStyle(color: _cream.withOpacity(.88), fontSize: 11, fontWeight: FontWeight.w600)),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
         ]),
       );
 
