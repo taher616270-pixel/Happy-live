@@ -1758,8 +1758,7 @@ class _HappyLiveBottomNavState extends State<_HappyLiveBottomNav>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
 
-  // These indexes match the existing SessionHomePage pages list.
-  // Keep this order for the RTL visual layout.
+  // Page indexes are unchanged; all five navigation items stay mounted.
   static const items = <(int, IconData, String)>[
     (4, Icons.person_outline, 'الخاص بي'),
     (3, Icons.chat_bubble_outline_rounded, 'الرسائل'),
@@ -1787,11 +1786,11 @@ class _HappyLiveBottomNavState extends State<_HappyLiveBottomNav>
   Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFF0B0912),
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: SafeArea(
         top: false,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
           decoration: BoxDecoration(
             color: const Color(0xFF191326),
             borderRadius: BorderRadius.circular(28),
@@ -1804,7 +1803,11 @@ class _HappyLiveBottomNavState extends State<_HappyLiveBottomNav>
             children: [
               for (final item in items)
                 Expanded(
-                  child: _buildItem(item.$1, item.$2, item.$3),
+                  child: _buildItem(
+                    index: item.$1,
+                    icon: item.$2,
+                    label: item.$3,
+                  ),
                 ),
             ],
           ),
@@ -1813,36 +1816,47 @@ class _HappyLiveBottomNavState extends State<_HappyLiveBottomNav>
     );
   }
 
-  Widget _buildItem(int index, IconData icon, String label) {
+  Widget _buildItem({
+    required int index,
+    required IconData icon,
+    required String label,
+  }) {
     final active = widget.currentIndex == index;
 
-    final content = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
+    final content = AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
+      width: double.infinity,
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 7),
       decoration: BoxDecoration(
         color: active ? const Color(0x2E8B5CF6) : Colors.transparent,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.max,
         children: [
           Icon(
             icon,
-            size: 24,
+            size: 23,
             color: active
                 ? const Color(0xFFB58AFF)
                 : const Color(0xFFA49AAF),
           ),
           const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              maxLines: 1,
-              softWrap: false,
-              style: TextStyle(
-                fontSize: 10,
-                color: active ? Colors.white : const Color(0xFFA49AAF),
-                fontWeight: active ? FontWeight.bold : FontWeight.normal,
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: active ? Colors.white : const Color(0xFFA49AAF),
+                  fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
             ),
           ),
@@ -1850,15 +1864,17 @@ class _HappyLiveBottomNavState extends State<_HappyLiveBottomNav>
       ),
     );
 
+    // Keep the same CustomPaint/child structure for active and inactive tabs.
+    // Only the painter changes, so selecting a tab cannot remove neighboring items.
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => widget.onTap(index),
-      child: active
-          ? CustomPaint(
-              foregroundPainter: ActiveBorderPainter(animation: _ctrl),
-              child: content,
-            )
-          : content,
+      child: CustomPaint(
+        foregroundPainter: active
+            ? ActiveBorderPainter(animation: _ctrl)
+            : null,
+        child: content,
+      ),
     );
   }
 }
