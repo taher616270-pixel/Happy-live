@@ -1331,8 +1331,10 @@ class _SessionHomePageState extends State<SessionHomePage> {
     if (_isRefreshingProfile) return;
     _isRefreshingProfile = true;
     try {
-      final response = await http.get(Uri.parse('$_apiBase/auth/me'),
-        headers: {'Authorization': 'Bearer ${widget.accessToken}'}).timeout(const Duration(seconds: 15));
+      final response = await http.get(
+        Uri.parse('$_apiBase/auth/me'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+      ).timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) return;
       final payload = jsonDecode(response.body) as Map<String, dynamic>;
       final user = payload['user'] as Map<String, dynamic>? ?? {};
@@ -1342,7 +1344,42 @@ class _SessionHomePageState extends State<SessionHomePage> {
       if (!mounted) return;
       setState(() {
         if (latestName.isNotEmpty) _profileName = latestName;
-        if (RegExp(r'^\\d{8}
+        if (RegExp(r'^\\d{8}$').hasMatch(latestId)) _profilePublicId = latestId;
+        _profileBio = (user['bio'] ?? '').toString();
+        final avatar = (user['avatar_url'] ?? '').toString().trim();
+        _profileAvatarUrl = avatar.isEmpty ? null : avatar;
+      });
+    } catch (_) {
+      // Keep the last known profile data if the network is unavailable.
+    } finally {
+      _isRefreshingProfile = false;
+    }
+  }
+
+  Future<void> _openEditProfile() async {
+    final updated = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(builder: (_) => EditProfilePage(
+        apiBase: _apiBase,
+        accessToken: widget.accessToken,
+        name: _profileName,
+        bio: _profileBio,
+        avatarUrl: _profileAvatarUrl,
+      )),
+    );
+    if (updated == null || !mounted) return;
+    setState(() {
+      _profileName = (updated['name'] ?? _profileName).toString();
+      _profileBio = (updated['bio'] ?? _profileBio).toString();
+      final avatar = (updated['avatar_url'] ?? '').toString().trim();
+      _profileAvatarUrl = avatar.isEmpty ? null : avatar;
+    });
+    await SessionTokenStore.writeUser(jsonEncode({
+      'name': _profileName,
+      'gabo_id': _profilePublicId,
+      'bio': _profileBio,
+      'avatar_url': _profileAvatarUrl,
+    }));
+  }
 
   void _soon(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$feature قيد التجهيز وستتوفر قريباً'), behavior: SnackBarBehavior.floating));
