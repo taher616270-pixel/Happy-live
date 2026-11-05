@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
+import 'pages/posts_page.dart';
 import 'pages/edit_profile_page.dart';
 import 'package:flutter/services.dart';
 import 'package:country_picker/country_picker.dart';
@@ -1441,11 +1442,9 @@ class _SessionHomePageState extends State<SessionHomePage> {
         onDiscover: () => setState(() => _currentIndex = 2),
         onSoon: _soon,
       ),
-      _HappyPlaceholderTab(
-        title: 'اكتشف',
-        subtitle: 'اعثر على مجتمعات واهتمامات جديدة',
-        icon: Icons.explore_outlined,
-        onSoon: _soon,
+      HappyPostsPage(
+        accessToken: widget.accessToken,
+        name: _name,
       ),
       const _HappyPlaceholderTab(
         title: 'الرسائل',
