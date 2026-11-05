@@ -1,1 +1,1 @@
-ALTER TABLE rooms ADD COLUMN image_url TEXT;
+-- No-op compatibility migration. The image_url column is already created by 0004_room_image.sql.
