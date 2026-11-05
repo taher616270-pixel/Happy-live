@@ -21,43 +21,41 @@ class CustomBottomNav extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) => _buildNavigationBar();
+  Widget build(BuildContext context) => _buildNavigationBar(context);
 
-  Widget _buildNavigationBar() {
+  Widget _buildNavigationBar(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
     return SizedBox(
       width: double.infinity,
       child: Container(
         color: Colors.transparent,
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        child: SafeArea(
-          top: false,
-          child: Transform.translate(
-            offset: const Offset(0, 7),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF191326),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: const Color(0xFF8B5CF6),
-                  width: 1.2,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  for (final item in items)
-                    Expanded(
-                      child: _buildItem(
-                        index: item.$1,
-                        icon: item.$2,
-                        label: item.$3,
-                      ),
-                    ),
-                ],
-              ),
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(5, 8, 5, 8 + bottomInset),
+          decoration: BoxDecoration(
+            color: const Color(0xFF191326),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(28),
             ),
+            border: Border.all(
+              color: const Color(0xFF8B5CF6),
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              for (final item in items)
+                Expanded(
+                  child: _buildItem(
+                    index: item.$1,
+                    icon: item.$2,
+                    label: item.$3,
+                  ),
+                ),
+            ],
           ),
         ),
       ),
