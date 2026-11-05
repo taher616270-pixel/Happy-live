@@ -851,7 +851,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     return Scaffold(
-      backgroundColor: HappyLiveApp.background,
+      backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
       body: Container(
         color: Colors.transparent,
@@ -1469,9 +1469,9 @@ class _HappyMySpacePageState extends State<_HappyMySpacePage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: HappyLiveApp.background,
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
-          backgroundColor: const Color(0xFF17121F),
+          backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
           elevation: 0,
           title: const Text('غرفتي', style: TextStyle(
@@ -1692,7 +1692,7 @@ class LegalDocumentPage extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: HappyLiveApp.background,
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: HappyLiveApp.background,
           foregroundColor: HappyLiveApp.gold,
