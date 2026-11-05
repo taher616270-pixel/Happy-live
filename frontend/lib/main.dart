@@ -640,6 +640,33 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
+      // Open the last screen immediately from the browser's local snapshot.
+      // The server still validates the token before any protected operation.
+      final cachedUserJson = await SessionTokenStore.readUser();
+      if (cachedUserJson != null && cachedUserJson.isNotEmpty) {
+        try {
+          final user = jsonDecode(cachedUserJson) as Map<String, dynamic>;
+          final selectedTab = (await SessionTokenStore.readTab()).clamp(0, 4);
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute<void>(
+              builder: (_) => SessionHomePage(
+                name: (user['name'] ?? '').toString(),
+                email: (user['email'] ?? '').toString(),
+                userId: (user['gabo_id'] ?? user['id'] ?? '').toString(),
+                accessToken: token,
+                initialIndex: selectedTab,
+              ),
+            ),
+          );
+          return;
+        } catch (_) {
+          // A damaged local snapshot falls back to the server session check.
+        }
+      }
+
+      // First restoration after this update, or missing cached profile:
+      // verify once and save a local snapshot for future instant restores.
       final response = await http.get(
         Uri.parse('$_apiBase/auth/me'),
         headers: {'Authorization': 'Bearer $token'},
@@ -648,6 +675,8 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final user = data['user'] as Map<String, dynamic>? ?? {};
+        await SessionTokenStore.writeUser(jsonEncode(user));
+        final selectedTab = (await SessionTokenStore.readTab()).clamp(0, 4);
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute<void>(
@@ -656,17 +685,16 @@ class _LoginPageState extends State<LoginPage> {
               email: (user['email'] ?? '').toString(),
               userId: (user['gabo_id'] ?? user['id'] ?? '').toString(),
               accessToken: token,
+              initialIndex: selectedTab,
             ),
           ),
         );
         return;
       }
 
-      // Only discard a saved session when the server explicitly says that
-      // the token is invalid or expired. Temporary server errors must not log
-      // the user out on refresh.
       if (response.statusCode == 401 || response.statusCode == 403) {
         await SessionTokenStore.clear();
+        await SessionTokenStore.writeUser('');
         if (mounted) setState(() => _isRestoringSession = false);
         return;
       }
@@ -678,8 +706,6 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
     } catch (_) {
-      // Keep the saved token and show a retry state if the API is temporarily
-      // unreachable, rather than displaying the login form.
       if (mounted) {
         setState(() {
           _sessionRestoreError = 'تعذر الاتصال بالخادم للتحقق من جلستك.';
@@ -747,6 +773,8 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       await SessionTokenStore.write(token);
+      await SessionTokenStore.writeUser(jsonEncode(user));
+      await SessionTokenStore.writeTab(0);
       if (isRegistering) await _rememberSuccessfulRegistrationOnThisDevice();
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -1316,11 +1344,12 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 class SessionHomePage extends StatefulWidget {
-  const SessionHomePage({super.key, required this.name, required this.email, required this.userId, required this.accessToken});
+  const SessionHomePage({super.key, required this.name, required this.email, required this.userId, required this.accessToken, this.initialIndex = 0});
   final String name;
   final String email;
   final String userId;
   final String accessToken;
+  final int initialIndex;
   @override
   State<SessionHomePage> createState() => _SessionHomePageState();
 }
@@ -1346,11 +1375,18 @@ class _SessionHomePageState extends State<SessionHomePage> {
         headers: {'Authorization': 'Bearer ' + widget.accessToken}).timeout(const Duration(seconds: 10));
     } catch (_) {}
     await SessionTokenStore.clear();
+    await SessionTokenStore.writeUser('');
+    await SessionTokenStore.writeTab(0);
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => const LoginPage()), (route) => false);
   }
 
-  int _currentIndex = 0;
+  late int _currentIndex = widget.initialIndex.clamp(0, 4);
+
+  void _selectTab(int index) {
+    setState(() => _currentIndex = index);
+    SessionTokenStore.writeTab(index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1395,7 +1431,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
         ),
         bottomNavigationBar: CustomBottomNav(
           currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
+          onTap: _selectTab,
         ),
       ),
     );
