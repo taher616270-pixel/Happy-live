@@ -646,7 +646,7 @@ class _LoginPageState extends State<LoginPage> {
       if (cachedUserJson != null && cachedUserJson.isNotEmpty) {
         try {
           final user = jsonDecode(cachedUserJson) as Map<String, dynamic>;
-          final selectedTab = (await SessionTokenStore.readTab()).clamp(0, 4);
+          final selectedTab = (await SessionTokenStore.readTab()).clamp(0, 4).toInt();
           if (!mounted) return;
           Navigator.of(context).pushReplacement(
             MaterialPageRoute<void>(
@@ -676,7 +676,7 @@ class _LoginPageState extends State<LoginPage> {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final user = data['user'] as Map<String, dynamic>? ?? {};
         await SessionTokenStore.writeUser(jsonEncode(user));
-        final selectedTab = (await SessionTokenStore.readTab()).clamp(0, 4);
+        final selectedTab = (await SessionTokenStore.readTab()).clamp(0, 4).toInt();
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute<void>(
@@ -1381,7 +1381,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => const LoginPage()), (route) => false);
   }
 
-  late int _currentIndex = widget.initialIndex.clamp(0, 4);
+  late int _currentIndex = widget.initialIndex.clamp(0, 4).toInt();
 
   void _selectTab(int index) {
     setState(() => _currentIndex = index);
