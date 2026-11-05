@@ -317,10 +317,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     final level = _firstText(['levelName', 'level', 'userLevel']);
     final vip = _firstText(['vipText', 'vipLevel', 'vip_level']);
 
-    return SizedBox(
-      width: double.infinity,
-      height: 420,
-      child: Stack(fit: StackFit.expand, children: [
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+      child: SizedBox(
+        width: double.infinity,
+        height: 420,
+        child: Stack(fit: StackFit.expand, children: [
         if (cover.isNotEmpty)
           Image.network(cover, fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => _coverFallback())
@@ -406,6 +408,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           ]),
         ),
       ]),
+      ),
     );
   }
 
