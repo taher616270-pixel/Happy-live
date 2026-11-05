@@ -130,3 +130,47 @@ class _PurpleBokehPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _PurpleBokehPainter oldDelegate) => false;
 }
+
+
+import 'package:flutter/material.dart';
+
+/// Reusable notification banner matching the Happy Live purple neon style.
+class PurpleNotificationCard extends StatelessWidget {
+  const PurpleNotificationCard({super.key, required this.name, required this.message, required this.time, this.avatarUrl, this.avatar, this.unreadCount});
+  final String name, message, time;
+  final String? avatarUrl;
+  final Widget? avatar;
+  final int? unreadCount;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 16),
+    decoration: BoxDecoration(
+      color: const Color(0xFF1B1128).withOpacity(.94),
+      borderRadius: BorderRadius.circular(25),
+      border: Border.all(color: const Color(0xFFB58AFF), width: 1.5),
+      boxShadow: const [BoxShadow(color: Color(0x668B5CF6), blurRadius: 18, spreadRadius: 1)],
+    ),
+    child: Row(children: [
+      Container(width: 68, height: 68, padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFD9A8FF), width: 2),
+          boxShadow: const [BoxShadow(color: Color(0xAA9B63D9), blurRadius: 12)]),
+        child: ClipOval(child: avatar ?? (avatarUrl == null || avatarUrl!.isEmpty
+          ? const ColoredBox(color: Color(0xFF302044), child: Icon(Icons.person, color: Colors.white, size: 34))
+          : Image.network(avatarUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF302044), child: Icon(Icons.person, color: Colors.white))))),
+      ),
+      const SizedBox(width: 13),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 7),
+        Text(message, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFD4C9E0), fontSize: 14, fontWeight: FontWeight.w600)),
+      ])),
+      const SizedBox(width: 8),
+      Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7), decoration: BoxDecoration(color: const Color(0xFFB58AFF), borderRadius: BorderRadius.circular(24)), child: Text(time, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 12))),
+        if (unreadCount != null && unreadCount! > 0) ...[const SizedBox(height: 7), CircleAvatar(radius: 11, backgroundColor: const Color(0xFF9B63D9), child: Text('$unreadCount', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)))],
+      ]),
+    ]),
+  );
+}
