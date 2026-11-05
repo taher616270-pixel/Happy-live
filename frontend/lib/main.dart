@@ -38,7 +38,6 @@ class HappyLiveApp extends StatelessWidget {
         children: [
           Positioned.fill(child: PurpleTechBackground()),
           if (child != null) child,
-          const NeonFrameOverlay(),
         ],
       ),
       theme: ThemeData(
