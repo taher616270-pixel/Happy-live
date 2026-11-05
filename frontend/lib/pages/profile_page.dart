@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 
-const _ink = Color(0xFFFFFFFF);
-const _grey = Color(0xFFAAA2B5);
+const _ink = Color(0xFF1E2233);
+const _grey = Color(0xFF9A98AD);
 const _red = Color(0xFFE53E4D);
 
 // يحتفظ هذا الموديل بالتوافق مع تحميل بيانات الحساب الحالي.
@@ -128,13 +128,13 @@ class ProfilePage extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFF09080D),
+        backgroundColor: const Color(0xFFF6F7FB),
         body: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF211A2B), Color(0xFF17131F), Color(0xFF09080D)],
+              colors: [Color(0xFFF7EBCB), Color(0xFFFAF6EA), Color(0xFFF6F7FB)],
               stops: [0.0, 0.3, 0.55],
             ),
           ),
@@ -154,8 +154,8 @@ class ProfilePage extends StatelessWidget {
                         icon: const Icon(Icons.edit_rounded, size: 17),
                         label: const Text('تعديل الملف الشخصي'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFE8C477),
-                          side: const BorderSide(color: Color(0xFFE8C477)),
+                          foregroundColor: const Color(0xFFD9A93C),
+                          side: const BorderSide(color: Color(0xFFE9C26A)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
                         ),
                       ),
@@ -168,20 +168,20 @@ class ProfilePage extends StatelessWidget {
                   const SizedBox(height: 14),
                   _iconsCard(),
                   _tile(
-                    const [Color(0xFFE8C477), Color(0xFF9B70D6)],
+                    const [Color(0xFFF3BC5E), Color(0xFFE39A2E)],
                     Icons.account_balance_wallet_rounded,
                     'المحفظة',
                     onWallet,
                     trailingCoin: true,
                   ),
                   _tile(
-                    const [Color(0xFF9B70D6), Color(0xFF49345F)],
+                    const [Color(0xFFF59A80), Color(0xFFE8604A)],
                     Icons.event_note_rounded,
                     'مركز المهام',
                     onTasks,
                   ),
                   _tile(
-                    const [Color(0xFF49345F), Color(0xFF211A2B)],
+                    const [Color(0xFF9DB4DC), Color(0xFF5E86C8)],
                     Icons.settings_rounded,
                     'الإعدادات',
                     onSettings,
@@ -272,7 +272,7 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _avatarFallback() => Container(
-        color: const Color(0xFF211A2B),
+        color: const Color(0xFFE4E4EC),
         child: const Icon(Icons.person, color: Colors.white, size: 30),
       );
 
@@ -339,7 +339,7 @@ class ProfilePage extends StatelessWidget {
               'برستيج',
               'assets/profile/prestige.png',
               onPrestige,
-              const [Color(0xFF382747), Color(0xFF17131F)],
+              const [Color(0xFF5A4630), Color(0xFF2A1F14)],
             ),
           ),
           const SizedBox(width: 8),
@@ -348,7 +348,7 @@ class ProfilePage extends StatelessWidget {
               'SVIP',
               'assets/profile/svip.png',
               onSvip,
-              const [Color(0xFF49345F), Color(0xFF17131F)],
+              const [Color(0xFF3A4150), Color(0xFF14171F)],
             ),
           ),
         ],
@@ -369,7 +369,7 @@ class ProfilePage extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE8C477), width: 2),
+            border: Border.all(color: const Color(0xFFD9A93C), width: 2),
             gradient: LinearGradient(colors: colors),
           ),
           child: ClipRRect(
@@ -434,7 +434,7 @@ class ProfilePage extends StatelessWidget {
             width: 40,
             height: 40,
             errorBuilder: (_, __, ___) =>
-                Icon(fallback, size: 40, color: const Color(0xFFE8C477)),
+                Icon(fallback, size: 40, color: const Color(0xFFD9A93C)),
           ),
           const SizedBox(height: 6),
           Text(
@@ -496,7 +496,7 @@ class ProfilePage extends StatelessWidget {
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [Color(0xFFE8C477), Color(0xFF9B70D6)],
+                    colors: [Color(0xFFF6D27A), Color(0xFFD9A93C)],
                   ),
                 ),
               ),
@@ -519,7 +519,7 @@ class ProfilePage extends StatelessWidget {
   }
 
   BoxDecoration _cardDeco() => BoxDecoration(
-        color: const Color(0xFF17131F),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
       );
 }
