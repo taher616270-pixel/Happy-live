@@ -588,7 +588,7 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const rows = await env.DB.prepare(
-          "SELECT p.id, p.user_id, p.content, p.created_at, pr.display_name, pr.gabo_id, " +
+          "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, pr.display_name, pr.gabo_id, " +
           "EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS liked, " +
           "(SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS likes_count, " +
           "(SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id) AS comments_count, " +
@@ -596,13 +596,13 @@ export default {
           "FROM posts p LEFT JOIN profiles pr ON pr.user_id = p.user_id " +
           "WHERE p.status = 'published' ORDER BY p.created_at DESC LIMIT 50"
         ).bind(user.id, user.id).all<{
-          id: string; user_id: string; content: string; created_at: string;
+          id: string; user_id: string; content: string; image_url: string | null; created_at: string;
           display_name: string | null; gabo_id: string | null;
           liked: number; likes_count: number; comments_count: number; followed: number;
         }>();
         return json({ ok: true, posts: (rows.results ?? []).map(p => ({
           id: p.id, userId: p.user_id, name: p.display_name?.trim() || "مستخدم",
-          userCode: p.gabo_id, content: p.content, createdAt: p.created_at,
+          userCode: p.gabo_id, content: p.content, imageUrl: p.image_url, createdAt: p.created_at,
           liked: Boolean(p.liked), likesCount: p.likes_count,
           commentsCount: p.comments_count, followed: Boolean(p.followed),
           isMine: p.user_id === user.id
@@ -620,13 +620,22 @@ export default {
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const body = await request.json() as Record<string, unknown>;
         const content = typeof body.content === "string" ? body.content.trim() : "";
-        if (!content) return json({ error: "post_content_required", message: "اكتب شيئاً لمشاركته" }, 400, origin, env);
+        const imageUrl = typeof body.imageUrl === "string" ? body.imageUrl.trim() : "";
+        if (!content && !imageUrl) return json({ error: "post_content_required", message: "أضف نصاً أو صورة للمنشور" }, 400, origin, env);
         if (content.length > 2000) return json({ error: "post_too_long", message: "المنشور طويل جداً" }, 400, origin, env);
+        if (imageUrl) {
+          try {
+            const parsed = new URL(imageUrl);
+            if (parsed.protocol !== "https:" || !parsed.hostname.endsWith("imagekit.io")) throw new Error("invalid");
+          } catch {
+            return json({ error: "invalid_post_image", message: "رابط الصورة غير صالح" }, 400, origin, env);
+          }
+        }
         const id = crypto.randomUUID();
         const createdAt = new Date().toISOString();
-        await env.DB.prepare("INSERT INTO posts (id, user_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
-          .bind(id, user.id, content, createdAt, createdAt).run();
-        return json({ ok: true, post: { id, userId: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id, content, createdAt, liked: false, likesCount: 0, commentsCount: 0, followed: false, isMine: true } }, 201, origin, env);
+        await env.DB.prepare("INSERT INTO posts (id, user_id, content, image_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
+          .bind(id, user.id, content, imageUrl || null, createdAt, createdAt).run();
+        return json({ ok: true, post: { id, userId: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id, content, imageUrl: imageUrl || null, createdAt, liked: false, likesCount: 0, commentsCount: 0, followed: false, isMine: true } }, 201, origin, env);
       } catch (error) {
         console.error("[posts.create] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "post_creation_failed" }, 500, origin, env);
