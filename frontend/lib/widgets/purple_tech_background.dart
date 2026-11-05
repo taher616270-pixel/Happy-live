@@ -22,6 +22,12 @@ class PurpleTechBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Scale the frame subtly with the device's logical screen size while
+    // keeping it thin and consistent on compact phones, tablets, and large phones.
+    final shortestSide = MediaQuery.sizeOf(context).shortestSide;
+    final responsiveBorderWidth =
+        (shortestSide * 0.003).clamp(0.8, 1.4).toDouble();
+
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
@@ -49,7 +55,7 @@ class PurpleTechBackground extends StatelessWidget {
           ? BoxDecoration(
               border: Border.all(
                 color: primaryPurple.withOpacity(0.62),
-                width: 1.2,
+                width: responsiveBorderWidth,
               ),
             )
           : null,
