@@ -82,7 +82,8 @@ class _NeonPainter extends CustomPainter {
       canvas.drawCircle(Offset(x, y), 2.5, dot);
     }
 
-    final border = rect.deflate(size.width * 0.022);
+    // Expanded frame: reduce the inset so the frame is wider and taller.
+    final border = rect.deflate(size.width * 0.012);
     canvas.drawRect(
       border,
       Paint()
