@@ -15,9 +15,6 @@ class NeonBackground extends StatelessWidget {
           child: CustomPaint(painter: _NeonPainter()),
         ),
         if (child != null) child!,
-        const IgnorePointer(
-          child: CustomPaint(painter: _NeonFrameOverlayPainter()),
-        ),
       ],
     );
   }
@@ -28,6 +25,19 @@ class PurpleTechBackground extends NeonBackground {
   const PurpleTechBackground({super.key, super.child});
 }
 
+
+
+/// Fixed screen frame painted above the app content and scrolling pages.
+class NeonFrameOverlay extends StatelessWidget {
+  const NeonFrameOverlay({super.key});
+
+  @override
+  Widget build(BuildContext context) => const Positioned.fill(
+    child: IgnorePointer(
+      child: CustomPaint(painter: _NeonFrameOverlayPainter()),
+    ),
+  );
+}
 
 /// Draws the crisp purple screen frame above page content.
 class _NeonFrameOverlayPainter extends CustomPainter {
