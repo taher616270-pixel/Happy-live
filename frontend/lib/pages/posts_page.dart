@@ -280,90 +280,191 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Stack(
-    children: [
-      Container(
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [Color(0xFFF7EBCB), Color(0xFFFAF6EA), Color(0xFFF6F7FB)],
-      ),
-    ),
-    child: RefreshIndicator(
-      color: _gold,
-      onRefresh: _loadPosts,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-        children: [
-          Row(children: [
-            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('المنشورات', style: TextStyle(color: _ink, fontSize: 25, fontWeight: FontWeight.w900)),
-              SizedBox(height: 4),
-              Text('لحظات وأفكار من مجتمع Happy Live', style: TextStyle(color: _muted, fontSize: 12)),
-            ])),
-            Container(width: 42, height: 42, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFEAD9AD))),
-              child: const Icon(Icons.auto_awesome_rounded, color: _gold)),
-          ]),
-          const SizedBox(height: 18),
-          const SizedBox(height: 20),
-          if (_loading && _posts.isEmpty)
-            const Padding(padding: EdgeInsets.all(35), child: Center(child: CircularProgressIndicator(color: _gold)))
-          else if (_error != null && _posts.isEmpty)
-            Container(padding: const EdgeInsets.all(22), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)), child: Column(children: [
-              const Icon(Icons.cloud_off_rounded, color: _gold, size: 32), const SizedBox(height: 9),
-              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: _muted, fontSize: 12)),
-            ]))
-          else if (_posts.isEmpty)
-            Container(padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 18), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFEADFC7))), child: const Column(children: [
-              Icon(Icons.forum_outlined, color: _gold, size: 38), SizedBox(height: 10),
-              Text('لا توجد منشورات بعد', style: TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 15)),
-              SizedBox(height: 5), Text('كن أول من يشارك لحظة مع مجتمع Happy Live', textAlign: TextAlign.center, style: TextStyle(color: _muted, fontSize: 12)),
-            ]))
-          else
-            ..._posts.map(_postCard),
-        ],
-      ),
-    ),
-  ),
-  Positioned(
-        left: 16,
-        bottom: 20,
-        child: SizedBox(
-          width: 56,
-          height: 56,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFFFD700), Color(0xFFFFF8E1)],
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFFF7EBCB),
+                  Color(0xFFFAF6EA),
+                  Color(0xFFF6F7FB),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFFD700).withOpacity(0.5),
-                  blurRadius: 12,
-                  spreadRadius: 1,
-                ),
-              ],
             ),
-            child: Material(
-              color: Colors.transparent,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: _openCreatePost,
-                child: const Center(
-                  child: Icon(Icons.edit_note, color: Colors.white, size: 30),
+            child: RefreshIndicator(
+              color: _gold,
+              onRefresh: _loadPosts,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'المنشورات',
+                              style: TextStyle(
+                                color: _ink,
+                                fontSize: 25,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'لحظات وأفكار من مجتمع Happy Live',
+                              style: TextStyle(color: _muted, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFFEAD9AD),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.auto_awesome_rounded,
+                          color: _gold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
+                  if (_loading && _posts.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(35),
+                      child: Center(
+                        child: CircularProgressIndicator(color: _gold),
+                      ),
+                    )
+                  else if (_error != null && _posts.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(22),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.cloud_off_rounded,
+                            color: _gold,
+                            size: 32,
+                          ),
+                          const SizedBox(height: 9),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: _muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (_posts.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 30,
+                        horizontal: 18,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFFEADFC7),
+                        ),
+                      ),
+                      child: const Column(
+                        children: [
+                          Icon(
+                            Icons.forum_outlined,
+                            color: _gold,
+                            size: 38,
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            'لا توجد منشورات بعد',
+                            style: TextStyle(
+                              color: _ink,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15,
+                            ),
+                          ),
+                          SizedBox(height: 5),
+                          Text(
+                            'كن أول من يشارك لحظة مع مجتمع Happy Live',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: _muted, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ..._posts.map(_postCard),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 16,
+          bottom: 20,
+          child: SizedBox(
+            width: 56,
+            height: 56,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFFFD700), Color(0xFFFFF8E1)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFFD700).withOpacity(0.5),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: _openCreatePost,
+                  child: const Center(
+                    child: Icon(
+                      Icons.edit_note,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 
   Widget _postCard(Map<String, dynamic> post) {
     final name = (post['name'] ?? 'مستخدم').toString();
