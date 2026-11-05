@@ -552,9 +552,13 @@ class PublicProfilePage extends StatefulWidget {
 }
 
 class _PublicProfilePageState extends State<PublicProfilePage> {
-  static const _bg = Color(0xFF0F1419);
-  static const _muted = Color(0xFF9AA4AE);
-  static const _teal = Color(0xFF00D1C1);
+  // ألوان صفحة البروفايل العام مطابقة لهوية Happy Live.
+  static const _bg = Color(0xFF09080D);
+  static const _surface = Color(0xFF17131F);
+  static const _surfaceRaised = Color(0xFF211A2B);
+  static const _muted = Color(0xFFAAA2B5);
+  static const _gold = Color(0xFFE8C477);
+  static const _purple = Color(0xFF9B70D6);
   int _tab = 0;
   bool _loading = true;
   String? _loadError;
@@ -618,7 +622,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         child: Column(children: [
           _cover(),
           if (_loading) const LinearProgressIndicator(
-            minHeight: 2, color: Color(0xFF00D1C1), backgroundColor: Color(0xFF202830)),
+            minHeight: 2, color: _gold, backgroundColor: _surfaceRaised),
           Expanded(child: _loadError != null
             ? Center(child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -670,13 +674,13 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     decoration: BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [Color(0xFF26313D), Color(0xFF11171D)],
+        colors: [Color(0xFF382747), Color(0xFF17131F), Color(0xFF09080D)],
       ),
     ),
   );
 
   Widget _roundButton(IconData icon, VoidCallback onTap) => Material(
-    color: Colors.black45,
+    color: const Color(0x9909080D),
     shape: const CircleBorder(),
     child: InkWell(
       customBorder: const CircleBorder(),
@@ -715,10 +719,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     width: size, height: size, padding: const EdgeInsets.all(2),
     decoration: const BoxDecoration(
       shape: BoxShape.circle,
-      gradient: LinearGradient(colors: [Color(0xFFE6C36A), Color(0xFF8B65E8)]),
+      gradient: const LinearGradient(colors: [_gold, _purple, _gold]),
     ),
     child: ClipOval(child: photo.isEmpty
-      ? Container(color: const Color(0xFF29313A), child: const Icon(Icons.person, color: Colors.white70, size: 38))
+      ? Container(color: _surfaceRaised, child: const Icon(Icons.person, color: _muted, size: 38))
       : Image.network(photo, fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(color: const Color(0xFF29313A), child: const Icon(Icons.person, color: Colors.white70, size: 38)))),
   );
@@ -734,13 +738,13 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   );
 
   Widget _stat(String label, int value) => Expanded(child: Column(children: [
-    Text('$value', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+    Text('$value', style: const TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w900)),
     const SizedBox(height: 3),
     Text(label, style: const TextStyle(color: _muted, fontSize: 11)),
   ]));
 
   Widget _tabs() => Container(
-    decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFF27313A), width: .7))),
+    decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFF493957), width: .8))),
     child: Row(children: [
       _tabButton('نبذة', 0),
       _tabButton('المنشورات (${_number('posts')})', 1),
@@ -753,9 +757,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       onTap: () => setState(() => _tab = index),
       child: Column(children: [
         const SizedBox(height: 13),
-        Text(label, style: TextStyle(color: selected ? Colors.white : _muted, fontSize: 14, fontWeight: selected ? FontWeight.w900 : FontWeight.w600)),
+        Text(label, style: TextStyle(color: selected ? _gold : _muted, fontSize: 14, fontWeight: selected ? FontWeight.w900 : FontWeight.w600)),
         const SizedBox(height: 10),
-        Container(height: 2.5, width: 42, decoration: BoxDecoration(color: selected ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(5))),
+        Container(height: 2.5, width: 42, decoration: BoxDecoration(color: selected ? _gold : Colors.transparent, borderRadius: BorderRadius.circular(5))),
       ]),
     ));
   }
@@ -798,7 +802,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   Widget _infoLine(String label, String value) => Container(
     padding: const EdgeInsets.symmetric(vertical: 12),
-    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFF27313A)))),
+    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFF382B45)))),
     child: Row(children: [
       Text(label, style: const TextStyle(color: _muted, fontSize: 13)),
       const Spacer(),
@@ -827,7 +831,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
     return Column(children: _posts.map((post) => Container(
       margin: const EdgeInsets.fromLTRB(14, 12, 14, 0), padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: const Color(0xFF171F27), borderRadius: BorderRadius.circular(15), border: Border.all(color: const Color(0xFF29343E))),
+      decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(15), border: Border.all(color: const Color(0xFF493957))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text((post['content'] ?? '').toString(), style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.6)),
         if ((post['imageUrl'] ?? '').toString().isNotEmpty) ...[
@@ -843,7 +847,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   Widget _chatBar() => Container(
     width: double.infinity, padding: EdgeInsets.fromLTRB(18, 10, 18, 10 + MediaQuery.of(context).padding.bottom),
-    color: Colors.black,
+    color: _bg,
     child: SizedBox(
       height: 52, width: double.infinity,
       child: ElevatedButton.icon(
@@ -851,7 +855,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         icon: const Icon(Icons.chat_bubble_rounded, size: 19),
         label: const Text('محادثة', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
         style: ElevatedButton.styleFrom(
-          backgroundColor: _teal, foregroundColor: const Color(0xFF062522), elevation: 0,
+          backgroundColor: _gold, foregroundColor: const Color(0xFF21162B), elevation: 0,
           shape: const StadiumBorder(),
         ),
       ),
