@@ -716,7 +716,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                 ),
                               ),
                               SliverPersistentHeader(
-                                pinned: true,
+                                pinned: false,
                                 delegate: _PublicProfileTabsDelegate(
                                   selected: _tab,
                                   onSelected: (index) => setState(() => _tab = index),
