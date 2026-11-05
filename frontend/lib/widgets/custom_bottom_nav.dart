@@ -47,32 +47,43 @@ class _CustomBottomNavState extends State<CustomBottomNav>
   Widget build(BuildContext context) => _buildNavigationBar();
 
   Widget _buildNavigationBar() {
-    return Container(
-      color: const Color(0xFF0B0912),
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF191326),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: const Color(0xFF302344),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              for (final item in items)
-                Expanded(
-                  child: _buildItem(
-                    index: item.$1,
-                    icon: item.$2,
-                    label: item.$3,
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        color: const Color(0xFF0B0912),
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: SafeArea(
+          top: false,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final slotWidth = constraints.maxWidth / items.length;
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF191326),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: const Color(0xFF302344),
+                    width: 1,
                   ),
                 ),
-            ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.max,
+                  children: [
+                    for (final item in items)
+                      SizedBox(
+                        width: slotWidth,
+                        child: _buildItem(
+                          index: item.$1,
+                          icon: item.$2,
+                          label: item.$3,
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ),
