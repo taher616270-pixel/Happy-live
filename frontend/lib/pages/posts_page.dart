@@ -140,6 +140,87 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
     }
   }
 
+  Future<void> _openPostActions(Map<String, dynamic> post) async {
+    final mine = post['isMine'] == true;
+    await showModalBottomSheet<void>(
+      context: context, backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Directionality(textDirection: TextDirection.rtl, child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+        decoration: const BoxDecoration(color: Color(0xFFFFFEFA), borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+        child: SafeArea(top: false, child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 42, height: 4, decoration: BoxDecoration(color: const Color(0xFFE5DFD0), borderRadius: BorderRadius.circular(5))),
+          const SizedBox(height: 14),
+          if (mine) ...[
+            _postActionTile(Icons.visibility_outlined, 'من يمكنهم الرؤية', () { Navigator.pop(sheetContext); _openVisibilityPicker(post); }),
+            _postActionTile(Icons.delete_outline_rounded, 'حذف', () { Navigator.pop(sheetContext); _deletePost(post); }, color: const Color(0xFFD94B4B)),
+          ] else ...[
+            _postActionTile(Icons.visibility_off_outlined, 'إخفاء جميع منشوراته', () { Navigator.pop(sheetContext); _hideUserPosts(post); }),
+            _postActionTile(Icons.flag_outlined, 'بلاغ', () { Navigator.pop(sheetContext); _reportPost(post); }, color: const Color(0xFFD94B4B)),
+          ],
+          _postActionTile(Icons.close_rounded, 'إلغاء', () => Navigator.pop(sheetContext)),
+        ])),
+      )),
+    );
+  }
+
+  Widget _postActionTile(IconData icon, String label, VoidCallback onTap, {Color color = _ink}) => ListTile(
+    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+    leading: Icon(icon, color: color, size: 22),
+    title: Text(label, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w800)),
+    onTap: onTap, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+  );
+
+  Future<void> _openVisibilityPicker(Map<String, dynamic> post) async {
+    const options = {'public': 'الجميع', 'followers': 'المتابعون', 'private': 'أنا فقط'};
+    final selected = await showModalBottomSheet<String>(
+      context: context, backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Directionality(textDirection: TextDirection.rtl, child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+        decoration: const BoxDecoration(color: Color(0xFFFFFEFA), borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+        child: SafeArea(top: false, child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 42, height: 4, decoration: BoxDecoration(color: const Color(0xFFE5DFD0), borderRadius: BorderRadius.circular(5))),
+          const SizedBox(height: 14),
+          const Align(alignment: Alignment.centerRight, child: Text('من يمكنهم رؤية المنشور؟', style: TextStyle(color: _ink, fontSize: 16, fontWeight: FontWeight.w900))),
+          ...options.entries.map((e) => _postActionTile(e.key == 'public' ? Icons.public_rounded : e.key == 'followers' ? Icons.people_outline_rounded : Icons.lock_outline_rounded, e.value, () => Navigator.pop(sheetContext, e.key))),
+        ])),
+      )),
+    );
+    if (selected == null) return;
+    try {
+      final response = await http.patch(Uri.parse('$_api/posts/${post['id']}/visibility'), headers: _headers, body: jsonEncode({'visibility': selected})).timeout(const Duration(seconds: 12));
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200 || data is! Map || data['ok'] != true) throw Exception();
+      if (mounted) { setState(() => post['visibility'] = selected); _toast('تم تحديث خصوصية المنشور'); }
+    } catch (_) { _toast('تعذر تحديث خصوصية المنشور'); }
+  }
+
+  Future<void> _deletePost(Map<String, dynamic> post) async {
+    try {
+      final response = await http.delete(Uri.parse('$_api/posts/${post['id']}'), headers: _headers).timeout(const Duration(seconds: 12));
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200 || data is! Map || data['ok'] != true) throw Exception();
+      if (mounted) { setState(() => _posts.removeWhere((e) => e['id'].toString() == post['id'].toString())); _toast('تم حذف المنشور'); }
+    } catch (_) { _toast('تعذر حذف المنشور'); }
+  }
+
+  Future<void> _hideUserPosts(Map<String, dynamic> post) async {
+    final userId = post['userId'].toString();
+    try {
+      final response = await http.post(Uri.parse('$_api/users/$userId/hide'), headers: _headers).timeout(const Duration(seconds: 12));
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200 || data is! Map || data['ok'] != true) throw Exception();
+      if (mounted) { setState(() => _posts.removeWhere((e) => e['userId'].toString() == userId)); _toast('تم إخفاء جميع منشوراته'); }
+    } catch (_) { _toast('تعذر إخفاء المنشورات'); }
+  }
+
+  Future<void> _reportPost(Map<String, dynamic> post) async {
+    try {
+      final response = await http.post(Uri.parse('$_api/posts/${post['id']}/report'), headers: _headers, body: jsonEncode({'reason': 'general'})).timeout(const Duration(seconds: 12));
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 201 || data is! Map || data['ok'] != true) throw Exception();
+      _toast('تم إرسال البلاغ، شكرًا لمساعدتنا');
+    } catch (_) { _toast('تعذر إرسال البلاغ'); }
+  }
   Future<void> _openComments(Map<String, dynamic> post) async {
     final id = post['id'].toString();
     final input = TextEditingController();
@@ -492,9 +573,8 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
               onPressed: () => _toggleFollow(post),
               style: TextButton.styleFrom(foregroundColor: _gold, visualDensity: VisualDensity.compact),
               child: Text(post['followed'] == true ? 'تتابعه' : 'متابعة', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-            )
-          else
-            const Icon(Icons.verified_user_outlined, color: _gold, size: 19),
+            ),
+          IconButton(tooltip: 'المزيد', visualDensity: VisualDensity.compact, constraints: const BoxConstraints(minWidth: 34, minHeight: 34), padding: EdgeInsets.zero, onPressed: () => _openPostActions(post), icon: const Icon(Icons.more_horiz_rounded, color: _muted, size: 23)),
         ]),
         const SizedBox(height: 13),
         Text((post['content'] ?? '').toString(), textDirection: TextDirection.rtl, style: const TextStyle(color: _ink, fontSize: 14, height: 1.7)),
