@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 const _ink = Color(0xFF1E2233);
 const _grey = Color(0xFF8E8CA0);
@@ -100,9 +101,56 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
     try {
       final file = await _picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 88, maxWidth: 1200,
+        source: ImageSource.gallery,
+        imageQuality: 95,
+        maxWidth: 2400,
       );
       if (file == null) return;
+
+      // Let the user position, zoom and crop the avatar before uploading.
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: file.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 90,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'قص الصورة',
+            toolbarColor: const Color(0xFF171321),
+            toolbarWidgetColor: Colors.white,
+            activeControlsWidgetColor: const Color(0xFFF0A62B),
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+            aspectRatioPresets: [CropAspectRatioPreset.square],
+          ),
+          IOSUiSettings(
+            title: 'قص الصورة',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            aspectRatioPresets: [CropAspectRatioPreset.square],
+          ),
+          WebUiSettings(
+            context: context,
+            presentStyle: WebPresentStyle.dialog,
+            viewMode: 1,
+            dragMode: WebDragMode.move,
+            initialAspectRatio: 1,
+            guides: true,
+            center: true,
+            cropBoxMovable: true,
+            cropBoxResizable: false,
+            movable: true,
+            zoomable: true,
+            zoomOnTouch: true,
+            zoomOnWheel: true,
+            rotatable: true,
+          ),
+        ],
+      );
+      if (cropped == null) return;
+
       setState(() => _uploading = true);
       final auth = await http.get(
         Uri.parse('${widget.apiBase}/imagekit/auth'),
@@ -128,7 +176,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'useUniqueFileName': 'true',
       });
       request.files.add(http.MultipartFile.fromBytes(
-        'file', await file.readAsBytes(), filename: 'avatar.jpg',
+        'file', await cropped.readAsBytes(), filename: 'avatar.jpg',
       ));
       final streamed = await request.send().timeout(const Duration(seconds: 60));
       final response = await http.Response.fromStream(streamed);
