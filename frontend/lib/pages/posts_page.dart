@@ -795,14 +795,22 @@ class _CreatePostPageState extends State<_CreatePostPage> {
             ]),
           )),
           if (_emojiPanelOpen) SizedBox(
-            height: 258, width: double.infinity,
+            height: 258,
+            width: double.infinity,
             child: EmojiPicker(
               onEmojiSelected: (category, emoji) {},
               textEditingController: _controller,
               config: Config(
-                height: 258, checkPlatformCompatibility: true,
-                emojiViewConfig: const EmojiViewConfig(columns: 8, emojiSizeMax: 25, backgroundColor: Color(0xFFFFFBEB)),
+                height: 258,
+                checkPlatformCompatibility: true,
+                emojiViewConfig: const EmojiViewConfig(
+                  columns: 8,
+                  emojiSizeMax: 25,
+                  backgroundColor: Color(0xFFFFFBEB),
+                ),
               ),
+            ),
+          ),
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeInOut,
@@ -836,8 +844,6 @@ class _CreatePostPageState extends State<_CreatePostPage> {
                   ),
                 ),
               ),
-            ),
-          ),
             ),
           ),
         ])),
