@@ -117,33 +117,6 @@ class _NeonPainter extends CustomPainter {
       canvas.drawCircle(Offset(x, y), 2.5, dot);
     }
 
-    // Expanded frame: reduce the inset so the frame is wider and taller.
-    final border = rect.deflate(size.width * 0.012);
-    canvas.drawRect(
-      border,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = size.width * 0.12
-        ..color = _purple.withOpacity(0.18)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, size.width * 0.08),
-    );
-
-    void neon(double width, double blur, double opacity, Color color) {
-      canvas.drawRect(
-        border,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = width
-          ..color = color.withOpacity(opacity)
-          ..maskFilter =
-              blur > 0 ? MaskFilter.blur(BlurStyle.normal, blur) : null,
-      );
-    }
-
-    neon(16, 22, 0.40, _purple);
-    neon(7, 9, 0.65, _purple);
-    neon(2.2, 0, 1.0, _light);
-
     // Fixed light particles: no animation or movement.
     final particleRandom = Random(7);
     final particles = List.generate(40, (_) {
