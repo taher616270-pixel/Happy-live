@@ -1322,7 +1322,6 @@ class SessionHomePage extends StatefulWidget {
 class _SessionHomePageState extends State<SessionHomePage> {
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
   static const String _sessionTokenKey = 'happy_live_session_token';
-  int _tab = 0;
   String get _name => widget.name.trim().isEmpty ? 'عضو Happy Live' : widget.name.trim();
   String get _initial => _name.characters.first.toUpperCase();
 
@@ -1349,23 +1348,39 @@ class _SessionHomePageState extends State<SessionHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = <Widget>[
-      _HappyCreateTab(onSoon: _soon),
-      HappyHomeTab(name: _name, accessToken: widget.accessToken, onDiscover: () => setState(() => _tab = 2), onSoon: _soon),
-      _HappyPlaceholderTab(title: 'اكتشف', subtitle: 'اعثر على مجتمعات واهتمامات جديدة', icon: Icons.explore_outlined, onSoon: _soon),
-      const _HappyPlaceholderTab(title: 'الرسائل', subtitle: 'محادثاتك الخاصة في مكان واحد', icon: Icons.forum_outlined),
-      HappyProfilePage(name: _name, email: widget.email, userId: widget.userId, initial: _initial, onLogout: _logout, onSoon: _soon),
-    ];
-    return Directionality(textDirection: TextDirection.rtl, child: Scaffold(
-      backgroundColor: HappyLiveApp.background,
-      body: SafeArea(child: Column(children: [
-        Expanded(child: IndexedStack(index: _tab, children: pages)),
-      ])),
-      bottomNavigationBar: CustomBottomNav(
-        currentIndex: _tab,
-        onTap: (index) => setState(() => _tab = index),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: CustomBottomNav(
+        pagesBuilder: (onTabSelected) => <Widget>[
+          _HappyCreateTab(onSoon: _soon),
+          HappyHomeTab(
+            name: _name,
+            accessToken: widget.accessToken,
+            onDiscover: () => onTabSelected(2),
+            onSoon: _soon,
+          ),
+          _HappyPlaceholderTab(
+            title: 'اكتشف',
+            subtitle: 'اعثر على مجتمعات واهتمامات جديدة',
+            icon: Icons.explore_outlined,
+            onSoon: _soon,
+          ),
+          const _HappyPlaceholderTab(
+            title: 'الرسائل',
+            subtitle: 'محادثاتك الخاصة في مكان واحد',
+            icon: Icons.forum_outlined,
+          ),
+          HappyProfilePage(
+            name: _name,
+            email: widget.email,
+            userId: widget.userId,
+            initial: _initial,
+            onLogout: _logout,
+            onSoon: _soon,
+          ),
+        ],
       ),
-    ));
+    );
   }
 }
 
