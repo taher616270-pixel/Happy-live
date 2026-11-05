@@ -732,6 +732,17 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           ]),
         ),
         Transform.translate(
+          offset: const Offset(0, -25),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(13, 0, 13, 18),
+            child: Row(children: [
+              _heroStat('متابعون', _number('followers')),
+              _heroStat('إعجاب', _number('likesReceived')),
+              _heroStat('زائر', _number('visitors')),
+            ]),
+          ),
+        ),
+        Transform.translate(
           offset: const Offset(0, -42),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -784,17 +795,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                 Padding(padding: const EdgeInsets.only(bottom: 7), child: _roomButton()),
               ],
             ),
-          ),
-        ),
-        Transform.translate(
-          offset: const Offset(0, -25),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(13, 0, 13, 18),
-            child: Row(children: [
-              _heroStat('متابعون', _number('followers')),
-              _heroStat('إعجاب', _number('likesReceived')),
-              _heroStat('زائر', _number('visitors')),
-            ]),
           ),
         ),
       ]),
