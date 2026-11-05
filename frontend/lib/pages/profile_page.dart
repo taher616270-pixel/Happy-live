@@ -767,14 +767,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                   ],
                                 ),
                               ),
-                              SliverPersistentHeader(
-                                pinned: false,
-                                delegate: _PublicProfileTabsDelegate(
-                                  selected: _tab,
-                                  onSelected: (index) => setState(() => _tab = index),
-                                ),
-                              ),
-                              SliverToBoxAdapter(child: _tabContent()),
+                              SliverToBoxAdapter(child: _profileTabsAndContent()),
                               SliverToBoxAdapter(
                                 // يوفر مجال تمرير حتى عندما تكون بيانات التبويب قصيرة،
                                 // مع بقاء موضع الصفحة ثابتاً بعد رفع الإصبع.
@@ -1010,6 +1003,69 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
         ]),
       );
+
+  // شريط التبويبات ومحتواها داخل بطاقة بيضاء واحدة؛ بدون مربعات منفصلة للأزرار.
+  Widget _profileTabsAndContent() {
+    Widget tab(String title, int index) {
+      final active = _tab == index;
+      return Expanded(
+        child: InkWell(
+          onTap: () => setState(() => _tab = index),
+          child: SizedBox(
+            height: 54,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: active ? _brown : _muted,
+                      fontSize: 12,
+                      fontWeight: active ? FontWeight.w900 : FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  height: 3,
+                  width: 38,
+                  decoration: BoxDecoration(
+                    color: active ? _brownLight : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              tab('الصفحة الشخصية', 2),
+              tab('الوكالات', 1),
+              tab('المنشورات', 0),
+            ],
+          ),
+          Container(height: 1, color: const Color(0xFFF0E7DC)),
+          _tabContent(),
+        ],
+      ),
+    );
+  }
 
   Widget _tabContent() => AnimatedSwitcher(
         duration: const Duration(milliseconds: 180),
