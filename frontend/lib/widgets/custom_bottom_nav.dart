@@ -54,36 +54,31 @@ class _CustomBottomNavState extends State<CustomBottomNav>
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         child: SafeArea(
           top: false,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final slotWidth = constraints.maxWidth / items.length;
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF191326),
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(
-                    color: const Color(0xFF302344),
-                    width: 1,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF191326),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: const Color(0xFF302344),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                for (final item in items)
+                  Expanded(
+                    flex: 1,
+                    child: _buildItem(
+                      index: item.$1,
+                      icon: item.$2,
+                      label: item.$3,
+                    ),
                   ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    for (final item in items)
-                      SizedBox(
-                        width: slotWidth,
-                        child: _buildItem(
-                          index: item.$1,
-                          icon: item.$2,
-                          label: item.$3,
-                        ),
-                      ),
-                  ],
-                ),
-              );
-            },
+              ],
+            ),
           ),
         ),
       ),
