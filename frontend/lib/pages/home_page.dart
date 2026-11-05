@@ -9,8 +9,8 @@ import 'room_page.dart';
 class HappyHomeColors {
   static const background = Color(0xFF0B0912);
   static const surface = Color(0xFF191326);
-  static const gold = Color(0xFFB58AFF);
-  static const purple = Color(0xFF8B5CF6);
+  static const gold = Color(0xFFF0A62B);
+  static const purple = Color(0xFFD9A93C);
   static const muted = Color(0xFFAAA2B5);
 }
 
@@ -115,7 +115,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: HappyHomeColors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0x668B5CF6))),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0x66D9A93C))),
           title: const Text('البحث عن غرفة', textAlign: TextAlign.right, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
           content: Directionality(
             textDirection: TextDirection.rtl,
@@ -360,7 +360,7 @@ class MyPartyRoomButton extends StatelessWidget {
                   color: const Color(0xFF211A31),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: const Color(0xFFB58AFF).withOpacity(0.5),
+                    color: const Color(0xFFF0A62B).withOpacity(0.5),
                     width: 1,
                   ),
                 ),
@@ -405,10 +405,10 @@ class MyPartyRoomButton extends StatelessWidget {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF8B5CF6),
+                        color: const Color(0xFFD9A93C),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: const Color(0xFF8B5CF6),
+                          color: const Color(0xFFD9A93C),
                           width: 1.8,
                         ),
                       ),
@@ -462,12 +462,12 @@ class ExperimentalFeatureButton extends StatelessWidget {
               color: const Color(0xFF191326),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: const Color(0xFF8B5CF6).withOpacity(0.75),
+                color: const Color(0xFFD9A93C).withOpacity(0.75),
                 width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF8B5CF6).withOpacity(0.14),
+                  color: const Color(0xFFD9A93C).withOpacity(0.14),
                   blurRadius: 14,
                   spreadRadius: 1,
                 ),
@@ -494,13 +494,13 @@ class ExperimentalFeatureButton extends StatelessWidget {
                     color: const Color(0xFF302044),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFFB58AFF).withOpacity(0.8),
+                      color: const Color(0xFFF0A62B).withOpacity(0.8),
                       width: 1.2,
                     ),
                   ),
                   child: const Icon(
                     Icons.image_outlined,
-                    color: Color(0xFFB58AFF),
+                    color: Color(0xFFF0A62B),
                     size: 30,
                   ),
                 ),
@@ -540,9 +540,9 @@ class HappyShortcut extends StatelessWidget {
 
 
 const kCardBg = Color(0xFF1B1230);
-const kNeon = Color(0xFF8B5CF6);
-const kNeonLight = Color(0xFFA78BFA);
-const kPill = Color(0xFFB794FF);
+const kNeon = Color(0xFFD9A93C);
+const kNeonLight = Color(0xFFE9C26A);
+const kPill = Color(0xFFF6D27A);
 const kPillText = Color(0xFF1A1030);
 const kSubtitle = Color(0xFFB0A6C0);
 
