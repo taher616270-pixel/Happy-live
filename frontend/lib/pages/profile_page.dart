@@ -725,9 +725,29 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                   ),
                                 ),
                                 centerTitle: true,
-                                flexibleSpace: FlexibleSpaceBar(
-                                  background: _heroHeader(),
-                                  collapseMode: CollapseMode.parallax,
+                                flexibleSpace: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    FlexibleSpaceBar(
+                                      background: _heroHeader(),
+                                      collapseMode: CollapseMode.parallax,
+                                    ),
+                                    Positioned(
+                                      top: 0,
+                                      left: 0,
+                                      right: 0,
+                                      height: 56,
+                                      child: IgnorePointer(
+                                        child: ColoredBox(
+                                          color: Color.lerp(
+                                            Colors.transparent,
+                                            Colors.white,
+                                            _scrollProgress,
+                                          )!,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               SliverPersistentHeader(
