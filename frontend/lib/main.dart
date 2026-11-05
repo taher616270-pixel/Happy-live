@@ -1756,133 +1756,83 @@ class _HappyLiveBottomNav extends StatefulWidget {
 
 class _HappyLiveBottomNavState extends State<_HappyLiveBottomNav>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _animation;
+  late final AnimationController _ctrl;
 
-  static const Color _background = Color(0xFF0B0912);
-  static const Color _surface = Color(0xFF191326);
-  static const Color _border = Color(0xFF302344);
-  static const Color _purple = Color(0xFF8B5CF6);
-  static const Color _lightPurple = Color(0xFFB58AFF);
-  static const Color _muted = Color(0xFFA49AAF);
-
-  // Keep the existing Happy Live page indexes and navigation behavior.
-  // The visual order is right-to-left, while the page indexes stay unchanged.
+  // These indexes match the existing SessionHomePage pages list.
+  // Keep this order for the RTL visual layout.
   static const items = <(int, IconData, String)>[
     (4, Icons.person_outline, 'الخاص بي'),
-    (3, Icons.chat_bubble_outline, 'الرسائل'),
-    (2, Icons.description_outlined, 'المنشورات'),
+    (3, Icons.chat_bubble_outline_rounded, 'الرسائل'),
+    (2, Icons.article_outlined, 'المنشورات'),
     (1, Icons.bed_outlined, 'غرفة'),
-    (0, Icons.cell_tower, 'Happy Live'),
+    (0, Icons.wifi_tethering_outlined, 'Happy Live'),
   ];
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+    _ctrl = AnimationController(
+      duration: const Duration(seconds: 1),
       vsync: this,
-    );
-    _animation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-    _controller.repeat();
-  }
-
-  @override
-  void didUpdateWidget(covariant _HappyLiveBottomNav oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.currentIndex != widget.currentIndex) {
-      // Restart the light loop from the beginning for the newly selected tab.
-      _controller.repeat(min: 0, max: 1, period: const Duration(milliseconds: 1000));
-    }
+    )..repeat();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Container(
-      color: _background,
-      padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset + 16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: _surface,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: _border, width: 1),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-        child: Row(
-          children: [
-            for (final item in items)
-              Expanded(
-                child: _buildItem(
-                  index: item.$1,
-                  icon: item.$2,
-                  label: item.$3,
+      color: const Color(0xFF0B0912),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF191326),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: const Color(0xFF302344),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              for (final item in items)
+                Expanded(
+                  child: _buildItem(item.$1, item.$2, item.$3),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildItem({
-    required int index,
-    required IconData icon,
-    required String label,
-  }) {
-    final isActive = widget.currentIndex == index;
-    final content = _innerContent(icon, label, isActive);
+  Widget _buildItem(int index, IconData icon, String label) {
+    final active = widget.currentIndex == index;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => widget.onTap(index),
-      child: isActive
-          ? AnimatedBuilder(
-              animation: _animation,
-              builder: (context, child) => CustomPaint(
-                painter: _BorderLightPainter(progress: _animation.value),
-                child: child,
-              ),
-              child: content,
-            )
-          : content,
-    );
-  }
-
-  Widget _innerContent(IconData icon, String label, bool isActive) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 58),
-      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 10),
+    final content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
       decoration: BoxDecoration(
-        color: isActive ? _purple.withOpacity(0.2) : Colors.transparent,
+        color: active ? const Color(0x2E8B5CF6) : Colors.transparent,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: _lightPurple.withOpacity(0.5),
-                  blurRadius: 18,
-                  spreadRadius: 1,
-                ),
-              ]
-            : const [],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
-            color: isActive ? _lightPurple : _muted,
-            size: 26,
+            size: 24,
+            color: active
+                ? const Color(0xFFB58AFF)
+                : const Color(0xFFA49AAF),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 2),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
@@ -1890,60 +1840,93 @@ class _HappyLiveBottomNavState extends State<_HappyLiveBottomNav>
               maxLines: 1,
               softWrap: false,
               style: TextStyle(
-                color: isActive ? Colors.white : _muted,
-                fontSize: 11,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                fontSize: 10,
+                color: active ? Colors.white : const Color(0xFFA49AAF),
+                fontWeight: active ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ),
         ],
       ),
     );
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => widget.onTap(index),
+      child: active
+          ? CustomPaint(
+              foregroundPainter: ActiveBorderPainter(animation: _ctrl),
+              child: content,
+            )
+          : content,
+    );
   }
 }
 
-class _BorderLightPainter extends CustomPainter {
-  const _BorderLightPainter({required this.progress});
+class ActiveBorderPainter extends CustomPainter {
+  ActiveBorderPainter({required this.animation})
+      : super(repaint: animation);
 
-  final double progress;
+  final Animation<double> animation;
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+
+    final rect = Offset.zero & size;
     final rrect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, size.width, size.height),
+      rect.deflate(0.6),
       const Radius.circular(18),
     );
-    final path = Path()..addRRect(rrect);
-    final metrics = path.computeMetrics();
 
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..color = const Color(0xFF8B5CF6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+
+    canvas.save();
+    canvas.clipRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(18)),
+    );
+
+    final metrics = (Path()..addRRect(rrect)).computeMetrics();
     if (metrics.isNotEmpty) {
       final metric = metrics.first;
-      final tangent = metric.getTangentForOffset(
-        metric.length * progress.clamp(0.0, 1.0).toDouble(),
-      );
+      final progress = animation.value.clamp(0.0, 1.0).toDouble();
+      final tangent = metric.getTangentForOffset(metric.length * progress);
 
       if (tangent != null) {
-        final glow = Paint()
-          ..color = const Color(0xFFB58AFF)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12)
-          ..style = PaintingStyle.fill;
-
-        canvas.drawCircle(tangent.position, 7, glow);
+        final position = tangent.position;
         canvas.drawCircle(
-          tangent.position,
-          3,
+          position,
+          12,
+          Paint()
+            ..shader = const RadialGradient(
+              colors: [
+                Color(0xF2B58AFF),
+                Color(0x738B5CF6),
+                Color(0x008B5CF6),
+              ],
+              stops: [0.0, 0.45, 1.0],
+            ).createShader(
+              Rect.fromCircle(center: position, radius: 12),
+            ),
+        );
+        canvas.drawCircle(
+          position,
+          2.5,
           Paint()..color = Colors.white,
         );
       }
     }
 
-    final border = Paint()
-      ..color = const Color(0xFF8B5CF6).withOpacity(0.8)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawRRect(rrect, border);
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant _BorderLightPainter oldDelegate) => true;
+  bool shouldRepaint(covariant ActiveBorderPainter oldDelegate) =>
+      oldDelegate.animation != animation;
 }
