@@ -1014,13 +1014,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       children: _posts.map((post) {
         final imageUrl = (post['imageUrl'] ?? post['image_url'] ?? '').toString();
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: _cream.withOpacity(.65),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFEADCCB)),
-          ),
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text((post['content'] ?? '').toString(),
                 style: const TextStyle(color: _brown, fontSize: 13, height: 1.6)),
