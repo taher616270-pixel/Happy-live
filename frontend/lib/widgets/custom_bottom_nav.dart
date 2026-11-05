@@ -36,7 +36,7 @@ class CustomBottomNav extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(5, 8, 5, 8 + bottomInset),
           decoration: BoxDecoration(
             color: const Color(0xFF191326),
-            borderRadius: BorderRadius.zero,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             border: Border.all(
               color: const Color(0xFF8B5CF6),
               width: 1.2,
