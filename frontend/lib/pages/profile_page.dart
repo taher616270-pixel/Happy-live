@@ -613,7 +613,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     super.dispose();
   }
 
-  Future<void> _loadProfile() async {
+  Future<void> _loadProfile({bool showErrorView = true}) async {
     try {
       final response = await http.get(
         Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/users/${Uri.encodeComponent(widget.userId)}/profile'),
@@ -641,10 +641,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _loadError = 'تعذر تحميل البيانات الحقيقية. تحقق من اتصال الخادم.';
+        if (showErrorView) {
+          _loadError = 'تعذر تحميل البيانات الحقيقية. تحقق من اتصال الخادم.';
+        }
       });
+      if (!showErrorView) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر تحديث الملف الشخصي. حاول مرة أخرى.')),
+        );
+      }
     }
   }
+
+  Future<void> _refreshProfile() => _loadProfile(showErrorView: false);
 
   @override
   Widget build(BuildContext context) => Directionality(
@@ -659,10 +668,16 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     ? _errorView()
                     : Stack(
                         children: [
-                          CustomScrollView(
-                            controller: _profileScrollController,
-                            physics: const ClampingScrollPhysics(),
-                            slivers: [
+                          RefreshIndicator(
+                            onRefresh: _refreshProfile,
+                            color: _brownLight,
+                            backgroundColor: Colors.white,
+                            child: CustomScrollView(
+                              controller: _profileScrollController,
+                              physics: const AlwaysScrollableScrollPhysics(
+                                parent: ClampingScrollPhysics(),
+                              ),
+                              slivers: [
                               SliverAppBar(
                                 pinned: true,
                                 primary: false,
@@ -731,7 +746,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                       MediaQuery.of(context).padding.bottom,
                                 ),
                               ),
-                            ],
+                              ],
+                            ),
                           ),
                           Positioned(
                             left: 12,
