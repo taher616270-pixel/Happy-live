@@ -67,6 +67,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
       PageRouteBuilder<String>(
         pageBuilder: (_, __, ___) => _CreatePostPage(
           name: widget.name,
+          accessToken: widget.accessToken,
           onPublish: _submitPost,
         ),
         transitionDuration: const Duration(milliseconds: 360),
@@ -517,8 +518,9 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
 
 
 class _CreatePostPage extends StatefulWidget {
-  const _CreatePostPage({required this.name, required this.onPublish});
+  const _CreatePostPage({required this.name, required this.accessToken, required this.onPublish});
   final String name;
+  final String accessToken;
   final Future<String?> Function(String content, String? imageUrl) onPublish;
   @override
   State<_CreatePostPage> createState() => _CreatePostPageState();
