@@ -146,6 +146,18 @@ function allowedOrigins(env: Env): Set<string> {
   return new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
 }
 
+function isAllowedOrigin(origin: string, env: Env): boolean {
+  if (allowedOrigins(env).has(origin)) return true;
+  try {
+    const parsed = new URL(origin);
+    return parsed.protocol === "https:" &&
+      parsed.origin === origin &&
+      parsed.hostname.endsWith(".happy-live.pages.dev");
+  } catch {
+    return false;
+  }
+}
+
 function json(data: unknown, status = 200, origin?: string, env?: Env): Response {
   const headers = new Headers({
     "content-type": "application/json; charset=utf-8",
@@ -153,7 +165,7 @@ function json(data: unknown, status = 200, origin?: string, env?: Env): Response
     "x-content-type-options": "nosniff"
   });
 
-  if (origin && env && allowedOrigins(env).has(origin)) {
+  if (origin && env && isAllowedOrigin(origin, env)) {
     headers.set("access-control-allow-origin", origin);
     headers.set("vary", "Origin");
     headers.set("access-control-allow-credentials", "true");
@@ -169,7 +181,7 @@ export default {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") ?? undefined;
 
-    if (origin && !allowedOrigins(env).has(origin)) {
+    if (origin && !isAllowedOrigin(origin, env)) {
       return json({ error: "origin_not_allowed" }, 403);
     }
 
