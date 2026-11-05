@@ -1741,7 +1741,7 @@ class PhoneCodeInputFormatter extends TextInputFormatter {
   }
 }
 
-class _HappyLiveBottomNav extends StatelessWidget {
+class _HappyLiveBottomNav extends StatefulWidget {
   const _HappyLiveBottomNav({
     required this.currentIndex,
     required this.onTap,
@@ -1750,52 +1750,198 @@ class _HappyLiveBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  static const Color _bar = Color(0xFF1A1F1F);
-  static const Color _teal = Color(0xFF1FD1B8);
-  static const Color _grey = Color(0xFF8A9A98);
+  @override
+  State<_HappyLiveBottomNav> createState() => _HappyLiveBottomNavState();
+}
+
+class _HappyLiveBottomNavState extends State<_HappyLiveBottomNav>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _glowController;
+  late final Animation<double> _glowAnimation;
+
+  static const Color _background = Color(0xFF0B0912);
+  static const Color _surface = Color(0xFF191326);
+  static const Color _purple = Color(0xFF8B5CF6);
+  static const Color _lightPurple = Color(0xFFB58AFF);
+  static const Color _muted = Color(0xFFA49AAF);
+
+  // Keep the existing page indexes unchanged:
+  // 0=create/Happy Live, 1=home/room, 2=discover/posts,
+  // 3=messages, 4=profile/private.
+  static const items = <(int, String, IconData)>[
+    (4, 'الخاص بي', Icons.person_outline),
+    (3, 'الرسائل', Icons.chat_bubble_outline),
+    (2, 'المنشورات', Icons.description_outlined),
+    (1, 'غرفة', Icons.bed_outlined),
+    (0, 'Happy Live', Icons.cell_tower),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+    _glowAnimation = CurvedAnimation(
+      parent: _glowController,
+      curve: Curves.linear,
+    );
+    _glowController.repeat();
+  }
+
+  @override
+  void dispose() {
+    _glowController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    const items = <(String, IconData)>[
-      ('Happy Live', Icons.sports_esports),
-      ('غرفة', Icons.graphic_eq),
-      ('المنشورات', Icons.explore_outlined),
-      ('الرسائل', Icons.chat_bubble_outline),
-      ('الخاص بي', Icons.person),
-    ];
-
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Container(
-      height: 70 + MediaQuery.of(context).padding.bottom,
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-      decoration: const BoxDecoration(
-        color: _bar,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Row(
-        children: [
-          for (var i = 0; i < items.length; i++)
-            Expanded(
-              child: InkWell(
-                onTap: () => onTap(i),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(items[i].$2, color: currentIndex == i ? _teal : _grey, size: 26),
-                    const SizedBox(height: 4),
-                    Text(
-                      items[i].$1,
-                      style: TextStyle(
-                        color: currentIndex == i ? _teal : _grey,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
+      color: _background,
+      padding: EdgeInsets.fromLTRB(12, 10, 12, bottomInset + 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        decoration: BoxDecoration(
+          color: _surface,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: _purple, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: _purple.withOpacity(0.35),
+              blurRadius: 18,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            for (final item in items)
+              Expanded(
+                child: _buildButton(
+                  index: item.$1,
+                  label: item.$2,
+                  icon: item.$3,
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildButton({
+    required int index,
+    required String label,
+    required IconData icon,
+  }) {
+    final active = widget.currentIndex == index;
+    final content = _buildButtonContent(icon, label, active);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => widget.onTap(index),
+      child: active
+          ? AnimatedBuilder(
+              animation: _glowAnimation,
+              builder: (context, child) => CustomPaint(
+                painter: _BorderLightPainter(progress: _glowAnimation.value),
+                child: child,
+              ),
+              child: content,
+            )
+          : content,
+    );
+  }
+
+  Widget _buildButtonContent(IconData icon, String label, bool active) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 58),
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 7),
+      decoration: BoxDecoration(
+        color: active ? _purple.withOpacity(0.20) : Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: active
+            ? [
+                BoxShadow(
+                  color: _lightPurple.withOpacity(0.35),
+                  blurRadius: 18,
+                ),
+              ]
+            : const [],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: active ? _lightPurple : _muted,
+            size: 24,
+          ),
+          const SizedBox(height: 3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                color: active ? Colors.white : _muted,
+                fontSize: 10,
+                fontWeight: active ? FontWeight.bold : FontWeight.normal,
+              ),
             ),
+          ),
         ],
       ),
     );
   }
 }
 
+class _BorderLightPainter extends CustomPainter {
+  const _BorderLightPainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final radius = Radius.circular(18);
+    final rrect = RRect.fromRectAndRadius(rect, radius);
+    final path = Path()..addRRect(rrect);
+    final metrics = path.computeMetrics();
+
+    if (metrics.isNotEmpty) {
+      final metric = metrics.first;
+      final tangent = metric.getTangentForOffset(
+        metric.length * progress.clamp(0.0, 1.0),
+      );
+      if (tangent != null) {
+        final glowPaint = Paint()
+          ..color = const Color(0xFFB58AFF)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+        canvas.drawCircle(tangent.position, 7, glowPaint);
+        canvas.drawCircle(
+          tangent.position,
+          2.8,
+          Paint()..color = Colors.white,
+        );
+      }
+    }
+
+    final borderPaint = Paint()
+      ..color = const Color(0xCC8B5CF6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    canvas.drawRRect(rrect, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BorderLightPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
