@@ -1126,7 +1126,7 @@ class _RoomPageState extends State<RoomPage> {
               bottomLeft: Radius.circular(18),
             ),
             border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 1),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(color: AppColors.primary.withOpacity(0.133), blurRadius: 12, offset: Offset(0, 4)),
             ],
           ),
