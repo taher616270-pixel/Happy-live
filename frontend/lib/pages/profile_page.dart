@@ -808,16 +808,99 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   );
 }
 
-class _ProfilePostImage extends StatelessWidget {
+class _ProfilePostImage extends StatefulWidget {
   const _ProfilePostImage({required this.url});
   final String url;
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(12),
-    child: Image.network(url, width: 210, height: 230, fit: BoxFit.contain, alignment: Alignment.center,
-      errorBuilder: (_, __, ___) => const SizedBox(width: 190, height: 120, child: Icon(Icons.broken_image_outlined, color: Colors.white54))),
-  );
+  State<_ProfilePostImage> createState() => _ProfilePostImageState();
+}
+
+class _ProfilePostImageState extends State<_ProfilePostImage> {
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+  double? _width;
+  double? _height;
+  bool _failed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProfilePostImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _width = null;
+      _height = null;
+      _failed = false;
+      _resolve();
+    }
+  }
+
+  void _resolve() {
+    final next = NetworkImage(widget.url).resolve(createLocalImageConfiguration(context));
+    if (_stream?.key == next.key) return;
+    if (_stream != null && _listener != null) _stream!.removeListener(_listener!);
+    _stream = next;
+    _listener = ImageStreamListener(
+      (ImageInfo info, bool synchronousCall) {
+        if (!mounted) return;
+        setState(() {
+          _width = info.image.width.toDouble();
+          _height = info.image.height.toDouble();
+          _failed = false;
+        });
+      },
+      onError: (Object error, StackTrace? stackTrace) {
+        if (mounted) setState(() => _failed = true);
+      },
+    );
+    _stream!.addListener(_listener!);
+  }
+
+  @override
+  void dispose() {
+    if (_stream != null && _listener != null) _stream!.removeListener(_listener!);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_failed) {
+      return const SizedBox(width: 190, height: 120,
+        child: Center(child: Icon(Icons.broken_image_outlined, color: Colors.white54)));
+    }
+    var boxWidth = 190.0;
+    var boxHeight = 230.0;
+    if (_width != null && _height != null && _width! > 0) {
+      final ratio = _height! / _width!;
+      if (ratio > 1.6) {
+        boxWidth = 175;
+        boxHeight = (175 * ratio).clamp(380.0, 420.0).toDouble();
+      } else if (ratio >= .9 && ratio <= 1.05) {
+        boxWidth = 210;
+        boxHeight = 210;
+      } else if (ratio > 1.05) {
+        boxWidth = 190;
+        boxHeight = 230;
+      } else {
+        boxWidth = 210;
+        boxHeight = (210 * ratio).clamp(100.0, 230.0).toDouble();
+      }
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: boxWidth.clamp(0.0, 210.0).toDouble(),
+        height: boxHeight.clamp(0.0, 420.0).toDouble(),
+        child: Image.network(widget.url, fit: BoxFit.contain, alignment: Alignment.center,
+          errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined, color: Colors.white54))),
+      ),
+    );
+  }
 }
 
 class _NightCampPainter extends CustomPainter {
