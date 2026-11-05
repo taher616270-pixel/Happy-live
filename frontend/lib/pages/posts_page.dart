@@ -756,11 +756,35 @@ class _CreatePostPageState extends State<_CreatePostPage> {
                 )),
               )),
               const SizedBox(width: 5),
-              TextButton.icon(
-                onPressed: _showVisibilitySheet,
-                style: TextButton.styleFrom(foregroundColor: _gold, padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                icon: const Icon(Icons.public_rounded, size: 16),
-                label: const Text('عام', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _showVisibilitySheet,
+                  borderRadius: BorderRadius.circular(100),
+                  child: AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeInOut,
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5E6C8),
+                        borderRadius: BorderRadius.circular(100),
+                        border: Border.all(color: const Color(0xFFD4A017), width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.person_outline_rounded, size: 18, color: Color(0xFFD4A017)),
+                          const SizedBox(width: 6),
+                          Text(_visibility, style: const TextStyle(fontSize: 14, color: Color(0xFF3B3428), fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_back_ios_rounded, size: 14, color: Color(0xFFD4A017)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ]),
           )),
