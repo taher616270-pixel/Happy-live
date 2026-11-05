@@ -58,6 +58,9 @@ class HappyProfilePage extends StatelessWidget {
     required this.initial,
     required this.onLogout,
     required this.onSoon,
+    required this.onEdit,
+    this.photoUrl,
+    this.bio = '',
   });
 
   final String name;
@@ -66,11 +69,15 @@ class HappyProfilePage extends StatelessWidget {
   final String initial;
   final VoidCallback onLogout;
   final ValueChanged<String> onSoon;
+  final VoidCallback onEdit;
+  final String? photoUrl;
+  final String bio;
 
   @override
   Widget build(BuildContext context) {
     return ProfilePage(
-      data: ProfileData(displayName: name, userId: userId),
+      data: ProfileData(displayName: name, userId: userId, photoUrl: photoUrl),
+      onEdit: onEdit,
       onPrestige: () => onSoon('برستيج'),
       onSvip: () => onSoon('SVIP'),
       onAgency: () => onSoon('الوكالة'),
@@ -90,7 +97,7 @@ class ProfilePage extends StatelessWidget {
   final int followersBadge, visitorsBadge;
   final int balance;
   final VoidCallback? onBack, onSvip, onPrestige, onAgency, onMedals,
-      onLevel, onStore, onWallet, onTasks, onSettings;
+      onLevel, onStore, onWallet, onTasks, onSettings, onEdit;
 
   const ProfilePage({
     super.key,
@@ -102,6 +109,7 @@ class ProfilePage extends StatelessWidget {
     this.visitorsBadge = 0,
     this.balance = 0,
     this.onBack,
+    this.onEdit,
     this.onSvip,
     this.onPrestige,
     this.onAgency,
@@ -135,6 +143,22 @@ class ProfilePage extends StatelessWidget {
               child: Column(
                 children: [
                   _header(context),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: OutlinedButton.icon(
+                        onPressed: onEdit,
+                        icon: const Icon(Icons.edit_rounded, size: 17),
+                        label: const Text('تعديل الملف الشخصي'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF7552A2),
+                          side: const BorderSide(color: Color(0xFFB99AD8)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 26),
                   _stats(),
                   const SizedBox(height: 22),
