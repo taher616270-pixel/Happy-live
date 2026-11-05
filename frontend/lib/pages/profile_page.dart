@@ -724,7 +724,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                               ),
                               SliverToBoxAdapter(child: _tabContent()),
                               SliverToBoxAdapter(
-                                child: SizedBox(height: 105 + MediaQuery.of(context).padding.bottom),
+                                // يوفر مجال تمرير حتى عندما تكون بيانات التبويب قصيرة،
+                                // مع بقاء موضع الصفحة ثابتاً بعد رفع الإصبع.
+                                child: SizedBox(
+                                  height: MediaQuery.of(context).size.height * .75 +
+                                      MediaQuery.of(context).padding.bottom,
+                                ),
                               ),
                             ],
                           ),
