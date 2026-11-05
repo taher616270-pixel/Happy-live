@@ -564,6 +564,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   static const _muted = Color(0xFF9A8878);
 
   int _tab = 2;
+  final ScrollController _profileScrollController = ScrollController();
+  double _scrollProgress = 0;
   bool _loading = true;
   String? _loadError;
   Map<String, dynamic> _profile = {};
@@ -592,7 +594,23 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   @override
   void initState() {
     super.initState();
+    _profileScrollController.addListener(_handleProfileScroll);
     _loadProfile();
+  }
+
+  void _handleProfileScroll() {
+    if (!_profileScrollController.hasClients) return;
+    final next = (_profileScrollController.offset / 110).clamp(0.0, 1.0);
+    if ((next - _scrollProgress).abs() > .015 && mounted) {
+      setState(() => _scrollProgress = next);
+    }
+  }
+
+  @override
+  void dispose() {
+    _profileScrollController.removeListener(_handleProfileScroll);
+    _profileScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadProfile() async {
@@ -632,45 +650,90 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   Widget build(BuildContext context) => Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: _cream,
+          backgroundColor: _paper,
           body: SafeArea(
             bottom: false,
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: _brownLight))
                 : _loadError != null
                     ? _errorView()
-                    : Column(
+                    : Stack(
                         children: [
-                          Expanded(
-                            child: Stack(
-                              children: [
-                                SingleChildScrollView(
-                                  physics: const BouncingScrollPhysics(),
-                                  child: Column(
-                                    children: [_heroHeader(), _profileSheet()],
-                                  ),
+                          CustomScrollView(
+                            controller: _profileScrollController,
+                            physics: const BouncingScrollPhysics(),
+                            slivers: [
+                              SliverAppBar(
+                                pinned: true,
+                                primary: false,
+                                toolbarHeight: 56,
+                                collapsedHeight: 56,
+                                expandedHeight: 270,
+                                backgroundColor: Color.lerp(
+                                  Colors.transparent,
+                                  Colors.white,
+                                  _scrollProgress,
                                 ),
-                                Positioned(
-                                  top: 10,
-                                  right: 12,
+                                surfaceTintColor: Colors.transparent,
+                                elevation: 0,
+                                scrolledUnderElevation: 0,
+                                automaticallyImplyLeading: false,
+                                leadingWidth: 52,
+                                leading: Padding(
+                                  padding: const EdgeInsetsDirectional.only(start: 10),
                                   child: _roundButton(
                                     Icons.arrow_forward_rounded,
                                     () => Navigator.of(context).maybePop(),
                                   ),
                                 ),
-                                Positioned(
-                                  top: 10,
-                                  left: 12,
-                                  child: _roundButton(Icons.more_horiz_rounded, () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('لا توجد خيارات إضافية حالياً')),
-                                    );
-                                  }),
+                                actions: [
+                                  Padding(
+                                    padding: const EdgeInsetsDirectional.only(end: 12),
+                                    child: _roundButton(Icons.more_horiz_rounded, () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('لا توجد خيارات إضافية حالياً')),
+                                      );
+                                    }),
+                                  ),
+                                ],
+                                title: Opacity(
+                                  opacity: _scrollProgress,
+                                  child: Text(
+                                    _firstText(['name', 'displayName', 'display_name'], widget.name),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Color(0xFF292929),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
                                 ),
-                              ],
-                            ),
+                                centerTitle: true,
+                                flexibleSpace: FlexibleSpaceBar(
+                                  background: _heroHeader(),
+                                  collapseMode: CollapseMode.parallax,
+                                ),
+                              ),
+                              SliverPersistentHeader(
+                                pinned: true,
+                                delegate: _PublicProfileTabsDelegate(
+                                  selected: _tab,
+                                  onSelected: (index) => setState(() => _tab = index),
+                                ),
+                              ),
+                              SliverToBoxAdapter(child: _tabContent()),
+                              SliverToBoxAdapter(
+                                child: SizedBox(height: 105 + MediaQuery.of(context).padding.bottom),
+                              ),
+                            ],
                           ),
-                          _actionBar(),
+                          Positioned(
+                            left: 12,
+                            right: 12,
+                            bottom: 8 + MediaQuery.of(context).padding.bottom,
+                            child: _actionBar(),
+                          ),
                         ],
                       ),
           ),
@@ -711,7 +774,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     return SizedBox(
       width: double.infinity,
-      height: 340,
+      height: 270,
       child: Stack(fit: StackFit.expand, children: [
         if (cover.isNotEmpty)
           Image.network(cover, fit: BoxFit.cover,
@@ -879,75 +942,31 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         ]),
       );
 
-  Widget _profileSheet() => Container(
-        width: double.infinity,
-        constraints: const BoxConstraints(minHeight: 340),
-        decoration: const BoxDecoration(
-          color: _paper,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(27)),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
-            child: Row(children: [
-              _sheetTab('الصفحة الشخصية', 2),
-              _sheetTab('الوكالات', 1),
-              _sheetTab('المنشورات', 0),
-            ]),
-          ),
-          const SizedBox(height: 4),
-          Container(height: 1, color: const Color(0xFFF0E7DC)),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            child: _tab == 0
-                ? Padding(
-                    key: const ValueKey('posts'),
-                    padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text('المنشورات',
-                            style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
-                        const SizedBox(height: 9),
-                        _postsContent(),
-                      ],
-                    ),
+  Widget _tabContent() => AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        child: _tab == 0
+            ? Padding(
+                key: const ValueKey('posts'),
+                padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('المنشورات',
+                        style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 9),
+                    _postsContent(),
+                  ],
+                ),
+              )
+            : _tab == 1
+                ? _emptySection(
+                    key: const ValueKey('agencies'),
+                    icon: Icons.apartment_rounded,
+                    title: 'لا توجد وكالة مرتبطة',
+                    subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
                   )
-                : _tab == 1
-                    ? _emptySection(
-                        key: const ValueKey('agencies'),
-                        icon: Icons.apartment_rounded,
-                        title: 'لا توجد وكالة مرتبطة',
-                        subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
-                      )
-                    : _personalDetails(),
-          ),
-        ]),
+                : _personalDetails(),
       );
-
-  Widget _sheetTab(String title, int index) {
-    final selected = _tab == index;
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => _tab = index),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 2),
-          child: Column(children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(title, maxLines: 1,
-                  style: TextStyle(color: selected ? _brown : _muted,
-                      fontSize: 12, fontWeight: selected ? FontWeight.w900 : FontWeight.w600)),
-            ),
-            const SizedBox(height: 10),
-            Container(height: 3, width: 38,
-                decoration: BoxDecoration(color: selected ? _brownLight : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8))),
-          ]),
-        ),
-      ),
-    );
-  }
 
   Widget _emptySection({
     required Key key,
@@ -1261,11 +1280,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 
   Widget _actionBar() => Container(
-        padding: EdgeInsets.fromLTRB(16, 10, 16, 10 + MediaQuery.of(context).padding.bottom),
-        decoration: const BoxDecoration(
-          color: _paper,
-          boxShadow: [BoxShadow(color: Color(0x16000000), blurRadius: 12, offset: Offset(0, -3))],
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        decoration: const BoxDecoration(),
         child: Row(children: [
           Expanded(
             child: OutlinedButton.icon(
@@ -1301,6 +1317,87 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           ),
         ]),
       );
+}
+
+
+class _PublicProfileTabsDelegate extends SliverPersistentHeaderDelegate {
+  const _PublicProfileTabsDelegate({
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final int selected;
+  final ValueChanged<int> onSelected;
+
+  @override
+  double get minExtent => 54;
+
+  @override
+  double get maxExtent => 54;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    Widget tab(String title, int index) {
+      final active = selected == index;
+      return Expanded(
+        child: InkWell(
+          onTap: () => onSelected(index),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: active ? const Color(0xFF3D2314) : const Color(0xFF9A8878),
+                      fontSize: 12,
+                      fontWeight: active ? FontWeight.w900 : FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  height: 3,
+                  width: 38,
+                  decoration: BoxDecoration(
+                    color: active ? const Color(0xFF8B5A2B) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Material(
+      color: Colors.white,
+      elevation: overlapsContent ? 2 : 0,
+      child: Column(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                tab('الصفحة الشخصية', 2),
+                tab('الوكالات', 1),
+                tab('المنشورات', 0),
+              ],
+            ),
+          ),
+          Container(height: 1, color: const Color(0xFFF0E7DC)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _PublicProfileTabsDelegate oldDelegate) =>
+      selected != oldDelegate.selected || onSelected != oldDelegate.onSelected;
 }
 
 class _ProfilePostImage extends StatefulWidget {
