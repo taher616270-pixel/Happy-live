@@ -678,26 +678,6 @@ class _CreatePostPageState extends State<_CreatePostPage> {
     );
   }
 
-  Widget _topicTag(String label, {bool primary = false}) => Container(
-    height: 32,
-    alignment: Alignment.center,
-    margin: const EdgeInsetsDirectional.only(end: 6),
-    padding: const EdgeInsets.symmetric(horizontal: 14),
-    decoration: BoxDecoration(
-      color: primary ? const Color(0xFFE8F4FF) : const Color(0xFFF3F4F6),
-      borderRadius: BorderRadius.circular(18),
-    ),
-    child: Text(
-      label,
-      maxLines: 1,
-      style: TextStyle(
-        color: primary ? const Color(0xFF3B82F6) : const Color(0xFF6B7280),
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-  );
-
   Widget _toolButton({required Widget icon, required VoidCallback onTap, String? tooltip}) => IconButton(
     tooltip: tooltip, onPressed: onTap, visualDensity: VisualDensity.compact, splashRadius: 21,
     padding: EdgeInsets.zero, constraints: const BoxConstraints.tightFor(width: 34, height: 40), icon: icon,
@@ -807,41 +787,6 @@ class _CreatePostPageState extends State<_CreatePostPage> {
                   columns: 8,
                   emojiSizeMax: 25,
                   backgroundColor: Color(0xFFFFFBEB),
-                ),
-              ),
-            ),
-          ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            height: keyboardVisible ? 48 : 0,
-            child: ClipRect(
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                opacity: keyboardVisible ? 1 : 0,
-                child: Container(
-                  height: 48,
-                  width: double.infinity,
-                  color: const Color(0xFFFFFBEB),
-                  padding: const EdgeInsetsDirectional.only(start: 10, end: 10),
-                  child: Row(
-                    textDirection: TextDirection.rtl,
-                    children: [
-                      _topicTag('#إضافة موضوع', primary: true),
-                      Expanded(
-                        child: SizedBox(
-                          height: 48,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              _topicTag('#OOTD'),
-                              _topicTag('#الصحة_النفسية'),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ),
