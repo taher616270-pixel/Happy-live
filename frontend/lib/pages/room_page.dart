@@ -20,7 +20,7 @@ class RoomPage extends StatefulWidget {
 class _RoomPageState extends State<RoomPage> {
   static const _background = Color(0xFF09080D);
   static const _surface = Color(0xFF17131F);
-  static const _purple = Color(0xFF9B63D9);
+  static const _purple = Color(0xFFD9A93C);
   static const _gold = Color(0xFFE8C477);
   static const _muted = Color(0xFFAAA2B5);
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
@@ -1279,7 +1279,7 @@ class _RoomPageState extends State<RoomPage> {
               height: 38,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(colors: [Color(0xFF9B63D9), Color(0xFF56347A)]),
+                gradient: LinearGradient(colors: [Color(0xFFD9A93C), Color(0xFF56347A)]),
               ),
               child: const Icon(Icons.mic_rounded, color: Colors.white, size: 19),
             ),
@@ -1341,7 +1341,7 @@ class _RoomPageState extends State<RoomPage> {
                             : const [Color(0xFF302638), Color(0xFF19141F)],
                   ),
                   border: Border.all(
-                    color: mine ? _gold : occupied ? const Color(0xFF9B63D9) : const Color(0x665F4775),
+                    color: mine ? _gold : occupied ? const Color(0xFFD9A93C) : const Color(0x665F4775),
                     width: mine ? 2.2 : 1.5,
                   ),
                   boxShadow: mine
@@ -1364,7 +1364,7 @@ class _RoomPageState extends State<RoomPage> {
                   width: 22,
                   height: 22,
                   decoration: BoxDecoration(
-                    color: mine ? _gold : occupied ? const Color(0xFF9B63D9) : const Color(0xFF29212F),
+                    color: mine ? _gold : occupied ? const Color(0xFFD9A93C) : const Color(0xFF29212F),
                     shape: BoxShape.circle,
                     border: Border.all(color: const Color(0xFF100C15), width: 2),
                   ),
