@@ -127,7 +127,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   keyboardType: TextInputType.number,
                   maxLength: 8,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 3, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: Color(0xFF1E2233), fontSize: 20, letterSpacing: 3, fontWeight: FontWeight.bold),
                   decoration: InputDecoration(
                     counterText: '',
                     hintText: 'أدخل ID الغرفة',
@@ -145,9 +145,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity, padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeColors.gold.withOpacity(.5))),
+                    decoration: BoxDecoration(color: const Color(0xFFFAF6EA), borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeColors.gold.withOpacity(.5))),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      Text((foundRoom!['name'] ?? 'غرفة صوتية').toString(), textAlign: TextAlign.right, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      Text((foundRoom!['name'] ?? 'غرفة صوتية').toString(), textAlign: TextAlign.right, style: const TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text('ID: ${foundRoom!['roomCode'] ?? controller.text.trim()}', textAlign: TextAlign.right, style: const TextStyle(color: HappyHomeColors.gold, fontSize: 12)),
                     ]),
@@ -175,7 +175,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               )
             else
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeColors.purple, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeColors.purple, foregroundColor: const Color(0xFF5A4630)),
                 onPressed: searching ? null : () async {
                   final code = controller.text.trim();
                   if (!RegExp(r'^\d{8}$').hasMatch(code)) {
