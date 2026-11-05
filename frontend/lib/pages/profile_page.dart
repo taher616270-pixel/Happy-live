@@ -598,8 +598,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   Future<void> _loadProfile() async {
     try {
       final response = await http.get(
-        Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/users/\${Uri.encodeComponent(widget.userId)}/profile'),
-        headers: {'Authorization': 'Bearer \${widget.accessToken}'},
+        Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/users/${Uri.encodeComponent(widget.userId)}/profile'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
       ).timeout(const Duration(seconds: 18));
       final decoded = jsonDecode(response.body);
       if (response.statusCode != 200 || decoded is! Map || decoded['ok'] != true) {
@@ -974,7 +974,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     final joined = _firstText(['joinedAt', 'createdAt', 'created_at']);
     final date = DateTime.tryParse(joined);
     final joinedLabel = date == null ? 'غير متاح' :
-        '\${date.year}-\${date.month.toString().padLeft(2, '0')}';
+        '${date.year}-${date.month.toString().padLeft(2, '0')}';
     final isPrivate = _profile['isPrivate'] == true || _profile['is_private'] == true;
 
     return Padding(
@@ -991,10 +991,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         if (age is num && age >= 0) _detailLine('العمر', '$age'),
         _detailLine('تاريخ الانضمام', joinedLabel),
         _detailLine('حالة الحساب', isPrivate ? 'خاص' : 'عام'),
-        _detailLine('المتابعون', '\${_number('followers')}'),
-        _detailLine('يتابع', '\${_number('following')}'),
-        _detailLine('الإعجابات المستلمة', '\${_number('likesReceived')}'),
-        _detailLine('الزوار', '\${_number('visitors')}'),
+        _detailLine('المتابعون', '${_number('followers')}'),
+        _detailLine('يتابع', '${_number('following')}'),
+        _detailLine('الإعجابات المستلمة', '${_number('likesReceived')}'),
+        _detailLine('الزوار', '${_number('visitors')}'),
         const SizedBox(height: 18),
         const Text('المنشورات', style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
         const SizedBox(height: 9),
@@ -1050,7 +1050,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
               Center(child: _ProfilePostImage(url: imageUrl)),
             ],
             const SizedBox(height: 8),
-            Text('♥ \${post['likesCount'] ?? post['likes_count'] ?? 0}    تعليق \${post['commentsCount'] ?? post['comments_count'] ?? 0}',
+            Text('♥ ${post['likesCount'] ?? post['likes_count'] ?? 0}    تعليق ${post['commentsCount'] ?? post['comments_count'] ?? 0}',
                 style: const TextStyle(color: _muted, fontSize: 11)),
           ]),
         );
