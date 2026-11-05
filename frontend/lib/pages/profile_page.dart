@@ -786,7 +786,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       ])),
       _sectionTitle('النشاط'),
       Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [
-        _infoLine('الغرف النشطة', '$rooms'),
+        _infoLine('الغرف التي أنشأها والنشطة', '$rooms'),
         _infoLine('إجمالي الإعجابات المستلمة', '${_number('likesReceived')}'),
       ])),
       if (isPrivate && _profile['canViewPosts'] != true)
