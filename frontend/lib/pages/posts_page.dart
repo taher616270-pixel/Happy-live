@@ -279,6 +279,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
       color: _gold,
       onRefresh: _loadPosts,
       child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
         children: [
           Row(children: [
@@ -329,17 +330,12 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
             ]),
           ),
           const SizedBox(height: 20),
-          Row(children: [
-            const Expanded(child: Text('أحدث المشاركات', style: TextStyle(color: _ink, fontSize: 16, fontWeight: FontWeight.w900))),
-            TextButton.icon(onPressed: _loadPosts, icon: const Icon(Icons.refresh_rounded, size: 17), label: const Text('تحديث'), style: TextButton.styleFrom(foregroundColor: _gold)),
-          ]),
           if (_loading && _posts.isEmpty)
             const Padding(padding: EdgeInsets.all(35), child: Center(child: CircularProgressIndicator(color: _gold)))
           else if (_error != null && _posts.isEmpty)
             Container(padding: const EdgeInsets.all(22), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)), child: Column(children: [
               const Icon(Icons.cloud_off_rounded, color: _gold, size: 32), const SizedBox(height: 9),
               Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: _muted, fontSize: 12)),
-              TextButton(onPressed: _loadPosts, child: const Text('إعادة المحاولة', style: TextStyle(color: _gold))),
             ]))
           else if (_posts.isEmpty)
             Container(padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 18), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFEADFC7))), child: const Column(children: [
