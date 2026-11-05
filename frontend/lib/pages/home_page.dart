@@ -267,6 +267,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         loading: _loadingMyRoom,
         onTap: _openMyRoom,
       ),
+      const SizedBox(height: 14),
+      ExperimentalFeatureButton(
+        onTap: () => widget.onSoon('تجريبي'),
+      ),
     ],
   );
 
@@ -426,6 +430,85 @@ class MyPartyRoomButton extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class ExperimentalFeatureButton extends StatelessWidget {
+  const ExperimentalFeatureButton({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            height: 76,
+            width: double.infinity,
+            padding: const EdgeInsetsDirectional.only(start: 16, end: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF191326),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: const Color(0xFF8B5CF6).withOpacity(0.75),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF8B5CF6).withOpacity(0.14),
+                  blurRadius: 14,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'تجريبي',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: Image.asset(
+                      'assets/images/boy_headset.png.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Color(0xFF302044),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.science_outlined,
+                          color: Color(0xFFB58AFF),
+                          size: 30,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
