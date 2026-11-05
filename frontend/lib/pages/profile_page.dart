@@ -564,6 +564,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   static const _muted = Color(0xFF9A8878);
 
   int _tab = 2;
+  double _tabSlideFromX = 1;
   final ScrollController _profileScrollController = ScrollController();
   double _scrollProgress = 0;
   bool _loading = true;
@@ -608,16 +609,22 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   // التنقل بين تبويبات الملف الشخصي بالسحب الأفقي.
   // ترتيب التبويبات من اليمين إلى اليسار: الشخصية، الوكالات، المنشورات.
+  void _changeProfileTab(int index) {
+    if (index == _tab || !mounted) return;
+    setState(() {
+      _tabSlideFromX = index < _tab ? 1 : -1;
+      _tab = index;
+    });
+  }
+
   void _handleTabSwipe(DragEndDetails details) {
     final velocity = details.primaryVelocity ?? 0;
     if (velocity.abs() < 350 || !mounted) return;
-    setState(() {
-      if (velocity < 0) {
-        _tab = (_tab + 1).clamp(0, 2);
-      } else {
-        _tab = (_tab - 1).clamp(0, 2);
-      }
-    });
+    if (velocity < 0) {
+      _changeProfileTab((_tab + 1).clamp(0, 2));
+    } else {
+      _changeProfileTab((_tab - 1).clamp(0, 2));
+    }
   }
 
   @override
@@ -1010,7 +1017,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       final active = _tab == index;
       return Expanded(
         child: InkWell(
-          onTap: () => setState(() => _tab = index),
+          onTap: () => _changeProfileTab(index),
           child: SizedBox(
             height: 54,
             child: Column(
@@ -1068,7 +1075,21 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 
   Widget _tabContent() => AnimatedSwitcher(
-        duration: const Duration(milliseconds: 180),
+        duration: const Duration(milliseconds: 280),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final slide = Tween<Offset>(
+            begin: Offset(_tabSlideFromX, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+          return ClipRect(
+            child: SlideTransition(
+              position: slide,
+              child: FadeTransition(opacity: animation, child: child),
+            ),
+          );
+        },
         child: _tab == 0
             ? Padding(
                 key: const ValueKey('posts'),
