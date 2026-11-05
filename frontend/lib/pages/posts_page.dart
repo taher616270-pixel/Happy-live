@@ -18,10 +18,8 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
   static const _muted = Color(0xFF8B899A);
   static const _cream = Color(0xFFFAF6EA);
 
-  final _composer = TextEditingController();
   final List<Map<String, dynamic>> _posts = [];
   bool _loading = true;
-  bool _publishing = false;
   String? _error;
 
   Map<String, String> get _headers => {
@@ -37,7 +35,6 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
 
   @override
   void dispose() {
-    _composer.dispose();
     super.dispose();
   }
 
@@ -61,28 +58,43 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
     }
   }
 
-  Future<void> _publish() async {
-    final text = _composer.text.trim();
-    if (text.isEmpty || _publishing) return;
-    setState(() => _publishing = true);
-    try {
-      final response = await http.post(Uri.parse('$_api/posts'),
-        headers: _headers, body: jsonEncode({'content': text}))
-        .timeout(const Duration(seconds: 15));
-      final data = jsonDecode(response.body);
-      if (response.statusCode != 201 || data is! Map || data['ok'] != true) {
-        throw Exception(data is Map ? (data['message'] ?? 'تعذر نشر المنشور') : 'تعذر نشر المنشور');
-      }
-      if (!mounted) return;
-      _composer.clear();
-      FocusScope.of(context).unfocus();
-      setState(() => _posts.insert(0, Map<String, dynamic>.from(data['post'] as Map)));
-      _toast('تم نشر منشورك بنجاح');
-    } catch (e) {
-      if (mounted) _toast(e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _publishing = false);
+  Future<void> _openCreatePost() async {
+    final content = await Navigator.of(context).push<String>(
+      PageRouteBuilder<String>(
+        pageBuilder: (_, __, ___) => _CreatePostPage(
+          name: widget.name,
+          onPublish: _submitPost,
+        ),
+        transitionDuration: const Duration(milliseconds: 360),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        transitionsBuilder: (_, animation, __, child) => SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+          child: child,
+        ),
+      ),
+    );
+    if (!mounted || content == null) return;
+    _toast('تم نشر منشورك بنجاح');
+  }
+
+  Future<String?> _submitPost(String text) async {
+    final response = await http.post(
+      Uri.parse('$_api/posts'),
+      headers: _headers,
+      body: jsonEncode({'content': text}),
+    ).timeout(const Duration(seconds: 15));
+    final data = jsonDecode(response.body);
+    if (response.statusCode != 201 || data is! Map || data['ok'] != true) {
+      throw Exception(data is Map
+          ? (data['message'] ?? data['error'] ?? 'تعذر نشر المنشور').toString()
+          : 'تعذر نشر المنشور');
     }
+    if (!mounted) return null;
+    setState(() => _posts.insert(0, Map<String, dynamic>.from(data['post'] as Map)));
+    return text;
   }
 
   Future<void> _toggleLike(Map<String, dynamic> post) async {
@@ -268,7 +280,9 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => Stack(
+    children: [
+      Container(
     decoration: const BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topCenter, end: Alignment.bottomCenter,
@@ -292,43 +306,6 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
               child: const Icon(Icons.auto_awesome_rounded, color: _gold)),
           ]),
           const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFEADFC7)), boxShadow: const [BoxShadow(color: Color(0x0C000000), blurRadius: 12, offset: Offset(0, 4))]),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(children: [
-                _avatar(widget.name),
-                const SizedBox(width: 10),
-                Expanded(child: Text('مرحباً ${widget.name}، شارك لحظتك', style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w800))),
-              ]),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _composer,
-                minLines: 2, maxLines: 5, maxLength: 2000,
-                textDirection: TextDirection.rtl,
-                style: const TextStyle(color: _ink, fontSize: 14, height: 1.5),
-                decoration: InputDecoration(
-                  hintText: 'ماذا تريد أن تشارك المجتمع اليوم؟',
-                  hintStyle: const TextStyle(color: _muted, fontSize: 13),
-                  counterStyle: const TextStyle(color: _muted, fontSize: 10),
-                  filled: true, fillColor: _cream,
-                  contentPadding: const EdgeInsets.all(13),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                ),
-              ),
-              Row(children: [
-                const Icon(Icons.public_rounded, color: _gold, size: 17),
-                const SizedBox(width: 5),
-                const Expanded(child: Text('مشاركة عامة', style: TextStyle(color: _muted, fontSize: 11))),
-                FilledButton.icon(
-                  onPressed: _publishing ? null : _publish,
-                  style: FilledButton.styleFrom(backgroundColor: _gold, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
-                  icon: _publishing ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send_rounded, size: 16),
-                  label: const Text('نشر', style: TextStyle(fontWeight: FontWeight.w800)),
-                ),
-              ]),
-            ]),
-          ),
           const SizedBox(height: 20),
           if (_loading && _posts.isEmpty)
             const Padding(padding: EdgeInsets.all(35), child: Center(child: CircularProgressIndicator(color: _gold)))
@@ -347,7 +324,43 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
             ..._posts.map(_postCard),
         ],
       ),
-    ),
+      Positioned(
+        left: 16,
+        bottom: 20,
+        child: SizedBox(
+          width: 56,
+          height: 56,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFFD700), Color(0xFFFFF8E1)],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFD700).withOpacity(0.5),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _openCreatePost,
+                child: const Center(
+                  child: Icon(Icons.edit_note, color: Colors.white, size: 30),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ],
   );
 
   Widget _postCard(Map<String, dynamic> post) {
@@ -391,6 +404,185 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
           ])))),
         ]),
       ]),
+    );
+  }
+}
+
+
+class _CreatePostPage extends StatefulWidget {
+  const _CreatePostPage({
+    required this.name,
+    required this.onPublish,
+  });
+
+  final String name;
+  final Future<String?> Function(String content) onPublish;
+
+  @override
+  State<_CreatePostPage> createState() => _CreatePostPageState();
+}
+
+class _CreatePostPageState extends State<_CreatePostPage> {
+  static const _ink = Color(0xFF1E2233);
+  static const _gold = Color(0xFFD9A93C);
+  static const _muted = Color(0xFF8B899A);
+  static const _cream = Color(0xFFFAF6EA);
+
+  final _controller = TextEditingController();
+  bool _publishing = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _publish() async {
+    final content = _controller.text.trim();
+    if (content.isEmpty || _publishing) return;
+    setState(() => _publishing = true);
+    try {
+      final published = await widget.onPublish(content);
+      if (!mounted || published == null) return;
+      Navigator.of(context).pop(published);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
+            textAlign: TextAlign.right,
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF393329),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _publishing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFFEFA),
+        resizeToAvoidBottomInset: true,
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFFFFEFA),
+          foregroundColor: _ink,
+          elevation: 0,
+          leading: IconButton(
+            tooltip: 'إغلاق',
+            onPressed: _publishing ? null : () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.close_rounded),
+          ),
+          title: const Text(
+            'إنشاء منشور',
+            style: TextStyle(color: _ink, fontSize: 18, fontWeight: FontWeight.w900),
+          ),
+          centerTitle: true,
+        ),
+        body: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFF6E4B9), Color(0xFFEAD09A)],
+                        ),
+                      ),
+                      child: Text(
+                        widget.name.isEmpty ? 'م' : widget.name.characters.first,
+                        style: const TextStyle(
+                          color: Color(0xFF80602B),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 17,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Text(
+                        widget.name,
+                        style: const TextStyle(
+                          color: _ink,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.public_rounded, color: _gold, size: 19),
+                    const SizedBox(width: 5),
+                    const Text(
+                      'عام',
+                      style: TextStyle(color: _muted, fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    autofocus: true,
+                    minLines: null,
+                    maxLines: null,
+                    expands: true,
+                    maxLength: 2000,
+                    textDirection: TextDirection.rtl,
+                    textAlignVertical: TextAlignVertical.top,
+                    style: const TextStyle(color: _ink, fontSize: 17, height: 1.7),
+                    decoration: const InputDecoration(
+                      hintText: 'ماذا تريد أن تشارك المجتمع اليوم؟',
+                      hintStyle: TextStyle(color: _muted, fontSize: 16),
+                      border: InputBorder.none,
+                      counterStyle: TextStyle(color: _muted, fontSize: 11),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: _publishing ? null : _publish,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _gold,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFFE8D9B5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: _publishing
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'نشر المنشور',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
