@@ -36,7 +36,7 @@ class HappyLiveApp extends StatelessWidget {
       builder: (context, child) => Stack(
         fit: StackFit.expand,
         children: [
-          const Positioned.fill(child: PurpleTechBackground()),
+          Positioned.fill(child: PurpleTechBackground()),
           if (child != null) child,
         ],
       ),
