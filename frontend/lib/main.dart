@@ -1316,6 +1316,9 @@ class _SessionHomePageState extends State<SessionHomePage> {
   late String _profileName = widget.name.trim().isEmpty ? 'عضو Happy Live' : widget.name.trim();
   late String _profilePublicId = widget.userId;
   String _profileBio = '';
+  String _profileBirthDate = '2000-01-01';
+  String _profileGender = 'ذكر';
+  String _profileCountry = 'Saudi Arabia';
   String? _profileAvatarUrl;
   bool _isRefreshingProfile = false;
   String get _name => _profileName;
@@ -1346,6 +1349,9 @@ class _SessionHomePageState extends State<SessionHomePage> {
         if (latestName.isNotEmpty) _profileName = latestName;
         if (RegExp(r'^\\d{8}$').hasMatch(latestId)) _profilePublicId = latestId;
         _profileBio = (user['bio'] ?? '').toString();
+        _profileBirthDate = (user['birthday'] ?? '2000-01-01').toString();
+        _profileGender = (user['gender'] ?? 'male') == 'female' ? 'أنثى' : 'ذكر';
+        _profileCountry = (user['country_name'] ?? 'Saudi Arabia').toString();
         final avatar = (user['avatar_url'] ?? user['avatar_key'] ?? '').toString().trim();
         _profileAvatarUrl = avatar.isEmpty ? null : avatar;
       });
@@ -1357,32 +1363,45 @@ class _SessionHomePageState extends State<SessionHomePage> {
   }
 
   Future<void> _openEditProfile() async {
-    final updated = await Navigator.of(context).push<Map<String, dynamic>>(
-      MaterialPageRoute(
-        builder: (_) => EditProfilePage(
-          apiBase: _apiBase,
-          accessToken: widget.accessToken,
-          name: _profileName,
-          bio: _profileBio,
-          avatarUrl: _profileAvatarUrl,
-        ),
-      ),
-    );
-    if (updated == null || !mounted) return;
-    setState(() {
-      _profileName = (updated['name'] ?? _profileName).toString();
-      _profileBio = (updated['bio'] ?? _profileBio).toString();
-      final avatar = (updated['avatar_url'] ?? '').toString().trim();
-      _profileAvatarUrl = avatar.isEmpty ? null : avatar;
-    });
-    await SessionTokenStore.writeUser(jsonEncode({
-      'name': _profileName,
-      'gabo_id': _profilePublicId,
-      'bio': _profileBio,
-      'avatar_url': _profileAvatarUrl,
-    }));
+    await Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => EditProfilePage(
+      apiBase: _apiBase, accessToken: widget.accessToken,
+      name: _profileName, bio: _profileBio, avatarUrl: _profileAvatarUrl ?? '',
+      birthDate: _profileBirthDate, gender: _profileGender, country: _profileCountry,
+      onSave: _saveEditedProfile,
+    )));
   }
 
+  Future<void> _saveEditedProfile(EditProfileData data) async {
+    try {
+      final genderValue = data.gender == 'أنثى' ? 'female' : 'male';
+      final response = await http.patch(Uri.parse('$_apiBase/profile'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}', 'Content-Type': 'application/json'},
+        body: jsonEncode({'name': data.name, 'bio': data.bio, 'avatarUrl': data.avatarUrl,
+          'birthday': data.birthDate, 'gender': genderValue, 'countryName': data.country})).timeout(const Duration(seconds: 20));
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode != 200 || payload['ok'] != true) throw Exception((payload['message'] ?? payload['error'] ?? 'تعذر حفظ التعديلات').toString());
+      final user = payload['user'] as Map<String, dynamic>? ?? <String, dynamic>{};
+      if (!mounted) return;
+      setState(() {
+        _profileName = (user['name'] ?? data.name).toString();
+        _profileBio = (user['bio'] ?? data.bio).toString();
+        _profileBirthDate = (user['birthday'] ?? data.birthDate).toString();
+        _profileGender = (user['gender'] ?? genderValue) == 'female' ? 'أنثى' : 'ذكر';
+        _profileCountry = (user['country_name'] ?? data.country).toString();
+        final avatar = (user['avatar_url'] ?? data.avatarUrl ?? '').toString().trim();
+        _profileAvatarUrl = avatar.isEmpty ? null : avatar;
+      });
+      await SessionTokenStore.writeUser(jsonEncode({'name': _profileName, 'gabo_id': _profilePublicId,
+        'bio': _profileBio, 'birthday': _profileBirthDate, 'gender': genderValue,
+        'country_name': _profileCountry, 'avatar_url': _profileAvatarUrl}));
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث الملف الشخصي بنجاح'), behavior: SnackBarBehavior.floating));
+      }
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString().replaceFirst('Exception: ', '')), behavior: SnackBarBehavior.floating));
+    }
+  }
   void _soon(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$feature قيد التجهيز وستتوفر قريباً'), behavior: SnackBarBehavior.floating));
   }
