@@ -564,7 +564,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   static const _muted = Color(0xFF9A8878);
 
   int _tab = 2;
-  double _tabSlideFromX = 1;
+  late final PageController _profileTabsController = PageController(initialPage: 2);
   final ScrollController _profileScrollController = ScrollController();
   double _scrollProgress = 0;
   bool _loading = true;
@@ -611,26 +611,23 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   // ترتيب التبويبات من اليمين إلى اليسار: الشخصية، الوكالات، المنشورات.
   void _changeProfileTab(int index) {
     if (index == _tab || !mounted) return;
-    setState(() {
-      _tabSlideFromX = index < _tab ? 1 : -1;
-      _tab = index;
-    });
+    _profileTabsController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
-  void _handleTabSwipe(DragEndDetails details) {
-    final velocity = details.primaryVelocity ?? 0;
-    if (velocity.abs() < 350 || !mounted) return;
-    if (velocity < 0) {
-      _changeProfileTab((_tab + 1).clamp(0, 2));
-    } else {
-      _changeProfileTab((_tab - 1).clamp(0, 2));
-    }
+  void _onProfilePageChanged(int index) {
+    if (!mounted || index == _tab) return;
+    setState(() => _tab = index);
   }
 
   @override
   void dispose() {
     _profileScrollController.removeListener(_handleProfileScroll);
     _profileScrollController.dispose();
+    _profileTabsController.dispose();
     super.dispose();
   }
 
@@ -689,131 +686,105 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     ? _errorView()
                     : Stack(
                         children: [
-                          GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onHorizontalDragEnd: _handleTabSwipe,
-                            child: RefreshIndicator(
+                          RefreshIndicator(
                             onRefresh: _refreshProfile,
                             color: _brownLight,
                             backgroundColor: Colors.white,
-                            child: CustomScrollView(
+                            child: NestedScrollView(
                               controller: _profileScrollController,
                               physics: const AlwaysScrollableScrollPhysics(
                                 parent: ClampingScrollPhysics(),
                               ),
-                              slivers: [
-                              SliverAppBar(
-                                pinned: true,
-                                primary: false,
-                                toolbarHeight: 56,
-                                collapsedHeight: 56,
-                                expandedHeight: 270,
-                                backgroundColor: Color.lerp(
-                                  Colors.transparent,
-                                  Colors.white,
-                                  _scrollProgress,
-                                ),
-                                surfaceTintColor: Colors.transparent,
-                                elevation: 0,
-                                scrolledUnderElevation: 0,
-                                automaticallyImplyLeading: false,
-                                leadingWidth: 52,
-                                leading: Padding(
-                                  padding: const EdgeInsetsDirectional.only(start: 10),
-                                  child: _roundButton(
-                                    Icons.arrow_forward_rounded,
-                                    () => Navigator.of(context).maybePop(),
+                              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                                SliverAppBar(
+                                  pinned: true,
+                                  primary: false,
+                                  toolbarHeight: 56,
+                                  collapsedHeight: 56,
+                                  expandedHeight: 270,
+                                  backgroundColor: Color.lerp(
+                                    Colors.transparent,
+                                    Colors.white,
+                                    _scrollProgress,
                                   ),
-                                ),
-                                actions: [
-                                  Padding(
-                                    padding: const EdgeInsetsDirectional.only(end: 12),
-                                    child: _roundButton(Icons.more_horiz_rounded, () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('لا توجد خيارات إضافية حالياً')),
-                                      );
-                                    }),
-                                  ),
-                                ],
-                                title: Opacity(
-                                  opacity: _scrollProgress,
-                                  child: Text(
-                                    _firstText(['name', 'displayName', 'display_name'], widget.name),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Color(0xFF292929),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w900,
+                                  surfaceTintColor: Colors.transparent,
+                                  elevation: 0,
+                                  scrolledUnderElevation: 0,
+                                  automaticallyImplyLeading: false,
+                                  leadingWidth: 52,
+                                  leading: Padding(
+                                    padding: const EdgeInsetsDirectional.only(start: 10),
+                                    child: _roundButton(
+                                      Icons.arrow_forward_rounded,
+                                      () => Navigator.of(context).maybePop(),
                                     ),
                                   ),
-                                ),
-                                centerTitle: true,
-                                flexibleSpace: Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    FlexibleSpaceBar(
-                                      background: _heroHeader(),
-                                      collapseMode: CollapseMode.parallax,
-                                    ),
-                                    Positioned(
-                                      top: 0,
-                                      left: 0,
-                                      right: 0,
-                                      height: 56,
-                                      child: IgnorePointer(
-                                        child: ColoredBox(
-                                          color: Color.lerp(
-                                            Colors.transparent,
-                                            Colors.white,
-                                            _scrollProgress,
-                                          )!,
-                                        ),
-                                      ),
+                                  actions: [
+                                    Padding(
+                                      padding: const EdgeInsetsDirectional.only(end: 12),
+                                      child: _roundButton(Icons.more_horiz_rounded, () {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('لا توجد خيارات إضافية حالياً')),
+                                        );
+                                      }),
                                     ),
                                   ],
-                                ),
-                              ),
-                              SliverPersistentHeader(
-                                pinned: true,
-                                delegate: _PublicProfileTabsDelegate(
-                                  selected: _tab,
-                                  onSelected: _changeProfileTab,
-                                ),
-                              ),
-                              if (_tab == 1)
-                                SliverFillRemaining(
-                                  hasScrollBody: false,
-                                  child: Container(
-                                    width: double.infinity,
-                                    color: Colors.white,
-                                    alignment: Alignment.center,
-                                    child: _emptySection(
-                                      key: const ValueKey('agencies'),
-                                      icon: Icons.apartment_rounded,
-                                      title: 'لا توجد وكالة مرتبطة',
-                                      subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
+                                  title: Opacity(
+                                    opacity: _scrollProgress,
+                                    child: Text(
+                                      _firstText(['name', 'displayName', 'display_name'], widget.name),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFF292929),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w900,
+                                      ),
                                     ),
                                   ),
-                                )
-                              else
-                                SliverToBoxAdapter(
-                                  child: Container(
-                                    width: double.infinity,
-                                    color: Colors.white,
-                                    child: _tabContent(),
+                                  centerTitle: true,
+                                  flexibleSpace: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      FlexibleSpaceBar(
+                                        background: _heroHeader(),
+                                        collapseMode: CollapseMode.parallax,
+                                      ),
+                                      Positioned(
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        height: 56,
+                                        child: IgnorePointer(
+                                          child: ColoredBox(
+                                            color: Color.lerp(
+                                              Colors.transparent,
+                                              Colors.white,
+                                              _scrollProgress,
+                                            )!,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              if (_tab != 1)
-                                SliverToBoxAdapter(
-                                  // يوفر مجال تمرير حتى عندما تكون بيانات التبويب قصيرة.
-                                  child: SizedBox(
-                                    height: MediaQuery.of(context).size.height * .75 +
-                                        MediaQuery.of(context).padding.bottom,
+                                SliverPersistentHeader(
+                                  pinned: true,
+                                  delegate: _PublicProfileTabsDelegate(
+                                    selected: _tab,
+                                    onSelected: _changeProfileTab,
                                   ),
                                 ),
                               ],
-                            ),
+                              body: PageView(
+                                controller: _profileTabsController,
+                                onPageChanged: _onProfilePageChanged,
+                                children: [
+                                  _profileTabPage(0),
+                                  _profileTabPage(1),
+                                  _profileTabPage(2),
+                                ],
+                              ),
                             ),
                           ),
                           Positioned(
@@ -1098,6 +1069,61 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           ),
           Container(height: 1, color: const Color(0xFFF0E7DC)),
           _tabContent(),
+        ],
+      ),
+    );
+  }
+
+  Widget _profileTabPage(int index) {
+    Widget content;
+    if (index == 0) {
+      content = Padding(
+        padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('المنشورات',
+                style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 9),
+            _postsContent(),
+          ],
+        ),
+      );
+    } else if (index == 1) {
+      content = LayoutBuilder(
+        builder: (context, constraints) => ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(
+            child: _emptySection(
+              key: const ValueKey('agencies'),
+              icon: Icons.apartment_rounded,
+              title: 'لا توجد وكالة مرتبطة',
+              subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
+            ),
+          ),
+        ),
+      );
+    } else {
+      content = _personalDetails();
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshProfile,
+      color: _brownLight,
+      backgroundColor: Colors.white,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: ClampingScrollPhysics(),
+        ),
+        slivers: [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Container(
+              width: double.infinity,
+              color: Colors.white,
+              child: content,
+            ),
+          ),
         ],
       ),
     );
