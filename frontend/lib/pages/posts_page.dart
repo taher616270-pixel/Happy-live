@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 
 class HappyPostsPage extends StatefulWidget {
   const HappyPostsPage({super.key, required this.accessToken, required this.name});
@@ -535,44 +536,13 @@ class _CreatePostPageState extends State<_CreatePostPage> {
   bool _publishing = false;
   bool _emojiPanelOpen = false;
 
-  static const List<String> _emojis = [
-    '😀','😃','😄','😁','😆','😅','😂','🤣','🥲','😊','😇','🙂','🙃','😉','😍','🥰',
-    '😘','😗','😙','😚','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫢','🫣','🤫','🤔',
-    '🫡','🤐','🤨','😐','😑','😶','🫥','😏','😒','🙄','😬','😮‍💨','🤥','😌','😔','😪',
-    '🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎',
-    '🤓','🧐','😕','🫤','😟','🙁','☹️','😮','😯','😲','😳','🥺','🥹','😦','😧','😨',
-    '😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬',
-    '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖',
-    '💘','💝','💟','♥️','💯','💢','💥','💫','💦','💨','🕊️','✨','🌟','⭐','🔥','🌈',
-    '☀️','🌤️','⛅','🌧️','⛈️','❄️','☃️','🌊','🌸','🌺','🌻','🌹','🌷','🍀','🌴','🌵',
-    '🍎','🍊','🍋','🍉','🍇','🍓','🫐','🍒','🍑','🥭','🍍','🥥','🥑','🍕','🍔','🍟',
-    '🌮','🍣','🍩','🍪','🎂','🍰','☕','🧋','🥤','🍹','⚽','🏀','🏈','🎾','🏐','🎮',
-    '🎧','🎤','🎬','🎨','📸','🚗','✈️','🚀','🏆','🥇','🎉','🎊','🎁','🎈','🎀','💐',
-    '👍','👎','👏','🙌','🫶','🤝','🙏','💪','🦾','👋','🤚','✋','🖐️','👌','🤌','✌️',
-    '🤞','🫰','🤟','🤘','🤙','👈','👉','👆','👇','☝️','✍️','💅','🤳','💃','🕺','🧘',
-    '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐧',
-    '🐦','🦋','🐢','🐬','🐳','🦄','🐝','🌍','🌙','⚡','☁️','🍃','🌱','🌼','🍁','🌾',
-    '💎','👑','💍','👜','👗','👟','🕶️','⌚','📱','💻','💡','📚','✉️','📍','🔔','❤️‍🔥',
-  ];
+
 
   @override
   void dispose() {
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
-  }
-
-  void _insertEmoji(String emoji) {
-    final value = _controller.value;
-    final selection = value.selection;
-    final start = selection.isValid ? selection.start : value.text.length;
-    final end = selection.isValid ? selection.end : value.text.length;
-    final text = value.text.replaceRange(start, end, emoji);
-    final cursor = start + emoji.length;
-    _controller.value = TextEditingValue(
-      text: text,
-      selection: TextSelection.collapsed(offset: cursor),
-    );
   }
 
   void _toggleEmojiPanel() {
@@ -790,26 +760,20 @@ class _CreatePostPageState extends State<_CreatePostPage> {
                 ),
               ),
               if (_emojiPanelOpen)
-                Container(
+                SizedBox(
                   height: 258,
                   width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF7F7F8),
-                    border: Border(top: BorderSide(color: Color(0xFFE8E8E8))),
-                  ),
-                  child: GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 14),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 8,
-                      mainAxisSpacing: 4,
-                      crossAxisSpacing: 4,
-                    ),
-                    itemCount: _emojis.length,
-                    itemBuilder: (context, index) => InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () => _insertEmoji(_emojis[index]),
-                      child: Center(
-                        child: Text(_emojis[index], style: const TextStyle(fontSize: 25)),
+                  child: EmojiPicker(
+                    onEmojiSelected: (category, emoji) {},
+                    textEditingController: _controller,
+                    config: Config(
+                      height: 258,
+                      bgColor: const Color(0xFFF7F7F8),
+                      checkPlatformCompatibility: true,
+                      emojiViewConfig: const EmojiViewConfig(
+                        columns: 8,
+                        emojiSizeMax: 25,
+                        backgroundColor: Color(0xFFF7F7F8),
                       ),
                     ),
                   ),
