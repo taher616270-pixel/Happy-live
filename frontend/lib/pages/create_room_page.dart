@@ -19,7 +19,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
   static const _background = Color(0xFF09080D);
   static const _surface = Color(0xFF17131F);
   static const _gold = Color(0xFFE8C477);
-  static const _purple = Color(0xFF9B63D9);
+  static const _purple = Color(0xFFD9A93C);
   static const _muted = Color(0xFFAAA2B5);
 
   final _formKey = GlobalKey<FormState>();
@@ -336,7 +336,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                         border: Border.all(color: _gold, width: 1.4),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0x339B63D9),
+                            color: const Color(0x33D9A93C),
                             blurRadius: 18,
                             spreadRadius: 1,
                           ),
