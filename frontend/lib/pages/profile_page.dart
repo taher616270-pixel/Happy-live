@@ -884,9 +884,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
             child: Row(children: [
-              _sheetTab('الأصول الشخصية', 0),
-              _sheetTab('الوكالات', 1),
               _sheetTab('الصفحة الشخصية', 2),
+              _sheetTab('الوكالات', 1),
+              _sheetTab('الأصول الشخصية', 0),
             ]),
           ),
           const SizedBox(height: 4),
