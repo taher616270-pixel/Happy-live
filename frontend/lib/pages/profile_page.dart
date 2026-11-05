@@ -899,16 +899,26 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         ),
       );
 
-  Widget _roundButton(IconData icon, VoidCallback onTap) => Material(
-        color: const Color(0x99000000),
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: SizedBox(width: 38, height: 38,
-              child: Icon(icon, color: Colors.white, size: 21)),
+  Widget _roundButton(IconData icon, VoidCallback onTap) {
+    final isScrolled = _scrollProgress >= .95;
+    return Material(
+      color: isScrolled ? Colors.white : const Color(0x99000000),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 38,
+          height: 38,
+          child: Icon(
+            icon,
+            color: isScrolled ? _brown : Colors.white,
+            size: 21,
+          ),
         ),
-      );
+      ),
+    );
+  }
 
   Widget _avatar(double size, String photo) => Container(
         width: size,
