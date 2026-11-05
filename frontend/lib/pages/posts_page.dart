@@ -749,7 +749,7 @@ class _CreatePostPageState extends State<_CreatePostPage> {
               ),
               const SizedBox(width: 4),
               Expanded(child: Transform.translate(
-                offset: const Offset(0, -7),
+                offset: const Offset(0, -76),
                 child: SizedBox(height: 42, child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [_topicTag('#إضافة موضوع', primary: true), _topicTag('#OOTD'), _topicTag('#الصحه_النفسيه')],
