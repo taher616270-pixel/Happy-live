@@ -26,7 +26,7 @@ class EditProfilePage extends StatefulWidget {
   final bool canChangeGender, canChangeCountry;
   final List<String> genders, countries;
   final VoidCallback? onAvatarTap, onBack;
-  final ValueChanged<EditProfileData>? onSave;
+  final Future<void> Function(EditProfileData)? onSave;
 
   const EditProfilePage({
     super.key,
@@ -179,7 +179,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     ),
   );
 
-  void _confirm() {
+  Future<void> _confirm() async {
     if (!_canSave) return;
     final name = _name.text.trim();
     if (name.length < 2 || name.length > 30) {
@@ -193,14 +193,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final callback = widget.onSave;
     if (callback == null) return;
     setState(() => _saving = true);
-    callback(EditProfileData(
-      name: name, bio: _bio.text.trim(), birthDate: _birth,
-      gender: _gender, country: _country, avatarUrl: _avatarUrl,
-    ));
-    // The parent completes the request and closes this page on success.
-    Future<void>.delayed(const Duration(milliseconds: 700), () {
+    try {
+      await callback(EditProfileData(
+        name: name, bio: _bio.text.trim(), birthDate: _birth,
+        gender: _gender, country: _country, avatarUrl: _avatarUrl,
+      ));
+    } finally {
       if (mounted) setState(() => _saving = false);
-    });
+    }
   }
 
   @override
@@ -347,7 +347,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 20),
       child: GestureDetector(
-        onTap: enabled ? _confirm : null,
+        onTap: enabled ? () => _confirm() : null,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200), height: 46,
           alignment: Alignment.center,
