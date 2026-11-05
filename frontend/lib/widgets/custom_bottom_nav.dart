@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+const _gold = Color(0xFFF0A62B);
+const _inactive = Color(0xFFC9CAD6);
+
 /// Persistent, controlled bottom navigation bar.
 /// The parent page owns the single Scaffold, IndexedStack, and selected tab.
 class CustomBottomNav extends StatelessWidget {
@@ -12,6 +15,7 @@ class CustomBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
+  // Keep the existing five destinations, their indices, labels, and icons.
   static const items = <(int, IconData, String)>[
     (0, Icons.wifi_tethering_outlined, 'Happy Live'),
     (1, Icons.bed_outlined, 'غرفة'),
@@ -29,32 +33,26 @@ class CustomBottomNav extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: Container(
-        color: Colors.transparent,
-        padding: EdgeInsets.zero,
-        child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.fromLTRB(5, 8, 5, 8 + bottomInset),
-          decoration: BoxDecoration(
-            color: const Color(0xFF191326),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border.all(
-              color: const Color(0xFF8B5CF6),
-              width: 1.2,
-            ),
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(12, 6, 12, 6 + bottomInset),
+        decoration: const BoxDecoration(
+          color: Color(0xFFFAFAFD),
+          border: Border(
+            top: BorderSide(color: Color(0xFFEDEDF3)),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              for (final item in items)
-                Expanded(
-                  child: _buildItem(
-                    index: item.$1,
-                    icon: item.$2,
-                    label: item.$3,
-                  ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            for (final item in items)
+              Expanded(
+                child: _buildItem(
+                  index: item.$1,
+                  icon: item.$2,
+                  label: item.$3,
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -66,54 +64,44 @@ class CustomBottomNav extends StatelessWidget {
     required String label,
   }) {
     final active = currentIndex == index;
-    final content = Container(
-      width: double.infinity,
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 7),
-      decoration: BoxDecoration(
-        color: active ? const Color(0x2E8B5CF6) : Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        border: active
-            ? Border.all(color: const Color(0xFF8B5CF6), width: 1.2)
-            : null,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.max,
-        children: [
-          Icon(
-            icon,
-            size: 23,
-            color: active
-                ? const Color(0xFFB58AFF)
-                : const Color(0xFFA49AAF),
-          ),
-          const SizedBox(height: 2),
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                maxLines: 1,
-                softWrap: false,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: active ? Colors.white : const Color(0xFFA49AAF),
-                  fontWeight: active ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    final color = active ? _gold : _inactive;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
         if (index != currentIndex) onTap(index);
       },
-      child: content,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFFEDEDF2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 27, color: color),
+            const SizedBox(height: 2),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12.5,
+                    fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
