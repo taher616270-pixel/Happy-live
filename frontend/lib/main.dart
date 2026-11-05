@@ -1918,7 +1918,7 @@ class _BorderLightPainter extends CustomPainter {
     if (metrics.isNotEmpty) {
       final metric = metrics.first;
       final tangent = metric.getTangentForOffset(
-        metric.length * progress.clamp(0.0, 1.0),
+        metric.length * progress.clamp(0.0, 1.0).toDouble(),
       );
       if (tangent != null) {
         final glowPaint = Paint()
