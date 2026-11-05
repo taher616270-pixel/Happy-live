@@ -564,6 +564,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   static const _muted = Color(0xFF9A8878);
 
   int _tab = 2;
+  double _tabSlideFromX = 1; // Retained for the legacy tab builder.
   late final PageController _profileTabsController = PageController(initialPage: 2);
   final ScrollController _profileScrollController = ScrollController();
   double _scrollProgress = 0;
