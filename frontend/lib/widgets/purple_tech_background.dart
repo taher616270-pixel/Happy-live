@@ -76,17 +76,17 @@ class _NeonPainter extends CustomPainter {
       Paint()
         ..shader = const RadialGradient(
           radius: 1.0,
-          colors: [Color(0xFF07050D), Color(0xFF1B1038)],
+          colors: [Color(0xFF07060B), Color(0xFF100B1E)],
           stops: [0.35, 1.0],
         ).createShader(rect),
     );
 
     final rnd = Random(3);
     final line = Paint()
-      ..color = _purple.withOpacity(0.10)
+      ..color = _purple.withOpacity(0.035)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
-    final dot = Paint()..color = _purple.withOpacity(0.18);
+    final dot = Paint()..color = _purple.withOpacity(0.065);
 
     for (int i = 0; i < 30; i++) {
       final left = rnd.nextBool();
@@ -147,7 +147,7 @@ class _NeonPainter extends CustomPainter {
             : x,
         y: particleRandom.nextDouble(),
         r: 2 + particleRandom.nextDouble() * 12,
-        a: 0.25 + particleRandom.nextDouble() * 0.55,
+        a: 0.10 + particleRandom.nextDouble() * 0.22,
       );
     });
 
@@ -156,7 +156,7 @@ class _NeonPainter extends CustomPainter {
         particle.x * size.width,
         particle.y * size.height,
       );
-      final paint = Paint()..color = _light.withOpacity(particle.a * 0.7);
+      final paint = Paint()..color = _light.withOpacity(particle.a * 0.28);
       if (particle.r > 6) {
         paint.maskFilter =
             MaskFilter.blur(BlurStyle.normal, particle.r * 0.5);
