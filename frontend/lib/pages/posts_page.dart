@@ -732,7 +732,13 @@ class _CreatePostPageState extends State<_CreatePostPage> {
               ),
             ),
           )),
-          SizedBox(height: 46, child: Padding(
+          SizedBox(height: 46, child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFEDEDED), width: 1),
+            ),
+            child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Row(children: [
               _toolButton(tooltip: 'وسم', onTap: () {}, icon: const Text('#', style: TextStyle(fontSize: 23, color: Color(0xFF555A61)))),
@@ -773,6 +779,7 @@ class _CreatePostPageState extends State<_CreatePostPage> {
                 ),
               ),
             ]),
+          )),
           )),
           if (_emojiPanelOpen) SizedBox(
             height: 258,
