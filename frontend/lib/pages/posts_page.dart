@@ -738,18 +738,6 @@ class _CreatePostPageState extends State<_CreatePostPage> {
               ),
             ),
           )),
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 2, 16, 4),
-            child: Row(children: [
-              const Spacer(),
-              TextButton.icon(
-                onPressed: _showVisibilitySheet,
-                style: TextButton.styleFrom(foregroundColor: _gold, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5)),
-                icon: const Icon(Icons.public_rounded, size: 17),
-                label: Text(_visibility, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-              ),
-            ]),
-          ),
           SizedBox(height: 46, child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Row(children: [
@@ -765,7 +753,12 @@ class _CreatePostPageState extends State<_CreatePostPage> {
                 children: [_topicTag('#إضافة موضوع', primary: true), _topicTag('#OOTD'), _topicTag('#الصحه_النفسيه')],
               ))),
               const SizedBox(width: 5),
-              Text(_controller.text.length.toString() + '/2000', style: const TextStyle(fontSize: 11, color: Color(0xFF929292), fontWeight: FontWeight.w600)),
+              TextButton.icon(
+                onPressed: _showVisibilitySheet,
+                style: TextButton.styleFrom(foregroundColor: _gold, padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                icon: const Icon(Icons.public_rounded, size: 16),
+                label: const Text('عام', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              ),
             ]),
           )),
           if (_emojiPanelOpen) SizedBox(
