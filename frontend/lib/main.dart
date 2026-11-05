@@ -1371,7 +1371,6 @@ class _SessionHomePageState extends State<SessionHomePage> {
   void _selectTab(int index) {
     setState(() => _currentIndex = index);
     SessionTokenStore.writeTab(index);
-    if (index == 4) _refreshProfile();
   }
 
   @override
@@ -1804,7 +1803,6 @@ class PhoneCodeInputFormatter extends TextInputFormatter {
         _profileAvatarUrl = avatar.isEmpty ? null : avatar;
       });
     } catch (_) {
-      // Keep cached profile data if the network is unavailable.
     } finally {
       _isRefreshingProfile = false;
     }
@@ -1813,11 +1811,8 @@ class PhoneCodeInputFormatter extends TextInputFormatter {
   Future<void> _openEditProfile() async {
     final updated = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(builder: (_) => EditProfilePage(
-        apiBase: _apiBase,
-        accessToken: widget.accessToken,
-        name: _profileName,
-        bio: _profileBio,
-        avatarUrl: _profileAvatarUrl,
+        apiBase: _apiBase, accessToken: widget.accessToken,
+        name: _profileName, bio: _profileBio, avatarUrl: _profileAvatarUrl,
       )),
     );
     if (updated == null || !mounted) return;
