@@ -1,143 +1,166 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
-/// Neon purple technology background for Happy Live.
-/// The background is drawn locally and does not use images, animation, or network requests.
-class PurpleTechBackground extends StatelessWidget {
-  const PurpleTechBackground({
-    super.key,
-    this.child,
-    this.showBorder = true,
-    this.showGlow = true,
-  });
-
+/// Animated neon-purple background used throughout Happy Live.
+class NeonBackground extends StatefulWidget {
   final Widget? child;
-  final bool showBorder;
-  final bool showGlow;
+  const NeonBackground({super.key, this.child});
 
-  static const Color backgroundColor = Color(0xFF0A0714);
-  static const Color neonPurple = Color(0xFFA56EFF);
-  static const Color primaryPurple = Color(0xFF8B5CF6);
+  @override
+  State<NeonBackground> createState() => _NeonBackgroundState();
+}
+
+/// Backwards-compatible name used by main.dart.
+class PurpleTechBackground extends NeonBackground {
+  const PurpleTechBackground({super.key, super.child});
+}
+
+class _NeonBackgroundState extends State<NeonBackground>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+  late final List<_Particle> _particles;
+
+  @override
+  void initState() {
+    super.initState();
+    final rnd = Random(7);
+    _particles = List.generate(40, (_) {
+      final left = rnd.nextBool();
+      final x = left ? rnd.nextDouble() * 0.3 : 0.7 + rnd.nextDouble() * 0.3;
+      return _Particle(
+        x: rnd.nextDouble() < 0.2 ? rnd.nextDouble() : x,
+        y: rnd.nextDouble(),
+        r: 2 + rnd.nextDouble() * 12,
+        a: 0.25 + rnd.nextDouble() * 0.55,
+        speed: 0.3 + rnd.nextDouble() * 0.7,
+      );
+    });
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 40),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final shortestSide = MediaQuery.sizeOf(context).shortestSide;
-
-    // Keep the frame proportional on small and large phones/tablets.
-    final framePadding = (shortestSide * 0.025).clamp(7.0, 12.0).toDouble();
-    final frameWidth = (shortestSide * 0.0045).clamp(1.1, 1.8).toDouble();
-
-    return ColoredBox(
-      color: backgroundColor,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          const RepaintBoundary(
-            child: CustomPaint(
-              painter: _NeonBgPainter(),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _c,
+            builder: (_, __) => CustomPaint(
+              painter: _NeonPainter(_particles, _c.value),
             ),
           ),
-          if (child != null) child!,
-          if (showBorder)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Padding(
-                  padding: EdgeInsets.all(framePadding),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: neonPurple,
-                        width: frameWidth,
-                      ),
-                      boxShadow: showGlow
-                          ? [
-                              BoxShadow(
-                                color: primaryPurple.withOpacity(0.8),
-                                blurRadius: 15,
-                                spreadRadius: 1,
-                              ),
-                              BoxShadow(
-                                color: neonPurple.withOpacity(0.4),
-                                blurRadius: 30,
-                                spreadRadius: 2,
-                              ),
-                            ]
-                          : const [],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+        ),
+        if (widget.child != null) widget.child!,
+      ],
     );
   }
 }
 
-class _NeonBgPainter extends CustomPainter {
-  const _NeonBgPainter();
+class _Particle {
+  final double x, y, r, a, speed;
+  _Particle({
+    required this.x,
+    required this.y,
+    required this.r,
+    required this.a,
+    required this.speed,
+  });
+}
+
+class _NeonPainter extends CustomPainter {
+  final List<_Particle> particles;
+  final double t;
+  _NeonPainter(this.particles, this.t);
+
+  static const _purple = Color(0xFF7C4DFF);
+  static const _light = Color(0xFFA78BFA);
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.isEmpty) return;
+    final rect = Offset.zero & size;
 
-    final random = Random(42);
-
-    // Base background.
     canvas.drawRect(
-      Offset.zero & size,
-      Paint()..color = PurpleTechBackground.backgroundColor,
+      rect,
+      Paint()
+        ..shader = const RadialGradient(
+          radius: 1.0,
+          colors: [Color(0xFF07050D), Color(0xFF1B1038)],
+          stops: [0.35, 1.0],
+        ).createShader(rect),
     );
 
-    // Subtle technology lines.
-    final linePaint = Paint()
-      ..color = const Color(0xFF2A1F4A).withOpacity(0.15)
-      ..strokeWidth = 0.8
-      ..style = PaintingStyle.stroke;
-
-    for (var i = 0; i < 15; i++) {
-      final x = random.nextDouble() * size.width;
-      final path = Path()
-        ..moveTo(x, size.height)
-        ..lineTo(
-          x + random.nextDouble() * 30 - 15,
-          size.height * 0.7,
-        )
-        ..lineTo(
-          x + random.nextDouble() * 40 - 20,
-          size.height * 0.4,
-        );
-      canvas.drawPath(path, linePaint);
+    final rnd = Random(3);
+    final line = Paint()
+      ..color = _purple.withOpacity(0.10)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final dot = Paint()..color = _purple.withOpacity(0.18);
+    for (int i = 0; i < 30; i++) {
+      final left = rnd.nextBool();
+      double x = left
+          ? size.width * rnd.nextDouble() * 0.3
+          : size.width * (0.7 + rnd.nextDouble() * 0.3);
+      double y = size.height * rnd.nextDouble();
+      final path = Path()..moveTo(x, y);
+      for (int s = 0; s < 4; s++) {
+        if (s.isEven) {
+          x += (rnd.nextDouble() - 0.5) * 120;
+        } else {
+          y += (rnd.nextDouble() - 0.5) * 120;
+        }
+        path.lineTo(x, y);
+      }
+      canvas.drawPath(path, line);
+      canvas.drawCircle(Offset(x, y), 2.5, dot);
     }
 
-    // Purple glowing particles.
-    for (var i = 0; i < 45; i++) {
-      final x = random.nextDouble() * size.width;
-      final y = random.nextDouble() * size.height;
-      final radius = random.nextDouble() * 8 + 1;
-      final opacity = random.nextDouble() * 0.6 + 0.1;
+    final border = rect.deflate(size.width * 0.022);
+    canvas.drawRect(
+      border,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.12
+        ..color = _purple.withOpacity(0.18)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, size.width * 0.08),
+    );
 
-      final particlePaint = Paint()
-        ..color = Color.lerp(
-          const Color(0xFF8B5CF6),
-          const Color(0xFFD8B4FE),
-          random.nextDouble(),
-        )!.withOpacity(opacity)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius);
+    void neon(double w, double blur, double op, Color c) {
+      canvas.drawRect(
+        border,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = w
+          ..color = c.withOpacity(op)
+          ..maskFilter =
+              blur > 0 ? MaskFilter.blur(BlurStyle.normal, blur) : null,
+      );
+    }
 
-      canvas.drawCircle(Offset(x, y), radius, particlePaint);
+    neon(16, 22, 0.40, _purple);
+    neon(7, 9, 0.65, _purple);
+    neon(2.2, 0, 1.0, _light);
 
-      // Small white center for the brighter particles.
-      if (radius > 4) {
-        canvas.drawCircle(
-          Offset(x, y),
-          1.5,
-          Paint()..color = Colors.white.withOpacity(opacity),
-        );
+    for (final p in particles) {
+      final y = ((p.y - t * p.speed) % 1.0 + 1.0) % 1.0;
+      final pos = Offset(p.x * size.width, y * size.height);
+      final paint = Paint()..color = _light.withOpacity(p.a * 0.7);
+      if (p.r > 6) {
+        paint.maskFilter = MaskFilter.blur(BlurStyle.normal, p.r * 0.5);
       }
+      canvas.drawCircle(pos, p.r, paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _NeonBgPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _NeonPainter old) => old.t != t;
 }
