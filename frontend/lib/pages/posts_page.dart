@@ -705,17 +705,6 @@ class _CreatePostPageState extends State<_CreatePostPage> {
               ),
             ]),
           )),
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(18, 8, 18, 0),
-            child: Align(alignment: AlignmentDirectional.topStart, child: Container(
-              width: 100, height: 130,
-              decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
-              child: Material(color: Colors.transparent, borderRadius: BorderRadius.circular(12), child: InkWell(
-                borderRadius: BorderRadius.circular(12), onTap: () {},
-                child: const Center(child: Icon(Icons.add_rounded, color: Color(0xFF9A9DA3), size: 34)),
-              )),
-            )),
-          ),
           Expanded(child: Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(18, 12, 18, 4),
             child: TextField(
@@ -732,6 +721,17 @@ class _CreatePostPageState extends State<_CreatePostPage> {
               ),
             ),
           )),
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(18, 8, 18, 0),
+            child: Align(alignment: AlignmentDirectional.topStart, child: Container(
+              width: 100, height: 130,
+              decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
+              child: Material(color: Colors.transparent, borderRadius: BorderRadius.circular(12), child: InkWell(
+                borderRadius: BorderRadius.circular(12), onTap: () {},
+                child: const Center(child: Icon(Icons.add_rounded, color: Color(0xFF9A9DA3), size: 34)),
+              )),
+            )),
+          ),
           SizedBox(height: 46, child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
