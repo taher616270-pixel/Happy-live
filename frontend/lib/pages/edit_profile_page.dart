@@ -134,7 +134,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
           WebUiSettings(
             context: context,
             presentStyle: WebPresentStyle.dialog,
-            viewMode: 1,
             dragMode: WebDragMode.move,
             initialAspectRatio: 1,
             guides: true,
