@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'profile_page.dart';
 
 class HappyPostsPage extends StatefulWidget {
   const HappyPostsPage({super.key, required this.accessToken, required this.name});
@@ -627,6 +628,57 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
     );
   }
 
+  void _openUserProfile(Map<String, dynamic> post) {
+    final userId = (post['userId'] ?? '').toString();
+    if (userId.isEmpty) return;
+    final userPosts = _posts.where((item) => (item['userId'] ?? '').toString() == userId).toList();
+    Navigator.of(context).push(PageRouteBuilder<void>(
+      transitionDuration: const Duration(milliseconds: 300),
+      reverseTransitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (_, __, ___) => PublicProfilePage(
+        name: (post['name'] ?? 'مستخدم').toString(),
+        userId: userId,
+        userCode: (post['userCode'] ?? '').toString(),
+        photoUrl: (post['avatarUrl'] ?? '').toString().trim().isEmpty
+            ? null
+            : post['avatarUrl'].toString(),
+        bio: (post['bio'] ?? '').toString(),
+        posts: userPosts,
+      ),
+      transitionsBuilder: (_, animation, __, child) => SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(-1, 0),
+          end: const Offset(0, 0),
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+        child: child,
+      ),
+    ));
+  }
+
+  Widget _postAuthorAvatar(Map<String, dynamic> post, String name) {
+    final url = (post['avatarUrl'] ?? '').toString().trim();
+    return InkWell(
+      onTap: () => _openUserProfile(post),
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(colors: [Color(0xFFF6E4B9), Color(0xFFEAD09A)]),
+        ),
+        child: ClipOval(
+          child: url.isEmpty
+              ? Center(child: Text(name.isEmpty ? 'م' : name.characters.first,
+                  style: const TextStyle(color: Color(0xFF80602B), fontWeight: FontWeight.w900, fontSize: 16)))
+              : Image.network(url, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Center(child: Text(name.isEmpty ? 'م' : name.characters.first,
+                    style: const TextStyle(color: Color(0xFF80602B), fontWeight: FontWeight.w900, fontSize: 16)))),
+        ),
+      ),
+    );
+  }
+
   Widget _postCard(Map<String, dynamic> post) {
     final name = (post['name'] ?? 'مستخدم').toString();
     final mine = post['isMine'] == true;
@@ -636,13 +688,15 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFE9E3D6)), boxShadow: const [BoxShadow(color: Color(0x09000000), blurRadius: 10, offset: Offset(0, 3))]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          _avatar(name),
+          _postAuthorAvatar(post, name),
           const SizedBox(width: 10),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: InkWell(
+            onTap: () => _openUserProfile(post),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(name, style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w900)),
             const SizedBox(height: 3),
             Text(_timeAgo(post['createdAt']), style: const TextStyle(color: _muted, fontSize: 10)),
-          ])),
+          ]))),
           if (!mine)
             TextButton(
               onPressed: () => _toggleFollow(post),
