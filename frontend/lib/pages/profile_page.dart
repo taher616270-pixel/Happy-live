@@ -121,40 +121,40 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: _C.bg,
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Column(
-                    children: [
-                      _Header(data: data),
-                      const _TribeBanner(),
-                      const SizedBox(height: 4),
-                      MenuTile(title: 'من الذي رآني', color: const Color(0xFF1E9BFF), icon: Icons.visibility, badge: data.viewersCount, onTap: () => _soon(context, 'من الذي رآني')),
-                      MenuTile(title: 'منشوراتي', color: const Color(0xFFFF4D8D), icon: Icons.bolt, onTap: () => _soon(context, 'منشوراتي')),
-                      const _Divider(),
-                      MenuTile(title: 'محفظتي', color: const Color(0xFFFF8A2B), icon: Icons.account_balance_wallet, onTap: () => _soon(context, 'محفظتي')),
-                      MenuTile(title: 'مركز العروض', color: const Color(0xFFFF4F9A), icon: Icons.local_activity, trailingText: 'تفعيل : ${data.offersCount}', showDot: true, onTap: () => _soon(context, 'مركز العروض')),
-                      MenuTile(title: 'VIP', color: const Color(0xFFFFB300), icon: Icons.workspace_premium, trailingText: data.vipText, onTap: () => _soon(context, 'VIP')),
-                      MenuTile(title: 'تشغيل المنجم', color: const Color(0xFFFF7A2F), icon: Icons.hardware, trailingText: data.mineText, onTap: () => _soon(context, 'تشغيل المنجم')),
-                      MenuTile(title: 'ترتيب الرتبة', color: const Color(0xFFFFC02E), icon: Icons.emoji_events, onTap: () => _soon(context, 'ترتيب الرتبة')),
-                      MenuTile(title: 'نوبل', color: const Color(0xFF7B5CFF), icon: Icons.shield, trailingText: data.nobleText, onTap: () => _soon(context, 'نوبل')),
-                      MenuTile(title: 'المركز التجاري', color: const Color(0xFFFF5C93), icon: Icons.storefront, onTap: () => _soon(context, 'المركز التجاري')),
-                      MenuTile(title: 'ادعو الأصدقاء', color: const Color(0xFF2DD4BF), icon: Icons.share, onTap: () => _soon(context, 'ادعو الأصدقاء')),
-                      const _Divider(),
-                      MenuTile(title: 'المساعدة', outlineIcon: Icons.help_outline, onTap: () => _soon(context, 'المساعدة')),
-                      MenuTile(title: 'الاعدادات', outlineIcon: Icons.settings_outlined, onTap: () => _soon(context, 'الاعدادات')),
-                    ],
-                  ),
+      // This page is hosted inside SessionHomePage's IndexedStack.
+      // Do not create a nested Scaffold here: the parent Scaffold owns
+      // the persistent bottom navigation bar.
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  children: [
+                    _Header(data: data),
+                    const _TribeBanner(),
+                    const SizedBox(height: 4),
+                    MenuTile(title: 'من الذي رآني', color: const Color(0xFF1E9BFF), icon: Icons.visibility, badge: data.viewersCount, onTap: () => _soon(context, 'من الذي رآني')),
+                    MenuTile(title: 'منشوراتي', color: const Color(0xFFFF4D8D), icon: Icons.bolt, onTap: () => _soon(context, 'منشوراتي')),
+                    const _Divider(),
+                    MenuTile(title: 'محفظتي', color: const Color(0xFFFF8A2B), icon: Icons.account_balance_wallet, onTap: () => _soon(context, 'محفظتي')),
+                    MenuTile(title: 'مركز العروض', color: const Color(0xFFFF4F9A), icon: Icons.local_activity, trailingText: 'تفعيل : ${data.offersCount}', showDot: true, onTap: () => _soon(context, 'مركز العروض')),
+                    MenuTile(title: 'VIP', color: const Color(0xFFFFB300), icon: Icons.workspace_premium, trailingText: data.vipText, onTap: () => _soon(context, 'VIP')),
+                    MenuTile(title: 'تشغيل المنجم', color: const Color(0xFFFF7A2F), icon: Icons.hardware, trailingText: data.mineText, onTap: () => _soon(context, 'تشغيل المنجم')),
+                    MenuTile(title: 'ترتيب الرتبة', color: const Color(0xFFFFC02E), icon: Icons.emoji_events, onTap: () => _soon(context, 'ترتيب الرتبة')),
+                    MenuTile(title: 'نوبل', color: const Color(0xFF7B5CFF), icon: Icons.shield, trailingText: data.nobleText, onTap: () => _soon(context, 'نوبل')),
+                    MenuTile(title: 'المركز التجاري', color: const Color(0xFFFF5C93), icon: Icons.storefront, onTap: () => _soon(context, 'المركز التجاري')),
+                    MenuTile(title: 'ادعو الأصدقاء', color: const Color(0xFF2DD4BF), icon: Icons.share, onTap: () => _soon(context, 'ادعو الأصدقاء')),
+                    const _Divider(),
+                    MenuTile(title: 'المساعدة', outlineIcon: Icons.help_outline, onTap: () => _soon(context, 'المساعدة')),
+                    MenuTile(title: 'الاعدادات', outlineIcon: Icons.settings_outlined, onTap: () => _soon(context, 'الاعدادات')),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
