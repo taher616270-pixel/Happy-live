@@ -886,7 +886,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             child: Row(children: [
               _sheetTab('الصفحة الشخصية', 2),
               _sheetTab('الوكالات', 1),
-              _sheetTab('الأصول الشخصية', 0),
+              _sheetTab('المنشورات', 0),
             ]),
           ),
           const SizedBox(height: 4),
@@ -894,11 +894,18 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 180),
             child: _tab == 0
-                ? _emptySection(
-                    key: const ValueKey('assets'),
-                    icon: Icons.inventory_2_outlined,
-                    title: 'لا توجد أصول شخصية',
-                    subtitle: 'ستظهر الأصول التي يملكها المستخدم هنا عند توفرها.',
+                ? Padding(
+                    key: const ValueKey('posts'),
+                    padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text('المنشورات',
+                            style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 9),
+                        _postsContent(),
+                      ],
+                    ),
                   )
                 : _tab == 1
                     ? _emptySection(
@@ -971,10 +978,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           Text(bio, style: const TextStyle(color: _brownMid, fontSize: 13, height: 1.6)),
           const SizedBox(height: 16),
         ],
-        const SizedBox(height: 18),
-        const Text('المنشورات', style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 9),
-        _postsContent(),
       ]),
     );
   }
