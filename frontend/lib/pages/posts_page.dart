@@ -541,7 +541,7 @@ class _CreatePostPageState extends State<_CreatePostPage> {
     if (bytes == null) throw Exception('اختر صورة أولاً');
     final authResponse = await http.get(
       Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/imagekit/auth'),
-      headers: {'Authorization': 'Bearer ${widget.name.isEmpty ? '' : ''}'},
+      headers: {'Authorization': 'Bearer ${widget.accessToken}'},
     );
     if (authResponse.statusCode != 200) {
       throw Exception('خدمة رفع الصور غير مكتملة الإعداد. تحقق من مفاتيح ImageKit.');
@@ -601,7 +601,7 @@ class _CreatePostPageState extends State<_CreatePostPage> {
 
   Future<void> _publish() async {
     final content = _controller.text.trim();
-    if ((content.isEmpty && _selectedImageBytes == null) || _publishing) return;
+    if (content.isEmpty || _publishing) return;
     _focusNode.unfocus();
     setState(() => _publishing = true);
     try {
