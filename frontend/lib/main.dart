@@ -1924,7 +1924,7 @@ class _BorderLightPainter extends CustomPainter {
 
       if (tangent != null) {
         final glow = Paint()
-          ..color = _lightPurple
+          ..color = const Color(0xFFB58AFF)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12)
           ..style = PaintingStyle.fill;
 
@@ -1938,7 +1938,7 @@ class _BorderLightPainter extends CustomPainter {
     }
 
     final border = Paint()
-      ..color = _purple.withOpacity(0.8)
+      ..color = const Color(0xFF8B5CF6).withOpacity(0.8)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawRRect(rrect, border);
