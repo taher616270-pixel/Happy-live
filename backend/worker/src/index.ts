@@ -94,7 +94,7 @@ async function ensurePublicUserId(db: D1Database, userId: string, currentId?: st
 
 async function authenticatedUser(request: Request, db: D1Database) {
   const authorization = request.headers.get("Authorization") ?? "";
-  const match = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
+  const match = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
   if (!match) return null;
   const row = await db.prepare(
     "SELECT u.id, u.email, p.display_name, p.gabo_id FROM user_sessions s INNER JOIN users u ON u.id = s.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
