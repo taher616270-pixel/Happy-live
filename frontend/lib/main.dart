@@ -1346,39 +1346,53 @@ class _SessionHomePageState extends State<SessionHomePage> {
     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => const LoginPage()), (route) => false);
   }
 
+  int _currentIndex = 0;
+
   @override
   Widget build(BuildContext context) {
+    final pages = <Widget>[
+      _HappyCreateTab(onSoon: _soon),
+      HappyHomeTab(
+        name: _name,
+        accessToken: widget.accessToken,
+        onDiscover: () => setState(() => _currentIndex = 2),
+        onSoon: _soon,
+      ),
+      _HappyPlaceholderTab(
+        title: 'اكتشف',
+        subtitle: 'اعثر على مجتمعات واهتمامات جديدة',
+        icon: Icons.explore_outlined,
+        onSoon: _soon,
+      ),
+      const _HappyPlaceholderTab(
+        title: 'الرسائل',
+        subtitle: 'محادثاتك الخاصة في مكان واحد',
+        icon: Icons.forum_outlined,
+      ),
+      HappyProfilePage(
+        name: _name,
+        email: widget.email,
+        userId: widget.userId,
+        initial: _initial,
+        onLogout: _logout,
+        onSoon: _soon,
+      ),
+    ];
+
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: CustomBottomNav(
-        pagesBuilder: (onTabSelected) => <Widget>[
-          _HappyCreateTab(onSoon: _soon),
-          HappyHomeTab(
-            name: _name,
-            accessToken: widget.accessToken,
-            onDiscover: () => onTabSelected(2),
-            onSoon: _soon,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0B0912),
+        body: SafeArea(
+          child: IndexedStack(
+            index: _currentIndex,
+            children: pages,
           ),
-          _HappyPlaceholderTab(
-            title: 'اكتشف',
-            subtitle: 'اعثر على مجتمعات واهتمامات جديدة',
-            icon: Icons.explore_outlined,
-            onSoon: _soon,
-          ),
-          const _HappyPlaceholderTab(
-            title: 'الرسائل',
-            subtitle: 'محادثاتك الخاصة في مكان واحد',
-            icon: Icons.forum_outlined,
-          ),
-          HappyProfilePage(
-            name: _name,
-            email: widget.email,
-            userId: widget.userId,
-            initial: _initial,
-            onLogout: _logout,
-            onSoon: _soon,
-          ),
-        ],
+        ),
+        bottomNavigationBar: CustomBottomNav(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+        ),
       ),
     );
   }
