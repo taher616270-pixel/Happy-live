@@ -588,15 +588,18 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const rows = await env.DB.prepare(
-          "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, pr.display_name, pr.gabo_id, " +
+          "SELECT p.id, p.user_id, p.content, p.image_url, p.visibility, p.created_at, pr.display_name, pr.gabo_id, " +
           "EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS liked, " +
           "(SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS likes_count, " +
           "(SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id) AS comments_count, " +
           "EXISTS(SELECT 1 FROM user_follows f WHERE f.following_id = p.user_id AND f.follower_id = ?) AS followed " +
           "FROM posts p LEFT JOIN profiles pr ON pr.user_id = p.user_id " +
-          "WHERE p.status = 'published' ORDER BY p.created_at DESC LIMIT 50"
-        ).bind(user.id, user.id).all<{
-          id: string; user_id: string; content: string; image_url: string | null; created_at: string;
+          "WHERE p.status = 'published' " +
+          "AND (p.user_id = ? OR p.visibility = 'public' OR (p.visibility = 'followers' AND EXISTS (SELECT 1 FROM user_follows vf WHERE vf.follower_id = ? AND vf.following_id = p.user_id))) " +
+          "AND NOT EXISTS (SELECT 1 FROM user_hidden_users hu WHERE hu.user_id = ? AND hu.hidden_user_id = p.user_id) " +
+          "ORDER BY p.created_at DESC LIMIT 50"
+        ).bind(user.id, user.id, user.id, user.id, user.id).all<{
+          id: string; user_id: string; content: string; image_url: string | null; visibility: string; created_at: string;
           display_name: string | null; gabo_id: string | null;
           liked: number; likes_count: number; comments_count: number; followed: number;
         }>();
@@ -604,7 +607,7 @@ export default {
           id: p.id, userId: p.user_id, name: p.display_name?.trim() || "مستخدم",
           userCode: p.gabo_id, content: p.content, imageUrl: p.image_url, createdAt: p.created_at,
           liked: Boolean(p.liked), likesCount: p.likes_count,
-          commentsCount: p.comments_count, followed: Boolean(p.followed),
+          commentsCount: p.comments_count, followed: Boolean(p.followed), visibility: p.visibility,
           isMine: p.user_id === user.id
         })) }, 200, origin, env);
       } catch (error) {
@@ -639,6 +642,70 @@ export default {
       } catch (error) {
         console.error("[posts.create] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "post_creation_failed" }, 500, origin, env);
+      }
+    }
+
+
+    const postActionRoute = url.pathname.match(/^\/api\/v1\/posts\/([0-9a-f-]{36})$/i);
+    const postVisibilityRoute = url.pathname.match(/^\/api\/v1\/posts\/([0-9a-f-]{36})\/visibility$/i);
+    if ((postActionRoute && request.method === "DELETE") || (postVisibilityRoute && request.method === "PATCH")) {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const postId = postActionRoute?.[1] ?? postVisibilityRoute?.[1];
+        const post = await env.DB.prepare("SELECT id, user_id FROM posts WHERE id = ? AND status = 'published'").bind(postId).first<{ id: string; user_id: string }>();
+        if (!post) return json({ error: "post_not_found" }, 404, origin, env);
+        if (post.user_id !== user.id) return json({ error: "not_post_owner" }, 403, origin, env);
+        if (request.method === "DELETE") {
+          await env.DB.prepare("UPDATE posts SET status = 'deleted', updated_at = ? WHERE id = ? AND user_id = ?").bind(new Date().toISOString(), postId, user.id).run();
+          return json({ ok: true }, 200, origin, env);
+        }
+        const body = await request.json() as Record<string, unknown>;
+        const visibility = typeof body.visibility === "string" ? body.visibility : "";
+        if (!["public", "followers", "private"].includes(visibility)) return json({ error: "invalid_visibility" }, 400, origin, env);
+        await env.DB.prepare("UPDATE posts SET visibility = ?, updated_at = ? WHERE id = ? AND user_id = ?").bind(visibility, new Date().toISOString(), postId, user.id).run();
+        return json({ ok: true, visibility }, 200, origin, env);
+      } catch (error) {
+        console.error("[posts.manage] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "post_update_failed" }, 500, origin, env);
+      }
+    }
+
+    const hideUserRoute = url.pathname.match(/^\/api\/v1\/users\/([0-9a-f-]{36})\/hide$/i);
+    if (hideUserRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const targetId = hideUserRoute[1];
+        if (targetId === user.id) return json({ error: "cannot_hide_self" }, 400, origin, env);
+        const target = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND status = 'active'").bind(targetId).first();
+        if (!target) return json({ error: "user_not_found" }, 404, origin, env);
+        await env.DB.prepare("INSERT INTO user_hidden_users (user_id, hidden_user_id, created_at) VALUES (?, ?, ?) ON CONFLICT(user_id, hidden_user_id) DO NOTHING").bind(user.id, targetId, new Date().toISOString()).run();
+        return json({ ok: true }, 200, origin, env);
+      } catch (error) {
+        console.error("[users.hide] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "hide_user_failed" }, 500, origin, env);
+      }
+    }
+
+    const postReportRoute = url.pathname.match(/^\/api\/v1\/posts\/([0-9a-f-]{36})\/report$/i);
+    if (postReportRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const body = await request.json() as Record<string, unknown>;
+        const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 300) : "general";
+        const post = await env.DB.prepare("SELECT id, user_id FROM posts WHERE id = ? AND status = 'published'").bind(postReportRoute[1]).first<{ id: string; user_id: string }>();
+        if (!post) return json({ error: "post_not_found" }, 404, origin, env);
+        if (post.user_id === user.id) return json({ error: "cannot_report_own_post" }, 400, origin, env);
+        await env.DB.prepare("INSERT INTO post_reports (id, post_id, reporter_id, reported_user_id, reason, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), post.id, user.id, post.user_id, reason || "general", new Date().toISOString()).run();
+        return json({ ok: true }, 201, origin, env);
+      } catch (error) {
+        console.error("[posts.report] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "report_failed" }, 500, origin, env);
       }
     }
 
