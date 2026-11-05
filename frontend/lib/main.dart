@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'widgets/custom_bottom_nav.dart';
 import 'widgets/purple_tech_background.dart';
+import 'services/session_token_store.dart';
 
 void main() => runApp(const HappyLiveApp());
 
@@ -634,8 +635,7 @@ class _LoginPageState extends State<LoginPage> {
       });
     }
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_sessionTokenKey);
+      final token = await SessionTokenStore.read();
       if (token == null || token.isEmpty) {
         if (mounted) setState(() => _isRestoringSession = false);
         return;
@@ -667,7 +667,7 @@ class _LoginPageState extends State<LoginPage> {
       // the token is invalid or expired. Temporary server errors must not log
       // the user out on refresh.
       if (response.statusCode == 401 || response.statusCode == 403) {
-        await prefs.remove(_sessionTokenKey);
+        await SessionTokenStore.clear();
         if (mounted) setState(() => _isRestoringSession = false);
         return;
       }
@@ -747,8 +747,7 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_sessionTokenKey, token);
+      await SessionTokenStore.write(token);
       if (isRegistering) await _rememberSuccessfulRegistrationOnThisDevice();
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -1348,8 +1347,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
       await http.post(Uri.parse('$_apiBase/auth/logout'),
         headers: {'Authorization': 'Bearer ' + widget.accessToken}).timeout(const Duration(seconds: 10));
     } catch (_) {}
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_sessionTokenKey);
+    await SessionTokenStore.clear();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute<void>(builder: (_) => const LoginPage()), (route) => false);
   }
