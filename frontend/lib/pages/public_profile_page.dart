@@ -162,7 +162,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         textDirection: TextDirection.rtl,
         child: Scaffold(
           backgroundColor: _paper,
+          extendBodyBehindAppBar: true,
           body: SafeArea(
+            top: false,
             bottom: false,
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: _brownLight))
@@ -185,7 +187,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                   primary: false,
                                   toolbarHeight: 56,
                                   collapsedHeight: 56,
-                                  expandedHeight: 270,
+                                  expandedHeight: 420,
                                   backgroundColor: Color.lerp(
                                     Colors.transparent,
                                     Colors.white,
@@ -317,7 +319,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     return SizedBox(
       width: double.infinity,
-      height: 270,
+      height: 420,
       child: Stack(fit: StackFit.expand, children: [
         if (cover.isNotEmpty)
           Image.network(cover, fit: BoxFit.cover,
