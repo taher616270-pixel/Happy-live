@@ -1750,7 +1750,7 @@ class _HappyLiveBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  static const Color _bar = Color(0xFF09080D);
+  static const Color _bar = Color(0xFF1A1F1F);
   static const Color _teal = Color(0xFF1FD1B8);
   static const Color _grey = Color(0xFF8A9A98);
 
