@@ -5,7 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'profile_page.dart';
+import 'public_profile_page.dart';
 
 class HappyPostsPage extends StatefulWidget {
   const HappyPostsPage({super.key, required this.accessToken, required this.name});
