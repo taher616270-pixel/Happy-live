@@ -235,6 +235,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                     ),
                     const SizedBox(height: 24),
                     Row(
+                      textDirection: TextDirection.ltr,
                       children: [
                         Expanded(
                           child: SizedBox(
