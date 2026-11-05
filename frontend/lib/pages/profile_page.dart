@@ -1001,6 +1001,194 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         ]),
       );
 
+  Future<void> _toggleProfilePostLike(Map<String, dynamic> post) async {
+    final id = (post['id'] ?? '').toString();
+    if (id.isEmpty || post['_likeBusy'] == true) return;
+    final wasLiked = post['liked'] == true;
+    final oldCount = (post['likesCount'] as num?)?.toInt() ??
+        (post['likes_count'] as num?)?.toInt() ?? 0;
+    setState(() {
+      post['_likeBusy'] = true;
+      post['liked'] = !wasLiked;
+      post['likesCount'] = (oldCount + (wasLiked ? -1 : 1)).clamp(0, 1 << 30);
+    });
+    try {
+      final response = await http.post(
+        Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/like'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+      ).timeout(const Duration(seconds: 12));
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
+        throw Exception();
+      }
+      if (!mounted) return;
+      setState(() {
+        post['liked'] = data['liked'] == true;
+        post['likesCount'] = data['likesCount'] ?? oldCount;
+        post['_likeBusy'] = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        post['liked'] = wasLiked;
+        post['likesCount'] = oldCount;
+        post['_likeBusy'] = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر تسجيل الإعجاب')),
+      );
+    }
+  }
+
+  Future<void> _openProfilePostComments(Map<String, dynamic> post) async {
+    final id = (post['id'] ?? '').toString();
+    if (id.isEmpty) return;
+    final input = TextEditingController();
+    bool loading = true;
+    bool sending = false;
+    String? error;
+    List<Map<String, dynamic>> comments = [];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          Future<void> loadComments() async {
+            try {
+              final response = await http.get(
+                Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/comments'),
+                headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+              ).timeout(const Duration(seconds: 12));
+              final data = jsonDecode(response.body);
+              if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
+                throw Exception();
+              }
+              comments = (data['comments'] as List? ?? const [])
+                  .whereType<Map>()
+                  .map((item) => Map<String, dynamic>.from(item))
+                  .toList();
+              error = null;
+            } catch (_) {
+              error = 'تعذر تحميل التعليقات';
+            }
+            loading = false;
+            setSheetState(() {});
+          }
+
+          Future<void> sendComment() async {
+            final content = input.text.trim();
+            if (content.isEmpty || sending) return;
+            sending = true;
+            setSheetState(() {});
+            try {
+              final response = await http.post(
+                Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/comments'),
+                headers: {
+                  'Authorization': 'Bearer ${widget.accessToken}',
+                  'Content-Type': 'application/json',
+                },
+                body: jsonEncode({'content': content}),
+              ).timeout(const Duration(seconds: 12));
+              final data = jsonDecode(response.body);
+              if (response.statusCode != 201 || data is! Map || data['ok'] != true) {
+                throw Exception();
+              }
+              comments.add(Map<String, dynamic>.from(data['comment'] as Map));
+              input.clear();
+              post['commentsCount'] = ((post['commentsCount'] as num?)?.toInt() ?? 0) + 1;
+              error = null;
+            } catch (_) {
+              error = 'تعذر إضافة التعليق';
+            }
+            sending = false;
+            setSheetState(() {});
+            if (mounted) setState(() {});
+          }
+
+          if (loading && comments.isEmpty) loadComments();
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: Container(
+              height: MediaQuery.of(context).size.height * .72,
+              padding: EdgeInsets.fromLTRB(18, 12, 18, 18 + MediaQuery.of(context).viewInsets.bottom),
+              decoration: const BoxDecoration(
+                color: _paper,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+              ),
+              child: Column(children: [
+                Container(width: 42, height: 4,
+                    decoration: BoxDecoration(color: const Color(0xFFE5DFD0), borderRadius: BorderRadius.circular(5))),
+                const SizedBox(height: 16),
+                Row(children: [
+                  const Expanded(child: Text('التعليقات',
+                      style: TextStyle(color: _brown, fontSize: 18, fontWeight: FontWeight.w900))),
+                  Text('${comments.length}',
+                      style: const TextStyle(color: _muted, fontWeight: FontWeight.bold)),
+                ]),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: loading
+                      ? const Center(child: CircularProgressIndicator(color: _brownLight))
+                      : error != null && comments.isEmpty
+                          ? Center(child: Text(error!, style: const TextStyle(color: _muted)))
+                          : comments.isEmpty
+                              ? const Center(child: Text('كن أول من يعلّق على هذا المنشور',
+                                  style: TextStyle(color: _muted)))
+                              : ListView.separated(
+                                  itemCount: comments.length,
+                                  separatorBuilder: (_, __) => const Divider(height: 18, color: Color(0xFFF0EBDD)),
+                                  itemBuilder: (_, index) {
+                                    final comment = comments[index];
+                                    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                      Text((comment['name'] ?? 'مستخدم').toString(),
+                                          style: const TextStyle(color: _brown, fontWeight: FontWeight.w900, fontSize: 12)),
+                                      const SizedBox(height: 4),
+                                      Text((comment['content'] ?? '').toString(),
+                                          style: const TextStyle(color: _brownMid, fontSize: 13, height: 1.5)),
+                                    ]);
+                                  },
+                                ),
+                ),
+                if (error != null && comments.isNotEmpty)
+                  Align(alignment: Alignment.centerRight,
+                      child: Text(error!, style: const TextStyle(color: Colors.red, fontSize: 11))),
+                Row(children: [
+                  Expanded(child: TextField(
+                    controller: input,
+                    maxLength: 500,
+                    textDirection: TextDirection.rtl,
+                    style: const TextStyle(color: _brown, fontSize: 13),
+                    decoration: InputDecoration(
+                      counterText: '',
+                      hintText: 'اكتب تعليقاً...',
+                      hintStyle: const TextStyle(color: _muted),
+                      filled: true,
+                      fillColor: _cream,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                    ),
+                  )),
+                  const SizedBox(width: 8),
+                  IconButton.filled(
+                    onPressed: sending ? null : sendComment,
+                    style: IconButton.styleFrom(backgroundColor: _brownLight, foregroundColor: Colors.white),
+                    icon: sending
+                        ? const SizedBox(width: 17, height: 17, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.send_rounded),
+                  ),
+                ]),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+    input.dispose();
+    if (mounted) setState(() {});
+  }
+
   Widget _postsContent() {
     if (_profile['canViewPosts'] != true) {
       return const Padding(
@@ -1019,6 +1207,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     return Column(
       children: _posts.map((post) {
         final imageUrl = (post['imageUrl'] ?? post['image_url'] ?? '').toString();
+        final liked = post['liked'] == true;
+        final likes = (post['likesCount'] as num?)?.toInt() ??
+            (post['likes_count'] as num?)?.toInt() ?? 0;
+        final comments = (post['commentsCount'] as num?)?.toInt() ??
+            (post['comments_count'] as num?)?.toInt() ?? 0;
         return Container(
           width: double.infinity,
           margin: const EdgeInsets.only(bottom: 20),
@@ -1029,9 +1222,38 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
               const SizedBox(height: 9),
               Center(child: _ProfilePostImage(url: imageUrl)),
             ],
-            const SizedBox(height: 8),
-            Text('♥ ${post['likesCount'] ?? post['likes_count'] ?? 0}    تعليق ${post['commentsCount'] ?? post['comments_count'] ?? 0}',
-                style: const TextStyle(color: _muted, fontSize: 11)),
+            const SizedBox(height: 9),
+            Row(children: [
+              InkWell(
+                onTap: post['_likeBusy'] == true ? null : () => _toggleProfilePostLike(post),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        color: liked ? const Color(0xFFE34D65) : _muted, size: 19),
+                    const SizedBox(width: 5),
+                    Text('$likes', style: TextStyle(
+                        color: liked ? const Color(0xFFE34D65) : _muted,
+                        fontSize: 12, fontWeight: FontWeight.w700)),
+                  ]),
+                ),
+              ),
+              const SizedBox(width: 16),
+              InkWell(
+                onTap: () => _openProfilePostComments(post),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.mode_comment_outlined, color: _muted, size: 18),
+                    const SizedBox(width: 5),
+                    Text('تعليق $comments',
+                        style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w700)),
+                  ]),
+                ),
+              ),
+            ]),
           ]),
         );
       }).toList(),
