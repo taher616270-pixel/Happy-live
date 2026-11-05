@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -531,6 +533,22 @@ class _CreatePostPageState extends State<_CreatePostPage> {
   bool _publishing = false;
   bool _emojiPanelOpen = false;
   String _visibility = 'عام';
+  final ImagePicker _imagePicker = ImagePicker();
+  Uint8List? _selectedImageBytes;
+
+  Future<void> _pickPostImage() async {
+    try {
+      final picked = await _imagePicker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      setState(() => _selectedImageBytes = bytes);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر فتح الصور. تحقق من صلاحية الوصول ثم حاول مرة أخرى.')),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -726,10 +744,40 @@ class _CreatePostPageState extends State<_CreatePostPage> {
             child: Align(alignment: AlignmentDirectional.topStart, child: Container(
               width: 100, height: 130,
               decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
-              child: Material(color: Colors.transparent, borderRadius: BorderRadius.circular(12), child: InkWell(
-                borderRadius: BorderRadius.circular(12), onTap: () {},
-                child: const Center(child: Icon(Icons.add_rounded, color: Color(0xFF9A9DA3), size: 34)),
-              )),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(children: [
+                Positioned.fill(
+                  child: _selectedImageBytes == null
+                      ? const Center(child: Icon(Icons.add_rounded, color: Color(0xFF9A9DA3), size: 34))
+                      : Image.memory(_selectedImageBytes!, fit: BoxFit.cover),
+                ),
+                Positioned.fill(
+                  child: Material(color: Colors.transparent, child: InkWell(
+                    onTap: _pickPostImage,
+                    child: _selectedImageBytes == null
+                        ? const SizedBox.expand()
+                        : Align(alignment: AlignmentDirectional.topEnd, child: Padding(
+                            padding: const EdgeInsets.all(5),
+                            child: Container(
+                              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                              child: const Icon(Icons.edit_rounded, color: Colors.white, size: 19),
+                            ),
+                          )),
+                  )),
+                ),
+                if (_selectedImageBytes != null)
+                  PositionedDirectional(
+                    top: 5, start: 5,
+                    child: InkWell(
+                      onTap: () => setState(() => _selectedImageBytes = null),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                        child: const Icon(Icons.close_rounded, color: Colors.white, size: 17),
+                      ),
+                    ),
+                  ),
+              ]),
             )),
           ),
           SizedBox(height: 46, child: Container(
