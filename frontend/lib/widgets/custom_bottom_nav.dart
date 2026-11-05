@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Persistent, controlled bottom navigation bar.
 /// The parent page owns the single Scaffold, IndexedStack, and selected tab.
-class CustomBottomNav extends StatefulWidget {
+class CustomBottomNav extends StatelessWidget {
   const CustomBottomNav({
     super.key,
     required this.currentIndex,
@@ -12,13 +12,7 @@ class CustomBottomNav extends StatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  @override
-  State<CustomBottomNav> createState() => _CustomBottomNavState();
-}
 
-class _CustomBottomNavState extends State<CustomBottomNav>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
 
   static const items = <(int, IconData, String)>[
     (4, Icons.person_outline, 'الخاص بي'),
@@ -27,21 +21,6 @@ class _CustomBottomNavState extends State<CustomBottomNav>
     (1, Icons.bed_outlined, 'غرفة'),
     (0, Icons.wifi_tethering_outlined, 'Happy Live'),
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      duration: const Duration(seconds: 1),
-      vsync: this,
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) => _buildNavigationBar();
@@ -94,15 +73,16 @@ class _CustomBottomNavState extends State<CustomBottomNav>
     required String label,
   }) {
     final active = widget.currentIndex == index;
-    final content = AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      curve: Curves.easeOut,
+    final content = Container(
       width: double.infinity,
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 7),
       decoration: BoxDecoration(
         color: active ? const Color(0x2E8B5CF6) : Colors.transparent,
         borderRadius: BorderRadius.circular(18),
+        border: active
+            ? Border.all(color: const Color(0xFF8B5CF6), width: 1.2)
+            : null,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -140,80 +120,8 @@ class _CustomBottomNavState extends State<CustomBottomNav>
       onTap: () {
         if (index != widget.currentIndex) widget.onTap(index);
       },
-      child: CustomPaint(
-        foregroundPainter: active
-            ? _ActiveBorderPainter(animation: _ctrl)
-            : null,
-        child: content,
-      ),
+      child: content,
     );
   }
 }
 
-class _ActiveBorderPainter extends CustomPainter {
-  _ActiveBorderPainter({required this.animation})
-      : super(repaint: animation);
-
-  final Animation<double> animation;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.isEmpty) return;
-
-    final rect = Offset.zero & size;
-    final rrect = RRect.fromRectAndRadius(
-      rect.deflate(0.6),
-      const Radius.circular(18),
-    );
-
-    canvas.drawRRect(
-      rrect,
-      Paint()
-        ..color = const Color(0xFF8B5CF6)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2,
-    );
-
-    canvas.save();
-    canvas.clipRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(18)),
-    );
-
-    final metrics = (Path()..addRRect(rrect)).computeMetrics();
-    if (metrics.isNotEmpty) {
-      final metric = metrics.first;
-      final progress = animation.value.clamp(0.0, 1.0).toDouble();
-      final tangent = metric.getTangentForOffset(metric.length * progress);
-
-      if (tangent != null) {
-        final position = tangent.position;
-        canvas.drawCircle(
-          position,
-          12,
-          Paint()
-            ..shader = const RadialGradient(
-              colors: [
-                Color(0xF2B58AFF),
-                Color(0x738B5CF6),
-                Color(0x008B5CF6),
-              ],
-              stops: [0.0, 0.45, 1.0],
-            ).createShader(
-              Rect.fromCircle(center: position, radius: 12),
-            ),
-        );
-        canvas.drawCircle(
-          position,
-          2.5,
-          Paint()..color = Colors.white,
-        );
-      }
-    }
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _ActiveBorderPainter oldDelegate) =>
-      oldDelegate.animation != animation;
-}
