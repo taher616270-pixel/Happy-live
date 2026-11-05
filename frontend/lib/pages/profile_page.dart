@@ -536,6 +536,7 @@ class PublicProfilePage extends StatefulWidget {
     this.bio = '',
     this.posts = const [],
     this.onChat,
+    this.onFollow,
   });
 
   final String name;
@@ -546,20 +547,23 @@ class PublicProfilePage extends StatefulWidget {
   final String bio;
   final List<Map<String, dynamic>> posts;
   final VoidCallback? onChat;
+  final VoidCallback? onFollow;
 
   @override
   State<PublicProfilePage> createState() => _PublicProfilePageState();
 }
 
 class _PublicProfilePageState extends State<PublicProfilePage> {
-  // ألوان صفحة البروفايل العام مطابقة لهوية Happy Live.
-  static const _bg = Color(0xFF09080D);
-  static const _surface = Color(0xFF17131F);
-  static const _surfaceRaised = Color(0xFF211A2B);
-  static const _muted = Color(0xFFAAA2B5);
-  static const _gold = Color(0xFFE8C477);
-  static const _purple = Color(0xFF9B70D6);
-  int _tab = 0;
+  static const _brown = Color(0xFF3D2314);
+  static const _brownDark = Color(0xFF2A1508);
+  static const _brownMid = Color(0xFF5A3520);
+  static const _brownLight = Color(0xFF8B5A2B);
+  static const _gold = Color(0xFFE8C07D);
+  static const _cream = Color(0xFFF9F1E0);
+  static const _paper = Color(0xFFFFFEFC);
+  static const _muted = Color(0xFF9A8878);
+
+  int _tab = 2;
   bool _loading = true;
   String? _loadError;
   Map<String, dynamic> _profile = {};
@@ -567,10 +571,22 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   Map<String, dynamic> get _stats =>
       Map<String, dynamic>.from((_profile['stats'] as Map?) ?? const {});
-  int _number(String key) => (_stats[key] as num?)?.toInt() ?? 0;
-  String _text(String key, [String fallback = '']) {
-    final value = (_profile[key] ?? fallback).toString().trim();
-    return value;
+
+  int _number(String key) {
+    final value = _stats[key] ?? _profile[key];
+    if (value is num) return value.toInt();
+    return int.tryParse('$value') ?? 0;
+  }
+
+  String _text(String key, [String fallback = '']) =>
+      (_profile[key] ?? fallback).toString().trim();
+
+  String _firstText(List<String> keys, [String fallback = '']) {
+    for (final key in keys) {
+      final value = _text(key);
+      if (value.isNotEmpty && value != 'null') return value;
+    }
+    return fallback;
   }
 
   @override
@@ -582,8 +598,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   Future<void> _loadProfile() async {
     try {
       final response = await http.get(
-        Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/users/${Uri.encodeComponent(widget.userId)}/profile'),
-        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+        Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/users/\${Uri.encodeComponent(widget.userId)}/profile'),
+        headers: {'Authorization': 'Bearer \${widget.accessToken}'},
       ).timeout(const Duration(seconds: 18));
       final decoded = jsonDecode(response.body);
       if (response.statusCode != 200 || decoded is! Map || decoded['ok'] != true) {
@@ -614,259 +630,475 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   @override
   Widget build(BuildContext context) => Directionality(
-    textDirection: TextDirection.rtl,
-    child: Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        bottom: false,
-        child: Column(children: [
-          _cover(),
-          if (_loading) const LinearProgressIndicator(
-            minHeight: 2, color: _gold, backgroundColor: _surfaceRaised),
-          Expanded(child: _loadError != null
-            ? Center(child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.cloud_off_rounded, color: _muted, size: 38),
-                  const SizedBox(height: 12),
-                  Text(_loadError!, textAlign: TextAlign.center,
-                    style: const TextStyle(color: _muted, fontSize: 14)),
-                  const SizedBox(height: 14),
-                  OutlinedButton(onPressed: () {
-                    setState(() { _loading = true; _loadError = null; });
-                    _loadProfile();
-                  }, child: const Text('إعادة المحاولة')),
-                ]),
-              ))
-            : SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 18),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  _identity(),
-                  _statsRow(),
-                  _tabs(),
-                  if (_tab == 0) _aboutContent() else _postsContent(),
-                ]),
-              )),
-          _chatBar(),
-        ]),
-      ),
-    ),
-  );
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: _cream,
+          body: SafeArea(
+            bottom: false,
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: _brownLight))
+                : _loadError != null
+                    ? _errorView()
+                    : Column(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              child: Column(
+                                children: [_heroHeader(), _profileSheet()],
+                              ),
+                            ),
+                          ),
+                          _actionBar(),
+                        ],
+                      ),
+          ),
+        ),
+      );
 
-  Widget _cover() {
+  Widget _errorView() => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.cloud_off_rounded, color: _brownLight, size: 42),
+            const SizedBox(height: 12),
+            Text(_loadError!, textAlign: TextAlign.center,
+                style: const TextStyle(color: _brown, fontSize: 14)),
+            const SizedBox(height: 14),
+            OutlinedButton(
+              onPressed: () {
+                setState(() {
+                  _loading = true;
+                  _loadError = null;
+                });
+                _loadProfile();
+              },
+              child: const Text('إعادة المحاولة'),
+            ),
+          ]),
+        ),
+      );
+
+  Widget _heroHeader() {
     final cover = _text('coverUrl');
-    return SizedBox(
-      height: 190,
+    final name = _firstText(['name', 'displayName', 'display_name'], widget.name);
+    final code = _firstText(['userCode', 'user_code', 'gabo_id'], widget.userCode);
+    final avatar = _firstText(['avatarUrl', 'avatar', 'photo_url'], widget.photoUrl ?? '');
+    final badge = _firstText(['badgeName', 'badge', 'titleBadge']);
+    final level = _firstText(['levelName', 'level', 'userLevel']);
+    final vip = _firstText(['vipText', 'vipLevel', 'vip_level']);
+
+    return Container(
       width: double.infinity,
-      child: Stack(fit: StackFit.expand, children: [
-        if (cover.isNotEmpty)
-          Image.network(cover, fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _coverFallback())
-        else
-          _coverFallback(),
-        Positioned(top: 10, right: 12, child: _roundButton(
-          Icons.arrow_forward_rounded, () => Navigator.of(context).maybePop())),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [_brownDark, _brown, _brownMid],
+        ),
+      ),
+      child: Column(children: [
+        SizedBox(
+          height: 205,
+          width: double.infinity,
+          child: Stack(fit: StackFit.expand, children: [
+            if (cover.isNotEmpty)
+              Image.network(cover, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _coverFallback())
+            else
+              _coverFallback(),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black.withOpacity(.30), Colors.transparent, _brownDark.withOpacity(.82)],
+                  stops: const [0, .45, 1],
+                ),
+              ),
+            ),
+            Positioned(top: 10, right: 12,
+                child: _roundButton(Icons.arrow_forward_rounded,
+                    () => Navigator.of(context).maybePop())),
+            Positioned(
+              top: 10,
+              left: 12,
+              child: _roundButton(Icons.more_horiz_rounded, () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('لا توجد خيارات إضافية حالياً')),
+                );
+              }),
+            ),
+          ]),
+        ),
+        Transform.translate(
+          offset: const Offset(0, -42),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _avatar(88, avatar),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name.isEmpty ? 'مستخدم' : name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 5),
+                        Row(children: [
+                          Flexible(
+                            child: Text(code.isEmpty ? 'ID: —' : 'ID:$code',
+                                textDirection: TextDirection.ltr,
+                                style: const TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.w700)),
+                          ),
+                          const SizedBox(width: 7),
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: code));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('تم نسخ المعرف')),
+                              );
+                            },
+                            child: const Icon(Icons.copy_rounded, color: _gold, size: 14),
+                          ),
+                        ]),
+                        if (badge.isNotEmpty || level.isNotEmpty || vip.isNotEmpty) ...[
+                          const SizedBox(height: 7),
+                          Wrap(spacing: 5, runSpacing: 5, children: [
+                            if (badge.isNotEmpty) _miniTag(badge, Icons.verified_rounded),
+                            if (level.isNotEmpty) _miniTag(level, Icons.military_tech_rounded),
+                            if (vip.isNotEmpty) _miniTag(vip, Icons.workspace_premium_rounded),
+                          ]),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Padding(padding: const EdgeInsets.only(bottom: 7), child: _roomButton()),
+              ],
+            ),
+          ),
+        ),
+        Transform.translate(
+          offset: const Offset(0, -25),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(13, 0, 13, 18),
+            child: Row(children: [
+              _heroStat('متابعون', _number('followers')),
+              _heroStat('إعجاب', _number('likesReceived')),
+              _heroStat('زائر', _number('visitors')),
+            ]),
+          ),
+        ),
       ]),
     );
   }
 
   Widget _coverFallback() => Image.asset(
-    'assets/images/profile_cover/profile_cover.jpg.JPG',
-    width: double.infinity,
-    height: 190,
-    fit: BoxFit.cover,
-    errorBuilder: (_, __, ___) => const DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          colors: [Color(0xFF382747), Color(0xFF17131F), Color(0xFF09080D)],
+        'assets/images/profile_cover/profile_cover.jpg.JPG',
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [_brownLight, _brown, _brownDark],
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   Widget _roundButton(IconData icon, VoidCallback onTap) => Material(
-    color: const Color(0x9909080D),
-    shape: const CircleBorder(),
-    child: InkWell(
-      customBorder: const CircleBorder(),
-      onTap: onTap,
-      child: SizedBox(width: 38, height: 38, child: Icon(icon, color: Colors.white, size: 22)),
-    ),
-  );
+        color: const Color(0x99000000),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(width: 38, height: 38,
+              child: Icon(icon, color: Colors.white, size: 21)),
+        ),
+      );
 
-  Widget _identity() {
-    final name = _text('name', widget.name).isEmpty ? 'مستخدم' : _text('name', widget.name);
-    final code = _text('userCode', widget.userCode).isEmpty ? '—' : _text('userCode', widget.userCode);
-    final bio = _text('bio', widget.bio);
-    final photo = _text('avatarUrl', widget.photoUrl ?? '');
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Row(children: [
-        _avatar(70, photo),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+  Widget _avatar(double size, String photo) => Container(
+        width: size,
+        height: size,
+        padding: const EdgeInsets.all(3),
+        decoration: const BoxDecoration(shape: BoxShape.circle, color: _gold),
+        child: ClipOval(
+          child: photo.isEmpty
+              ? Container(color: _cream,
+                  child: const Icon(Icons.person, color: _brownLight, size: 42))
+              : Image.network(photo, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(color: _cream,
+                      child: const Icon(Icons.person, color: _brownLight, size: 42))),
+        ),
+      );
+
+  Widget _miniTag(String label, IconData icon) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        decoration: BoxDecoration(
+          color: _gold.withOpacity(.16),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _gold.withOpacity(.65), width: .7),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: _gold, size: 11),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(color: _gold, fontSize: 10, fontWeight: FontWeight.w800)),
+        ]),
+      );
+
+  Widget _roomButton() => InkWell(
+        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('الغرف غير متاحة من هذا الملف حالياً')),
+        ),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+          decoration: BoxDecoration(color: _gold, borderRadius: BorderRadius.circular(20)),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.meeting_room_rounded, color: _brownDark, size: 15),
+            SizedBox(width: 4),
+            Text('غرفة', style: TextStyle(color: _brownDark, fontSize: 11, fontWeight: FontWeight.w900)),
+          ]),
+        ),
+      );
+
+  Widget _heroStat(String label, int value) => Expanded(
+        child: Column(children: [
+          Text('$value', style: const TextStyle(color: _gold, fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 3),
-          Text('ID:$code', textDirection: TextDirection.ltr,
-            style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w600)),
-          if (bio.isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Text(bio, maxLines: 2, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: _muted, fontSize: 13)),
-          ],
-        ])),
+          Text(label, style: TextStyle(color: _cream.withOpacity(.88), fontSize: 11, fontWeight: FontWeight.w600)),
+        ]),
+      );
+
+  Widget _profileSheet() => Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 340),
+        decoration: const BoxDecoration(
+          color: _paper,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(27)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+            child: Row(children: [
+              _sheetTab('الأصول الشخصية', 0),
+              _sheetTab('الوكالات', 1),
+              _sheetTab('الصفحة الشخصية', 2),
+            ]),
+          ),
+          const SizedBox(height: 4),
+          Container(height: 1, color: const Color(0xFFF0E7DC)),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: _tab == 0
+                ? _emptySection(
+                    key: const ValueKey('assets'),
+                    icon: Icons.inventory_2_outlined,
+                    title: 'لا توجد أصول شخصية',
+                    subtitle: 'ستظهر الأصول التي يملكها المستخدم هنا عند توفرها.',
+                  )
+                : _tab == 1
+                    ? _emptySection(
+                        key: const ValueKey('agencies'),
+                        icon: Icons.apartment_rounded,
+                        title: 'لا توجد وكالة مرتبطة',
+                        subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
+                      )
+                    : _personalDetails(),
+          ),
+        ]),
+      );
+
+  Widget _sheetTab(String title, int index) {
+    final selected = _tab == index;
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _tab = index),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 2),
+          child: Column(children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(title, maxLines: 1,
+                  style: TextStyle(color: selected ? _brown : _muted,
+                      fontSize: 12, fontWeight: selected ? FontWeight.w900 : FontWeight.w600)),
+            ),
+            const SizedBox(height: 10),
+            Container(height: 3, width: 38,
+                decoration: BoxDecoration(color: selected ? _brownLight : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8))),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _emptySection({
+    required Key key,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) => Container(
+        key: key,
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(24, 45, 24, 55),
+        child: Column(children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: const BoxDecoration(color: _cream, shape: BoxShape.circle),
+            child: Icon(icon, color: _brownLight, size: 36),
+          ),
+          const SizedBox(height: 15),
+          Text(title, style: const TextStyle(color: _brown, fontSize: 15, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 7),
+          Text(subtitle, textAlign: TextAlign.center,
+              style: const TextStyle(color: _muted, fontSize: 12, height: 1.6)),
+        ]),
+      );
+
+  Widget _personalDetails() {
+    final bio = _firstText(['bio', 'about'], widget.bio);
+    final country = _firstText(['country', 'countryName']);
+    final gender = _text('gender');
+    final age = _profile['age'];
+    final joined = _firstText(['joinedAt', 'createdAt', 'created_at']);
+    final date = DateTime.tryParse(joined);
+    final joinedLabel = date == null ? 'غير متاح' :
+        '\${date.year}-\${date.month.toString().padLeft(2, '0')}';
+    final isPrivate = _profile['isPrivate'] == true || _profile['is_private'] == true;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (bio.isNotEmpty) ...[
+          const Text('نبذة', style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 7),
+          Text(bio, style: const TextStyle(color: _brownMid, fontSize: 13, height: 1.6)),
+          const SizedBox(height: 16),
+        ],
+        _detailLine('الدولة', country.isEmpty ? 'غير متاح' : country),
+        _detailLine('الجنس', gender == 'male' ? 'ذكر' : gender == 'female' ? 'أنثى' : gender.isEmpty ? 'غير متاح' : gender),
+        if (age is num && age >= 0) _detailLine('العمر', '$age'),
+        _detailLine('تاريخ الانضمام', joinedLabel),
+        _detailLine('حالة الحساب', isPrivate ? 'خاص' : 'عام'),
+        _detailLine('المتابعون', '\${_number('followers')}'),
+        _detailLine('يتابع', '\${_number('following')}'),
+        _detailLine('الإعجابات المستلمة', '\${_number('likesReceived')}'),
+        _detailLine('الزوار', '\${_number('visitors')}'),
+        const SizedBox(height: 18),
+        const Text('المنشورات', style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 9),
+        _postsContent(),
       ]),
     );
   }
 
-  Widget _avatar(double size, String photo) => Container(
-    width: size, height: size, padding: const EdgeInsets.all(2),
-    decoration: const BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: const LinearGradient(colors: [_gold, _purple, _gold]),
-    ),
-    child: ClipOval(child: photo.isEmpty
-      ? Container(color: _surfaceRaised, child: const Icon(Icons.person, color: _muted, size: 38))
-      : Image.network(photo, fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(color: const Color(0xFF29313A), child: const Icon(Icons.person, color: Colors.white70, size: 38)))),
-  );
-
-  Widget _statsRow() => Padding(
-    padding: const EdgeInsets.fromLTRB(12, 2, 12, 14),
-    child: Row(children: [
-      _stat('متابعون', _number('followers')),
-      _stat('يتابع', _number('following')),
-      _stat('المنشورات', _number('posts')),
-      _stat('الإعجابات', _number('likesReceived')),
-    ]),
-  );
-
-  Widget _stat(String label, int value) => Expanded(child: Column(children: [
-    Text('$value', style: const TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w900)),
-    const SizedBox(height: 3),
-    Text(label, style: const TextStyle(color: _muted, fontSize: 11)),
-  ]));
-
-  Widget _tabs() => Container(
-    decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFF493957), width: .8))),
-    child: Row(children: [
-      _tabButton('نبذة', 0),
-      _tabButton('المنشورات (${_number('posts')})', 1),
-    ]),
-  );
-
-  Widget _tabButton(String label, int index) {
-    final selected = _tab == index;
-    return Expanded(child: InkWell(
-      onTap: () => setState(() => _tab = index),
-      child: Column(children: [
-        const SizedBox(height: 13),
-        Text(label, style: TextStyle(color: selected ? _gold : _muted, fontSize: 14, fontWeight: selected ? FontWeight.w900 : FontWeight.w600)),
-        const SizedBox(height: 10),
-        Container(height: 2.5, width: 42, decoration: BoxDecoration(color: selected ? _gold : Colors.transparent, borderRadius: BorderRadius.circular(5))),
-      ]),
-    ));
-  }
-
-  Widget _sectionTitle(String title) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 19, 16, 11),
-    child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)),
-  );
-
-  Widget _aboutContent() {
-    final country = _text('country');
-    final gender = _text('gender');
-    final age = _profile['age'];
-    final joined = _text('joinedAt');
-    final rooms = _number('activeRooms');
-    final isPrivate = _profile['isPrivate'] == true;
-    String joinedLabel = 'غير متاح';
-    final date = DateTime.tryParse(joined);
-    if (date != null) joinedLabel = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _sectionTitle('معلومات الحساب'),
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [
-        if (country.isNotEmpty) _infoLine('الدولة', country),
-        if (gender.isNotEmpty) _infoLine('الجنس', gender == 'male' ? 'ذكر' : gender == 'female' ? 'أنثى' : gender),
-        if (age is num && age >= 0) _infoLine('العمر', age.toString()),
-        _infoLine('تاريخ الانضمام', joinedLabel),
-        _infoLine('حالة الحساب', isPrivate ? 'خاص' : 'عام'),
-      ])),
-      _sectionTitle('النشاط'),
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [
-        _infoLine('الغرف التي أنشأها والنشطة', '$rooms'),
-        _infoLine('إجمالي الإعجابات المستلمة', '${_number('likesReceived')}'),
-      ])),
-      if (isPrivate && _profile['canViewPosts'] != true)
-        const Padding(padding: EdgeInsets.all(24), child: Center(
-          child: Text('هذا الحساب خاص. تابع الحساب لرؤية منشوراته.',
-            style: TextStyle(color: _muted), textAlign: TextAlign.center))),
-    ]);
-  }
-
-  Widget _infoLine(String label, String value) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFF382B45)))),
-    child: Row(children: [
-      Text(label, style: const TextStyle(color: _muted, fontSize: 13)),
-      const Spacer(),
-      Flexible(child: Text(value, textAlign: TextAlign.end,
-        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800))),
-    ]),
-  );
+  Widget _detailLine(String label, String value) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Color(0xFFEFE5D9))),
+        ),
+        child: Row(children: [
+          Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
+          const Spacer(),
+          Flexible(child: Text(value, textAlign: TextAlign.end,
+              style: const TextStyle(color: _brown, fontSize: 12, fontWeight: FontWeight.w800))),
+        ]),
+      );
 
   Widget _postsContent() {
     if (_profile['canViewPosts'] != true) {
       return const Padding(
-        padding: EdgeInsets.fromLTRB(20, 55, 20, 70),
+        padding: EdgeInsets.symmetric(vertical: 20),
         child: Center(child: Text('منشورات هذا الحساب غير متاحة للعرض',
-          style: TextStyle(color: _muted, fontSize: 13))),
+            style: TextStyle(color: _muted, fontSize: 12), textAlign: TextAlign.center)),
       );
     }
     if (_posts.isEmpty) {
       return const Padding(
-        padding: EdgeInsets.fromLTRB(20, 55, 20, 70),
-        child: Center(child: Column(children: [
-          Icon(Icons.photo_library_outlined, color: _muted, size: 38),
-          SizedBox(height: 10),
-          Text('لا توجد منشورات عامة حتى الآن', style: TextStyle(color: _muted, fontSize: 13)),
-        ])),
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: Text('لا توجد منشورات عامة حتى الآن',
+            style: TextStyle(color: _muted, fontSize: 12))),
       );
     }
-    return Column(children: _posts.map((post) => Container(
-      margin: const EdgeInsets.fromLTRB(14, 12, 14, 0), padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(15), border: Border.all(color: const Color(0xFF493957))),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text((post['content'] ?? '').toString(), style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.6)),
-        if ((post['imageUrl'] ?? '').toString().isNotEmpty) ...[
-          const SizedBox(height: 9),
-          Center(child: _ProfilePostImage(url: post['imageUrl'].toString())),
-        ],
-        const SizedBox(height: 8),
-        Text('♥ ${post['likesCount'] ?? 0}    تعليق ${post['commentsCount'] ?? 0}',
-          style: const TextStyle(color: _muted, fontSize: 11)),
-      ]),
-    )).toList());
+    return Column(
+      children: _posts.map((post) {
+        final imageUrl = (post['imageUrl'] ?? post['image_url'] ?? '').toString();
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _cream.withOpacity(.65),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFEADCCB)),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text((post['content'] ?? '').toString(),
+                style: const TextStyle(color: _brown, fontSize: 13, height: 1.6)),
+            if (imageUrl.isNotEmpty) ...[
+              const SizedBox(height: 9),
+              Center(child: _ProfilePostImage(url: imageUrl)),
+            ],
+            const SizedBox(height: 8),
+            Text('♥ \${post['likesCount'] ?? post['likes_count'] ?? 0}    تعليق \${post['commentsCount'] ?? post['comments_count'] ?? 0}',
+                style: const TextStyle(color: _muted, fontSize: 11)),
+          ]),
+        );
+      }).toList(),
+    );
   }
 
-  Widget _chatBar() => Container(
-    width: double.infinity, padding: EdgeInsets.fromLTRB(18, 10, 18, 10 + MediaQuery.of(context).padding.bottom),
-    color: _bg,
-    child: SizedBox(
-      height: 52, width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: widget.onChat ?? () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('المحادثات الخاصة قيد التجهيز'))),
-        icon: const Icon(Icons.chat_bubble_rounded, size: 19),
-        label: const Text('محادثة', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _gold, foregroundColor: const Color(0xFF21162B), elevation: 0,
-          shape: const StadiumBorder(),
+  Widget _actionBar() => Container(
+        padding: EdgeInsets.fromLTRB(16, 10, 16, 10 + MediaQuery.of(context).padding.bottom),
+        decoration: const BoxDecoration(
+          color: _paper,
+          boxShadow: [BoxShadow(color: Color(0x16000000), blurRadius: 12, offset: Offset(0, -3))],
         ),
-      ),
-    ),
-  );
+        child: Row(children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: widget.onFollow ?? () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('ميزة المتابعة قيد التجهيز')),
+              ),
+              icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+              label: const Text('متابعة'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _brown,
+                side: const BorderSide(color: _brownLight, width: 1.2),
+                minimumSize: const Size.fromHeight(48),
+                shape: const StadiumBorder(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: widget.onChat ?? () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('المحادثات الخاصة قيد التجهيز')),
+              ),
+              icon: const Icon(Icons.chat_bubble_rounded, size: 18),
+              label: const Text('الرسائل'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _brown,
+                foregroundColor: _gold,
+                elevation: 0,
+                minimumSize: const Size.fromHeight(48),
+                shape: const StadiumBorder(),
+              ),
+            ),
+          ),
+        ]),
+      );
 }
 
 class _ProfilePostImage extends StatefulWidget {
