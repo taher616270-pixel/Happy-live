@@ -497,7 +497,14 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
             const Icon(Icons.verified_user_outlined, color: _gold, size: 19),
         ]),
         const SizedBox(height: 13),
-        Text((post['content'] ?? '').toString(), textDirection: TextDirection.rtl, style: const TextStyle(color: _ink, fontSize: 14, height: 1.7)),\n        if ((post['imageUrl'] ?? '').toString().isNotEmpty) ...[\n          const SizedBox(height: 10),\n          ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(\n            post['imageUrl'].toString(), width: double.infinity, fit: BoxFit.cover,\n            errorBuilder: (_, __, ___) => const SizedBox(height: 120, child: Center(child: Icon(Icons.broken_image_outlined))),\n          )),\n        ],
+        Text((post['content'] ?? '').toString(), textDirection: TextDirection.rtl, style: const TextStyle(color: _ink, fontSize: 14, height: 1.7)),
+        if ((post['imageUrl'] ?? '').toString().isNotEmpty) ...[
+          const SizedBox(height: 10),
+          ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(
+            post['imageUrl'].toString(), width: double.infinity, fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const SizedBox(height: 120, child: Center(child: Icon(Icons.broken_image_outlined))),
+          )),
+        ],
         const SizedBox(height: 13),
         const Divider(height: 1, color: Color(0xFFF0EBDD)),
         Row(children: [
