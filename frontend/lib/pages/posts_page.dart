@@ -526,23 +526,70 @@ class _CreatePostPage extends StatefulWidget {
 }
 
 class _CreatePostPageState extends State<_CreatePostPage> {
-  static const _ink = Color(0xFF1E2233);
-  static const _gold = Color(0xFFD9A93C);
-  static const _muted = Color(0xFF8B899A);
-  static const _cream = Color(0xFFFAF6EA);
+  static const _gold = Color(0xFFD4A017);
+  static const _ink = Color(0xFF242424);
+  static const _muted = Color(0xFF929292);
 
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
   bool _publishing = false;
+  bool _emojiPanelOpen = false;
+
+  static const List<String> _emojis = [
+    '😀','😃','😄','😁','😆','😅','😂','🤣','🥲','😊','😇','🙂','🙃','😉','😍','🥰',
+    '😘','😗','😙','😚','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫢','🫣','🤫','🤔',
+    '🫡','🤐','🤨','😐','😑','😶','🫥','😏','😒','🙄','😬','😮‍💨','🤥','😌','😔','😪',
+    '🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎',
+    '🤓','🧐','😕','🫤','😟','🙁','☹️','😮','😯','😲','😳','🥺','🥹','😦','😧','😨',
+    '😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬',
+    '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖',
+    '💘','💝','💟','♥️','💯','💢','💥','💫','💦','💨','🕊️','✨','🌟','⭐','🔥','🌈',
+    '☀️','🌤️','⛅','🌧️','⛈️','❄️','☃️','🌊','🌸','🌺','🌻','🌹','🌷','🍀','🌴','🌵',
+    '🍎','🍊','🍋','🍉','🍇','🍓','🫐','🍒','🍑','🥭','🍍','🥥','🥑','🍕','🍔','🍟',
+    '🌮','🍣','🍩','🍪','🎂','🍰','☕','🧋','🥤','🍹','⚽','🏀','🏈','🎾','🏐','🎮',
+    '🎧','🎤','🎬','🎨','📸','🚗','✈️','🚀','🏆','🥇','🎉','🎊','🎁','🎈','🎀','💐',
+    '👍','👎','👏','🙌','🫶','🤝','🙏','💪','🦾','👋','🤚','✋','🖐️','👌','🤌','✌️',
+    '🤞','🫰','🤟','🤘','🤙','👈','👉','👆','👇','☝️','✍️','💅','🤳','💃','🕺','🧘',
+    '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐧',
+    '🐦','🦋','🐢','🐬','🐳','🦄','🐝','🌍','🌙','⚡','☁️','🍃','🌱','🌼','🍁','🌾',
+    '💎','👑','💍','👜','👗','👟','🕶️','⌚','📱','💻','💡','📚','✉️','📍','🔔','❤️‍🔥',
+  ];
 
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  void _insertEmoji(String emoji) {
+    final value = _controller.value;
+    final selection = value.selection;
+    final start = selection.isValid ? selection.start : value.text.length;
+    final end = selection.isValid ? selection.end : value.text.length;
+    final text = value.text.replaceRange(start, end, emoji);
+    final cursor = start + emoji.length;
+    _controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: cursor),
+    );
+  }
+
+  void _toggleEmojiPanel() {
+    if (_emojiPanelOpen) {
+      setState(() => _emojiPanelOpen = false);
+      _focusNode.requestFocus();
+    } else {
+      _focusNode.unfocus();
+      FocusManager.instance.primaryFocus?.unfocus();
+      setState(() => _emojiPanelOpen = true);
+    }
   }
 
   Future<void> _publish() async {
     final content = _controller.text.trim();
     if (content.isEmpty || _publishing) return;
+    _focusNode.unfocus();
     setState(() => _publishing = true);
     try {
       final published = await widget.onPublish(content);
@@ -564,125 +611,210 @@ class _CreatePostPageState extends State<_CreatePostPage> {
     }
   }
 
+  Widget _topicTag(String label, {bool primary = false}) {
+    return Container(
+      margin: const EdgeInsetsDirectional.only(end: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: primary ? const Color(0xFFE6F2FF) : const Color(0xFFF1F2F4),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: primary ? const Color(0xFF3987D8) : const Color(0xFF666A70),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _toolButton({
+    required Widget icon,
+    required VoidCallback onTap,
+    String? tooltip,
+  }) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onTap,
+      visualDensity: VisualDensity.compact,
+      splashRadius: 22,
+      icon: icon,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFFEFA),
+        backgroundColor: Colors.white,
         resizeToAvoidBottomInset: true,
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFFFFEFA),
-          foregroundColor: _ink,
-          elevation: 0,
-          leading: IconButton(
-            tooltip: 'إغلاق',
-            onPressed: _publishing ? null : () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close_rounded),
-          ),
-          title: const Text(
-            'إنشاء منشور',
-            style: TextStyle(color: _ink, fontSize: 18, fontWeight: FontWeight.w900),
-          ),
-          centerTitle: true,
-        ),
         body: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFF6E4B9), Color(0xFFEAD09A)],
-                        ),
+          child: Column(
+            children: [
+              SizedBox(
+                height: 54,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'إغلاق',
+                        onPressed: _publishing ? null : () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close_rounded, color: _ink, size: 25),
                       ),
-                      child: Text(
-                        widget.name.isEmpty ? 'م' : widget.name.characters.first,
-                        style: const TextStyle(
-                          color: Color(0xFF80602B),
-                          fontWeight: FontWeight.w900,
-                          fontSize: 17,
+                      const Spacer(),
+                      TextButton(
+                        onPressed: _publishing || _controller.text.trim().isEmpty
+                            ? null
+                            : _publish,
+                        style: TextButton.styleFrom(
+                          foregroundColor: _gold,
+                          disabledForegroundColor: const Color(0xFFC9C9C9),
+                          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                         ),
+                        child: _publishing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: _gold),
+                              )
+                            : const Text('نشر'),
                       ),
-                    ),
-                    const SizedBox(width: 11),
-                    Expanded(
-                      child: Text(
-                        widget.name,
-                        style: const TextStyle(
-                          color: _ink,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    const Icon(Icons.public_rounded, color: _gold, size: 19),
-                    const SizedBox(width: 5),
-                    const Text(
-                      'عام',
-                      style: TextStyle(color: _muted, fontSize: 12),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 20),
-                Expanded(
+              ),
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(18, 8, 18, 0),
+                child: Align(
+                  alignment: AlignmentDirectional.topStart,
+                  child: Container(
+                    width: 100,
+                    height: 130,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {},
+                        child: const Center(
+                          child: Icon(Icons.add_rounded, color: Color(0xFF9A9DA3), size: 34),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(18, 12, 18, 4),
                   child: TextField(
                     controller: _controller,
+                    focusNode: _focusNode,
                     autofocus: true,
                     minLines: null,
                     maxLines: null,
                     expands: true,
                     maxLength: 2000,
                     textDirection: TextDirection.rtl,
+                    textAlign: TextAlign.right,
                     textAlignVertical: TextAlignVertical.top,
+                    onChanged: (_) => setState(() {}),
                     style: const TextStyle(color: _ink, fontSize: 17, height: 1.7),
                     decoration: const InputDecoration(
-                      hintText: 'ماذا تريد أن تشارك المجتمع اليوم؟',
-                      hintStyle: TextStyle(color: _muted, fontSize: 16),
+                      hintText: 'قول شي... ماذا تريد أن تشارك المجتمع اليوم؟',
+                      hintStyle: TextStyle(color: Color(0xFFB2B2B2), fontSize: 16),
                       border: InputBorder.none,
-                      counterStyle: TextStyle(color: _muted, fontSize: 11),
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      counterStyle: TextStyle(color: _muted, fontSize: 10),
+                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 52,
-                  child: FilledButton(
-                    onPressed: _publishing ? null : _publish,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _gold,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(0xFFE8D9B5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+              ),
+              SizedBox(
+                height: 48,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        reverse: false,
+                        padding: const EdgeInsetsDirectional.only(start: 16),
+                        children: [
+                          _topicTag('#إضافة موضوع', primary: true),
+                          _topicTag('#OOTD'),
+                          _topicTag('#الصحه_النفسيه'),
+                        ],
                       ),
                     ),
-                    child: _publishing
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            'نشر المنشور',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
-                          ),
+                    IconButton(
+                      tooltip: 'تمرير التاقات',
+                      onPressed: () {},
+                      icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF777777), size: 24),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                height: 46,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      _toolButton(
+                        tooltip: 'وسم',
+                        onTap: () {},
+                        icon: const Text('#️⃣', style: TextStyle(fontSize: 20)),
+                      ),
+                      _toolButton(
+                        tooltip: _emojiPanelOpen ? 'لوحة المفاتيح' : 'الإيموجي',
+                        onTap: _toggleEmojiPanel,
+                        icon: Icon(
+                          _emojiPanelOpen ? Icons.keyboard_alt_outlined : Icons.emoji_emotions_outlined,
+                          color: const Color(0xFF555A61),
+                          size: 23,
+                        ),
+                      ),
+                      const Spacer(),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              if (_emojiPanelOpen)
+                Container(
+                  height: 258,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF7F7F8),
+                    border: Border(top: BorderSide(color: Color(0xFFE8E8E8))),
+                  ),
+                  child: GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 14),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 8,
+                      mainAxisSpacing: 4,
+                      crossAxisSpacing: 4,
+                    ),
+                    itemCount: _emojis.length,
+                    itemBuilder: (context, index) => InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => _insertEmoji(_emojis[index]),
+                      child: Center(
+                        child: Text(_emojis[index], style: const TextStyle(fontSize: 25)),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
