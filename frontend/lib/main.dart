@@ -655,7 +655,7 @@ class _LoginPageState extends State<LoginPage> {
             builder: (_) => SessionHomePage(
               name: (user['name'] ?? '').toString(),
               email: (user['email'] ?? '').toString(),
-              userId: (user['id'] ?? '').toString(),
+              userId: (user['gabo_id'] ?? user['id'] ?? '').toString(),
               accessToken: token,
             ),
           ),
@@ -756,7 +756,7 @@ class _LoginPageState extends State<LoginPage> {
           builder: (_) => SessionHomePage(
             name: (user['name'] ?? _name.text.trim()).toString(),
             email: (user['email'] ?? _email.text.trim()).toString(),
-            userId: (user['id'] ?? '').toString(),
+            userId: (user['gabo_id'] ?? user['id'] ?? '').toString(),
             accessToken: token,
           ),
         ),
