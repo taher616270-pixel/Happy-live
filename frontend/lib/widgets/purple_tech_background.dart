@@ -35,12 +35,6 @@ class PurpleTechBackground extends StatelessWidget {
           ],
           stops: [0, 0.52, 1],
         ),
-        border: showBorder
-            ? Border.all(
-                color: primaryPurple.withOpacity(0.62),
-                width: 1.2,
-              )
-            : null,
         boxShadow: showGlow
             ? [
                 BoxShadow(
@@ -51,6 +45,14 @@ class PurpleTechBackground extends StatelessWidget {
               ]
             : null,
       ),
+      foregroundDecoration: showBorder
+          ? BoxDecoration(
+              border: Border.all(
+                color: primaryPurple.withOpacity(0.62),
+                width: 1.2,
+              ),
+            )
+          : null,
       child: Stack(
         fit: StackFit.expand,
         children: [
