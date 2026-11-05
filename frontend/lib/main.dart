@@ -1083,7 +1083,7 @@ class _LoginPageState extends State<LoginPage> {
                               gradient: const LinearGradient(
                                 colors: [HappyLiveApp.gold, AppColors.primary],
                               ),
-                              boxShadow: const [
+                              boxShadow: [
                                 BoxShadow(color: AppColors.primary.withOpacity(0.2), blurRadius: 18, offset: Offset(0, 7)),
                               ],
                             ),
@@ -1553,7 +1553,7 @@ class _BrandHeader extends StatelessWidget {
               colors: [AppColors.primary, AppColors.primary],
             ),
             border: Border.all(color: AppColors.primary.withOpacity(0.6), width: 1.2),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(color: AppColors.primary.withOpacity(0.267), blurRadius: 28, spreadRadius: 2),
             ],
           ),
