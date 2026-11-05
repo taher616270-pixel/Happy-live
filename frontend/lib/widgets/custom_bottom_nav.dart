@@ -72,7 +72,7 @@ class CustomBottomNav extends StatelessWidget {
     required IconData icon,
     required String label,
   }) {
-    final active = widget.currentIndex == index;
+    final active = currentIndex == index;
     final content = Container(
       width: double.infinity,
       height: 56,
@@ -118,7 +118,7 @@ class CustomBottomNav extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        if (index != widget.currentIndex) widget.onTap(index);
+        if (index != currentIndex) onTap(index);
       },
       child: content,
     );
