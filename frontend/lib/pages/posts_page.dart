@@ -768,7 +768,6 @@ class _CreatePostPageState extends State<_CreatePostPage> {
                     textEditingController: _controller,
                     config: Config(
                       height: 258,
-                      bgColor: const Color(0xFFF7F7F8),
                       checkPlatformCompatibility: true,
                       emojiViewConfig: const EmojiViewConfig(
                         columns: 8,
