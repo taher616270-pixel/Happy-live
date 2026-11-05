@@ -1391,15 +1391,24 @@ class _SessionHomePageState extends State<SessionHomePage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: IndexedStack(
-            index: _currentIndex,
-            children: pages,
-          ),
-        ),
-        bottomNavigationBar: CustomBottomNav(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
+        body: Column(
+          children: [
+            Expanded(
+              child: SafeArea(
+                bottom: false,
+                child: IndexedStack(
+                  index: _currentIndex,
+                  children: pages,
+                ),
+              ),
+            ),
+            // Keep navigation as the final painted sibling above every tab.
+            // This prevents a tab's overflowing content from covering its items.
+            CustomBottomNav(
+              currentIndex: _currentIndex,
+              onTap: (index) => setState(() => _currentIndex = index),
+            ),
+          ],
         ),
       ),
     );
