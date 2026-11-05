@@ -779,18 +779,6 @@ class _CreatePostPageState extends State<_CreatePostPage> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-            child: SizedBox(width: double.infinity, height: 52, child: ElevatedButton(
-              onPressed: _publishing || !hasText ? null : _publish,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _gold, disabledBackgroundColor: const Color(0xFF9CA3AF),
-                foregroundColor: Colors.white, disabledForegroundColor: Colors.white, elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: _publishing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('نشر المنشور', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-            )),
-          ),
         ])),
       ),
     );
