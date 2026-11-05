@@ -801,9 +801,10 @@ export default {
           "SELECT id, content, image_url, created_at, " +
           "(SELECT COUNT(*) FROM post_likes l WHERE l.post_id = posts.id) AS likes_count, " +
           "(SELECT COUNT(*) FROM post_comments c WHERE c.post_id = posts.id) AS comments_count " +
-          "FROM posts WHERE user_id = ? AND status = 'published' AND visibility = 'public' " +
+          "FROM posts WHERE user_id = ? AND status = 'published' " +
+          "AND (visibility = 'public' OR (visibility = 'followers' AND ? = 1) OR (visibility = 'private' AND ? = 1)) " +
           "ORDER BY created_at DESC LIMIT 50"
-        ).bind(targetId).all<{
+        ).bind(targetId, isFollowing ? 1 : 0, isMine ? 1 : 0).all<{
           id: string; content: string; image_url: string | null; created_at: string;
           likes_count: number; comments_count: number;
         }>() : { results: [] as Array<{id:string;content:string;image_url:string|null;created_at:string;likes_count:number;comments_count:number}> };
