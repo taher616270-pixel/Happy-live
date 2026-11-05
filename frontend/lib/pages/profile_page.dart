@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 
 const _ink = Color(0xFF1E2233);
@@ -528,6 +530,7 @@ class PublicProfilePage extends StatefulWidget {
     super.key,
     required this.name,
     required this.userId,
+    required this.accessToken,
     this.userCode = '',
     this.photoUrl,
     this.bio = '',
@@ -537,6 +540,7 @@ class PublicProfilePage extends StatefulWidget {
 
   final String name;
   final String userId;
+  final String accessToken;
   final String userCode;
   final String? photoUrl;
   final String bio;
@@ -551,8 +555,58 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   static const _bg = Color(0xFF0F1419);
   static const _muted = Color(0xFF9AA4AE);
   static const _teal = Color(0xFF00D1C1);
-  static const _purple = Color(0xFF8054E8);
   int _tab = 0;
+  bool _loading = true;
+  String? _loadError;
+  Map<String, dynamic> _profile = {};
+  List<Map<String, dynamic>> _posts = [];
+
+  Map<String, dynamic> get _stats =>
+      Map<String, dynamic>.from((_profile['stats'] as Map?) ?? const {});
+  int _number(String key) => (_stats[key] as num?)?.toInt() ?? 0;
+  String _text(String key, [String fallback = '']) {
+    final value = (_profile[key] ?? fallback).toString().trim();
+    return value;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/users/${Uri.encodeComponent(widget.userId)}/profile'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+      ).timeout(const Duration(seconds: 18));
+      final decoded = jsonDecode(response.body);
+      if (response.statusCode != 200 || decoded is! Map || decoded['ok'] != true) {
+        throw Exception(decoded is Map
+            ? (decoded['message'] ?? decoded['error'] ?? 'تعذر تحميل الملف الشخصي').toString()
+            : 'تعذر تحميل الملف الشخصي');
+      }
+      final profile = Map<String, dynamic>.from(decoded['profile'] as Map);
+      final posts = (profile['posts'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        _profile = profile;
+        _posts = posts;
+        _loading = false;
+        _loadError = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = 'تعذر تحميل البيانات الحقيقية. تحقق من اتصال الخادم.';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Directionality(
@@ -563,40 +617,62 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         bottom: false,
         child: Column(children: [
           _cover(),
-          Expanded(child: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 18),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              _identity(),
-              _levels(),
-              _badges(),
-              _tabs(),
-              if (_tab == 0) _aboutContent() else _postsContent(),
-            ]),
-          )),
+          if (_loading) const LinearProgressIndicator(
+            minHeight: 2, color: Color(0xFF00D1C1), backgroundColor: Color(0xFF202830)),
+          Expanded(child: _loadError != null
+            ? Center(child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.cloud_off_rounded, color: _muted, size: 38),
+                  const SizedBox(height: 12),
+                  Text(_loadError!, textAlign: TextAlign.center,
+                    style: const TextStyle(color: _muted, fontSize: 14)),
+                  const SizedBox(height: 14),
+                  OutlinedButton(onPressed: () {
+                    setState(() { _loading = true; _loadError = null; });
+                    _loadProfile();
+                  }, child: const Text('إعادة المحاولة')),
+                ]),
+              ))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 18),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  _identity(),
+                  _statsRow(),
+                  _tabs(),
+                  if (_tab == 0) _aboutContent() else _postsContent(),
+                ]),
+              )),
           _chatBar(),
         ]),
       ),
     ),
   );
 
-  Widget _cover() => SizedBox(
-    height: 220,
-    width: double.infinity,
-    child: Stack(fit: StackFit.expand, children: [
-      const CustomPaint(painter: _NightCampPainter()),
-      Positioned(top: 10, right: 12, child: _roundButton(
-        Icons.arrow_forward_rounded, () => Navigator.of(context).maybePop())),
-      Positioned(top: 12, left: 14, child: Container(
-        width: 43, height: 43,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(colors: [Color(0xFFD6B8FF), Color(0xFF7844D8), Color(0xFF39206E)]),
-          border: Border.all(color: const Color(0xFFFFE6A5), width: 1.5),
-          boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 9)],
-        ),
-        child: const Center(child: Text('👾', style: TextStyle(fontSize: 24))),
-      )),
-    ]),
+  Widget _cover() {
+    final cover = _text('coverUrl');
+    return SizedBox(
+      height: 190,
+      width: double.infinity,
+      child: Stack(fit: StackFit.expand, children: [
+        if (cover.isNotEmpty)
+          Image.network(cover, fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _coverFallback())
+        else
+          _coverFallback(),
+        Positioned(top: 10, right: 12, child: _roundButton(
+          Icons.arrow_forward_rounded, () => Navigator.of(context).maybePop())),
+      ]),
+    );
+  }
+
+  Widget _coverFallback() => const DecoratedBox(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        colors: [Color(0xFF26313D), Color(0xFF11171D)],
+      ),
+    ),
   );
 
   Widget _roundButton(IconData icon, VoidCallback onTap) => Material(
@@ -610,13 +686,14 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   );
 
   Widget _identity() {
-    final name = widget.name.trim().isEmpty ? 'مستخدم Happy Live' : widget.name.trim();
-    final code = widget.userCode.trim().isNotEmpty ? widget.userCode.trim() : widget.userId;
-    final bio = widget.bio.trim().isNotEmpty ? widget.bio.trim() : 'ابن الجنوب ✌️✌️';
+    final name = _text('name', widget.name).isEmpty ? 'مستخدم' : _text('name', widget.name);
+    final code = _text('userCode', widget.userCode).isEmpty ? '—' : _text('userCode', widget.userCode);
+    final bio = _text('bio', widget.bio);
+    final photo = _text('avatarUrl', widget.photoUrl ?? '');
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Row(children: [
-        _avatar(70),
+        _avatar(70, photo),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -624,65 +701,49 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           const SizedBox(height: 3),
           Text('ID:$code', textDirection: TextDirection.ltr,
             style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 5),
-          Text(bio, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: _muted, fontSize: 13)),
+          if (bio.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Text(bio, maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: _muted, fontSize: 13)),
+          ],
         ])),
       ]),
     );
   }
 
-  Widget _avatar(double size) => Container(
+  Widget _avatar(double size, String photo) => Container(
     width: size, height: size, padding: const EdgeInsets.all(2),
     decoration: const BoxDecoration(
       shape: BoxShape.circle,
       gradient: LinearGradient(colors: [Color(0xFFE6C36A), Color(0xFF8B65E8)]),
     ),
-    child: ClipOval(child: (widget.photoUrl ?? '').trim().isEmpty
+    child: ClipOval(child: photo.isEmpty
       ? Container(color: const Color(0xFF29313A), child: const Icon(Icons.person, color: Colors.white70, size: 38))
-      : Image.network(widget.photoUrl!, fit: BoxFit.cover,
+      : Image.network(photo, fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(color: const Color(0xFF29313A), child: const Icon(Icons.person, color: Colors.white70, size: 38)))),
   );
 
-  Widget _levels() => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-    child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-      _levelChip('المستوى 45  Lv45', const Color(0xFF29313A)),
-      _levelChip('1207  متابعين', const Color(0xFF29313A)),
-      _levelChip('Lv.64', _purple),
-      _levelChip('VIP 3', const Color(0xFF171B20), textColor: const Color(0xFFE7C56F), border: const Color(0xFFB68B3D)),
-    ]),
-  );
-
-  Widget _levelChip(String label, Color color, {Color textColor = Colors.white, Color? border}) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(100),
-      border: border == null ? null : Border.all(color: border)),
-    child: Text(label, style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.w900)),
-  );
-
-  Widget _badges() => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+  Widget _statsRow() => Padding(
+    padding: const EdgeInsets.fromLTRB(12, 2, 12, 14),
     child: Row(children: [
-      _honor(Icons.workspace_premium_rounded, const Color(0xFFFFD36C), 'تاج'),
-      const SizedBox(width: 9),
-      _honor(Icons.shield_rounded, const Color(0xFF9BB8D9), 'درع'),
-      const SizedBox(width: 9),
-      _honor(Icons.gavel_rounded, const Color(0xFFE6B85C), 'سيف'),
+      _stat('متابعون', _number('followers')),
+      _stat('يتابع', _number('following')),
+      _stat('المنشورات', _number('posts')),
+      _stat('الإعجابات', _number('likesReceived')),
     ]),
   );
 
-  Widget _honor(IconData icon, Color color, String label) => Container(
-    width: 38, height: 34,
-    decoration: BoxDecoration(color: const Color(0xFF202830), borderRadius: BorderRadius.circular(10)),
-    child: Tooltip(message: label, child: Icon(icon, color: color, size: 21)),
-  );
+  Widget _stat(String label, int value) => Expanded(child: Column(children: [
+    Text('$value', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+    const SizedBox(height: 3),
+    Text(label, style: const TextStyle(color: _muted, fontSize: 11)),
+  ]));
 
   Widget _tabs() => Container(
     decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFF27313A), width: .7))),
     child: Row(children: [
       _tabButton('نبذة', 0),
-      _tabButton('المنشورات (' + widget.posts.length.toString() + ')', 1),
+      _tabButton('المنشورات (${_number('posts')})', 1),
     ]),
   );
 
@@ -704,57 +765,36 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)),
   );
 
-  Widget _aboutContent() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-    _sectionTitle('غرف الدردشة'),
-    SizedBox(height: 58, child: ListView(
-      scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16),
-      children: List.generate(5, (i) => Padding(
-        padding: const EdgeInsetsDirectional.only(end: 11),
-        child: Container(
-          width: 44, height: 44,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF252D39),
-            border: Border.all(color: const Color(0xFF8C69E8), width: 1.5)),
-          child: Icon([Icons.mic_rounded, Icons.music_note_rounded, Icons.nightlight_round, Icons.groups_rounded, Icons.spatial_audio_rounded][i], color: Colors.white70, size: 20),
-        ),
-      )),
-    )),
-    _sectionTitle('الداعمون'),
-    Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Row(children: [
-      _supporter('7.7k', const Color(0xFFE3B65D)),
-      _supporter('13.5k', const Color(0xFF9D83E8)),
-      _supporter('15.1k', const Color(0xFF63B8C8)),
-    ])),
-    _sectionTitle('معلومات'),
-    Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [
-      _infoLine('القبيلة', 'ONE'),
-      _infoLine('بيانات اللعبة', 'Lv28'),
-    ])),
-    _sectionTitle('الإطارات والأوسمة'),
-    Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.count(
-        crossAxisCount: 4, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 10, crossAxisSpacing: 10,
-        children: List.generate(12, (i) => Container(
-          decoration: BoxDecoration(color: const Color(0xFF1B232B), borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: i % 3 == 0 ? const Color(0xFFB88C43) : const Color(0xFF34414C))),
-          child: Icon([Icons.workspace_premium_rounded, Icons.shield_rounded, Icons.bolt_rounded, Icons.diamond_rounded][i % 4],
-            color: [const Color(0xFFE7C56F), const Color(0xFF8EB4E2), const Color(0xFFB28BEE), const Color(0xFF6FC9C0)][i % 4], size: 27),
-        )),
-      ),
-    ),
-    const SizedBox(height: 18),
-  ]);
-
-  Widget _supporter(String value, Color color) => Expanded(child: Container(
-    margin: const EdgeInsetsDirectional.only(end: 8), padding: const EdgeInsets.symmetric(vertical: 13),
-    decoration: BoxDecoration(color: const Color(0xFF1B232B), borderRadius: BorderRadius.circular(12)),
-    child: Column(children: [
-      Icon(Icons.diamond_rounded, color: color, size: 19),
-      const SizedBox(height: 4),
-      Text(value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
-    ]),
-  ));
+  Widget _aboutContent() {
+    final country = _text('country');
+    final gender = _text('gender');
+    final age = _profile['age'];
+    final joined = _text('joinedAt');
+    final rooms = _number('activeRooms');
+    final isPrivate = _profile['isPrivate'] == true;
+    String joinedLabel = 'غير متاح';
+    final date = DateTime.tryParse(joined);
+    if (date != null) joinedLabel = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _sectionTitle('معلومات الحساب'),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [
+        if (country.isNotEmpty) _infoLine('الدولة', country),
+        if (gender.isNotEmpty) _infoLine('الجنس', gender == 'male' ? 'ذكر' : gender == 'female' ? 'أنثى' : gender),
+        if (age is num && age >= 0) _infoLine('العمر', age.toString()),
+        _infoLine('تاريخ الانضمام', joinedLabel),
+        _infoLine('حالة الحساب', isPrivate ? 'خاص' : 'عام'),
+      ])),
+      _sectionTitle('النشاط'),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Column(children: [
+        _infoLine('الغرف النشطة', '$rooms'),
+        _infoLine('إجمالي الإعجابات المستلمة', '${_number('likesReceived')}'),
+      ])),
+      if (isPrivate && _profile['canViewPosts'] != true)
+        const Padding(padding: EdgeInsets.all(24), child: Center(
+          child: Text('هذا الحساب خاص. تابع الحساب لرؤية منشوراته.',
+            style: TextStyle(color: _muted), textAlign: TextAlign.center))),
+    ]);
+  }
 
   Widget _infoLine(String label, String value) => Container(
     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -762,22 +802,30 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     child: Row(children: [
       Text(label, style: const TextStyle(color: _muted, fontSize: 13)),
       const Spacer(),
-      Text(value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+      Flexible(child: Text(value, textAlign: TextAlign.end,
+        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800))),
     ]),
   );
 
   Widget _postsContent() {
-    if (widget.posts.isEmpty) {
+    if (_profile['canViewPosts'] != true) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(20, 55, 20, 70),
+        child: Center(child: Text('منشورات هذا الحساب غير متاحة للعرض',
+          style: TextStyle(color: _muted, fontSize: 13))),
+      );
+    }
+    if (_posts.isEmpty) {
       return const Padding(
         padding: EdgeInsets.fromLTRB(20, 55, 20, 70),
         child: Center(child: Column(children: [
           Icon(Icons.photo_library_outlined, color: _muted, size: 38),
           SizedBox(height: 10),
-          Text('لا توجد منشورات حتى الآن', style: TextStyle(color: _muted, fontSize: 13)),
+          Text('لا توجد منشورات عامة حتى الآن', style: TextStyle(color: _muted, fontSize: 13)),
         ])),
       );
     }
-    return Column(children: widget.posts.map((post) => Container(
+    return Column(children: _posts.map((post) => Container(
       margin: const EdgeInsets.fromLTRB(14, 12, 14, 0), padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(color: const Color(0xFF171F27), borderRadius: BorderRadius.circular(15), border: Border.all(color: const Color(0xFF29343E))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -786,6 +834,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           const SizedBox(height: 9),
           Center(child: _ProfilePostImage(url: post['imageUrl'].toString())),
         ],
+        const SizedBox(height: 8),
+        Text('♥ ${post['likesCount'] ?? 0}    تعليق ${post['commentsCount'] ?? 0}',
+          style: const TextStyle(color: _muted, fontSize: 11)),
       ]),
     )).toList());
   }
