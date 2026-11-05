@@ -1583,7 +1583,7 @@ class _PublicProfileTabsDelegate extends SliverPersistentHeaderDelegate {
       clipBehavior: Clip.antiAlias,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
-          top: Radius.circular(26),
+          top: Radius.circular(32),
         ),
       ),
       child: Column(
