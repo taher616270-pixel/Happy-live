@@ -270,12 +270,13 @@ export default {
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        const profile = await env.DB.prepare("SELECT display_name, bio, avatar_key FROM profiles WHERE user_id = ? LIMIT 1")
-          .bind(user.id).first<{ display_name: string; bio: string; avatar_key: string | null }>();
+        const profile = await env.DB.prepare("SELECT display_name, bio, avatar_key, birthday, gender, country_name FROM profiles WHERE user_id = ? LIMIT 1")
+          .bind(user.id).first<{ display_name: string; bio: string; avatar_key: string | null; birthday: string | null; gender: string | null; country_name: string | null }>();
         return json({ ok: true, user: {
           id: user.id, gabo_id: user.gabo_id ?? "", email: user.email,
           name: profile?.display_name ?? user.display_name ?? "", bio: profile?.bio ?? "",
-          avatar_url: profile?.avatar_key ?? null
+          avatar_url: profile?.avatar_key ?? null, birthday: profile?.birthday ?? "2000-01-01",
+          gender: profile?.gender ?? "male", country_name: profile?.country_name ?? "Saudi Arabia"
         } }, 200, origin, env);
       } catch {
         return json({ error: "session_check_failed" }, 503, origin, env);
@@ -292,9 +293,15 @@ export default {
         catch { return json({ error: "invalid_json" }, 400, origin, env); }
         const name = typeof body.name === "string" ? body.name.trim() : "";
         const bio = typeof body.bio === "string" ? body.bio.trim() : "";
+        const birthday = typeof body.birthday === "string" ? body.birthday.trim() : "2000-01-01";
+        const gender = body.gender === "female" ? "female" : body.gender === "male" ? "male" : "";
+        const countryName = typeof body.countryName === "string" ? body.countryName.trim() : "Saudi Arabia";
         const avatarUrl = body.avatarUrl == null ? null : typeof body.avatarUrl === "string" ? body.avatarUrl.trim() : "";
-        if (name.length < 2 || name.length > 50) return json({ error: "invalid_name", message: "الاسم يجب أن يكون بين حرفين و50 حرفًا" }, 400, origin, env);
-        if (bio.length > 160) return json({ error: "invalid_bio", message: "النبذة يجب ألا تتجاوز 160 حرفًا" }, 400, origin, env);
+        if (name.length < 2 || name.length > 30) return json({ error: "invalid_name", message: "الاسم يجب أن يكون بين حرفين و30 حرفًا" }, 400, origin, env);
+        if (bio.length > 100) return json({ error: "invalid_bio", message: "النبذة يجب ألا تتجاوز 100 حرف" }, 400, origin, env);
+        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(birthday) || Number.isNaN(Date.parse(birthday)) || Date.parse(birthday) > Date.now()) return json({ error: "invalid_birthday", message: "تاريخ الميلاد غير صالح" }, 400, origin, env);
+        if (!gender) return json({ error: "invalid_gender", message: "اختر الجنس بشكل صحيح" }, 400, origin, env);
+        if (!countryName || countryName.length > 80) return json({ error: "invalid_country", message: "الدولة غير صالحة" }, 400, origin, env);
         if (avatarUrl !== null) {
           try {
             const parsed = new URL(avatarUrl);
@@ -303,9 +310,9 @@ export default {
             return json({ error: "invalid_avatar_url", message: "رابط الصورة غير صالح" }, 400, origin, env);
           }
         }
-        await env.DB.prepare("UPDATE profiles SET display_name = ?, bio = ?, avatar_key = ?, updated_at = ? WHERE user_id = ?")
-          .bind(name, bio, avatarUrl, new Date().toISOString(), user.id).run();
-        return json({ ok: true, user: { id: user.id, gabo_id: user.gabo_id ?? "", email: user.email, name, bio, avatar_url: avatarUrl } }, 200, origin, env);
+        await env.DB.prepare("UPDATE profiles SET display_name = ?, bio = ?, avatar_key = ?, birthday = ?, gender = ?, country_name = ?, updated_at = ? WHERE user_id = ?")
+          .bind(name, bio, avatarUrl, birthday, gender, countryName, new Date().toISOString(), user.id).run();
+        return json({ ok: true, user: { id: user.id, gabo_id: user.gabo_id ?? "", email: user.email, name, bio, avatar_url: avatarUrl, birthday, gender, country_name: countryName } }, 200, origin, env);
       } catch (error) {
         console.error("[profile.update] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "profile_update_failed", message: "تعذر حفظ الملف الشخصي حاليًا" }, 500, origin, env);
