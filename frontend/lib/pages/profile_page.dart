@@ -613,9 +613,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     if (velocity.abs() < 350 || !mounted) return;
     setState(() {
       if (velocity < 0) {
-        _tab = (_tab - 1).clamp(0, 2);
-      } else {
         _tab = (_tab + 1).clamp(0, 2);
+      } else {
+        _tab = (_tab - 1).clamp(0, 2);
       }
     });
   }
