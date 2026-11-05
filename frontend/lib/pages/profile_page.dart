@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 // ================== الألوان ==================
 class _C {
-  static const bg = Color(0xFF06130F);
+  static const bg = Colors.transparent;
   static const divider = Color(0xFF030A08);
   static const grey = Color(0xFF8A9A98);
   static const nav = Color(0xFF1A1F1F);
