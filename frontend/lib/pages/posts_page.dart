@@ -195,98 +195,17 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
   }
 
   Future<void> _deletePost(Map<String, dynamic> post) async {
-    final confirmed = await showGeneralDialog<bool>(
+    await showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'إلغاء حذف المنشور',
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 200),
-      pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: Center(
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: MediaQuery.of(dialogContext).size.width * 0.85,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFFFF),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x1A000000),
-                      blurRadius: 20,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'هل تريد حذف المنشور؟',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      textDirection: TextDirection.ltr,
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: () => Navigator.of(dialogContext).pop(true),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFD9A93C),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(100),
-                                ),
-                              ),
-                              child: const Text(
-                                'حذف',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: SizedBox(
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: () => Navigator.of(dialogContext).pop(false),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFF5F5F7),
-                                foregroundColor: const Color(0xFF8E8E93),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(100),
-                                ),
-                              ),
-                              child: const Text(
-                                'إلغاء',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.normal),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+      pageBuilder: (dialogContext, animation, secondaryAnimation) => CustomConfirmDialog(
+        title: 'هل تريد حذف المنشور؟',
+        confirmText: 'حذف',
+        onConfirm: () => _deletePostConfirmed(post),
+      ),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(
           parent: animation,
@@ -302,9 +221,9 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
         );
       },
     );
+  }
 
-    if (confirmed != true || !mounted) return;
-
+  Future<void> _deletePostConfirmed(Map<String, dynamic> post) async {
     try {
       final response = await http.delete(
         Uri.parse('$_api/posts/${post['id']}'),
@@ -323,12 +242,50 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
 
   Future<void> _hideUserPosts(Map<String, dynamic> post) async {
     final userId = post['userId'].toString();
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'إلغاء إخفاء المنشورات',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) => CustomConfirmDialog(
+        title: 'تأكيد الاخفاء',
+        subtitle: 'بعد الاخفاء لن تراه في منشور أصدقائك',
+        confirmText: 'اخفاء',
+        onConfirm: () => _hideUserPostsConfirmed(userId),
+      ),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOut,
+          reverseCurve: Curves.easeIn,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.8, end: 1.0).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _hideUserPostsConfirmed(String userId) async {
     try {
-      final response = await http.post(Uri.parse('$_api/users/$userId/hide'), headers: _headers).timeout(const Duration(seconds: 12));
+      final response = await http.post(
+        Uri.parse('$_api/users/$userId/hide'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 12));
       final data = jsonDecode(response.body);
       if (response.statusCode != 200 || data is! Map || data['ok'] != true) throw Exception();
-      if (mounted) { setState(() => _posts.removeWhere((e) => e['userId'].toString() == userId)); _toast('تم إخفاء جميع منشوراته'); }
-    } catch (_) { _toast('تعذر إخفاء المنشورات'); }
+      if (mounted) {
+        setState(() => _posts.removeWhere((e) => e['userId'].toString() == userId));
+        _toast('تم إخفاء جميع منشوراته');
+      }
+    } catch (_) {
+      _toast('تعذر إخفاء المنشورات');
+    }
   }
 
   Future<void> _reportPost(Map<String, dynamic> post) async {
@@ -721,6 +678,130 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
   }
 }
 
+
+class CustomConfirmDialog extends StatelessWidget {
+  const CustomConfirmDialog({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.confirmText,
+    required this.onConfirm,
+  });
+
+  final String title;
+  final String? subtitle;
+  final String confirmText;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.85,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFFFF),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x1A000000),
+                  blurRadius: 20,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    subtitle!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.normal,
+                      color: Color(0xFF8E8E93),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                Row(
+                  textDirection: TextDirection.ltr,
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            onConfirm();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00D1C1),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                          ),
+                          child: Text(
+                            confirmText,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF5F5F7),
+                            foregroundColor: const Color(0xFF8E8E93),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                          ),
+                          child: const Text(
+                            'الغاء',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _CreatePostPage extends StatefulWidget {
   const _CreatePostPage({required this.name, required this.accessToken, required this.onPublish});
