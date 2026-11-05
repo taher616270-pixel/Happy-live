@@ -30,3 +30,19 @@ Future<void> clearSessionToken() async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.remove(_sessionTokenKey);
 }
+
+const String _sessionUserKey = 'happy_live_session_user';
+const String _sessionTabKey = 'happy_live_selected_tab';
+
+Future<String?> readSessionUser() async =>
+    html.window.localStorage[_sessionUserKey];
+Future<void> writeSessionUser(String value) async {
+  html.window.localStorage[_sessionUserKey] = value;
+}
+Future<int> readSessionTab() async {
+  final value = html.window.localStorage[_sessionTabKey];
+  return int.tryParse(value ?? '') ?? 0;
+}
+Future<void> writeSessionTab(int index) async {
+  html.window.localStorage[_sessionTabKey] = index.toString();
+}
