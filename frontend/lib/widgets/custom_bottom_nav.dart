@@ -71,8 +71,7 @@ class CustomBottomNav extends StatelessWidget {
       onTap: () {
         if (index != currentIndex) onTap(index);
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+      child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 3),
         padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
         decoration: BoxDecoration(
