@@ -116,7 +116,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
       final credentials = jsonDecode(auth.body) as Map<String, dynamic>;
       final request = http.MultipartRequest(
-        'POST', Uri.parse('https://upload.imagekit.io/api/v1/files'),
+        'POST', Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
       );
       request.fields.addAll({
         'fileName': 'happy-avatar-${DateTime.now().millisecondsSinceEpoch}.jpg',
