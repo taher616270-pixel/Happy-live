@@ -26,4 +26,4 @@ flutter:
   assets:
     - assets/images/boy_headset.png.png
     - web/assets/south-arabia-v2.png
-    - assets/images/profile_cover/profile_cover.jpg.JPG
+    - web/assets/images/profile_cover/profile_cover.jpg.JPG
