@@ -765,6 +765,71 @@ export default {
       }
     }
 
+    const publicProfileRoute = url.pathname.match(/^\/api\/v1\/users\/([0-9a-f-]{36})\/profile$/i);
+    if (publicProfileRoute && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const viewer = await authenticatedUser(request, env.DB);
+        if (!viewer) return json({ error: "authentication_required" }, 401, origin, env);
+        const targetId = publicProfileRoute[1];
+        const profile = await env.DB.prepare(
+          "SELECT u.id, p.display_name, p.gabo_id, p.avatar_key, p.cover_key, p.bio, p.country_name, p.gender, p.birthday, p.is_private, p.created_at " +
+          "FROM users u INNER JOIN profiles p ON p.user_id = u.id WHERE u.id = ? AND u.status = 'active' LIMIT 1"
+        ).bind(targetId).first<{
+          id: string; display_name: string; gabo_id: string | null; avatar_key: string | null;
+          cover_key: string | null; bio: string; country_name: string | null; gender: string | null;
+          birthday: string | null; is_private: number; created_at: string;
+        }>();
+        if (!profile) return json({ error: "user_not_found" }, 404, origin, env);
+        const isMine = viewer.id === targetId;
+        const follow = isMine ? null : await env.DB.prepare(
+          "SELECT 1 AS found FROM user_follows WHERE follower_id = ? AND following_id = ? LIMIT 1"
+        ).bind(viewer.id, targetId).first<{ found: number }>();
+        const isFollowing = Boolean(follow);
+        const canViewPosts = !profile.is_private || isMine || isFollowing;
+        const stats = await env.DB.prepare(
+          "SELECT " +
+          "(SELECT COUNT(*) FROM user_follows WHERE following_id = ?) AS followers, " +
+          "(SELECT COUNT(*) FROM user_follows WHERE follower_id = ?) AS following, " +
+          "(SELECT COUNT(*) FROM posts WHERE user_id = ? AND status = 'published') AS posts, " +
+          "(SELECT COUNT(*) FROM post_likes l INNER JOIN posts p ON p.id = l.post_id WHERE p.user_id = ? AND p.status = 'published') AS likes_received, " +
+          "(SELECT COUNT(*) FROM rooms WHERE owner_user_id = ? AND status = 'active') AS active_rooms"
+        ).bind(targetId, targetId, targetId, targetId, targetId).first<{
+          followers: number; following: number; posts: number; likes_received: number; active_rooms: number;
+        }>();
+        const posts = canViewPosts ? await env.DB.prepare(
+          "SELECT id, content, image_url, created_at, " +
+          "(SELECT COUNT(*) FROM post_likes l WHERE l.post_id = posts.id) AS likes_count, " +
+          "(SELECT COUNT(*) FROM post_comments c WHERE c.post_id = posts.id) AS comments_count " +
+          "FROM posts WHERE user_id = ? AND status = 'published' AND visibility = 'public' " +
+          "ORDER BY created_at DESC LIMIT 50"
+        ).bind(targetId).all<{
+          id: string; content: string; image_url: string | null; created_at: string;
+          likes_count: number; comments_count: number;
+        }>() : { results: [] as Array<{id:string;content:string;image_url:string|null;created_at:string;likes_count:number;comments_count:number}> };
+        const age = profile.birthday ? calculateAge(profile.birthday) : null;
+        return json({ ok: true, profile: {
+          userId: profile.id, name: profile.display_name, userCode: profile.gabo_id ?? "",
+          avatarUrl: profile.avatar_key, coverUrl: profile.cover_key, bio: profile.bio ?? "",
+          country: profile.country_name ?? "", gender: profile.gender ?? "",
+          age, joinedAt: profile.created_at, isPrivate: Boolean(profile.is_private),
+          isFollowing, isMine, canViewPosts,
+          stats: {
+            followers: stats?.followers ?? 0, following: stats?.following ?? 0,
+            posts: stats?.posts ?? 0, likesReceived: stats?.likes_received ?? 0,
+            activeRooms: stats?.active_rooms ?? 0
+          },
+          posts: (posts.results ?? []).map(p => ({
+            id: p.id, userId: profile.id, content: p.content, imageUrl: p.image_url,
+            createdAt: p.created_at, likesCount: p.likes_count, commentsCount: p.comments_count
+          }))
+        } }, 200, origin, env);
+      } catch (error) {
+        console.error("[users.public-profile] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "public_profile_unavailable" }, 500, origin, env);
+      }
+    }
+
     const followRoute = url.pathname.match(/^\/api\/v1\/users\/([0-9a-f-]{36})\/follow$/i);
     if (followRoute && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
