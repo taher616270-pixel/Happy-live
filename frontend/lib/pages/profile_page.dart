@@ -774,7 +774,20 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                   ],
                                 ),
                               ),
-                              SliverToBoxAdapter(child: _profileTabsAndContent()),
+                              SliverPersistentHeader(
+                                pinned: true,
+                                delegate: _PublicProfileTabsDelegate(
+                                  selected: _tab,
+                                  onSelected: _changeProfileTab,
+                                ),
+                              ),
+                              SliverToBoxAdapter(
+                                child: Container(
+                                  width: double.infinity,
+                                  color: Colors.white,
+                                  child: _tabContent(),
+                                ),
+                              ),
                               SliverToBoxAdapter(
                                 // يوفر مجال تمرير حتى عندما تكون بيانات التبويب قصيرة،
                                 // مع بقاء موضع الصفحة ثابتاً بعد رفع الإصبع.
