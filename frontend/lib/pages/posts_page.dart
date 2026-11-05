@@ -243,7 +243,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                             child: ElevatedButton(
                               onPressed: () => Navigator.of(dialogContext).pop(true),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF00D1C1),
+                                backgroundColor: const Color(0xFFD9A93C),
                                 foregroundColor: Colors.white,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
