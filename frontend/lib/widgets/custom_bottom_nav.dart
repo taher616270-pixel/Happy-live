@@ -38,8 +38,8 @@ class CustomBottomNav extends StatelessWidget {
               color: const Color(0xFF191326),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: const Color(0xFF302344),
-                width: 1,
+                color: const Color(0xFF8B5CF6),
+                width: 1.2,
               ),
             ),
             child: Row(
