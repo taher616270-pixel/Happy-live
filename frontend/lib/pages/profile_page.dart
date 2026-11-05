@@ -802,7 +802,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 
   Widget _coverFallback() => Image.asset(
-        'assets/images/profile_cover/profile_cover.jpg.JPG',
+        'web/assets/images/profile_cover/profile_cover.jpg.JPG',
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => const DecoratedBox(
           decoration: BoxDecoration(
