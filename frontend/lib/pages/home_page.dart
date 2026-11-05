@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'create_room_page.dart';
 import 'room_page.dart';
+import '../widgets/purple_tech_background.dart';
 
 /// Theme colors kept local so this page can be maintained independently.
 class HappyHomeColors {
-  static const background = Color(0xFF09080D);
-  static const surface = Color(0xFF17131F);
-  static const gold = Color(0xFFE8C477);
-  static const purple = Color(0xFF9B63D9);
+  static const background = Color(0xFF0B0912);
+  static const surface = Color(0xFF191326);
+  static const gold = Color(0xFFB58AFF);
+  static const purple = Color(0xFF8B5CF6);
   static const muted = Color(0xFFAAA2B5);
 }
 
@@ -114,7 +115,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: HappyHomeColors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0x665F4775))),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0x668B5CF6))),
           title: const Text('البحث عن غرفة', textAlign: TextAlign.right, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
           content: Directionality(
             textDirection: TextDirection.rtl,
@@ -144,7 +145,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity, padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const Color(0xFF211A31), borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeColors.gold.withOpacity(.5))),
+                    decoration: BoxDecoration(color: const Color(0xFF191326), borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeColors.gold.withOpacity(.5))),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       Text((foundRoom!['name'] ?? 'غرفة صوتية').toString(), textAlign: TextAlign.right, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
@@ -270,7 +271,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   );
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => PurpleTechBackground(
+    child: Column(
     children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
@@ -281,7 +283,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Material(
-                color: const Color(0xFF17131F),
+                color: const Color(0xFF191326),
                 shape: const CircleBorder(),
                 child: IconButton(
                   tooltip: 'البحث عن غرفة بواسطة ID',
@@ -313,6 +315,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         ),
       ),
     ],
+    ),
   );
 }
 class MyPartyRoomButton extends StatelessWidget {
@@ -350,7 +353,7 @@ class MyPartyRoomButton extends StatelessWidget {
                   color: const Color(0xFF211A31),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: const Color(0xFFE6C87A).withOpacity(0.5),
+                    color: const Color(0xFFB58AFF).withOpacity(0.5),
                     width: 1,
                   ),
                 ),
