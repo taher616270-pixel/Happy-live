@@ -642,11 +642,32 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     : Column(
                         children: [
                           Expanded(
-                            child: SingleChildScrollView(
-                              physics: const BouncingScrollPhysics(),
-                              child: Column(
-                                children: [_heroHeader(), _profileSheet()],
-                              ),
+                            child: Stack(
+                              children: [
+                                SingleChildScrollView(
+                                  physics: const BouncingScrollPhysics(),
+                                  child: Column(
+                                    children: [_heroHeader(), _profileSheet()],
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 10,
+                                  right: 12,
+                                  child: _roundButton(
+                                    Icons.arrow_forward_rounded,
+                                    () => Navigator.of(context).maybePop(),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 10,
+                                  left: 12,
+                                  child: _roundButton(Icons.more_horiz_rounded, () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('لا توجد خيارات إضافية حالياً')),
+                                    );
+                                  }),
+                                ),
+                              ],
                             ),
                           ),
                           _actionBar(),
@@ -710,21 +731,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
               stops: const [0, .40, 1],
             ),
           ),
-        ),
-        Positioned(
-          top: 10,
-          right: 12,
-          child: _roundButton(Icons.arrow_forward_rounded,
-              () => Navigator.of(context).maybePop()),
-        ),
-        Positioned(
-          top: 10,
-          left: 12,
-          child: _roundButton(Icons.more_horiz_rounded, () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('لا توجد خيارات إضافية حالياً')),
-            );
-          }),
         ),
         Positioned(
           left: 18,
