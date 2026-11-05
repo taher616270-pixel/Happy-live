@@ -661,7 +661,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                         children: [
                           CustomScrollView(
                             controller: _profileScrollController,
-                            physics: const BouncingScrollPhysics(),
+                            physics: const ClampingScrollPhysics(),
                             slivers: [
                               SliverAppBar(
                                 pinned: true,
