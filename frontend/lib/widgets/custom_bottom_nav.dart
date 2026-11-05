@@ -21,11 +21,11 @@ class _CustomBottomNavState extends State<CustomBottomNav>
   late final AnimationController _ctrl;
 
   static const items = <(int, IconData, String)>[
-    (4, Icons.person_outline, 'الخاص بي'),
+    (0, Icons.wifi_tethering_outlined, 'Happy Live'),
     (3, Icons.chat_bubble_outline_rounded, 'الرسائل'),
     (2, Icons.article_outlined, 'المنشورات'),
     (1, Icons.bed_outlined, 'غرفة'),
-    (0, Icons.wifi_tethering_outlined, 'Happy Live'),
+    (4, Icons.person_outline, 'الخاص بي'),
   ];
 
   @override
