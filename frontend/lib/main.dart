@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'widgets/custom_bottom_nav.dart';
+import 'widgets/purple_tech_background.dart';
 
 void main() => runApp(const HappyLiveApp());
 
@@ -32,9 +33,16 @@ class HappyLiveApp extends StatelessWidget {
         CountryLocalizations.delegate,
         ...GlobalMaterialLocalizations.delegates,
       ],
+      builder: (context, child) => Stack(
+        fit: StackFit.expand,
+        children: [
+          const Positioned.fill(child: PurpleTechBackground()),
+          if (child != null) child,
+        ],
+      ),
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: background,
+        scaffoldBackgroundColor: Colors.transparent,
         colorScheme: const ColorScheme.dark(
           primary: gold,
           secondary: purple,
@@ -800,7 +808,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (_isRestoringSession || _sessionRestoreError != null) {
       return Scaffold(
-        backgroundColor: HappyLiveApp.background,
+        backgroundColor: Colors.transparent,
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 340),
@@ -846,7 +854,7 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: HappyLiveApp.background,
       resizeToAvoidBottomInset: false,
       body: Container(
-        color: HappyLiveApp.background,
+        color: Colors.transparent,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -1382,7 +1390,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFF0B0912),
+        backgroundColor: Colors.transparent,
         body: SafeArea(
           child: IndexedStack(
             index: _currentIndex,
