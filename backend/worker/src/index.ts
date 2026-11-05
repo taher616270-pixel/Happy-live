@@ -588,7 +588,7 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const rows = await env.DB.prepare(
-          "SELECT p.id, p.user_id, p.content, p.image_url, p.visibility, p.created_at, pr.display_name, pr.gabo_id, " +
+          "SELECT p.id, p.user_id, p.content, p.image_url, p.visibility, p.created_at, pr.display_name, pr.gabo_id, pr.avatar_key, " +
           "EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS liked, " +
           "(SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS likes_count, " +
           "(SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id) AS comments_count, " +
@@ -600,12 +600,12 @@ export default {
           "ORDER BY p.created_at DESC LIMIT 50"
         ).bind(user.id, user.id, user.id, user.id, user.id).all<{
           id: string; user_id: string; content: string; image_url: string | null; visibility: string; created_at: string;
-          display_name: string | null; gabo_id: string | null;
+          display_name: string | null; gabo_id: string | null; avatar_key: string | null;
           liked: number; likes_count: number; comments_count: number; followed: number;
         }>();
         return json({ ok: true, posts: (rows.results ?? []).map(p => ({
           id: p.id, userId: p.user_id, name: p.display_name?.trim() || "مستخدم",
-          userCode: p.gabo_id, content: p.content, imageUrl: p.image_url, createdAt: p.created_at,
+          userCode: p.gabo_id, avatarUrl: p.avatar_key, content: p.content, imageUrl: p.image_url, createdAt: p.created_at,
           liked: Boolean(p.liked), likesCount: p.likes_count,
           commentsCount: p.comments_count, followed: Boolean(p.followed), visibility: p.visibility,
           isMine: p.user_id === user.id
