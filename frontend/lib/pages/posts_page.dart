@@ -679,10 +679,23 @@ class _CreatePostPageState extends State<_CreatePostPage> {
   }
 
   Widget _topicTag(String label, {bool primary = false}) => Container(
+    height: 32,
+    alignment: Alignment.center,
     margin: const EdgeInsetsDirectional.only(end: 6),
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-    decoration: BoxDecoration(color: primary ? const Color(0xFFE6F2FF) : const Color(0xFFF1F2F4), borderRadius: BorderRadius.circular(18)),
-    child: Text(label, maxLines: 1, style: TextStyle(color: primary ? const Color(0xFF3987D8) : const Color(0xFF666A70), fontSize: 11, fontWeight: FontWeight.w600)),
+    padding: const EdgeInsets.symmetric(horizontal: 14),
+    decoration: BoxDecoration(
+      color: primary ? const Color(0xFFE8F4FF) : const Color(0xFFF3F4F6),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: Text(
+      label,
+      maxLines: 1,
+      style: TextStyle(
+        color: primary ? const Color(0xFF3B82F6) : const Color(0xFF6B7280),
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
   );
 
   Widget _toolButton({required Widget icon, required VoidCallback onTap, String? tooltip}) => IconButton(
@@ -693,6 +706,7 @@ class _CreatePostPageState extends State<_CreatePostPage> {
   @override
   Widget build(BuildContext context) {
     final hasText = _controller.text.trim().isNotEmpty;
+    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -738,56 +752,85 @@ class _CreatePostPageState extends State<_CreatePostPage> {
               ),
             ),
           )),
-          SizedBox(height: 46, child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(children: [
-              _toolButton(tooltip: 'وسم', onTap: () {}, icon: const Text('#', style: TextStyle(fontSize: 23, color: Color(0xFF555A61)))),
-              _toolButton(
-                tooltip: _emojiPanelOpen ? 'لوحة المفاتيح' : 'الإيموجي',
-                onTap: _toggleEmojiPanel,
-                icon: Icon(_emojiPanelOpen ? Icons.keyboard_alt_outlined : Icons.emoji_emotions_outlined, color: const Color(0xFF555A61), size: 22),
-              ),
-              const SizedBox(width: 4),
-              Expanded(child: Transform.translate(
-                offset: const Offset(0, -76),
-                child: SizedBox(height: 42, child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [_topicTag('#إضافة موضوع', primary: true), _topicTag('#OOTD'), _topicTag('#الصحه_النفسيه')],
-                )),
-              )),
-              const SizedBox(width: 5),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _showVisibilitySheet,
-                  borderRadius: BorderRadius.circular(100),
-                  child: AnimatedSize(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeInOut,
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5E6C8),
-                        borderRadius: BorderRadius.circular(100),
-                        border: Border.all(color: const Color(0xFFD4A017), width: 1),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            height: keyboardVisible ? 48 : 0,
+            child: ClipRect(
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: keyboardVisible ? 1 : 0,
+                child: Container(
+                  height: 48,
+                  color: const Color(0xFFFFFBEB),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Row(
+                    textDirection: TextDirection.rtl,
+                    children: [
+                      _toolButton(tooltip: 'وسم', onTap: () {}, icon: const Text('#', style: TextStyle(fontSize: 23, color: Color(0xFF555A61)))),
+                      _toolButton(
+                        tooltip: _emojiPanelOpen ? 'لوحة المفاتيح' : 'الإيموجي',
+                        onTap: _toggleEmojiPanel,
+                        icon: Icon(_emojiPanelOpen ? Icons.keyboard_alt_outlined : Icons.emoji_emotions_outlined, color: const Color(0xFF555A61), size: 22),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.person_outline_rounded, size: 18, color: Color(0xFFD4A017)),
-                          const SizedBox(width: 6),
-                          Text(_visibility, style: const TextStyle(fontSize: 14, color: Color(0xFF3B3428), fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 6),
-                          const Icon(Icons.arrow_back_ios_rounded, size: 14, color: Color(0xFFD4A017)),
-                        ],
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Row(
+                          textDirection: TextDirection.rtl,
+                          children: [
+                            _topicTag('#إضافة موضوع', primary: true),
+                            Expanded(
+                              child: SizedBox(
+                                height: 48,
+                                child: ListView(
+                                  scrollDirection: Axis.horizontal,
+                                  children: [
+                                    _topicTag('#OOTD'),
+                                    _topicTag('#الصحة_النفسية'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 5),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _showVisibilitySheet,
+                          borderRadius: BorderRadius.circular(100),
+                          child: AnimatedSize(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeInOut,
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5E6C8),
+                                borderRadius: BorderRadius.circular(100),
+                                border: Border.all(color: const Color(0xFFD4A017), width: 1),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.person_outline_rounded, size: 18, color: Color(0xFFD4A017)),
+                                  const SizedBox(width: 6),
+                                  Text(_visibility, style: const TextStyle(fontSize: 14, color: Color(0xFF3B3428), fontWeight: FontWeight.w600)),
+                                  const SizedBox(width: 6),
+                                  const Icon(Icons.arrow_back_ios_rounded, size: 14, color: Color(0xFFD4A017)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ]),
-          )),
+            ),
+          ),
           if (_emojiPanelOpen) SizedBox(
             height: 258, width: double.infinity,
             child: EmojiPicker(
