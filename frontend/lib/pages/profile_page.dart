@@ -606,6 +606,20 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
   }
 
+  // التنقل بين تبويبات الملف الشخصي بالسحب الأفقي.
+  // ترتيب التبويبات من اليمين إلى اليسار: الشخصية، الوكالات، المنشورات.
+  void _handleTabSwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity.abs() < 350 || !mounted) return;
+    setState(() {
+      if (velocity < 0) {
+        _tab = (_tab - 1).clamp(0, 2);
+      } else {
+        _tab = (_tab + 1).clamp(0, 2);
+      }
+    });
+  }
+
   @override
   void dispose() {
     _profileScrollController.removeListener(_handleProfileScroll);
@@ -668,7 +682,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     ? _errorView()
                     : Stack(
                         children: [
-                          RefreshIndicator(
+                          GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onHorizontalDragEnd: _handleTabSwipe,
+                            child: RefreshIndicator(
                             onRefresh: _refreshProfile,
                             color: _brownLight,
                             backgroundColor: Colors.white,
@@ -767,6 +784,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                 ),
                               ),
                               ],
+                            ),
                             ),
                           ),
                           Positioned(
