@@ -771,7 +771,7 @@ export default {
         ).bind(postCommentsRoute[1]).all<{ id: string; user_id: string; content: string; created_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null }>();
         const comments = (rows.results ?? []).map(c => ({ id: c.id, userId: c.user_id, content: c.content, createdAt: c.created_at, name: c.display_name?.trim() || "مستخدم", userCode: c.gabo_id, avatarUrl: c.avatar_key, replies: [] as Array<Record<string, unknown>> }));
         const replies = await env.DB.prepare(
-          "SELECT r.id, r.comment_id, r.parent_reply_id, r.user_id, r.content, r.created_at, p.display_name, p.gabo_id, p.avatar_key FROM post_comment_replies r LEFT JOIN profiles p ON p.user_id = r.user_id INNER JOIN post_comments c ON c.id = r.comment_id WHERE c.post_id = ? ORDER BY r.created_at ASC LIMIT 500"
+          "SELECT r.id, r.comment_id, r.parent_reply_id, r.user_id, r.content, r.created_at, p.display_name, p.gabo_id, p.avatar_key FROM post_comment_replies r LEFT JOIN profiles p ON p.user_id = r.user_id INNER JOIN post_comments c ON c.id = r.comment_id WHERE c.post_id = ? ORDER BY r.created_at ASC"
         ).bind(postCommentsRoute[1]).all<{ id: string; comment_id: string; parent_reply_id: string | null; user_id: string; content: string; created_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null }>();
         const commentsById = new Map(comments.map(c => [c.id, c]));
         const repliesById = new Map<string, Record<string, unknown>>();
