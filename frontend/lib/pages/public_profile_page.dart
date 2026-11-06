@@ -263,6 +263,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                 ),
                               ],
                               body: PageView(
+                                reverse: true,
                                 controller: _profileTabsController,
                                 onPageChanged: _onProfilePageChanged,
                                 children: [
