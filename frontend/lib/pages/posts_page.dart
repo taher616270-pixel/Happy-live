@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -327,7 +328,23 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
     String? error;
     List<Map<String, dynamic>> comments = [];
     final Set<String> expandedReplyThreads = {};
-    await showModalBottomSheet<void>(
+    Timer? cooldownTimer;
+    int cooldownSeconds = 0;
+    void startCommentCooldown([int seconds = 30]) {
+      cooldownTimer?.cancel();
+      cooldownSeconds = seconds;
+      setSheetState(() {});
+      cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (cooldownSeconds <= 1) {
+          timer.cancel();
+          cooldownSeconds = 0;
+        } else {
+          cooldownSeconds--;
+        }
+        setSheetState(() {});
+      });
+    }
+    await showModalBottomSheet<void>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -359,7 +376,10 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
               final response = await http.post(Uri.parse(endpoint),
                 headers: _headers, body: jsonEncode({'content': text, if (isReply && replyingTo!.containsKey('commentId')) 'parentReplyId': replyingTo!['id']}));
               final data = jsonDecode(response.body);
-              if (response.statusCode == 429 && data is Map) error = (data['message'] ?? 'انتظر 30 ثانية قبل التعليق مرة أخرى').toString();
+              if (response.statusCode == 429 && data is Map) {
+                error = (data['message'] ?? 'انتظر حتى ينتهي العداد قبل التعليق مرة أخرى').toString();
+                if (!isReply) startCommentCooldown();
+              }
               if (response.statusCode != 201 || data is! Map || data['ok'] != true) throw Exception();
               if (isReply) {
                 final reply = Map<String, dynamic>.from(data['reply'] as Map);
@@ -389,6 +409,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                 comment['replies'] = <Map<String, dynamic>>[];
                 comments.add(comment);
                 post['commentsCount'] = ((post['commentsCount'] as num?)?.toInt() ?? 0) + 1;
+                startCommentCooldown();
               }
               input.clear();
               error = null;
@@ -732,9 +753,16 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                   )),
                   const SizedBox(width: 8),
                   IconButton.filled(
-                    onPressed: sending ? null : send,
-                    style: IconButton.styleFrom(backgroundColor: _gold, foregroundColor: Colors.white),
-                    icon: sending ? const SizedBox(width: 17, height: 17, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send_rounded),
+                    onPressed: sending || (replyingTo == null && cooldownSeconds > 0) ? null : send,
+                    style: IconButton.styleFrom(
+                      backgroundColor: replyingTo == null && cooldownSeconds > 0 ? _muted : _gold,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: sending
+                        ? const SizedBox(width: 17, height: 17, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : replyingTo == null && cooldownSeconds > 0
+                            ? Text('$cooldownSeconds', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900))
+                            : const Icon(Icons.send_rounded),
                   ),
                 ]),
               ]),
@@ -743,6 +771,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
         },
       ),
     );
+    cooldownTimer?.cancel();
     input.dispose();
     if (mounted) setState(() {});
   }
