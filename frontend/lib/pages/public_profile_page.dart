@@ -48,7 +48,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   int _tab = 2;
   double _tabSlideFromX = 1; // Retained for the legacy tab builder.
-  late final PageController _profileTabsController = PageController(initialPage: 2);
   final ScrollController _profileScrollController = ScrollController();
   double _scrollProgress = 0;
   bool _loading = true;
@@ -94,24 +93,17 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   // التنقل بين تبويبات الملف الشخصي بالسحب الأفقي.
   // ترتيب التبويبات من اليمين إلى اليسار: الشخصية، الوكالات، المنشورات.
   void _changeProfileTab(int index) {
-    if (index == _tab || !mounted) return;
-    _profileTabsController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeInOutCubic,
-    );
-  }
-
-  void _onProfilePageChanged(int index) {
-    if (!mounted || index == _tab) return;
-    setState(() => _tab = index);
+    if (index == _tab || !mounted || index < 0 || index > 2) return;
+    setState(() {
+      _tabSlideFromX = index < _tab ? -1 : 1;
+      _tab = index;
+    });
   }
 
   @override
   void dispose() {
     _profileScrollController.removeListener(_handleProfileScroll);
     _profileScrollController.dispose();
-    _profileTabsController.dispose();
     super.dispose();
   }
 
@@ -255,34 +247,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     ],
                                   ),
                                 ),
-                                SliverPersistentHeader(
-                                  pinned: false,
-                                  delegate: _PublicProfileTabsDelegate(
-                                    selected: _tab,
-                                    onSelected: _changeProfileTab,
-                                  ),
-                                ),
-                                SliverFillRemaining(
-                                  hasScrollBody: false,
-                                  child: Container(
-                                    width: double.infinity,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.vertical(
-                                        top: Radius.circular(24),
-                                      ),
-                                    ),
-                                    child: PageView(
-                                      reverse: true,
-                                      controller: _profileTabsController,
-                                      onPageChanged: _onProfilePageChanged,
-                                      children: [
-                                        _profileTabPage(0),
-                                        _profileTabPage(1),
-                                        _profileTabPage(2),
-                                      ],
-                                    ),
-                                  ),
+                                SliverToBoxAdapter(
+                                  child: _profileTabsAndContent(),
                                 ),
                               ],
                             ),
@@ -571,7 +537,18 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             ],
           ),
           Container(height: 1, color: const Color(0xFFF0E7DC)),
-          _tabContent(),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragEnd: (details) {
+              final velocity = details.primaryVelocity ?? 0;
+              if (velocity < -120 && _tab > 0) {
+                _changeProfileTab(_tab - 1);
+              } else if (velocity > 120 && _tab < 2) {
+                _changeProfileTab(_tab + 1);
+              }
+            },
+            child: _tabContent(),
+          ),
         ],
       ),
     );
