@@ -701,7 +701,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         textDirection: TextDirection.rtl,
         child: ListView.builder(
           primary: true,
-          physics: const BouncingScrollPhysics(
+          // Let the outer NestedScrollView receive a pull-down at the
+          // top edge so CupertinoSliverRefreshControl can refresh the profile.
+          // The posts list still scrolls normally when it has content.
+          physics: const ClampingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
           padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
