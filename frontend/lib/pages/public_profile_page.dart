@@ -172,11 +172,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     ? _errorView()
                     : Stack(
                         children: [
-                          RefreshIndicator(
+                          RefreshIndicator.noSpinner(
                             onRefresh: _refreshProfile,
-                            color: Colors.transparent,
-                            backgroundColor: Colors.transparent,
-                            edgeOffset: _barH + _tabsH,
+                            triggerMode: RefreshIndicatorTriggerMode.onEdge,
+                            notificationPredicate: (notification) =>
+                                notification.depth == 2 &&
+                                notification.metrics.axis == Axis.vertical,
                             child: NestedScrollView(
                               controller: _profileScrollController,
                               physics: const AlwaysScrollableScrollPhysics(
