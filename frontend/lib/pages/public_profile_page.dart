@@ -718,6 +718,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
     if (index == 1) {
       return _emptySection(
+        key: const ValueKey('agency-empty-section'),
         icon: Icons.apartment_rounded,
         title: 'لا توجد وكالة مرتبطة',
         subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
