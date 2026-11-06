@@ -324,15 +324,26 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       ),
       Expanded(
         child: Directionality(
-          textDirection: TextDirection.rtl,
+          // حركة الصفحات أفقياً: سحب لليسار يفتح الصفحة الموجودة على اليمين،
+          // وسحب لليمين يفتح الصفحة الموجودة على اليسار.
+          textDirection: TextDirection.ltr,
           child: PageView(
             controller: _pageController,
-            reverse: true,
+            reverse: false,
             onPageChanged: (index) => setState(() => _currentPage = index),
             children: [
-              _buildOriginalHomeContent(),
-              const SizedBox.expand(),
-              const SizedBox.expand(),
+              Directionality(
+                textDirection: TextDirection.rtl,
+                child: _buildOriginalHomeContent(),
+              ),
+              const Directionality(
+                textDirection: TextDirection.rtl,
+                child: SizedBox.expand(),
+              ),
+              const Directionality(
+                textDirection: TextDirection.rtl,
+                child: SizedBox.expand(),
+              ),
             ],
           ),
         ),
