@@ -90,7 +90,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   void _changeProfileTab(int index) {
     if (index == _tab || !mounted || index < 0 || index > 2) return;
     setState(() {
-      _tabSlideFromX = index < _tab ? -1 : 1;
+      _tabSlideFromX = index < _tab ? 1 : -1;
       _tab = index;
     });
   }
@@ -657,10 +657,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
         transitionBuilder: (child, animation) {
-          final slide = Tween<Offset>(
-            begin: Offset(_tabSlideFromX, 0),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+          final currentKey = ValueKey<String>(
+              _tab == 0 ? 'posts' : (_tab == 1 ? 'agencies' : 'personal'));
+          final incoming = child.key == currentKey;
+          final dir = incoming ? _tabSlideFromX : -_tabSlideFromX;
+          final slide = Tween<Offset>(begin: Offset(dir, 0), end: Offset.zero)
+              .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
           return ClipRect(
             child: SlideTransition(
               position: slide,
