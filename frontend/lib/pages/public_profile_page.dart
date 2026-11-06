@@ -1035,13 +1035,16 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              InkWell(
-                                                onTap: () => _openCommenterProfile(comment),
-                                                child: Text(commenterName,
-                                                    style: const TextStyle(
-                                                        color: _brown,
-                                                        fontWeight: FontWeight.w900,
-                                                        fontSize: 12)),
+                                              Transform.translate(
+                                                offset: const Offset(0, -2),
+                                                child: InkWell(
+                                                  onTap: () => _openCommenterProfile(comment),
+                                                  child: Text(commenterName,
+                                                      style: const TextStyle(
+                                                          color: _brown,
+                                                          fontWeight: FontWeight.w900,
+                                                          fontSize: 12)),
+                                                ),
                                               ),
                                               const SizedBox(height: 4),
                                               Text((comment['content'] ?? '').toString(),
