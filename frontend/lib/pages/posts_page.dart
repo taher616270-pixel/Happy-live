@@ -304,6 +304,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
     final input = TextEditingController();
     bool loading = true;
     bool sending = false;
+    Map<String, dynamic>? replyingTo;
     String? error;
     List<Map<String, dynamic>> comments = [];
     await showModalBottomSheet<void>(
@@ -331,14 +332,30 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
             if (text.isEmpty || sending) return;
             sending = true; setSheetState(() {});
             try {
-              final response = await http.post(Uri.parse('$_api/posts/$id/comments'),
+              final isReply = replyingTo != null;
+              final endpoint = isReply
+                  ? '$_api/posts/$id/comments/${replyingTo!['id']}/replies'
+                  : '$_api/posts/$id/comments';
+              final response = await http.post(Uri.parse(endpoint),
                 headers: _headers, body: jsonEncode({'content': text}));
               final data = jsonDecode(response.body);
               if (response.statusCode != 201 || data is! Map || data['ok'] != true) throw Exception();
-              comments.add(Map<String, dynamic>.from(data['comment'] as Map));
+              if (isReply) {
+                final reply = Map<String, dynamic>.from(data['reply'] as Map);
+                final parent = comments.firstWhere((item) => item['id'] == replyingTo!['id']);
+                final replies = (parent['replies'] as List? ?? const []).toList();
+                replies.add(reply);
+                parent['replies'] = replies;
+                replyingTo = null;
+              } else {
+                final comment = Map<String, dynamic>.from(data['comment'] as Map);
+                comment['replies'] = <Map<String, dynamic>>[];
+                comments.add(comment);
+                post['commentsCount'] = ((post['commentsCount'] as num?)?.toInt() ?? 0) + 1;
+              }
               input.clear();
-              post['commentsCount'] = ((post['commentsCount'] as num?)?.toInt() ?? 0) + 1;
-            } catch (_) { error = 'تعذر إضافة التعليق'; }
+              error = null;
+            } catch (_) { error = replyingTo != null ? 'تعذر إرسال الرد' : 'تعذر إضافة التعليق'; }
             sending = false; setSheetState(() {});
           }
           if (loading && comments.isEmpty) load();
@@ -406,12 +423,62 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                                   child: Text(_timeAgo(c['createdAt'] ?? c['created_at']),
                                       style: const TextStyle(color: _muted, fontSize: 10)),
                                 ),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () {
+                                      replyingTo = c;
+                                      input.clear();
+                                      setSheetState(() {});
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: _gold,
+                                      visualDensity: VisualDensity.compact,
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      minimumSize: Size.zero,
+                                    ),
+                                    child: const Text('رد', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                                  ),
+                                ),
+                                ...(c['replies'] as List? ?? const []).whereType<Map>().map((item) {
+                                  final reply = Map<String, dynamic>.from(item);
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 10, bottom: 7),
+                                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                      const Icon(Icons.subdirectory_arrow_left_rounded, size: 15, color: _muted),
+                                      const SizedBox(width: 5),
+                                      Expanded(child: InkWell(
+                                        onTap: () => _openUserProfile(reply),
+                                        child: RichText(text: TextSpan(
+                                          style: const TextStyle(color: Color(0xFF000000), fontSize: 12, height: 1.4),
+                                          children: [
+                                            TextSpan(text: '${reply['name'] ?? 'مستخدم'}: ', style: const TextStyle(fontWeight: FontWeight.w900)),
+                                            TextSpan(text: (reply['content'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
+                                          ],
+                                        )),
+                                      )),
+                                    ]),
+                                  );
+                                }),
                               ])),
                             ]);
                           },
                         )),
                 if (error != null && comments.isNotEmpty)
                   Align(alignment: Alignment.centerRight, child: Text(error!, style: const TextStyle(color: Colors.red, fontSize: 11))),
+                if (replyingTo != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(children: [
+                      Expanded(child: Text('الرد على ${replyingTo!['name'] ?? 'مستخدم'}',
+                          style: const TextStyle(color: _gold, fontSize: 11, fontWeight: FontWeight.w800))),
+                      IconButton(
+                        onPressed: () { replyingTo = null; input.clear(); setSheetState(() {}); },
+                        icon: const Icon(Icons.close_rounded, size: 17, color: _muted),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ]),
+                  ),
                 Row(children: [
                   Expanded(child: TextField(
                     controller: input,
@@ -419,7 +486,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                     style: const TextStyle(color: _ink, fontSize: 13),
                     decoration: InputDecoration(
                       counterText: '',
-                      hintText: 'اكتب تعليقاً...',
+                      hintText: replyingTo == null ? 'اكتب تعليقاً...' : 'اكتب ردك...',
                       hintStyle: const TextStyle(color: _muted),
                       filled: true, fillColor: _cream,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
