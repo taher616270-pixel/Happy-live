@@ -896,7 +896,7 @@ class _RoomPageState extends State<RoomPage> {
               crossAxisCount: 4,
               mainAxisSpacing: 10,
               crossAxisSpacing: 13,
-              childAspectRatio: 0.88,
+              childAspectRatio: 0.62,
             ),
             itemBuilder: (context, index) {
               final number = index < 4 ? 4 - index : 8 - (index - 4);
