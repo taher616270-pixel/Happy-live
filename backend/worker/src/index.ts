@@ -728,7 +728,7 @@ export default {
       }
     }
 
-    const commentRepliesRoute = url.pathname.match(/^\\/api\\/v1\\/posts\\/([0-9a-f-]{36})\\/comments\\/([0-9a-f-]{36})\\/replies$/i);
+    const commentRepliesRoute = url.pathname.match(/^\/api\/v1\/posts\/([0-9a-f-]{36})\/comments\/([0-9a-f-]{36})\/replies$/i);
     if (commentRepliesRoute && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
