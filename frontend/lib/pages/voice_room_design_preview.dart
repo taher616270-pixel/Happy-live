@@ -2,8 +2,17 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
-  const VoiceRoomDesignPreview({super.key, required this.room});
+  const VoiceRoomDesignPreview({
+    super.key,
+    required this.room,
+    required this.announcement,
+    required this.canEditAnnouncement,
+    required this.onEditAnnouncement,
+  });
   final Map<String, dynamic> room;
+  final String announcement;
+  final bool canEditAnnouncement;
+  final VoidCallback onEditAnnouncement;
 
   String get _name => (room['name'] ?? 'غرفة صوتية').toString();
   String get _id => (room['roomCode'] ?? room['id'] ?? '').toString();
@@ -28,7 +37,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             Positioned.fill(child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 14, 12, 8),
               children: const [
-                _Notice(text: 'مرحباً بكم في الغرفة. يرجى احترام بعضنا البعض والدردشة باحترام.', icon: Icons.notifications_rounded),
+                _Notice(
+                  text: announcement.isEmpty ? 'مرحباً بكم في الغرفة. نتمنى لكم وقتاً ممتعاً.' : announcement,
+                  icon: Icons.notifications_rounded,
+                  onTap: canEditAnnouncement ? onEditAnnouncement : null,
+                ),
                 SizedBox(height: 9),
                 _Notice(text: 'مالك الغرفة  @ صاحب الغرفة دخل الغرفة', icon: Icons.waving_hand_rounded),
               ],
@@ -129,17 +142,21 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 }
 
 class _Notice extends StatelessWidget {
-  const _Notice({required this.text, required this.icon});
+  const _Notice({required this.text, required this.icon, this.onTap});
   final String text;
   final IconData icon;
+  final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Align(alignment: AlignmentDirectional.centerStart, child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Container(width: 32, height: 32, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withOpacity(.35)), child: Icon(icon, color: Colors.white70, size: 17)),
-      const SizedBox(width: 8),
-      Flexible(child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9), decoration: BoxDecoration(color: Colors.black.withOpacity(.35), borderRadius: BorderRadius.circular(14)), child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.5)))),
-    ])),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Align(alignment: AlignmentDirectional.centerStart, child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 32, height: 32, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withOpacity(.35)), child: Icon(icon, color: Colors.white70, size: 17)),
+        const SizedBox(width: 8),
+        Flexible(child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9), decoration: BoxDecoration(color: Colors.black.withOpacity(.35), borderRadius: BorderRadius.circular(14)), child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.5)))),
+      ])),
+    ),
   );
 }
 
