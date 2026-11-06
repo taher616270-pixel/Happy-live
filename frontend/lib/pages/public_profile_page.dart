@@ -966,7 +966,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             try {
               final isReply = replyingTo != null;
               final endpoint = isReply
-                  ? 'https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/comments/${replyingTo!['id']}/replies'
+                  ? 'https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/comments/${replyingTo!.containsKey('commentId') ? replyingTo!['commentId'] : replyingTo!['id']}/replies'
                   : 'https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/comments';
               final response = await http.post(
                 Uri.parse(endpoint),
