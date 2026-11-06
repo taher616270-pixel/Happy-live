@@ -612,11 +612,15 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                 final tabWidth = constraints.maxWidth / 3;
                 return Stack(
                   children: [
-                    Row(children: [
-                      tab('الصفحة الشخصية', 2),
-                      tab('الوكالات', 1),
-                      tab('المنشورات', 0),
-                    ]),
+                    // LTR physical layout: Posts left, Agencies center, Profile right.
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Row(children: [
+                        tab('المنشورات', 0),
+                        tab('الوكالات', 1),
+                        tab('الصفحة الشخصية', 2),
+                      ]),
+                    ),
                     AnimatedBuilder(
                       animation: _pageController,
                       builder: (context, child) {
@@ -682,14 +686,13 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     return SizedBox(
       height: pageHeight,
       child: Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: TextDirection.ltr,
         child: PageView(
           controller: _pageController,
-          reverse: true,
           physics: const ClampingScrollPhysics(),
-          onPageChanged: (index) {
-            if (mounted && _tab != index) {
-              setState(() => _tab = index);
+          onPageChanged: (i) {
+            if (mounted && _tab != i) {
+              setState(() => _tab = i);
             }
           },
           children: [
