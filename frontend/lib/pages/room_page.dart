@@ -55,6 +55,8 @@ class _RoomPageState extends State<RoomPage> {
   Route<dynamic>? _roomRoute;
   bool _isChangingSeat = false;
   bool _amRoomOwner = false;
+  bool _amRoomModerator = false;
+  bool _selfMicMuted = false;
   String? _loadError;
   int? _mySeat;
   String _ownerName = 'صاحب الغرفة';
@@ -74,6 +76,7 @@ class _RoomPageState extends State<RoomPage> {
   Uri get _chatSessionUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/chat-session');
   Uri get _messagesUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/messages');
   Uri get _announcementUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/announcement');
+  Uri get _moderationUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/moderation');
   Uri get _chatStreamUri {
     final base = Uri.parse(_apiBase);
     return base.replace(
@@ -176,6 +179,9 @@ class _RoomPageState extends State<RoomPage> {
         ? roomData['announcement'].toString()
         : _roomAnnouncement;
     final nextIsOwner = data['isOwner'] == true;
+    final nextIsModerator = data['isModerator'] == true;
+    final meData = data['me'];
+    final nextSelfMuted = meData is Map && meData['isMuted'] == true;
     final changed = jsonEncode(_seats) != jsonEncode(seats) ||
         _mySeat != nextMySeat ||
         _audienceCount != nextAudienceCount ||
@@ -183,6 +189,8 @@ class _RoomPageState extends State<RoomPage> {
         _ownerId != nextOwnerId ||
         _roomAnnouncement != nextAnnouncement ||
         _amRoomOwner != nextIsOwner ||
+        _amRoomModerator != nextIsModerator ||
+        _selfMicMuted != nextSelfMuted ||
         _isLoading ||
         _loadError != null;
     if (!mounted || !changed) return;
@@ -194,9 +202,70 @@ class _RoomPageState extends State<RoomPage> {
       _ownerId = nextOwnerId;
       _roomAnnouncement = nextAnnouncement;
       _amRoomOwner = nextIsOwner;
+      _amRoomModerator = nextIsModerator;
+      _selfMicMuted = nextSelfMuted;
       _isLoading = false;
       _loadError = null;
     });
+  }
+
+  Future<bool> _toggleSelfMic() async {
+    try {
+      final response = await http.post(
+        _moderationUri,
+        headers: _headers,
+        body: jsonEncode({'action': 'self_mic_toggle'}),
+      ).timeout(const Duration(seconds: 8));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+        if (mounted) setState(() => _selfMicMuted = data['isMuted'] == true);
+        _showMessage(_selfMicMuted ? 'تم كتم مايكك' : 'تم فتح مايكك');
+        unawaited(_refreshSeats());
+        return true;
+      }
+      final message = data is Map ? (data['message'] ?? '').toString() : '';
+      _showMessage(message.isNotEmpty ? message : 'تعذر تغيير حالة المايك');
+    } catch (_) {
+      _showMessage('تعذر الاتصال بالخادم، لم تتغير حالة المايك');
+    }
+    return false;
+  }
+
+  Future<bool> _moderateRoomUser(String targetUserId, String action) async {
+    if (!_isRoomOwner && !_amRoomModerator) {
+      _showMessage('هذه الصلاحية لمالك الغرفة ومشرفيها فقط');
+      return false;
+    }
+    if (targetUserId.isEmpty) {
+      _showMessage('تعذر تحديد المستخدم');
+      return false;
+    }
+    try {
+      final response = await http.post(
+        _moderationUri,
+        headers: _headers,
+        body: jsonEncode({'action': action, 'targetUserId': targetUserId}),
+      ).timeout(const Duration(seconds: 8));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+        final labels = {
+          'toggle_mute': 'تم تحديث كتم المستخدم',
+          'kick': 'تم طرد المستخدم من الغرفة',
+          'ban': 'تم حظر المستخدم من الغرفة',
+          'lower': 'تم إنزال المستخدم من المايك',
+        };
+        _showMessage(labels[action] ?? 'تم تنفيذ الإجراء');
+        await _refreshSeats();
+        return true;
+      }
+      final message = data is Map ? (data['message'] ?? '').toString() : '';
+      _showMessage(message.isNotEmpty ? message : response.statusCode == 403
+          ? 'ليست لديك صلاحية لتنفيذ هذا الإجراء'
+          : 'تعذر تنفيذ الإجراء، حاول مرة أخرى');
+    } catch (_) {
+      _showMessage('تعذر الاتصال بالخادم، لم يتم تنفيذ الإجراء');
+    }
+    return false;
   }
 
   Future<void> _sendHeartbeat() async {
@@ -794,6 +863,10 @@ class _RoomPageState extends State<RoomPage> {
       onTapSeat: _selectSeat,
       isChangingSeat: _isChangingSeat,
       audienceCount: _audienceCount,
+      canModerateUsers: _isRoomOwner || _amRoomModerator,
+      selfMicMuted: _selfMicMuted,
+      onToggleSelfMic: _toggleSelfMic,
+      onModerateUser: _moderateRoomUser,
     );
   }
 
