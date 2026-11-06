@@ -736,15 +736,21 @@ export default {
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const body = await request.json() as Record<string, unknown>;
         const content = typeof body.content === "string" ? body.content.trim() : "";
+        const parentReplyId = typeof body.parentReplyId === "string" && body.parentReplyId.trim() ? body.parentReplyId.trim() : null;
         if (!content || content.length > 500) return json({ error: "invalid_reply", message: "اكتب رداً لا يتجاوز 500 حرف" }, 400, origin, env);
         const parent = await env.DB.prepare(
           "SELECT c.id FROM post_comments c INNER JOIN posts p ON p.id = c.post_id WHERE c.id = ? AND c.post_id = ? AND p.status = 'published'"
         ).bind(commentRepliesRoute[2], commentRepliesRoute[1]).first();
         if (!parent) return json({ error: "comment_not_found" }, 404, origin, env);
+        if (parentReplyId) {
+          const parentReply = await env.DB.prepare("SELECT id FROM post_comment_replies WHERE id = ? AND comment_id = ?")
+            .bind(parentReplyId, commentRepliesRoute[2]).first();
+          if (!parentReply) return json({ error: "parent_reply_not_found" }, 404, origin, env);
+        }
         const id = crypto.randomUUID();
         const createdAt = new Date().toISOString();
-        await env.DB.prepare("INSERT INTO post_comment_replies (id, comment_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)")
-          .bind(id, commentRepliesRoute[2], user.id, content, createdAt).run();
+        await env.DB.prepare("INSERT INTO post_comment_replies (id, comment_id, user_id, content, created_at, parent_reply_id) VALUES (?, ?, ?, ?, ?, ?)")
+          .bind(id, commentRepliesRoute[2], user.id, content, createdAt, parentReplyId).run();
         const profile = await env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ?")
           .bind(user.id).first<{ avatar_key: string | null }>();
         return json({ ok: true, reply: { id, commentId: commentRepliesRoute[2], userId: user.id, content, createdAt, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id, avatarUrl: profile?.avatar_key ?? null } }, 201, origin, env);
@@ -765,16 +771,27 @@ export default {
         ).bind(postCommentsRoute[1]).all<{ id: string; user_id: string; content: string; created_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null }>();
         const comments = (rows.results ?? []).map(c => ({ id: c.id, userId: c.user_id, content: c.content, createdAt: c.created_at, name: c.display_name?.trim() || "مستخدم", userCode: c.gabo_id, avatarUrl: c.avatar_key, replies: [] as Array<Record<string, unknown>> }));
         const replies = await env.DB.prepare(
-          "SELECT r.id, r.comment_id, r.user_id, r.content, r.created_at, p.display_name, p.gabo_id, p.avatar_key FROM post_comment_replies r LEFT JOIN profiles p ON p.user_id = r.user_id INNER JOIN post_comments c ON c.id = r.comment_id WHERE c.post_id = ? ORDER BY r.created_at ASC LIMIT 500"
-        ).bind(postCommentsRoute[1]).all<{ id: string; comment_id: string; user_id: string; content: string; created_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null }>();
+          "SELECT r.id, r.comment_id, r.parent_reply_id, r.user_id, r.content, r.created_at, p.display_name, p.gabo_id, p.avatar_key FROM post_comment_replies r LEFT JOIN profiles p ON p.user_id = r.user_id INNER JOIN post_comments c ON c.id = r.comment_id WHERE c.post_id = ? ORDER BY r.created_at ASC LIMIT 500"
+        ).bind(postCommentsRoute[1]).all<{ id: string; comment_id: string; parent_reply_id: string | null; user_id: string; content: string; created_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null }>();
         const commentsById = new Map(comments.map(c => [c.id, c]));
-        for (const reply of replies.results ?? []) {
-          commentsById.get(reply.comment_id)?.replies.push({
-            id: reply.id, commentId: reply.comment_id, userId: reply.user_id,
-            content: reply.content, createdAt: reply.created_at,
-            name: reply.display_name?.trim() || "مستخدم", userCode: reply.gabo_id,
-            avatarUrl: reply.avatar_key
+        const repliesById = new Map<string, Record<string, unknown>>();
+        for (const row of replies.results ?? []) {
+          repliesById.set(row.id, {
+            id: row.id, commentId: row.comment_id, parentReplyId: row.parent_reply_id,
+            userId: row.user_id, content: row.content, createdAt: row.created_at,
+            name: row.display_name?.trim() || "مستخدم", userCode: row.gabo_id,
+            avatarUrl: row.avatar_key, replies: [] as Array<Record<string, unknown>>
           });
+        }
+        for (const row of replies.results ?? []) {
+          const node = repliesById.get(row.id)!;
+          if (row.parent_reply_id) {
+            const parentNode = repliesById.get(row.parent_reply_id);
+            if (parentNode) (parentNode.replies as Array<Record<string, unknown>>).push(node);
+            else commentsById.get(row.comment_id)?.replies.push(node);
+          } else {
+            commentsById.get(row.comment_id)?.replies.push(node);
+          }
         }
         return json({ ok: true, comments }, 200, origin, env);
       } catch (error) {
@@ -793,8 +810,18 @@ export default {
         if (!content || content.length > 500) return json({ error: "invalid_comment", message: "اكتب تعليقاً لا يتجاوز 500 حرف" }, 400, origin, env);
         const post = await env.DB.prepare("SELECT id FROM posts WHERE id = ? AND status = 'published'").bind(postCommentsRoute[1]).first();
         if (!post) return json({ error: "post_not_found" }, 404, origin, env);
-        const id = crypto.randomUUID();
         const createdAt = new Date().toISOString();
+        const allowed = await env.DB.prepare(
+          "INSERT INTO post_comment_rate_limits (user_id, last_comment_at) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET last_comment_at = excluded.last_comment_at WHERE CAST(strftime('%s', excluded.last_comment_at) AS INTEGER) - CAST(strftime('%s', post_comment_rate_limits.last_comment_at) AS INTEGER) >= 30 RETURNING user_id"
+        ).bind(user.id, createdAt).first<{ user_id: string }>();
+        if (!allowed) {
+          const last = await env.DB.prepare("SELECT last_comment_at FROM post_comment_rate_limits WHERE user_id = ?")
+            .bind(user.id).first<{ last_comment_at: string }>();
+          const elapsed = last ? Math.max(0, Math.floor((Date.now() - Date.parse(last.last_comment_at)) / 1000)) : 0;
+          const retryAfter = Math.max(1, 30 - elapsed);
+          return json({ error: "comment_cooldown", message: `انتظر ${retryAfter} ثانية قبل كتابة تعليق جديد`, retryAfterSeconds: retryAfter }, 429, origin, env);
+        }
+        const id = crypto.randomUUID();
         await env.DB.prepare("INSERT INTO post_comments (id, post_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)")
           .bind(id, postCommentsRoute[1], user.id, content, createdAt).run();
         const commenterProfile = await env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ?")
