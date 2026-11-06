@@ -325,7 +325,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       Expanded(
         child: PageView(
           controller: _pageController,
-          reverse: true,
+          reverse: false,
           onPageChanged: (index) => setState(() => _currentPage = index),
           children: [
             _buildOriginalHomeContent(),
