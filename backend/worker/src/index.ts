@@ -387,7 +387,7 @@ export default {
         ).bind(roomId, user.id).first<{ user_id: string }>();
         if (activeBan) return json({ error: "room_banned", message: "تم حظرك من هذه الغرفة" }, 403, origin, env);
         const activeKick = await env.DB.prepare(
-          "SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
+          "SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
         ).bind(roomId, user.id, new Date().toISOString()).first<{ kicked_until: string }>();
         if (activeKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
         let body: Record<string, unknown>;
@@ -623,8 +623,8 @@ export default {
           if (action === "kick") {
             const kickedUntil = new Date(Date.now() + 60000).toISOString();
             await env.DB.prepare(
-              "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at, kicked_until) VALUES (?, ?, 0, NULL, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET kicked_until = excluded.kicked_until, updated_at = excluded.updated_at"
-            ).bind(roomId, targetUserId, now, kickedUntil).run();
+              "INSERT INTO room_kicks (room_id, user_id, kicked_by, kicked_until, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET kicked_by = excluded.kicked_by, kicked_until = excluded.kicked_until, created_at = excluded.created_at"
+            ).bind(roomId, targetUserId, actor.id, kickedUntil, now).run();
           }
           if (action === "kick" || action === "ban") {
             await env.DB.prepare(
