@@ -1114,7 +1114,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                         onPressed: () { if (expanded) { expandedReplyThreads.remove(threadId); } else { expandedReplyThreads.add(threadId); } setSheetState(() {}); },
                                         style: TextButton.styleFrom(foregroundColor: _brownLight, padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2), visualDensity: VisualDensity.compact, minimumSize: Size.zero),
                                         icon: Icon(expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 17),
-                                        label: Text(expanded ? 'إخفاء الردود' : 'عرض $hiddenReplyCount ردود', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
+                                        label: Text(expanded ? 'إخفاء الردود' : 'عرض الردود ($hiddenReplyCount)', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
                                       )),
                                     ]);
                                     return Row(
