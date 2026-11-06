@@ -1251,7 +1251,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                         ]),
                                             ),
                                           ),
-                                        ),
                                       );
                                     }
                                     final allReplies = flattenReplies((comment['replies'] as List? ?? const []).toList());
