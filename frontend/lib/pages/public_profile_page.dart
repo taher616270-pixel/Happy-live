@@ -1026,7 +1026,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Column(
-        children: _posts.map((post) {
+        children: _posts.asMap().entries.map((entry) {
+          final post = entry.value;
           final imageUrl = (post['imageUrl'] ?? post['image_url'] ?? '').toString();
           final liked = post['liked'] == true;
           final likes = (post['likesCount'] as num?)?.toInt() ??
@@ -1057,16 +1058,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
               .toString()
               .trim();
 
-          return Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 14),
-            padding: const EdgeInsets.all(13),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF0E5D0)),
-            ),
-            child: Column(
+          return Column(children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
@@ -1170,8 +1165,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                   ],
                 ),
               ],
+              ),
             ),
-          );
+            if (entry.key != _posts.length - 1)
+              const Divider(height: 1, thickness: 1, color: _cream),
+          ]);
         }).toList(),
       ),
     );
