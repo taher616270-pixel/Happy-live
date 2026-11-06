@@ -52,7 +52,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   static const double _expandedH = (_coverH - _cardLift) + _cardH;
 
   int _tab = 2;
-  final PageController _pageController = PageController(initialPage: 2);
+  int _previousTabForAnimation = 2;
   int _coverIndex = 0;
   final ScrollController _profileScrollController = ScrollController();
   bool _loading = true;
@@ -90,17 +90,15 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   // Directionality RTL يجعل الصفحة 2 في اليمين والصفحة 0 في اليسار.
   void _changeProfileTab(int index) {
     if (index == _tab || !mounted || index < 0 || index > 2) return;
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-    );
+    setState(() {
+      _previousTabForAnimation = _tab;
+      _tab = index;
+    });
   }
 
   @override
   void dispose() {
     _profileScrollController.dispose();
-    _pageController.dispose();
     super.dispose();
   }
 
@@ -621,35 +619,22 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                         tab('الصفحة الشخصية', 2),
                       ]),
                     ),
-                    AnimatedBuilder(
-                      animation: _pageController,
-                      builder: (context, child) {
-                        final page = _pageController.hasClients
-                            ? (_pageController.page ?? _tab.toDouble())
-                                .clamp(0.0, 2.0)
-                            : _tab.toDouble();
-                        final dx = page * tabWidth;
-                        return Positioned(
-                          left: 0,
-                          bottom: 6,
-                          child: Transform.translate(
-                            offset: Offset(dx, 0),
-                            child: SizedBox(
-                              width: tabWidth,
-                              child: Center(
-                                child: Container(
-                                  width: 20,
-                                  height: 3,
-                                  decoration: BoxDecoration(
-                                    color: _gold,
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                ),
-                              ),
+                    Positioned(
+                      left: _tab * tabWidth,
+                      bottom: 6,
+                      child: SizedBox(
+                        width: tabWidth,
+                        child: Center(
+                          child: Container(
+                            width: 20,
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: _gold,
+                              borderRadius: BorderRadius.circular(3),
                             ),
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
                   ],
                 );
@@ -663,34 +648,38 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 
   Widget _profileContent() {
-    final mq = MediaQuery.of(context);
-    final pageHeight =
-        (mq.size.height - _barH - _tabsH - mq.padding.top)
-            .clamp(320.0, double.infinity)
-            .toDouble();
-
-    Widget page(int index) => ColoredBox(
-          color: index == 0 ? Colors.transparent : Colors.white,
-          child: _tabContent(index),
-        );
-
-    return SizedBox(
-      height: pageHeight,
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: PageView(
-          controller: _pageController,
-          physics: const PageScrollPhysics(),
-          onPageChanged: (i) {
-            if (mounted && _tab != i) {
-              setState(() => _tab = i);
-            }
-          },
-          children: [
-            page(0),
-            page(1),
-            page(2),
-          ],
+    // يبقى المحتوى ضمن التمرير العمودي الرئيسي للصفحة.
+    // السحب الأفقي يبدّل التبويب دون إنشاء ScrollView داخلي أو ارتفاع ثابت.
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragEnd: (details) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (velocity.abs() < 120) return;
+        // اتجاه العرض LTR: السحب لليسار ينتقل إلى الفهرس التالي.
+        final next = velocity < 0 ? _tab + 1 : _tab - 1;
+        if (next >= 0 && next <= 2) {
+          _changeProfileTab(next);
+        }
+      },
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final isForward = _tab > _previousTabForAnimation;
+          final begin = Offset(isForward ? -0.08 : 0.08, 0);
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(begin: begin, end: Offset.zero)
+                  .animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey<int>(_tab),
+          child: _tabContent(_tab),
         ),
       ),
     );
