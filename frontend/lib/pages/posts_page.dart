@@ -401,8 +401,11 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                                 const SizedBox(height: 4),
                                 Text((c['content'] ?? '').toString(), style: const TextStyle(color: Color(0xFF000000), fontWeight: FontWeight.w700, fontSize: 13, height: 1.5)),
                                 const SizedBox(height: 3),
-                                Text(_timeAgo(c['createdAt'] ?? c['created_at']),
-                                    style: const TextStyle(color: _muted, fontSize: 10)),
+                                Transform.translate(
+                                  offset: const Offset(4, 0),
+                                  child: Text(_timeAgo(c['createdAt'] ?? c['created_at']),
+                                      style: const TextStyle(color: _muted, fontSize: 10)),
+                                ),
                               ])),
                             ]);
                           },
