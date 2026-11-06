@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/cupertino.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -145,17 +146,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
   }
 
-  bool _refreshingProfile = false;
-
-  Future<void> _refreshProfile() async {
-    if (_refreshingProfile) return;
-    setState(() => _refreshingProfile = true);
-    try {
-      await _loadProfile(showErrorView: false);
-    } finally {
-      if (mounted) setState(() => _refreshingProfile = false);
-    }
-  }
+  Future<void> _refreshProfile() => _loadProfile(showErrorView: false);
 
   @override
   Widget build(BuildContext context) => Directionality(
@@ -172,19 +163,24 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     ? _errorView()
                     : Stack(
                         children: [
-                          RefreshIndicator.noSpinner(
-                            onRefresh: _refreshProfile,
-                            triggerMode: RefreshIndicatorTriggerMode.onEdge,
-                            notificationPredicate: (notification) =>
-                                notification.depth == 2 &&
-                                notification.metrics.axis == Axis.vertical,
-                            child: NestedScrollView(
+                          NestedScrollView(
                               controller: _profileScrollController,
-                              physics: const AlwaysScrollableScrollPhysics(
-                                parent: ClampingScrollPhysics(),
+                              physics: const BouncingScrollPhysics(
+                                parent: AlwaysScrollableScrollPhysics(),
                               ),
                               headerSliverBuilder: (context, innerBoxIsScrolled) => [
-
+                                CupertinoSliverRefreshControl(
+                                  onRefresh: _refreshProfile,
+                                  builder: (context, mode, pulledExtent,
+                                      refreshTriggerPullDistance, refreshIndicatorExtent) {
+                                    return SizedBox(
+                                      height: pulledExtent,
+                                      child: const Center(
+                                        child: _FiveLineRefreshIndicator(),
+                                      ),
+                                    );
+                                  },
+                                ),
                                 SliverAppBar(
                                   pinned: true,
                                   primary: true,
@@ -282,14 +278,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                 ),
                               ],
                               body: _profileContent(),
-                            ),
-                          ),
-                          if (_refreshingProfile)
-                            Positioned(
-                              top: MediaQuery.of(context).padding.top + _barH + _tabsH + 3,
-                              left: 0,
-                              right: 0,
-                              child: const Center(child: _FiveLineRefreshIndicator()),
                             ),
                           Positioned(
                             left: 14,
@@ -1303,12 +1291,12 @@ class _FiveLineRefreshIndicatorState extends State<_FiveLineRefreshIndicator>
   Widget build(BuildContext context) => AnimatedBuilder(
         animation: _controller,
         builder: (context, _) => Container(
-          width: 58,
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+          width: 48,
+          height: 48,
+          padding: const EdgeInsets.all(9),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(.96),
-            borderRadius: BorderRadius.circular(16),
+            color: Colors.white.withOpacity(.98),
+            borderRadius: BorderRadius.circular(9),
             border: Border.all(color: const Color(0xFFEFCB77), width: 1),
             boxShadow: const [
               BoxShadow(color: Color(0x18000000), blurRadius: 8, offset: Offset(0, 2)),
