@@ -54,6 +54,7 @@ class _RoomPageState extends State<RoomPage> {
   OverlayEntry? _miniOverlayEntry;
   Route<dynamic>? _roomRoute;
   bool _isChangingSeat = false;
+  bool _amRoomOwner = false;
   String? _loadError;
   int? _mySeat;
   String _ownerName = 'صاحب الغرفة';
@@ -71,6 +72,7 @@ class _RoomPageState extends State<RoomPage> {
   Uri get _seatsUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/seats');
   Uri get _chatSessionUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/chat-session');
   Uri get _messagesUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/messages');
+  Uri get _announcementUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/announcement');
   Uri get _chatStreamUri {
     final base = Uri.parse(_apiBase);
     return base.replace(
@@ -94,8 +96,13 @@ class _RoomPageState extends State<RoomPage> {
   @override
   void initState() {
     super.initState();
-    _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? 'مرحباً بكم في الغرفة، نتمنى لكم وقتاً ممتعاً').toString();
-    // Design-preview phase: keep all room services in place but do not start or connect them yet.
+    _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? '').toString();
+    unawaited(_refreshSeats());
+    unawaited(_startRoomChat());
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      unawaited(_refreshSeats());
+      unawaited(_sendHeartbeat());
+    });
   }
 
   @override
@@ -162,10 +169,17 @@ class _RoomPageState extends State<RoomPage> {
     final nextOwnerId = owner is Map
         ? (owner['id'] ?? owner['userId'] ?? owner['uid'] ?? '').toString()
         : _ownerId;
+    final roomData = data['room'];
+    final nextAnnouncement = roomData is Map && roomData['announcement'] != null
+        ? roomData['announcement'].toString()
+        : _roomAnnouncement;
+    final nextIsOwner = data['isOwner'] == true;
     final changed = jsonEncode(_seats) != jsonEncode(seats) ||
         _mySeat != nextMySeat ||
         _ownerName != nextOwnerName ||
         _ownerId != nextOwnerId ||
+        _roomAnnouncement != nextAnnouncement ||
+        _amRoomOwner != nextIsOwner ||
         _isLoading ||
         _loadError != null;
     if (!mounted || !changed) return;
@@ -174,6 +188,8 @@ class _RoomPageState extends State<RoomPage> {
       _mySeat = nextMySeat;
       _ownerName = nextOwnerName;
       _ownerId = nextOwnerId;
+      _roomAnnouncement = nextAnnouncement;
+      _amRoomOwner = nextIsOwner;
       _isLoading = false;
       _loadError = null;
     });
@@ -187,21 +203,7 @@ class _RoomPageState extends State<RoomPage> {
     } catch (_) {}
   }
 
-  bool get _isRoomOwner {
-    if (widget.room['isOwner'] == true) return true;
-    final ownerId = (widget.room['ownerId'] ?? widget.room['owner_id'] ?? widget.room['createdBy'] ?? widget.room['created_by'] ?? _ownerId).toString();
-    if (ownerId.isEmpty) return false;
-    try {
-      final parts = widget.accessToken.split('.');
-      if (parts.length < 2) return false;
-      final payload = jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))));
-      if (payload is! Map) return false;
-      final userId = (payload['sub'] ?? payload['userId'] ?? payload['uid'] ?? '').toString();
-      return userId.isNotEmpty && userId == ownerId;
-    } catch (_) {
-      return false;
-    }
-  }
+  bool get _isRoomOwner => _amRoomOwner;
 
   void _scrollChatToBottom({bool animated = true}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -595,6 +597,10 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Future<void> _editRoomAnnouncement() async {
+    if (!_isRoomOwner) {
+      _showMessage('تعديل الإعلان متاح لمالك الغرفة فقط');
+      return;
+    }
     final controller = TextEditingController(text: _roomAnnouncement);
     final result = await showDialog<String>(
       context: context,
@@ -615,14 +621,28 @@ class _RoomPageState extends State<RoomPage> {
         ],
       ),
     );
+    final announcement = result?.trim();
     controller.dispose();
-    if (result == null || result.isEmpty || !mounted) return;
-    setState(() => _roomAnnouncement = result);
-    _appendLocalMessage(Message(
-      id: 'announcement-${DateTime.now().microsecondsSinceEpoch}',
-      type: 'announcement', senderId: 'demo-owner', senderName: _ownerName,
-      senderAvatar: '', text: result, createdAt: DateTime.now(),
-    ));
+    if (announcement == null || !mounted) return;
+    try {
+      final response = await http.patch(
+        _announcementUri,
+        headers: _headers,
+        body: jsonEncode({'announcement': announcement}),
+      ).timeout(const Duration(seconds: 10));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+        if (mounted) setState(() => _roomAnnouncement = (data['announcement'] ?? announcement).toString());
+        _showMessage('تم تحديث إعلان الغرفة');
+      } else {
+        final message = data is Map ? (data['message'] ?? '').toString() : '';
+        _showMessage(message.isNotEmpty ? message : response.statusCode == 403
+            ? 'تعديل الإعلان متاح لمالك الغرفة فقط'
+            : 'تعذر حفظ إعلان الغرفة، حاول مرة أخرى');
+      }
+    } catch (_) {
+      if (mounted) _showMessage('تعذر الاتصال بالخادم، لم يتم حفظ الإعلان');
+    }
   }
 
   Widget _roomChatComposer() {
@@ -760,7 +780,12 @@ class _RoomPageState extends State<RoomPage> {
 
   @override
   Widget build(BuildContext context) {
-    return VoiceRoomDesignPreview(room: widget.room);
+    return VoiceRoomDesignPreview(
+      room: widget.room,
+      announcement: _roomAnnouncement,
+      canEditAnnouncement: _isRoomOwner,
+      onEditAnnouncement: _editRoomAnnouncement,
+    );
   }
 
   Widget _referenceRoomHeader() {
