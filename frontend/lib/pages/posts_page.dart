@@ -553,7 +553,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                     style: const TextStyle(color: _ink, fontSize: 13),
                     decoration: InputDecoration(
                       counterText: '',
-                      hintText: replyingTo == null ? 'اكتب تعليقاً...' : 'اكتب ردك...',
+                      hintText: replyingTo == null ? 'اكتب تعليقاً...' : 'رد ${(replyingTo?['name'] ?? replyingTo?['displayName'] ?? 'مستخدم').toString()}',
                       hintStyle: const TextStyle(color: _muted),
                       filled: true, fillColor: _cream,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
