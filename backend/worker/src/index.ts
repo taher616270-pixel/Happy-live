@@ -74,7 +74,7 @@ async function createSession(db: D1Database, userId: string): Promise<{ accessTo
 }
 
 async function ensurePublicUserId(db: D1Database, userId: string, currentId?: string | null): Promise<string> {
-  if (currentId && /^\\d{8}$/.test(currentId)) return currentId;
+  if (currentId && /^\d{8}$/.test(currentId)) return currentId;
   for (let attempt = 0; attempt < 20; attempt++) {
     const candidate = String(10000000 + crypto.getRandomValues(new Uint32Array(1))[0] % 90000000);
     try {
