@@ -1371,10 +1371,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                               repliesSection(),
                                             ],
                                           ),
-                                          ),
                                         ),
-                                      ),
-                                    );
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
                                   },
                                 ),
                 ),
