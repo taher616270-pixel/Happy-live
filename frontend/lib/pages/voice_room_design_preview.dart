@@ -141,7 +141,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(occupied ? (mine ? 'أنت' : name) : 'اضغط للصعود',
+          Text(occupied ? (mine ? 'أنت' : name) : '$n',
             maxLines: 1, overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.white70, fontSize: 10)),
         ]));
