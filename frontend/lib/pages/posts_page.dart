@@ -370,11 +370,31 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                           separatorBuilder: (_, __) => const Divider(height: 18, color: Color(0xFFF0EBDD)),
                           itemBuilder: (_, i) {
                             final c = comments[i];
+                            final commenterName = (c['name'] ?? 'مستخدم').toString();
+                            final commenterAvatar =
+                                (c['avatarUrl'] ?? c['avatar_url'] ?? '').toString().trim();
                             return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              _avatar((c['name'] ?? 'م').toString()),
+                              InkWell(
+                                onTap: () => _openUserProfile(c),
+                                customBorder: const CircleBorder(),
+                                child: CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: const Color(0xFFF3F3F3),
+                                  backgroundImage: commenterAvatar.isNotEmpty
+                                      ? NetworkImage(commenterAvatar)
+                                      : null,
+                                  child: commenterAvatar.isEmpty
+                                      ? Text(commenterName.isEmpty ? 'م' : commenterName.characters.first,
+                                          style: const TextStyle(color: Color(0xFF80602B), fontWeight: FontWeight.w900))
+                                      : null,
+                                ),
+                              ),
                               const SizedBox(width: 10),
                               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text((c['name'] ?? 'مستخدم').toString(), style: const TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13)),
+                                InkWell(
+                                  onTap: () => _openUserProfile(c),
+                                  child: Text(commenterName, style: const TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13)),
+                                ),
                                 const SizedBox(height: 4),
                                 Text((c['content'] ?? '').toString(), style: const TextStyle(color: _ink, fontSize: 13, height: 1.5)),
                               ])),
