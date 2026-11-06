@@ -735,9 +735,9 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const rows = await env.DB.prepare(
-          "SELECT c.id, c.content, c.created_at, p.display_name, p.gabo_id FROM post_comments c LEFT JOIN profiles p ON p.user_id = c.user_id WHERE c.post_id = ? ORDER BY c.created_at ASC LIMIT 100"
-        ).bind(postCommentsRoute[1]).all<{ id: string; content: string; created_at: string; display_name: string | null; gabo_id: string | null }>();
-        return json({ ok: true, comments: (rows.results ?? []).map(c => ({ id: c.id, content: c.content, createdAt: c.created_at, name: c.display_name?.trim() || "مستخدم", userCode: c.gabo_id })) }, 200, origin, env);
+          "SELECT c.id, c.user_id, c.content, c.created_at, p.display_name, p.gabo_id, p.avatar_key FROM post_comments c LEFT JOIN profiles p ON p.user_id = c.user_id WHERE c.post_id = ? ORDER BY c.created_at ASC LIMIT 100"
+        ).bind(postCommentsRoute[1]).all<{ id: string; user_id: string; content: string; created_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null }>();
+        return json({ ok: true, comments: (rows.results ?? []).map(c => ({ id: c.id, userId: c.user_id, content: c.content, createdAt: c.created_at, name: c.display_name?.trim() || "مستخدم", userCode: c.gabo_id, avatarUrl: c.avatar_key })) }, 200, origin, env);
       } catch (error) {
         console.error("[posts.comments.list] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "comments_unavailable" }, 500, origin, env);
@@ -758,7 +758,9 @@ export default {
         const createdAt = new Date().toISOString();
         await env.DB.prepare("INSERT INTO post_comments (id, post_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)")
           .bind(id, postCommentsRoute[1], user.id, content, createdAt).run();
-        return json({ ok: true, comment: { id, content, createdAt, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id } }, 201, origin, env);
+        const commenterProfile = await env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ?")
+          .bind(user.id).first<{ avatar_key: string | null }>();
+        return json({ ok: true, comment: { id, userId: user.id, content, createdAt, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id, avatarUrl: commenterProfile?.avatar_key ?? null } }, 201, origin, env);
       } catch (error) {
         console.error("[posts.comments.create] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "comment_creation_failed" }, 500, origin, env);
