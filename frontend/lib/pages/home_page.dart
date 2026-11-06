@@ -311,29 +311,39 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+        child: SizedBox(
+          width: double.infinity,
+          height: 40,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              Material(
-                color: Colors.white,
-                shape: const CircleBorder(),
-                child: IconButton(
-                  tooltip: 'البحث عن شخص بواسطة ID',
-                  onPressed: _searchUserById,
-                  icon: const Icon(Icons.search_rounded, color: HappyHomeColors.gold, size: 21),
-                  visualDensity: VisualDensity.compact,
-                  constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _topButton(0, Icons.meeting_room_outlined, 'غرفتي'),
+                    const SizedBox(width: 5),
+                    _topButton(1, Icons.explore_outlined, 'استكشف'),
+                    const SizedBox(width: 5),
+                    _topButton(2, Icons.public_rounded, _countryName),
+                  ],
                 ),
               ),
-              const SizedBox(width: 5),
-              _topButton(0, Icons.meeting_room_outlined, 'غرفتي'),
-              const SizedBox(width: 5),
-              _topButton(1, Icons.explore_outlined, 'استكشف'),
-              const SizedBox(width: 5),
-              _topButton(2, Icons.public_rounded, _countryName),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Material(
+                  color: Colors.white,
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    tooltip: 'البحث عن شخص بواسطة ID',
+                    onPressed: _searchUserById,
+                    icon: const Icon(Icons.search_rounded, color: HappyHomeColors.gold, size: 21),
+                    visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
