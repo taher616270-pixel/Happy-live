@@ -486,7 +486,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       // الصورة الشخصية تتداخل مع حافة البطاقة
       PositionedDirectional(
         top: cardTop - 18,
-        start: -38,
+        start: 57,
         child: _avatar(58, avatar),
       ),
       // نقاط الغلاف (تظهر فقط لو فيه أكثر من غلاف)
