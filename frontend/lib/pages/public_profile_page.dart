@@ -174,8 +174,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                         children: [
                           RefreshIndicator(
                             onRefresh: _refreshProfile,
-                            color: _brownLight,
-                            backgroundColor: Colors.white,
+                            color: Colors.transparent,
+                            backgroundColor: Colors.transparent,
                             edgeOffset: _barH + _tabsH,
                             child: NestedScrollView(
                               controller: _profileScrollController,
