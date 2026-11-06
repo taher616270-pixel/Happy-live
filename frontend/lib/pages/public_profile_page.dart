@@ -1094,6 +1094,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                 comments.removeWhere((item) => item['id'].toString() == commentId);
                 final oldCount = (post['commentsCount'] ?? post['comments_count'] ?? 1) as num;
                 post['commentsCount'] = (oldCount.toInt() - 1).clamp(0, 1 << 30);
+                if (mounted) setState(() {});
               }
               setSheetState(() {});
               if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text(isDelete ? 'تم حذف التعليق' : 'تم إرسال البلاغ')));
