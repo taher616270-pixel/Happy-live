@@ -785,6 +785,9 @@ class _RoomPageState extends State<RoomPage> {
       announcement: _roomAnnouncement,
       canEditAnnouncement: _isRoomOwner,
       onEditAnnouncement: _editRoomAnnouncement,
+      seats: _seats,
+      onTapSeat: _selectSeat,
+      isChangingSeat: _isChangingSeat,
     );
   }
 
