@@ -760,6 +760,51 @@ export default {
       }
     }
 
+    const commentActionRoute = url.pathname.match(/^\/api\/v1\/posts\/([0-9a-f-]{36})\/comments\/([0-9a-f-]{36})(?:\/(report))?$/i);
+    if (commentActionRoute && request.method === "DELETE" && !commentActionRoute[3]) {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const post = await env.DB.prepare("SELECT user_id FROM posts WHERE id = ? AND status = 'published'")
+          .bind(commentActionRoute[1]).first<{ user_id: string }>();
+        if (!post) return json({ error: "post_not_found" }, 404, origin, env);
+        if (post.user_id !== user.id) return json({ error: "forbidden" }, 403, origin, env);
+        const comment = await env.DB.prepare("SELECT id FROM post_comments WHERE id = ? AND post_id = ?")
+          .bind(commentActionRoute[2], commentActionRoute[1]).first<{ id: string }>();
+        if (!comment) return json({ error: "comment_not_found" }, 404, origin, env);
+        await env.DB.prepare("DELETE FROM post_comment_replies WHERE comment_id = ?").bind(comment.id).run();
+        await env.DB.prepare("DELETE FROM post_comments WHERE id = ? AND post_id = ?")
+          .bind(comment.id, commentActionRoute[1]).run();
+        return json({ ok: true }, 200, origin, env);
+      } catch (error) {
+        console.error("[posts.comments.delete] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "comment_delete_failed" }, 500, origin, env);
+      }
+    }
+    if (commentActionRoute && request.method === "POST" && commentActionRoute[3] === "report") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const comment = await env.DB.prepare(
+          "SELECT c.id, c.user_id FROM post_comments c INNER JOIN posts p ON p.id = c.post_id WHERE c.id = ? AND c.post_id = ? AND p.status = 'published'"
+        ).bind(commentActionRoute[2], commentActionRoute[1]).first<{ id: string; user_id: string }>();
+        if (!comment) return json({ error: "comment_not_found" }, 404, origin, env);
+        if (comment.user_id === user.id) return json({ error: "cannot_report_own_comment" }, 400, origin, env);
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS post_comment_reports (id TEXT PRIMARY KEY, post_id TEXT NOT NULL, comment_id TEXT NOT NULL, reporter_id TEXT NOT NULL, reported_user_id TEXT NOT NULL, reason TEXT NOT NULL DEFAULT 'general', created_at TEXT NOT NULL)").run();
+        const existing = await env.DB.prepare("SELECT id FROM post_comment_reports WHERE comment_id = ? AND reporter_id = ?")
+          .bind(comment.id, user.id).first();
+        if (existing) return json({ error: "already_reported" }, 409, origin, env);
+        await env.DB.prepare("INSERT INTO post_comment_reports (id, post_id, comment_id, reporter_id, reported_user_id, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+          .bind(crypto.randomUUID(), commentActionRoute[1], comment.id, user.id, comment.user_id, "general", new Date().toISOString()).run();
+        return json({ ok: true }, 201, origin, env);
+      } catch (error) {
+        console.error("[posts.comments.report] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "comment_report_failed" }, 500, origin, env);
+      }
+    }
+
     const postCommentsRoute = url.pathname.match(/^\/api\/v1\/posts\/([0-9a-f-]{36})\/comments$/i);
     if (postCommentsRoute && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
