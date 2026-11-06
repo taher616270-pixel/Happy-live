@@ -677,7 +677,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
               // مسافة للأزرار الثابتة تحت
               padding: EdgeInsets.only(bottom: 110 + mq.padding.bottom),
               child: ColoredBox(
-                color: Colors.white,
+                color: index == 0 ? Colors.transparent : Colors.white,
                 child: _tabContent(index),
               ),
             ),
