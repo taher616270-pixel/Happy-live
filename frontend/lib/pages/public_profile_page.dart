@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -144,7 +145,17 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
   }
 
-  Future<void> _refreshProfile() => _loadProfile(showErrorView: false);
+  bool _refreshingProfile = false;
+
+  Future<void> _refreshProfile() async {
+    if (_refreshingProfile) return;
+    setState(() => _refreshingProfile = true);
+    try {
+      await _loadProfile(showErrorView: false);
+    } finally {
+      if (mounted) setState(() => _refreshingProfile = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Directionality(
@@ -272,6 +283,13 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                               body: _profileContent(),
                             ),
                           ),
+                          if (_refreshingProfile)
+                            Positioned(
+                              top: MediaQuery.of(context).padding.top + _barH + _tabsH + 3,
+                              left: 0,
+                              right: 0,
+                              child: const Center(child: _FiveLineRefreshIndicator()),
+                            ),
                           Positioned(
                             left: 14,
                             right: 14,
@@ -1262,6 +1280,63 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       ),
     ]);
   }
+}
+
+class _FiveLineRefreshIndicator extends StatefulWidget {
+  const _FiveLineRefreshIndicator();
+
+  @override
+  State<_FiveLineRefreshIndicator> createState() =>
+      _FiveLineRefreshIndicatorState();
+}
+
+class _FiveLineRefreshIndicatorState extends State<_FiveLineRefreshIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 650),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) => Container(
+          width: 58,
+          height: 30,
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(.96),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFEFCB77), width: 1),
+            boxShadow: const [
+              BoxShadow(color: Color(0x18000000), blurRadius: 8, offset: Offset(0, 2)),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: List.generate(5, (index) {
+              final phase = (_controller.value * 2 * 3.141592653589793) -
+                  (index * .72);
+              final height = 7 + (10 * ((1 + math.sin(phase)) / 2));
+              return Container(
+                width: 3,
+                height: height,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD9A93E),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              );
+            }),
+          ),
+        ),
+      );
 }
 
 class _ProfilePostImage extends StatefulWidget {
