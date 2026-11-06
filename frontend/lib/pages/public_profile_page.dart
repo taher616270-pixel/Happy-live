@@ -624,8 +624,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                             ? (_pageController.page ?? _tab.toDouble())
                                 .clamp(0.0, 2.0)
                             : _tab.toDouble();
-                        // في RTL تبدأ الصفحة 2 من اليمين؛ يتحرك المؤشر مع الإصبع.
-                        final dx = -(2.0 - page) * tabWidth;
+                        // الحركة معكوسة: المؤشر ينتقل من اليسار إلى اليمين.
+                        final dx = (2.0 - page) * tabWidth;
                         return PositionedDirectional(
                           start: 0,
                           bottom: 6,
@@ -685,6 +685,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         textDirection: TextDirection.rtl,
         child: PageView(
           controller: _pageController,
+          reverse: true,
           physics: const ClampingScrollPhysics(),
           onPageChanged: (index) {
             if (mounted && _tab != index) {
