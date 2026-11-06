@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'create_room_page.dart';
 import 'room_page.dart';
+import 'voice_rooms_page.dart';
 import 'public_profile_page.dart';
 
 /// Theme colors kept local so this page can be maintained independently.
@@ -290,7 +291,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         coverUrl: '',
         avatarUrls: const [],
         listeners: 0,
-        onTap: () => widget.onSoon('غرف صوتية'),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => VoiceRoomsPage(accessToken: widget.accessToken),
+        )),
       ),
     ],
   );
