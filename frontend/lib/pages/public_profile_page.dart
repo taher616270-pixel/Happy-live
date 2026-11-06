@@ -52,8 +52,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   static const double _expandedH = (_coverH - _cardLift) + _cardH;
 
   int _tab = 2;
-  double _tabSlideFromX = 1;
-  double _tabDragDistance = 0;
+  final PageController _pageController = PageController(initialPage: 2);
   int _coverIndex = 0;
   final ScrollController _profileScrollController = ScrollController();
   bool _loading = true;
@@ -87,18 +86,21 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     _loadProfile();
   }
 
-  // ترتيب التبويبات من اليمين إلى اليسار: الشخصية(2)، الوكالات(1)، المنشورات(0)
+  // ترتيب الصفحات في PageView: المنشورات(0)، الوكالات(1)، الشخصية(2).
+  // Directionality RTL يجعل الصفحة 2 في اليمين والصفحة 0 في اليسار.
   void _changeProfileTab(int index) {
     if (index == _tab || !mounted || index < 0 || index > 2) return;
-    setState(() {
-      _tabSlideFromX = index < _tab ? 1 : -1;
-      _tab = index;
-    });
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
   void dispose() {
     _profileScrollController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -581,8 +583,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           onTap: () => _changeProfileTab(index),
           child: SizedBox(
             height: _tabsH - 1,
-            child: Stack(alignment: Alignment.center, children: [
-              Text(
+            child: Center(
+              child: Text(
                 title,
                 maxLines: 1,
                 style: TextStyle(
@@ -591,18 +593,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                   fontWeight: active ? FontWeight.w900 : FontWeight.w700,
                 ),
               ),
-              Positioned(
-                bottom: 6,
-                child: Container(
-                  height: 3,
-                  width: 20,
-                  decoration: BoxDecoration(
-                    color: active ? _gold : Colors.transparent,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
-            ]),
+            ),
           ),
         ),
       );
@@ -616,11 +607,51 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         child: Column(children: [
           SizedBox(
             height: _tabsH - 1,
-            child: Row(children: [
-              tab('الصفحة الشخصية', 2),
-              tab('الوكالات', 1),
-              tab('المنشورات', 0),
-            ]),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final tabWidth = constraints.maxWidth / 3;
+                return Stack(
+                  children: [
+                    Row(children: [
+                      tab('الصفحة الشخصية', 2),
+                      tab('الوكالات', 1),
+                      tab('المنشورات', 0),
+                    ]),
+                    AnimatedBuilder(
+                      animation: _pageController,
+                      builder: (context, child) {
+                        final page = _pageController.hasClients
+                            ? (_pageController.page ?? _tab.toDouble())
+                                .clamp(0.0, 2.0)
+                            : _tab.toDouble();
+                        // في RTL تبدأ الصفحة 2 من اليمين؛ يتحرك المؤشر مع الإصبع.
+                        final dx = -(2.0 - page) * tabWidth;
+                        return PositionedDirectional(
+                          start: 0,
+                          bottom: 6,
+                          child: Transform.translate(
+                            offset: Offset(dx, 0),
+                            child: SizedBox(
+                              width: tabWidth,
+                              child: Center(
+                                child: Container(
+                                  width: 20,
+                                  height: 3,
+                                  decoration: BoxDecoration(
+                                    color: _gold,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
           Container(height: 1, color: const Color(0xFFF0ECE4)),
         ]),
@@ -630,77 +661,70 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   Widget _profileContent() {
     final mq = MediaQuery.of(context);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onHorizontalDragStart: (_) => _tabDragDistance = 0,
-      onHorizontalDragUpdate: (details) {
-        _tabDragDistance += details.delta.dx;
-      },
-      onHorizontalDragEnd: (details) {
-        final distance = _tabDragDistance;
-        final velocity = details.primaryVelocity ?? 0;
-        _tabDragDistance = 0;
-        if ((distance < -40 || velocity < -350) && _tab < 2) {
-          _changeProfileTab(_tab + 1);
-        } else if ((distance > 40 || velocity > 350) && _tab > 0) {
-          _changeProfileTab(_tab - 1);
-        }
-      },
-      onHorizontalDragCancel: () => _tabDragDistance = 0,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minHeight: mq.size.height - _barH - _tabsH - mq.padding.top,
-        ),
-        child: Padding(
-          // مسافة للأزرار الثابتة تحت
-          padding: EdgeInsets.only(bottom: 110 + mq.padding.bottom),
-          child: ColoredBox(color: Colors.white, child: _tabContent()),
+    final pageHeight =
+        (mq.size.height - _barH - _tabsH - mq.padding.top).clamp(320.0, double.infinity).toDouble();
+
+    Widget page(int index) => SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: pageHeight),
+            child: Padding(
+              // مسافة للأزرار الثابتة تحت
+              padding: EdgeInsets.only(bottom: 110 + mq.padding.bottom),
+              child: ColoredBox(
+                color: Colors.white,
+                child: _tabContent(index),
+              ),
+            ),
+          ),
+        );
+
+    return SizedBox(
+      height: pageHeight,
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: PageView(
+          controller: _pageController,
+          physics: const ClampingScrollPhysics(),
+          onPageChanged: (index) {
+            if (mounted && _tab != index) {
+              setState(() => _tab = index);
+            }
+          },
+          children: [
+            page(0),
+            page(1),
+            page(2),
+          ],
         ),
       ),
     );
   }
 
-  Widget _tabContent() => AnimatedSwitcher(
-        duration: const Duration(milliseconds: 280),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          final currentKey = ValueKey<String>(
-              _tab == 0 ? 'posts' : (_tab == 1 ? 'agencies' : 'personal'));
-          final incoming = child.key == currentKey;
-          final dir = incoming ? _tabSlideFromX : -_tabSlideFromX;
-          final slide = Tween<Offset>(begin: Offset(dir, 0), end: Offset.zero)
-              .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
-          return ClipRect(
-            child: SlideTransition(
-              position: slide,
-              child: FadeTransition(opacity: animation, child: child),
-            ),
-          );
-        },
-        child: _tab == 0
-            ? Padding(
-                key: const ValueKey('posts'),
-                padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text('المنشورات',
-                        style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 9),
-                    _postsContent(),
-                  ],
-                ),
-              )
-            : _tab == 1
-                ? _emptySection(
-                    key: const ValueKey('agencies'),
-                    icon: Icons.apartment_rounded,
-                    title: 'لا توجد وكالة مرتبطة',
-                    subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
-                  )
-                : _personalDetails(),
+  Widget _tabContent(int index) {
+    if (index == 0) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('المنشورات',
+                style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 9),
+            _postsContent(),
+          ],
+        ),
       );
+    }
+    if (index == 1) {
+      return _emptySection(
+        icon: Icons.apartment_rounded,
+        title: 'لا توجد وكالة مرتبطة',
+        subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
+      );
+    }
+    return _personalDetails();
+  }
 
   Widget _emptySection({
     required Key key,
