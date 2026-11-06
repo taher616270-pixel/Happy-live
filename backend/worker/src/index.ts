@@ -544,6 +544,94 @@ export default {
       }
     }
 
+    // Room moderation: room owners and explicitly assigned room moderators only.
+    const moderationRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/moderation$/);
+    if (moderationRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const actor = await authenticatedUser(request, env.DB);
+        if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = decodeURIComponent(moderationRoute[1]);
+        const room = await env.DB.prepare(
+          "SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string; owner_user_id: string }>();
+        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; }
+        catch { return json({ error: "invalid_json" }, 400, origin, env); }
+        const action = String(body.action ?? "");
+        const targetUserId = String(body.targetUserId ?? actor.id);
+        const isOwner = room.owner_user_id === actor.id;
+        const moderator = await env.DB.prepare(
+          "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
+        ).bind(roomId, actor.id).first<{ user_id: string }>();
+        const canModerate = isOwner || !!moderator;
+        if (action === "self_mic_toggle") {
+          const current = await env.DB.prepare(
+            "SELECT is_muted, muted_by FROM room_user_controls WHERE room_id = ? AND user_id = ?"
+          ).bind(roomId, actor.id).first<{ is_muted: number; muted_by: string | null }>();
+          if (current?.is_muted === 1 && current.muted_by && current.muted_by !== actor.id) {
+            return json({ error: "moderator_muted", message: "تم كتم مايكك بواسطة إدارة الغرفة" }, 403, origin, env);
+          }
+          const nextMuted = current?.is_muted === 1 ? 0 : 1;
+          await env.DB.prepare(
+            "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, NULL, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = NULL, updated_at = excluded.updated_at"
+          ).bind(roomId, actor.id, nextMuted, new Date().toISOString()).run();
+          return json({ ok: true, isMuted: nextMuted === 1 }, 200, origin, env);
+        }
+        if (!canModerate) return json({ error: "room_moderator_required", message: "هذه الصلاحية لمالك الغرفة ومشرفيها فقط" }, 403, origin, env);
+        if (action === "assign_moderator" || action === "remove_moderator") {
+          if (!isOwner) return json({ error: "room_owner_required" }, 403, origin, env);
+          if (!targetUserId || targetUserId === actor.id) return json({ error: "invalid_moderator" }, 400, origin, env);
+          if (action === "assign_moderator") {
+            await env.DB.prepare("INSERT OR IGNORE INTO room_moderators (room_id, user_id, assigned_by, created_at) VALUES (?, ?, ?, ?)")
+              .bind(roomId, targetUserId, actor.id, new Date().toISOString()).run();
+          } else {
+            await env.DB.prepare("DELETE FROM room_moderators WHERE room_id = ? AND user_id = ?")
+              .bind(roomId, targetUserId).run();
+          }
+          return json({ ok: true }, 200, origin, env);
+        }
+        if (!["toggle_mute", "kick", "ban", "lower"].includes(action) || !targetUserId || targetUserId === room.owner_user_id) {
+          return json({ error: "invalid_moderation_action" }, 400, origin, env);
+        }
+        const targetModerator = await env.DB.prepare(
+          "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
+        ).bind(roomId, targetUserId).first<{ user_id: string }>();
+        if (targetModerator) return json({ error: "cannot_moderate_room_moderator", message: "لا يمكن تنفيذ الإجراء على مشرف الغرفة" }, 403, origin, env);
+        const now = new Date().toISOString();
+        if (action === "toggle_mute") {
+          const current = await env.DB.prepare(
+            "SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ?"
+          ).bind(roomId, targetUserId).first<{ is_muted: number }>();
+          const nextMuted = current?.is_muted === 1 ? 0 : 1;
+          await env.DB.prepare(
+            "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = CASE WHEN excluded.is_muted = 1 THEN excluded.muted_by ELSE NULL END, updated_at = excluded.updated_at"
+          ).bind(roomId, targetUserId, nextMuted, nextMuted === 1 ? actor.id : null, now).run();
+          return json({ ok: true, isMuted: nextMuted === 1 }, 200, origin, env);
+        }
+        if (action === "kick" || action === "ban" || action === "lower") {
+          await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId).run();
+          if (action === "kick" || action === "ban") {
+            await env.DB.prepare(
+              "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
+            ).bind(now, roomId, targetUserId).run();
+          }
+          if (action === "ban") {
+            await env.DB.prepare(
+              "INSERT INTO room_bans (room_id, user_id, banned_by, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET banned_by = excluded.banned_by, created_at = excluded.created_at"
+            ).bind(roomId, targetUserId, actor.id, now).run();
+          }
+          return json({ ok: true }, 200, origin, env);
+        }
+        return json({ error: "invalid_moderation_action" }, 400, origin, env);
+      } catch (error) {
+        const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[rooms.moderation] failed", diagnostic);
+        return json({ error: "room_moderation_failed" }, 500, origin, env);
+      }
+    }
+
     // Eight shared microphone seats. A seat is leased for 45 seconds and renewed by
     // authenticated clients, so abandoned seats disappear after disconnects.
     const seatRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/seats$/);
@@ -558,6 +646,11 @@ export default {
           "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, p.display_name AS owner_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; owner_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+
+        const activeBan = await env.DB.prepare(
+          "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
+        ).bind(roomId, user.id).first<{ user_id: string }>();
+        if (activeBan) return json({ error: "room_banned", message: "تم حظرك من هذه الغرفة" }, 403, origin, env);
 
         // Expired leases are never shown as occupied.
         await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND expires_at <= ?").bind(roomId, now).run();
@@ -598,18 +691,22 @@ export default {
         }
 
         const seatsResult = await env.DB.prepare(
-          "SELECT s.seat_number, s.user_id, s.joined_at, p.display_name, p.gabo_id, p.avatar_key FROM room_seats s LEFT JOIN profiles p ON p.user_id = s.user_id WHERE s.room_id = ? AND s.expires_at > ? ORDER BY s.seat_number"
-        ).bind(roomId, new Date().toISOString()).all<{ seat_number: number; user_id: string; joined_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null }>();
+          "SELECT s.seat_number, s.user_id, s.joined_at, p.display_name, p.gabo_id, p.avatar_key, COALESCE(c.is_muted, 0) AS is_muted FROM room_seats s LEFT JOIN profiles p ON p.user_id = s.user_id LEFT JOIN room_user_controls c ON c.room_id = s.room_id AND c.user_id = s.user_id WHERE s.room_id = ? AND s.expires_at > ? ORDER BY s.seat_number"
+        ).bind(roomId, new Date().toISOString()).all<{ seat_number: number; user_id: string; joined_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null; is_muted: number }>();
         const seats = (seatsResult.results ?? []).map((seat) => ({
           seatNumber: seat.seat_number,
           userId: seat.user_id,
           userCode: seat.gabo_id ?? "",
+          isMuted: seat.is_muted === 1,
           name: seat.display_name?.trim() || "مستخدم",
           avatarUrl: seat.avatar_key,
           joinedAt: seat.joined_at,
           isMe: seat.user_id === user.id
         }));
         const mySeat = seats.find((seat) => seat.userId === user.id)?.seatNumber ?? null;
+        const roomModerator = await env.DB.prepare(
+          "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
+        ).bind(roomId, user.id).first<{ user_id: string }>();
         const audienceCutoff = new Date(Date.now() - 45000).toISOString();
         await env.DB.prepare(
           "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND exited_at IS NULL AND last_seen_at < ?"
@@ -624,6 +721,7 @@ export default {
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة" },
           me: { id: user.id, name: user.display_name?.trim() || "مستخدم" },
           isOwner: room.owner_user_id === user.id,
+          isModerator: !!roomModerator,
           mySeat,
           seats
         }, 200, origin, env);
