@@ -830,7 +830,7 @@ export default {
           "FROM posts WHERE user_id = ? AND status = 'published' " +
           "AND (visibility = 'public' OR (visibility = 'followers' AND ? = 1) OR (visibility = 'private' AND ? = 1)) " +
           "ORDER BY created_at DESC LIMIT 50"
-        ).bind(targetId, isFollowing ? 1 : 0, isMine ? 1 : 0, viewer.id).all<{
+        ).bind(viewer.id, targetId, isFollowing ? 1 : 0, isMine ? 1 : 0).all<{
           id: string; content: string; image_url: string | null; created_at: string;
           likes_count: number; comments_count: number; liked: number;
         }>() : { results: [] as Array<{id:string;content:string;image_url:string|null;created_at:string;likes_count:number;comments_count:number}> };
