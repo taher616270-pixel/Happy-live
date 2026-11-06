@@ -765,6 +765,31 @@ export default {
       }
     }
 
+    const userByCodeRoute = url.pathname.match(/^\/api\/v1\/users\/by-code\/(\d{8})$/);
+    if (userByCodeRoute && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const viewer = await authenticatedUser(request, env.DB);
+        if (!viewer) return json({ error: "authentication_required" }, 401, origin, env);
+        const target = await env.DB.prepare(
+          "SELECT u.id, p.display_name, p.gabo_id, p.avatar_key FROM users u " +
+          "INNER JOIN profiles p ON p.user_id = u.id " +
+          "WHERE p.gabo_id = ? AND u.status = 'active' LIMIT 1"
+        ).bind(userByCodeRoute[1]).first<{
+          id: string; display_name: string | null; gabo_id: string;
+          avatar_key: string | null;
+        }>();
+        if (!target) return json({ error: "user_not_found", message: "لم يتم العثور على مستخدم بهذا ID" }, 404, origin, env);
+        return json({ ok: true, user: {
+          id: target.id, name: target.display_name?.trim() || "مستخدم",
+          userCode: target.gabo_id, avatarUrl: target.avatar_key
+        } }, 200, origin, env);
+      } catch (error) {
+        console.error("[users.by-code] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "user_lookup_failed" }, 500, origin, env);
+      }
+    }
+
     const publicProfileRoute = url.pathname.match(/^\/api\/v1\/users\/([0-9a-f-]{36})\/profile$/i);
     if (publicProfileRoute && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
