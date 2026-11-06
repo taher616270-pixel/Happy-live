@@ -449,7 +449,21 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                             final visibleReplies = expanded || allReplies.length <= 1 ? allReplies : <Map<String, dynamic>>[allReplies.first];
                             final hiddenReplyCount = allReplies.length - visibleReplies.length;
                             Widget repliesSection() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                              ...visibleReplies.map(buildReply),
+                              ...visibleReplies.asMap().entries.map((entry) => Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (entry.key > 0)
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 6),
+                                      child: Divider(
+                                        height: 1,
+                                        thickness: 1,
+                                        color: Color(0xFFE8DCC5),
+                                      ),
+                                    ),
+                                  buildReply(entry.value),
+                                ],
+                              )),
                               if (allReplies.length > 1) Align(alignment: Alignment.centerRight, child: TextButton.icon(
                                 onPressed: () { if (expanded) { expandedReplyThreads.remove(threadId); } else { expandedReplyThreads.add(threadId); } setSheetState(() {}); },
                                 style: TextButton.styleFrom(foregroundColor: _gold, padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2), visualDensity: VisualDensity.compact, minimumSize: Size.zero),
