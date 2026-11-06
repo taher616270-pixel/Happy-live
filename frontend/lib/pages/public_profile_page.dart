@@ -48,6 +48,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   int _tab = 2;
   double _tabSlideFromX = 1; // Retained for the legacy tab builder.
+  double _tabDragDistance = 0;
   final ScrollController _profileScrollController = ScrollController();
   double _scrollProgress = 0;
   bool _loading = true;
@@ -247,22 +248,26 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     ],
                                   ),
                                 ),
-                                SliverFillRemaining(
-                                  hasScrollBody: false,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      _profileTabsAndContent(),
-                                      Padding(
-                                        padding: EdgeInsets.fromLTRB(
-                                          12,
-                                          18,
-                                          12,
-                                          8 + MediaQuery.of(context).padding.bottom,
+                                SliverToBoxAdapter(
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      minHeight: MediaQuery.of(context).size.height,
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        _profileTabsAndContent(),
+                                        Padding(
+                                          padding: EdgeInsets.fromLTRB(
+                                            12,
+                                            18,
+                                            12,
+                                            8 + MediaQuery.of(context).padding.bottom,
+                                          ),
+                                          child: _actionBar(),
                                         ),
-                                        child: _actionBar(),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
@@ -548,11 +553,17 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           Container(height: 1, color: const Color(0xFFF0E7DC)),
           GestureDetector(
             behavior: HitTestBehavior.opaque,
+            onHorizontalDragStart: (_) => _tabDragDistance = 0,
+            onHorizontalDragUpdate: (details) {
+              _tabDragDistance += details.delta.dx;
+            },
             onHorizontalDragEnd: (details) {
-              final velocity = details.primaryVelocity ?? 0;
-              if (velocity < -120 && _tab > 0) {
+              final distance = _tabDragDistance;
+              final velocity = details.velocity.pixelsPerSecond.dx;
+              _tabDragDistance = 0;
+              if ((distance < -45 || velocity < -250) && _tab > 0) {
                 _changeProfileTab(_tab - 1);
-              } else if (velocity > 120 && _tab < 2) {
+              } else if ((distance > 45 || velocity > 250) && _tab < 2) {
                 _changeProfileTab(_tab + 1);
               }
             },
