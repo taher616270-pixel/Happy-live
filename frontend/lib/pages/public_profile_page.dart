@@ -609,7 +609,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             hasScrollBody: false,
             child: Container(
               width: double.infinity,
-              color: Colors.white,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
               child: content,
             ),
           ),
@@ -1065,16 +1068,21 @@ class _PublicProfileTabsDelegate extends SliverPersistentHeaderDelegate {
       );
     }
 
-    return Material(
-      color: Colors.white,
-      elevation: overlapsContent ? 2 : 0,
-      clipBehavior: Clip.antiAlias,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(32),
-        ),
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
+      child: Material(
+        color: Colors.white,
+        elevation: overlapsContent ? 2 : 0,
+        clipBehavior: Clip.antiAlias,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(24),
+          ),
+        ),
+        child: Column(
         children: [
           Expanded(
             child: Row(
@@ -1087,6 +1095,7 @@ class _PublicProfileTabsDelegate extends SliverPersistentHeaderDelegate {
           ),
           Container(height: 1, color: const Color(0xFFF0E7DC)),
         ],
+        ),
       ),
     );
   }
