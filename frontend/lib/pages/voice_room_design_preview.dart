@@ -8,11 +8,24 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     required this.announcement,
     required this.canEditAnnouncement,
     required this.onEditAnnouncement,
+    required this.seats,
+    required this.onTapSeat,
+    required this.isChangingSeat,
   });
   final Map<String, dynamic> room;
   final String announcement;
   final bool canEditAnnouncement;
   final VoidCallback onEditAnnouncement;
+  final List<Map<String, dynamic>> seats;
+  final ValueChanged<int> onTapSeat;
+  final bool isChangingSeat;
+
+  Map<String, dynamic>? _seatAt(int number) {
+    for (final seat in seats) {
+      if (seat['seatNumber'] == number) return seat;
+    }
+    return null;
+  }
 
   String get _name => (room['name'] ?? 'غرفة صوتية').toString();
   String get _id => (room['roomCode'] ?? room['id'] ?? '').toString();
@@ -103,10 +116,34 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(children: List.generate(4, (c) {
         final n = r * 4 + c + 1;
+        final seat = _seatAt(n);
+        final occupied = seat != null;
+        final mine = seat?['isMe'] == true;
+        final name = (seat?['name'] ?? '').toString();
+        final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
+        final canTap = (!occupied || mine) && !isChangingSeat;
         return Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 62, height: 62, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(.16)), child: const Icon(Icons.add_rounded, color: Colors.white70, size: 32)),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: canTap ? () => onTapSeat(n) : null,
+            child: Container(
+              width: 62, height: 62,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: occupied ? const Color(0xFF17434C) : Colors.white.withOpacity(.16),
+                border: Border.all(color: mine ? const Color(0xFFFFD98B) : Colors.white.withOpacity(.35), width: mine ? 2.5 : 1),
+                boxShadow: mine ? const [BoxShadow(color: Color(0x66FFD98B), blurRadius: 12)] : null,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: occupied && avatar.startsWith('http')
+                  ? Image.network(avatar, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Center(child: Text(name.isEmpty ? '؟' : name.characters.first, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))
+                  : Icon(occupied ? Icons.mic_rounded : Icons.add_rounded, color: mine ? const Color(0xFFFFD98B) : Colors.white70, size: 32),
+            ),
+          ),
           const SizedBox(height: 6),
-          Text('$n', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+          Text(occupied ? (mine ? 'أنت' : name) : 'اضغط للصعود',
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white70, fontSize: 10)),
         ]));
       })),
     ))),
