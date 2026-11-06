@@ -410,9 +410,28 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                 Transform.translate(
                                   offset: const Offset(0, -2),
-                                  child: InkWell(
-                                    onTap: () => _openUserProfile(c),
-                                    child: Text(commenterName, style: const TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13)),
+                                  child: Wrap(
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    spacing: 6,
+                                    children: [
+                                      InkWell(
+                                        onTap: () => _openUserProfile(c),
+                                        child: Text(commenterName, style: const TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13)),
+                                      ),
+                                      if ((c['userId'] ?? c['user_id'] ?? '').toString().isNotEmpty &&
+                                          (c['userId'] ?? c['user_id']).toString() ==
+                                              (post['userId'] ?? post['user_id'] ?? '').toString())
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFFE7A8),
+                                            border: Border.all(color: const Color(0xFFD6A642), width: 0.8),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Text('كاتب المنشور',
+                                            style: TextStyle(color: Color(0xFF79520B), fontSize: 9, fontWeight: FontWeight.w900)),
+                                        ),
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(height: 4),
