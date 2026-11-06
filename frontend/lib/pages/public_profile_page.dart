@@ -90,11 +90,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   // Directionality RTL يجعل الصفحة 2 في اليمين والصفحة 0 في اليسار.
   void _changeProfileTab(int index) {
     if (index == _tab || !mounted || index < 0 || index > 2) return;
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-    );
+    setState(() => _tab = index);
   }
 
   @override
@@ -621,37 +617,27 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                         tab('الصفحة الشخصية', 2),
                       ]),
                     ),
-                    AnimatedBuilder(
-                      animation: _pageController,
-                      builder: (context, child) {
-                        final page = _pageController.hasClients
-                            ? (_pageController.page ?? _tab.toDouble())
-                                .clamp(0.0, 2.0)
-                            : _tab.toDouble();
-                        // LTR physical coordinates: page 0 left, page 2 right.
-                        // Swipe left increments page, so the indicator moves right with it.
-                        final dx = page * tabWidth;
-                        return Positioned(
-                          left: 0,
-                          bottom: 6,
-                          child: Transform.translate(
-                            offset: Offset(dx, 0),
-                            child: SizedBox(
-                              width: tabWidth,
-                              child: Center(
-                                child: Container(
-                                  width: 20,
-                                  height: 3,
-                                  decoration: BoxDecoration(
-                                    color: _gold,
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                ),
+                    Positioned(
+                      left: 0,
+                      bottom: 6,
+                      child: AnimatedPositioned(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        left: _tab * tabWidth,
+                        child: SizedBox(
+                          width: tabWidth,
+                          child: Center(
+                            child: Container(
+                              width: 20,
+                              height: 3,
+                              decoration: BoxDecoration(
+                                color: _gold,
+                                borderRadius: BorderRadius.circular(3),
                               ),
                             ),
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
                   ],
                 );
@@ -665,22 +651,24 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 
   Widget _profileContent() {
-    // صفحات التبويبات تتمدد داخل التمرير الرئيسي للملف الشخصي،
-    // حتى تتحرك المنشورات مع المساحة البيضاء الكبيرة ولا تنشئ تمريراً مستقلاً.
-    Widget page(int index) => ColoredBox(
-          color: index == 0 ? Colors.transparent : Colors.white,
-          child: _tabContent(index),
-        );
-
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          page(0),
-          page(1),
-          page(2),
-        ],
+    // عرض التبويب المحدد فقط، مع استخدام تمرير الصفحة الرئيسي.
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (velocity < -150 && _tab < 2) {
+          _changeProfileTab(_tab + 1);
+        } else if (velocity > 150 && _tab > 0) {
+          _changeProfileTab(_tab - 1);
+        }
+      },
+      child: ColoredBox(
+        color: _tab == 0 ? Colors.transparent : Colors.white,
+        child: AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          alignment: Alignment.topCenter,
+          child: _tabContent(_tab),
+        ),
       ),
     );
   }
