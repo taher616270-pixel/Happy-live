@@ -3,10 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 
-const _ink = Color(0xFF1E2233);
-const _grey = Color(0xFF9A98AD);
-const _red = Color(0xFFE53E4D);
-
 class PublicProfilePage extends StatefulWidget {
   const PublicProfilePage({
     super.key,
@@ -36,20 +32,28 @@ class PublicProfilePage extends StatefulWidget {
 }
 
 class _PublicProfilePageState extends State<PublicProfilePage> {
-  static const _brown = Color(0xFF3D2314);
-  static const _brownDark = Color(0xFF2A1508);
-  static const _brownMid = Color(0xFF5A3520);
-  static const _brownLight = Color(0xFF8B5A2B);
-  static const _gold = Color(0xFFE8C07D);
-  static const _cream = Color(0xFFF9F1E0);
-  static const _paper = Color(0xFFFFFEFC);
-  static const _muted = Color(0xFF9A8878);
+  // ===== الألوان (نفس تصميم الصورة: كريمي + ذهبي) =====
+  static const _brown = Color(0xFF1F1F1F); // لون النص الأساسي
+  static const _brownDark = Color(0xFF3A2A08); // نص فوق الذهبي
+  static const _brownMid = Color(0xFF4A4A4A);
+  static const _brownLight = Color(0xFFD9A93E); // ذهبي غامق (مؤشرات/أزرار)
+  static const _gold = Color(0xFFEFCB77);
+  static const _cream = Color(0xFFFFF3DC);
+  static const _paper = Colors.white;
+  static const _muted = Color(0xFF9A9A9F);
+  static const _chip = Color(0xFFF3F3F3);
 
-  // أبعاد الهيدر: الغلاف، الشريط العلوي، شريط التابات
-  static const double _heroH = 430, _barH = 56, _tabsH = 55;
+  // ===== أبعاد الهيدر =====
+  static const double _coverH = 300; // ارتفاع الغلاف
+  static const double _barH = 56; // الشريط العلوي
+  static const double _tabsH = 52; // شريط التابات
+  static const double _cardH = 226; // بطاقة المعلومات تحت الغلاف
+  static const double _cardLift = 28; // مقدار تداخل البطاقة مع الغلاف
+  static const double _expandedH = (_coverH - _cardLift) + _cardH + _tabsH;
 
   int _tab = 2;
-  double _tabSlideFromX = 1; // Retained for the legacy tab builder.
+  double _tabSlideFromX = 1;
+  int _coverIndex = 0;
   final ScrollController _profileScrollController = ScrollController();
   bool _loading = true;
   String? _loadError;
@@ -82,8 +86,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     _loadProfile();
   }
 
-  // التنقل بين تبويبات الملف الشخصي بالسحب الأفقي.
-  // ترتيب التبويبات من اليمين إلى اليسار: الشخصية، الوكالات، المنشورات.
+  // ترتيب التبويبات من اليمين إلى اليسار: الشخصية(2)، الوكالات(1)، المنشورات(0)
   void _changeProfileTab(int index) {
     if (index == _tab || !mounted || index < 0 || index > 2) return;
     setState(() {
@@ -175,24 +178,25 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                   elevation: 0,
                                   scrolledUnderElevation: 0,
                                   toolbarHeight: _barH,
-                                  expandedHeight: _heroH,
+                                  expandedHeight: _expandedH,
                                   bottom: _tabsBar(),
                                   flexibleSpace: LayoutBuilder(builder: (context, c) {
                                     final topPad = MediaQuery.of(context).padding.top;
-                                    final shift = (topPad + _heroH - c.maxHeight)
+                                    final shift = (topPad + _expandedH - c.maxHeight)
                                         .clamp(0.0, double.infinity);
-                                    final p = (shift / 80).clamp(0.0, 1.0); // يتلون تدريجياً
+                                    final p = (shift / 80).clamp(0.0, 1.0);
+                                    final iconColor = Color.lerp(Colors.white, _brown, p)!;
                                     return ClipRect(
                                       child: Stack(fit: StackFit.expand, children: [
-                                        // الغلاف يطلع مع الإصبع 1:1
+                                        // الغلاف + البطاقة يطلعون مع الإصبع 1:1
                                         Positioned(
                                           left: 0,
                                           right: 0,
                                           top: -shift,
-                                          height: _heroH + topPad,
-                                          child: _heroHeader(),
+                                          height: (_coverH - _cardLift) + _cardH + topPad,
+                                          child: _heroStack(topPad),
                                         ),
-                                        // خلفية الشريط الكريمية
+                                        // خلفية الشريط العلوي (كريمي تدريجياً)
                                         Positioned(
                                           top: 0,
                                           left: 0,
@@ -216,14 +220,14 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                         // الأزرار والاسم
                                         Positioned(
                                           top: topPad,
-                                          left: 10,
-                                          right: 10,
+                                          left: 8,
+                                          right: 8,
                                           height: _barH,
                                           child: Row(children: [
-                                            _roundButton(
-                                              Icons.arrow_forward_rounded,
-                                              () => Navigator.of(context).maybePop(),
-                                              p,
+                                            IconButton(
+                                              icon: Icon(Icons.arrow_forward_rounded,
+                                                  color: iconColor, size: 28),
+                                              onPressed: () => Navigator.of(context).maybePop(),
                                             ),
                                             Expanded(
                                               child: Center(
@@ -244,31 +248,30 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                                 ),
                                               ),
                                             ),
-                                            _roundButton(Icons.more_horiz_rounded, () {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(
-                                                    content: Text('لا توجد خيارات إضافية حالياً')),
-                                              );
-                                            }, p),
+                                            IconButton(
+                                              icon: Icon(Icons.more_horiz_rounded,
+                                                  color: iconColor, size: 28),
+                                              onPressed: () {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(
+                                                      content: Text('لا توجد خيارات إضافية حالياً')),
+                                                );
+                                              },
+                                            ),
                                           ]),
                                         ),
                                       ]),
                                     );
                                   }),
                                 ),
-                                SliverToBoxAdapter(
-                                  child: Transform.translate(
-                                    offset: const Offset(0, -48),
-                                    child: _profileContent(),
-                                  ),
-                                ),
+                                SliverToBoxAdapter(child: _profileContent()),
                               ],
                             ),
                           ),
                           Positioned(
-                            left: 12,
-                            right: 12,
-                            bottom: 8 + MediaQuery.of(context).padding.bottom,
+                            left: 14,
+                            right: 14,
+                            bottom: 10 + MediaQuery.of(context).padding.bottom,
                             child: _actionBar(),
                           ),
                         ],
@@ -283,7 +286,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             const Icon(Icons.cloud_off_rounded, color: _brownLight, size: 42),
             const SizedBox(height: 12),
-            Text(_loadError!, textAlign: TextAlign.center,
+            Text(_loadError!,
+                textAlign: TextAlign.center,
                 style: const TextStyle(color: _brown, fontSize: 14)),
             const SizedBox(height: 14),
             OutlinedButton(
@@ -300,193 +304,274 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         ),
       );
 
-  Widget _heroHeader() {
-    final cover = _text('coverUrl');
+  // ====================== الغلاف + بطاقة المعلومات ======================
+
+  List<String> _coverList() {
+    final list = <String>[];
+    final raw = _profile['covers'];
+    if (raw is List) {
+      for (final e in raw) {
+        final u = e is Map
+            ? (e['url'] ?? e['imageUrl'] ?? e['image_url'] ?? '').toString()
+            : e.toString();
+        if (u.isNotEmpty && u != 'null') list.add(u);
+      }
+    }
+    if (list.isEmpty) {
+      final c = _text('coverUrl');
+      if (c.isNotEmpty && c != 'null') list.add(c);
+    }
+    return list;
+  }
+
+  // علم الدولة من رمز مكوّن من حرفين (مثال: SA)
+  String _flagEmoji() {
+    final code = _firstText(['countryCode', 'country_code', 'country']).toUpperCase();
+    if (code.length != 2) return '';
+    final a = code.codeUnitAt(0), b = code.codeUnitAt(1);
+    if (a < 65 || a > 90 || b < 65 || b > 90) return '';
+    return String.fromCharCodes([0x1F1E6 + a - 65, 0x1F1E6 + b - 65]);
+  }
+
+  // 'f' أنثى، 'm' ذكر، '' غير معروف
+  String _genderKind() {
+    final g = _firstText(['gender', 'sex']).toLowerCase();
+    if (g == 'female' || g == 'f' || g == 'أنثى' || g == 'انثى') return 'f';
+    if (g == 'male' || g == 'm' || g == 'ذكر') return 'm';
+    return '';
+  }
+
+  Widget _heroStack(double topPad) {
+    final covers = _coverList();
     final name = _firstText(['name', 'displayName', 'display_name'], widget.name);
     final code = _firstText(['userCode', 'user_code', 'gabo_id'], widget.userCode);
     final avatar = _firstText(['avatarUrl', 'avatar', 'photo_url'], widget.photoUrl ?? '');
     final badge = _firstText(['badgeName', 'badge', 'titleBadge']);
     final level = _firstText(['levelName', 'level', 'userLevel']);
     final vip = _firstText(['vipText', 'vipLevel', 'vip_level']);
+    final flag = _flagEmoji();
+    final gender = _genderKind();
+    final cardTop = _coverH + topPad - _cardLift;
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
-      child: SizedBox(
-        width: double.infinity,
-        height: _heroH,
+    return Stack(clipBehavior: Clip.none, children: [
+      // الغلاف
+      Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        height: _coverH + topPad,
         child: Stack(fit: StackFit.expand, children: [
-        if (cover.isNotEmpty)
-          Image.network(cover, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _coverFallback())
-        else
-          _coverFallback(),
-        DecoratedBox(
-          decoration: BoxDecoration(
+          if (covers.isEmpty)
+            _coverFallback()
+          else
+            PageView.builder(
+              itemCount: covers.length,
+              onPageChanged: (i) => setState(() => _coverIndex = i),
+              itemBuilder: (_, i) => Image.network(
+                covers[i],
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (_, __, ___) => _coverFallback(),
+              ),
+            ),
+          IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black.withOpacity(.35), Colors.transparent],
+                  stops: const [0, .35],
+                ),
+              ),
+            ),
+          ),
+        ]),
+      ),
+      // بطاقة المعلومات
+      Positioned(
+        top: cardTop,
+        left: 0,
+        right: 0,
+        height: _cardH,
+        child: Container(
+          decoration: const BoxDecoration(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Colors.black.withOpacity(.30),
-                Colors.transparent,
-                Colors.black.withOpacity(.78),
-              ],
-              stops: const [0, .40, 1],
+              colors: [_cream, Colors.white],
+              stops: [0, .33],
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: ClipRect(
+            child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                // الإحصائيات (تترك مكان للصورة الشخصية على اليمين)
+                SizedBox(
+                  height: 58,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 84),
+                    child: Row(children: [
+                      _stat('متابعون', _number('followers')),
+                      _stat('إعجاب', _number('likesReceived')),
+                      _stat('زائر', _number('visitors')),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // الاسم + الجنس + العلم
+                Row(children: [
+                  Flexible(
+                    child: Text(name.isEmpty ? 'مستخدم' : name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: _brown, fontSize: 21, fontWeight: FontWeight.w900)),
+                  ),
+                  if (gender.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: gender == 'f' ? const Color(0xFFF3A6C8) : const Color(0xFF8FB8F5),
+                      ),
+                      child: Icon(gender == 'f' ? Icons.female_rounded : Icons.male_rounded,
+                          color: Colors.white, size: 15),
+                    ),
+                  ],
+                  if (flag.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(flag, style: const TextStyle(fontSize: 20)),
+                  ],
+                ]),
+                const SizedBox(height: 10),
+                // المعرف + نسخ
+                Row(children: [
+                  Text(code.isEmpty ? 'ID: —' : 'ID:$code',
+                      textDirection: TextDirection.ltr,
+                      style: const TextStyle(
+                          color: _muted, fontSize: 13, fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: () {
+                      if (code.isEmpty) return;
+                      Clipboard.setData(ClipboardData(text: code));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('تم نسخ المعرف')),
+                      );
+                    },
+                    child: const Icon(Icons.copy_rounded, color: _muted, size: 16),
+                  ),
+                ]),
+                // الشارات (من بيانات الحساب الحقيقية)
+                if (badge.isNotEmpty || level.isNotEmpty || vip.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Wrap(spacing: 5, runSpacing: 5, children: [
+                    if (level.isNotEmpty) _pill(level, const Color(0xFF22345A)),
+                    if (badge.isNotEmpty) _pill(badge, const Color(0xFF7A3B1F)),
+                    if (vip.isNotEmpty) _pill(vip, const Color(0xFF8A1010)),
+                  ]),
+                ],
+              ]),
             ),
           ),
         ),
+      ),
+      // الصورة الشخصية تتداخل مع حافة البطاقة
+      PositionedDirectional(
+        top: cardTop - 18,
+        end: 14,
+        child: _avatar(58, avatar),
+      ),
+      // نقاط الغلاف (تظهر فقط لو فيه أكثر من غلاف)
+      if (covers.length > 1)
         Positioned(
-          left: 18,
-          right: 18,
-          bottom: 68 + _tabsH,
+          left: 14,
+          top: cardTop - 24,
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _avatar(88, avatar),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 5),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(name.isEmpty ? 'مستخدم' : name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
-                      const SizedBox(height: 5),
-                      Row(children: [
-                        Flexible(
-                          child: Text(code.isEmpty ? 'ID: —' : 'ID:$code',
-                              textDirection: TextDirection.ltr,
-                              style: const TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.w700)),
-                        ),
-                        const SizedBox(width: 7),
-                        InkWell(
-                          onTap: () {
-                            Clipboard.setData(ClipboardData(text: code));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('تم نسخ المعرف')),
-                            );
-                          },
-                          child: const Icon(Icons.copy_rounded, color: _gold, size: 14),
-                        ),
-                      ]),
-                      if (badge.isNotEmpty || level.isNotEmpty || vip.isNotEmpty) ...[
-                        const SizedBox(height: 7),
-                        Wrap(spacing: 5, runSpacing: 5, children: [
-                          if (badge.isNotEmpty) _miniTag(badge, Icons.verified_rounded),
-                          if (level.isNotEmpty) _miniTag(level, Icons.military_tech_rounded),
-                          if (vip.isNotEmpty) _miniTag(vip, Icons.workspace_premium_rounded),
-                        ]),
-                      ],
-                    ],
-                  ),
+            children: List.generate(covers.length, (i) {
+              final on = i == _coverIndex;
+              return Container(
+                margin: const EdgeInsets.only(right: 4),
+                width: on ? 24 : 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: on ? Colors.white : Colors.white54,
+                  borderRadius: BorderRadius.circular(4),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Padding(padding: const EdgeInsets.only(bottom: 7), child: _roomButton()),
-            ],
+              );
+            }),
           ),
         ),
-        Positioned(
-          left: 13,
-          right: 13,
-          bottom: 12 + _tabsH,
-          child: Row(children: [
-            _heroStat('متابعون', _number('followers')),
-            _heroStat('إعجاب', _number('likesReceived')),
-            _heroStat('زائر', _number('visitors')),
-          ]),
-        ),
-      ]),
-      ),
-    );
+    ]);
   }
 
   Widget _coverFallback() => Image.asset(
         'web/assets/images/profile_cover/profile_cover.jpg.JPG',
         fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
         errorBuilder: (_, __, ___) => const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [_brownLight, _brown, _brownDark],
+              colors: [Color(0xFFB3353F), Color(0xFF6E1D25), Color(0xFF3A2A22)],
             ),
           ),
         ),
       );
 
-  // p = 0 والغلاف مفتوح، و 1 بعد السحب: الألوان تتغير تدريجياً بدون قفزات
-  Widget _roundButton(IconData icon, VoidCallback onTap, double p) => Material(
-        color: Color.lerp(const Color(0x99000000), Colors.white, p),
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: SizedBox(
-            width: 38,
-            height: 38,
-            child: Icon(icon, color: Color.lerp(Colors.white, _brown, p), size: 21),
-          ),
+  Widget _stat(String label, int value) => Expanded(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text('$value',
+                style: const TextStyle(color: _brown, fontSize: 19, fontWeight: FontWeight.w900)),
+            const SizedBox(width: 6),
+            Text(label, style: const TextStyle(color: _muted, fontSize: 13)),
+          ],
         ),
+      );
+
+  Widget _pill(String label, Color bg) => Container(
+        height: 20,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+        child: Text(label,
+            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
       );
 
   Widget _avatar(double size, String photo) => Container(
         width: size,
         height: size,
-        padding: const EdgeInsets.all(3),
-        decoration: const BoxDecoration(shape: BoxShape.circle, color: _gold),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: _cream,
+          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(.12), blurRadius: 6)],
+        ),
         child: ClipOval(
           child: photo.isEmpty
-              ? Container(color: _cream,
-                  child: const Icon(Icons.person, color: _brownLight, size: 42))
-              : Image.network(photo, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(color: _cream,
-                      child: const Icon(Icons.person, color: _brownLight, size: 42))),
+              ? const Icon(Icons.person, color: _brownLight, size: 30)
+              : Image.network(photo,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.person, color: _brownLight, size: 30)),
         ),
       );
 
-  Widget _miniTag(String label, IconData icon) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-        decoration: BoxDecoration(
-          color: _gold.withOpacity(.16),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _gold.withOpacity(.65), width: .7),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: _gold, size: 11),
-          const SizedBox(width: 4),
-          Text(label, style: const TextStyle(color: _gold, fontSize: 10, fontWeight: FontWeight.w800)),
-        ]),
-      );
+  // ====================== التابات + المحتوى ======================
 
-  Widget _roomButton() => InkWell(
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الغرف غير متاحة من هذا الملف حالياً')),
-        ),
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-          decoration: BoxDecoration(color: _gold, borderRadius: BorderRadius.circular(20)),
-          child: const Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.meeting_room_rounded, color: _brownDark, size: 15),
-            SizedBox(width: 4),
-            Text('غرفة', style: TextStyle(color: _brownDark, fontSize: 11, fontWeight: FontWeight.w900)),
-          ]),
-        ),
-      );
-
-  Widget _heroStat(String label, int value) => Expanded(
-        child: Column(children: [
-          Text('$value', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 3),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-        ]),
-      );
-
-  // التابات الثابتة تحت الشريط العلوي (تُستخدم كـ bottom للـ SliverAppBar)
+  // التابات الثابتة تحت الشريط العلوي (bottom للـ SliverAppBar)
   PreferredSizeWidget _tabsBar() {
     Widget tab(String title, int index) {
       final active = _tab == index;
@@ -494,33 +579,29 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         child: InkWell(
           onTap: () => _changeProfileTab(index),
           child: SizedBox(
-            height: 54,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: active ? _brown : _muted,
-                      fontSize: 12,
-                      fontWeight: active ? FontWeight.w900 : FontWeight.w600,
-                    ),
-                  ),
+            height: _tabsH - 1,
+            child: Stack(alignment: Alignment.center, children: [
+              Text(
+                title,
+                maxLines: 1,
+                style: TextStyle(
+                  color: active ? _brown : _muted,
+                  fontSize: active ? 16 : 15,
+                  fontWeight: active ? FontWeight.w900 : FontWeight.w700,
                 ),
-                const SizedBox(height: 6),
-                Container(
+              ),
+              Positioned(
+                bottom: 6,
+                child: Container(
                   height: 3,
-                  width: 38,
+                  width: 20,
                   decoration: BoxDecoration(
-                    color: active ? _brownLight : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
+                    color: active ? _gold : Colors.transparent,
+                    borderRadius: BorderRadius.circular(3),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ]),
           ),
         ),
       );
@@ -528,31 +609,24 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     return PreferredSize(
       preferredSize: const Size.fromHeight(_tabsH),
-      child: Transform.translate(
-        offset: const Offset(0, -48),
-        child: Container(
-          height: _tabsH,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      child: Container(
+        height: _tabsH,
+        color: Colors.white,
+        child: Column(children: [
+          SizedBox(
+            height: _tabsH - 1,
+            child: Row(children: [
+              tab('الصفحة الشخصية', 2),
+              tab('الوكالات', 1),
+              tab('المنشورات', 0),
+            ]),
           ),
-          child: Column(children: [
-            SizedBox(
-              height: 54,
-              child: Row(children: [
-                tab('الصفحة الشخصية', 2),
-                tab('الوكالات', 1),
-                tab('المنشورات', 0),
-              ]),
-            ),
-            Container(height: 1, color: const Color(0xFFF0E7DC)),
-          ]),
-        ),
+          Container(height: 1, color: const Color(0xFFF0ECE4)),
+        ]),
       ),
     );
   }
 
-  // المحتوى تحت التابات (طويل دايماً عشان التثبيت يشتغل)
   Widget _profileContent() {
     final mq = MediaQuery.of(context);
     return GestureDetector(
@@ -570,42 +644,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           minHeight: mq.size.height - _barH - _tabsH - mq.padding.top,
         ),
         child: Padding(
-          // مسافة لأزرار متابعة/الرسائل الثابتة تحت
-          padding: EdgeInsets.only(bottom: 100 + mq.padding.bottom),
+          // مسافة للأزرار الثابتة تحت
+          padding: EdgeInsets.only(bottom: 110 + mq.padding.bottom),
           child: ColoredBox(color: Colors.white, child: _tabContent()),
         ),
       ),
     );
-  }
-
-  Widget _profileTabPage(int index) {
-    if (index == 0) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('المنشورات',
-                style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 9),
-            _postsContent(),
-          ],
-        ),
-      );
-    }
-    if (index == 1) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 1),
-        child: _emptySection(
-          key: const ValueKey('agencies'),
-          icon: Icons.apartment_rounded,
-          title: 'لا توجد وكالة مرتبطة',
-          subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
-        ),
-      );
-    }
-    return _personalDetails();
   }
 
   Widget _tabContent() => AnimatedSwitcher(
@@ -653,7 +697,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     required IconData icon,
     required String title,
     required String subtitle,
-  }) => Container(
+  }) =>
+      Container(
         key: key,
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(24, 45, 24, 55),
@@ -665,48 +710,109 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             child: Icon(icon, color: _brownLight, size: 36),
           ),
           const SizedBox(height: 15),
-          Text(title, style: const TextStyle(color: _brown, fontSize: 15, fontWeight: FontWeight.w900)),
+          Text(title,
+              style: const TextStyle(color: _brown, fontSize: 15, fontWeight: FontWeight.w900)),
           const SizedBox(height: 7),
-          Text(subtitle, textAlign: TextAlign.center,
+          Text(subtitle,
+              textAlign: TextAlign.center,
               style: const TextStyle(color: _muted, fontSize: 12, height: 1.6)),
         ]),
       );
 
+  // صور جدار الصور: من بيانات الحساب، وإلا من صور المنشورات
+  List<String> _wallPhotos() {
+    for (final key in const ['photos', 'gallery', 'wall', 'photoWall', 'photo_wall']) {
+      final raw = _profile[key];
+      if (raw is List && raw.isNotEmpty) {
+        final urls = <String>[];
+        for (final e in raw) {
+          final u = e is Map
+              ? (e['url'] ?? e['imageUrl'] ?? e['image_url'] ?? '').toString()
+              : e.toString();
+          if (u.isNotEmpty && u != 'null') urls.add(u);
+        }
+        if (urls.isNotEmpty) return urls;
+      }
+    }
+    if (_profile['canViewPosts'] != true) return const [];
+    return _posts
+        .map((p) => (p['imageUrl'] ?? p['image_url'] ?? '').toString())
+        .where((u) => u.isNotEmpty && u != 'null')
+        .toList();
+  }
+
+  Widget _wallImage(String url, double ratio) => ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: AspectRatio(
+          aspectRatio: ratio,
+          child: Image.network(
+            url,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              color: _chip,
+              child: const Icon(Icons.broken_image_outlined, color: _muted),
+            ),
+          ),
+        ),
+      );
+
   Widget _personalDetails() {
     final bio = _firstText(['bio', 'about'], widget.bio);
+    final photos = _wallPhotos();
     return Padding(
       key: const ValueKey('personal'),
-      padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (bio.isNotEmpty) ...[
-          const Text('نبذة', style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 7),
-          Text(bio, style: const TextStyle(color: _brownMid, fontSize: 13, height: 1.6)),
-          const SizedBox(height: 16),
+        if (bio.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(color: _chip, borderRadius: BorderRadius.circular(14)),
+            child: Text(bio,
+                style: const TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w700)),
+          ),
+        if (photos.isNotEmpty) ...[
+          const Row(children: [
+            Expanded(
+              child: Text('جدار الصور',
+                  style: TextStyle(color: _brown, fontSize: 16, fontWeight: FontWeight.w900)),
+            ),
+            Icon(Icons.chevron_left_rounded, color: _muted, size: 28),
+          ]),
+          const SizedBox(height: 12),
+          _wallImage(photos.first, 1 / 1.1),
+          if (photos.length > 1)
+            GridView.count(
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: 10),
+              children: photos.skip(1).map((u) => _wallImage(u, 1)).toList(),
+            ),
         ],
+        if (bio.isEmpty && photos.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: Center(
+              child: Text('لا توجد معلومات إضافية حالياً',
+                  style: TextStyle(color: _muted, fontSize: 13)),
+            ),
+          ),
       ]),
     );
   }
 
-  Widget _detailLine(String label, String value) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFEFE5D9))),
-        ),
-        child: Row(children: [
-          Text(label, style: const TextStyle(color: _muted, fontSize: 12)),
-          const Spacer(),
-          Flexible(child: Text(value, textAlign: TextAlign.end,
-              style: const TextStyle(color: _brown, fontSize: 12, fontWeight: FontWeight.w800))),
-        ]),
-      );
+  // ====================== المنشورات والتعليقات ======================
 
   Future<void> _toggleProfilePostLike(Map<String, dynamic> post) async {
     final id = (post['id'] ?? '').toString();
     if (id.isEmpty || post['_likeBusy'] == true) return;
     final wasLiked = post['liked'] == true;
     final oldCount = (post['likesCount'] as num?)?.toInt() ??
-        (post['likes_count'] as num?)?.toInt() ?? 0;
+        (post['likes_count'] as num?)?.toInt() ??
+        0;
     setState(() {
       post['_likeBusy'] = true;
       post['liked'] = !wasLiked;
@@ -812,18 +918,24 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             textDirection: TextDirection.rtl,
             child: Container(
               height: MediaQuery.of(context).size.height * .72,
-              padding: EdgeInsets.fromLTRB(18, 12, 18, 18 + MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.fromLTRB(
+                  18, 12, 18, 18 + MediaQuery.of(context).viewInsets.bottom),
               decoration: const BoxDecoration(
                 color: _paper,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
               ),
               child: Column(children: [
-                Container(width: 42, height: 4,
-                    decoration: BoxDecoration(color: const Color(0xFFE5DFD0), borderRadius: BorderRadius.circular(5))),
+                Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: const Color(0xFFE5DFD0), borderRadius: BorderRadius.circular(5))),
                 const SizedBox(height: 16),
                 Row(children: [
-                  const Expanded(child: Text('التعليقات',
-                      style: TextStyle(color: _brown, fontSize: 18, fontWeight: FontWeight.w900))),
+                  const Expanded(
+                      child: Text('التعليقات',
+                          style: TextStyle(
+                              color: _brown, fontSize: 18, fontWeight: FontWeight.w900))),
                   Text('${comments.length}',
                       style: const TextStyle(color: _muted, fontWeight: FontWeight.bold)),
                 ]),
@@ -834,28 +946,39 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                       : error != null && comments.isEmpty
                           ? Center(child: Text(error!, style: const TextStyle(color: _muted)))
                           : comments.isEmpty
-                              ? const Center(child: Text('كن أول من يعلّق على هذا المنشور',
-                                  style: TextStyle(color: _muted)))
+                              ? const Center(
+                                  child: Text('كن أول من يعلّق على هذا المنشور',
+                                      style: TextStyle(color: _muted)))
                               : ListView.separated(
                                   itemCount: comments.length,
-                                  separatorBuilder: (_, __) => const Divider(height: 18, color: Color(0xFFF0EBDD)),
+                                  separatorBuilder: (_, __) =>
+                                      const Divider(height: 18, color: Color(0xFFF0EBDD)),
                                   itemBuilder: (_, index) {
                                     final comment = comments[index];
-                                    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                      Text((comment['name'] ?? 'مستخدم').toString(),
-                                          style: const TextStyle(color: _brown, fontWeight: FontWeight.w900, fontSize: 12)),
-                                      const SizedBox(height: 4),
-                                      Text((comment['content'] ?? '').toString(),
-                                          style: const TextStyle(color: _brownMid, fontSize: 13, height: 1.5)),
-                                    ]);
+                                    return Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text((comment['name'] ?? 'مستخدم').toString(),
+                                              style: const TextStyle(
+                                                  color: _brown,
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 12)),
+                                          const SizedBox(height: 4),
+                                          Text((comment['content'] ?? '').toString(),
+                                              style: const TextStyle(
+                                                  color: _brownMid, fontSize: 13, height: 1.5)),
+                                        ]);
                                   },
                                 ),
                 ),
                 if (error != null && comments.isNotEmpty)
-                  Align(alignment: Alignment.centerRight,
-                      child: Text(error!, style: const TextStyle(color: Colors.red, fontSize: 11))),
+                  Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(error!,
+                          style: const TextStyle(color: Colors.red, fontSize: 11))),
                 Row(children: [
-                  Expanded(child: TextField(
+                  Expanded(
+                      child: TextField(
                     controller: input,
                     maxLength: 500,
                     textDirection: TextDirection.rtl,
@@ -865,17 +988,23 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                       hintText: 'اكتب تعليقاً...',
                       hintStyle: const TextStyle(color: _muted),
                       filled: true,
-                      fillColor: _cream,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                      fillColor: _chip,
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
                     ),
                   )),
                   const SizedBox(width: 8),
                   IconButton.filled(
                     onPressed: sending ? null : sendComment,
-                    style: IconButton.styleFrom(backgroundColor: _brownLight, foregroundColor: Colors.white),
+                    style: IconButton.styleFrom(
+                        backgroundColor: _gold, foregroundColor: _brownDark),
                     icon: sending
-                        ? const SizedBox(width: 17, height: 17, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(
+                            width: 17,
+                            height: 17,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: _brownDark))
                         : const Icon(Icons.send_rounded),
                   ),
                 ]),
@@ -893,15 +1022,17 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     if (_profile['canViewPosts'] != true) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 20),
-        child: Center(child: Text('منشورات هذا الحساب غير متاحة للعرض',
-            style: TextStyle(color: _muted, fontSize: 12), textAlign: TextAlign.center)),
+        child: Center(
+            child: Text('منشورات هذا الحساب غير متاحة للعرض',
+                style: TextStyle(color: _muted, fontSize: 12), textAlign: TextAlign.center)),
       );
     }
     if (_posts.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 20),
-        child: Center(child: Text('لا توجد منشورات عامة حتى الآن',
-            style: TextStyle(color: _muted, fontSize: 12))),
+        child: Center(
+            child: Text('لا توجد منشورات عامة حتى الآن',
+                style: TextStyle(color: _muted, fontSize: 12))),
       );
     }
     return Column(
@@ -909,9 +1040,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         final imageUrl = (post['imageUrl'] ?? post['image_url'] ?? '').toString();
         final liked = post['liked'] == true;
         final likes = (post['likesCount'] as num?)?.toInt() ??
-            (post['likes_count'] as num?)?.toInt() ?? 0;
+            (post['likes_count'] as num?)?.toInt() ??
+            0;
         final comments = (post['commentsCount'] as num?)?.toInt() ??
-            (post['comments_count'] as num?)?.toInt() ?? 0;
+            (post['comments_count'] as num?)?.toInt() ??
+            0;
         return Container(
           width: double.infinity,
           margin: const EdgeInsets.only(bottom: 20),
@@ -933,9 +1066,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     Icon(liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                         color: liked ? const Color(0xFFE34D65) : _muted, size: 19),
                     const SizedBox(width: 5),
-                    Text('$likes', style: TextStyle(
-                        color: liked ? const Color(0xFFE34D65) : _muted,
-                        fontSize: 12, fontWeight: FontWeight.w700)),
+                    Text('$likes',
+                        style: TextStyle(
+                            color: liked ? const Color(0xFFE34D65) : _muted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700)),
                   ]),
                 ),
               ),
@@ -949,7 +1084,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     const Icon(Icons.mode_comment_outlined, color: _muted, size: 18),
                     const SizedBox(width: 5),
                     Text('تعليق $comments',
-                        style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w700)),
+                        style: const TextStyle(
+                            color: _muted, fontSize: 12, fontWeight: FontWeight.w700)),
                   ]),
                 ),
               ),
@@ -960,45 +1096,91 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     );
   }
 
-  Widget _actionBar() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        decoration: const BoxDecoration(),
-        child: Row(children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: widget.onFollow ?? () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('ميزة المتابعة قيد التجهيز')),
-              ),
-              icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-              label: const Text('متابعة'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _brown,
-                backgroundColor: Colors.white,
-                side: const BorderSide(color: _brownLight, width: 1.2),
-                minimumSize: const Size.fromHeight(48),
-                shape: const StadiumBorder(),
+  // ====================== الأزرار السفلية ======================
+
+  Widget _actionBar() {
+    Widget circle(IconData icon, VoidCallback onTap) => SizedBox(
+          width: 56,
+          height: 56,
+          child: Material(
+            color: _gold,
+            elevation: 2,
+            shadowColor: Colors.black26,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onTap,
+              child: Icon(icon, color: Colors.white, size: 25),
+            ),
+          ),
+        );
+
+    Widget pill({
+      required int flex,
+      required Color bg,
+      required Color fg,
+      required IconData icon,
+      required String label,
+      required VoidCallback onTap,
+    }) =>
+        Expanded(
+          flex: flex,
+          child: SizedBox(
+            height: 56,
+            child: Material(
+              color: bg,
+              elevation: 2,
+              shadowColor: Colors.black26,
+              shape: const StadiumBorder(),
+              child: InkWell(
+                customBorder: const StadiumBorder(),
+                onTap: onTap,
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(icon, color: fg, size: 21),
+                  const SizedBox(width: 8),
+                  Text(label,
+                      style: TextStyle(color: fg, fontSize: 15, fontWeight: FontWeight.w800)),
+                ]),
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: widget.onChat ?? () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('المحادثات الخاصة قيد التجهيز')),
-              ),
-              icon: const Icon(Icons.chat_bubble_rounded, size: 18),
-              label: const Text('الرسائل'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _brown,
-                foregroundColor: _gold,
-                elevation: 0,
-                minimumSize: const Size.fromHeight(48),
-                shape: const StadiumBorder(),
-              ),
-            ),
-          ),
-        ]),
-      );
+        );
+
+    return Row(children: [
+      pill(
+        flex: 135,
+        bg: _cream,
+        fg: _brownDark,
+        icon: Icons.person_add_alt_1_rounded,
+        label: 'متابعة',
+        onTap: widget.onFollow ??
+            () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('ميزة المتابعة قيد التجهيز')),
+                ),
+      ),
+      const SizedBox(width: 9),
+      pill(
+        flex: 130,
+        bg: _gold,
+        fg: Colors.white,
+        icon: Icons.chat_bubble_rounded,
+        label: 'الرسائل',
+        onTap: widget.onChat ??
+            () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('المحادثات الخاصة قيد التجهيز')),
+                ),
+      ),
+      const SizedBox(width: 9),
+      circle(Icons.home_rounded, () => Navigator.of(context).popUntil((r) => r.isFirst)),
+      const SizedBox(width: 9),
+      circle(
+        Icons.person_rounded,
+        () => ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('قريباً')),
+        ),
+      ),
+    ]);
+  }
 }
 
 class _ProfilePostImage extends StatefulWidget {
@@ -1063,8 +1245,10 @@ class _ProfilePostImageState extends State<_ProfilePostImage> {
   @override
   Widget build(BuildContext context) {
     if (_failed) {
-      return const SizedBox(width: 190, height: 120,
-        child: Center(child: Icon(Icons.broken_image_outlined, color: Colors.white54)));
+      return const SizedBox(
+          width: 190,
+          height: 120,
+          child: Center(child: Icon(Icons.broken_image_outlined, color: Colors.black26)));
     }
     var boxWidth = 190.0;
     var boxHeight = 230.0;
@@ -1089,68 +1273,12 @@ class _ProfilePostImageState extends State<_ProfilePostImage> {
       child: SizedBox(
         width: boxWidth.clamp(0.0, 210.0).toDouble(),
         height: boxHeight.clamp(0.0, 420.0).toDouble(),
-        child: Image.network(widget.url, fit: BoxFit.contain, alignment: Alignment.center,
-          errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined, color: Colors.white54))),
+        child: Image.network(widget.url,
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+            errorBuilder: (_, __, ___) => const Center(
+                child: Icon(Icons.broken_image_outlined, color: Colors.black26))),
       ),
     );
   }
-}
-
-class _NightCampPainter extends CustomPainter {
-  const _NightCampPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    canvas.drawRect(rect, Paint()..shader = const LinearGradient(
-      begin: Alignment.topCenter, end: Alignment.bottomCenter,
-      colors: [Color(0xFF10172B), Color(0xFF283044), Color(0xFF171B20)],
-      stops: [0, .58, 1],
-    ).createShader(rect));
-    final stars = Paint()..color = const Color(0xFFE5E7F4).withOpacity(.75);
-    for (var i = 0; i < 34; i++) {
-      canvas.drawCircle(Offset((i * 67.0 + 19) % size.width, (i * 29.0 + 13) % 95), i % 5 == 0 ? 1.5 : .8, stars);
-    }
-    canvas.drawCircle(Offset(size.width * .78, 47), 17, Paint()..color = const Color(0xFFD7D9E2).withOpacity(.8));
-    final ridge = Path()
-      ..moveTo(0, size.height * .68)
-      ..quadraticBezierTo(size.width * .22, size.height * .48, size.width * .42, size.height * .7)
-      ..quadraticBezierTo(size.width * .73, size.height * .48, size.width, size.height * .7)
-      ..lineTo(size.width, size.height)..lineTo(0, size.height)..close();
-    canvas.drawPath(ridge, Paint()..color = const Color(0xFF171D25));
-    final tent = Path()
-      ..moveTo(size.width * .08, size.height * .83)
-      ..lineTo(size.width * .24, size.height * .39)
-      ..lineTo(size.width * .43, size.height * .83)..close();
-    canvas.drawPath(tent, Paint()..color = const Color(0xFF5A493D));
-    canvas.drawPath(tent, Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = const Color(0xFFB59A70));
-    final door = Path()
-      ..moveTo(size.width * .22, size.height * .82)
-      ..lineTo(size.width * .245, size.height * .57)
-      ..lineTo(size.width * .34, size.height * .82)..close();
-    canvas.drawPath(door, Paint()..color = const Color(0xFF171B20));
-    final ground = size.height * .86;
-    canvas.drawOval(Rect.fromCenter(center: Offset(size.width * .68, ground + 10), width: 125, height: 19), Paint()..color = Colors.black45);
-    canvas.drawCircle(Offset(size.width * .67, ground - 13), 25, Paint()..color = const Color(0x66FF7B28)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18));
-    final fire = Path()
-      ..moveTo(size.width * .63, ground + 3)
-      ..quadraticBezierTo(size.width * .56, ground - 20, size.width * .67, ground - 46)
-      ..quadraticBezierTo(size.width * .69, ground - 22, size.width * .73, ground - 4)..close();
-    canvas.drawPath(fire, Paint()..color = const Color(0xFFFF8A32));
-    final inner = Path()
-      ..moveTo(size.width * .66, ground + 1)
-      ..quadraticBezierTo(size.width * .63, ground - 15, size.width * .68, ground - 29)
-      ..quadraticBezierTo(size.width * .71, ground - 11, size.width * .70, ground + 1)..close();
-    canvas.drawPath(inner, Paint()..color = const Color(0xFFFFD36A));
-    final person = Paint()..color = const Color(0xFF101318);
-    for (final x in [size.width * .48, size.width * .84]) {
-      canvas.drawCircle(Offset(x, ground - 26), 8, person);
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x - 13, ground - 18, 26, 25), const Radius.circular(9)), person);
-      canvas.drawLine(Offset(x - 7, ground + 3), Offset(x - 13, ground + 12), Paint()..color = const Color(0xFF101318)..strokeWidth = 4);
-      canvas.drawLine(Offset(x + 7, ground + 3), Offset(x + 13, ground + 12), Paint()..color = const Color(0xFF101318)..strokeWidth = 4);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _NightCampPainter oldDelegate) => false;
 }
