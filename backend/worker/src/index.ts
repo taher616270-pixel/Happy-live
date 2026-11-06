@@ -386,6 +386,10 @@ export default {
           "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
         ).bind(roomId, user.id).first<{ user_id: string }>();
         if (activeBan) return json({ error: "room_banned", message: "تم حظرك من هذه الغرفة" }, 403, origin, env);
+        const activeKick = await env.DB.prepare(
+          "SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
+        ).bind(roomId, user.id, new Date().toISOString()).first<{ kicked_until: string }>();
+        if (activeKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
         let body: Record<string, unknown>;
         try { body = await request.json() as Record<string, unknown>; }
         catch { return json({ error: "invalid_json" }, 400, origin, env); }
@@ -616,6 +620,12 @@ export default {
         }
         if (action === "kick" || action === "ban" || action === "lower") {
           await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId).run();
+          if (action === "kick") {
+            const kickedUntil = new Date(Date.now() + 60000).toISOString();
+            await env.DB.prepare(
+              "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at, kicked_until) VALUES (?, ?, 0, NULL, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET kicked_until = excluded.kicked_until, updated_at = excluded.updated_at"
+            ).bind(roomId, targetUserId, now, kickedUntil).run();
+          }
           if (action === "kick" || action === "ban") {
             await env.DB.prepare(
               "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
@@ -655,6 +665,10 @@ export default {
           "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
         ).bind(roomId, user.id).first<{ user_id: string }>();
         if (activeBan) return json({ error: "room_banned", message: "تم حظرك من هذه الغرفة" }, 403, origin, env);
+        const activeKick = await env.DB.prepare(
+          "SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
+        ).bind(roomId, user.id, now).first<{ kicked_until: string }>();
+        if (activeKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
 
         // Expired leases are never shown as occupied.
         await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND expires_at <= ?").bind(roomId, now).run();
