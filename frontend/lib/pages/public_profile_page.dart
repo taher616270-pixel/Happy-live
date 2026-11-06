@@ -1023,105 +1023,157 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                 style: TextStyle(color: _muted, fontSize: 12))),
       );
     }
-    return Column(
-      children: _posts.map((post) {
-        final imageUrl = (post['imageUrl'] ?? post['image_url'] ?? '').toString();
-        final liked = post['liked'] == true;
-        final likes = (post['likesCount'] as num?)?.toInt() ??
-            (post['likes_count'] as num?)?.toInt() ??
-            0;
-        final comments = (post['commentsCount'] as num?)?.toInt() ??
-            (post['comments_count'] as num?)?.toInt() ??
-            0;
-        final authorName = (post['authorName'] ??
-                post['author_name'] ??
-                post['displayName'] ??
-                post['display_name'] ??
-                post['name'] ??
-                _firstText(['name', 'displayName', 'display_name'], widget.name))
-            .toString()
-            .trim();
-        final authorPhoto = (post['authorAvatarUrl'] ??
-                post['author_avatar_url'] ??
-                post['avatarUrl'] ??
-                post['avatar_url'] ??
-                post['photo_url'] ??
-                post['userAvatar'] ??
-                post['user_avatar'] ??
-                _firstText(['avatarUrl', 'avatar', 'photo_url'], widget.photoUrl ?? ''))
-            .toString()
-            .trim();
-        return Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 20),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _avatar(38, authorPhoto),
-                  const SizedBox(width: 9),
-                  Flexible(
-                    child: Text(authorName.isEmpty ? widget.name : authorName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                            color: _brown, fontSize: 13, fontWeight: FontWeight.w900)),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Column(
+        children: _posts.map((post) {
+          final imageUrl = (post['imageUrl'] ?? post['image_url'] ?? '').toString();
+          final liked = post['liked'] == true;
+          final likes = (post['likesCount'] as num?)?.toInt() ??
+              (post['likes_count'] as num?)?.toInt() ??
+              0;
+          final comments = (post['commentsCount'] as num?)?.toInt() ??
+              (post['comments_count'] as num?)?.toInt() ??
+              0;
+          final authorName = (post['authorName'] ??
+                  post['author_name'] ??
+                  post['displayName'] ??
+                  post['display_name'] ??
+                  post['name'] ??
+                  _firstText(['name', 'displayName', 'display_name'], widget.name))
+              .toString()
+              .trim();
+          final authorPhoto = (post['authorAvatarUrl'] ??
+                  post['author_avatar_url'] ??
+                  post['avatarUrl'] ??
+                  post['avatar_url'] ??
+                  post['photo_url'] ??
+                  post['userAvatar'] ??
+                  post['user_avatar'] ??
+                  _firstText(['avatarUrl', 'avatar', 'photo_url'], widget.photoUrl ?? ''))
+              .toString()
+              .trim();
+          final createdAt = (post['createdAt'] ?? post['created_at'] ?? post['date'] ?? '')
+              .toString()
+              .trim();
+
+          return Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFF0E5D0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    _avatar(42, authorPhoto),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            authorName.isEmpty ? widget.name : authorName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              color: _brown,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          if (createdAt.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              createdAt,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(color: _muted, fontSize: 10),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if ((post['content'] ?? '').toString().trim().isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      (post['content'] ?? '').toString(),
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(color: _brown, fontSize: 13, height: 1.7),
+                    ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 9),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text((post['content'] ?? '').toString(),
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(color: _brown, fontSize: 13, height: 1.6)),
-            ),
-            if (imageUrl.isNotEmpty) ...[
-              const SizedBox(height: 9),
-              Center(child: _ProfilePostImage(url: imageUrl)),
-            ],
-            const SizedBox(height: 9),
-            Row(children: [
-              InkWell(
-                onTap: post['_likeBusy'] == true ? null : () => _toggleProfilePostLike(post),
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        color: liked ? const Color(0xFFE34D65) : _muted, size: 19),
-                    const SizedBox(width: 5),
-                    Text('$likes',
-                        style: TextStyle(
-                            color: liked ? const Color(0xFFE34D65) : _muted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700)),
-                  ]),
+                if (imageUrl.isNotEmpty) ...[
+                  const SizedBox(height: 11),
+                  Center(child: _ProfilePostImage(url: imageUrl)),
+                ],
+                const SizedBox(height: 9),
+                const Divider(height: 1, color: Color(0xFFF2EBDD)),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    InkWell(
+                      onTap: () => _openProfilePostComments(post),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.mode_comment_outlined, color: _brownLight, size: 18),
+                          const SizedBox(width: 5),
+                          Text(
+                            '$comments',
+                            style: const TextStyle(
+                              color: _muted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: post['_likeBusy'] == true ? null : () => _toggleProfilePostLike(post),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(
+                            liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                            color: liked ? const Color(0xFFE34D65) : _brownLight,
+                            size: 19,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            '$likes',
+                            style: TextStyle(
+                              color: liked ? const Color(0xFFE34D65) : _muted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ),
+                    const Spacer(),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 16),
-              InkWell(
-                onTap: () => _openProfilePostComments(post),
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.mode_comment_outlined, color: _muted, size: 18),
-                    const SizedBox(width: 5),
-                    Text('تعليق $comments',
-                        style: const TextStyle(
-                            color: _muted, fontSize: 12, fontWeight: FontWeight.w700)),
-                  ]),
-                ),
-              ),
-            ]),
-          ]),
-        );
-      }).toList(),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
