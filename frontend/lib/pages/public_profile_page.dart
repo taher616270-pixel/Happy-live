@@ -926,8 +926,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     bool loading = true;
     bool sending = false;
     Map<String, dynamic>? replyingTo;
-    String activeDraftKey = 'comment';
-    final Map<String, TextEditingValue> drafts = {};
     String? error;
     List<Map<String, dynamic>> comments = [];
     final Set<String> expandedReplyThreads = {};
@@ -960,15 +958,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             setSheetState(() {});
           }
 
-          String draftKeyFor(Map<String, dynamic>? target) => target == null
-              ? 'comment'
-              : 'reply:${target['commentId'] ?? target['id']}:${target['id']}';
-          void switchDraft(Map<String, dynamic>? target) {
-            drafts[activeDraftKey] = input.value;
-            replyingTo = target;
-            activeDraftKey = draftKeyFor(target);
-            input.value = drafts[activeDraftKey] ?? const TextEditingValue();
-          }
           Future<void> sendComment() async {
             final content = input.text.trim();
             if (content.isEmpty || sending) return;
@@ -1020,10 +1009,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                 comments.add(newComment);
                 post['commentsCount'] = ((post['commentsCount'] as num?)?.toInt() ?? 0) + 1;
               }
-              drafts.remove(activeDraftKey);
-              replyingTo = null;
-              activeDraftKey = 'comment';
-              input.value = const TextEditingValue();
+              input.clear();
               error = null;
             } catch (_) {
               error = replyingTo != null ? 'تعذر إرسال الرد' : 'تعذر إضافة التعليق';
@@ -1108,7 +1094,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                             Text((reply['content'] ?? '').toString(), style: const TextStyle(color: Colors.black, fontSize: 12, height: 1.45, fontWeight: FontWeight.w600)),
                                             Row(children: [
                                               Text(_timeAgo(reply['createdAt'] ?? reply['created_at']), style: const TextStyle(color: _muted, fontSize: 9)),
-                                              TextButton(onPressed: () { switchDraft({...reply, 'commentId': comment['id']}); setSheetState(() {}); },
+                                              TextButton(onPressed: () { replyingTo = {...reply, 'commentId': comment['id']}; setSheetState(() {}); },
                                                 style: TextButton.styleFrom(minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                                                 child: const Text('رد', style: TextStyle(color: _brownLight, fontSize: 10, fontWeight: FontWeight.w800))),
                                             ]),
@@ -1201,7 +1187,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                                 alignment: Alignment.centerRight,
                                                 child: TextButton(
                                                   onPressed: () {
-                                                    switchDraft(comment);
+                                                    replyingTo = comment;
+                                                    input.clear();
                                                     setSheetState(() {});
                                                   },
                                                   style: TextButton.styleFrom(
@@ -1234,7 +1221,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                       Expanded(child: Text('الرد على ${replyingTo!['name'] ?? 'مستخدم'}',
                           style: const TextStyle(color: _gold, fontSize: 11, fontWeight: FontWeight.w800))),
                       IconButton(
-                        onPressed: () { switchDraft(null); setSheetState(() {}); },
+                        onPressed: () { replyingTo = null; input.clear(); setSheetState(() {}); },
                         icon: const Icon(Icons.close_rounded, size: 17, color: _muted),
                         visualDensity: VisualDensity.compact,
                       ),
@@ -1249,7 +1236,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     style: const TextStyle(color: _brown, fontSize: 13),
                     decoration: InputDecoration(
                       counterText: '',
-                      hintText: replyingTo == null ? 'اكتب تعليقاً...' : 'رد على ${(replyingTo?['name'] ?? replyingTo?['displayName'] ?? 'مستخدم').toString()}',
+                      hintText: replyingTo == null ? 'اكتب تعليقاً...' : 'رد ${(replyingTo?['name'] ?? replyingTo?['displayName'] ?? 'مستخدم').toString()}',
                       hintStyle: const TextStyle(color: _muted),
                       filled: true,
                       fillColor: _chip,
