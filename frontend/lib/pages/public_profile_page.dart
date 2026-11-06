@@ -176,18 +176,20 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                             onRefresh: _refreshProfile,
                             color: _brownLight,
                             backgroundColor: Colors.white,
-                            child: NestedScrollView(
+                            child: CustomScrollView(
                               controller: _profileScrollController,
                               physics: const AlwaysScrollableScrollPhysics(
                                 parent: ClampingScrollPhysics(),
                               ),
-                              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                              slivers: [
                                 SliverAppBar(
-                                  pinned: true,
+                                  pinned: false,
+                                  floating: false,
+                                  stretch: true,
                                   primary: false,
                                   toolbarHeight: 56,
                                   collapsedHeight: 56,
-                                  expandedHeight: 420,
+                                  expandedHeight: 380,
                                   backgroundColor: Color.lerp(
                                     Colors.transparent,
                                     Colors.white,
@@ -229,29 +231,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     ),
                                   ),
                                   centerTitle: true,
-                                  flexibleSpace: Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      FlexibleSpaceBar(
-                                        background: _heroHeader(),
-                                        collapseMode: CollapseMode.parallax,
-                                      ),
-                                      Positioned(
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        height: 56,
-                                        child: IgnorePointer(
-                                          child: ColoredBox(
-                                            color: Color.lerp(
-                                              Colors.transparent,
-                                              Colors.white,
-                                              _scrollProgress,
-                                            )!,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  flexibleSpace: FlexibleSpaceBar(
+                                    background: _heroHeader(),
+                                    collapseMode: CollapseMode.parallax,
                                   ),
                                 ),
                                 SliverPersistentHeader(
@@ -261,16 +243,23 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     onSelected: _changeProfileTab,
                                   ),
                                 ),
+                                SliverFillRemaining(
+                                  hasScrollBody: false,
+                                  child: Container(
+                                    width: double.infinity,
+                                    color: Colors.white,
+                                    child: PageView(
+                                      controller: _profileTabsController,
+                                      onPageChanged: _onProfilePageChanged,
+                                      children: [
+                                        _profileTabPage(0),
+                                        _profileTabPage(1),
+                                        _profileTabPage(2),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ],
-                              body: PageView(
-                                controller: _profileTabsController,
-                                onPageChanged: _onProfilePageChanged,
-                                children: [
-                                  _profileTabPage(0),
-                                  _profileTabPage(1),
-                                  _profileTabPage(2),
-                                ],
-                              ),
                             ),
                           ),
                           Positioned(
@@ -317,12 +306,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     final level = _firstText(['levelName', 'level', 'userLevel']);
     final vip = _firstText(['vipText', 'vipLevel', 'vip_level']);
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
-      child: SizedBox(
-        width: double.infinity,
-        height: 420,
-        child: Stack(fit: StackFit.expand, children: [
+    return SizedBox(
+      width: double.infinity,
+      height: 380,
+      child: Stack(fit: StackFit.expand, children: [
         if (cover.isNotEmpty)
           Image.network(cover, fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => _coverFallback())
@@ -408,7 +395,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           ]),
         ),
       ]),
-      ),
     );
   }
 
@@ -564,12 +550,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 
   Widget _profileTabPage(int index) {
-    Widget content;
     if (index == 0) {
-      content = Padding(
+      return Padding(
         padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text('المنشورات',
                 style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
@@ -578,47 +564,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           ],
         ),
       );
-    } else if (index == 1) {
-      content = LayoutBuilder(
-        builder: (context, constraints) => ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight),
-          child: Center(
-            child: _emptySection(
-              key: const ValueKey('agencies'),
-              icon: Icons.apartment_rounded,
-              title: 'لا توجد وكالة مرتبطة',
-              subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
-            ),
-          ),
+    }
+    if (index == 1) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 1),
+        child: _emptySection(
+          key: const ValueKey('agencies'),
+          icon: Icons.apartment_rounded,
+          title: 'لا توجد وكالة مرتبطة',
+          subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
         ),
       );
-    } else {
-      content = _personalDetails();
     }
-
-    return RefreshIndicator(
-      onRefresh: _refreshProfile,
-      color: _brownLight,
-      backgroundColor: Colors.white,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: ClampingScrollPhysics(),
-        ),
-        slivers: [
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: content,
-            ),
-          ),
-        ],
-      ),
-    );
+    return _personalDetails();
   }
 
   Widget _tabContent() => AnimatedSwitcher(
@@ -1068,33 +1026,26 @@ class _PublicProfileTabsDelegate extends SliverPersistentHeaderDelegate {
       );
     }
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Material(
-        color: Colors.white,
-        elevation: overlapsContent ? 2 : 0,
-        clipBehavior: Clip.antiAlias,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(24),
-          ),
+    return Transform.translate(
+      offset: const Offset(0, -24),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                tab('الصفحة الشخصية', 2),
-                tab('الوكالات', 1),
-                tab('المنشورات', 0),
-              ],
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  tab('الصفحة الشخصية', 2),
+                  tab('الوكالات', 1),
+                  tab('المنشورات', 0),
+                ],
+              ),
             ),
-          ),
-          Container(height: 1, color: const Color(0xFFF0E7DC)),
-        ],
+            Container(height: 1, color: const Color(0xFFF0E7DC)),
+          ],
         ),
       ),
     );
