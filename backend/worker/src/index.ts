@@ -946,7 +946,7 @@ export default {
         ).bind(viewer.id, targetId, isFollowing ? 1 : 0, isMine ? 1 : 0).all<{
           id: string; content: string; image_url: string | null; created_at: string;
           likes_count: number; comments_count: number; liked: number;
-        }>() : { results: [] as Array<{id:string;content:string;image_url:string|null;created_at:string;likes_count:number;comments_count:number}> };
+        }>() : { results: [] as Array<{id:string;content:string;image_url:string|null;created_at:string;likes_count:number;comments_count:number;liked:number}> };
         const age = profile.birthday ? calculateAge(profile.birthday) : null;
         return json({ ok: true, profile: {
           userId: profile.id, name: profile.display_name, userCode: profile.gabo_id ?? "",
