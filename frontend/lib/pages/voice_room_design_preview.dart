@@ -187,7 +187,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       builder: (sheetContext) => UserInfoBottomSheet(
         user: user,
         isMe: user['isMe'] == true,
-        canModerate: canModerateUsers && user['isMe'] != true,
+        canModerate: canModerateUsers && user['isMe'] != true && user['isRoomOwner'] != true && user['isRoomModerator'] != true,
         selfMicMuted: user['isMe'] == true ? selfMicMuted : user['isMuted'] == true,
         onToggleSelfMic: onToggleSelfMic,
         onModerateUser: onModerateUser,
