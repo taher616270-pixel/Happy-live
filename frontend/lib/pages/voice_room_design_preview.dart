@@ -155,6 +155,15 @@ class _Notice extends StatelessWidget {
         Container(width: 32, height: 32, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withOpacity(.35)), child: Icon(icon, color: Colors.white70, size: 17)),
         const SizedBox(width: 8),
         Flexible(child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9), decoration: BoxDecoration(color: Colors.black.withOpacity(.35), borderRadius: BorderRadius.circular(14)), child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.5)))),
+        if (onTap != null) ...[
+          const SizedBox(width: 5),
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(color: Colors.black.withOpacity(.35), shape: BoxShape.circle),
+            child: const Icon(Icons.edit_rounded, color: Colors.white70, size: 14),
+          ),
+        ],
       ])),
     ),
   );
