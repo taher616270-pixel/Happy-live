@@ -335,7 +335,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
             try {
               final isReply = replyingTo != null;
               final endpoint = isReply
-                  ? '$_api/posts/$id/comments/${replyingTo!['id']}/replies'
+                  ? '$_api/posts/$id/comments/${replyingTo!.containsKey('commentId') ? replyingTo!['commentId'] : replyingTo!['id']}/replies'
                   : '$_api/posts/$id/comments';
               final response = await http.post(Uri.parse(endpoint),
                 headers: _headers, body: jsonEncode({'content': text, if (isReply && replyingTo!.containsKey('commentId')) 'parentReplyId': replyingTo!['id']}));
