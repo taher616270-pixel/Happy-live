@@ -148,10 +148,10 @@ class ProfilePage extends StatelessWidget {
             top: false,
             bottom: false,
             child: SingleChildScrollView(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top,
-                bottom: 16,
-              ),
+              // The page background starts at the very top edge.
+              // Keep only the bottom inset here; the header handles the
+              // device-specific status-bar safe area for its contents.
+              padding: const EdgeInsets.only(bottom: 16),
               child: Column(
                 children: [
                   _header(context),
@@ -212,7 +212,12 @@ class ProfilePage extends StatelessWidget {
         ? 'مستخدم Happy Live'
         : data.displayName;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 18, 18, 0),
+      padding: EdgeInsets.fromLTRB(
+        14,
+        MediaQuery.of(context).padding.top + 18,
+        18,
+        0,
+      ),
       child: Row(
         children: [
           ClipOval(
