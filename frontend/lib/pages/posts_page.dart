@@ -578,7 +578,17 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                         ),
                       )
                     else
-                      ...visiblePosts.map(_postCard),
+                      ...List.generate(visiblePosts.length, (index) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _postCard(visiblePosts[index]),
+                          if (index < visiblePosts.length - 1)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 4),
+                              child: Divider(height: 1, thickness: 1, color: Color(0xFFE9DFC9)),
+                            ),
+                        ],
+                      )),
                   ],
                 ),
               ),
@@ -732,10 +742,8 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
   Widget _postCard(Map<String, dynamic> post) {
     final name = (post['name'] ?? 'مستخدم').toString();
     final mine = post['isMine'] == true;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 13),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFE9E3D6)), boxShadow: const [BoxShadow(color: Color(0x09000000), blurRadius: 10, offset: Offset(0, 3))]),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           _postAuthorAvatar(post, name),
