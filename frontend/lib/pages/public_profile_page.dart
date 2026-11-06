@@ -919,6 +919,25 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     );
   }
 
+  Widget _commentActionButton(IconData icon, String label, Color background, Color foreground, VoidCallback onTap) {
+    return SizedBox(
+      height: 54,
+      child: Material(
+        color: background,
+        shape: const StadiumBorder(),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: foreground, size: 19),
+            const SizedBox(height: 3),
+            Text(label, maxLines: 1, style: TextStyle(color: foreground, fontSize: 11, fontWeight: FontWeight.w800)),
+          ]),
+        ),
+      ),
+    );
+  }
+
   Future<void> _openProfilePostComments(Map<String, dynamic> post) async {
     final id = (post['id'] ?? '').toString();
     if (id.isEmpty) return;
@@ -1017,6 +1036,70 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             sending = false;
             setSheetState(() {});
             if (mounted) setState(() {});
+          }
+
+          Future<void> openCommentActions(Map<String, dynamic> comment) async {
+            final owner = _isMine;
+            final action = await showModalBottomSheet<String>(
+              context: this.context,
+              backgroundColor: Colors.transparent,
+              builder: (actionContext) => Directionality(
+                textDirection: TextDirection.rtl,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
+                  decoration: const BoxDecoration(
+                    color: _paper,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Container(width: 42, height: 4, decoration: BoxDecoration(color: const Color(0xFFE5DFD0), borderRadius: BorderRadius.circular(8))),
+                      const SizedBox(height: 18),
+                      Row(children: [
+                        Expanded(child: _commentActionButton(Icons.reply_rounded, 'رد', const Color(0xFFFFF3D8), const Color(0xFF8A641D), () => Navigator.pop(actionContext, 'reply'))),
+                        const SizedBox(width: 7),
+                        if (owner) ...[
+                          Expanded(child: _commentActionButton(Icons.delete_outline_rounded, 'حذف', const Color(0xFFFFE9E7), const Color(0xFFB64238), () => Navigator.pop(actionContext, 'delete'))),
+                          const SizedBox(width: 7),
+                        ],
+                        Expanded(child: _commentActionButton(Icons.flag_outlined, 'بلاغ', const Color(0xFFF2EEE5), const Color(0xFF77664A), () => Navigator.pop(actionContext, 'report'))),
+                        const SizedBox(width: 7),
+                        Expanded(child: _commentActionButton(Icons.close_rounded, 'إلغاء', const Color(0xFFF1F1F1), const Color(0xFF777777), () => Navigator.pop(actionContext, 'cancel'))),
+                      ]),
+                    ]),
+                  ),
+                ),
+              ),
+            );
+            if (!mounted || action == null || action == 'cancel') return;
+            if (action == 'reply') {
+              replyingTo = comment;
+              input.clear();
+              setSheetState(() {});
+              return;
+            }
+            final commentId = (comment['id'] ?? '').toString();
+            if (commentId.isEmpty) return;
+            const api = 'https://happy-live-api.taher616270.workers.dev/api/v1';
+            try {
+              final isDelete = action == 'delete';
+              final uri = Uri.parse('$api/posts/$id/comments/$commentId${isDelete ? '' : '/report'}');
+              final response = isDelete
+                  ? await http.delete(uri, headers: {'Authorization': 'Bearer ${widget.accessToken}'})
+                  : await http.post(uri, headers: {'Authorization': 'Bearer ${widget.accessToken}', 'Content-Type': 'application/json'}, body: jsonEncode({'reason': 'general'}));
+              final data = jsonDecode(response.body);
+              if (response.statusCode != (isDelete ? 200 : 201) || data is! Map || data['ok'] != true) throw Exception();
+              if (isDelete) {
+                comments.removeWhere((item) => item['id'].toString() == commentId);
+                final oldCount = (post['commentsCount'] ?? post['comments_count'] ?? 1) as num;
+                post['commentsCount'] = (oldCount.toInt() - 1).clamp(0, 1 << 30);
+              }
+              setSheetState(() {});
+              if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text(isDelete ? 'تم حذف التعليق' : 'تم إرسال البلاغ')));
+            } catch (_) {
+              if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text(action == 'delete' ? 'تعذر حذف التعليق' : 'تعذر إرسال البلاغ')));
+            }
           }
 
           if (loading && comments.isEmpty) loadComments();
@@ -1172,12 +1255,15 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                                 ),
                                               ),
                                               const SizedBox(height: 4),
-                                              Text((comment['content'] ?? '').toString(),
-                                                  style: const TextStyle(
-                                                      color: Color(0xFF000000),
-                                                      fontWeight: FontWeight.w700,
-                                                      fontSize: 13,
-                                                      height: 1.5)),
+                                              InkWell(
+                                                onTap: () => openCommentActions(comment),
+                                                child: Text((comment['content'] ?? '').toString(),
+                                                    style: const TextStyle(
+                                                        color: Color(0xFF000000),
+                                                        fontWeight: FontWeight.w700,
+                                                        fontSize: 13,
+                                                        height: 1.5)),
+                                              ),
                                               const SizedBox(height: 3),
                                               Row(
                                                 mainAxisSize: MainAxisSize.min,
