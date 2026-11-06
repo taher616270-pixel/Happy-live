@@ -423,9 +423,8 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                               final replyName = (reply['name'] ?? 'مستخدم').toString();
                               final avatar = (reply['avatarUrl'] ?? reply['avatar_url'] ?? '').toString().trim();
                               final replyTo = (reply['_replyToName'] ?? '').toString().trim();
-                              return Container(margin: const EdgeInsets.only(bottom: 7), padding: const EdgeInsets.all(9),
-                                decoration: BoxDecoration(color: const Color(0xFFFFFCF5), border: Border.all(color: const Color(0xFFECE3D0)), borderRadius: BorderRadius.circular(12)),
-                                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              return Padding(padding: const EdgeInsets.only(bottom: 7),
+                                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                   InkWell(onTap: () => _openUserProfile(reply), child: CircleAvatar(radius: 14, backgroundColor: const Color(0xFFF3F0E8),
                                     backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
                                     child: avatar.isEmpty ? Text(replyName.isEmpty ? 'م' : replyName.characters.first, style: const TextStyle(color: Color(0xFF80602B), fontSize: 10, fontWeight: FontWeight.w900)) : null)),
