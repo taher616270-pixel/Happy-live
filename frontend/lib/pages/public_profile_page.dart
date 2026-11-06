@@ -90,15 +90,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     if (date == null) return 'الآن';
     final diff = DateTime.now().difference(date);
     if (diff.inMinutes < 1) return 'الآن';
-    if (diff.inHours < 1) return 'منذ ${diff.inMinutes} دقيقة';
-    if (diff.inDays < 1) {
-      final hours = diff.inHours;
-      final minutes = diff.inMinutes.remainder(60);
-      if (minutes == 0) return 'منذ ${hours} ساعة';
-      return 'منذ ${hours} س و${minutes} د';
-    }
-    if (diff.inDays == 1) return 'منذ يوم';
-    return 'منذ ${diff.inDays} يوم';
+    if (diff.inHours < 1) return 'قبل ${diff.inMinutes} دقيقة';
+    if (diff.inDays < 1) return 'قبل ${diff.inHours} ساعة';
+    if (diff.inDays == 1) return 'قبل يوم';
+    return 'قبل ${diff.inDays} يوم';
   }
 
   @override
