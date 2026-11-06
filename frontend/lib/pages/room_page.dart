@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:happy_live/models/message.dart';
+import 'package:happy_live/pages/voice_room_design_preview.dart';
 
 class RoomPage extends StatefulWidget {
   const RoomPage({super.key, required this.room, required this.accessToken});
@@ -94,15 +95,7 @@ class _RoomPageState extends State<RoomPage> {
   void initState() {
     super.initState();
     _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? 'مرحباً بكم في الغرفة، نتمنى لكم وقتاً ممتعاً').toString();
-    _refreshSeats();
-    unawaited(_startRoomChat());
-    // Refresh shared seats twice per second so other members appear almost immediately.
-    _refreshTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      _refreshSeats();
-      if (_mySeat != null && DateTime.now().difference(_lastHeartbeat).inSeconds >= 15) {
-        _sendHeartbeat();
-      }
-    });
+    // Design-preview phase: keep all room services in place but do not start or connect them yet.
   }
 
   @override
@@ -767,84 +760,7 @@ class _RoomPageState extends State<RoomPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: const Color(0xFF062C38),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Keep the existing room artwork and background completely unchanged.
-            const _TopTopRoomBackdrop(),
-            SafeArea(
-              child: Column(
-                children: [
-                  _referenceRoomHeader(),
-                  if (_showRoomActions) _roomActionSheet(),
-                  const SizedBox(height: 15),
-                  _referenceSeatGrid(),
-                  const SizedBox(height: 12),
-                  _referenceAudienceBar(),
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          top: 14, left: 14, right: 14,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              _referenceMessage('مرحباً بكم في Happy Live. يرجى احترام بعضنا البعض والدردشة باحترام.', Icons.notifications_active_rounded),
-                              const SizedBox(height: 9),
-                              _referenceMessage('مالك الغرفة  @ ${_ownerName.isEmpty ? 'صاحب الغرفة' : _ownerName}\nدخل الغرفة', Icons.waving_hand_rounded),
-                            ],
-                          ),
-                        ),
-                        if (_messages.isNotEmpty)
-                          Positioned(
-                            left: 88, right: 12, bottom: 8,
-                            height: 174,
-                            child: ListView.builder(
-                              controller: _roomMessagesController,
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              itemCount: _messages.length,
-                              itemBuilder: (context, index) => _roomMessageItem(_messages[index]),
-                            ),
-                          ),
-                        Positioned(
-                          left: 10, bottom: 10,
-                          child: Column(
-                            children: [
-                              _referenceSideTile(Icons.campaign_rounded, 'إعلان', onTap: _editRoomAnnouncement),
-                              const SizedBox(height: 8),
-                              _referenceSideTile(Icons.card_giftcard_rounded, 'هدايا', onTap: () => _showChatToolMessage('الهدايا')),
-                              const SizedBox(height: 8),
-                              _referenceSideTile(Icons.grid_view_rounded, 'المزيد', onTap: _showRoomChatMenu),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _referenceComposer(),
-                ],
-              ),
-            ),
-            if (_isLoading || _isChangingSeat)
-              const Positioned(
-                top: 12, left: 12,
-                child: SizedBox(width: 17, height: 17,
-                  child: CircularProgressIndicator(strokeWidth: 1.7, color: Color(0xFFFFD18A))),
-              ),
-            if (_loadError != null && _seats.isEmpty)
-              Positioned(
-                top: 120, left: 20, right: 20,
-                child: Text(_loadError!, textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white70, fontSize: 11)),
-              ),
-          ],
-        ),
-      ),
-    );
+    return VoiceRoomDesignPreview(room: widget.room);
   }
 
   Widget _referenceRoomHeader() {
