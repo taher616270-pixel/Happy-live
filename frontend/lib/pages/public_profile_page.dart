@@ -876,6 +876,27 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
   }
 
+  void _openCommenterProfile(Map<String, dynamic> comment) {
+    final commenterId = (comment['userId'] ?? comment['user_id'] ?? '').toString().trim();
+    if (commenterId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر فتح ملف هذا المستخدم')),
+      );
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PublicProfilePage(
+          name: (comment['name'] ?? 'مستخدم').toString(),
+          userId: commenterId,
+          accessToken: widget.accessToken,
+          userCode: (comment['userCode'] ?? '').toString(),
+          photoUrl: (comment['avatarUrl'] ?? comment['avatar_url'] ?? '').toString(),
+        ),
+      ),
+    );
+  }
+
   Future<void> _openProfilePostComments(Map<String, dynamic> post) async {
     final id = (post['id'] ?? '').toString();
     if (id.isEmpty) return;
@@ -985,14 +1006,44 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                       const Divider(height: 18, color: Color(0xFFF0EBDD)),
                                   itemBuilder: (_, index) {
                                     final comment = comments[index];
+                                    final commenterName =
+                                        (comment['name'] ?? 'مستخدم').toString();
+                                    final commenterAvatar =
+                                        (comment['avatarUrl'] ?? comment['avatar_url'] ?? '')
+                                            .toString()
+                                            .trim();
                                     return Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text((comment['name'] ?? 'مستخدم').toString(),
-                                              style: const TextStyle(
-                                                  color: _brown,
-                                                  fontWeight: FontWeight.w900,
-                                                  fontSize: 12)),
+                                          InkWell(
+                                            onTap: () => _openCommenterProfile(comment),
+                                            borderRadius: BorderRadius.circular(20),
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(vertical: 2),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  CircleAvatar(
+                                                    radius: 17,
+                                                    backgroundColor: _chip,
+                                                    backgroundImage: commenterAvatar.isNotEmpty
+                                                        ? NetworkImage(commenterAvatar)
+                                                        : null,
+                                                    child: commenterAvatar.isEmpty
+                                                        ? const Icon(Icons.person_rounded,
+                                                            color: _muted, size: 19)
+                                                        : null,
+                                                  ),
+                                                  const SizedBox(width: 9),
+                                                  Text(commenterName,
+                                                      style: const TextStyle(
+                                                          color: _brown,
+                                                          fontWeight: FontWeight.w900,
+                                                          fontSize: 12)),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
                                           const SizedBox(height: 4),
                                           Text((comment['content'] ?? '').toString(),
                                               style: const TextStyle(
