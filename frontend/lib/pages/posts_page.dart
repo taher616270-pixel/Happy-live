@@ -508,8 +508,17 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                               final replyName = (reply['name'] ?? 'مستخدم').toString();
                               final avatar = (reply['avatarUrl'] ?? reply['avatar_url'] ?? '').toString().trim();
                               final replyTo = (reply['_replyToName'] ?? '').toString().trim();
-                              return Padding(padding: const EdgeInsets.only(bottom: 7),
-                                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              return Material(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                child: InkWell(
+                                  onLongPress: () => openCommentActions({...reply, 'commentId': c['id'], 'isReplyItem': true}),
+                                  borderRadius: BorderRadius.circular(10),
+                                  highlightColor: Colors.black.withOpacity(.14),
+                                  splashColor: Colors.black.withOpacity(.08),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(7),
+                                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                   InkWell(onTap: () => _openUserProfile(reply), child: CircleAvatar(radius: 14, backgroundColor: const Color(0xFFF3F0E8),
                                     backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
                                     child: avatar.isEmpty ? Text(replyName.isEmpty ? 'م' : replyName.characters.first, style: const TextStyle(color: Color(0xFF80602B), fontSize: 10, fontWeight: FontWeight.w900)) : null)),
@@ -517,7 +526,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                     InkWell(onTap: () => _openUserProfile(reply), child: Text(replyName, style: const TextStyle(color: _ink, fontSize: 11, fontWeight: FontWeight.w900))),
                                     if (replyTo.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 1, bottom: 2), child: Text('رد على $replyTo', style: const TextStyle(color: _gold, fontSize: 9, fontWeight: FontWeight.w700))),
-                                    GestureDetector(onLongPress: () => openCommentActions({...reply, 'commentId': c['id'], 'isReplyItem': true}), child: Text((reply['content'] ?? '').toString(), style: const TextStyle(color: Colors.black, fontSize: 12, height: 1.45, fontWeight: FontWeight.w600))),
+                                    Text((reply['content'] ?? '').toString(), style: const TextStyle(color: Colors.black, fontSize: 12, height: 1.45, fontWeight: FontWeight.w600)),
                                     Row(children: [
                                       Text(_timeAgo(reply['createdAt'] ?? reply['created_at']), style: const TextStyle(color: _muted, fontSize: 9)),
                                       TextButton(onPressed: () { replyingTo = {...reply, 'commentId': c['id']}; setSheetState(() {}); },
@@ -526,6 +535,8 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                                     ]),
                                   ])),
                                 ]),
+                                  ),
+                                ),
                               );
                             }
                             final allReplies = flattenReplies((c['replies'] as List? ?? const []).toList());
@@ -545,7 +556,17 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                                 label: Text(expanded ? 'إخفاء الردود' : 'عرض الردود ($hiddenReplyCount)', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
                               )),
                             ]);
-                            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            return Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              child: InkWell(
+                                onLongPress: () => openCommentActions(c),
+                                borderRadius: BorderRadius.circular(12),
+                                highlightColor: Colors.black.withOpacity(.14),
+                                splashColor: Colors.black.withOpacity(.08),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(7),
+                                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               InkWell(
                                 onTap: () => _openUserProfile(c),
                                 customBorder: const CircleBorder(),
@@ -590,10 +611,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                InkWell(
-                                  onLongPress: () => openCommentActions(c),
-                                  child: Text((c['content'] ?? '').toString(), style: const TextStyle(color: Color(0xFF000000), fontWeight: FontWeight.w700, fontSize: 13, height: 1.5)),
-                                ),
+                                Text((c['content'] ?? '').toString(), style: const TextStyle(color: Color(0xFF000000), fontWeight: FontWeight.w700, fontSize: 13, height: 1.5)),
                                 const SizedBox(height: 3),
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -622,7 +640,10 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                                 ),
                                 repliesSection(),
                               ])),
-                            ]);
+                                  ]),
+                                ),
+                              ),
+                            );
                           },
                         )),
                 if (error != null && comments.isNotEmpty)
