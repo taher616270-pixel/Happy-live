@@ -13,6 +13,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     required this.onTapSeat,
     required this.isChangingSeat,
     required this.audienceCount,
+    this.canModerateUsers = false,
+    this.selfMicMuted = false,
+    this.onToggleSelfMic,
+    this.onModerateUser,
   });
   final Map<String, dynamic> room;
   final String announcement;
@@ -22,6 +26,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final ValueChanged<int> onTapSeat;
   final bool isChangingSeat;
   final int audienceCount;
+  final bool canModerateUsers;
+  final bool selfMicMuted;
+  final Future<bool> Function()? onToggleSelfMic;
+  final Future<bool> Function(String targetUserId, String action)? onModerateUser;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -176,7 +184,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       barrierColor: Colors.black.withOpacity(.55),
       isScrollControlled: true,
       enableDrag: true,
-      builder: (sheetContext) => UserInfoBottomSheet(user: user),
+      builder: (sheetContext) => UserInfoBottomSheet(
+        user: user,
+        isMe: user['isMe'] == true,
+        canModerate: canModerateUsers && user['isMe'] != true,
+        selfMicMuted: user['isMe'] == true ? selfMicMuted : user['isMuted'] == true,
+        onToggleSelfMic: onToggleSelfMic,
+        onModerateUser: onModerateUser,
+      ),
     );
   }
 
@@ -211,9 +226,22 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
 
 class UserInfoBottomSheet extends StatelessWidget {
-  const UserInfoBottomSheet({super.key, required this.user});
+  const UserInfoBottomSheet({
+    super.key,
+    required this.user,
+    required this.isMe,
+    required this.canModerate,
+    required this.selfMicMuted,
+    this.onToggleSelfMic,
+    this.onModerateUser,
+  });
 
   final Map<String, dynamic> user;
+  final bool isMe;
+  final bool canModerate;
+  final bool selfMicMuted;
+  final Future<bool> Function()? onToggleSelfMic;
+  final Future<bool> Function(String targetUserId, String action)? onModerateUser;
 
   String _value(List<String> keys, [String fallback = '']) {
     for (final key in keys) {
@@ -350,14 +378,60 @@ class UserInfoBottomSheet extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 18),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _ProfileMicButton(icon: Icons.mic_rounded),
-                        const SizedBox(width: 18),
-                        _ProfileMicButton(icon: Icons.mic_off_rounded),
-                      ],
-                    ),
+                    if (isMe)
+                      _ProfileActionButton(
+                        icon: selfMicMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                        label: selfMicMuted ? 'فتح المايك' : 'كتم المايك',
+                        color: selfMicMuted ? const Color(0xFFB64A55) : const Color(0xFF2866B8),
+                        onTap: onToggleSelfMic == null ? null : () async {
+                          final ok = await onToggleSelfMic!();
+                          if (ok && context.mounted) Navigator.of(context).pop();
+                        },
+                      )
+                    else if (canModerate)
+                      Row(
+                        children: [
+                          Expanded(child: _ProfileActionButton(
+                            icon: selfMicMuted ? Icons.mic_rounded : Icons.mic_off_rounded,
+                            label: selfMicMuted ? 'إلغاء الكتم' : 'كتم',
+                            color: const Color(0xFF347FC1),
+                            onTap: onModerateUser == null ? null : () async {
+                              final ok = await onModerateUser!(user['userId'].toString(), 'toggle_mute');
+                              if (ok && context.mounted) Navigator.of(context).pop();
+                            },
+                          )),
+                          const SizedBox(width: 7),
+                          Expanded(child: _ProfileActionButton(
+                            icon: Icons.logout_rounded,
+                            label: 'طرد',
+                            color: const Color(0xFFD18A32),
+                            onTap: onModerateUser == null ? null : () async {
+                              final ok = await onModerateUser!(user['userId'].toString(), 'kick');
+                              if (ok && context.mounted) Navigator.of(context).pop();
+                            },
+                          )),
+                          const SizedBox(width: 7),
+                          Expanded(child: _ProfileActionButton(
+                            icon: Icons.block_rounded,
+                            label: 'حظر',
+                            color: const Color(0xFFB84250),
+                            onTap: onModerateUser == null ? null : () async {
+                              final ok = await onModerateUser!(user['userId'].toString(), 'ban');
+                              if (ok && context.mounted) Navigator.of(context).pop();
+                            },
+                          )),
+                          const SizedBox(width: 7),
+                          Expanded(child: _ProfileActionButton(
+                            icon: Icons.vertical_align_bottom_rounded,
+                            label: 'إنزال',
+                            color: const Color(0xFF7953B5),
+                            onTap: onModerateUser == null ? null : () async {
+                              final ok = await onModerateUser!(user['userId'].toString(), 'lower');
+                              if (ok && context.mounted) Navigator.of(context).pop();
+                            },
+                          )),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -435,19 +509,40 @@ class _ProfileInfoCard extends StatelessWidget {
   );
 }
 
-class _ProfileMicButton extends StatelessWidget {
-  const _ProfileMicButton({required this.icon});
+class _ProfileActionButton extends StatelessWidget {
+  const _ProfileActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onTap,
+  });
   final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 48,
-    height: 48,
-    decoration: const BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: LinearGradient(colors: [Color(0xFF4A8FE0), Color(0xFF2866B8)]),
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(13),
+            boxShadow: [BoxShadow(color: color.withOpacity(.22), blurRadius: 8, offset: const Offset(0, 3))],
+          ),
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
+        const SizedBox(height: 5),
+        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: Color(0xFF45404B), fontSize: 10, fontWeight: FontWeight.w800)),
+      ],
     ),
-    child: Icon(icon, color: Colors.white, size: 23),
   );
 }
 
