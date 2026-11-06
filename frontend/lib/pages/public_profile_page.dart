@@ -256,7 +256,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     );
                                   }),
                                 ),
-                                SliverToBoxAdapter(child: _profileContent()),
+                                SliverToBoxAdapter(
+                                  child: Transform.translate(
+                                    offset: const Offset(0, -48),
+                                    child: _profileContent(),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -523,23 +528,26 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     return PreferredSize(
       preferredSize: const Size.fromHeight(_tabsH),
-      child: Container(
-        height: _tabsH,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-        ),
-        child: Column(children: [
-          SizedBox(
-            height: 54,
-            child: Row(children: [
-              tab('الصفحة الشخصية', 2),
-              tab('الوكالات', 1),
-              tab('المنشورات', 0),
-            ]),
+      child: Transform.translate(
+        offset: const Offset(0, -48),
+        child: Container(
+          height: _tabsH,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
           ),
-          Container(height: 1, color: const Color(0xFFF0E7DC)),
-        ]),
+          child: Column(children: [
+            SizedBox(
+              height: 54,
+              child: Row(children: [
+                tab('الصفحة الشخصية', 2),
+                tab('الوكالات', 1),
+                tab('المنشورات', 0),
+              ]),
+            ),
+            Container(height: 1, color: const Color(0xFFF0E7DC)),
+          ]),
+        ),
       ),
     );
   }
