@@ -731,15 +731,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       );
     }
 
-    // تبويب الشخصية يبقى قابلاً للتمرير حتى عندما لا توجد نبذة.
-    return ListView(
-      primary: true,
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
-      padding: EdgeInsets.zero,
-      children: [_personalDetails()],
-    );
+    // مثل تبويب الوكالات: محتوى ثابت داخل الصفحة دون قائمة تمرير داخلية.
+    // يترك السحب للتمرير الخارجي حتى يعمل مؤشر التحديث فوق الغلاف.
+    return _personalDetails();
   }
 
   Widget _emptySection({
