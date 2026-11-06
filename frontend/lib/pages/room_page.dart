@@ -846,6 +846,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _referenceRoomHeader() {
+    final ownerAvatar = (widget.room['ownerAvatar'] ?? widget.room['ownerAvatarUrl'] ?? _imageUrl ?? '').toString();
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
       child: Row(
@@ -864,14 +865,16 @@ class _RoomPageState extends State<RoomPage> {
               const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFB94F), size: 22),
               const SizedBox(width: 5),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text(_roomName.isEmpty ? 'غرفة Happy Live' : _roomName,
+                Text(_ownerName.isEmpty ? 'صاحب الغرفة' : _ownerName,
                   style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
-                Text('ID: $_roomCode', style: const TextStyle(color: Colors.white60, fontSize: 9)),
+                Text(_roomName.isEmpty ? 'غرفة Happy Live · ID: $_roomCode' : '$_roomName · ID: $_roomCode',
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white60, fontSize: 9)),
               ]),
               const SizedBox(width: 7),
               CircleAvatar(radius: 18, backgroundColor: const Color(0xFF55727A),
-                backgroundImage: _imageUrl != null ? NetworkImage(_imageUrl!) : null,
-                child: _imageUrl == null ? const Icon(Icons.person, color: Colors.white) : null),
+                backgroundImage: ownerAvatar.startsWith('https://') ? NetworkImage(ownerAvatar) : null,
+                child: !ownerAvatar.startsWith('https://') ? const Icon(Icons.person, color: Colors.white) : null),
               const SizedBox(width: 7),
               const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 27),
             ]),
