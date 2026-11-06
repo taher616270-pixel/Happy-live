@@ -752,7 +752,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       return Directionality(
         textDirection: TextDirection.rtl,
         child: ListView.builder(
-          physics: const BouncingScrollPhysics(),
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
           padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
           itemCount: 3,
           itemBuilder: (context, itemIndex) {
@@ -772,7 +774,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
     if (index == 1) {
       return ListView.builder(
-        physics: const BouncingScrollPhysics(),
+        physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
         padding: EdgeInsets.zero,
         itemCount: 1,
         itemBuilder: (context, itemIndex) => _emptySection(
@@ -784,7 +788,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       );
     }
     return ListView.builder(
-      physics: const BouncingScrollPhysics(),
+      physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
       padding: EdgeInsets.zero,
       itemCount: 1,
       itemBuilder: (context, itemIndex) => _personalDetails(),
