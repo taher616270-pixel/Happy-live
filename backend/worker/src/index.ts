@@ -728,6 +728,32 @@ export default {
       }
     }
 
+    const commentRepliesRoute = url.pathname.match(/^\\/api\\/v1\\/posts\\/([0-9a-f-]{36})\\/comments\\/([0-9a-f-]{36})\\/replies$/i);
+    if (commentRepliesRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const body = await request.json() as Record<string, unknown>;
+        const content = typeof body.content === "string" ? body.content.trim() : "";
+        if (!content || content.length > 500) return json({ error: "invalid_reply", message: "اكتب رداً لا يتجاوز 500 حرف" }, 400, origin, env);
+        const parent = await env.DB.prepare(
+          "SELECT c.id FROM post_comments c INNER JOIN posts p ON p.id = c.post_id WHERE c.id = ? AND c.post_id = ? AND p.status = 'published'"
+        ).bind(commentRepliesRoute[2], commentRepliesRoute[1]).first();
+        if (!parent) return json({ error: "comment_not_found" }, 404, origin, env);
+        const id = crypto.randomUUID();
+        const createdAt = new Date().toISOString();
+        await env.DB.prepare("INSERT INTO post_comment_replies (id, comment_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)")
+          .bind(id, commentRepliesRoute[2], user.id, content, createdAt).run();
+        const profile = await env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ?")
+          .bind(user.id).first<{ avatar_key: string | null }>();
+        return json({ ok: true, reply: { id, commentId: commentRepliesRoute[2], userId: user.id, content, createdAt, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id, avatarUrl: profile?.avatar_key ?? null } }, 201, origin, env);
+      } catch (error) {
+        console.error("[posts.comments.reply] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "reply_creation_failed" }, 500, origin, env);
+      }
+    }
+
     const postCommentsRoute = url.pathname.match(/^\/api\/v1\/posts\/([0-9a-f-]{36})\/comments$/i);
     if (postCommentsRoute && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
@@ -737,7 +763,20 @@ export default {
         const rows = await env.DB.prepare(
           "SELECT c.id, c.user_id, c.content, c.created_at, p.display_name, p.gabo_id, p.avatar_key FROM post_comments c LEFT JOIN profiles p ON p.user_id = c.user_id WHERE c.post_id = ? ORDER BY c.created_at ASC LIMIT 100"
         ).bind(postCommentsRoute[1]).all<{ id: string; user_id: string; content: string; created_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null }>();
-        return json({ ok: true, comments: (rows.results ?? []).map(c => ({ id: c.id, userId: c.user_id, content: c.content, createdAt: c.created_at, name: c.display_name?.trim() || "مستخدم", userCode: c.gabo_id, avatarUrl: c.avatar_key })) }, 200, origin, env);
+        const comments = (rows.results ?? []).map(c => ({ id: c.id, userId: c.user_id, content: c.content, createdAt: c.created_at, name: c.display_name?.trim() || "مستخدم", userCode: c.gabo_id, avatarUrl: c.avatar_key, replies: [] as Array<Record<string, unknown>> }));
+        const replies = await env.DB.prepare(
+          "SELECT r.id, r.comment_id, r.user_id, r.content, r.created_at, p.display_name, p.gabo_id, p.avatar_key FROM post_comment_replies r LEFT JOIN profiles p ON p.user_id = r.user_id INNER JOIN post_comments c ON c.id = r.comment_id WHERE c.post_id = ? ORDER BY r.created_at ASC LIMIT 500"
+        ).bind(postCommentsRoute[1]).all<{ id: string; comment_id: string; user_id: string; content: string; created_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null }>();
+        const commentsById = new Map(comments.map(c => [c.id, c]));
+        for (const reply of replies.results ?? []) {
+          commentsById.get(reply.comment_id)?.replies.push({
+            id: reply.id, commentId: reply.comment_id, userId: reply.user_id,
+            content: reply.content, createdAt: reply.created_at,
+            name: reply.display_name?.trim() || "مستخدم", userCode: reply.gabo_id,
+            avatarUrl: reply.avatar_key
+          });
+        }
+        return json({ ok: true, comments }, 200, origin, env);
       } catch (error) {
         console.error("[posts.comments.list] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "comments_unavailable" }, 500, origin, env);
