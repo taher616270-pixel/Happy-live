@@ -715,8 +715,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('المنشورات',
-                  style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+              const Align(
+                alignment: Alignment.centerRight,
+                child: Text('المنشورات',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+              ),
               const SizedBox(height: 9),
               _postsContent(),
             ],
@@ -1029,12 +1033,53 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         final comments = (post['commentsCount'] as num?)?.toInt() ??
             (post['comments_count'] as num?)?.toInt() ??
             0;
+        final authorName = (post['authorName'] ??
+                post['author_name'] ??
+                post['displayName'] ??
+                post['display_name'] ??
+                post['name'] ??
+                _firstText(['name', 'displayName', 'display_name'], widget.name))
+            .toString()
+            .trim();
+        final authorPhoto = (post['authorAvatarUrl'] ??
+                post['author_avatar_url'] ??
+                post['avatarUrl'] ??
+                post['avatar_url'] ??
+                post['photo_url'] ??
+                post['userAvatar'] ??
+                post['user_avatar'] ??
+                _firstText(['avatarUrl', 'avatar', 'photo_url'], widget.photoUrl ?? ''))
+            .toString()
+            .trim();
         return Container(
           width: double.infinity,
           margin: const EdgeInsets.only(bottom: 20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text((post['content'] ?? '').toString(),
-                style: const TextStyle(color: _brown, fontSize: 13, height: 1.6)),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _avatar(38, authorPhoto),
+                  const SizedBox(width: 9),
+                  Flexible(
+                    child: Text(authorName.isEmpty ? widget.name : authorName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                            color: _brown, fontSize: 13, fontWeight: FontWeight.w900)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 9),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text((post['content'] ?? '').toString(),
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(color: _brown, fontSize: 13, height: 1.6)),
+            ),
             if (imageUrl.isNotEmpty) ...[
               const SizedBox(height: 9),
               Center(child: _ProfilePostImage(url: imageUrl)),
