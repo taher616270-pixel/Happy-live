@@ -780,6 +780,7 @@ class _RoomPageState extends State<RoomPage> {
               child: Column(
                 children: [
                   _referenceRoomHeader(),
+                  if (_showRoomActions) _roomActionSheet(),
                   const SizedBox(height: 15),
                   _referenceSeatGrid(),
                   const SizedBox(height: 12),
