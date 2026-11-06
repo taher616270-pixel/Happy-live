@@ -200,6 +200,17 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
   }
 
+
+  String _timeAgo(dynamic value) {
+    final date = DateTime.tryParse((value ?? '').toString())?.toLocal();
+    if (date == null) return 'الآن';
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'الآن';
+    if (diff.inHours < 1) return 'قبل ${diff.inMinutes} د';
+    if (diff.inDays < 1) return 'قبل ${diff.inHours} س';
+    return 'قبل ${diff.inDays} يوم';
+  }
+
   @override
   Widget build(BuildContext context) => Directionality(
         textDirection: TextDirection.rtl,
