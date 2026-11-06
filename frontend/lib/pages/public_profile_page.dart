@@ -1064,13 +1064,31 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                             children: [
                                               Transform.translate(
                                                 offset: const Offset(0, -2),
-                                                child: InkWell(
-                                                  onTap: () => _openCommenterProfile(comment),
-                                                  child: Text(commenterName,
-                                                      style: const TextStyle(
-                                                          color: _brown,
-                                                          fontWeight: FontWeight.w900,
-                                                          fontSize: 12)),
+                                                child: Wrap(
+                                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                                  spacing: 6,
+                                                  children: [
+                                                    InkWell(
+                                                      onTap: () => _openCommenterProfile(comment),
+                                                      child: Text(commenterName,
+                                                          style: const TextStyle(
+                                                              color: _brown,
+                                                              fontWeight: FontWeight.w900,
+                                                              fontSize: 12)),
+                                                    ),
+                                                    if ((comment['userId'] ?? comment['user_id'] ?? '').toString().isNotEmpty &&
+                                                        (comment['userId'] ?? comment['user_id']).toString() == widget.userId)
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(0xFFFFE7A8),
+                                                          border: Border.all(color: const Color(0xFFD6A642), width: 0.8),
+                                                          borderRadius: BorderRadius.circular(6),
+                                                        ),
+                                                        child: const Text('كاتب المنشور',
+                                                            style: TextStyle(color: Color(0xFF79520B), fontSize: 9, fontWeight: FontWeight.w900)),
+                                                      ),
+                                                  ],
                                                 ),
                                               ),
                                               const SizedBox(height: 4),
