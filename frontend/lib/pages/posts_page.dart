@@ -391,9 +391,12 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                               ),
                               const SizedBox(width: 10),
                               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                InkWell(
-                                  onTap: () => _openUserProfile(c),
-                                  child: Text(commenterName, style: const TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13)),
+                                Transform.translate(
+                                  offset: const Offset(0, -2),
+                                  child: InkWell(
+                                    onTap: () => _openUserProfile(c),
+                                    child: Text(commenterName, style: const TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13)),
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text((c['content'] ?? '').toString(), style: const TextStyle(color: _ink, fontSize: 13, height: 1.5)),
