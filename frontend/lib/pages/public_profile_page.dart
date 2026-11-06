@@ -951,6 +951,13 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     final Set<String> expandedReplyThreads = {};
     Timer? cooldownTimer;
     int cooldownSeconds = 0;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
     void startCommentCooldown([int seconds = 30]) {
       cooldownTimer?.cancel();
       cooldownSeconds = seconds;
@@ -966,12 +973,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       });
     }
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) {
           Future<void> loadComments() async {
             try {
               final response = await http.get(
@@ -1054,7 +1055,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
               input.clear();
               error = null;
             } catch (_) {
-              error = replyingTo != null ? 'تعذر إرسال الرد' : 'تعذر إضافة التعليق';
+              error ??= replyingTo != null ? 'تعذر إرسال الرد' : 'تعذر إضافة التعليق';
             }
             sending = false;
             setSheetState(() {});
