@@ -166,12 +166,13 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                             color: _brownLight,
                             backgroundColor: Colors.white,
                             edgeOffset: _barH + _tabsH,
-                            child: CustomScrollView(
+                            child: NestedScrollView(
                               controller: _profileScrollController,
                               physics: const AlwaysScrollableScrollPhysics(
                                 parent: ClampingScrollPhysics(),
                               ),
-                              slivers: [
+                              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+
                                 SliverAppBar(
                                   pinned: true,
                                   primary: true,
@@ -267,8 +268,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     );
                                   }),
                                 ),
-                                SliverToBoxAdapter(child: _profileContent()),
                               ],
+                              body: _profileContent(),
                             ),
                           ),
                           Positioned(
@@ -663,35 +664,26 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 
   Widget _profileContent() {
-    final mq = MediaQuery.of(context);
-    final pageHeight =
-        (mq.size.height - _barH - _tabsH - mq.padding.top)
-            .clamp(320.0, double.infinity)
-            .toDouble();
-
     Widget page(int index) => ColoredBox(
           color: index == 0 ? Colors.transparent : Colors.white,
           child: _tabContent(index),
         );
 
-    return SizedBox(
-      height: pageHeight,
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: PageView(
-          controller: _pageController,
-          physics: const PageScrollPhysics(),
-          onPageChanged: (i) {
-            if (mounted && _tab != i) {
-              setState(() => _tab = i);
-            }
-          },
-          children: [
-            page(0),
-            page(1),
-            page(2),
-          ],
-        ),
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: PageView(
+        controller: _pageController,
+        physics: const PageScrollPhysics(),
+        onPageChanged: (i) {
+          if (mounted && _tab != i) {
+            setState(() => _tab = i);
+          }
+        },
+        children: [
+          page(0),
+          page(1),
+          page(2),
+        ],
       ),
     );
   }
@@ -701,6 +693,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       return Directionality(
         textDirection: TextDirection.rtl,
         child: ListView.builder(
+          primary: true,
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
@@ -723,6 +716,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
     if (index == 1) {
       return ListView.builder(
+        primary: true,
         physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
@@ -737,6 +731,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       );
     }
     return ListView.builder(
+      primary: true,
       physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
