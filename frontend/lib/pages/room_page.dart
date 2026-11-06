@@ -797,15 +797,26 @@ class _RoomPageState extends State<RoomPage> {
                             ],
                           ),
                         ),
+                        if (_messages.isNotEmpty)
+                          Positioned(
+                            left: 88, right: 12, bottom: 8,
+                            height: 176,
+                            child: ListView.builder(
+                              controller: _roomMessagesController,
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              itemCount: _messages.length,
+                              itemBuilder: (context, index) => _roomMessageItem(_messages[index]),
+                            ),
+                          ),
                         Positioned(
                           left: 12, bottom: 12,
                           child: Column(
                             children: [
-                              _referenceSideTile(Icons.campaign_rounded, '0%'),
-                              const SizedBox(height: 12),
-                              _referenceSideTile(Icons.card_giftcard_rounded, 'هدايا'),
-                              const SizedBox(height: 12),
-                              _referenceSideTile(Icons.more_horiz_rounded, '•••'),
+                              _referenceSideTile(Icons.campaign_rounded, 'إعلان', onTap: _editRoomAnnouncement),
+                              const SizedBox(height: 9),
+                              _referenceSideTile(Icons.card_giftcard_rounded, 'هدايا', onTap: () => _showChatToolMessage('الهدايا')),
+                              const SizedBox(height: 9),
+                              _referenceSideTile(Icons.more_horiz_rounded, 'المزيد', onTap: _showRoomChatMenu),
                             ],
                           ),
                         ),
@@ -873,65 +884,69 @@ class _RoomPageState extends State<RoomPage> {
   Widget _referenceSeatGrid() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: 8,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4, mainAxisSpacing: 15, crossAxisSpacing: 13, childAspectRatio: 0.95,
-        ),
-        itemBuilder: (context, index) {
-          final number = index < 4 ? 4 - index : 8 - (index - 4);
-          return Column(children: [
-            Container(
-              width: 78, height: 78,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0x665C858C),
-                border: Border.all(color: Colors.white.withOpacity(0.07)),
-              ),
-              child: const Center(child: Icon(Icons.add_rounded, color: Color(0x99D8E7E8), size: 43)),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final tileWidth = (constraints.maxWidth - 39) / 4;
+          final micSize = (tileWidth * 0.82).clamp(54.0, 78.0);
+          return GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 8,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 13,
+              childAspectRatio: 0.88,
             ),
-            const SizedBox(height: 5),
-            Text('$number', style: const TextStyle(color: Colors.white54, fontSize: 11)),
-          ]);
+            itemBuilder: (context, index) {
+              final number = index < 4 ? 4 - index : 8 - (index - 4);
+              return _micCard(number, micSize);
+            },
+          );
         },
       ),
     );
   }
-
   Widget _referenceAudienceBar() {
+    final occupiedCount = List<int>.generate(8, (index) => index + 1)
+        .where((number) => _seatAt(number) != null).length;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(color: const Color(0x99001D28), borderRadius: BorderRadius.circular(28)),
-          child: const Row(children: [
-            Text('1', style: TextStyle(color: Colors.white, fontSize: 13)),
-            SizedBox(width: 7),
-            Icon(Icons.person_outline_rounded, color: Colors.white, size: 19),
+          child: Row(children: [
+            Text('$occupiedCount', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+            const SizedBox(width: 7),
+            const Icon(Icons.people_alt_rounded, color: Colors.white, size: 19),
           ]),
         ),
         const SizedBox(width: 8),
-        const CircleAvatar(radius: 17, backgroundColor: Color(0x884B777C),
-          child: Icon(Icons.person, color: Colors.white70, size: 18)),
+        CircleAvatar(
+          radius: 17,
+          backgroundColor: const Color(0x884B777C),
+          backgroundImage: _imageUrl != null ? NetworkImage(_imageUrl!) : null,
+          child: _imageUrl == null ? const Icon(Icons.person, color: Colors.white70, size: 18) : null,
+        ),
         const Spacer(),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(color: const Color(0x99001D28), borderRadius: BorderRadius.circular(26)),
-          child: const Row(children: [
-            Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 20),
-            SizedBox(width: 5),
-            Text('ALL', style: TextStyle(color: Color(0xFF163A42), backgroundColor: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
-            SizedBox(width: 9),
-            Icon(Icons.open_in_full_rounded, color: Colors.white, size: 18),
+          child: Row(children: [
+            const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 20),
+            const SizedBox(width: 5),
+            const Text('ALL', style: TextStyle(color: Color(0xFF163A42), backgroundColor: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+            const SizedBox(width: 9),
+            InkWell(
+              onTap: () => _showChatToolMessage('ملء الشاشة'),
+              child: const Icon(Icons.open_in_full_rounded, color: Colors.white, size: 18),
+            ),
           ]),
         ),
       ]),
     );
   }
-
   Widget _referenceMessage(String text, IconData icon) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -952,47 +967,93 @@ class _RoomPageState extends State<RoomPage> {
     );
   }
 
-  Widget _referenceSideTile(IconData icon, String label) {
-    return Container(
-      width: 87, height: 87,
-      decoration: BoxDecoration(color: const Color(0x9900131D), borderRadius: BorderRadius.circular(13)),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(icon, color: const Color(0xFFFFD18A), size: 34),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
-      ]),
+  Widget _referenceSideTile(IconData icon, String label, {VoidCallback? onTap}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(13),
+        child: Container(
+          width: 66, height: 66,
+          decoration: BoxDecoration(
+            color: const Color(0x9900131D),
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(color: const Color(0x33FFFFFF)),
+          ),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: const Color(0xFFFFD18A), size: 27),
+            const SizedBox(height: 3),
+            Text(label, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
+          ]),
+        ),
+      ),
     );
   }
 
   Widget _referenceComposer() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 7, 12, 9),
-      decoration: const BoxDecoration(color: Color(0x66001420)),
+      padding: const EdgeInsets.fromLTRB(9, 6, 9, 7),
+      decoration: const BoxDecoration(
+        color: Color(0x66001420),
+        border: Border(top: BorderSide(color: Color(0x33FFFFFF))),
+      ),
       child: SafeArea(
         top: false,
-        child: Row(children: [
-          const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 27),
-          const SizedBox(width: 17),
-          const Icon(Icons.card_giftcard_rounded, color: Color(0xFFFF83B5), size: 30),
-          const SizedBox(width: 17),
-          const Icon(Icons.menu_rounded, color: Colors.white, size: 30),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-              decoration: const InputDecoration(
-                hintText: 'قل شيئاً...', hintStyle: TextStyle(color: Colors.white54),
-                border: InputBorder.none, isDense: true, counterText: '',
+        child: Row(
+          textDirection: TextDirection.rtl,
+          children: [
+            IconButton(
+              tooltip: 'الدردشة',
+              onPressed: _showRoomChatMenu,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 37, height: 42),
+              icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 23),
+            ),
+            IconButton(
+              tooltip: 'الهدايا',
+              onPressed: () => _showChatToolMessage('الهدايا'),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 38, height: 42),
+              icon: const Icon(Icons.card_giftcard_rounded, color: Color(0xFFFF83B5), size: 25),
+            ),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0x6600131D),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0x33FFFFFF)),
+                ),
+                child: TextField(
+                  controller: _messageController,
+                  minLines: 1,
+                  maxLines: 2,
+                  maxLength: 200,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _sendRoomMessage(),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  decoration: const InputDecoration(
+                    hintText: 'قل شيئاً...',
+                    hintStyle: TextStyle(color: Colors.white60, fontSize: 12),
+                    border: InputBorder.none,
+                    isDense: true,
+                    counterText: '',
+                  ),
+                ),
               ),
             ),
-          ),
-          const Icon(Icons.volume_up_rounded, color: Colors.white70, size: 30),
-        ]),
+            IconButton(
+              tooltip: 'إرسال',
+              onPressed: _sendRoomMessage,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 40, height: 42),
+              icon: const Icon(Icons.send_rounded, color: Color(0xFFFFD18A), size: 22),
+            ),
+          ],
+        ),
       ),
     );
   }
-
   Widget _topBar() {
     return Row(
       textDirection: TextDirection.rtl,
