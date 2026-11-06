@@ -11,6 +11,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     required this.seats,
     required this.onTapSeat,
     required this.isChangingSeat,
+    required this.audienceCount,
   });
   final Map<String, dynamic> room;
   final String announcement;
@@ -19,6 +20,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final List<Map<String, dynamic>> seats;
   final ValueChanged<int> onTapSeat;
   final bool isChangingSeat;
+  final int audienceCount;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -153,7 +155,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
     child: Row(children: [
       _pill(Row(mainAxisSize: MainAxisSize.min, children: const [
-        Text('1', style: TextStyle(color: Colors.white, fontSize: 12)),
+        Text('$audienceCount', style: const TextStyle(color: Colors.white, fontSize: 12)),
         SizedBox(width: 3), Icon(Icons.person_outline_rounded, color: Colors.white, size: 16),
         SizedBox(width: 4), CircleAvatar(radius: 12, backgroundColor: Colors.white24, child: Icon(Icons.person, size: 13, color: Colors.white70)),
       ]), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
