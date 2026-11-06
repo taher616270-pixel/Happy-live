@@ -337,15 +337,31 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                   ? '$_api/posts/$id/comments/${replyingTo!['id']}/replies'
                   : '$_api/posts/$id/comments';
               final response = await http.post(Uri.parse(endpoint),
-                headers: _headers, body: jsonEncode({'content': text}));
+                headers: _headers, body: jsonEncode({'content': text, if (isReply && replyingTo!.containsKey('commentId')) 'parentReplyId': replyingTo!['id']}));
               final data = jsonDecode(response.body);
               if (response.statusCode != 201 || data is! Map || data['ok'] != true) throw Exception();
               if (isReply) {
                 final reply = Map<String, dynamic>.from(data['reply'] as Map);
-                final parent = comments.firstWhere((item) => item['id'] == replyingTo!['id']);
-                final replies = (parent['replies'] as List? ?? const []).toList();
-                replies.add(reply);
-                parent['replies'] = replies;
+                final commentId = (replyingTo!.containsKey('commentId') ? replyingTo!['commentId'] : replyingTo!['id']).toString();
+                reply['commentId'] = commentId;
+                if (replyingTo!.containsKey('commentId')) reply['parentReplyId'] = replyingTo!['id'];
+                final comment = comments.firstWhere((item) => item['id'].toString() == commentId);
+                bool attach(List<dynamic> nodes) {
+                  for (final node in nodes) {
+                    if (node is Map && node['id'].toString() == replyingTo!['id'].toString()) {
+                      final children = (node['replies'] as List? ?? const []).toList();
+                      children.add(reply); node['replies'] = children; return true;
+                    }
+                    if (node is Map && attach((node['replies'] as List? ?? const []).toList())) return true;
+                  }
+                  return false;
+                }
+                if (replyingTo!.containsKey('commentId')) {
+                  attach((comment['replies'] as List? ?? const []).toList());
+                } else {
+                  final children = (comment['replies'] as List? ?? const []).toList();
+                  children.add(reply); comment['replies'] = children;
+                }
                 replyingTo = null;
               } else {
                 final comment = Map<String, dynamic>.from(data['comment'] as Map);
@@ -390,6 +406,34 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                             final commenterName = (c['name'] ?? 'مستخدم').toString();
                             final commenterAvatar =
                                 (c['avatarUrl'] ?? c['avatar_url'] ?? '').toString().trim();
+                            Widget buildReply(Map<String, dynamic> reply, int depth) {
+                              final replyName = (reply['name'] ?? 'مستخدم').toString();
+                              final replyAvatar = (reply['avatarUrl'] ?? reply['avatar_url'] ?? '').toString().trim();
+                              final children = (reply['replies'] as List? ?? const []).whereType<Map>();
+                              return Padding(padding: EdgeInsets.only(right: 10.0 + depth * 14, bottom: 8),
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    InkWell(onTap: () => _openUserProfile(reply), child: CircleAvatar(radius: 13,
+                                      backgroundColor: const Color(0xFFF3F3F3),
+                                      backgroundImage: replyAvatar.isNotEmpty ? NetworkImage(replyAvatar) : null,
+                                      child: replyAvatar.isEmpty ? Text(replyName.isEmpty ? 'م' : replyName.characters.first,
+                                        style: const TextStyle(color: Color(0xFF80602B), fontSize: 10, fontWeight: FontWeight.w900)) : null)),
+                                    const SizedBox(width: 7),
+                                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                      InkWell(onTap: () => _openUserProfile(reply), child: Text(replyName,
+                                        style: const TextStyle(color: _ink, fontSize: 11, fontWeight: FontWeight.w900))),
+                                      Text((reply['content'] ?? '').toString(), style: const TextStyle(color: Colors.black, fontSize: 12, height: 1.4, fontWeight: FontWeight.w600)),
+                                      Row(children: [
+                                        Text(_timeAgo(reply['createdAt'] ?? reply['created_at']), style: const TextStyle(color: _muted, fontSize: 9)),
+                                        TextButton(onPressed: () { replyingTo = {...reply, 'commentId': c['id']}; setSheetState(() {}); },
+                                          style: TextButton.styleFrom(minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                          child: const Text('رد', style: TextStyle(color: _gold, fontSize: 10, fontWeight: FontWeight.w800))),
+                                      ]),
+                                    ])),
+                                  ]),
+                                  ...children.map((child) => buildReply(Map<String, dynamic>.from(child), depth + 1)),
+                                ]));
+                            }
                             return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               InkWell(
                                 onTap: () => _openUserProfile(c),
@@ -459,26 +503,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                                     child: const Text('رد', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
                                   ),
                                 ),
-                                ...(c['replies'] as List? ?? const []).whereType<Map>().map((item) {
-                                  final reply = Map<String, dynamic>.from(item);
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 10, bottom: 7),
-                                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                      const Icon(Icons.subdirectory_arrow_left_rounded, size: 15, color: _muted),
-                                      const SizedBox(width: 5),
-                                      Expanded(child: InkWell(
-                                        onTap: () => _openUserProfile(reply),
-                                        child: RichText(text: TextSpan(
-                                          style: const TextStyle(color: Color(0xFF000000), fontSize: 12, height: 1.4),
-                                          children: [
-                                            TextSpan(text: '${reply['name'] ?? 'مستخدم'}: ', style: const TextStyle(fontWeight: FontWeight.w900)),
-                                            TextSpan(text: (reply['content'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
-                                          ],
-                                        )),
-                                      )),
-                                    ]),
-                                  );
-                                }),
+                                ...(c['replies'] as List? ?? const []).whereType<Map>().map((item) => buildReply(Map<String, dynamic>.from(item), 0)),
                               ])),
                             ]);
                           },
