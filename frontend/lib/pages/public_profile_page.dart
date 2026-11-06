@@ -55,8 +55,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   final PageController _pageController = PageController(initialPage: 2);
   int _coverIndex = 0;
   final ScrollController _profileScrollController = ScrollController();
-  double _tabPullOffset = 0;
-  bool _tabPulling = false;
   bool _loading = true;
   String? _loadError;
   Map<String, dynamic> _profile = {};
@@ -147,43 +145,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 
   Future<void> _refreshProfile() => _loadProfile(showErrorView: false);
-
-  // سحب إضافي مؤقت لمحتوى التبويب عند بلوغ نهاية التمرير الداخلي.
-  // لا يغيّر موضع أو سلوك التمرير الرئيسي الموجود.
-  bool _handleTabPullNotification(ScrollNotification notification) {
-    if (notification.metrics.axis != Axis.vertical) return false;
-
-    if (notification is OverscrollNotification &&
-        notification.overscroll > 0) {
-      final next = (_tabPullOffset + notification.overscroll * 0.55)
-          .clamp(0.0, 140.0)
-          .toDouble();
-      if (next != _tabPullOffset || !_tabPulling) {
-        setState(() {
-          _tabPulling = true;
-          _tabPullOffset = next;
-        });
-      }
-    } else if (notification is ScrollUpdateNotification &&
-        notification.metrics.outOfRange &&
-        notification.metrics.pixels > notification.metrics.maxScrollExtent) {
-      final delta = notification.scrollDelta ?? 0;
-      if (delta > 0) {
-        setState(() {
-          _tabPulling = true;
-          _tabPullOffset =
-              (_tabPullOffset + delta * 0.55).clamp(0.0, 140.0).toDouble();
-        });
-      }
-    } else if (notification is ScrollEndNotification &&
-        _tabPullOffset > 0) {
-      setState(() {
-        _tabPulling = false;
-        _tabPullOffset = 0;
-      });
-    }
-    return false;
-  }
 
   @override
   Widget build(BuildContext context) => Directionality(
@@ -306,19 +267,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     );
                                   }),
                                 ),
-                                SliverToBoxAdapter(
-                                  child: NotificationListener<ScrollNotification>(
-                                    onNotification: _handleTabPullNotification,
-                                    child: AnimatedContainer(
-                                      duration: _tabPulling
-                                          ? Duration.zero
-                                          : const Duration(milliseconds: 220),
-                                      transform: Matrix4.translationValues(
-                                          0, -_tabPullOffset, 0),
-                                      child: _profileContent(),
-                                    ),
-                                  ),
-                                ),
+                                SliverToBoxAdapter(child: _profileContent()),
                               ],
                             ),
                           ),
