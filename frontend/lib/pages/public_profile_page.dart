@@ -1060,7 +1060,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                               const SizedBox(height: 4),
                                               Text((comment['content'] ?? '').toString(),
                                                   style: const TextStyle(
-                                                      color: _brownMid,
+                                                      color: Color(0xFF000000),
+                                                      fontWeight: FontWeight.w700,
                                                       fontSize: 13,
                                                       height: 1.5)),
                                               const SizedBox(height: 3),
