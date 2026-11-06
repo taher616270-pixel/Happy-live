@@ -61,6 +61,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   String? _loadError;
   Map<String, dynamic> _profile = {};
   List<Map<String, dynamic>> _posts = [];
+  bool _isFollowing = false;
+  bool _isMine = false;
+  bool _followBusy = false;
 
   Map<String, dynamic> get _stats =>
       Map<String, dynamic>.from((_profile['stats'] as Map?) ?? const {});
@@ -127,6 +130,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       setState(() {
         _profile = profile;
         _posts = posts;
+        _isFollowing = profile['isFollowing'] == true;
+        _isMine = profile['isMine'] == true;
         _loading = false;
         _loadError = null;
       });
@@ -147,6 +152,42 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 
   Future<void> _refreshProfile() => _loadProfile(showErrorView: false);
+
+  Future<void> _toggleFollow() async {
+    if (_followBusy || _isMine) return;
+    setState(() => _followBusy = true);
+    try {
+      final response = await http.post(
+        Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/users/${Uri.encodeComponent(widget.userId)}/follow'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+      ).timeout(const Duration(seconds: 12));
+      final decoded = jsonDecode(response.body);
+      if (response.statusCode != 200 || decoded is! Map || decoded['ok'] != true) {
+        throw Exception(decoded is Map
+            ? (decoded['message'] ?? decoded['error'] ?? 'تعذر تحديث المتابعة').toString()
+            : 'تعذر تحديث المتابعة');
+      }
+      if (!mounted) return;
+      setState(() {
+        _isFollowing = decoded['following'] == true;
+        final stats = Map<String, dynamic>.from(
+          (_profile['stats'] as Map?) ?? const {},
+        );
+        final followers = _number('followers');
+        stats['followers'] = (followers + (_isFollowing ? 1 : -1)).clamp(0, 0x7fffffff);
+        _profile = {..._profile, 'stats': stats, 'isFollowing': _isFollowing};
+      });
+      await _loadProfile(showErrorView: false);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر تحديث المتابعة. حاول مرة أخرى.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _followBusy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Directionality(
@@ -1232,8 +1273,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         bg: _cream,
         fg: _brownDark,
         icon: Icons.person_add_alt_1_rounded,
-        label: 'متابعة',
-        onTap: widget.onFollow ??
+        label: _isMine ? 'حسابك' : _followBusy ? 'جارٍ...' : _isFollowing ? 'متابع' : 'متابعة',
+        onTap: _isMine ? () {} : widget.onFollow ?? _toggleFollow,
             () => ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('ميزة المتابعة قيد التجهيز')),
                 ),
