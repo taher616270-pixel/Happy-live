@@ -43,7 +43,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       backgroundColor: const Color(0xFF08141C),
       body: Stack(fit: StackFit.expand, children: [
         const _NightSky(),
-        SafeArea(child: Column(children: [
+        SafeArea(bottom: false, child: Column(children: [
           _header(),
           _subHeader(),
           _seats(),
@@ -67,7 +67,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               _SideTile(icon: Icons.diamond_rounded, label: '0/2500', color: Color(0xFFFF8A65)),
             ])),
           ])),
-          _bottomBar(),
+          _bottomBar(MediaQuery.viewPaddingOf(context).bottom),
         ])),
       ]),
     ),
@@ -206,8 +206,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     ]),
   ));
 
-  Widget _bottomBar() => Directionality(textDirection: TextDirection.ltr, child: Padding(
-    padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+  Widget _bottomBar(double safeBottomInset) => Directionality(textDirection: TextDirection.ltr, child: Padding(
+    padding: EdgeInsets.fromLTRB(10, 6, 10, safeBottomInset + 10),
     child: Row(children: const [
       Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 28),
       SizedBox(width: 14), Icon(Icons.card_giftcard_rounded, color: Color(0xFFFF6FA5), size: 28),
