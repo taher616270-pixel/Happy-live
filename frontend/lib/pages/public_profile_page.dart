@@ -628,8 +628,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                             ? (_pageController.page ?? _tab.toDouble())
                                 .clamp(0.0, 2.0)
                             : _tab.toDouble();
-                        // الحركة معكوسة: المؤشر ينتقل من اليسار إلى اليمين.
-                        final dx = (2.0 - page) * tabWidth;
+                        // LTR physical coordinates: page 0 left, page 2 right.
+                        // Swipe left increments page, so the indicator moves right with it.
+                        final dx = page * tabWidth;
                         return Positioned(
                           left: 0,
                           bottom: 6,
