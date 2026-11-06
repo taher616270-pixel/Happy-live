@@ -323,15 +323,18 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         ),
       ),
       Expanded(
-        child: PageView(
-          controller: _pageController,
-          reverse: true,
-          onPageChanged: (index) => setState(() => _currentPage = index),
-          children: [
-            _buildOriginalHomeContent(),
-            const SizedBox.expand(),
-            const SizedBox.expand(),
-          ],
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: PageView(
+            controller: _pageController,
+            reverse: false,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            children: [
+              _buildOriginalHomeContent(),
+              const SizedBox.expand(),
+              const SizedBox.expand(),
+            ],
+          ),
         ),
       ),
     ],
