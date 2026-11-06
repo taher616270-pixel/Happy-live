@@ -719,46 +719,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         ]),
       );
 
-  // صور جدار الصور: من بيانات الحساب، وإلا من صور المنشورات
-  List<String> _wallPhotos() {
-    for (final key in const ['photos', 'gallery', 'wall', 'photoWall', 'photo_wall']) {
-      final raw = _profile[key];
-      if (raw is List && raw.isNotEmpty) {
-        final urls = <String>[];
-        for (final e in raw) {
-          final u = e is Map
-              ? (e['url'] ?? e['imageUrl'] ?? e['image_url'] ?? '').toString()
-              : e.toString();
-          if (u.isNotEmpty && u != 'null') urls.add(u);
-        }
-        if (urls.isNotEmpty) return urls;
-      }
-    }
-    if (_profile['canViewPosts'] != true) return const [];
-    return _posts
-        .map((p) => (p['imageUrl'] ?? p['image_url'] ?? '').toString())
-        .where((u) => u.isNotEmpty && u != 'null')
-        .toList();
-  }
-
-  Widget _wallImage(String url, double ratio) => ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: AspectRatio(
-          aspectRatio: ratio,
-          child: Image.network(
-            url,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              color: _chip,
-              child: const Icon(Icons.broken_image_outlined, color: _muted),
-            ),
-          ),
-        ),
-      );
-
   Widget _personalDetails() {
     final bio = _firstText(['bio', 'about'], widget.bio);
-    final photos = _wallPhotos();
     return Padding(
       key: const ValueKey('personal'),
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
@@ -771,28 +733,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             child: Text(bio,
                 style: const TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w700)),
           ),
-        if (photos.isNotEmpty) ...[
-          const Row(children: [
-            Expanded(
-              child: Text('جدار الصور',
-                  style: TextStyle(color: _brown, fontSize: 16, fontWeight: FontWeight.w900)),
-            ),
-            Icon(Icons.chevron_left_rounded, color: _muted, size: 28),
-          ]),
-          const SizedBox(height: 12),
-          _wallImage(photos.first, 1 / 1.1),
-          if (photos.length > 1)
-            GridView.count(
-              crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(top: 10),
-              children: photos.skip(1).map((u) => _wallImage(u, 1)).toList(),
-            ),
-        ],
-        if (bio.isEmpty && photos.isEmpty)
+        if (bio.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
             child: Center(
