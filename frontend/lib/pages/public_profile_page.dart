@@ -914,6 +914,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     final input = TextEditingController();
     bool loading = true;
     bool sending = false;
+    Map<String, dynamic>? replyingTo;
     String? error;
     List<Map<String, dynamic>> comments = [];
 
@@ -951,8 +952,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             sending = true;
             setSheetState(() {});
             try {
+              final isReply = replyingTo != null;
+              final endpoint = isReply
+                  ? 'https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/comments/${replyingTo!['id']}/replies'
+                  : 'https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/comments';
               final response = await http.post(
-                Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/posts/$id/comments'),
+                Uri.parse(endpoint),
                 headers: {
                   'Authorization': 'Bearer ${widget.accessToken}',
                   'Content-Type': 'application/json',
@@ -963,12 +968,23 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
               if (response.statusCode != 201 || data is! Map || data['ok'] != true) {
                 throw Exception();
               }
-              comments.add(Map<String, dynamic>.from(data['comment'] as Map));
+              if (isReply) {
+                final reply = Map<String, dynamic>.from(data['reply'] as Map);
+                final parent = comments.firstWhere((item) => item['id'] == replyingTo!['id']);
+                final replies = (parent['replies'] as List? ?? const []).toList();
+                replies.add(reply);
+                parent['replies'] = replies;
+                replyingTo = null;
+              } else {
+                final newComment = Map<String, dynamic>.from(data['comment'] as Map);
+                newComment['replies'] = <Map<String, dynamic>>[];
+                comments.add(newComment);
+                post['commentsCount'] = ((post['commentsCount'] as num?)?.toInt() ?? 0) + 1;
+              }
               input.clear();
-              post['commentsCount'] = ((post['commentsCount'] as num?)?.toInt() ?? 0) + 1;
               error = null;
             } catch (_) {
-              error = 'تعذر إضافة التعليق';
+              error = replyingTo != null ? 'تعذر إرسال الرد' : 'تعذر إضافة التعليق';
             }
             sending = false;
             setSheetState(() {});
@@ -1072,6 +1088,43 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                                   style: const TextStyle(color: _muted, fontSize: 10),
                                                 ),
                                               ),
+                                              Align(
+                                                alignment: Alignment.centerRight,
+                                                child: TextButton(
+                                                  onPressed: () {
+                                                    replyingTo = comment;
+                                                    input.clear();
+                                                    setSheetState(() {});
+                                                  },
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor: _gold,
+                                                    visualDensity: VisualDensity.compact,
+                                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                    minimumSize: Size.zero,
+                                                  ),
+                                                  child: const Text('رد', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                                                ),
+                                              ),
+                                              ...(comment['replies'] as List? ?? const []).whereType<Map>().map((item) {
+                                                final reply = Map<String, dynamic>.from(item);
+                                                return Padding(
+                                                  padding: const EdgeInsets.only(right: 10, bottom: 7),
+                                                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                                    const Icon(Icons.subdirectory_arrow_left_rounded, size: 15, color: _muted),
+                                                    const SizedBox(width: 5),
+                                                    Expanded(child: InkWell(
+                                                      onTap: () => _openCommenterProfile(reply),
+                                                      child: RichText(text: TextSpan(
+                                                        style: const TextStyle(color: Color(0xFF000000), fontSize: 12, height: 1.4),
+                                                        children: [
+                                                          TextSpan(text: '${reply['name'] ?? 'مستخدم'}: ', style: const TextStyle(fontWeight: FontWeight.w900)),
+                                                          TextSpan(text: (reply['content'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
+                                                        ],
+                                                      )),
+                                                    )),
+                                                  ]),
+                                                );
+                                              }),
                                             ],
                                           ),
                                         ),
@@ -1085,6 +1138,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                       alignment: Alignment.centerRight,
                       child: Text(error!,
                           style: const TextStyle(color: Colors.red, fontSize: 11))),
+                if (replyingTo != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(children: [
+                      Expanded(child: Text('الرد على ${replyingTo!['name'] ?? 'مستخدم'}',
+                          style: const TextStyle(color: _gold, fontSize: 11, fontWeight: FontWeight.w800))),
+                      IconButton(
+                        onPressed: () { replyingTo = null; input.clear(); setSheetState(() {}); },
+                        icon: const Icon(Icons.close_rounded, size: 17, color: _muted),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ]),
+                  ),
                 Row(children: [
                   Expanded(
                       child: TextField(
@@ -1094,7 +1160,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     style: const TextStyle(color: _brown, fontSize: 13),
                     decoration: InputDecoration(
                       counterText: '',
-                      hintText: 'اكتب تعليقاً...',
+                      hintText: replyingTo == null ? 'اكتب تعليقاً...' : 'اكتب ردك...',
                       hintStyle: const TextStyle(color: _muted),
                       filled: true,
                       fillColor: _chip,
