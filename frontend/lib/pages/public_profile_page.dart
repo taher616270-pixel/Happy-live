@@ -1157,7 +1157,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                   Center(child: _ProfilePostImage(url: imageUrl)),
                 ],
                 const SizedBox(height: 9),
-                const Divider(height: 1, color: Color(0xFFF2EBDD)),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -1167,7 +1166,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.mode_comment_outlined, color: _brownLight, size: 18),
+                          const Icon(Icons.mode_comment_outlined, color: _brownLight, size: 23),
                           const SizedBox(width: 5),
                           Text(
                             '$comments',
@@ -1189,7 +1188,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                           Icon(
                             liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                             color: liked ? const Color(0xFFE34D65) : _brownLight,
-                            size: 19,
+                            size: 24,
                           ),
                           const SizedBox(width: 5),
                           Text(
