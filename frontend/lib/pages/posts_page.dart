@@ -26,6 +26,8 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
   final List<Map<String, dynamic>> _posts = [];
   bool _loading = true;
   String? _error;
+  String _feedMode = 'daily';
+  String _feedFilter = 'all';
 
   Map<String, String> get _headers => {
     'Authorization': 'Bearer ${widget.accessToken}',
@@ -443,188 +445,235 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFFF7EBCB),
-                  Color(0xFFFAF6EA),
-                  Color(0xFFF6F7FB),
-                ],
+    final modePosts = _feedMode == 'mine'
+        ? _posts.where((post) => post['isMine'] == true).toList()
+        : _posts;
+    final visiblePosts = _feedFilter == 'following'
+        ? modePosts.where((post) => post['followed'] == true || post['isMine'] == true).toList()
+        : modePosts;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFFFFCF5), _cream, Color(0xFFF4F0E6)],
+                ),
               ),
-            ),
-            child: RefreshIndicator(
-              color: _gold,
-              onRefresh: _loadPosts,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'المنشورات',
-                              style: TextStyle(
-                                color: _ink,
-                                fontSize: 25,
-                                fontWeight: FontWeight.w900,
+              child: RefreshIndicator(
+                color: _gold,
+                onRefresh: _loadPosts,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(15, 14, 15, 100),
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'المنشورات',
+                                style: TextStyle(color: _ink, fontSize: 24, fontWeight: FontWeight.w900),
                               ),
+                              const SizedBox(height: 3),
+                              Text(
+                                'شارك لحظاتك مع مجتمع Happy Live',
+                                style: TextStyle(color: _muted, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFE8D8B5)),
+                          ),
+                          child: const Icon(Icons.auto_awesome_rounded, color: _gold, size: 21),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 17),
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEDE5D4),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Row(
+                        children: [
+                          _feedTab('يومي', 'daily'),
+                          _feedTab('خاص بي', 'mine'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _feedFilterChip('الكل', 'all'),
+                        const SizedBox(width: 8),
+                        _feedFilterChip('المتابعة', 'following'),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    if (_loading && _posts.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(35),
+                        child: Center(child: CircularProgressIndicator(color: _gold)),
+                      )
+                    else if (_error != null && _posts.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(22),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.cloud_off_rounded, color: _gold, size: 32),
+                            const SizedBox(height: 9),
+                            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: _muted, fontSize: 12)),
+                            TextButton(onPressed: _loadPosts, child: const Text('إعادة المحاولة', style: TextStyle(color: _gold, fontWeight: FontWeight.w800))),
+                          ],
+                        ),
+                      )
+                    else if (visiblePosts.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 18),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(19),
+                          border: Border.all(color: const Color(0xFFE9DFC9)),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              _feedMode == 'mine' ? Icons.person_outline_rounded : Icons.forum_outlined,
+                              color: _gold,
+                              size: 38,
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 10),
                             Text(
-                              'لحظات وأفكار من مجتمع Happy Live',
+                              _feedMode == 'mine'
+                                  ? 'لا توجد منشورات لك بعد'
+                                  : _feedFilter == 'following'
+                                      ? 'لا توجد منشورات من الحسابات التي تتابعها'
+                                      : 'لا توجد منشورات بعد',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 15),
+                            ),
+                            const SizedBox(height: 5),
+                            const Text(
+                              'كن أول من يشارك لحظة مع مجتمع Happy Live',
+                              textAlign: TextAlign.center,
                               style: TextStyle(color: _muted, fontSize: 12),
                             ),
                           ],
                         ),
-                      ),
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: const Color(0xFFEAD9AD),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.auto_awesome_rounded,
-                          color: _gold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  const SizedBox(height: 20),
-                  if (_loading && _posts.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(35),
-                      child: Center(
-                        child: CircularProgressIndicator(color: _gold),
-                      ),
-                    )
-                  else if (_error != null && _posts.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(22),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.cloud_off_rounded,
-                            color: _gold,
-                            size: 32,
-                          ),
-                          const SizedBox(height: 9),
-                          Text(
-                            _error!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: _muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else if (_posts.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 30,
-                        horizontal: 18,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFFEADFC7),
-                        ),
-                      ),
-                      child: const Column(
-                        children: [
-                          Icon(
-                            Icons.forum_outlined,
-                            color: _gold,
-                            size: 38,
-                          ),
-                          SizedBox(height: 10),
-                          Text(
-                            'لا توجد منشورات بعد',
-                            style: TextStyle(
-                              color: _ink,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 15,
-                            ),
-                          ),
-                          SizedBox(height: 5),
-                          Text(
-                            'كن أول من يشارك لحظة مع مجتمع Happy Live',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: _muted, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    ..._posts.map(_postCard),
-                ],
+                      )
+                    else
+                      ...visiblePosts.map(_postCard),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        Positioned(
-          left: 16,
-          bottom: 20,
-          child: SizedBox(
-            width: 56,
-            height: 56,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFFFFD700), Color(0xFFFFF8E1)],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFFD700).withOpacity(0.5),
-                    blurRadius: 12,
-                    spreadRadius: 1,
+          Positioned(
+            left: 17,
+            bottom: 19,
+            child: SizedBox(
+              width: 54,
+              height: 54,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFE8C36D), _gold],
                   ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: _openCreatePost,
-                  child: const Center(
-                    child: Icon(
-                      Icons.edit_note,
-                      color: Colors.white,
-                      size: 30,
-                    ),
+                  boxShadow: [
+                    BoxShadow(color: _gold.withOpacity(0.28), blurRadius: 13, spreadRadius: 1),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _openCreatePost,
+                    child: const Center(child: Icon(Icons.edit_rounded, color: Colors.white, size: 25)),
                   ),
                 ),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _feedTab(String label, String value) {
+    final selected = _feedMode == value;
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() {
+          _feedMode = value;
+          _feedFilter = 'all';
+        }),
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: selected
+                ? const [BoxShadow(color: Color(0x10000000), blurRadius: 7, offset: Offset(0, 2))]
+                : const [],
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: selected ? _ink : _muted,
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+            ),
+          ),
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _feedFilterChip(String label, String value) {
+    final selected = _feedFilter == value;
+    return InkWell(
+      onTap: () => setState(() => _feedFilter = value),
+      borderRadius: BorderRadius.circular(30),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? _gold : Colors.white,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: selected ? _gold : const Color(0xFFE7DDC9)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : _ink,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
     );
   }
 
