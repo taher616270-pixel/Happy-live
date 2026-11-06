@@ -138,7 +138,20 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ),
               clipBehavior: Clip.antiAlias,
               child: occupied && avatar.startsWith('http')
-                  ? Image.network(avatar, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Center(child: Text(name.isEmpty ? '؟' : name.characters.first, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))
+                  ? ClipOval(
+                      child: SizedBox.expand(
+                        child: Image.network(
+                          avatar,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Center(
+                            child: Text(
+                              name.isEmpty ? '؟' : name.characters.first,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
                   : Icon(occupied ? Icons.mic_rounded : Icons.add_rounded, color: mine ? const Color(0xFFFFD98B) : Colors.white70, size: 32),
             ),
           ),
