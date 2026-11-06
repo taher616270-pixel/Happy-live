@@ -54,6 +54,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   static const double _expandedH = (_coverH - _cardLift) + _cardH;
 
   int _tab = 2;
+  bool _refreshGestureFromCover = false;
   final PageController _pageController = PageController(initialPage: 2);
   int _coverIndex = 0;
   final ScrollController _profileScrollController = ScrollController();
@@ -163,16 +164,34 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     ? _errorView()
                     : Stack(
                         children: [
-                          NestedScrollView(
+                          Listener(
+                            onPointerDown: (event) {
+                              final coverBottom =
+                                  MediaQuery.of(context).padding.top + _coverH;
+                              _refreshGestureFromCover =
+                                  event.position.dy <= coverBottom;
+                            },
+                            onPointerUp: (_) {
+                              _refreshGestureFromCover = false;
+                            },
+                            onPointerCancel: (_) {
+                              _refreshGestureFromCover = false;
+                            },
+                            child: NestedScrollView(
                               controller: _profileScrollController,
                               physics: const BouncingScrollPhysics(
                                 parent: AlwaysScrollableScrollPhysics(),
                               ),
                               headerSliverBuilder: (context, innerBoxIsScrolled) => [
                                 CupertinoSliverRefreshControl(
-                                  onRefresh: _refreshProfile,
+                                  onRefresh: _refreshGestureFromCover
+                                      ? _refreshProfile
+                                      : () async {},
                                   builder: (context, mode, pulledExtent,
                                       refreshTriggerPullDistance, refreshIndicatorExtent) {
+                                    if (!_refreshGestureFromCover) {
+                                      return const SizedBox.shrink();
+                                    }
                                     return SizedBox(
                                       height: pulledExtent,
                                       child: const Center(
@@ -279,6 +298,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                               ],
                               body: _profileContent(),
                             ),
+                          ),
                           Positioned(
                             left: 14,
                             right: 14,
