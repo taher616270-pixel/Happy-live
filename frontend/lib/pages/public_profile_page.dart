@@ -1082,8 +1082,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                       final replyName = (reply['name'] ?? 'مستخدم').toString();
                                       final avatar = (reply['avatarUrl'] ?? reply['avatar_url'] ?? '').toString().trim();
                                       final replyTo = (reply['_replyToName'] ?? '').toString().trim();
-                                      return Container(margin: const EdgeInsets.only(bottom: 7), padding: const EdgeInsets.all(9),
-                                        decoration: BoxDecoration(color: const Color(0xFFFFFCF5), border: Border.all(color: const Color(0xFFECE3D0)), borderRadius: BorderRadius.circular(12)),
+                                      return Padding(padding: const EdgeInsets.only(bottom: 7),
                                         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                           InkWell(onTap: () => _openCommenterProfile(reply), child: CircleAvatar(radius: 14, backgroundColor: _chip,
                                             backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
