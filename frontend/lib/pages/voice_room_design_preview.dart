@@ -143,7 +143,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(occupied ? (mine ? 'أنت' : name) : '$n',
+          Text(occupied ? (name.isNotEmpty ? name : 'مستخدم') : '$n',
             maxLines: 1, overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.white70, fontSize: 10)),
         ]));
