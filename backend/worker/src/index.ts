@@ -382,6 +382,10 @@ export default {
           "SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        const activeBan = await env.DB.prepare(
+          "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
+        ).bind(roomId, user.id).first<{ user_id: string }>();
+        if (activeBan) return json({ error: "room_banned", message: "تم حظرك من هذه الغرفة" }, 403, origin, env);
         let body: Record<string, unknown>;
         try { body = await request.json() as Record<string, unknown>; }
         catch { return json({ error: "invalid_json" }, 400, origin, env); }
