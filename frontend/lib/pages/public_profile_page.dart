@@ -183,7 +183,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                               ),
                               headerSliverBuilder: (context, innerBoxIsScrolled) => [
                                 SliverAppBar(
-                                  pinned: true,
+                                  pinned: false,
                                   primary: false,
                                   toolbarHeight: 56,
                                   collapsedHeight: 56,
@@ -255,7 +255,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                   ),
                                 ),
                                 SliverPersistentHeader(
-                                  pinned: true,
+                                  pinned: false,
                                   delegate: _PublicProfileTabsDelegate(
                                     selected: _tab,
                                     onSelected: _changeProfileTab,
