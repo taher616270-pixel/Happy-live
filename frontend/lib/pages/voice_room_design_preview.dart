@@ -127,11 +127,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         return Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: !canTap
-                ? null
-                : (mine && avatar.startsWith('http')
-                    ? () => _showOwnPhotoCapsule(context)
-                    : () => onTapSeat(n)),
+            onTap: occupied
+                ? (avatar.startsWith('http')
+                    ? () => _showUserProfile(context, seat!)
+                    : null)
+                : (canTap ? () => onTapSeat(n) : null),
             child: Container(
               width: 62, height: 62,
               decoration: BoxDecoration(
@@ -168,24 +168,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     ))),
   );
 
-  void _showOwnPhotoCapsule(BuildContext context) {
+  void _showUserProfile(BuildContext context, Map<String, dynamic> user) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(.38),
-      isScrollControlled: false,
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: Container(
-          height: 88,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          decoration: BoxDecoration(
-            color: const Color(0xF018252D),
-            borderRadius: BorderRadius.circular(48),
-            border: Border.all(color: Colors.white.withOpacity(.16)),
-          ),
-        ),
-      ),
+      barrierColor: Colors.black.withOpacity(.55),
+      isScrollControlled: true,
+      enableDrag: true,
+      builder: (sheetContext) => UserInfoBottomSheet(user: user),
     );
   }
 
@@ -216,6 +206,248 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       Icon(Icons.volume_up_rounded, color: Colors.white, size: 28),
     ]),
   ));
+}
+
+
+class UserInfoBottomSheet extends StatelessWidget {
+  const UserInfoBottomSheet({super.key, required this.user});
+
+  final Map<String, dynamic> user;
+
+  String _value(List<String> keys, [String fallback = '']) {
+    for (final key in keys) {
+      final value = user[key];
+      if (value != null && value.toString().trim().isNotEmpty) {
+        return value.toString();
+      }
+    }
+    return fallback;
+  }
+
+  int _number(List<String> keys) {
+    for (final key in keys) {
+      final value = user[key];
+      if (value is num) return value.toInt();
+      final parsed = int.tryParse(value?.toString() ?? '');
+      if (parsed != null) return parsed;
+    }
+    return 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = _value(['name', 'displayName', 'username'], 'مستخدم');
+    final id = _value(['id', 'userId', 'uid'], '—');
+    final avatar = _value(['avatarUrl', 'avatar', 'photoUrl']);
+    final country = _value(['country', 'countryCode'], 'SA').toUpperCase();
+    final gender = _value(['gender'], 'male').toLowerCase();
+    final badges = user['badges'] is List ? user['badges'] as List : const [0, 0];
+    final titleCount = _number(['titleCount']);
+    final trophyCount = _number(['trophyCount']);
+
+    return SafeArea(
+      top: false,
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.topCenter,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 55),
+                padding: const EdgeInsets.fromLTRB(18, 62, 18, 18),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF20202A),
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Icon(
+                          gender == 'male' ? Icons.male_rounded : Icons.female_rounded,
+                          color: gender == 'male' ? const Color(0xFF258BE8) : const Color(0xFFE66A9B),
+                          size: 22,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          country == 'SA' ? '🇸🇦' : country,
+                          style: const TextStyle(fontSize: 19),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('ID: $id', style: const TextStyle(color: Color(0xFF777782), fontSize: 12, fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 7),
+                        InkWell(
+                          onTap: id == '—' ? null : () {
+                            Clipboard.setData(ClipboardData(text: id));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('تم نسخ ID')),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(Icons.copy_rounded, size: 15, color: Color(0xFF777782)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 17),
+                    Row(
+                      children: [
+                        Expanded(child: _ProfileCountBar(
+                          value: badges.isNotEmpty ? badges[0].toString() : '0',
+                          color: const Color(0xFF9B704B),
+                        )),
+                        const SizedBox(width: 10),
+                        Expanded(child: _ProfileCountBar(
+                          value: badges.length > 1 ? badges[1].toString() : '0',
+                          color: const Color(0xFF3988D4),
+                        )),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: _ProfileInfoCard(
+                          title: 'لقب',
+                          count: titleCount,
+                          color: const Color(0xFFF0E9FC),
+                          iconColor: const Color(0xFF9B75D0),
+                          icon: Icons.workspace_premium_rounded,
+                        )),
+                        const SizedBox(width: 10),
+                        Expanded(child: _ProfileInfoCard(
+                          title: 'كأس التكريم',
+                          count: trophyCount,
+                          color: const Color(0xFFF8F0E3),
+                          iconColor: const Color(0xFFB58B55),
+                          icon: Icons.emoji_events_rounded,
+                        )),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _ProfileMicButton(icon: Icons.mic_rounded),
+                        const SizedBox(width: 18),
+                        _ProfileMicButton(icon: Icons.mic_off_rounded),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 0,
+                child: Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 5),
+                    boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 12, offset: Offset(0, 4))],
+                    image: avatar.startsWith('http')
+                        ? DecorationImage(image: NetworkImage(avatar), fit: BoxFit.cover)
+                        : null,
+                    color: const Color(0xFFE8E4EC),
+                  ),
+                  child: avatar.startsWith('http')
+                      ? null
+                      : const Icon(Icons.person_rounded, size: 58, color: Color(0xFF9A93A1)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileCountBar extends StatelessWidget {
+  const _ProfileCountBar({required this.value, required this.color});
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 34,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
+    child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)),
+  );
+}
+
+class _ProfileInfoCard extends StatelessWidget {
+  const _ProfileInfoCard({
+    required this.title,
+    required this.count,
+    required this.color,
+    required this.iconColor,
+    required this.icon,
+  });
+  final String title;
+  final int count;
+  final Color color;
+  final Color iconColor;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 68,
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(13)),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, color: iconColor, size: 22),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text('$title $count', maxLines: 2, textAlign: TextAlign.center,
+            style: TextStyle(color: iconColor, fontSize: 12, fontWeight: FontWeight.w800)),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ProfileMicButton extends StatelessWidget {
+  const _ProfileMicButton({required this.icon});
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 48,
+    height: 48,
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: LinearGradient(colors: [Color(0xFF4A8FE0), Color(0xFF2866B8)]),
+    ),
+    child: Icon(icon, color: Colors.white, size: 23),
+  );
 }
 
 class _Notice extends StatelessWidget {
