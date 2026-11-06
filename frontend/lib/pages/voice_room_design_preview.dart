@@ -127,7 +127,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         return Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: canTap ? () => onTapSeat(n) : null,
+            onTap: !canTap
+                ? null
+                : (mine && avatar.startsWith('http')
+                    ? () => _showOwnPhotoCapsule(context)
+                    : () => onTapSeat(n)),
             child: Container(
               width: 62, height: 62,
               decoration: BoxDecoration(
@@ -163,6 +167,27 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       })),
     ))),
   );
+
+  void _showOwnPhotoCapsule(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(.38),
+      isScrollControlled: false,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Container(
+          height: 88,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          decoration: BoxDecoration(
+            color: const Color(0xF018252D),
+            borderRadius: BorderRadius.circular(48),
+            border: Border.all(color: Colors.white.withOpacity(.16)),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _listeners() => Directionality(textDirection: TextDirection.ltr, child: Padding(
     padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
