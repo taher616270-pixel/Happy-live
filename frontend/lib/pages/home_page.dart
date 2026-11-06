@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'create_room_page.dart';
 import 'room_page.dart';
+import 'public_profile_page.dart';
 
 /// Theme colors kept local so this page can be maintained independently.
 class HappyHomeColors {
@@ -105,105 +106,119 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     await _loadMyRoom();
   }
 
-  Future<void> _searchRoomById() async {
+  Future<void> _searchUserById() async {
     final controller = TextEditingController();
     bool searching = false;
     String? error;
-    Map<String, dynamic>? foundRoom;
+    Map<String, dynamic>? foundUser;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: HappyHomeColors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0x66D9A93C))),
-          title: const Text('البحث عن غرفة', textAlign: TextAlign.right, style: TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.w800)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Color(0x66D9A93C)),
+          ),
+          title: const Text('البحث عن شخص', textAlign: TextAlign.right,
+            style: TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.w800)),
           content: Directionality(
             textDirection: TextDirection.rtl,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: controller,
-                  keyboardType: TextInputType.number,
-                  maxLength: 8,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFF1E2233), fontSize: 20, letterSpacing: 3, fontWeight: FontWeight.bold),
-                  decoration: InputDecoration(
-                    counterText: '',
-                    hintText: 'أدخل ID الغرفة',
-                    hintStyle: const TextStyle(color: HappyHomeColors.muted, fontSize: 14, letterSpacing: 0),
-                    filled: true, fillColor: const Color(0xFFFAF6EA),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: Color(0xFFE4E4EC))),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: HappyHomeColors.gold)),
-                  ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text('اكتب ID المستخدم للوصول إلى ملفه الشخصي',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: HappyHomeColors.muted, fontSize: 12)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller, keyboardType: TextInputType.number,
+                maxLength: 8, textAlign: TextAlign.center,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: const TextStyle(color: Color(0xFF1E2233), fontSize: 20,
+                  letterSpacing: 3, fontWeight: FontWeight.bold),
+                decoration: InputDecoration(
+                  counterText: '', hintText: 'أدخل ID الشخص',
+                  filled: true, fillColor: const Color(0xFFFAF6EA),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13),
+                    borderSide: const BorderSide(color: Color(0xFFE4E4EC))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13),
+                    borderSide: const BorderSide(color: HappyHomeColors.gold)),
                 ),
-                if (error != null) ...[
-                  const SizedBox(height: 10),
-                  Text(error!, style: const TextStyle(color: Color(0xFFFF7777), fontSize: 12), textAlign: TextAlign.center),
-                ],
-                if (foundRoom != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity, padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const Color(0xFFFAF6EA), borderRadius: BorderRadius.circular(13), border: Border.all(color: HappyHomeColors.gold.withOpacity(.5))),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      Text((foundRoom!['name'] ?? 'غرفة صوتية').toString(), textAlign: TextAlign.right, style: const TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text('ID: ${foundRoom!['roomCode'] ?? controller.text.trim()}', textAlign: TextAlign.right, style: const TextStyle(color: HappyHomeColors.gold, fontSize: 12)),
-                    ]),
+              ),
+              if (error != null) Text(error!, textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFFD9534F), fontSize: 12)),
+              if (foundUser != null) ...[
+                const SizedBox(height: 10),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  leading: CircleAvatar(
+                    backgroundColor: const Color(0xFFEFE3C7),
+                    backgroundImage: (foundUser!['avatarUrl'] ?? '').toString().isNotEmpty
+                      ? NetworkImage(foundUser!['avatarUrl'].toString()) : null,
+                    child: (foundUser!['avatarUrl'] ?? '').toString().isEmpty
+                      ? const Icon(Icons.person, color: HappyHomeColors.gold) : null,
                   ),
-                ],
+                  title: Text((foundUser!['name'] ?? 'مستخدم').toString(),
+                    style: const TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.bold)),
+                  subtitle: Text('ID: ' + (foundUser!['userCode'] ?? controller.text).toString(),
+                    style: const TextStyle(color: HappyHomeColors.gold)),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 15,
+                    color: HappyHomeColors.gold),
+                  onTap: () {
+                    final user = Map<String, dynamic>.from(foundUser!);
+                    Navigator.pop(dialogContext);
+                    Navigator.of(this.context).push(MaterialPageRoute<void>(
+                      builder: (_) => PublicProfilePage(
+                        name: (user['name'] ?? 'مستخدم').toString(),
+                        userId: (user['id'] ?? '').toString(),
+                        accessToken: widget.accessToken,
+                        userCode: (user['userCode'] ?? '').toString(),
+                        photoUrl: (user['avatarUrl'] ?? '').toString(),
+                      ),
+                    ));
+                  },
+                ),
               ],
-            ),
+            ]),
           ),
           actions: [
-            TextButton(onPressed: searching ? null : () => Navigator.pop(dialogContext), child: const Text('إغلاق', style: TextStyle(color: HappyHomeColors.muted))),
-            if (foundRoom != null)
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeColors.gold, foregroundColor: Colors.black),
-                onPressed: () {
-                  final room = Map<String, dynamic>.from(foundRoom!);
-                  Navigator.pop(dialogContext);
-                  Navigator.of(this.context).push(PageRouteBuilder<void>(
-                    opaque: false, barrierColor: Colors.transparent,
-                    pageBuilder: (_, __, ___) => RoomPage(room: room, accessToken: widget.accessToken),
-                    transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
-                    transitionDuration: const Duration(milliseconds: 180),
-                  ));
-                },
-                child: const Text('دخول الغرفة', style: TextStyle(fontWeight: FontWeight.bold)),
-              )
-            else
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: HappyHomeColors.purple, foregroundColor: const Color(0xFF5A4630)),
-                onPressed: searching ? null : () async {
-                  final code = controller.text.trim();
-                  if (!RegExp(r'^\d{8}$').hasMatch(code)) {
-                    setDialogState(() { error = 'أدخل ID صحيحاً مكوّناً من 8 أرقام'; });
-                    return;
+            TextButton(onPressed: searching ? null : () => Navigator.pop(dialogContext),
+              child: const Text('إغلاق')),
+            if (foundUser == null) ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: HappyHomeColors.gold,
+                foregroundColor: Colors.black),
+              onPressed: searching ? null : () async {
+                final code = controller.text.trim();
+                if (!RegExp(r'^\d{8}$').hasMatch(code)) {
+                  setDialogState(() => error = 'أدخل ID صحيحاً مكوّناً من 8 أرقام');
+                  return;
+                }
+                setDialogState(() { searching = true; error = null; });
+                try {
+                  final response = await http.get(
+                    Uri.parse(_apiBase + '/users/by-code/' + Uri.encodeComponent(code)),
+                    headers: {'Authorization': 'Bearer ' + widget.accessToken},
+                  ).timeout(const Duration(seconds: 10));
+                  final data = jsonDecode(response.body);
+                  if (response.statusCode == 200 && data is Map &&
+                      data['ok'] == true && data['user'] is Map) {
+                    setDialogState(() => foundUser =
+                      Map<String, dynamic>.from(data['user'] as Map));
+                  } else {
+                    setDialogState(() => error = response.statusCode == 404
+                      ? 'لم يتم العثور على مستخدم بهذا ID'
+                      : 'تعذر البحث الآن، حاول مرة أخرى');
                   }
-                  setDialogState(() { searching = true; error = null; });
-                  try {
-                    final response = await http.get(
-                      Uri.parse('$_apiBase/rooms/by-code/${Uri.encodeComponent(code)}'),
-                      headers: {'Authorization': 'Bearer ${widget.accessToken}'},
-                    ).timeout(const Duration(seconds: 10));
-                    final data = jsonDecode(response.body);
-                    if (response.statusCode == 200 && data is Map && data['ok'] == true && data['room'] is Map) {
-                      setDialogState(() { foundRoom = Map<String, dynamic>.from(data['room'] as Map); });
-                    } else {
-                      setDialogState(() { error = response.statusCode == 404 ? 'لم يتم العثور على غرفة نشطة بهذا ID' : 'تعذر البحث الآن، حاول مرة أخرى'; });
-                    }
-                  } catch (_) {
-                    setDialogState(() { error = 'تعذر الاتصال بالخادم، تحقق من الإنترنت'; });
-                  } finally {
-                    setDialogState(() { searching = false; });
-                  }
-                },
-                child: searching
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('بحث', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
+                } catch (_) {
+                  setDialogState(() => error = 'تعذر الاتصال بالخادم، تحقق من الإنترنت');
+                } finally {
+                  setDialogState(() => searching = false);
+                }
+              },
+              child: searching
+                ? const SizedBox(width: 18, height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Text('بحث'),
+            ),
           ],
         ),
       ),
@@ -305,8 +320,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 color: Colors.white,
                 shape: const CircleBorder(),
                 child: IconButton(
-                  tooltip: 'البحث عن غرفة بواسطة ID',
-                  onPressed: _searchRoomById,
+                  tooltip: 'البحث عن شخص بواسطة ID',
+                  onPressed: _searchUserById,
                   icon: const Icon(Icons.search_rounded, color: HappyHomeColors.gold, size: 21),
                   visualDensity: VisualDensity.compact,
                   constraints: const BoxConstraints.tightFor(width: 40, height: 40),
