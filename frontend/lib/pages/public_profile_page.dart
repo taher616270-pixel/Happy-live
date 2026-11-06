@@ -1236,7 +1236,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     style: const TextStyle(color: _brown, fontSize: 13),
                     decoration: InputDecoration(
                       counterText: '',
-                      hintText: replyingTo == null ? 'اكتب تعليقاً...' : 'رد ${(replyingTo?['name'] ?? replyingTo?['displayName'] ?? 'مستخدم').toString()}',
+                      hintText: replyingTo == null ? 'اكتب تعليقاً...' : 'رد على ${(replyingTo?['name'] ?? replyingTo?['displayName'] ?? 'مستخدم').toString()}',
                       hintStyle: const TextStyle(color: _muted),
                       filled: true,
                       fillColor: _chip,
