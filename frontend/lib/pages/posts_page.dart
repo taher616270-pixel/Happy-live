@@ -451,6 +451,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
               if (isDelete) {
                 comments.removeWhere((item) => item['id'].toString() == commentId);
                 post['commentsCount'] = (((post['commentsCount'] as num?)?.toInt() ?? 1) - 1).clamp(0, 1 << 30);
+                if (mounted) setState(() {});
               }
               setSheetState(() {});
               if (mounted) _toast(isDelete ? 'تم حذف التعليق' : 'تم إرسال البلاغ');
