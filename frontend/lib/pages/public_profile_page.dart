@@ -700,33 +700,44 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     if (index == 0) {
       return Directionality(
         textDirection: TextDirection.rtl,
-        child: Padding(
+        child: ListView.builder(
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Align(
+          itemCount: 3,
+          itemBuilder: (context, itemIndex) {
+            if (itemIndex == 0) {
+              return const Align(
                 alignment: Alignment.centerRight,
                 child: Text('المنشورات',
                     textAlign: TextAlign.right,
                     style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
-              ),
-              const SizedBox(height: 9),
-              _postsContent(),
-            ],
-          ),
+              );
+            }
+            if (itemIndex == 1) return const SizedBox(height: 9);
+            return _postsContent();
+          },
         ),
       );
     }
     if (index == 1) {
-      return _emptySection(
-        key: const ValueKey('agency-empty-section'),
-        icon: Icons.apartment_rounded,
-        title: 'لا توجد وكالة مرتبطة',
-        subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
+      return ListView.builder(
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.zero,
+        itemCount: 1,
+        itemBuilder: (context, itemIndex) => _emptySection(
+          key: const ValueKey('agency-empty-section'),
+          icon: Icons.apartment_rounded,
+          title: 'لا توجد وكالة مرتبطة',
+          subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
+        ),
       );
     }
-    return _personalDetails();
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: 1,
+      itemBuilder: (context, itemIndex) => _personalDetails(),
+    );
   }
 
   Widget _emptySection({
