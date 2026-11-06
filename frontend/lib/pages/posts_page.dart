@@ -462,7 +462,8 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFFFFFCF5), _cream, Color(0xFFF4F0E6)],
+                  colors: [Color(0xFFF7EBCB), Color(0xFFFAF6EA), Color(0xFFF6F7FB)],
+                stops: [0.0, 0.3, 0.55],
                 ),
               ),
               child: RefreshIndicator(
