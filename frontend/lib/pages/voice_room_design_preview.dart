@@ -238,7 +238,7 @@ class UserInfoBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = _value(['name', 'displayName', 'username'], 'مستخدم');
-    final id = _value(['id', 'userId', 'uid'], '—');
+    final id = _value(['userCode', 'gaboId', 'publicId', 'gabo_id'], '—');
     final avatar = _value(['avatarUrl', 'avatar', 'photoUrl']);
     final country = _value(['country', 'countryCode'], 'SA').toUpperCase();
     final gender = _value(['gender'], 'male').toLowerCase();
