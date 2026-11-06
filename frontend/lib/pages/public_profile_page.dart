@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'dart:convert';
@@ -948,6 +949,22 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     String? error;
     List<Map<String, dynamic>> comments = [];
     final Set<String> expandedReplyThreads = {};
+    Timer? cooldownTimer;
+    int cooldownSeconds = 0;
+    void startCommentCooldown([int seconds = 30]) {
+      cooldownTimer?.cancel();
+      cooldownSeconds = seconds;
+      setSheetState(() {});
+      cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (cooldownSeconds <= 1) {
+          timer.cancel();
+          cooldownSeconds = 0;
+        } else {
+          cooldownSeconds--;
+        }
+        setSheetState(() {});
+      });
+    }
 
     await showModalBottomSheet<void>(
       context: context,
@@ -996,6 +1013,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                 body: jsonEncode({'content': content, if (isReply && replyingTo!.containsKey('commentId')) 'parentReplyId': replyingTo!['id']}),
               ).timeout(const Duration(seconds: 12));
               final data = jsonDecode(response.body);
+              if (response.statusCode == 429 && !isReply) {
+                error = (data is Map ? data['message'] : null)?.toString() ?? 'انتظر حتى ينتهي العداد قبل التعليق مرة أخرى';
+                startCommentCooldown();
+                throw Exception();
+              }
               if (response.statusCode != 201 || data is! Map || data['ok'] != true) {
                 throw Exception();
               }
@@ -1027,6 +1049,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                 newComment['replies'] = <Map<String, dynamic>>[];
                 comments.add(newComment);
                 post['commentsCount'] = ((post['commentsCount'] as num?)?.toInt() ?? 0) + 1;
+                startCommentCooldown();
               }
               input.clear();
               error = null;
@@ -1418,15 +1441,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                   )),
                   const SizedBox(width: 8),
                   IconButton.filled(
-                    onPressed: sending ? null : sendComment,
+                    onPressed: sending || (replyingTo == null && cooldownSeconds > 0) ? null : sendComment,
                     style: IconButton.styleFrom(
-                        backgroundColor: _gold, foregroundColor: _brownDark),
+                      backgroundColor: replyingTo == null && cooldownSeconds > 0 ? _muted : _gold,
+                      foregroundColor: _brownDark,
+                    ),
                     icon: sending
                         ? const SizedBox(
                             width: 17,
                             height: 17,
                             child: CircularProgressIndicator(strokeWidth: 2, color: _brownDark))
-                        : const Icon(Icons.send_rounded),
+                        : replyingTo == null && cooldownSeconds > 0
+                            ? Text('$cooldownSeconds', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900))
+                            : const Icon(Icons.send_rounded),
                   ),
                 ]),
               ]),
@@ -1435,6 +1462,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         },
       ),
     );
+    cooldownTimer?.cancel();
     input.dispose();
     if (mounted) setState(() {});
   }
