@@ -626,8 +626,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                             : _tab.toDouble();
                         // الحركة معكوسة: المؤشر ينتقل من اليسار إلى اليمين.
                         final dx = (2.0 - page) * tabWidth;
-                        return PositionedDirectional(
-                          start: 0,
+                        return Positioned(
+                          left: 0,
                           bottom: 6,
                           child: Transform.translate(
                             offset: Offset(dx, 0),
