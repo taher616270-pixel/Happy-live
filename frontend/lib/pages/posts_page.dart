@@ -307,6 +307,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
     Map<String, dynamic>? replyingTo;
     String? error;
     List<Map<String, dynamic>> comments = [];
+    final Set<String> expandedReplyThreads = {};
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -407,34 +408,56 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                             final commenterName = (c['name'] ?? 'مستخدم').toString();
                             final commenterAvatar =
                                 (c['avatarUrl'] ?? c['avatar_url'] ?? '').toString().trim();
-                            Widget buildReply(Map<String, dynamic> reply, int depth) {
-                              final replyName = (reply['name'] ?? 'مستخدم').toString();
-                              final replyAvatar = (reply['avatarUrl'] ?? reply['avatar_url'] ?? '').toString().trim();
-                              final children = (reply['replies'] as List? ?? const []).whereType<Map>();
-                              return Padding(padding: EdgeInsets.only(right: 10.0 + depth * 14, bottom: 8),
-                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                    InkWell(onTap: () => _openUserProfile(reply), child: CircleAvatar(radius: 13,
-                                      backgroundColor: const Color(0xFFF3F3F3),
-                                      backgroundImage: replyAvatar.isNotEmpty ? NetworkImage(replyAvatar) : null,
-                                      child: replyAvatar.isEmpty ? Text(replyName.isEmpty ? 'م' : replyName.characters.first,
-                                        style: const TextStyle(color: Color(0xFF80602B), fontSize: 10, fontWeight: FontWeight.w900)) : null)),
-                                    const SizedBox(width: 7),
-                                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                      InkWell(onTap: () => _openUserProfile(reply), child: Text(replyName,
-                                        style: const TextStyle(color: _ink, fontSize: 11, fontWeight: FontWeight.w900))),
-                                      Text((reply['content'] ?? '').toString(), style: const TextStyle(color: Colors.black, fontSize: 12, height: 1.4, fontWeight: FontWeight.w600)),
-                                      Row(children: [
-                                        Text(_timeAgo(reply['createdAt'] ?? reply['created_at']), style: const TextStyle(color: _muted, fontSize: 9)),
-                                        TextButton(onPressed: () { replyingTo = {...reply, 'commentId': c['id']}; setSheetState(() {}); },
-                                          style: TextButton.styleFrom(minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                                          child: const Text('رد', style: TextStyle(color: _gold, fontSize: 10, fontWeight: FontWeight.w800))),
-                                      ]),
-                                    ])),
-                                  ]),
-                                  ...children.map((child) => buildReply(Map<String, dynamic>.from(child), depth + 1)),
-                                ]));
+                            List<Map<String, dynamic>> flattenReplies(List<dynamic> roots, [String? parentName]) {
+                              final result = <Map<String, dynamic>>[];
+                              for (final raw in roots) {
+                                if (raw is! Map) continue;
+                                final item = Map<String, dynamic>.from(raw);
+                                item['_replyToName'] = parentName;
+                                result.add(item);
+                                result.addAll(flattenReplies((item['replies'] as List? ?? const []).toList(), (item['name'] ?? 'مستخدم').toString()));
+                              }
+                              return result;
                             }
+                            Widget buildReply(Map<String, dynamic> reply) {
+                              final replyName = (reply['name'] ?? 'مستخدم').toString();
+                              final avatar = (reply['avatarUrl'] ?? reply['avatar_url'] ?? '').toString().trim();
+                              final replyTo = (reply['_replyToName'] ?? '').toString().trim();
+                              return Container(margin: const EdgeInsets.only(bottom: 7), padding: const EdgeInsets.all(9),
+                                decoration: BoxDecoration(color: const Color(0xFFFFFCF5), border: Border.all(color: const Color(0xFFECE3D0)), borderRadius: BorderRadius.circular(12)),
+                                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  InkWell(onTap: () => _openUserProfile(reply), child: CircleAvatar(radius: 14, backgroundColor: const Color(0xFFF3F0E8),
+                                    backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
+                                    child: avatar.isEmpty ? Text(replyName.isEmpty ? 'م' : replyName.characters.first, style: const TextStyle(color: Color(0xFF80602B), fontSize: 10, fontWeight: FontWeight.w900)) : null)),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    InkWell(onTap: () => _openUserProfile(reply), child: Text(replyName, style: const TextStyle(color: _ink, fontSize: 11, fontWeight: FontWeight.w900))),
+                                    if (replyTo.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 1, bottom: 2), child: Text('رد على $replyTo', style: const TextStyle(color: _gold, fontSize: 9, fontWeight: FontWeight.w700))),
+                                    Text((reply['content'] ?? '').toString(), style: const TextStyle(color: Colors.black, fontSize: 12, height: 1.45, fontWeight: FontWeight.w600)),
+                                    Row(children: [
+                                      Text(_timeAgo(reply['createdAt'] ?? reply['created_at']), style: const TextStyle(color: _muted, fontSize: 9)),
+                                      TextButton(onPressed: () { replyingTo = {...reply, 'commentId': c['id']}; setSheetState(() {}); },
+                                        style: TextButton.styleFrom(minimumSize: Size.zero, padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                        child: const Text('رد', style: TextStyle(color: _gold, fontSize: 10, fontWeight: FontWeight.w800))),
+                                    ]),
+                                  ])),
+                                ]),
+                              );
+                            }
+                            final allReplies = flattenReplies((c['replies'] as List? ?? const []).toList());
+                            final threadId = c['id'].toString();
+                            final expanded = expandedReplyThreads.contains(threadId);
+                            final visibleReplies = expanded || allReplies.length <= 1 ? allReplies : <Map<String, dynamic>>[allReplies.last];
+                            final hiddenReplyCount = allReplies.length - visibleReplies.length;
+                            Widget repliesSection() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                              ...visibleReplies.map(buildReply),
+                              if (allReplies.length > 1) Align(alignment: Alignment.centerRight, child: TextButton.icon(
+                                onPressed: () { if (expanded) { expandedReplyThreads.remove(threadId); } else { expandedReplyThreads.add(threadId); } setSheetState(() {}); },
+                                style: TextButton.styleFrom(foregroundColor: _gold, padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2), visualDensity: VisualDensity.compact, minimumSize: Size.zero),
+                                icon: Icon(expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 17),
+                                label: Text(expanded ? 'إخفاء الردود' : 'عرض $hiddenReplyCount ردود', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
+                              )),
+                            ]);
                             return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               InkWell(
                                 onTap: () => _openUserProfile(c),
@@ -504,7 +527,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                                     child: const Text('رد', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
                                   ),
                                 ),
-                                ...(c['replies'] as List? ?? const []).whereType<Map>().map((item) => buildReply(Map<String, dynamic>.from(item), 0)),
+                                repliesSection(),
                               ])),
                             ]);
                           },
