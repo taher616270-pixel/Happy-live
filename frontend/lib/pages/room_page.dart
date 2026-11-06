@@ -147,6 +147,17 @@ class _RoomPageState extends State<RoomPage> {
     try {
       final response = await http.get(_seatsUri, headers: _headers).timeout(const Duration(seconds: 8));
       final data = jsonDecode(response.body);
+      if (response.statusCode == 403 && data is Map &&
+          (data['error'] == 'room_kicked' || data['error'] == 'room_banned')) {
+        if (mounted) {
+          _showMessage(data['error'] == 'room_banned'
+              ? 'تم حظرك من هذه الغرفة'
+              : 'تم طردك من الغرفة');
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+          if (mounted) Navigator.of(context).maybePop();
+        }
+        return;
+      }
       if (response.statusCode != 200 || data is! Map<String, dynamic> || data['ok'] != true) {
         if (mounted && _isLoading) setState(() { _isLoading = false; _loadError = response.statusCode == 401 ? 'انتهت جلسة الدخول، سجّل الدخول مجددًا' : 'تعذر تحميل مقاعد الغرفة'; });
         return;
