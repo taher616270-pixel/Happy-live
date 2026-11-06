@@ -46,7 +46,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         SafeArea(bottom: false, child: Column(children: [
           _header(),
           _subHeader(),
-          _seats(),
+          _seats(context),
           _listeners(),
           Expanded(child: Stack(children: [
             Positioned.fill(child: ListView(
@@ -112,7 +112,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     ]),
   ));
 
-  Widget _seats() => Padding(
+  Widget _seats(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(14, 18, 14, 0),
     child: Column(children: List.generate(2, (r) => Padding(
       padding: const EdgeInsets.only(bottom: 14),
