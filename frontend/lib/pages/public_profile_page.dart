@@ -708,16 +708,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   Widget _tabContent(int index) {
     if (index == 0) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('المنشورات',
-                style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 9),
-            _postsContent(),
-          ],
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('المنشورات',
+                  style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 9),
+              _postsContent(),
+            ],
+          ),
         ),
       );
     }
