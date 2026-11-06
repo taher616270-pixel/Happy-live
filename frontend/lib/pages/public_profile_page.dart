@@ -247,17 +247,26 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     ],
                                   ),
                                 ),
-                                SliverToBoxAdapter(
-                                  child: _profileTabsAndContent(),
+                                SliverFillRemaining(
+                                  hasScrollBody: false,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      _profileTabsAndContent(),
+                                      Padding(
+                                        padding: EdgeInsets.fromLTRB(
+                                          12,
+                                          18,
+                                          12,
+                                          8 + MediaQuery.of(context).padding.bottom,
+                                        ),
+                                        child: _actionBar(),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                          Positioned(
-                            left: 12,
-                            right: 12,
-                            bottom: 8 + MediaQuery.of(context).padding.bottom,
-                            child: _actionBar(),
                           ),
                         ],
                       ),
