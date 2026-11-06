@@ -330,7 +330,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
           Future<void> send() async {
             final text = input.text.trim();
             if (text.isEmpty || sending) return;
-            sending = true; setSheetState(() {});
+            sending = true; error = null; setSheetState(() {});
             try {
               final isReply = replyingTo != null;
               final endpoint = isReply
@@ -339,6 +339,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
               final response = await http.post(Uri.parse(endpoint),
                 headers: _headers, body: jsonEncode({'content': text, if (isReply && replyingTo!.containsKey('commentId')) 'parentReplyId': replyingTo!['id']}));
               final data = jsonDecode(response.body);
+              if (response.statusCode == 429 && data is Map) error = (data['message'] ?? 'انتظر 30 ثانية قبل التعليق مرة أخرى').toString();
               if (response.statusCode != 201 || data is! Map || data['ok'] != true) throw Exception();
               if (isReply) {
                 final reply = Map<String, dynamic>.from(data['reply'] as Map);
@@ -371,7 +372,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
               }
               input.clear();
               error = null;
-            } catch (_) { error = replyingTo != null ? 'تعذر إرسال الرد' : 'تعذر إضافة التعليق'; }
+            } catch (_) { error ??= replyingTo != null ? 'تعذر إرسال الرد' : 'تعذر إضافة التعليق'; }
             sending = false; setSheetState(() {});
           }
           if (loading && comments.isEmpty) load();
