@@ -485,7 +485,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       ),
       // الصورة الشخصية تتداخل مع حافة البطاقة
       PositionedDirectional(
-        top: cardTop + 20,
+        top: cardTop + 14,
         start: 19,
         child: _avatar(58, avatar),
       ),
