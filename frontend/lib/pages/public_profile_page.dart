@@ -1012,43 +1012,48 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                         (comment['avatarUrl'] ?? comment['avatar_url'] ?? '')
                                             .toString()
                                             .trim();
-                                    return Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          InkWell(
-                                            onTap: () => _openCommenterProfile(comment),
-                                            borderRadius: BorderRadius.circular(20),
-                                            child: Padding(
-                                              padding: const EdgeInsets.symmetric(vertical: 2),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  CircleAvatar(
-                                                    radius: 17,
-                                                    backgroundColor: _chip,
-                                                    backgroundImage: commenterAvatar.isNotEmpty
-                                                        ? NetworkImage(commenterAvatar)
-                                                        : null,
-                                                    child: commenterAvatar.isEmpty
-                                                        ? const Icon(Icons.person_rounded,
-                                                            color: _muted, size: 19)
-                                                        : null,
-                                                  ),
-                                                  const SizedBox(width: 9),
-                                                  Text(commenterName,
-                                                      style: const TextStyle(
-                                                          color: _brown,
-                                                          fontWeight: FontWeight.w900,
-                                                          fontSize: 12)),
-                                                ],
-                                              ),
-                                            ),
+                                    return Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        InkWell(
+                                          onTap: () => _openCommenterProfile(comment),
+                                          customBorder: const CircleBorder(),
+                                          child: CircleAvatar(
+                                            radius: 17,
+                                            backgroundColor: _chip,
+                                            backgroundImage: commenterAvatar.isNotEmpty
+                                                ? NetworkImage(commenterAvatar)
+                                                : null,
+                                            child: commenterAvatar.isEmpty
+                                                ? const Icon(Icons.person_rounded,
+                                                    color: _muted, size: 19)
+                                                : null,
                                           ),
-                                          const SizedBox(height: 4),
-                                          Text((comment['content'] ?? '').toString(),
-                                              style: const TextStyle(
-                                                  color: _brownMid, fontSize: 13, height: 1.5)),
-                                        ]);
+                                        ),
+                                        const SizedBox(width: 9),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              InkWell(
+                                                onTap: () => _openCommenterProfile(comment),
+                                                child: Text(commenterName,
+                                                    style: const TextStyle(
+                                                        color: _brown,
+                                                        fontWeight: FontWeight.w900,
+                                                        fontSize: 12)),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text((comment['content'] ?? '').toString(),
+                                                  style: const TextStyle(
+                                                      color: _brownMid,
+                                                      fontSize: 13,
+                                                      height: 1.5)),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    );
                                   },
                                 ),
                 ),
