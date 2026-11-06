@@ -464,9 +464,9 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
     if (date == null) return 'الآن';
     final diff = DateTime.now().difference(date);
     if (diff.inMinutes < 1) return 'الآن';
-    if (diff.inHours < 1) return 'منذ ${diff.inMinutes} د';
-    if (diff.inDays < 1) return 'منذ ${diff.inHours} س';
-    return 'منذ ${diff.inDays} يوم';
+    if (diff.inHours < 1) return 'قبل ${diff.inMinutes} د';
+    if (diff.inDays < 1) return 'قبل ${diff.inHours} س';
+    return 'قبل ${diff.inDays} يوم';
   }
 
   @override
