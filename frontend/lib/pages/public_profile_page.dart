@@ -49,10 +49,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   static const double _tabsH = 52; // شريط التابات
   static const double _cardH = 226; // بطاقة المعلومات تحت الغلاف
   static const double _cardLift = 28; // مقدار تداخل البطاقة مع الغلاف
-  static const double _expandedH = (_coverH - _cardLift) + _cardH + _tabsH;
+  static const double _expandedH = (_coverH - _cardLift) + _cardH;
 
   int _tab = 2;
   double _tabSlideFromX = 1;
+  double _tabDragDistance = 0;
   int _coverIndex = 0;
   final ScrollController _profileScrollController = ScrollController();
   bool _loading = true;
@@ -631,14 +632,22 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     final mq = MediaQuery.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      dragStartBehavior: DragStartBehavior.down,
+      onHorizontalDragStart: (_) => _tabDragDistance = 0,
+      onHorizontalDragUpdate: (details) {
+        _tabDragDistance += details.delta.dx;
+      },
       onHorizontalDragEnd: (details) {
+        final distance = _tabDragDistance;
         final velocity = details.primaryVelocity ?? 0;
-        if (velocity < -120 && _tab > 0) {
+        _tabDragDistance = 0;
+        if ((distance < -40 || velocity < -350) && _tab > 0) {
           _changeProfileTab(_tab - 1);
-        } else if (velocity > 120 && _tab < 2) {
+        } else if ((distance > 40 || velocity > 350) && _tab < 2) {
           _changeProfileTab(_tab + 1);
         }
       },
+      onHorizontalDragCancel: () => _tabDragDistance = 0,
       child: ConstrainedBox(
         constraints: BoxConstraints(
           minHeight: mq.size.height - _barH - _tabsH - mq.padding.top,
