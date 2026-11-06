@@ -90,7 +90,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   void _changeProfileTab(int index) {
     if (index == _tab || !mounted || index < 0 || index > 2) return;
     setState(() {
-      _tabSlideFromX = index < _tab ? 1 : -1;
+      _tabSlideFromX = index < _tab ? -1 : 1;
       _tab = index;
     });
   }
