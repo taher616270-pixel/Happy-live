@@ -330,6 +330,12 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
     final Set<String> expandedReplyThreads = {};
     Timer? cooldownTimer;
     int cooldownSeconds = 0;
+    await showModalBottomSheet<void>
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
     void startCommentCooldown([int seconds = 30]) {
       cooldownTimer?.cancel();
       cooldownSeconds = seconds;
@@ -344,12 +350,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
         setSheetState(() {});
       });
     }
-    await showModalBottomSheet<void>
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) {
+
           Future<void> load() async {
             try {
               final response = await http.get(Uri.parse('$_api/posts/$id/comments'),
