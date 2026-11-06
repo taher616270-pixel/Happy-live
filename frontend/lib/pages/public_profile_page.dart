@@ -1108,20 +1108,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     final visibleReplies = expanded || allReplies.length <= 1 ? allReplies : <Map<String, dynamic>>[allReplies.first];
                                     final hiddenReplyCount = allReplies.length - visibleReplies.length;
                                     Widget repliesSection() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                                      ...visibleReplies.asMap().entries.map((entry) => Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  if (entry.key > 0)
-                                    const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 6),
-                                      child: Divider(
-                                        height: 1,
-                                        thickness: 1,
-                                        color: Color(0xFFE8DCC5),
-                                      ),
-                                    ),
-                                  buildReply(entry.value),
-                                ],
+                                      ...visibleReplies.map((reply) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: buildReply(reply),
                               )),
                                       if (allReplies.length > 1) Align(alignment: Alignment.centerRight, child: TextButton.icon(
                                         onPressed: () { if (expanded) { expandedReplyThreads.remove(threadId); } else { expandedReplyThreads.add(threadId); } setSheetState(() {}); },
