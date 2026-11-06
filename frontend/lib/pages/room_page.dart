@@ -60,6 +60,7 @@ class _RoomPageState extends State<RoomPage> {
   String _ownerName = 'صاحب الغرفة';
   String _ownerId = '';
   List<Map<String, dynamic>> _seats = [];
+  int _audienceCount = 0;
 
   String get _roomId => (widget.room['id'] ?? '').toString();
   String get _roomName => (widget.room['name'] ?? 'غرفة صوتية').toString();
@@ -162,6 +163,7 @@ class _RoomPageState extends State<RoomPage> {
         ? rawSeats.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
         : <Map<String, dynamic>>[];
     final nextMySeat = data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null;
+    final nextAudienceCount = data['audienceCount'] is num ? (data['audienceCount'] as num).toInt() : _audienceCount;
     final owner = data['owner'];
     final nextOwnerName = owner is Map && owner['name'] != null
         ? owner['name'].toString()
@@ -176,6 +178,7 @@ class _RoomPageState extends State<RoomPage> {
     final nextIsOwner = data['isOwner'] == true;
     final changed = jsonEncode(_seats) != jsonEncode(seats) ||
         _mySeat != nextMySeat ||
+        _audienceCount != nextAudienceCount ||
         _ownerName != nextOwnerName ||
         _ownerId != nextOwnerId ||
         _roomAnnouncement != nextAnnouncement ||
@@ -186,6 +189,7 @@ class _RoomPageState extends State<RoomPage> {
     setState(() {
       _seats = seats;
       _mySeat = nextMySeat;
+      _audienceCount = nextAudienceCount;
       _ownerName = nextOwnerName;
       _ownerId = nextOwnerId;
       _roomAnnouncement = nextAnnouncement;
@@ -295,6 +299,7 @@ class _RoomPageState extends State<RoomPage> {
         return;
       }
       _chatSessionActive = true;
+      unawaited(_refreshSeats());
       _appendLocalMessage(Message(
         id: 'local-join-${DateTime.now().microsecondsSinceEpoch}',
         type: 'system',
@@ -788,6 +793,7 @@ class _RoomPageState extends State<RoomPage> {
       seats: _seats,
       onTapSeat: _selectSeat,
       isChangingSeat: _isChangingSeat,
+      audienceCount: _audienceCount,
     );
   }
 
