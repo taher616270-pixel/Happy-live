@@ -1274,10 +1274,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         fg: _brownDark,
         icon: Icons.person_add_alt_1_rounded,
         label: _isMine ? 'حسابك' : _followBusy ? 'جارٍ...' : _isFollowing ? 'متابع' : 'متابعة',
-        onTap: _isMine ? () {} : widget.onFollow ?? _toggleFollow,
-            () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('ميزة المتابعة قيد التجهيز')),
-                ),
+        onTap: _isMine ? () {} : (widget.onFollow ?? _toggleFollow),
       ),
       const SizedBox(width: 9),
       pill(
