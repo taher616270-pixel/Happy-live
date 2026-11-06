@@ -1057,17 +1057,17 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                                           fontSize: 12)),
                                                 ),
                                               ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                _commentTimeAgo(comment['createdAt'] ?? comment['created_at']),
-                                                style: const TextStyle(color: _muted, fontSize: 10),
-                                              ),
                                               const SizedBox(height: 4),
                                               Text((comment['content'] ?? '').toString(),
                                                   style: const TextStyle(
                                                       color: _brownMid,
                                                       fontSize: 13,
                                                       height: 1.5)),
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                _commentTimeAgo(comment['createdAt'] ?? comment['created_at']),
+                                                style: const TextStyle(color: _muted, fontSize: 10),
+                                              ),
                                             ],
                                           ),
                                         ),
