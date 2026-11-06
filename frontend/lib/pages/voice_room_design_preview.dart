@@ -36,7 +36,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           Expanded(child: Stack(children: [
             Positioned.fill(child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 14, 12, 8),
-              children: const [
+              children: [
                 _Notice(
                   text: announcement.isEmpty ? 'مرحباً بكم في الغرفة. نتمنى لكم وقتاً ممتعاً.' : announcement,
                   icon: Icons.notifications_rounded,
