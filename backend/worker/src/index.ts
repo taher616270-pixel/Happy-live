@@ -396,8 +396,8 @@ export default {
           ).bind(now, roomId, user.id).run();
           const visitId = crypto.randomUUID();
           await env.DB.prepare(
-            "INSERT INTO room_chat_visits (id, room_id, user_id, entered_at) VALUES (?, ?, ?, ?)"
-          ).bind(visitId, roomId, user.id, now).run();
+            "INSERT INTO room_chat_visits (id, room_id, user_id, entered_at, last_seen_at) VALUES (?, ?, ?, ?, ?)"
+          ).bind(visitId, roomId, user.id, now, now).run();
           await broadcastRoomChat(env, roomId, {
             type: "system",
             message: {
@@ -568,9 +568,13 @@ export default {
           catch { return json({ error: "invalid_json" }, 400, origin, env); }
 
           if (body.heartbeat === true) {
+            const heartbeatExpiry = new Date(Date.now() + 45000).toISOString();
             await env.DB.prepare(
               "UPDATE room_seats SET updated_at = ?, expires_at = ? WHERE room_id = ? AND user_id = ?"
-            ).bind(now, new Date(Date.now() + 45000).toISOString(), roomId, user.id).run();
+            ).bind(now, heartbeatExpiry, roomId, user.id).run();
+            await env.DB.prepare(
+              "UPDATE room_chat_visits SET last_seen_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
+            ).bind(now, roomId, user.id).run();
           } else if (body.seatNumber === null) {
             await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, user.id).run();
           } else {
@@ -604,8 +608,16 @@ export default {
           isMe: seat.user_id === user.id
         }));
         const mySeat = seats.find((seat) => seat.userId === user.id)?.seatNumber ?? null;
+        const audienceCutoff = new Date(Date.now() - 45000).toISOString();
+        await env.DB.prepare(
+          "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND exited_at IS NULL AND last_seen_at < ?"
+        ).bind(now, roomId, audienceCutoff).run();
+        const audience = await env.DB.prepare(
+          "SELECT COUNT(DISTINCT user_id) AS count FROM room_chat_visits WHERE room_id = ? AND exited_at IS NULL AND last_seen_at >= ?"
+        ).bind(roomId, audienceCutoff).first<{ count: number }>();
         return json({
           ok: true,
+          audienceCount: audience?.count ?? 0,
           room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة" },
           me: { id: user.id, name: user.display_name?.trim() || "مستخدم" },
