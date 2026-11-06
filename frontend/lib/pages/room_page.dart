@@ -771,103 +771,108 @@ class _RoomPageState extends State<RoomPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: _isMinimized ? Colors.transparent : _background,
+        backgroundColor: const Color(0xFF063E4B),
         body: Stack(
+          fit: StackFit.expand,
           children: [
-            if (!_isMinimized) const Positioned.fill(child: _StarBackground()),
-            if (!_isMinimized) Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      const Color(0xFF171020).withOpacity(0.92),
-                      const Color(0xFF0A0910).withOpacity(0.97),
-                      _background,
-                    ],
-                  ),
+            if (_imageUrl != null)
+              Image.network(_imageUrl!, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const _RoomAuroraBackground())
+            else
+              const _RoomAuroraBackground(),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [Color(0x33101B29), Color(0x22001D28), Color(0x44000D18)],
                 ),
               ),
             ),
-            if (!_isMinimized) SafeArea(
-              child: Column(
-                children: [
-                  // Keep the room identity bar and all eight microphone seats
-                  // anchored in place. Only the content below them may scroll.
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: _topBar(),
-                  ),
-                  if (_isLoading || _isChangingSeat)
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: EdgeInsets.only(left: 16, top: 4),
-                        child: SizedBox(
-                          width: 15,
-                          height: 15,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 1.7,
-                            color: _gold,
-                          ),
+            if (_isMinimized) const SizedBox.shrink(),
+            if (!_isMinimized)
+              SafeArea(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 7, 12, 0),
+                      child: _topBar(),
+                    ),
+                    if (_isLoading || _isChangingSeat)
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: EdgeInsets.only(left: 18, top: 2),
+                          child: SizedBox(width: 14, height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 1.6, color: Color(0xFFFFD18A))),
                         ),
                       ),
+                    const SizedBox(height: 18),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: _microphoneStage(),
                     ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: _microphoneStage(),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                      children: [
-                        if (_loadError != null && _seats.isEmpty) _errorPanel(),
-                        _roomAnnouncementCard(),
-                        _roomMessagesPanel(),
-                        const SizedBox(height: 10),
-                        const SizedBox(height: 20),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: _countBadge(occupiedCount),
-                        ),
-                        const SizedBox(height: 13),
-                        _roomNotice(),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+                      child: Row(
+                        children: [
+                          _countBadge(occupiedCount),
+                          const Spacer(),
+                          _roundAction(icon: Icons.keyboard_arrow_down_rounded,
+                            onTap: () => _showChatToolMessage('قائمة الغرفة'), tooltip: 'القائمة'),
+                          _roundAction(icon: Icons.fullscreen_rounded,
+                            onTap: _minimizeRoom, tooltip: 'تصغير الغرفة'),
+                        ],
+                      ),
                     ),
-                  ),
-                  if (!_isMinimized) _roomChatComposer(),
-                  _bottomControl(),
-                ],
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          ListView(
+                            padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
+                            children: [
+                              if (_loadError != null && _seats.isEmpty) _errorPanel(),
+                              _roomAnnouncementCard(),
+                              _roomMessagesPanel(),
+                            ],
+                          ),
+                          Positioned(
+                            left: 8, bottom: 12,
+                            child: Column(
+                              children: [
+                                _sideRoomButton(Icons.campaign_rounded, '0%', () => _showChatToolMessage('هدايا الغرفة')),
+                                const SizedBox(height: 12),
+                                _sideRoomButton(Icons.card_giftcard_rounded, 'هدايا', () => _showChatToolMessage('الهدايا')),
+                                const SizedBox(height: 12),
+                                _sideRoomButton(Icons.more_horiz_rounded, 'المزيد', _showRoomChatMenu),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _roomChatComposer(),
+                    _bottomControl(),
+                  ],
+                ),
               ),
-            ),
             if (!_isMinimized && _showRoomActions)
               Positioned.fill(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    if (!mounted) return;
-                    setState(() => _showRoomActions = false);
-                  },
+                  onTap: () { if (mounted) setState(() => _showRoomActions = false); },
                   child: const SizedBox.expand(),
                 ),
               ),
             if (!_isMinimized)
               Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
+                top: 0, left: 0, right: 0,
                 child: SafeArea(
                   bottom: false,
                   child: AnimatedSlide(
                     offset: _showRoomActions ? Offset.zero : const Offset(0, -1.2),
                     duration: const Duration(milliseconds: 260),
                     curve: Curves.easeOutCubic,
-                    child: IgnorePointer(
-                      ignoring: !_showRoomActions,
-                      child: _roomActionSheet(),
-                    ),
+                    child: IgnorePointer(ignoring: !_showRoomActions, child: _roomActionSheet()),
                   ),
                 ),
               ),
@@ -877,32 +882,48 @@ class _RoomPageState extends State<RoomPage> {
     );
   }
 
-  Widget _topBar() {
-    return SizedBox(
-      width: double.infinity,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Transform.translate(
-              offset: const Offset(5, 0),
-              child: _roundAction(
-                icon: Icons.arrow_forward_ios_rounded,
-                onTap: () {
-                  if (!mounted) return;
-                  setState(() => _showRoomActions = !_showRoomActions);
-                },
-                tooltip: 'خيارات الغرفة',
-              ),
-            ),
-            Transform.translate(
-              offset: const Offset(169, 0),
-              child: _profileHeader(),
-            ),
-          ],
+  Widget _sideRoomButton(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(13),
+      child: Container(
+        width: 62, height: 66,
+        decoration: BoxDecoration(
+          color: const Color(0x99001520),
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: Colors.white.withOpacity(0.10)),
         ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, color: const Color(0xFFFFD18A), size: 27),
+          const SizedBox(height: 3),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+        ]),
       ),
+    );
+  }
+
+  Widget _topBar() {
+    return Row(
+      textDirection: TextDirection.rtl,
+      children: [
+        _roundAction(
+          icon: Icons.arrow_forward_ios_rounded,
+          onTap: () { if (mounted) setState(() => _showRoomActions = !_showRoomActions); },
+          tooltip: 'خيارات الغرفة',
+        ),
+        const SizedBox(width: 8),
+        Expanded(child: Align(alignment: Alignment.centerRight, child: _profileHeader())),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(color: const Color(0x88213D43), borderRadius: BorderRadius.circular(20)),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFC66D), size: 17),
+            SizedBox(width: 4),
+            Text('Lv.1', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+          ]),
+        ),
+      ],
     );
   }
 
@@ -1219,7 +1240,7 @@ class _RoomPageState extends State<RoomPage> {
 
   Widget _microphoneStage() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 17, 8, 17),
+      padding: const EdgeInsets.fromLTRB(4, 12, 4, 10),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final tileWidth = (constraints.maxWidth - 24) / 4;
@@ -1230,7 +1251,7 @@ class _RoomPageState extends State<RoomPage> {
             itemCount: 8,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
-              mainAxisSpacing: 17,
+              mainAxisSpacing: 12,
               crossAxisSpacing: 8,
               childAspectRatio: 0.72,
             ),
@@ -1338,7 +1359,7 @@ class _RoomPageState extends State<RoomPage> {
                         ? const [Color(0xFFB98AF0), Color(0xFF65408E)]
                         : occupied
                             ? const [Color(0xFF67477C), Color(0xFF30213D)]
-                            : const [Color(0xFF302638), Color(0xFF19141F)],
+                            : const [Color(0x665D7D82), Color(0x553C626A)],
                   ),
                   border: Border.all(
                     color: mine ? _gold : occupied ? const Color(0xFFD9A93C) : const Color(0x665F4775),
@@ -1520,11 +1541,23 @@ class _RoomPageState extends State<RoomPage> {
 }
 
 
-class _StarBackground extends StatelessWidget {
-  const _StarBackground();
+class _RoomAuroraBackground extends StatelessWidget {
+  const _RoomAuroraBackground();
 
   @override
-  Widget build(BuildContext context) => CustomPaint(painter: _StarsPainter());
+  Widget build(BuildContext context) => Stack(fit: StackFit.expand, children: [
+    const DecoratedBox(decoration: BoxDecoration(
+      gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        colors: [Color(0xFF052D3A), Color(0xFF08798A), Color(0xFF052B39), Color(0xFF06131F)],
+        stops: [0, 0.42, 0.68, 1]),
+    )),
+    CustomPaint(painter: _StarsPainter()),
+    Align(alignment: const Alignment(0.1, 0.92), child: Container(
+      height: 190, decoration: BoxDecoration(
+        gradient: RadialGradient(radius: 1.2, colors: [Color(0x6600B6C4), Colors.transparent]),
+      ),
+    )),
+  ]);
 }
 
 class _StarsPainter extends CustomPainter {
