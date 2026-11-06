@@ -396,7 +396,8 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
             sending = false; setSheetState(() {});
           }
           Future<void> openCommentActions(Map<String, dynamic> comment) async {
-            final owner = post['isMine'] == true;
+            final isReplyItem = comment['isReplyItem'] == true;
+            final owner = post['isMine'] == true && !isReplyItem;
             final action = await showModalBottomSheet<String>(
               context: this.context,
               backgroundColor: Colors.transparent,
@@ -436,7 +437,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
               setSheetState(() {});
               return;
             }
-            final commentId = (comment['id'] ?? '').toString();
+            final commentId = (comment['isReplyItem'] == true ? comment['commentId'] : comment['id'] ?? '').toString();
             if (commentId.isEmpty) return;
             try {
               final isDelete = action == 'delete';
@@ -516,7 +517,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                     InkWell(onTap: () => _openUserProfile(reply), child: Text(replyName, style: const TextStyle(color: _ink, fontSize: 11, fontWeight: FontWeight.w900))),
                                     if (replyTo.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 1, bottom: 2), child: Text('رد على $replyTo', style: const TextStyle(color: _gold, fontSize: 9, fontWeight: FontWeight.w700))),
-                                    Text((reply['content'] ?? '').toString(), style: const TextStyle(color: Colors.black, fontSize: 12, height: 1.45, fontWeight: FontWeight.w600)),
+                                    GestureDetector(onLongPress: () => openCommentActions({...reply, 'commentId': c['id'], 'isReplyItem': true}), child: Text((reply['content'] ?? '').toString(), style: const TextStyle(color: Colors.black, fontSize: 12, height: 1.45, fontWeight: FontWeight.w600))),
                                     Row(children: [
                                       Text(_timeAgo(reply['createdAt'] ?? reply['created_at']), style: const TextStyle(color: _muted, fontSize: 9)),
                                       TextButton(onPressed: () { replyingTo = {...reply, 'commentId': c['id']}; setSheetState(() {}); },
@@ -590,7 +591,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 InkWell(
-                                  onTap: () => openCommentActions(c),
+                                  onLongPress: () => openCommentActions(c),
                                   child: Text((c['content'] ?? '').toString(), style: const TextStyle(color: Color(0xFF000000), fontWeight: FontWeight.w700, fontSize: 13, height: 1.5)),
                                 ),
                                 const SizedBox(height: 3),
