@@ -1176,29 +1176,32 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                                       fontSize: 13,
                                                       height: 1.5)),
                                               const SizedBox(height: 3),
-                                              Transform.translate(
-                                                offset: const Offset(4, 0),
-                                                child: Text(
-                                                  _commentTimeAgo(comment['createdAt'] ?? comment['created_at']),
-                                                  style: const TextStyle(color: _muted, fontSize: 10),
-                                                ),
-                                              ),
-                                              Align(
-                                                alignment: Alignment.centerRight,
-                                                child: TextButton(
-                                                  onPressed: () {
-                                                    replyingTo = comment;
-                                                    input.clear();
-                                                    setSheetState(() {});
-                                                  },
-                                                  style: TextButton.styleFrom(
-                                                    foregroundColor: _gold,
-                                                    visualDensity: VisualDensity.compact,
-                                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                                    minimumSize: Size.zero,
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Transform.translate(
+                                                    offset: const Offset(4, 0),
+                                                    child: Text(
+                                                      _commentTimeAgo(comment['createdAt'] ?? comment['created_at']),
+                                                      style: const TextStyle(color: _muted, fontSize: 10),
+                                                    ),
                                                   ),
-                                                  child: const Text('رد', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
-                                                ),
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      replyingTo = comment;
+                                                      input.clear();
+                                                      setSheetState(() {});
+                                                    },
+                                                    style: TextButton.styleFrom(
+                                                      foregroundColor: _gold,
+                                                      visualDensity: VisualDensity.compact,
+                                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                      minimumSize: Size.zero,
+                                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                    ),
+                                                    child: const Text('رد', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                                                  ),
+                                                ],
                                               ),
                                               repliesSection(),
                                             ],
