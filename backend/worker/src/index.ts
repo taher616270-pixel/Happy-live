@@ -709,13 +709,15 @@ export default {
         }
 
         const seatsResult = await env.DB.prepare(
-          "SELECT s.seat_number, s.user_id, s.joined_at, p.display_name, p.gabo_id, p.avatar_key, COALESCE(c.is_muted, 0) AS is_muted FROM room_seats s LEFT JOIN profiles p ON p.user_id = s.user_id LEFT JOIN room_user_controls c ON c.room_id = s.room_id AND c.user_id = s.user_id WHERE s.room_id = ? AND s.expires_at > ? ORDER BY s.seat_number"
-        ).bind(roomId, new Date().toISOString()).all<{ seat_number: number; user_id: string; joined_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null; is_muted: number }>();
+          "SELECT s.seat_number, s.user_id, s.joined_at, p.display_name, p.gabo_id, p.avatar_key, COALESCE(c.is_muted, 0) AS is_muted, (s.user_id = (SELECT owner_user_id FROM rooms WHERE id = s.room_id)) AS is_room_owner, EXISTS(SELECT 1 FROM room_moderators rm WHERE rm.room_id = s.room_id AND rm.user_id = s.user_id) AS is_room_moderator FROM room_seats s LEFT JOIN profiles p ON p.user_id = s.user_id LEFT JOIN room_user_controls c ON c.room_id = s.room_id AND c.user_id = s.user_id WHERE s.room_id = ? AND s.expires_at > ? ORDER BY s.seat_number"
+        ).bind(roomId, new Date().toISOString()).all<{ seat_number: number; user_id: string; joined_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null; is_muted: number; is_room_owner: number; is_room_moderator: number }>();
         const seats = (seatsResult.results ?? []).map((seat) => ({
           seatNumber: seat.seat_number,
           userId: seat.user_id,
           userCode: seat.gabo_id ?? "",
           isMuted: seat.is_muted === 1,
+          isRoomOwner: seat.is_room_owner === 1,
+          isRoomModerator: seat.is_room_moderator === 1,
           name: seat.display_name?.trim() || "مستخدم",
           avatarUrl: seat.avatar_key,
           joinedAt: seat.joined_at,
