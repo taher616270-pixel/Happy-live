@@ -760,6 +760,51 @@ export default {
       }
     }
 
+
+    if (url.pathname === "/api/v1/admin/reports/post-comments" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const admin = await authenticatedUser(request, env.DB);
+        if (!admin) return json({ error: "authentication_required" }, 401, origin, env);
+        const role = await env.DB.prepare("SELECT role FROM admin_roles WHERE user_id = ? LIMIT 1")
+          .bind(admin.id).first<{ role: string }>();
+        if (!role || !["owner", "admin", "moderator"].includes(role.role)) {
+          return json({ error: "admin_permission_required" }, 403, origin, env);
+        }
+        const status = url.searchParams.get("status") || "pending";
+        if (!["pending", "reviewed", "dismissed", "actioned", "all"].includes(status)) {
+          return json({ error: "invalid_report_status" }, 400, origin, env);
+        }
+        const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 50), 1), 100);
+        const rows = await env.DB.prepare(
+          "SELECT r.id, r.post_id, r.comment_id, r.reason, r.status, r.created_at, " +
+          "reporter.id AS reporter_id, reporter_profile.display_name AS reporter_name, reporter_profile.gabo_id AS reporter_code, " +
+          "reported.id AS reported_user_id, reported_profile.display_name AS reported_name, reported_profile.gabo_id AS reported_code, " +
+          "c.content AS comment_content, p.content AS post_content, p.image_url AS post_image_url, " +
+          "reviewer_profile.display_name AS reviewer_name " +
+          "FROM post_comment_reports r " +
+          "LEFT JOIN users reporter ON reporter.id = r.reporter_id " +
+          "LEFT JOIN profiles reporter_profile ON reporter_profile.user_id = reporter.id " +
+          "LEFT JOIN users reported ON reported.id = r.reported_user_id " +
+          "LEFT JOIN profiles reported_profile ON reported_profile.user_id = reported.id " +
+          "LEFT JOIN post_comments c ON c.id = r.comment_id AND c.post_id = r.post_id " +
+          "LEFT JOIN posts p ON p.id = r.post_id " +
+          "LEFT JOIN profiles reviewer_profile ON reviewer_profile.user_id = r.reviewed_by " +
+          (status === "all" ? "" : "WHERE r.status = ? ") +
+          "ORDER BY r.created_at DESC LIMIT ?"
+        ).bind(...(status === "all" ? [limit] : [status, limit])).all<{
+          id: string; post_id: string; comment_id: string; reason: string; status: string; created_at: string;
+          reporter_id: string | null; reporter_name: string | null; reporter_code: string | null;
+          reported_user_id: string | null; reported_name: string | null; reported_code: string | null;
+          comment_content: string | null; post_content: string | null; post_image_url: string | null; reviewer_name: string | null;
+        }>();
+        return json({ ok: true, reports: rows.results ?? [] }, 200, origin, env);
+      } catch (error) {
+        console.error("[admin.post-comment-reports.list] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "admin_reports_unavailable" }, 500, origin, env);
+      }
+    }
+
     const commentActionRoute = url.pathname.match(/^\/api\/v1\/posts\/([0-9a-f-]{36})\/comments\/([0-9a-f-]{36})(?:\/(report))?$/i);
     if (commentActionRoute && request.method === "DELETE" && !commentActionRoute[3]) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
@@ -792,13 +837,16 @@ export default {
         ).bind(commentActionRoute[2], commentActionRoute[1]).first<{ id: string; user_id: string }>();
         if (!comment) return json({ error: "comment_not_found" }, 404, origin, env);
         if (comment.user_id === user.id) return json({ error: "cannot_report_own_comment" }, 400, origin, env);
-        await env.DB.prepare("CREATE TABLE IF NOT EXISTS post_comment_reports (id TEXT PRIMARY KEY, post_id TEXT NOT NULL, comment_id TEXT NOT NULL, reporter_id TEXT NOT NULL, reported_user_id TEXT NOT NULL, reason TEXT NOT NULL DEFAULT 'general', created_at TEXT NOT NULL)").run();
         const existing = await env.DB.prepare("SELECT id FROM post_comment_reports WHERE comment_id = ? AND reporter_id = ?")
           .bind(comment.id, user.id).first();
         if (existing) return json({ error: "already_reported" }, 409, origin, env);
-        await env.DB.prepare("INSERT INTO post_comment_reports (id, post_id, comment_id, reporter_id, reported_user_id, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-          .bind(crypto.randomUUID(), commentActionRoute[1], comment.id, user.id, comment.user_id, "general", new Date().toISOString()).run();
-        return json({ ok: true }, 201, origin, env);
+        const reportId = crypto.randomUUID();
+        const reportedAt = new Date().toISOString();
+        await env.DB.prepare("INSERT INTO post_comment_reports (id, post_id, comment_id, reporter_id, reported_user_id, reason, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)")
+          .bind(reportId, commentActionRoute[1], comment.id, user.id, comment.user_id, "general", reportedAt).run();
+        await env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+          .bind(crypto.randomUUID(), user.id, "post_comment_report.created", "post_comment_report", reportId, JSON.stringify({ postId: commentActionRoute[1], commentId: comment.id, reportedUserId: comment.user_id }), reportedAt).run();
+        return json({ ok: true, reportId }, 201, origin, env);
       } catch (error) {
         console.error("[posts.comments.report] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "comment_report_failed" }, 500, origin, env);
