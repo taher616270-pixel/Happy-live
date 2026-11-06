@@ -34,7 +34,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx wrangler d1 execute happy-live-db --remote --file migrations/0016_post_comment_reports.sql --config wrangler.toml
+        run: npx wrangler d1 execute happy-live-db --remote --file migrations/0017_nested_comment_reply_parent.sql --config wrangler.toml
 
       - name: Deploy Worker with Wrangler
         working-directory: backend/worker
