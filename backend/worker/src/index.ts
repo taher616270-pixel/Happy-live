@@ -505,6 +505,43 @@ export default {
       }
     }
 
+    // Only the authenticated room owner can update the persistent room announcement.
+    const announcementRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/announcement$/);
+    if (announcementRoute && request.method === "PATCH") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = decodeURIComponent(announcementRoute[1]);
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; }
+        catch { return json({ error: "invalid_json" }, 400, origin, env); }
+        const announcement = typeof body.announcement === "string" ? body.announcement.trim() : null;
+        if (announcement === null) return json({ error: "invalid_announcement" }, 400, origin, env);
+        if (announcement.length > 200) return json({ error: "announcement_too_long", message: "الإعلان يجب ألا يتجاوز 200 حرف" }, 400, origin, env);
+        const room = await env.DB.prepare(
+          "SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string; owner_user_id: string }>();
+        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        if (room.owner_user_id !== user.id) return json({ error: "room_owner_only", message: "تعديل الإعلان متاح لمالك الغرفة فقط" }, 403, origin, env);
+        await env.DB.prepare("UPDATE rooms SET announcement = ?, updated_at = ? WHERE id = ? AND owner_user_id = ?")
+          .bind(announcement, new Date().toISOString(), roomId, user.id).run();
+        const now = new Date().toISOString();
+        const announcementMessage = {
+          id: crypto.randomUUID(), userId: user.id,
+          name: user.display_name?.trim() || "مالك الغرفة",
+          senderId: user.id, senderName: user.display_name?.trim() || "مالك الغرفة",
+          message: announcement, text: announcement, imageUrl: null, createdAt: now, isMe: false
+        };
+        await broadcastRoomChat(env, roomId, { type: "announcement", message: announcementMessage });
+        return json({ ok: true, announcement, updatedAt: now }, 200, origin, env);
+      } catch (error) {
+        const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[rooms.announcement] failed", diagnostic);
+        return json({ error: "room_announcement_failed" }, 500, origin, env);
+      }
+    }
+
     // Eight shared microphone seats. A seat is leased for 45 seconds and renewed by
     // authenticated clients, so abandoned seats disappear after disconnects.
     const seatRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/seats$/);
@@ -516,8 +553,8 @@ export default {
         const roomId = decodeURIComponent(seatRoute[1]);
         const now = new Date().toISOString();
         const room = await env.DB.prepare(
-          "SELECT r.id, r.owner_user_id, r.name, r.description, r.image_url, r.room_code, p.display_name AS owner_name FROM rooms r LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
-        ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; image_url: string | null; room_code: string; owner_name: string | null }>();
+          "SELECT r.id, r.owner_user_id, r.name, r.description, r.announcement, r.image_url, r.room_code, p.display_name AS owner_name FROM rooms r LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; owner_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
 
         // Expired leases are never shown as occupied.
@@ -567,9 +604,10 @@ export default {
         const mySeat = seats.find((seat) => seat.userId === user.id)?.seatNumber ?? null;
         return json({
           ok: true,
-          room: { id: room.id, name: room.name, description: room.description, imageUrl: room.image_url, roomCode: room.room_code },
+          room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة" },
           me: { id: user.id, name: user.display_name?.trim() || "مستخدم" },
+          isOwner: room.owner_user_id === user.id,
           mySeat,
           seats
         }, 200, origin, env);
