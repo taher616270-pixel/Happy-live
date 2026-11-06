@@ -171,12 +171,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                               _refreshGestureFromCover =
                                   event.position.dy <= coverBottom;
                             },
-                            onPointerUp: (_) {
-                              _refreshGestureFromCover = false;
-                            },
-                            onPointerCancel: (_) {
-                              _refreshGestureFromCover = false;
-                            },
                             child: NestedScrollView(
                               controller: _profileScrollController,
                               physics: const BouncingScrollPhysics(
