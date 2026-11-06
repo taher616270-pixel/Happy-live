@@ -707,6 +707,9 @@ export default {
         const roomModerator = await env.DB.prepare(
           "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
         ).bind(roomId, user.id).first<{ user_id: string }>();
+        const myControl = await env.DB.prepare(
+          "SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1"
+        ).bind(roomId, user.id).first<{ is_muted: number }>();
         const audienceCutoff = new Date(Date.now() - 45000).toISOString();
         await env.DB.prepare(
           "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND exited_at IS NULL AND last_seen_at < ?"
@@ -719,7 +722,7 @@ export default {
           audienceCount: audience?.count ?? 0,
           room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة" },
-          me: { id: user.id, name: user.display_name?.trim() || "مستخدم" },
+          me: { id: user.id, name: user.display_name?.trim() || "مستخدم", isMuted: myControl?.is_muted === 1 },
           isOwner: room.owner_user_id === user.id,
           isModerator: !!roomModerator,
           mySeat,
