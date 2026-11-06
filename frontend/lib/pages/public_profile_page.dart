@@ -742,13 +742,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       );
     }
 
-    final bio = _firstText(['bio', 'about'], widget.bio);
-    if (bio.isEmpty) {
-      // عند عدم وجود محتوى، تبقى صفحة الشخصية ثابتة في مكانها.
-      return _personalDetails();
-    }
-
-    // عند وجود نبذة فعلية، يصبح المحتوى قابلاً للتمرير بشكل طبيعي.
+    // تبويب الشخصية يبقى قابلاً للتمرير حتى عندما لا توجد نبذة.
     return ListView(
       primary: true,
       physics: const BouncingScrollPhysics(
