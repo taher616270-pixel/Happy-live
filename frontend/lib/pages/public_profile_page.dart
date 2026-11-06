@@ -91,7 +91,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   void _changeProfileTab(int index) {
     if (index == _tab || !mounted || index < 0 || index > 2) return;
     setState(() {
-      _tabSlideFromX = index < _tab ? -1 : 1;
+      _tabSlideFromX = index < _tab ? 1 : -1;
       _tab = index;
     });
   }
@@ -640,10 +640,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         final distance = _tabDragDistance;
         final velocity = details.primaryVelocity ?? 0;
         _tabDragDistance = 0;
-        if ((distance < -40 || velocity < -350) && _tab > 0) {
-          _changeProfileTab(_tab - 1);
-        } else if ((distance > 40 || velocity > 350) && _tab < 2) {
+        if ((distance < -40 || velocity < -350) && _tab < 2) {
           _changeProfileTab(_tab + 1);
+        } else if ((distance > 40 || velocity > 350) && _tab > 0) {
+          _changeProfileTab(_tab - 1);
         }
       },
       onHorizontalDragCancel: () => _tabDragDistance = 0,
