@@ -7,7 +7,6 @@ const _ink = Color(0xFF1E2233);
 const _grey = Color(0xFF9A98AD);
 const _red = Color(0xFFE53E4D);
 
-
 class PublicProfilePage extends StatefulWidget {
   const PublicProfilePage({
     super.key,
@@ -46,11 +45,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   static const _paper = Color(0xFFFFFEFC);
   static const _muted = Color(0xFF9A8878);
 
+  // أبعاد الهيدر: الغلاف، الشريط العلوي، شريط التابات
+  static const double _heroH = 430, _barH = 56, _tabsH = 55;
+
   int _tab = 2;
   double _tabSlideFromX = 1; // Retained for the legacy tab builder.
-  double _tabDragDistance = 0;
   final ScrollController _profileScrollController = ScrollController();
-  double _scrollProgress = 0;
   bool _loading = true;
   String? _loadError;
   Map<String, dynamic> _profile = {};
@@ -79,16 +79,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   @override
   void initState() {
     super.initState();
-    _profileScrollController.addListener(_handleProfileScroll);
     _loadProfile();
-  }
-
-  void _handleProfileScroll() {
-    if (!_profileScrollController.hasClients) return;
-    final next = (_profileScrollController.offset / 110).clamp(0.0, 1.0);
-    if ((next - _scrollProgress).abs() > .015 && mounted) {
-      setState(() => _scrollProgress = next);
-    }
   }
 
   // التنقل بين تبويبات الملف الشخصي بالسحب الأفقي.
@@ -103,7 +94,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   @override
   void dispose() {
-    _profileScrollController.removeListener(_handleProfileScroll);
     _profileScrollController.dispose();
     super.dispose();
   }
@@ -169,6 +159,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                             onRefresh: _refreshProfile,
                             color: _brownLight,
                             backgroundColor: Colors.white,
+                            edgeOffset: _barH + _tabsH,
                             child: CustomScrollView(
                               controller: _profileScrollController,
                               physics: const AlwaysScrollableScrollPhysics(
@@ -176,102 +167,104 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                               ),
                               slivers: [
                                 SliverAppBar(
-                                  pinned: false,
-                                  floating: false,
-                                  primary: false,
-                                  toolbarHeight: 56,
-                                  collapsedHeight: 56,
-                                  expandedHeight: 420,
-                                  backgroundColor: Color.lerp(
-                                    Colors.transparent,
-                                    Colors.white,
-                                    _scrollProgress,
-                                  ),
+                                  pinned: true,
+                                  primary: true,
+                                  automaticallyImplyLeading: false,
+                                  backgroundColor: Colors.transparent,
                                   surfaceTintColor: Colors.transparent,
                                   elevation: 0,
                                   scrolledUnderElevation: 0,
-                                  automaticallyImplyLeading: false,
-                                  leadingWidth: 52,
-                                  leading: Padding(
-                                    padding: const EdgeInsetsDirectional.only(start: 10),
-                                    child: _roundButton(
-                                      Icons.arrow_forward_rounded,
-                                      () => Navigator.of(context).maybePop(),
-                                    ),
-                                  ),
-                                  actions: [
-                                    Padding(
-                                      padding: const EdgeInsetsDirectional.only(end: 12),
-                                      child: _roundButton(Icons.more_horiz_rounded, () {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('لا توجد خيارات إضافية حالياً')),
-                                        );
-                                      }),
-                                    ),
-                                  ],
-                                  title: Opacity(
-                                    opacity: _scrollProgress,
-                                    child: Text(
-                                      _firstText(['name', 'displayName', 'display_name'], widget.name),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Color(0xFF292929),
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ),
-                                  centerTitle: true,
-                                  flexibleSpace: Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      FlexibleSpaceBar(
-                                        background: _heroHeader(),
-                                        collapseMode: CollapseMode.parallax,
-                                      ),
-                                      Positioned(
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        height: 56,
-                                        child: IgnorePointer(
-                                          child: ColoredBox(
-                                            color: Color.lerp(
-                                              Colors.transparent,
-                                              Colors.white,
-                                              _scrollProgress,
-                                            )!,
+                                  toolbarHeight: _barH,
+                                  expandedHeight: _heroH,
+                                  bottom: _tabsBar(),
+                                  flexibleSpace: LayoutBuilder(builder: (context, c) {
+                                    final topPad = MediaQuery.of(context).padding.top;
+                                    final shift = (topPad + _heroH - c.maxHeight)
+                                        .clamp(0.0, double.infinity);
+                                    final p = (shift / 80).clamp(0.0, 1.0); // يتلون تدريجياً
+                                    return ClipRect(
+                                      child: Stack(fit: StackFit.expand, children: [
+                                        // الغلاف يطلع مع الإصبع 1:1
+                                        Positioned(
+                                          left: 0,
+                                          right: 0,
+                                          top: -shift,
+                                          height: _heroH + topPad,
+                                          child: _heroHeader(),
+                                        ),
+                                        // خلفية الشريط الكريمية
+                                        Positioned(
+                                          top: 0,
+                                          left: 0,
+                                          right: 0,
+                                          height: topPad + _barH,
+                                          child: IgnorePointer(
+                                            child: Opacity(
+                                              opacity: p,
+                                              child: const DecoratedBox(
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topCenter,
+                                                    end: Alignment.bottomCenter,
+                                                    colors: [_cream, Colors.white],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SliverToBoxAdapter(
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      minHeight: MediaQuery.of(context).size.height,
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        _profileTabsAndContent(),
-                                        Padding(
-                                          padding: EdgeInsets.fromLTRB(
-                                            12,
-                                            18,
-                                            12,
-                                            8 + MediaQuery.of(context).padding.bottom,
-                                          ),
-                                          child: _actionBar(),
+                                        // الأزرار والاسم
+                                        Positioned(
+                                          top: topPad,
+                                          left: 10,
+                                          right: 10,
+                                          height: _barH,
+                                          child: Row(children: [
+                                            _roundButton(
+                                              Icons.arrow_forward_rounded,
+                                              () => Navigator.of(context).maybePop(),
+                                              p,
+                                            ),
+                                            Expanded(
+                                              child: Center(
+                                                child: Opacity(
+                                                  opacity: p,
+                                                  child: Text(
+                                                    _firstText(
+                                                        ['name', 'displayName', 'display_name'],
+                                                        widget.name),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      color: Color(0xFF292929),
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w900,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            _roundButton(Icons.more_horiz_rounded, () {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                    content: Text('لا توجد خيارات إضافية حالياً')),
+                                              );
+                                            }, p),
+                                          ]),
                                         ),
-                                      ],
-                                    ),
-                                  ),
+                                      ]),
+                                    );
+                                  }),
                                 ),
+                                SliverToBoxAdapter(child: _profileContent()),
                               ],
                             ),
+                          ),
+                          Positioned(
+                            left: 12,
+                            right: 12,
+                            bottom: 8 + MediaQuery.of(context).padding.bottom,
+                            child: _actionBar(),
                           ),
                         ],
                       ),
@@ -315,7 +308,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
       child: SizedBox(
         width: double.infinity,
-        height: 420,
+        height: _heroH,
         child: Stack(fit: StackFit.expand, children: [
         if (cover.isNotEmpty)
           Image.network(cover, fit: BoxFit.cover,
@@ -339,7 +332,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         Positioned(
           left: 18,
           right: 18,
-          bottom: 68,
+          bottom: 68 + _tabsH,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -394,7 +387,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         Positioned(
           left: 13,
           right: 13,
-          bottom: 12,
+          bottom: 12 + _tabsH,
           child: Row(children: [
             _heroStat('متابعون', _number('followers')),
             _heroStat('إعجاب', _number('likesReceived')),
@@ -420,26 +413,20 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         ),
       );
 
-  Widget _roundButton(IconData icon, VoidCallback onTap) {
-    final isScrolled = _scrollProgress >= .95;
-    return Material(
-      color: isScrolled ? Colors.white : const Color(0x99000000),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 38,
-          height: 38,
-          child: Icon(
-            icon,
-            color: isScrolled ? _brown : Colors.white,
-            size: 21,
+  // p = 0 والغلاف مفتوح، و 1 بعد السحب: الألوان تتغير تدريجياً بدون قفزات
+  Widget _roundButton(IconData icon, VoidCallback onTap, double p) => Material(
+        color: Color.lerp(const Color(0x99000000), Colors.white, p),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: 38,
+            height: 38,
+            child: Icon(icon, color: Color.lerp(Colors.white, _brown, p), size: 21),
           ),
         ),
-      ),
-    );
-  }
+      );
 
   Widget _avatar(double size, String photo) => Container(
         width: size,
@@ -494,8 +481,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         ]),
       );
 
-  // شريط التبويبات ومحتواها داخل بطاقة بيضاء واحدة؛ بدون مربعات منفصلة للأزرار.
-  Widget _profileTabsAndContent() {
+  // التابات الثابتة تحت الشريط العلوي (تُستخدم كـ bottom للـ SliverAppBar)
+  PreferredSizeWidget _tabsBar() {
     Widget tab(String title, int index) {
       final active = _tab == index;
       return Expanded(
@@ -534,42 +521,51 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       );
     }
 
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(_tabsH),
+      child: Container(
+        height: _tabsH,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        ),
+        child: Column(children: [
+          SizedBox(
+            height: 54,
+            child: Row(children: [
               tab('الصفحة الشخصية', 2),
               tab('الوكالات', 1),
               tab('المنشورات', 0),
-            ],
+            ]),
           ),
           Container(height: 1, color: const Color(0xFFF0E7DC)),
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onHorizontalDragStart: (_) => _tabDragDistance = 0,
-            onHorizontalDragUpdate: (details) {
-              _tabDragDistance += details.delta.dx;
-            },
-            onHorizontalDragEnd: (details) {
-              final distance = _tabDragDistance;
-              final velocity = details.velocity.pixelsPerSecond.dx;
-              _tabDragDistance = 0;
-              if ((distance < -45 || velocity < -250) && _tab > 0) {
-                _changeProfileTab(_tab - 1);
-              } else if ((distance > 45 || velocity > 250) && _tab < 2) {
-                _changeProfileTab(_tab + 1);
-              }
-            },
-            child: _tabContent(),
-          ),
-        ],
+        ]),
+      ),
+    );
+  }
+
+  // المحتوى تحت التابات (طويل دايماً عشان التثبيت يشتغل)
+  Widget _profileContent() {
+    final mq = MediaQuery.of(context);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragEnd: (details) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (velocity < -120 && _tab > 0) {
+          _changeProfileTab(_tab - 1);
+        } else if (velocity > 120 && _tab < 2) {
+          _changeProfileTab(_tab + 1);
+        }
+      },
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: mq.size.height - _barH - _tabsH - mq.padding.top,
+        ),
+        child: Padding(
+          // مسافة لأزرار متابعة/الرسائل الثابتة تحت
+          padding: EdgeInsets.only(bottom: 100 + mq.padding.bottom),
+          child: ColoredBox(color: Colors.white, child: _tabContent()),
+        ),
       ),
     );
   }
@@ -671,6 +667,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   Widget _personalDetails() {
     final bio = _firstText(['bio', 'about'], widget.bio);
     return Padding(
+      key: const ValueKey('personal'),
       padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (bio.isNotEmpty) ...[
@@ -968,6 +965,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
               label: const Text('متابعة'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: _brown,
+                backgroundColor: Colors.white,
                 side: const BorderSide(color: _brownLight, width: 1.2),
                 minimumSize: const Size.fromHeight(48),
                 shape: const StadiumBorder(),
@@ -993,99 +991,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           ),
         ]),
       );
-}
-
-
-class _PublicProfileTabsDelegate extends SliverPersistentHeaderDelegate {
-  const _PublicProfileTabsDelegate({
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final int selected;
-  final ValueChanged<int> onSelected;
-
-  @override
-  double get minExtent => 54;
-
-  @override
-  double get maxExtent => 54;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    Widget tab(String title, int index) {
-      final active = selected == index;
-      return Expanded(
-        child: InkWell(
-          onTap: () => onSelected(index),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: active ? const Color(0xFF3D2314) : const Color(0xFF9A8878),
-                      fontSize: 12,
-                      fontWeight: active ? FontWeight.w900 : FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  height: 3,
-                  width: 38,
-                  decoration: BoxDecoration(
-                    color: active ? const Color(0xFF8B5A2B) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Material(
-        color: Colors.white,
-        elevation: overlapsContent ? 2 : 0,
-        clipBehavior: Clip.antiAlias,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(24),
-          ),
-        ),
-        child: Column(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                tab('الصفحة الشخصية', 2),
-                tab('الوكالات', 1),
-                tab('المنشورات', 0),
-              ],
-            ),
-          ),
-          Container(height: 1, color: const Color(0xFFF0E7DC)),
-        ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _PublicProfileTabsDelegate oldDelegate) =>
-      selected != oldDelegate.selected || onSelected != oldDelegate.onSelected;
 }
 
 class _ProfilePostImage extends StatefulWidget {
