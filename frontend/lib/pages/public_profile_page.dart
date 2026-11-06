@@ -697,35 +697,25 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 
   Widget _tabContent(int index) {
-    final minScrollableHeight = MediaQuery.sizeOf(context).height + 160;
-
     if (index == 0) {
       return Directionality(
         textDirection: TextDirection.rtl,
         child: ListView.builder(
           physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.zero,
-          itemCount: 1,
-          itemBuilder: (context, itemIndex) => ConstrainedBox(
-            constraints: BoxConstraints(minHeight: minScrollableHeight),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Align(
-                    alignment: Alignment.centerRight,
-                    child: Text('المنشورات',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                            color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
-                  ),
-                  const SizedBox(height: 9),
-                  _postsContent(),
-                ],
-              ),
-            ),
-          ),
+          padding: const EdgeInsets.fromLTRB(17, 17, 17, 28),
+          itemCount: 3,
+          itemBuilder: (context, itemIndex) {
+            if (itemIndex == 0) {
+              return const Align(
+                alignment: Alignment.centerRight,
+                child: Text('المنشورات',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w900)),
+              );
+            }
+            if (itemIndex == 1) return const SizedBox(height: 9);
+            return _postsContent();
+          },
         ),
       );
     }
@@ -734,14 +724,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.zero,
         itemCount: 1,
-        itemBuilder: (context, itemIndex) => ConstrainedBox(
-          constraints: BoxConstraints(minHeight: minScrollableHeight),
-          child: _emptySection(
-            key: const ValueKey('agency-empty-section'),
-            icon: Icons.apartment_rounded,
-            title: 'لا توجد وكالة مرتبطة',
-            subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
-          ),
+        itemBuilder: (context, itemIndex) => _emptySection(
+          key: const ValueKey('agency-empty-section'),
+          icon: Icons.apartment_rounded,
+          title: 'لا توجد وكالة مرتبطة',
+          subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
         ),
       );
     }
@@ -749,10 +736,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.zero,
       itemCount: 1,
-      itemBuilder: (context, itemIndex) => ConstrainedBox(
-        constraints: BoxConstraints(minHeight: minScrollableHeight),
-        child: _personalDetails(),
-      ),
+      itemBuilder: (context, itemIndex) => _personalDetails(),
     );
   }
 
