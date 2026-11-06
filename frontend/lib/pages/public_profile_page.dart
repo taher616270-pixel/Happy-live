@@ -632,7 +632,6 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     final mq = MediaQuery.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      dragStartBehavior: DragStartBehavior.down,
       onHorizontalDragStart: (_) => _tabDragDistance = 0,
       onHorizontalDragUpdate: (details) {
         _tabDragDistance += details.delta.dx;
