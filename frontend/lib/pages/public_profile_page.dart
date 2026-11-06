@@ -665,43 +665,22 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 
   Widget _profileContent() {
-    final mq = MediaQuery.of(context);
-    final pageHeight =
-        (mq.size.height - _barH - _tabsH - mq.padding.top).clamp(320.0, double.infinity).toDouble();
-
-    Widget page(int index) => SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: pageHeight),
-            child: Padding(
-              // مسافة للأزرار الثابتة تحت
-              padding: EdgeInsets.only(bottom: 110 + mq.padding.bottom),
-              child: ColoredBox(
-                color: index == 0 ? Colors.transparent : Colors.white,
-                child: _tabContent(index),
-              ),
-            ),
-          ),
+    // صفحات التبويبات تتمدد داخل التمرير الرئيسي للملف الشخصي،
+    // حتى تتحرك المنشورات مع المساحة البيضاء الكبيرة ولا تنشئ تمريراً مستقلاً.
+    Widget page(int index) => ColoredBox(
+          color: index == 0 ? Colors.transparent : Colors.white,
+          child: _tabContent(index),
         );
 
-    return SizedBox(
-      height: pageHeight,
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: PageView(
-          controller: _pageController,
-          physics: const ClampingScrollPhysics(),
-          onPageChanged: (i) {
-            if (mounted && _tab != i) {
-              setState(() => _tab = i);
-            }
-          },
-          children: [
-            page(0),
-            page(1),
-            page(2),
-          ],
-        ),
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          page(0),
+          page(1),
+          page(2),
+        ],
       ),
     );
   }
