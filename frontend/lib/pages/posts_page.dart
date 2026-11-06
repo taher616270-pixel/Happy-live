@@ -455,7 +455,62 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                 if (mounted) setState(() {});
               }
               setSheetState(() {});
-              if (mounted) _toast(isDelete ? 'تم حذف التعليق' : 'تم إرسال البلاغ');
+              if (mounted && isDelete) {
+                await showDialog<void>(
+                  context: this.context,
+                  barrierDismissible: false,
+                  builder: (dialogContext) => Directionality(
+                    textDirection: TextDirection.rtl,
+                    child: Dialog(
+                      backgroundColor: const Color(0xFFFFFEFA),
+                      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      child: SizedBox(
+                        height: MediaQuery.of(dialogContext).size.height * .48,
+                        child: Padding(
+                          padding: const EdgeInsets.all(22),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Spacer(),
+                              const Icon(Icons.check_circle_rounded, color: Color(0xFFC99A35), size: 48),
+                              const SizedBox(height: 18),
+                              const Text('تم حذف تعليق', textAlign: TextAlign.center,
+                                style: TextStyle(color: Color(0xFF29251D), fontSize: 20, fontWeight: FontWeight.w900)),
+                              const Spacer(),
+                              Row(children: [
+                                Expanded(child: TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: const Color(0xFFF2EBDD),
+                                    foregroundColor: const Color(0xFF6F6047),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  ),
+                                  child: const Text('إلغاء', style: TextStyle(fontWeight: FontWeight.w800)),
+                                )),
+                                const SizedBox(width: 10),
+                                Expanded(child: TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: const Color(0xFFD5A63B),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  ),
+                                  child: const Text('حسناً', style: TextStyle(fontWeight: FontWeight.w900)),
+                                )),
+                              ]),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              } else if (mounted) {
+                _toast('تم إرسال البلاغ');
+              }
             } catch (_) {
               if (mounted) _toast(action == 'delete' ? 'تعذر حذف التعليق' : 'تعذر إرسال البلاغ');
             }
