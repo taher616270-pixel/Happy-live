@@ -1065,9 +1065,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                                       fontSize: 13,
                                                       height: 1.5)),
                                               const SizedBox(height: 3),
-                                              Text(
-                                                _commentTimeAgo(comment['createdAt'] ?? comment['created_at']),
-                                                style: const TextStyle(color: _muted, fontSize: 10),
+                                              Transform.translate(
+                                                offset: const Offset(4, 0),
+                                                child: Text(
+                                                  _commentTimeAgo(comment['createdAt'] ?? comment['created_at']),
+                                                  style: const TextStyle(color: _muted, fontSize: 10),
+                                                ),
                                               ),
                                             ],
                                           ),
