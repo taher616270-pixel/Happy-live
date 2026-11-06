@@ -1106,7 +1106,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     final allReplies = flattenReplies((comment['replies'] as List? ?? const []).toList());
                                     final threadId = comment['id'].toString();
                                     final expanded = expandedReplyThreads.contains(threadId);
-                                    final visibleReplies = expanded || allReplies.length <= 1 ? allReplies : <Map<String, dynamic>>[allReplies.last];
+                                    final visibleReplies = expanded || allReplies.length <= 1 ? allReplies : <Map<String, dynamic>>[allReplies.first];
                                     final hiddenReplyCount = allReplies.length - visibleReplies.length;
                                     Widget repliesSection() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                                       ...visibleReplies.map(buildReply),
