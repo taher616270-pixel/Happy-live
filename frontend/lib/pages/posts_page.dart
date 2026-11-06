@@ -330,7 +330,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
     final Set<String> expandedReplyThreads = {};
     Timer? cooldownTimer;
     int cooldownSeconds = 0;
-    await showModalBottomSheet<void>
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
