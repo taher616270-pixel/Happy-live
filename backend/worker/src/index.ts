@@ -524,8 +524,10 @@ export default {
         ).bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
         if (room.owner_user_id !== user.id) return json({ error: "room_owner_only", message: "تعديل الإعلان متاح لمالك الغرفة فقط" }, 403, origin, env);
-        await env.DB.prepare("UPDATE rooms SET announcement = ?, updated_at = ? WHERE id = ? AND owner_user_id = ?")
-          .bind(announcement, new Date().toISOString(), roomId, user.id).run();
+        const updatedAt = new Date().toISOString();
+        await env.DB.prepare(
+          "INSERT INTO room_announcements (room_id, announcement, updated_at) VALUES (?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET announcement = excluded.announcement, updated_at = excluded.updated_at"
+        ).bind(roomId, announcement, updatedAt).run();
         const now = new Date().toISOString();
         const announcementMessage = {
           id: crypto.randomUUID(), userId: user.id,
@@ -553,7 +555,7 @@ export default {
         const roomId = decodeURIComponent(seatRoute[1]);
         const now = new Date().toISOString();
         const room = await env.DB.prepare(
-          "SELECT r.id, r.owner_user_id, r.name, r.description, r.announcement, r.image_url, r.room_code, p.display_name AS owner_name FROM rooms r LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
+          "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, p.display_name AS owner_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; owner_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
 
