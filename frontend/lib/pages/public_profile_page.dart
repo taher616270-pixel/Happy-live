@@ -801,14 +801,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                 style: const TextStyle(color: _brown, fontSize: 14, fontWeight: FontWeight.w700)),
           ),
         if (bio.isEmpty)
-          const SizedBox.expand(
+          const Padding(
+            padding: EdgeInsets.only(top: 141),
             child: Align(
               alignment: Alignment.topCenter,
-              child: Padding(
-                padding: EdgeInsets.only(top: 141),
-                child: Text('لا توجد معلومات إضافية حالياً',
-                    style: TextStyle(color: _muted, fontSize: 13)),
-              ),
+              child: Text('لا توجد معلومات إضافية حالياً',
+                  style: TextStyle(color: _muted, fontSize: 13)),
             ),
           ),
       ]),
