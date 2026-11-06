@@ -733,29 +733,29 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       );
     }
     if (index == 1) {
-      return ListView.builder(
-        primary: true,
-        physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
-        padding: EdgeInsets.zero,
-        itemCount: 1,
-        itemBuilder: (context, itemIndex) => _emptySection(
-          key: const ValueKey('agency-empty-section'),
-          icon: Icons.apartment_rounded,
-          title: 'لا توجد وكالة مرتبطة',
-          subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
-        ),
+      // تبويب الوكالات الفارغ يبقى ثابتاً ولا ينشئ مساحة تمرير داخلية.
+      return _emptySection(
+        key: const ValueKey('agency-empty-section'),
+        icon: Icons.apartment_rounded,
+        title: 'لا توجد وكالة مرتبطة',
+        subtitle: 'لا توجد بيانات وكالة مسجلة لهذا الحساب حالياً.',
       );
     }
-    return ListView.builder(
+
+    final bio = _firstText(['bio', 'about'], widget.bio);
+    if (bio.isEmpty) {
+      // عند عدم وجود محتوى، تبقى صفحة الشخصية ثابتة في مكانها.
+      return _personalDetails();
+    }
+
+    // عند وجود نبذة فعلية، يصبح المحتوى قابلاً للتمرير بشكل طبيعي.
+    return ListView(
       primary: true,
       physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       padding: EdgeInsets.zero,
-      itemCount: 1,
-      itemBuilder: (context, itemIndex) => _personalDetails(),
+      children: [_personalDetails()],
     );
   }
 
