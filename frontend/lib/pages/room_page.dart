@@ -510,15 +510,6 @@ class _RoomPageState extends State<RoomPage> {
       }
       _chatSessionActive = true;
       unawaited(_refreshSeats());
-      _appendLocalMessage(Message(
-        id: 'local-join-${DateTime.now().microsecondsSinceEpoch}',
-        type: 'system',
-        senderId: 'self',
-        senderName: (widget.room['currentUserName'] ?? 'أنت').toString(),
-        senderAvatar: '',
-        text: 'انضم للغرفة',
-        createdAt: DateTime.now(),
-      ));
       await _connectRoomChatSocket();
       await _loadRoomMessages();
       if (!_chatSocketConnected) _startChatFallbackPolling();
