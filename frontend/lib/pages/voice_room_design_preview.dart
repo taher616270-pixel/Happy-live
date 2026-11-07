@@ -576,11 +576,11 @@ Widget _roomActionButton({
           textDirection: TextDirection.rtl,
           children: [
             const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 28),
-            const SizedBox(width: 12),
-            const Icon(Icons.card_giftcard_rounded, color: Color(0xFFFF6FA5), size: 28),
-            const SizedBox(width: 12),
-            const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
             const SizedBox(width: 10),
+            const Icon(Icons.card_giftcard_rounded, color: Color(0xFFFF6FA5), size: 28),
+            const SizedBox(width: 10),
+            const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
+            const SizedBox(width: 8),
             Expanded(
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
@@ -607,32 +607,25 @@ Widget _roomActionButton({
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => onSendChat(),
                     style: const TextStyle(color: Colors.white, fontSize: 15),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'قل شيئاً...',
-                      hintStyle: TextStyle(color: Color(0xFF9A9A9A), fontSize: 13),
+                      hintStyle: const TextStyle(color: Color(0xFF9A9A9A), fontSize: 13),
                       border: InputBorder.none,
                       counterText: '',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      suffixIcon: IconButton(
+                        onPressed: onSendChat,
+                        tooltip: 'إرسال',
+                        icon: const Icon(Icons.send_rounded, color: Color(0xFF00E5C0), size: 21),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(width: 42, height: 44),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
             const SizedBox(width: 8),
-            Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: Color(0xFF00E5C0),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                onPressed: onSendChat,
-                icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-                padding: EdgeInsets.zero,
-              ),
-            ),
-            const SizedBox(width: 10),
             const Icon(Icons.volume_up_rounded, color: Colors.white, size: 28),
           ],
         ),
