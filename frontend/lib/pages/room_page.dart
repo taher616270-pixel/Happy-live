@@ -418,10 +418,11 @@ class _RoomPageState extends State<RoomPage> {
   void _scrollChatToBottom({bool animated = true}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_roomMessagesController.hasClients) return;
+      final target = _roomMessagesController.position.maxScrollExtent;
       if (animated) {
-        _roomMessagesController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOutQuart);
+        _roomMessagesController.animateTo(target, duration: const Duration(milliseconds: 300), curve: Curves.easeOutQuart);
       } else {
-        _roomMessagesController.jumpTo(0);
+        _roomMessagesController.jumpTo(target);
       }
     });
   }
@@ -433,10 +434,10 @@ class _RoomPageState extends State<RoomPage> {
     final ordered = incoming.toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     for (final message in ordered) {
       if (message.id.isEmpty || !_messageIds.add(message.id)) continue;
-      _messages.insert(0, message);
+      _messages.add(message);
       final listState = _roomAnimatedListKey.currentState;
       if (listState != null) {
-        listState.insertItem(1, duration: const Duration(milliseconds: 400));
+        listState.insertItem(_messages.length, duration: const Duration(milliseconds: 400));
       } else {
         setState(() {});
       }
