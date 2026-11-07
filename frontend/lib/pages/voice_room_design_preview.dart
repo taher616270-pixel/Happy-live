@@ -634,10 +634,12 @@ Widget _roomActionButton({
                   ),
                 ),
                 Positioned(
-                  left: 10,
-                  right: 10,
+                  left: 0,
+                  right: 0,
                   bottom: keyboardHeight,
-                  child: AnimatedContainer(
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: AnimatedContainer(
                   key: _chatInputKey,
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOutCubic,
@@ -715,6 +717,7 @@ Widget _roomActionButton({
                       ],
                     ],
                   ),
+                    ),
                   ),
                 ),
               ],
