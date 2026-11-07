@@ -888,7 +888,14 @@ export default {
           env.DB.prepare("SELECT seat_number FROM room_seats WHERE room_id = ? AND user_id = ? AND expires_at > ? LIMIT 1").bind(roomId, user.id, now).first<{ seat_number: number }>()
         ]);
         if (ban || kick) return json({ error: ban ? "room_banned" : "room_kicked" }, 403, origin, env);
-        const canPublish = Boolean(seat) && control?.is_muted !== 1;
+        let requestedPublish = false;
+        try {
+          const body = await request.json() as Record<string, unknown>;
+          requestedPublish = body.publish === true;
+        } catch {
+          requestedPublish = false;
+        }
+        const canPublish = requestedPublish && Boolean(seat) && control?.is_muted !== 1;
         const numericUid = Number(user.gabo_id);
         if (!Number.isSafeInteger(numericUid) || numericUid < 1 || numericUid > 2147483647) {
           return json({ error: "invalid_user_id" }, 400, origin, env);
@@ -901,7 +908,7 @@ export default {
           env.AGORA_APP_ID, env.AGORA_APP_CERTIFICATE, channel, numericUid,
           ttl, ttl, canPublish ? ttl : 0, 0, 0
         );
-        return json({ ok: true, appId: env.AGORA_APP_ID, channel, uid: numericUid, token: rtcToken, role: canPublish ? "publisher" : "audience", expiresIn: ttl }, 200, origin, env);
+        return json({ ok: true, appId: env.AGORA_APP_ID, channel, uid: numericUid, token: rtcToken, role: canPublish ? "publisher" : "audience", canPublish, expiresIn: ttl }, 200, origin, env);
       } catch (error) {
         console.error("[agora.token] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "agora_token_failed", message: "تعذر تجهيز اتصال الصوت" }, 500, origin, env);
@@ -1471,59 +1478,6 @@ export default {
       }
     }
 
-
-    // Issue short-lived Agora RTC credentials. Publishing is granted only when
-    // the authenticated user explicitly requests it and currently owns a mic seat.
-    const agoraTokenRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/agora-token$/);
-    if (agoraTokenRoute && request.method === "POST") {
-      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
-      if (env.AGORA_ENABLED === "false" || !env.AGORA_APP_ID?.trim() || !env.AGORA_APP_CERTIFICATE?.trim()) {
-        return json({ error: "agora_not_configured", message: "خدمة الصوت غير مهيأة على الخادم" }, 503, origin, env);
-      }
-      try {
-        const user = await authenticatedUser(request, env.DB);
-        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        const roomId = decodeURIComponent(agoraTokenRoute[1]);
-        const room = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
-          .bind(roomId).first<{ id: string }>();
-        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
-        const now = new Date().toISOString();
-        const ban = await env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1")
-          .bind(roomId, user.id).first<{ user_id: string }>();
-        if (ban) return json({ error: "room_banned", message: "لا يمكنك الانضمام إلى صوت هذه الغرفة" }, 403, origin, env);
-        const controls = await env.DB.prepare(
-          "SELECT is_muted, kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1"
-        ).bind(roomId, user.id).first<{ is_muted: number; kicked_until: string | null }>();
-        if (controls?.kicked_until && controls.kicked_until > now) {
-          return json({ error: "room_kicked", message: "تم طردك مؤقتًا من الغرفة" }, 403, origin, env);
-        }
-        const seat = await env.DB.prepare(
-          "SELECT seat_number FROM room_seats WHERE room_id = ? AND user_id = ? AND expires_at > ? LIMIT 1"
-        ).bind(roomId, user.id, now).first<{ seat_number: number }>();
-        let requestedPublish = false;
-        try {
-          const body = await request.json() as Record<string, unknown>;
-          requestedPublish = body.publish === true;
-        } catch {
-          requestedPublish = false;
-        }
-        const canPublish = requestedPublish && Boolean(seat) && controls?.is_muted !== 1;
-        const uid = Number(user.gabo_id);
-        if (!Number.isSafeInteger(uid) || uid < 1 || uid > 2147483647) {
-          return json({ error: "invalid_agora_uid" }, 409, origin, env);
-        }
-        const channel = "hl" + (await sha256(roomId)).slice(0, 30);
-        const ttl = 3600;
-        const token = RtcTokenBuilder.buildTokenWithUidAndPrivilege(
-          env.AGORA_APP_ID.trim(), env.AGORA_APP_CERTIFICATE.trim(), channel, uid,
-          ttl, ttl, canPublish ? ttl : 0, 0, 0
-        );
-        return json({ ok: true, appId: env.AGORA_APP_ID.trim(), channel, uid, token, canPublish, expiresIn: ttl }, 200, origin, env);
-      } catch (error) {
-        console.error("[rooms.agora-token] failed", error instanceof Error ? error.message : "UnknownError");
-        return json({ error: "agora_token_unavailable", message: "تعذر تجهيز اتصال الصوت" }, 503, origin, env);
-      }
-    }
 
     // Return the signed-in user's permanent room, if one has already been created.
     if (url.pathname === "/api/v1/rooms/mine" && request.method === "GET") {
