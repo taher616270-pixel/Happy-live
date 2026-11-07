@@ -143,7 +143,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     Widget _roomActionsPanel(BuildContext context) => AnimatedPositioned(
     duration: const Duration(milliseconds: 420),
     curve: Curves.easeOutCubic,
-    top: showRoomActions ? 0 : -190,
+    top: showRoomActions ? 18 : -190,
     left: 0,
     right: 0,
     child: IgnorePointer(
