@@ -100,6 +100,18 @@
         console.info("[HappyLive Agora] connection", previous, "->", current, reason || "");
       });
 
+      // Keep lightweight diagnostics so intermittent network degradation can
+      // be distinguished from browser audio playback interruptions.
+      nextClient.on("network-quality", function (stats) {
+        console.info("[HappyLive Agora] network quality", {
+          uplink: stats.uplinkNetworkQuality,
+          downlink: stats.downlinkNetworkQuality
+        });
+      });
+      nextClient.on("exception", function (event) {
+        console.warn("[HappyLive Agora] media exception", event);
+      });
+
       // Set the role before joining so the server-issued co-host privileges
       // and the client role are aligned from the start of the session.
       await nextClient.setClientRole(publish ? "host" : "audience");
@@ -107,6 +119,9 @@
 
       if (publish) {
         localAudioTrack = await window.AgoraRTC.createMicrophoneAudioTrack({
+          // Voice-room speech profile: mono 32 kHz / 24 Kbps instead of the
+          // default music profile, reducing uplink bandwidth per speaker.
+          encoderConfig: "speech_standard",
           AEC: true,
           ANS: true,
           AGC: true
