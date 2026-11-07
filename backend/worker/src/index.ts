@@ -32,6 +32,14 @@ async function sha256(value: string): Promise<string> {
   return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))));
 }
 
+async function isAgoraVoiceEnabled(db: D1Database, env: Env): Promise<boolean> {
+  if (env.AGORA_ENABLED === "false") return false;
+  const setting = await db.prepare(
+    "SELECT setting_value FROM platform_settings WHERE setting_key = 'agora_voice_enabled' LIMIT 1"
+  ).first<{ setting_value: string }>();
+  return setting?.setting_value !== "false";
+}
+
 function constantTimeTextEqual(left: string, right: string): boolean {
   if (left.length !== right.length) return false;
   let difference = 0;
@@ -311,6 +319,7 @@ export default {
       url.pathname === "/api/v1/admin/rooms" ||
       url.pathname === "/api/v1/admin/audit" ||
       url.pathname === "/api/v1/admin/agora/status" ||
+      url.pathname === "/api/v1/admin/agora/voice" ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/status$/i.test(url.pathname)
     ) {
@@ -323,7 +332,43 @@ export default {
         const canManageRooms = role === "owner" || role === "admin";
 
         if (url.pathname === "/api/v1/admin/agora/status" && request.method === "GET") {
-          return json({ ok: true, agora: { enabled: env.AGORA_ENABLED !== "false", appId: env.AGORA_APP_ID ?? "", certificateConfigured: Boolean(env.AGORA_APP_CERTIFICATE) } }, 200, origin, env);
+          const voiceEnabled = await isAgoraVoiceEnabled(env.DB, env);
+          return json({ ok: true, agora: {
+            enabled: env.AGORA_ENABLED !== "false",
+            voiceEnabled,
+            appId: env.AGORA_APP_ID ?? "",
+            certificateConfigured: Boolean(env.AGORA_APP_CERTIFICATE)
+          } }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/agora/voice" && request.method === "PATCH") {
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; }
+          catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          if (typeof body.enabled !== "boolean") {
+            return json({ error: "invalid_voice_state" }, 400, origin, env);
+          }
+          if (body.enabled && (!env.AGORA_APP_ID || !env.AGORA_APP_CERTIFICATE || env.AGORA_ENABLED === "false")) {
+            return json({ error: "agora_not_configured", message: "لا يمكن تشغيل الصوت قبل اكتمال إعداد Agora على الخادم" }, 409, origin, env);
+          }
+          const now = new Date().toISOString();
+          const statements = [
+            env.DB.prepare(
+              "INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('agora_voice_enabled', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at"
+            ).bind(body.enabled ? "true" : "false", now)
+          ];
+          if (!body.enabled) {
+            statements.push(env.DB.prepare("DELETE FROM room_seats"));
+          }
+          statements.push(env.DB.prepare(
+            "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'platform', 'agora_voice', ?, ?)"
+          ).bind(
+            crypto.randomUUID(),
+            body.enabled ? "agora.voice.enable" : "agora.voice.disable",
+            JSON.stringify({ enabled: body.enabled, adminUsername: actor.username, effect: body.enabled ? "voice_service_resumed" : "all_microphone_seats_released" }),
+            now
+          ));
+          await env.DB.batch(statements);
+          return json({ ok: true, voiceEnabled: body.enabled }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/me" && request.method === "GET") {
           return json({ ok: true, admin: { id: actor.id, name: actor.display_name, username: actor.username, role } }, 200, origin, env);
@@ -870,8 +915,8 @@ export default {
     const agoraTokenRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/agora-token$/);
     if (agoraTokenRoute && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
-      if (!env.AGORA_APP_ID || !env.AGORA_APP_CERTIFICATE || env.AGORA_ENABLED === "false") {
-        return json({ error: "agora_not_configured", message: "خدمة الصوت غير مفعّلة حاليًا" }, 503, origin, env);
+      if (!env.AGORA_APP_ID || !env.AGORA_APP_CERTIFICATE || !(await isAgoraVoiceEnabled(env.DB, env))) {
+        return json({ error: "agora_voice_disabled", message: "خدمة الصوت متوقفة حاليًا من إدارة Happy Live" }, 503, origin, env);
       }
       try {
         const user = await authenticatedUser(request, env.DB);
@@ -929,6 +974,10 @@ export default {
           "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, p.display_name AS owner_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; owner_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        const voiceEnabled = await isAgoraVoiceEnabled(env.DB, env);
+        if (!voiceEnabled) {
+          await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ?").bind(roomId).run();
+        }
 
         const activeBan = await env.DB.prepare(
           "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
@@ -947,16 +996,21 @@ export default {
           catch { return json({ error: "invalid_json" }, 400, origin, env); }
 
           if (body.heartbeat === true) {
-            const heartbeatExpiry = new Date(Date.now() + 45000).toISOString();
-            await env.DB.prepare(
-              "UPDATE room_seats SET updated_at = ?, expires_at = ? WHERE room_id = ? AND user_id = ?"
-            ).bind(now, heartbeatExpiry, roomId, user.id).run();
+            if (voiceEnabled) {
+              const heartbeatExpiry = new Date(Date.now() + 45000).toISOString();
+              await env.DB.prepare(
+                "UPDATE room_seats SET updated_at = ?, expires_at = ? WHERE room_id = ? AND user_id = ?"
+              ).bind(now, heartbeatExpiry, roomId, user.id).run();
+            }
             await env.DB.prepare(
               "UPDATE room_chat_visits SET last_seen_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
             ).bind(now, roomId, user.id).run();
           } else if (body.seatNumber === null) {
             await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, user.id).run();
           } else {
+            if (!voiceEnabled) {
+              return json({ error: "agora_voice_disabled", message: "الميكروفونات متوقفة حاليًا من إدارة التطبيق" }, 503, origin, env);
+            }
             if (activeBan) return json({ error: "room_banned", message: "أنت محظور من استخدام المايك في هذه الغرفة" }, 403, origin, env);
             const seatNumber = Number(body.seatNumber);
             if (!Number.isInteger(seatNumber) || seatNumber < 1 || seatNumber > 8) {
@@ -1009,6 +1063,7 @@ export default {
         return json({
           ok: true,
           audienceCount: audience?.count ?? 0,
+          voiceEnabled,
           room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة" },
           me: { id: user.id, name: user.display_name?.trim() || "مستخدم", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
