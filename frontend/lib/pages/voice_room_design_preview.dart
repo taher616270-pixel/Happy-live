@@ -655,14 +655,7 @@ Widget _roomActionButton({
       children: [
         Expanded(
           child: audienceUsers.isEmpty
-              ? const Align(
-                  alignment: Alignment.centerRight,
-                  child: CircleAvatar(
-                    radius: 17,
-                    backgroundColor: Colors.white24,
-                    child: Icon(Icons.person, color: Colors.white70, size: 18),
-                  ),
-                )
+              ? const SizedBox.shrink()
               : Directionality(
                   textDirection: TextDirection.rtl,
                   child: SingleChildScrollView(
