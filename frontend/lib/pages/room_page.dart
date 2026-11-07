@@ -195,6 +195,9 @@ class _RoomPageState extends State<RoomPage> {
     final meData = data['me'];
     final nextSelfMuted = meData is Map && meData['isMuted'] == true;
     final nextIsBanned = meData is Map && meData['isBanned'] == true;
+    final lostMySeat = _mySeat != null && nextMySeat == null;
+    final newlyMuted = !_selfMicMuted && nextSelfMuted;
+    final newlyBanned = !_isBannedFromRoom && nextIsBanned;
     final changed = jsonEncode(_seats) != jsonEncode(seats) ||
         _mySeat != nextMySeat ||
         _audienceCount != nextAudienceCount ||
@@ -222,6 +225,9 @@ class _RoomPageState extends State<RoomPage> {
       _isLoading = false;
       _loadError = null;
     });
+    if (lostMySeat || newlyMuted || newlyBanned) {
+      unawaited(_joinAgora(publish: false));
+    }
   }
 
   Future<void> _joinAgora({required bool publish}) async {
@@ -870,7 +876,7 @@ class _RoomPageState extends State<RoomPage> {
         // The POST response already contains the authoritative seat list.
         // Apply it immediately instead of waiting for an additional GET.
         _applySeatData(Map<String, dynamic>.from(data));
-        await _joinAgora(publish: target != null);
+        if (target != null) await _joinAgora(publish: true);
       } else {
         if (response.statusCode == 409) {
           _showMessage('هذا المايك مشغول، اختر مايكًا آخر');
@@ -898,7 +904,6 @@ class _RoomPageState extends State<RoomPage> {
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data is Map && data['ok'] == true) {
         _applySeatData(Map<String, dynamic>.from(data));
-        await _joinAgora(publish: false);
       } else {
         _showMessage('تعذر مغادرة المايك');
         await _refreshSeats();
