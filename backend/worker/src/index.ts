@@ -1049,21 +1049,23 @@ export default {
           "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, p.display_name AS owner_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; owner_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
-        const voiceEnabled = await isAgoraVoiceEnabled(env.DB, env);
-        if (!voiceEnabled) {
-          await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ?").bind(roomId).run();
-        }
-
-        const activeBan = await env.DB.prepare(
-          "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
-        ).bind(roomId, user.id).first<{ user_id: string }>();
-        const activeKick = await env.DB.prepare(
-          "SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
-        ).bind(roomId, user.id, now).first<{ kicked_until: string }>();
+        // These checks are independent after the room is confirmed; run them concurrently.
+        const [voiceEnabled, activeBan, activeKick] = await Promise.all([
+          isAgoraVoiceEnabled(env.DB, env),
+          env.DB.prepare(
+            "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
+          ).bind(roomId, user.id).first<{ user_id: string }>(),
+          env.DB.prepare(
+            "SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
+          ).bind(roomId, user.id, now).first<{ kicked_until: string }>()
+        ]);
         if (activeKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
 
-        // Expired leases are never shown as occupied.
-        await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND expires_at <= ?").bind(roomId, now).run();
+        // Keep lease cleanup ahead of the seat read so expired seats are never displayed.
+        const cleanup = voiceEnabled
+          ? [env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND expires_at <= ?").bind(roomId, now)]
+          : [env.DB.prepare("DELETE FROM room_seats WHERE room_id = ?").bind(roomId)];
+        await env.DB.batch(cleanup);
 
         if (request.method === "POST") {
           let body: Record<string, unknown>;
@@ -1106,9 +1108,17 @@ export default {
           }
         }
 
-        const seatsResult = await env.DB.prepare(
-          "SELECT s.seat_number, s.user_id, s.joined_at, p.display_name, p.gabo_id, p.avatar_key, COALESCE(c.is_muted, 0) AS is_muted, (s.user_id = (SELECT owner_user_id FROM rooms WHERE id = s.room_id)) AS is_room_owner, EXISTS(SELECT 1 FROM room_moderators rm WHERE rm.room_id = s.room_id AND rm.user_id = s.user_id) AS is_room_moderator FROM room_seats s LEFT JOIN profiles p ON p.user_id = s.user_id LEFT JOIN room_user_controls c ON c.room_id = s.room_id AND c.user_id = s.user_id WHERE s.room_id = ? AND s.expires_at > ? ORDER BY s.seat_number"
-        ).bind(roomId, new Date().toISOString()).all<{ seat_number: number; user_id: string; joined_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null; is_muted: number; is_room_owner: number; is_room_moderator: number }>();
+        const [seatsResult, roomModerator, myControl] = await Promise.all([
+          env.DB.prepare(
+            "SELECT s.seat_number, s.user_id, s.joined_at, p.display_name, p.gabo_id, p.avatar_key, COALESCE(c.is_muted, 0) AS is_muted, (s.user_id = (SELECT owner_user_id FROM rooms WHERE id = s.room_id)) AS is_room_owner, EXISTS(SELECT 1 FROM room_moderators rm WHERE rm.room_id = s.room_id AND rm.user_id = s.user_id) AS is_room_moderator FROM room_seats s LEFT JOIN profiles p ON p.user_id = s.user_id LEFT JOIN room_user_controls c ON c.room_id = s.room_id AND c.user_id = s.user_id WHERE s.room_id = ? AND s.expires_at > ? ORDER BY s.seat_number"
+          ).bind(roomId, new Date().toISOString()).all<{ seat_number: number; user_id: string; joined_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null; is_muted: number; is_room_owner: number; is_room_moderator: number }>(),
+          env.DB.prepare(
+            "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
+          ).bind(roomId, user.id).first<{ user_id: string }>(),
+          env.DB.prepare(
+            "SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1"
+          ).bind(roomId, user.id).first<{ is_muted: number }>()
+        ]);
         const seats = (seatsResult.results ?? []).map((seat) => ({
           seatNumber: seat.seat_number,
           userId: seat.user_id,
@@ -1122,22 +1132,18 @@ export default {
           isMe: seat.user_id === user.id
         }));
         const mySeat = seats.find((seat) => seat.userId === user.id)?.seatNumber ?? null;
-        const roomModerator = await env.DB.prepare(
-          "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
-        ).bind(roomId, user.id).first<{ user_id: string }>();
-        const myControl = await env.DB.prepare(
-          "SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1"
-        ).bind(roomId, user.id).first<{ is_muted: number }>();
         const audienceCutoff = new Date(Date.now() - 45000).toISOString();
         await env.DB.prepare(
           "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND exited_at IS NULL AND last_seen_at < ?"
         ).bind(now, roomId, audienceCutoff).run();
-        const audience = await env.DB.prepare(
-          "SELECT COUNT(DISTINCT user_id) AS count FROM room_chat_visits WHERE room_id = ? AND exited_at IS NULL AND last_seen_at >= ?"
-        ).bind(roomId, audienceCutoff).first<{ count: number }>();
-        const audienceUsersResult = await env.DB.prepare(
-          "SELECT p.user_id, p.display_name, p.avatar_key, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? AND NOT EXISTS (SELECT 1 FROM room_seats s WHERE s.room_id = v.room_id AND s.user_id = v.user_id AND s.expires_at > ?) GROUP BY p.user_id, p.display_name, p.avatar_key ORDER BY last_seen_at DESC LIMIT 100"
-        ).bind(roomId, audienceCutoff, now).all<{ user_id: string; display_name: string | null; avatar_key: string | null; last_seen_at: string }>();
+        const [audience, audienceUsersResult] = await Promise.all([
+          env.DB.prepare(
+            "SELECT COUNT(DISTINCT user_id) AS count FROM room_chat_visits WHERE room_id = ? AND exited_at IS NULL AND last_seen_at >= ?"
+          ).bind(roomId, audienceCutoff).first<{ count: number }>(),
+          env.DB.prepare(
+            "SELECT p.user_id, p.display_name, p.avatar_key, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? AND NOT EXISTS (SELECT 1 FROM room_seats s WHERE s.room_id = v.room_id AND s.user_id = v.user_id AND s.expires_at > ?) GROUP BY p.user_id, p.display_name, p.avatar_key ORDER BY last_seen_at DESC LIMIT 100"
+          ).bind(roomId, audienceCutoff, now).all<{ user_id: string; display_name: string | null; avatar_key: string | null; last_seen_at: string }>()
+        ]);
         const audienceUsers = (audienceUsersResult.results ?? []).map((visitor) => ({
           userId: visitor.user_id,
           name: visitor.display_name?.trim() || "مستخدم",
