@@ -627,44 +627,67 @@ class _RoomPageState extends State<RoomPage> {
       _showMessage('الرسالة يجب ألا تتجاوز 100 حرف');
       return;
     }
+
+    // Wait for the room chat session instead of silently dropping the first tap
+    // while the room is still connecting.
     if (!_chatSessionActive) {
-      _showMessage('الدردشة قيد الاتصال، حاول بعد لحظة');
-      unawaited(_startRoomChat());
-      return;
+      if (_chatStarting) {
+        final waitUntil = DateTime.now().add(const Duration(seconds: 12));
+        while (_chatStarting && !_chatSessionActive && DateTime.now().isBefore(waitUntil)) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        }
+      } else {
+        await _startRoomChat();
+      }
+      if (!_chatSessionActive) {
+        if (mounted) _showMessage('تعذر الاتصال بالدردشة، حاول الإرسال مرة أخرى');
+        return;
+      }
     }
+
     final now = DateTime.now();
     if (now.difference(_lastLocalMessageAt).inMilliseconds < 1000) {
       _showMessage('انتظر ثانية قبل إرسال رسالة أخرى');
       return;
     }
+
     _chatSending = true;
     try {
       final response = await http.post(
         _messagesUri,
         headers: _headers,
         body: jsonEncode({'message': text}),
-      ).timeout(const Duration(seconds: 10));
-      final data = jsonDecode(response.body);
+      ).timeout(const Duration(seconds: 12));
+      final dynamic data = jsonDecode(response.body);
       if (response.statusCode == 200 && data is Map && data['ok'] == true) {
-        _lastLocalMessageAt = now;
-        if (_messageController.text.trim() == text) _messageController.clear();
+        _lastLocalMessageAt = DateTime.now();
         final rawMessages = data['messages'];
-        if (rawMessages is List) {
+        if (rawMessages is List && rawMessages.isNotEmpty) {
           _mergeRoomMessages(rawMessages
               .whereType<Map>()
               .map((item) => _messageFromApi(Map<String, dynamic>.from(item))));
+        } else if (mounted) {
+          _showMessage('تم الإرسال، لكن تعذر عرض الرسالة محلياً');
+        }
+        if (_messageController.text.trim() == text) {
+          _messageController.clear();
         }
       } else {
-        final serverMessage = data is Map ? (data['message'] ?? '').toString() : '';
+        final serverMessage = data is Map
+            ? (data['message'] ?? data['error'] ?? '').toString()
+            : '';
         if (mounted) {
           _showMessage(serverMessage.isNotEmpty
               ? serverMessage
               : response.statusCode == 401
                   ? 'انتهت جلسة الدخول، سجّل الدخول مجددًا'
-                  : 'تعذر إرسال الرسالة، حاول مرة أخرى');
+                  : response.statusCode == 409
+                      ? 'جلسة الدردشة غير نشطة، جارٍ إعادة الاتصال'
+                      : 'تعذر إرسال الرسالة، حاول مرة أخرى');
         }
+        if (response.statusCode == 409) unawaited(_startRoomChat());
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) _showMessage('تعذر إرسال الرسالة، تحقق من الاتصال');
     } finally {
       _chatSending = false;
