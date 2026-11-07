@@ -574,11 +574,18 @@ Widget _roomActionButton({
             color: Colors.transparent,
             child: InkWell(
               onTap: onTapChatComposer,
-              borderRadius: BorderRadius.circular(18),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-                child: Text('قل شيئاً...', textAlign: TextAlign.right,
-                  style: TextStyle(color: Colors.white70, fontSize: 14)),
+              borderRadius: BorderRadius.circular(30),
+              child: Container(
+                height: 34,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                alignment: Alignment.centerRight,
+                decoration: BoxDecoration(
+                  color: const Color(0x66212B32),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: const Color(0x55FFFFFF), width: 0.8),
+                ),
+                child: const Text('قل شيئاً...', textAlign: TextAlign.right,
+                  style: TextStyle(color: Colors.white70, fontSize: 12)),
               ),
             ),
           ),
