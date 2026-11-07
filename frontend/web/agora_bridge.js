@@ -5,7 +5,29 @@
   let localAudioTrack = null;
   let joining = false;
   let audioUnlockButton = null;
+  let audioEventsRegistered = false;
   const remoteAudioTracks = new Map();
+
+  function removeAudioUnlock() {
+    if (!audioUnlockButton) return;
+    audioUnlockButton.remove();
+    audioUnlockButton = null;
+  }
+
+  function registerAudioEvents() {
+    if (audioEventsRegistered || !window.AgoraRTC) return;
+    audioEventsRegistered = true;
+    window.AgoraRTC.on("autoplay-failed", showAudioUnlock);
+    window.AgoraRTC.on("audio-context-state-changed", function (state) {
+      console.info("[HappyLive Agora] audio context", state);
+      if (state === "interrupted" || state === "suspended") {
+        showAudioUnlock();
+      } else if (state === "running") {
+        removeAudioUnlock();
+        playRemoteAudio();
+      }
+    });
+  }
 
   function playRemoteAudio() {
     if (!client) return;
@@ -38,12 +60,12 @@
         if (window.AgoraRTC && typeof window.AgoraRTC.resumeAudioContext === "function") {
           await window.AgoraRTC.resumeAudioContext();
         }
+        playRemoteAudio();
+        removeAudioUnlock();
       } catch (error) {
         console.warn("[HappyLive Agora] audio context resume failed", error);
+        showAudioUnlock();
       }
-      playRemoteAudio();
-      audioUnlockButton.remove();
-      audioUnlockButton = null;
     });
     document.body.appendChild(audioUnlockButton);
   }
@@ -72,7 +94,7 @@
       const nextClient = window.AgoraRTC.createClient({ mode: "live", codec: "vp8" });
       client = nextClient;
 
-      window.AgoraRTC.on("autoplay-failed", showAudioUnlock);
+      registerAudioEvents();
 
       nextClient.on("user-published", async function (user, mediaType) {
         try {
@@ -103,10 +125,26 @@
       // Keep lightweight diagnostics so intermittent network degradation can
       // be distinguished from browser audio playback interruptions.
       nextClient.on("network-quality", function (stats) {
-        console.info("[HappyLive Agora] network quality", {
-          uplink: stats.uplinkNetworkQuality,
-          downlink: stats.downlinkNetworkQuality
+        const qualityNames = {
+          0: "unknown", 1: "excellent", 2: "good", 3: "slightly-impaired",
+          4: "not-smooth", 5: "very-poor", 6: "disconnected"
+        };
+        const uplink = Number(stats.uplinkNetworkQuality);
+        const downlink = Number(stats.downlinkNetworkQuality);
+        console.info("[HappyLive Agora] local network quality", {
+          uplink,
+          uplinkLabel: qualityNames[uplink] || "unknown",
+          downlink,
+          downlinkLabel: qualityNames[downlink] || "unknown"
         });
+        try {
+          const remoteQuality = nextClient.getRemoteNetworkQuality();
+          if (remoteQuality && Object.keys(remoteQuality).length) {
+            console.info("[HappyLive Agora] remote network quality", remoteQuality);
+          }
+        } catch (error) {
+          console.debug("[HappyLive Agora] remote network quality unavailable", error);
+        }
       });
       nextClient.on("exception", function (event) {
         console.warn("[HappyLive Agora] media exception", event);
@@ -155,8 +193,13 @@
 
   async function setMuted(muted) {
     if (!localAudioTrack) return false;
-    await localAudioTrack.setEnabled(!muted);
-    return true;
+    try {
+      await localAudioTrack.setEnabled(!muted);
+      return true;
+    } catch (error) {
+      console.warn("[HappyLive Agora] microphone mute change failed", error);
+      return false;
+    }
   }
 
   window.happyLiveAgora = {
