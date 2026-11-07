@@ -56,6 +56,9 @@ class _RoomPageState extends State<RoomPage> {
   Route<dynamic>? _roomRoute;
   bool _isChangingSeat = false;
   int _agoraSyncGeneration = 0;
+  bool _agoraSyncInProgress = false;
+  bool? _agoraDesiredPublish;
+  bool? _agoraJoinedPublish;
   bool _amRoomOwner = false;
   bool _amRoomModerator = false;
   bool _selfMicMuted = false;
@@ -198,6 +201,7 @@ class _RoomPageState extends State<RoomPage> {
     final nextSelfMuted = meData is Map && meData['isMuted'] == true;
     final nextIsBanned = meData is Map && meData['isBanned'] == true;
     final lostMySeat = _mySeat != null && nextMySeat == null;
+    final gainedMySeat = _mySeat == null && nextMySeat != null;
     final newlyMuted = !_selfMicMuted && nextSelfMuted;
     final newlyBanned = !_isBannedFromRoom && nextIsBanned;
     final changed = jsonEncode(_seats) != jsonEncode(seats) ||
@@ -228,38 +232,76 @@ class _RoomPageState extends State<RoomPage> {
       _loadError = null;
     });
     if (lostMySeat || newlyMuted || newlyBanned) {
+      if (newlyMuted) unawaited(AgoraRoomBridge.setMuted(true));
       unawaited(_joinAgora(publish: false));
+    } else if (gainedMySeat && !nextSelfMuted && !nextIsBanned) {
+      unawaited(_joinAgora(publish: true));
     }
   }
 
   Future<void> _joinAgora({required bool publish}) async {
     if (_roomId.isEmpty || widget.accessToken.isEmpty) return;
-    final generation = ++_agoraSyncGeneration;
+    _agoraDesiredPublish = publish;
+    if (_agoraSyncInProgress) return;
+
+    _agoraSyncInProgress = true;
     try {
-      await AgoraRoomBridge.leave();
-      final response = await http.post(
-        Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/agora-token'),
-        headers: _headers,
-        body: jsonEncode({'publish': publish}),
-      ).timeout(const Duration(seconds: 12));
-      final data = jsonDecode(response.body);
-      if (!mounted || generation != _agoraSyncGeneration) return;
-      if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
-        if (publish && mounted) {
-          final message = data is Map ? (data['message'] ?? '').toString() : '';
-          _showMessage(message.isNotEmpty ? message : 'تعذر تشغيل المايك');
+      while (mounted && _agoraDesiredPublish != null) {
+        final targetPublish = _agoraDesiredPublish!;
+        _agoraDesiredPublish = null;
+
+        // Do not tear down a healthy Agora session when its role is unchanged.
+        if (_agoraJoinedPublish == targetPublish) continue;
+
+        final generation = ++_agoraSyncGeneration;
+        await AgoraRoomBridge.leave();
+        _agoraJoinedPublish = null;
+
+        final response = await http.post(
+          Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/agora-token'),
+          headers: _headers,
+          body: jsonEncode({'publish': targetPublish}),
+        ).timeout(const Duration(seconds: 12));
+        final data = jsonDecode(response.body);
+        if (!mounted) return;
+
+        // A newer seat or mute action arrived while the token request was in flight.
+        if (_agoraDesiredPublish != null && _agoraDesiredPublish != targetPublish) {
+          continue;
         }
-        return;
+        if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
+          if (targetPublish && mounted) {
+            final message = data is Map ? (data['message'] ?? '').toString() : '';
+            _showMessage(message.isNotEmpty ? message : 'تعذر تشغيل المايك');
+          }
+          continue;
+        }
+
+        final canPublish = data['canPublish'] == true;
+        await AgoraRoomBridge.join(
+          appId: (data['appId'] ?? '').toString(),
+          channel: (data['channel'] ?? '').toString(),
+          token: (data['token'] ?? '').toString(),
+          uid: (data['uid'] as num).toInt(),
+          publish: canPublish,
+        );
+        if (!mounted) return;
+        _agoraJoinedPublish = canPublish;
+        if (_agoraDesiredPublish != null && _agoraDesiredPublish != canPublish) {
+          continue;
+        }
+        if (generation != _agoraSyncGeneration) continue;
       }
-      await AgoraRoomBridge.join(
-        appId: (data['appId'] ?? '').toString(),
-        channel: (data['channel'] ?? '').toString(),
-        token: (data['token'] ?? '').toString(),
-        uid: (data['uid'] as num).toInt(),
-        publish: data['canPublish'] == true,
-      );
     } catch (_) {
-      if (publish && mounted) _showMessage('تعذر الاتصال بخدمة الصوت، حاول مرة أخرى');
+      _agoraJoinedPublish = null;
+      if (mounted && _agoraDesiredPublish == true) {
+        _showMessage('تعذر الاتصال بخدمة الصوت، حاول مرة أخرى');
+      }
+    } finally {
+      _agoraSyncInProgress = false;
+      if (mounted && _agoraDesiredPublish != null) {
+        unawaited(_joinAgora(publish: _agoraDesiredPublish!));
+      }
     }
   }
 
@@ -273,7 +315,14 @@ class _RoomPageState extends State<RoomPage> {
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data is Map && data['ok'] == true) {
         if (mounted) setState(() => _selfMicMuted = data['isMuted'] == true);
-        await _joinAgora(publish: !_selfMicMuted);
+        if (_selfMicMuted) {
+          // Mute locally immediately, then downgrade to a subscriber token.
+          await AgoraRoomBridge.setMuted(true);
+          await _joinAgora(publish: false);
+        } else {
+          // Unmuting requires a fresh token with publisher privileges.
+          await _joinAgora(publish: true);
+        }
         _showMessage(_selfMicMuted ? 'تم كتم مايكك' : 'تم فتح مايكك');
         unawaited(_refreshSeats());
         return true;
@@ -881,7 +930,6 @@ class _RoomPageState extends State<RoomPage> {
         // The POST response already contains the authoritative seat list.
         // Apply it immediately instead of waiting for an additional GET.
         _applySeatData(Map<String, dynamic>.from(data));
-        if (target != null) await _joinAgora(publish: true);
       } else {
         if (response.statusCode == 409) {
           _showMessage('هذا المايك مشغول، اختر مايكًا آخر');
