@@ -649,11 +649,21 @@ Widget _roomActionButton({
                               color: Color(0xFF00E5C0),
                               shape: BoxShape.circle,
                             ),
-                            child: IconButton(
-                              onPressed: onSendChat,
-                              tooltip: 'إرسال',
-                              icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-                              padding: EdgeInsets.zero,
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  if (chatController.text.trim().isNotEmpty) {
+                                    onSendChat();
+                                  }
+                                },
+                                customBorder: const CircleBorder(),
+                                child: const SizedBox.expand(
+                                  child: Center(
+                                    child: Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
