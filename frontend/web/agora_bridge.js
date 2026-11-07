@@ -3,6 +3,28 @@
   let client = null;
   let localAudioTrack = null;
   let joining = false;
+  let audioUnlockButton = null;
+
+  function showAudioUnlock() {
+    if (audioUnlockButton || !document.body) return;
+    audioUnlockButton = document.createElement("button");
+    audioUnlockButton.type = "button";
+    audioUnlockButton.textContent = "اضغط لتفعيل صوت الغرفة";
+    audioUnlockButton.setAttribute("aria-label", "تفعيل صوت الغرفة");
+    audioUnlockButton.style.cssText = "position:fixed;z-index:2147483647;left:50%;bottom:26px;transform:translateX(-50%);padding:13px 20px;border:1px solid rgba(232,196,119,.7);border-radius:24px;background:linear-gradient(110deg,#3a2948,#17131f);color:#fff;font:700 14px system-ui;box-shadow:0 8px 28px #0008";
+    audioUnlockButton.addEventListener("click", function () {
+      if (client) {
+        client.remoteUsers.forEach(function (user) {
+          if (user.audioTrack) {
+            try { user.audioTrack.play(); } catch (_) {}
+          }
+        });
+      }
+      audioUnlockButton.remove();
+      audioUnlockButton = null;
+    });
+    document.body.appendChild(audioUnlockButton);
+  }
 
   async function leaveCurrent() {
     if (localAudioTrack) {
@@ -22,6 +44,7 @@
     try {
       await leaveCurrent();
       client = window.AgoraRTC.createClient({ mode: "live", codec: "vp8" });
+      window.AgoraRTC.onAudioAutoplayFailed = showAudioUnlock;
       client.on("user-published", async function (user, mediaType) {
         try {
           await client.subscribe(user, mediaType);
