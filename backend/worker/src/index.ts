@@ -1,3 +1,4 @@
+import { RtcRole, RtcTokenBuilder } from "agora-token";
 export interface Env {
   DB?: D1Database;
   ROOM_CHAT?: DurableObjectNamespace;
@@ -6,6 +7,9 @@ export interface Env {
   IMAGEKIT_PUBLIC_KEY?: string;
   IMAGEKIT_PRIVATE_KEY?: string;
   ADMIN_SETUP_TOKEN?: string;
+  AGORA_APP_ID?: string;
+  AGORA_APP_CERTIFICATE?: string;
+  AGORA_ENABLED?: string;
 }
 
 
@@ -306,6 +310,7 @@ export default {
       url.pathname === "/api/v1/admin/users" ||
       url.pathname === "/api/v1/admin/rooms" ||
       url.pathname === "/api/v1/admin/audit" ||
+      url.pathname === "/api/v1/admin/agora/status" ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/status$/i.test(url.pathname)
     ) {
@@ -317,6 +322,9 @@ export default {
         const canManageUsers = role === "owner" || role === "admin";
         const canManageRooms = role === "owner" || role === "admin";
 
+        if (url.pathname === "/api/v1/admin/agora/status" && request.method === "GET") {
+          return json({ ok: true, agora: { enabled: env.AGORA_ENABLED !== "false", appId: env.AGORA_APP_ID ?? "", certificateConfigured: Boolean(env.AGORA_APP_CERTIFICATE) } }, 200, origin, env);
+        }
         if (url.pathname === "/api/v1/admin/me" && request.method === "GET") {
           return json({ ok: true, admin: { id: actor.id, name: actor.display_name, username: actor.username, role } }, 200, origin, env);
         }
@@ -855,6 +863,44 @@ export default {
         const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
         console.error("[rooms.moderation] failed", diagnostic);
         return json({ error: "room_moderation_failed" }, 500, origin, env);
+      }
+    }
+
+    // Agora RTC tokens are issued only to authenticated members of an active room.
+    const agoraTokenRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/([^/]+)\\/agora-token$/);
+    if (agoraTokenRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      if (!env.AGORA_APP_ID || !env.AGORA_APP_CERTIFICATE || env.AGORA_ENABLED === "false") {
+        return json({ error: "agora_not_configured", message: "خدمة الصوت غير مفعّلة حاليًا" }, 503, origin, env);
+      }
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = decodeURIComponent(agoraTokenRoute[1]);
+        const room = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
+          .bind(roomId).first<{ id: string }>();
+        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        const now = new Date().toISOString();
+        const [ban, kick, control, seat] = await Promise.all([
+          env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
+          env.DB.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
+          env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
+          env.DB.prepare("SELECT seat_number FROM room_seats WHERE room_id = ? AND user_id = ? AND expires_at > ? LIMIT 1").bind(roomId, user.id, now).first<{ seat_number: number }>()
+        ]);
+        if (ban || kick) return json({ error: ban ? "room_banned" : "room_kicked" }, 403, origin, env);
+        const canPublish = Boolean(seat) && control?.is_muted !== 1;
+        const numericUid = Number(user.gabo_id);
+        if (!Number.isSafeInteger(numericUid) || numericUid < 1 || numericUid > 2147483647) {
+          return json({ error: "invalid_user_id" }, 400, origin, env);
+        }
+        const channel = "hl" + (await sha256(roomId)).slice(0, 30);
+        const ttl = 3600;
+        const role = canPublish ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+        const rtcToken = RtcTokenBuilder.buildTokenWithUid(env.AGORA_APP_ID, env.AGORA_APP_CERTIFICATE, channel, numericUid, role, ttl, ttl);
+        return json({ ok: true, appId: env.AGORA_APP_ID, channel, uid: numericUid, token: rtcToken, role: canPublish ? "publisher" : "audience", expiresIn: ttl }, 200, origin, env);
+      } catch (error) {
+        console.error("[agora.token] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "agora_token_failed", message: "تعذر تجهيز اتصال الصوت" }, 500, origin, env);
       }
     }
 
