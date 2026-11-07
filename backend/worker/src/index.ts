@@ -204,8 +204,8 @@ export default {
       url.pathname === "/api/v1/admin/users" ||
       url.pathname === "/api/v1/admin/rooms" ||
       url.pathname === "/api/v1/admin/audit" ||
-      /^\\/api\\/v1\\/admin\\/users\\/[0-9a-f-]{36}\\/status$/i.test(url.pathname) ||
-      /^\\/api\\/v1\\/admin\\/rooms\\/[0-9a-f-]{36}\\/status$/i.test(url.pathname)
+      /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
+      /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/status$/i.test(url.pathname)
     ) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
