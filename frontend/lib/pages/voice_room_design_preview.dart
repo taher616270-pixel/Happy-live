@@ -14,6 +14,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     required this.isChangingSeat,
     required this.audienceCount,
     this.audienceUsers = const [],
+    this.chatMessagesPanel,
     this.ownerName = 'صاحب الغرفة',
     this.canModerateUsers = false,
     this.selfMicMuted = false,
@@ -33,6 +34,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final bool isChangingSeat;
   final int audienceCount;
   final List<Map<String, dynamic>> audienceUsers;
+  final Widget? chatMessagesPanel;
   final String ownerName;
   final bool canModerateUsers;
   final bool selfMicMuted;
@@ -84,6 +86,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
               ],
             )),
+            if (chatMessagesPanel != null)
+              Positioned(
+                left: 58,
+                right: 12,
+                bottom: 8,
+                height: 176,
+                child: chatMessagesPanel!,
+              ),
             Positioned(left: 12, bottom: 4, child: Column(children: const [
               _SideTile(icon: Icons.campaign_rounded, label: '0%', color: Color(0xFFFFC857)),
               _SideTile(icon: Icons.sports_esports_rounded, label: '', color: Color(0xFFB57BFF)),
