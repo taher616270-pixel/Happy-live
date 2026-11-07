@@ -642,7 +642,9 @@ Widget _roomActionButton({
     ),
   );
 
-  Widget _listeners() => Container(
+  Widget _listeners() => Transform.translate(
+    offset: const Offset(0, -30),
+    child: Container(
     height: 40,
     margin: const EdgeInsets.symmetric(horizontal: 12),
     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -699,7 +701,7 @@ Widget _roomActionButton({
         const Icon(Icons.person_outline, color: Colors.white, size: 19),
       ],
     ),
-  );
+  ));
 
   void _openChatComposer(BuildContext context) {
     showGeneralDialog<void>(
