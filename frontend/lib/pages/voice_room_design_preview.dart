@@ -60,14 +60,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       backgroundColor: const Color(0xFF08141C),
       body: Stack(fit: StackFit.expand, children: [
         const _NightSky(),
-        if (chatMessagesPanel != null)
-          Positioned(
-            left: 58,
-            right: 12,
-            top: 92,
-            bottom: 56,
-            child: chatMessagesPanel!,
-          ),
         SafeArea(bottom: false, child: Column(children: [
           _header(context),
           _subHeader(),
@@ -79,6 +71,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               children: [
               ],
             )),
+            if (chatMessagesPanel != null)
+              Positioned(
+                left: 58,
+                right: 12,
+                top: 0,
+                bottom: 0,
+                child: chatMessagesPanel!,
+              ),
             Positioned(left: 12, bottom: 4, child: Column(children: const [
               _SideTile(icon: Icons.campaign_rounded, label: '0%', color: Color(0xFFFFC857)),
               _SideTile(icon: Icons.sports_esports_rounded, label: '', color: Color(0xFFB57BFF)),
