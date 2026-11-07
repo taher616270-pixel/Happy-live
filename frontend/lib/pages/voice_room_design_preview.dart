@@ -107,7 +107,17 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   Widget _header(BuildContext context) => Directionality(textDirection: TextDirection.ltr, child: Padding(
     padding: const EdgeInsets.fromLTRB(10, 8, 6, 0),
     child: Row(children: [
-      const Icon(Icons.more_horiz_rounded, color: Colors.white, size: 28),
+      InkWell(
+        onTap: () => _showRoomMenu(context),
+        borderRadius: BorderRadius.circular(20),
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        child: const SizedBox(
+          width: 42,
+          height: 42,
+          child: Icon(Icons.more_horiz_rounded, color: Colors.white, size: 28),
+        ),
+      ),
       const SizedBox(width: 8),
       Column(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 46, height: 46, decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [Color(0xFFFFD27A), Color(0xFFB8672A)])), child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 26)),
