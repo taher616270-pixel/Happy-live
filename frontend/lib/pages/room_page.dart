@@ -284,8 +284,12 @@ class _RoomPageState extends State<RoomPage> {
         // Do not tear down a healthy Agora session when its role is unchanged.
         if (_agoraJoinedPublish == targetPublish) continue;
 
-        await AgoraRoomBridge.leave();
-        _agoraJoinedPublish = null;
+        // On the first room entry there is no previous Agora session to close.
+        // Skip the unnecessary bridge round-trip so the listener can join sooner.
+        if (_agoraJoinedPublish != null) {
+          await AgoraRoomBridge.leave();
+          _agoraJoinedPublish = null;
+        }
 
         final response = await http.post(
           Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/agora-token'),
