@@ -628,7 +628,9 @@ Widget _roomActionButton({
                   decoration: BoxDecoration(
                     color: const Color(0xFF2D2D35),
                     borderRadius: BorderRadius.circular(25),
-                    border: Border.all(color: Colors.white10),
+                    border: Border.all(
+                      color: isFocused ? Colors.white10 : Colors.transparent,
+                    ),
                   ),
                   child: Row(
                     textDirection: TextDirection.rtl,
