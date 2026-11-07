@@ -41,6 +41,7 @@ class _RoomPageState extends State<RoomPage> {
   int _chatReconnectAttempts = 0;
   final Set<String> _messageIds = <String>{};
   final TextEditingController _messageController = TextEditingController();
+  final FocusNode _roomChatFocusNode = FocusNode();
   final List<Message> _messages = [];
   final GlobalKey<AnimatedListState> _roomAnimatedListKey = GlobalKey<AnimatedListState>();
   final ScrollController _roomMessagesController = ScrollController();
@@ -138,6 +139,7 @@ class _RoomPageState extends State<RoomPage> {
       ).timeout(const Duration(seconds: 4)).catchError((_) => http.Response('', 500));
     }
     _messageController.dispose();
+    _roomChatFocusNode.dispose();
     _roomMessagesController.dispose();
     if (_mySeat != null) {
       // Best-effort release; the server-side lease also expires automatically.
@@ -854,214 +856,7 @@ class _RoomPageState extends State<RoomPage> {
     }
   }
 
-  Future<void> _openRoomChatInput() async {
-    final inputFocusNode = FocusNode();
-    try {
-      await showGeneralDialog<void>(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: 'إغلاق حقل الكتابة',
-        barrierColor: Colors.transparent,
-        transitionDuration: Duration.zero,
-        pageBuilder: (dialogContext, animation, secondaryAnimation) {
-          final media = MediaQuery.of(dialogContext);
-          final keyboardInset = media.viewInsets.bottom;
-          final bottomOffset = keyboardInset > 0
-              ? keyboardInset + 8
-              : media.viewPadding.bottom + 8;
 
-          return Material(
-            color: Colors.transparent,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final screenWidth = MediaQuery.sizeOf(context).width;
-                final isSmall = screenWidth < 360;
-                final fieldHeight = isSmall ? 46.0 : 50.0;
-                final sendWidth = isSmall ? 60.0 : 72.0;
-                final sendHeight = isSmall ? 34.0 : 38.0;
-
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Positioned(
-                      left: 10,
-                      right: 10,
-                      bottom: bottomOffset,
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 500),
-                          child: Container(
-                            width: double.infinity,
-                            height: fieldHeight,
-                            margin: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.015,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2D2D35),
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                            child: Row(
-                              textDirection: TextDirection.rtl,
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _messageController,
-                                    focusNode: inputFocusNode,
-                                    autofocus: false,
-                                    minLines: 1,
-                                    maxLines: 1,
-                                    maxLength: 100,
-                                    inputFormatters: [
-                                      LengthLimitingTextInputFormatter(100),
-                                    ],
-                                    textDirection: TextDirection.rtl,
-                                    textInputAction: TextInputAction.send,
-                                    onSubmitted: (_) => _sendRoomMessage(),
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: isSmall ? 14 : 16,
-                                    ),
-                                    decoration: InputDecoration(
-                                      hintText: 'قل شيئاً...',
-                                      hintStyle: const TextStyle(
-                                        color: Color(0xFF9A9A9A),
-                                        fontSize: 14,
-                                      ),
-                                      border: InputBorder.none,
-                                      counterText: '',
-                                      contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 18,
-                                        vertical: 12,
-                                      ),
-                                    ),
-                                    buildCounter: (
-                                      context, {
-                                      required currentLength,
-                                      required isFocused,
-                                      required maxLength,
-                                    }) {
-                                      if (currentLength > 80) {
-                                        return Padding(
-                                          padding: const EdgeInsetsDirectional.only(end: 4),
-                                          child: Text(
-                                            '$currentLength/100',
-                                            style: TextStyle(
-                                              color: currentLength >= 100
-                                                  ? Colors.redAccent
-                                                  : Colors.white54,
-                                              fontSize: 10,
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Container(
-                                  width: sendWidth,
-                                  height: sendHeight,
-                                  margin: const EdgeInsetsDirectional.only(end: 6),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF00E5C0),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: InkWell(
-                                      onTap: _chatSending ? null : _sendRoomMessage,
-                                      borderRadius: BorderRadius.circular(20),
-                                      child: Center(
-                                        child: Icon(
-                                          Icons.send_rounded,
-                                          color: Colors.white,
-                                          size: isSmall ? 20 : 24,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          );
-        },
-      );
-    } finally {
-      inputFocusNode.dispose();
-    }
-  }
-
-  Widget _roomChatComposer() {
-    if (_isBannedFromRoom) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(
-          color: const Color(0xEE15101C),
-          border: Border(top: BorderSide(color: const Color(0x445F4775))),
-        ),
-        child: const SafeArea(
-          top: false,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.block_rounded, color: Color(0xFFE8C477), size: 17),
-              SizedBox(width: 8),
-              Text('تم حظرك من التحدث واستخدام المايك في هذه الغرفة',
-                style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w700)),
-            ],
-          ),
-        ),
-      );
-    }
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
-      decoration: BoxDecoration(color: const Color(0xEE15101C), border: Border(top: BorderSide(color: const Color(0x445F4775)))),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          textDirection: TextDirection.rtl,
-          children: [
-            Stack(clipBehavior: Clip.none, children: [
-              IconButton(onPressed: () => _showChatToolMessage('الرسائل الخاصة'), icon: const Icon(Icons.mail_outline_rounded, color: Colors.white, size: 22)),
-              Positioned(top: 1, left: 1, child: Container(width: 15, height: 15, alignment: Alignment.center, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: const Text('3', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)))),
-            ]),
-            IconButton(onPressed: () => _showChatToolMessage('الهدايا'), icon: const Icon(Icons.card_giftcard_rounded, color: _gold, size: 22)),
-            IconButton(onPressed: _showRoomChatMenu, icon: const Icon(Icons.menu_rounded, color: Colors.white70, size: 22)),
-            Expanded(
-              child: TextField(
-                controller: _messageController,
-                minLines: 1,
-                maxLines: 2,
-                maxLength: 100,
-                inputFormatters: [LengthLimitingTextInputFormatter(100)],
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _sendRoomMessage(),
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-                decoration: InputDecoration(
-                  hintText: 'قل شيئاً...', hintStyle: const TextStyle(color: _muted, fontSize: 12), counterText: '',
-                  filled: true, fillColor: const Color(0xFF29212F), contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
-                ),
-              ),
-            ),
-            IconButton(onPressed: _sendRoomMessage, icon: const Icon(Icons.send_rounded, color: _gold, size: 21)),
-          ],
-        ),
-      ),
-    );
-  }
 
   void _showChatToolMessage(String label) {
     _showMessage('$label — واجهة تجريبية للمرحلة الأولى');
@@ -1177,7 +972,9 @@ class _RoomPageState extends State<RoomPage> {
     return VoiceRoomDesignPreview(
       room: widget.room,
       chatMessagesPanel: _roomMessagesPanel(),
-      onTapChatComposer: _openRoomChatInput,
+      chatController: _messageController,
+      chatFocusNode: _roomChatFocusNode,
+      onSendChat: _sendRoomMessage,
       seats: _seats,
       onTapSeat: _selectSeat,
       isChangingSeat: _isChangingSeat,
