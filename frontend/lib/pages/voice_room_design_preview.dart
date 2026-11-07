@@ -643,11 +643,11 @@ Widget _roomActionButton({
   );
 
   Widget _listeners() => Container(
-    height: 52,
+    height: 40,
     margin: const EdgeInsets.symmetric(horizontal: 12),
     padding: const EdgeInsets.symmetric(horizontal: 12),
     decoration: BoxDecoration(
-      color: Colors.black.withOpacity(.35),
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(16),
       border: Border.all(color: Colors.white.withOpacity(.10)),
     ),
