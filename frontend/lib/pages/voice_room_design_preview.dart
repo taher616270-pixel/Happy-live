@@ -507,32 +507,28 @@ Widget _roomActionButton({
         const Icon(Icons.person_outline_rounded, color: Colors.white, size: 16),
         if (audienceUsers.isNotEmpty) ...[
           const SizedBox(width: 6),
-          SizedBox(
-            width: (22 + (audienceUsers.length.clamp(1, 3) - 1) * 13).toDouble(),
-            height: 22,
-            child: Stack(
-              children: [
-                for (var index = 0; index < audienceUsers.length.clamp(0, 3); index++)
-                  Positioned(
-                    left: index * 13.0,
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1.2),
-                        color: const Color(0xFF29434A),
-                        image: (audienceUsers[index]['avatarUrl'] ?? '').toString().startsWith('https://')
-                            ? DecorationImage(
-                                image: NetworkImage(audienceUsers[index]['avatarUrl'].toString()),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                    ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var index = 0; index < audienceUsers.length.clamp(0, 3); index++) ...[
+                if (index > 0) const SizedBox(width: 4),
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.2),
+                    color: const Color(0xFF29434A),
+                    image: (audienceUsers[index]['avatarUrl'] ?? '').toString().startsWith('https://')
+                        ? DecorationImage(
+                            image: NetworkImage(audienceUsers[index]['avatarUrl'].toString()),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
+                ),
               ],
-            ),
+            ],
           ),
         ],
       ]), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
