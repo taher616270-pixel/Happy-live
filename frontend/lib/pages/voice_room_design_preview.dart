@@ -43,7 +43,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final VoidCallback? onCloseRoom;
   final TextEditingController chatController;
   final FocusNode chatFocusNode;
-  final VoidCallback onSendChat;
+  final Future<void> Function() onSendChat;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -652,9 +652,9 @@ Widget _roomActionButton({
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                onTap: () {
+                                onTap: () async {
                                   if (chatController.text.trim().isNotEmpty) {
-                                    onSendChat();
+                                    await onSendChat();
                                   }
                                 },
                                 customBorder: const CircleBorder(),
