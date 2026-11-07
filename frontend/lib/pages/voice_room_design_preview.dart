@@ -505,33 +505,33 @@ Widget _roomActionButton({
         Text('$audienceCount', style: const TextStyle(color: Colors.white, fontSize: 12)),
         const SizedBox(width: 3),
         const Icon(Icons.person_outline_rounded, color: Colors.white, size: 16),
-        if (audienceUsers.isNotEmpty) ...[
-          const SizedBox(width: 6),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (var index = 0; index < audienceUsers.length.clamp(0, 3); index++) ...[
-                if (index > 0) const SizedBox(width: 4),
-                Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.2),
-                    color: const Color(0xFF29434A),
-                    image: (audienceUsers[index]['avatarUrl'] ?? '').toString().startsWith('https://')
-                        ? DecorationImage(
-                            image: NetworkImage(audienceUsers[index]['avatarUrl'].toString()),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
       ]), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
+      if (audienceUsers.isNotEmpty) ...[
+        const SizedBox(width: 8),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var index = 0; index < audienceUsers.length.clamp(0, 3); index++) ...[
+              if (index > 0) const SizedBox(width: 4),
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.2),
+                  color: const Color(0xFF29434A),
+                  image: (audienceUsers[index]['avatarUrl'] ?? '').toString().startsWith('https://')
+                      ? DecorationImage(
+                          image: NetworkImage(audienceUsers[index]['avatarUrl'].toString()),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
       const Spacer(),
       _pill(Row(mainAxisSize: MainAxisSize.min, children: [
         const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 18),
