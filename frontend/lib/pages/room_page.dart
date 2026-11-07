@@ -43,7 +43,6 @@ class _RoomPageState extends State<RoomPage> {
   final TextEditingController _messageController = TextEditingController();
   final List<Message> _messages = [];
   final GlobalKey<AnimatedListState> _roomAnimatedListKey = GlobalKey<AnimatedListState>();
-  final Map<String, Timer> _roomMessageExpiryTimers = <String, Timer>{};
   final ScrollController _roomMessagesController = ScrollController();
   DateTime _lastLocalMessageAt = DateTime.fromMillisecondsSinceEpoch(0);
   late String _roomAnnouncement;
@@ -144,8 +143,6 @@ class _RoomPageState extends State<RoomPage> {
       ).timeout(const Duration(seconds: 4)).catchError((_) => http.Response('', 500));
     }
     _messageController.dispose();
-    for (final timer in _roomMessageExpiryTimers.values) { timer.cancel(); }
-    _roomMessageExpiryTimers.clear();
     _roomMessagesController.dispose();
     if (_mySeat != null) {
       // Best-effort release; the server-side lease also expires automatically.
@@ -462,33 +459,8 @@ class _RoomPageState extends State<RoomPage> {
       } else {
         setState(() {});
       }
-      _scheduleRoomMessageExpiry(message.id);
-      if (_messages.length > 6) _removeRoomMessage(_messages.last.id);
     }
     _scrollChatToBottom();
-  }
-
-  void _scheduleRoomMessageExpiry(String messageId) {
-    _roomMessageExpiryTimers.remove(messageId)?.cancel();
-    _roomMessageExpiryTimers[messageId] = Timer(const Duration(seconds: 8), () => _removeRoomMessage(messageId));
-  }
-
-  void _removeRoomMessage(String messageId) {
-    if (!mounted) return;
-    final index = _messages.indexWhere((message) => message.id == messageId);
-    _roomMessageExpiryTimers.remove(messageId)?.cancel();
-    if (index < 0) return;
-    final removed = _messages.removeAt(index);
-    final listState = _roomAnimatedListKey.currentState;
-    if (listState != null) {
-      listState.removeItem(
-        index,
-        (context, animation) => _roomMessageAnimatedItem(removed, animation, removing: true),
-        duration: const Duration(milliseconds: 420),
-      );
-    } else {
-      setState(() {});
-    }
   }
 
   Message _messageFromApi(Map<String, dynamic> item, {String type = 'text'}) {
