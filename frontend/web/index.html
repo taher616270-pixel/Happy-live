@@ -178,6 +178,26 @@
       }, { passive: true });
     })();
   </script>
+  <script>
+    // Keep the iOS page at the top when the keyboard focuses or resizes the visual viewport.
+    if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+      document.addEventListener('focusin', (event) => {
+        const target = event.target;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+          setTimeout(() => {
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+          }, 100);
+        }
+      });
+
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+          window.scrollTo(0, 0);
+        }, { passive: true });
+      }
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 
 </body>
