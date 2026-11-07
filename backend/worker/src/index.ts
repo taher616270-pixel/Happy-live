@@ -198,7 +198,15 @@ export default {
     }
 
     // Admin API: roles are read from D1 only; browser-supplied roles are ignored.
-    if (url.pathname.startsWith("/api/v1/admin/")) {
+    if (
+      url.pathname === "/api/v1/admin/me" ||
+      url.pathname === "/api/v1/admin/overview" ||
+      url.pathname === "/api/v1/admin/users" ||
+      url.pathname === "/api/v1/admin/rooms" ||
+      url.pathname === "/api/v1/admin/audit" ||
+      /^\\/api\\/v1\\/admin\\/users\\/[0-9a-f-]{36}\\/status$/i.test(url.pathname) ||
+      /^\\/api\\/v1\\/admin\\/rooms\\/[0-9a-f-]{36}\\/status$/i.test(url.pathname)
+    ) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
         const actor = await authenticatedUser(request, env.DB);
@@ -261,9 +269,10 @@ export default {
           const body = await request.json() as Record<string, unknown>;
           const status = body.status === "active" || body.status === "suspended" ? body.status : null;
           if (!status) return json({ error: "invalid_status" }, 400, origin, env);
-          const target = await env.DB.prepare("SELECT u.id, ar.role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1")
-            .bind(targetId).first<{id:string;role:string|null}>();
+          const target = await env.DB.prepare("SELECT u.id, u.status, ar.role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1")
+            .bind(targetId).first<{id:string;status:string;role:string|null}>();
           if (!target) return json({ error: "user_not_found" }, 404, origin, env);
+          if (target.status === "deleted") return json({ error: "deleted_user_cannot_be_reactivated" }, 409, origin, env);
           if (target.role && role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const now = new Date().toISOString();
           await env.DB.batch([
