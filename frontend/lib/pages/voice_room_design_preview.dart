@@ -568,12 +568,13 @@ Widget _roomActionButton({
     final media = MediaQuery.of(context);
     final keyboardHeight = media.viewInsets.bottom;
     final keyboardOpen = keyboardHeight > 0;
-    return AnimatedPadding(
+    return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
-      padding: EdgeInsets.only(bottom: keyboardOpen ? keyboardHeight : media.viewPadding.bottom),
+      transform: Matrix4.translationValues(0, keyboardOpen ? -keyboardHeight : 0, 0),
+      padding: EdgeInsets.only(bottom: keyboardOpen ? 8 : media.viewPadding.bottom + 8),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+        padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
         child: Row(
           textDirection: TextDirection.rtl,
           children: [
