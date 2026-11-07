@@ -102,21 +102,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           _seats(context),
           _listeners(),
           Expanded(
-            child: AnimatedBuilder(
-              animation: chatFocusNode,
-              builder: (context, child) {
-                final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-                return Transform.translate(
-                  offset: Offset(
-                    0,
-                    chatFocusNode.hasFocus && keyboardHeight > 0
-                        ? -keyboardHeight
-                        : 0,
-                  ),
-                  child: child,
-                );
-              },
-              child: Stack(children: [
+            child: Stack(children: [
             Positioned.fill(child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 14, 12, 8),
               children: [
@@ -136,14 +122,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               _SideTile(icon: Icons.diamond_rounded, label: '0/2500', color: Color(0xFFFF8A65)),
             ])),
           ]),
-            ),
           ),
         ])),
         Positioned(
           left: 0,
           right: 0,
-          bottom: MediaQuery.of(context).viewInsets.bottom +
-              MediaQuery.of(context).viewPadding.bottom + 8,
+          bottom: MediaQuery.of(context).viewPadding.bottom + 8,
           child: _bottomBar(context),
         ),
         Positioned.fill(
@@ -629,6 +613,7 @@ Widget _roomActionButton({
           builder: (context, child) {
             final isFocused = chatFocusNode.hasFocus;
             final targetWidth = screenWidth * (isFocused ? 0.96 : 0.59);
+            final keyboardHeight = isFocused ? media.viewInsets.bottom : 0.0;
             return Stack(
               alignment: Alignment.center,
               clipBehavior: Clip.none,
@@ -648,7 +633,11 @@ Widget _roomActionButton({
                     ],
                   ),
                 ),
-                AnimatedContainer(
+                Positioned(
+                  left: 10,
+                  right: 10,
+                  bottom: keyboardHeight,
+                  child: AnimatedContainer(
                   key: _chatInputKey,
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOutCubic,
@@ -725,6 +714,7 @@ Widget _roomActionButton({
                         ),
                       ],
                     ],
+                  ),
                   ),
                 ),
               ],
