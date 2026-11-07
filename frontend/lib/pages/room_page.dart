@@ -436,7 +436,7 @@ class _RoomPageState extends State<RoomPage> {
       _messages.insert(0, message);
       final listState = _roomAnimatedListKey.currentState;
       if (listState != null) {
-        listState.insertItem(0, duration: const Duration(milliseconds: 400));
+        listState.insertItem(1, duration: const Duration(milliseconds: 400));
       } else {
         setState(() {});
       }
@@ -750,18 +750,18 @@ class _RoomPageState extends State<RoomPage> {
           child: AnimatedList(
             key: _roomAnimatedListKey,
             controller: _roomMessagesController,
-            reverse: true,
+            reverse: false,
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
             initialItemCount: _messages.length + 1,
             itemBuilder: (context, index, animation) {
-              if (index == _messages.length) {
+              if (index == 0) {
                 return SizeTransition(
                   sizeFactor: CurvedAnimation(parent: animation, curve: Curves.easeOutQuart),
                   axisAlignment: -1,
                   child: _roomAnnouncementCard(),
                 );
               }
-              return _roomMessageAnimatedItem(_messages[index], animation);
+              return _roomMessageAnimatedItem(_messages[index - 1], animation);
             },
           ),
         ),
