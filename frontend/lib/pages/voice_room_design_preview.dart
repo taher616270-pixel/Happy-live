@@ -506,7 +506,7 @@ Widget _roomActionButton({
         const SizedBox(width: 5),
         if (audienceUsers.isNotEmpty)
           SizedBox(
-            width: 25 + (audienceUsers.length.clamp(1, 3) - 1) * 15,
+            width: (25 + (audienceUsers.length.clamp(1, 3) - 1) * 15).toDouble(),
             height: 25,
             child: Stack(
               children: [
