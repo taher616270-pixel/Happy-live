@@ -13,6 +13,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     required this.onTapSeat,
     required this.isChangingSeat,
     required this.audienceCount,
+    this.audienceUsers = const [],
     this.canModerateUsers = false,
     this.selfMicMuted = false,
     this.onToggleSelfMic,
@@ -30,6 +31,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final ValueChanged<int> onTapSeat;
   final bool isChangingSeat;
   final int audienceCount;
+  final List<Map<String, dynamic>> audienceUsers;
   final bool canModerateUsers;
   final bool selfMicMuted;
   final Future<bool> Function()? onToggleSelfMic;
@@ -501,7 +503,35 @@ Widget _roomActionButton({
     child: Row(children: [
       _pill(Row(mainAxisSize: MainAxisSize.min, children: [
         Text('$audienceCount', style: const TextStyle(color: Colors.white, fontSize: 12)),
-        SizedBox(width: 3), Icon(Icons.person_outline_rounded, color: Colors.white, size: 16),
+        const SizedBox(width: 5),
+        if (audienceUsers.isNotEmpty)
+          SizedBox(
+            width: 25 + (audienceUsers.length.clamp(1, 3) - 1) * 15,
+            height: 25,
+            child: Stack(
+              children: [
+                for (var index = 0; index < audienceUsers.length.clamp(0, 3); index++)
+                  Positioned(
+                    left: index * 15.0,
+                    child: Container(
+                      width: 25,
+                      height: 25,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.2),
+                        color: const Color(0xFF29434A),
+                        image: (audienceUsers[index]['avatarUrl'] ?? '').toString().startsWith('https://')
+                            ? DecorationImage(
+                                image: NetworkImage(audienceUsers[index]['avatarUrl'].toString()),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
       ]), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
       const Spacer(),
       _pill(Row(mainAxisSize: MainAxisSize.min, children: [
