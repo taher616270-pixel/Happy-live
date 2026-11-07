@@ -663,15 +663,15 @@ Widget _roomActionButton({
                     child: Icon(Icons.person, color: Colors.white70, size: 18),
                   ),
                 )
-              : Align(
-                  alignment: Alignment.centerRight,
-                  child: Directionality(
-                    textDirection: TextDirection.rtl,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      reverse: false,
-                      physics: const BouncingScrollPhysics(),
-                      child: Row(
+              : Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    reverse: false,
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    child: Row(
                     children: audienceUsers.map((user) {
                       final avatar = (user['avatarUrl'] ??
                               user['avatar'] ??
@@ -693,7 +693,6 @@ Widget _roomActionButton({
                         ),
                       );
                     }).toList(),
-                      ),
                     ),
                   ),
                 ),
