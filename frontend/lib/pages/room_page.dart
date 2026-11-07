@@ -1064,10 +1064,7 @@ class _RoomPageState extends State<RoomPage> {
     }
     return VoiceRoomDesignPreview(
       room: widget.room,
-      announcement: _roomAnnouncement,
       chatMessagesPanel: _roomMessagesPanel(),
-      canEditAnnouncement: _isRoomOwner,
-      onEditAnnouncement: _editRoomAnnouncement,
       seats: _seats,
       onTapSeat: _selectSeat,
       isChangingSeat: _isChangingSeat,
