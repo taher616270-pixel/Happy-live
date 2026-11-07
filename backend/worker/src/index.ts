@@ -1019,7 +1019,7 @@ export default {
             const expiresAt = new Date(Date.now() + 45000).toISOString();
             try {
               const result = await env.DB.prepare(
-                "INSERT INTO room_seats (room_id, seat_number, user_id, joined_at, updated_at, expires_at) SELECT ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM room_seats WHERE room_id = ? AND seat_number = ? AND user_id <> ?) ON CONFLICT(room_id, user_id) DO UPDATE SET seat_number = excluded.seat_number, updated_at = excluded.updated_at, expires_at = excluded.expires_at WHERE NOT EXISTS (SELECT 1 FROM room_seats WHERE room_id = excluded.room_id AND seat_number = excluded.seat_number AND user_id <> excluded.user_id) RETURNING seat_number"
+                "INSERT INTO room_seats (room_id, seat_number, user_id, joined_at, updated_at, expires_at) SELECT ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM room_seats WHERE room_id = ? AND seat_number = ? AND user_id <> ?) AND COALESCE((SELECT setting_value FROM platform_settings WHERE setting_key = 'agora_voice_enabled'), 'true') <> 'false' ON CONFLICT(room_id, user_id) DO UPDATE SET seat_number = excluded.seat_number, updated_at = excluded.updated_at, expires_at = excluded.expires_at WHERE NOT EXISTS (SELECT 1 FROM room_seats WHERE room_id = excluded.room_id AND seat_number = excluded.seat_number AND user_id <> excluded.user_id) RETURNING seat_number"
               ).bind(roomId, seatNumber, user.id, now, now, expiresAt, roomId, seatNumber, user.id).first<{ seat_number: number }>();
               if (!result) {
                 return json({ error: "seat_occupied", message: "هذا المايك مشغول" }, 409, origin, env);
