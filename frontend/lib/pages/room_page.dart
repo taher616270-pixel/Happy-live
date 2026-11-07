@@ -68,6 +68,7 @@ class _RoomPageState extends State<RoomPage> {
   String _ownerName = 'صاحب الغرفة';
   String _ownerId = '';
   List<Map<String, dynamic>> _seats = [];
+  List<Map<String, dynamic>> _audienceUsers = [];
   int _audienceCount = 0;
 
   String get _roomId => (widget.room['id'] ?? '').toString();
@@ -183,6 +184,10 @@ class _RoomPageState extends State<RoomPage> {
         : <Map<String, dynamic>>[];
     final nextMySeat = data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null;
     final nextAudienceCount = data['audienceCount'] is num ? (data['audienceCount'] as num).toInt() : _audienceCount;
+    final rawAudienceUsers = data['audienceUsers'];
+    final nextAudienceUsers = rawAudienceUsers is List
+        ? rawAudienceUsers.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+        : _audienceUsers;
     final owner = data['owner'];
     final nextOwnerName = owner is Map && owner['name'] != null
         ? owner['name'].toString()
@@ -209,6 +214,7 @@ class _RoomPageState extends State<RoomPage> {
     final changed = jsonEncode(_seats) != jsonEncode(seats) ||
         _mySeat != nextMySeat ||
         _audienceCount != nextAudienceCount ||
+        jsonEncode(_audienceUsers) != jsonEncode(nextAudienceUsers) ||
         _ownerName != nextOwnerName ||
         _ownerId != nextOwnerId ||
         _roomAnnouncement != nextAnnouncement ||
@@ -232,6 +238,7 @@ class _RoomPageState extends State<RoomPage> {
       _seats = seats;
       _mySeat = nextMySeat;
       _audienceCount = nextAudienceCount;
+      _audienceUsers = nextAudienceUsers;
       _ownerName = nextOwnerName;
       _ownerId = nextOwnerId;
       _roomAnnouncement = nextAnnouncement;
@@ -1028,6 +1035,7 @@ class _RoomPageState extends State<RoomPage> {
       onTapSeat: _selectSeat,
       isChangingSeat: _isChangingSeat,
       audienceCount: _audienceCount,
+      audienceUsers: _audienceUsers,
       canModerateUsers: _isRoomOwner || _amRoomModerator,
       selfMicMuted: _selfMicMuted,
       onToggleSelfMic: _toggleSelfMic,
