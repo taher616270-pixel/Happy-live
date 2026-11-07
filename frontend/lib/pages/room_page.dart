@@ -42,6 +42,8 @@ class _RoomPageState extends State<RoomPage> {
   final Set<String> _messageIds = <String>{};
   final TextEditingController _messageController = TextEditingController();
   final List<Message> _messages = [];
+  final GlobalKey<AnimatedListState> _roomAnimatedListKey = GlobalKey<AnimatedListState>();
+  final Map<String, Timer> _roomMessageExpiryTimers = <String, Timer>{};
   final ScrollController _roomMessagesController = ScrollController();
   DateTime _lastLocalMessageAt = DateTime.fromMillisecondsSinceEpoch(0);
   late String _roomAnnouncement;
@@ -137,6 +139,8 @@ class _RoomPageState extends State<RoomPage> {
       ).timeout(const Duration(seconds: 4)).catchError((_) => http.Response('', 500));
     }
     _messageController.dispose();
+    for (final timer in _roomMessageExpiryTimers.values) { timer.cancel(); }
+    _roomMessageExpiryTimers.clear();
     _roomMessagesController.dispose();
     if (_mySeat != null) {
       // Best-effort release; the server-side lease also expires automatically.
@@ -417,37 +421,55 @@ class _RoomPageState extends State<RoomPage> {
   void _scrollChatToBottom({bool animated = true}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_roomMessagesController.hasClients) return;
-      final target = _roomMessagesController.position.maxScrollExtent;
       if (animated) {
-        _roomMessagesController.animateTo(target, duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+        _roomMessagesController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOutQuart);
       } else {
-        _roomMessagesController.jumpTo(target);
+        _roomMessagesController.jumpTo(0);
       }
     });
   }
 
-  void _appendLocalMessage(Message message) {
-    _mergeRoomMessages([message]);
-  }
+  void _appendLocalMessage(Message message) => _mergeRoomMessages([message]);
 
   void _mergeRoomMessages(Iterable<Message> incoming) {
     if (!mounted) return;
-    var changed = false;
-    for (final message in incoming) {
+    final ordered = incoming.toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    for (final message in ordered) {
       if (message.id.isEmpty || !_messageIds.add(message.id)) continue;
-      _messages.add(message);
-      changed = true;
+      _messages.insert(0, message);
+      final listState = _roomAnimatedListKey.currentState;
+      if (listState != null) {
+        listState.insertItem(0, duration: const Duration(milliseconds: 400));
+      } else {
+        setState(() {});
+      }
+      _scheduleRoomMessageExpiry(message.id);
+      if (_messages.length > 6) _removeRoomMessage(_messages.last.id);
     }
-    if (!changed) return;
-    _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    if (_messages.length > 50) {
-      _messages.removeRange(0, _messages.length - 50);
-      _messageIds
-        ..clear()
-        ..addAll(_messages.map((message) => message.id));
-    }
-    setState(() {});
     _scrollChatToBottom();
+  }
+
+  void _scheduleRoomMessageExpiry(String messageId) {
+    _roomMessageExpiryTimers.remove(messageId)?.cancel();
+    _roomMessageExpiryTimers[messageId] = Timer(const Duration(seconds: 8), () => _removeRoomMessage(messageId));
+  }
+
+  void _removeRoomMessage(String messageId) {
+    if (!mounted) return;
+    final index = _messages.indexWhere((message) => message.id == messageId);
+    _roomMessageExpiryTimers.remove(messageId)?.cancel();
+    if (index < 0) return;
+    final removed = _messages.removeAt(index);
+    final listState = _roomAnimatedListKey.currentState;
+    if (listState != null) {
+      listState.removeItem(
+        index,
+        (context, animation) => _roomMessageAnimatedItem(removed, animation, removing: true),
+        duration: const Duration(milliseconds: 420),
+      );
+    } else {
+      setState(() {});
+    }
   }
 
   Message _messageFromApi(Map<String, dynamic> item, {String type = 'text'}) {
@@ -685,91 +707,80 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _roomMessageItem(Message message) {
-    if (message.type == 'system' || message.type == 'join') {
-      final isWelcome = message.text.contains('دخل الغرفة') || message.text.contains('انضم');
-      final isOwnerEntry = isWelcome && message.senderId.isNotEmpty && message.senderId == _ownerId;
-      final noticeText = isWelcome
-          ? isOwnerEntry
-              ? 'مالك الغرفة @ ${message.senderName} دخل غرفة'
-              : '${message.senderName} دخل الغرفة'
-          : '${message.senderName} @ ${message.text}';
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(
-          textDirection: TextDirection.rtl,
-          children: [
-            CircleAvatar(
-              radius: 15,
-              backgroundColor: const Color(0xFF3A2948),
-              child: Icon(isWelcome ? Icons.waving_hand_rounded : Icons.campaign_rounded, color: _gold, size: 16),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(color: Colors.black.withOpacity(0.42), borderRadius: BorderRadius.circular(14)),
-                child: Text(noticeText, style: const TextStyle(color: Colors.white70, fontSize: 11)),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    if (message.type == 'announcement') {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(
-          textDirection: TextDirection.rtl,
-          children: [
-            const CircleAvatar(radius: 15, backgroundColor: Color(0xFF3A2948), child: Icon(Icons.notifications_active_rounded, color: _gold, size: 16)),
-            const SizedBox(width: 8),
-            Flexible(child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(color: const Color(0xAA34233E), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x66E8C477))),
-              child: Text(message.text, style: const TextStyle(color: Colors.white, fontSize: 11, height: 1.4)),
-            )),
-          ],
-        ),
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        textDirection: TextDirection.rtl,
-        children: [
-          _chatAvatar(message.senderAvatar, message.senderName),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(color: const Color(0xFFE88BAE), borderRadius: BorderRadius.circular(9)),
-                  child: Text(message.senderName, style: const TextStyle(color: Color(0xFF321624), fontSize: 10, fontWeight: FontWeight.w900)),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.58), borderRadius: BorderRadius.circular(14)),
-                  child: Text(message.text, style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.4)),
-                ),
-              ],
-            ),
+    final isSystem = message.type == 'system' || message.type == 'join' || message.type == 'announcement';
+    final isWelcome = message.text.contains('دخل الغرفة') || message.text.contains('انضم') || message.text == 'انضم للغرفة';
+    final isOwnerEntry = isWelcome && message.senderId.isNotEmpty && message.senderId == _ownerId;
+    final displayText = isSystem && isWelcome
+        ? isOwnerEntry
+            ? 'مالك الغرفة @ ${message.senderName} دخل الغرفة'
+            : '${message.senderName} دخل الغرفة'
+        : isSystem && message.type != 'announcement'
+            ? '${message.senderName} @ ${message.text}'
+            : message.type == 'announcement'
+                ? message.text
+                : '${message.senderName}: ${message.text}';
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 50, bottom: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: isSystem ? const Color(0xDD1E2A3A) : const Color(0xFFE84D8A),
+            borderRadius: BorderRadius.circular(16),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            textDirection: TextDirection.rtl,
+            children: [
+              Flexible(
+                child: Text(displayText, textAlign: TextAlign.right,
+                  style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.35, fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(width: 8),
+              Icon(isSystem ? Icons.notifications_active_rounded : Icons.graphic_eq_rounded,
+                size: 14, color: Colors.white.withOpacity(0.78)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _roomMessageAnimatedItem(Message message, Animation<double> animation, {bool removing = false}) {
+    final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutQuart, reverseCurve: Curves.easeInCubic);
+    return SizeTransition(
+      sizeFactor: curved,
+      axisAlignment: -1,
+      child: FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: removing ? Offset.zero : const Offset(0, 0.22),
+            end: removing ? const Offset(0, -0.16) : Offset.zero,
+          ).animate(curved),
+          child: _roomMessageItem(message),
+        ),
       ),
     );
   }
 
   Widget _roomMessagesPanel() {
     return SizedBox.expand(
-      child: ListView.builder(
-        controller: _roomMessagesController,
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
-        itemCount: _messages.length,
-        itemBuilder: (context, index) => _roomMessageItem(_messages[index]),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: SizedBox(
+          width: MediaQuery.sizeOf(context).width * 0.75,
+          child: AnimatedList(
+            key: _roomAnimatedListKey,
+            controller: _roomMessagesController,
+            reverse: true,
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+            initialItemCount: _messages.length,
+            itemBuilder: (context, index, animation) => _roomMessageAnimatedItem(_messages[index], animation),
+          ),
+        ),
       ),
     );
   }
