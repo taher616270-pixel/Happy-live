@@ -568,11 +568,8 @@ Widget _roomActionButton({
     final media = MediaQuery.of(context);
     final keyboardHeight = media.viewInsets.bottom;
     final keyboardOpen = keyboardHeight > 0;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-      transform: Matrix4.translationValues(0, keyboardOpen ? -keyboardHeight : 0, 0),
-      padding: EdgeInsets.only(bottom: keyboardOpen ? 8 : media.viewPadding.bottom + 8),
+    return Padding(
+      padding: EdgeInsets.only(bottom: media.viewPadding.bottom + 8),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
         child: Row(
@@ -585,29 +582,38 @@ Widget _roomActionButton({
             const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
             const SizedBox(width: 10),
             Expanded(
-              child: Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2D2D35),
-                  borderRadius: BorderRadius.circular(25),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                transform: Matrix4.translationValues(
+                  0,
+                  keyboardOpen ? -keyboardHeight : 0,
+                  0,
                 ),
-                child: TextField(
-                  controller: chatController,
-                  focusNode: chatFocusNode,
-                  minLines: 1,
-                  maxLines: 1,
-                  maxLength: 100,
-                  inputFormatters: [LengthLimitingTextInputFormatter(100)],
-                  textDirection: TextDirection.rtl,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => onSendChat(),
-                  style: const TextStyle(color: Colors.white, fontSize: 15),
-                  decoration: const InputDecoration(
-                    hintText: 'قل شيئاً...',
-                    hintStyle: TextStyle(color: Color(0xFF9A9A9A), fontSize: 13),
-                    border: InputBorder.none,
-                    counterText: '',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2D2D35),
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: TextField(
+                    controller: chatController,
+                    focusNode: chatFocusNode,
+                    minLines: 1,
+                    maxLines: 1,
+                    maxLength: 100,
+                    inputFormatters: [LengthLimitingTextInputFormatter(100)],
+                    textDirection: TextDirection.rtl,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => onSendChat(),
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                    decoration: const InputDecoration(
+                      hintText: 'قل شيئاً...',
+                      hintStyle: TextStyle(color: Color(0xFF9A9A9A), fontSize: 13),
+                      border: InputBorder.none,
+                      counterText: '',
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
                   ),
                 ),
               ),
