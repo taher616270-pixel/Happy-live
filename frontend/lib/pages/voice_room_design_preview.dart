@@ -7,6 +7,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     super.key,
     required this.room,
     required this.announcement,
+    this.entryNotice = '',
     required this.canEditAnnouncement,
     required this.onEditAnnouncement,
     required this.seats,
@@ -26,6 +27,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   });
   final Map<String, dynamic> room;
   final String announcement;
+  final String entryNotice;
   final bool canEditAnnouncement;
   final VoidCallback onEditAnnouncement;
   final List<Map<String, dynamic>> seats;
@@ -102,6 +104,39 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             ),
           ),
         ),
+        if (entryNotice.isNotEmpty)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 112,
+            left: 18,
+            right: 18,
+            child: IgnorePointer(
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                  decoration: BoxDecoration(
+                    color: const Color(0xE6162028),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0x99E8C477)),
+                    boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 18, offset: Offset(0, 6))],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.waving_hand_rounded, color: Color(0xFFFFD18A), size: 19),
+                      const SizedBox(width: 9),
+                      Flexible(
+                        child: Text(
+                          entryNotice,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         _roomActionsPanel(context),
       ]),
     ),
