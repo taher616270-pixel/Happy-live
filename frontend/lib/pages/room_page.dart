@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:happy_live/models/message.dart';
 import 'package:happy_live/pages/voice_room_design_preview.dart';
+import 'package:happy_live/services/agora_room_bridge.dart';
 
 class RoomPage extends StatefulWidget {
   const RoomPage({super.key, required this.room, required this.accessToken});
@@ -104,6 +105,7 @@ class _RoomPageState extends State<RoomPage> {
     _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? '').toString();
     unawaited(_refreshSeats());
     unawaited(_startRoomChat());
+    unawaited(_joinAgora(publish: false));
     _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       unawaited(_refreshSeats());
       unawaited(_sendHeartbeat());
@@ -112,6 +114,7 @@ class _RoomPageState extends State<RoomPage> {
 
   @override
   void dispose() {
+    unawaited(AgoraRoomBridge.leave());
     _miniOverlayEntry?.remove();
     _miniOverlayEntry = null;
     _refreshTimer?.cancel();
@@ -221,6 +224,34 @@ class _RoomPageState extends State<RoomPage> {
     });
   }
 
+  Future<void> _joinAgora({required bool publish}) async {
+    if (_roomId.isEmpty || widget.accessToken.isEmpty) return;
+    try {
+      final response = await http.post(
+        Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/agora-token'),
+        headers: _headers,
+        body: jsonEncode({'publish': publish}),
+      ).timeout(const Duration(seconds: 12));
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
+        if (publish && mounted) {
+          final message = data is Map ? (data['message'] ?? '').toString() : '';
+          _showMessage(message.isNotEmpty ? message : 'تعذر تشغيل المايك');
+        }
+        return;
+      }
+      await AgoraRoomBridge.join(
+        appId: (data['appId'] ?? '').toString(),
+        channel: (data['channel'] ?? '').toString(),
+        token: (data['token'] ?? '').toString(),
+        uid: (data['uid'] as num).toInt(),
+        publish: data['canPublish'] == true,
+      );
+    } catch (_) {
+      if (publish && mounted) _showMessage('تعذر الاتصال بخدمة الصوت، حاول مرة أخرى');
+    }
+  }
+
   Future<bool> _toggleSelfMic() async {
     try {
       final response = await http.post(
@@ -231,6 +262,7 @@ class _RoomPageState extends State<RoomPage> {
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data is Map && data['ok'] == true) {
         if (mounted) setState(() => _selfMicMuted = data['isMuted'] == true);
+        await _joinAgora(publish: !_selfMicMuted);
         _showMessage(_selfMicMuted ? 'تم كتم مايكك' : 'تم فتح مايكك');
         unawaited(_refreshSeats());
         return true;
@@ -865,6 +897,7 @@ class _RoomPageState extends State<RoomPage> {
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data is Map && data['ok'] == true) {
         _applySeatData(Map<String, dynamic>.from(data));
+        await _joinAgora(publish: false);
       } else {
         _showMessage('تعذر مغادرة المايك');
         await _refreshSeats();
