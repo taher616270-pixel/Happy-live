@@ -125,11 +125,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 38, height: 38, child: _cover == null ? Container(color: Colors.white24, child: const Icon(Icons.mic_rounded, color: Colors.white70)) : Image.network(_cover!, fit: BoxFit.cover))),
       ]), padding: const EdgeInsets.fromLTRB(6, 5, 6, 5)),
       Material(
-        color: Colors.black.withOpacity(.24),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.transparent,
         child: InkWell(
           onTap: onRoomActions,
-          borderRadius: BorderRadius.circular(12),
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
           child: const SizedBox(
             width: 38,
             height: 42,
