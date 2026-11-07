@@ -460,7 +460,7 @@ Widget _roomActionButton({
         final muted = seat?['isMuted'] == true;
         final locked = seat?['isLocked'] == true || seat?['locked'] == true;
         return Transform.translate(
-          offset: Offset(0, number >= 5 ? -24 : 0),
+          offset: Offset(0, number >= 5 ? -34 : 0),
           child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: occupied
