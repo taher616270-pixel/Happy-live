@@ -357,7 +357,7 @@ Widget _roomActionButton({
                     : null)
                 : (canTap ? () => onTapSeat(n) : null),
             child: Container(
-              width: 62, height: 62,
+              width: 54, height: 54,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: occupied ? const Color(0xFF17434C) : Colors.white.withOpacity(.16),
