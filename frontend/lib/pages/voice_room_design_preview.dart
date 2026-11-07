@@ -448,7 +448,7 @@ Widget _roomActionButton({
         crossAxisCount: 4,
         mainAxisSpacing: 7,
         crossAxisSpacing: 4,
-        childAspectRatio: .78,
+        childAspectRatio: .88,
       ),
       itemBuilder: (context, index) {
         final number = index + 1;
@@ -471,8 +471,8 @@ Widget _roomActionButton({
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 64,
-                    height: 64,
+                    width: 54,
+                    height: 54,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.white.withOpacity(.10),
@@ -489,7 +489,7 @@ Widget _roomActionButton({
                         : Icon(
                             occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
                             color: Colors.white.withOpacity(.78),
-                            size: 28,
+                            size: 24,
                           ),
                   ),
                   if (muted || occupied)
@@ -497,22 +497,22 @@ Widget _roomActionButton({
                       bottom: -2,
                       left: -2,
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(3),
                         decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                         child: Icon(
                           muted ? Icons.mic_off_rounded : Icons.mic_rounded,
-                          size: 13,
+                          size: 11,
                           color: muted ? const Color(0xFFE91E63) : const Color(0xFF319B70),
                         ),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               if (occupied)
                 Container(
-                  constraints: const BoxConstraints(maxWidth: 86),
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  constraints: const BoxConstraints(maxWidth: 78),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
