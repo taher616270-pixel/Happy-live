@@ -508,33 +508,36 @@ Widget _roomActionButton({
       ]), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
       const SizedBox(width: 8),
       Expanded(
-        child: ClipRect(
-          child: SingleChildScrollView(
-            clipBehavior: Clip.hardEdge,
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var index = 0; index < audienceUsers.length; index++) ...[
-                  if (index > 0) const SizedBox(width: 4),
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.2),
-                      color: const Color(0xFF29434A),
-                      image: (audienceUsers[index]['avatarUrl'] ?? '').toString().startsWith('https://')
-                          ? DecorationImage(
-                              image: NetworkImage(audienceUsers[index]['avatarUrl'].toString()),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
+        child: SizedBox(
+          height: 30,
+          child: ClipRect(
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              reverse: false,
+              primary: false,
+              padding: EdgeInsets.zero,
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              itemCount: audienceUsers.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 4),
+              itemBuilder: (context, index) => SizedBox(
+                width: 26,
+                height: 26,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.2),
+                    color: const Color(0xFF29434A),
+                    image: (audienceUsers[index]['avatarUrl'] ?? '').toString().startsWith('https://')
+                        ? DecorationImage(
+                            image: NetworkImage(audienceUsers[index]['avatarUrl'].toString()),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
-                ],
-              ],
+                ),
+              ),
             ),
           ),
         ),
