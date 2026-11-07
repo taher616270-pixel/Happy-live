@@ -6,9 +6,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   const VoiceRoomDesignPreview({
     super.key,
     required this.room,
-    required this.announcement,
-    required this.canEditAnnouncement,
-    required this.onEditAnnouncement,
     required this.seats,
     required this.onTapSeat,
     required this.isChangingSeat,
@@ -26,9 +23,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.onCloseRoom,
   });
   final Map<String, dynamic> room;
-  final String announcement;
-  final bool canEditAnnouncement;
-  final VoidCallback onEditAnnouncement;
   final List<Map<String, dynamic>> seats;
   final ValueChanged<int> onTapSeat;
   final bool isChangingSeat;
@@ -83,15 +77,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             Positioned.fill(child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 14, 12, 8),
               children: [
-                if (announcement.trim().isNotEmpty &&
-                    !announcement.contains('مالك الغرفة') &&
-                    !announcement.contains('دخل غرفة'))
-                  _Notice(
-                    text: announcement,
-                    icon: Icons.notifications_rounded,
-                    onTap: canEditAnnouncement ? onEditAnnouncement : null,
-                  ),
-
               ],
             )),
             Positioned(left: 12, bottom: 4, child: Column(children: const [
