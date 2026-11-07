@@ -110,9 +110,15 @@ class _RoomPageState extends State<RoomPage> {
   void initState() {
     super.initState();
     _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? '').toString();
-    unawaited(_refreshSeats());
-    unawaited(_startRoomChat());
-    unawaited(_joinAgora(publish: false));
+
+    // Let Flutter paint the room immediately from the room card data first.
+    // Network work starts after the first frame and never blocks the room UI.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_refreshSeats());
+      unawaited(_startRoomChat());
+      unawaited(_joinAgora(publish: false));
+    });
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       unawaited(_refreshSeats());
       unawaited(_sendHeartbeat());
@@ -522,10 +528,12 @@ class _RoomPageState extends State<RoomPage> {
         return;
       }
       _chatSessionActive = true;
+      // Fetch chat history and establish the live stream concurrently.
+      // A slow WebSocket handshake must not delay the first visible messages.
       unawaited(_refreshSeats());
-      await _connectRoomChatSocket();
-      await _loadRoomMessages();
-      if (!_chatSocketConnected) _startChatFallbackPolling();
+      unawaited(_loadRoomMessages());
+      unawaited(_connectRoomChatSocket());
+      _startChatFallbackPolling();
     } catch (_) {
       if (mounted) _showMessage('تعذر الاتصال بدردشة الغرفة، جارٍ إعادة المحاولة');
       if (_chatSessionActive) {
