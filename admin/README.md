@@ -29,8 +29,8 @@ Do not expose the D1 database to the browser. Do not put an admin role in local 
 
 ## Roles
 
-- `owner`: full access, including management of other admin accounts (admin assignment is not exposed in this initial UI).
+- `owner`: may manage ordinary users and rooms and may change the status of other admin accounts. Assigning or removing roles is not exposed in this initial UI.
 - `admin`: view and manage ordinary users and rooms; read audit history.
-- `moderator`: read-only dashboard access; no audit access or write operations.
+- `moderator`: read-only overview, users and rooms; no audit access or write operations.
 
 All sensitive status changes are recorded in `admin_audit_logs`.
