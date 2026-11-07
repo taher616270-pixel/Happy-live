@@ -250,7 +250,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             height: 300,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFE0DDE2),
+              color: const Color(0xCC000000),
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
               border: Border.all(color: const Color(0x88E8C477)),
               boxShadow: const [
