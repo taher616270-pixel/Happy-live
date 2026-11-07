@@ -55,7 +55,7 @@ class _VoiceRoomsPageState extends State<VoiceRoomsPage> {
       pageBuilder: (_, __, ___) => RoomPage(room: room, accessToken: widget.accessToken),
       transitionsBuilder: (_, animation, __, child) =>
           FadeTransition(opacity: animation, child: child),
-      transitionDuration: const Duration(milliseconds: 90),
+      transitionDuration: Duration.zero,
     ));
     if (mounted) _loadRooms();
   }
