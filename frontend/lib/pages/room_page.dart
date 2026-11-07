@@ -764,8 +764,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _roomMessagesPanel() {
-    return SizedBox(
-      height: 168,
+    return SizedBox.expand(
       child: ListView.builder(
         controller: _roomMessagesController,
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
