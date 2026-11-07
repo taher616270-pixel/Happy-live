@@ -789,6 +789,12 @@ class _RoomPageState extends State<RoomPage> {
             key: _roomAnimatedListKey,
             controller: _roomMessagesController,
             reverse: false,
+            primary: false,
+            physics: const ClampingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            dragStartBehavior: DragStartBehavior.start,
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
             initialItemCount: _messages.length + 1,
             itemBuilder: (context, index, animation) {
