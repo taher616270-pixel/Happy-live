@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
+  static Offset? _keyboardDismissStart;
   static final GlobalKey _chatInputKey = GlobalKey();
 
   const VoiceRoomDesignPreview({
@@ -67,7 +68,25 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     child: Scaffold(
       backgroundColor: const Color(0xFF08141C),
       resizeToAvoidBottomInset: false,
-      body: Stack(fit: StackFit.expand, children: [
+      body: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (event) {
+          if (chatFocusNode.hasFocus) {
+            _keyboardDismissStart = event.position;
+          }
+        },
+        onPointerMove: (event) {
+          final start = _keyboardDismissStart;
+          if (!chatFocusNode.hasFocus || start == null) return;
+          final delta = event.position - start;
+          if (delta.dy > 60 && delta.dy > delta.dx.abs() * 1.2) {
+            _keyboardDismissStart = null;
+            chatFocusNode.unfocus();
+          }
+        },
+        onPointerUp: (_) => _keyboardDismissStart = null,
+        onPointerCancel: (_) => _keyboardDismissStart = null,
+        child: Stack(fit: StackFit.expand, children: [
         const _NightSky(),
         SafeArea(bottom: false, child: Column(children: [
           _header(context),
@@ -108,6 +127,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         ),
         _roomActionsPanel(context),
       ]),
+      ),
     ),
   );
 
@@ -600,11 +620,7 @@ Widget _roomActionButton({
                     ],
                   ),
                 ),
-                TapRegion(
-                  onTapOutside: (_) {
-                    if (chatFocusNode.hasFocus) chatFocusNode.unfocus();
-                  },
-                  child: AnimatedContainer(
+                AnimatedContainer(
                   key: _chatInputKey,
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOutCubic,
@@ -678,7 +694,6 @@ Widget _roomActionButton({
                         ),
                       ],
                     ],
-                  ),
                   ),
                 ),
               ],
