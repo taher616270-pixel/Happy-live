@@ -410,6 +410,92 @@ Widget _roomActionButton({
     );
   }
 
+  void _showSaveLeaveDialog(BuildContext context) {
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'إغلاق نافذة الغرفة',
+      barrierColor: Colors.black.withOpacity(0.35),
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return SafeArea(
+          bottom: false,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: double.infinity,
+                height: 250,
+                color: Colors.black.withOpacity(0.85),
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _saveLeaveAction(
+                        icon: Icons.close_fullscreen_rounded,
+                        label: 'حفظ',
+                        onTap: () {
+                          Navigator.of(dialogContext).pop();
+                          onMinimizeRoom?.call();
+                        },
+                      ),
+                      _saveLeaveAction(
+                        icon: Icons.power_settings_new_rounded,
+                        label: 'مغادرة',
+                        onTap: () {
+                          Navigator.of(dialogContext).pop();
+                          onCloseRoom?.call();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final slide = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        return SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, -0.35), end: Offset.zero).animate(slide),
+          child: child,
+        );
+      },
+    );
+  }
+
+  Widget _saveLeaveAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(18),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 70,
+            height: 70,
+            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+            child: Icon(icon, size: 38, color: Colors.black87),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    ),
+  );
+
   Widget _listeners() => Directionality(textDirection: TextDirection.ltr, child: Padding(
     padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
     child: Row(children: [
@@ -422,7 +508,15 @@ Widget _roomActionButton({
       _pill(Row(mainAxisSize: MainAxisSize.min, children: [
         const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 18),
         Container(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), decoration: BoxDecoration(color: Colors.white.withOpacity(.8), borderRadius: BorderRadius.circular(3)), child: const Text('ALL', style: TextStyle(color: Color(0xFF123240), fontSize: 8, fontWeight: FontWeight.w900))),
-        const SizedBox(width: 10), const Icon(Icons.open_in_full_rounded, color: Colors.white70, size: 16),
+        const SizedBox(width: 10),
+        InkWell(
+          onTap: () => _showSaveLeaveDialog(context),
+          borderRadius: BorderRadius.circular(16),
+          child: const Padding(
+            padding: EdgeInsets.all(2),
+            child: Icon(Icons.open_in_full_rounded, color: Colors.white70, size: 16),
+          ),
+        ),
       ]), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5)),
     ]),
   ));
