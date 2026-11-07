@@ -133,9 +133,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     Widget _roomActionsPanel(BuildContext context) => AnimatedPositioned(
     duration: const Duration(milliseconds: 420),
     curve: Curves.easeOutCubic,
-    top: showRoomActions ? MediaQuery.paddingOf(context).top + 12 : -190,
-    left: 12,
-    right: 12,
+    top: showRoomActions ? 0 : -190,
+    left: 0,
+    right: 0,
     child: IgnorePointer(
       ignoring: !showRoomActions,
       child: AnimatedOpacity(
@@ -147,7 +147,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xF21A1422),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
               border: Border.all(color: const Color(0x88E8C477)),
               boxShadow: const [
                 BoxShadow(color: Color(0x99000000), blurRadius: 26, offset: Offset(0, 12)),
