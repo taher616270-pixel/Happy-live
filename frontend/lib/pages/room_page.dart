@@ -58,6 +58,7 @@ class _RoomPageState extends State<RoomPage> {
   bool _agoraSyncInProgress = false;
   bool? _agoraDesiredPublish;
   bool? _agoraJoinedPublish;
+  bool _voiceEnabled = true;
   bool _amRoomOwner = false;
   bool _amRoomModerator = false;
   bool _selfMicMuted = false;
@@ -109,7 +110,7 @@ class _RoomPageState extends State<RoomPage> {
     unawaited(_refreshSeats());
     unawaited(_startRoomChat());
     unawaited(_joinAgora(publish: false));
-    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       unawaited(_refreshSeats());
       unawaited(_sendHeartbeat());
     });
@@ -198,6 +199,9 @@ class _RoomPageState extends State<RoomPage> {
     final meData = data['me'];
     final nextSelfMuted = meData is Map && meData['isMuted'] == true;
     final nextIsBanned = meData is Map && meData['isBanned'] == true;
+    final nextVoiceEnabled = data['voiceEnabled'] != false;
+    final voiceJustDisabled = _voiceEnabled && !nextVoiceEnabled;
+    final voiceJustEnabled = !_voiceEnabled && nextVoiceEnabled;
     final lostMySeat = _mySeat != null && nextMySeat == null;
     final gainedMySeat = _mySeat == null && nextMySeat != null;
     final newlyMuted = !_selfMicMuted && nextSelfMuted;
@@ -212,6 +216,7 @@ class _RoomPageState extends State<RoomPage> {
         _amRoomModerator != nextIsModerator ||
         _selfMicMuted != nextSelfMuted ||
         _isBannedFromRoom != nextIsBanned ||
+        _voiceEnabled != nextVoiceEnabled ||
         _isLoading ||
         _loadError != null;
     if (!mounted || !changed) return;
@@ -226,10 +231,21 @@ class _RoomPageState extends State<RoomPage> {
       _amRoomModerator = nextIsModerator;
       _selfMicMuted = nextSelfMuted;
       _isBannedFromRoom = nextIsBanned;
+      _voiceEnabled = nextVoiceEnabled;
       _isLoading = false;
       _loadError = null;
     });
-    if (lostMySeat || newlyMuted || newlyBanned) {
+    if (voiceJustDisabled) {
+      _agoraDesiredPublish = null;
+      _agoraJoinedPublish = null;
+      unawaited(AgoraRoomBridge.leave());
+      _showMessage('تم إيقاف الصوت في التطبيق من الإدارة');
+      return;
+    }
+    if (!nextVoiceEnabled) return;
+    if (voiceJustEnabled) {
+      unawaited(_joinAgora(publish: false));
+    } else if (lostMySeat || newlyMuted || newlyBanned) {
       if (newlyMuted) unawaited(AgoraRoomBridge.setMuted(true));
       unawaited(_joinAgora(publish: false));
     } else if (gainedMySeat && !nextSelfMuted && !nextIsBanned) {
@@ -238,7 +254,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Future<void> _joinAgora({required bool publish}) async {
-    if (_roomId.isEmpty || widget.accessToken.isEmpty) return;
+    if (!_voiceEnabled || _roomId.isEmpty || widget.accessToken.isEmpty) return;
     _agoraDesiredPublish = publish;
     if (_agoraSyncInProgress) return;
 
@@ -369,6 +385,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Future<void> _sendHeartbeat() async {
+    if (DateTime.now().difference(_lastHeartbeat) < const Duration(seconds: 15)) return;
     _lastHeartbeat = DateTime.now();
     try {
       await http.post(_seatsUri, headers: _headers, body: jsonEncode({'heartbeat': true}))
@@ -904,6 +921,10 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Future<void> _selectSeat(int seatNumber) async {
+    if (!_voiceEnabled) {
+      _showMessage('خدمة الصوت متوقفة حاليًا من إدارة التطبيق');
+      return;
+    }
     if (_isBannedFromRoom) {
       _showMessage('أنت محظور من استخدام المايك في هذه الغرفة');
       return;
