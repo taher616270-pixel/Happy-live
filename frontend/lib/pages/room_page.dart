@@ -121,6 +121,7 @@ class _RoomPageState extends State<RoomPage> {
 
   @override
   void dispose() {
+    _roomEntryNoticeTimer?.cancel();
     unawaited(AgoraRoomBridge.leave());
     _miniOverlayEntry?.remove();
     _miniOverlayEntry = null;
