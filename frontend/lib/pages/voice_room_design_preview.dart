@@ -156,7 +156,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xF21A1422),
+              color: const Color(0xFFE0DDE2),
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
               border: Border.all(color: const Color(0x88E8C477)),
               boxShadow: const [
@@ -197,7 +197,7 @@ Widget _roomActionButton({
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(icon, color: color, size: 25),
         const SizedBox(height: 6),
-        Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+        Text(label, style: const TextStyle(color: Color(0xFF28232D), fontSize: 11, fontWeight: FontWeight.w800)),
       ]),
     ),
   );
