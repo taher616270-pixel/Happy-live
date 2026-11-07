@@ -854,6 +854,71 @@ class _RoomPageState extends State<RoomPage> {
     }
   }
 
+  void _openRoomChatInput() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF15101C),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        side: BorderSide(color: Color(0x66E8C477)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          14, 16, 14, MediaQuery.viewInsetsOf(sheetContext).bottom + 14,
+        ),
+        child: SafeArea(
+          top: false,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _messageController,
+                  autofocus: true,
+                  minLines: 1,
+                  maxLines: 4,
+                  maxLength: 200,
+                  textDirection: TextDirection.rtl,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _sendRoomMessage(),
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: 'اكتب رسالتك هنا...',
+                    hintStyle: const TextStyle(color: _muted, fontSize: 14),
+                    counterText: '',
+                    filled: true,
+                    fillColor: const Color(0xFF29212F),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                height: 50,
+                width: 54,
+                child: FilledButton(
+                  onPressed: _sendRoomMessage,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _gold,
+                    foregroundColor: const Color(0xFF21152B),
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  ),
+                  child: const Icon(Icons.send_rounded, size: 23),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _roomChatComposer() {
     if (_isBannedFromRoom) {
       return Container(
@@ -1028,6 +1093,7 @@ class _RoomPageState extends State<RoomPage> {
     return VoiceRoomDesignPreview(
       room: widget.room,
       chatMessagesPanel: _roomMessagesPanel(),
+      onTapChatComposer: _openRoomChatInput,
       seats: _seats,
       onTapSeat: _selectSeat,
       isChangingSeat: _isChangingSeat,
