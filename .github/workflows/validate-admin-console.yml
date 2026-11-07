@@ -1,6 +1,14 @@
 name: Validate Happy Live Admin Console
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/worker/**"
+      - "frontend/web/admin/**"
+      - "admin/**"
+      - ".github/workflows/validate-admin-console.yml"
   pull_request:
     branches:
       - main
@@ -30,6 +38,10 @@ jobs:
       - name: Type-check Worker
         working-directory: backend/worker
         run: npm run typecheck
+
+      - name: Run admin contract tests
+        working-directory: backend/worker
+        run: npm test
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
