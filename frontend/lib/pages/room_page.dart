@@ -883,7 +883,7 @@ class _RoomPageState extends State<RoomPage> {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final screenWidth = MediaQuery.sizeOf(context).width;
-                      final isSmall = screenWidth < 360;
+                      final isSmall = screenWidth < 360 || constraints.maxWidth < 340;
                       final fieldHeight = isSmall ? 46.0 : 50.0;
                       final sendWidth = isSmall ? 60.0 : 72.0;
                       final sendHeight = isSmall ? 34.0 : 38.0;
@@ -1039,7 +1039,8 @@ class _RoomPageState extends State<RoomPage> {
                 controller: _messageController,
                 minLines: 1,
                 maxLines: 2,
-                maxLength: 200,
+                maxLength: 100,
+                inputFormatters: [LengthLimitingTextInputFormatter(100)],
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _sendRoomMessage(),
                 style: const TextStyle(color: Colors.white, fontSize: 12),
