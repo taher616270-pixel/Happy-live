@@ -1013,6 +1013,12 @@ class _RoomPageState extends State<RoomPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isMinimized) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF08141C),
+        body: SizedBox.expand(),
+      );
+    }
     return VoiceRoomDesignPreview(
       room: widget.room,
       announcement: _roomAnnouncement,
@@ -1026,6 +1032,10 @@ class _RoomPageState extends State<RoomPage> {
       selfMicMuted: _selfMicMuted,
       onToggleSelfMic: _toggleSelfMic,
       onModerateUser: _moderateRoomUser,
+      showRoomActions: _showRoomActions,
+      onRoomActions: () => setState(() => _showRoomActions = !_showRoomActions),
+      onMinimizeRoom: _minimizeRoom,
+      onCloseRoom: _closeRoom,
     );
   }
 

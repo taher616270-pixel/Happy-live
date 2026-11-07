@@ -17,6 +17,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.selfMicMuted = false,
     this.onToggleSelfMic,
     this.onModerateUser,
+    this.showRoomActions = false,
+    this.onRoomActions,
+    this.onMinimizeRoom,
+    this.onCloseRoom,
   });
   final Map<String, dynamic> room;
   final String announcement;
@@ -30,6 +34,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final bool selfMicMuted;
   final Future<bool> Function()? onToggleSelfMic;
   final Future<bool> Function(String targetUserId, String action)? onModerateUser;
+  final bool showRoomActions;
+  final VoidCallback? onRoomActions;
+  final VoidCallback? onMinimizeRoom;
+  final VoidCallback? onCloseRoom;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -54,6 +62,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         const _NightSky(),
         SafeArea(bottom: false, child: Column(children: [
           _header(),
+          _roomActionsPanel(),
           _subHeader(),
           _seats(context),
           _listeners(),
@@ -105,9 +114,95 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         const SizedBox(width: 8),
         ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 38, height: 38, child: _cover == null ? Container(color: Colors.white24, child: const Icon(Icons.mic_rounded, color: Colors.white70)) : Image.network(_cover!, fit: BoxFit.cover))),
       ]), padding: const EdgeInsets.fromLTRB(6, 5, 6, 5)),
-      const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 30),
+      Material(
+        color: Colors.black.withOpacity(.24),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onRoomActions,
+          borderRadius: BorderRadius.circular(12),
+          child: const SizedBox(
+            width: 38,
+            height: 42,
+            child: Icon(Icons.chevron_right_rounded, color: Colors.white, size: 30),
+          ),
+        ),
+      ),
     ]),
   ));
+
+  Widget _roomActionsPanel() => ClipRect(
+    child: AnimatedSize(
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: Align(
+        alignment: Alignment.topCenter,
+        heightFactor: showRoomActions ? 1 : 0,
+        child: AnimatedSlide(
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+          offset: showRoomActions ? Offset.zero : const Offset(0, -0.22),
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 220),
+            opacity: showRoomActions ? 1 : 0,
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xF21A1422),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0x88E8C477)),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x88000000), blurRadius: 22, offset: Offset(0, 9)),
+                ],
+              ),
+              child: Row(children: [
+                Expanded(child: _roomActionButton(
+                  icon: Icons.picture_in_picture_alt_rounded,
+                  label: 'تصغير الغرفة',
+                  color: const Color(0xFFD9A93C),
+                  onTap: onMinimizeRoom,
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: _roomActionButton(
+                  icon: Icons.logout_rounded,
+                  label: 'إغلاق الغرفة',
+                  color: const Color(0xFFBD5361),
+                  onTap: onCloseRoom,
+                )),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _roomActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback? onTap,
+  }) => Material(
+    color: color.withOpacity(.15),
+    borderRadius: BorderRadius.circular(15),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(15),
+      child: Container(
+        height: 72,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: color.withOpacity(.55)),
+        ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, color: color, size: 25),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+        ]),
+      ),
+    ),
+  );
 
   Widget _subHeader() => Directionality(textDirection: TextDirection.ltr, child: Padding(
     padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
