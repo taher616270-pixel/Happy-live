@@ -86,6 +86,16 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ])),
           _bottomBar(MediaQuery.viewPaddingOf(context).bottom),
         ])),
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: !showRoomActions,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onRoomActions,
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
         _roomActionsPanel(context),
       ]),
     ),
