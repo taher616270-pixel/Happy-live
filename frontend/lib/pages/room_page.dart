@@ -1036,6 +1036,7 @@ class _RoomPageState extends State<RoomPage> {
       isChangingSeat: _isChangingSeat,
       audienceCount: _audienceCount,
       audienceUsers: _audienceUsers,
+      ownerName: _ownerName,
       canModerateUsers: _isRoomOwner || _amRoomModerator,
       selfMicMuted: _selfMicMuted,
       onToggleSelfMic: _toggleSelfMic,
