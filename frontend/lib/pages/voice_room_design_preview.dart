@@ -21,6 +21,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.onRoomActions,
     this.onMinimizeRoom,
     this.onCloseRoom,
+    this.onTapChatComposer,
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
@@ -38,6 +39,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final VoidCallback? onRoomActions;
   final VoidCallback? onMinimizeRoom;
   final VoidCallback? onCloseRoom;
+  final VoidCallback? onTapChatComposer;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -559,12 +561,30 @@ Widget _roomActionButton({
 
   Widget _bottomBar(double safeBottomInset) => Directionality(textDirection: TextDirection.ltr, child: Padding(
     padding: EdgeInsets.fromLTRB(10, 6, 10, safeBottomInset + 10),
-    child: Row(children: const [
-      Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 28),
-      SizedBox(width: 14), Icon(Icons.card_giftcard_rounded, color: Color(0xFFFF6FA5), size: 28),
-      SizedBox(width: 14), Icon(Icons.menu_rounded, color: Colors.white, size: 28),
-      Expanded(child: Padding(padding: EdgeInsets.only(right: 14), child: Text('قل شيئاً...', textAlign: TextAlign.right, style: TextStyle(color: Colors.white54, fontSize: 14)))),
-      Icon(Icons.volume_up_rounded, color: Colors.white, size: 28),
+    child: Row(children: [
+      const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 28),
+      const SizedBox(width: 14),
+      const Icon(Icons.card_giftcard_rounded, color: Color(0xFFFF6FA5), size: 28),
+      const SizedBox(width: 14),
+      const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
+      Expanded(
+        child: Padding(
+          padding: const EdgeInsets.only(right: 14),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTapChatComposer,
+              borderRadius: BorderRadius.circular(18),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                child: Text('قل شيئاً...', textAlign: TextAlign.right,
+                  style: TextStyle(color: Colors.white70, fontSize: 14)),
+              ),
+            ),
+          ),
+        ),
+      ),
+      const Icon(Icons.volume_up_rounded, color: Colors.white, size: 28),
     ]),
   ));
 }
