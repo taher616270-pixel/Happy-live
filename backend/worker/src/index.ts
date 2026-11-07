@@ -131,7 +131,7 @@ async function checkAuthRateLimit(db: D1Database, ip: string): Promise<boolean> 
 
 async function authenticatedAdmin(request: Request, db: D1Database) {
   const authorization = request.headers.get("Authorization") ?? "";
-  const match = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
+  const match = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
   if (!match) return null;
   const row = await db.prepare(
     "SELECT a.id, a.username, a.display_name FROM admin_sessions s INNER JOIN admin_accounts a ON a.id = s.admin_id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND a.status = 'active' LIMIT 1"
@@ -239,7 +239,7 @@ export default {
     if (url.pathname === "/api/v1/admin/auth/logout" && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       const authorization = request.headers.get("Authorization") ?? "";
-      const match = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
+      const match = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
       if (match) await env.DB.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL")
         .bind(new Date().toISOString(), await sha256(match[1])).run();
       return json({ ok: true }, 200, origin, env);
