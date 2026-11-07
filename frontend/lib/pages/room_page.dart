@@ -55,7 +55,6 @@ class _RoomPageState extends State<RoomPage> {
   OverlayEntry? _miniOverlayEntry;
   Route<dynamic>? _roomRoute;
   bool _isChangingSeat = false;
-  int _agoraSyncGeneration = 0;
   bool _agoraSyncInProgress = false;
   bool? _agoraDesiredPublish;
   bool? _agoraJoinedPublish;
@@ -118,7 +117,6 @@ class _RoomPageState extends State<RoomPage> {
 
   @override
   void dispose() {
-    _agoraSyncGeneration++;
     unawaited(AgoraRoomBridge.leave());
     _miniOverlayEntry?.remove();
     _miniOverlayEntry = null;
@@ -253,7 +251,6 @@ class _RoomPageState extends State<RoomPage> {
         // Do not tear down a healthy Agora session when its role is unchanged.
         if (_agoraJoinedPublish == targetPublish) continue;
 
-        final generation = ++_agoraSyncGeneration;
         await AgoraRoomBridge.leave();
         _agoraJoinedPublish = null;
 
@@ -290,7 +287,6 @@ class _RoomPageState extends State<RoomPage> {
         if (_agoraDesiredPublish != null && _agoraDesiredPublish != canPublish) {
           continue;
         }
-        if (generation != _agoraSyncGeneration) continue;
       }
     } catch (_) {
       _agoraJoinedPublish = null;
