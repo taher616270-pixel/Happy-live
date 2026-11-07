@@ -14,6 +14,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     required this.isChangingSeat,
     required this.audienceCount,
     this.audienceUsers = const [],
+    this.ownerName = 'صاحب الغرفة',
     this.canModerateUsers = false,
     this.selfMicMuted = false,
     this.onToggleSelfMic,
@@ -32,6 +33,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final bool isChangingSeat;
   final int audienceCount;
   final List<Map<String, dynamic>> audienceUsers;
+  final String ownerName;
   final bool canModerateUsers;
   final bool selfMicMuted;
   final Future<bool> Function()? onToggleSelfMic;
@@ -77,7 +79,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   onTap: canEditAnnouncement ? onEditAnnouncement : null,
                 ),
                 SizedBox(height: 9),
-                _Notice(text: 'مالك الغرفة  @ صاحب الغرفة دخل الغرفة', icon: Icons.waving_hand_rounded),
+                _Notice(text: 'مالك الغرفة  @${ownerName.trim().isEmpty ? 'صاحب الغرفة' : ownerName.trim()} دخل غرفة', icon: Icons.waving_hand_rounded),
               ],
             )),
             Positioned(left: 12, bottom: 4, child: Column(children: const [
