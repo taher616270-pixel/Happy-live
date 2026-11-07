@@ -506,12 +506,11 @@ Widget _roomActionButton({
         const SizedBox(width: 3),
         const Icon(Icons.person_outline_rounded, color: Colors.white, size: 16),
       ]), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
-      if (audienceUsers.isNotEmpty) ...[
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 132,
-          height: 30,
+      const SizedBox(width: 8),
+      Expanded(
+        child: ClipRect(
           child: SingleChildScrollView(
+            clipBehavior: Clip.hardEdge,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             child: Row(
@@ -539,8 +538,8 @@ Widget _roomActionButton({
             ),
           ),
         ),
-      ],
-      const Spacer(),
+      ),
+      const SizedBox(width: 8),
       _pill(Row(mainAxisSize: MainAxisSize.min, children: [
         const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 18),
         Container(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), decoration: BoxDecoration(color: Colors.white.withOpacity(.8), borderRadius: BorderRadius.circular(3)), child: const Text('ALL', style: TextStyle(color: Color(0xFF123240), fontSize: 8, fontWeight: FontWeight.w900))),
