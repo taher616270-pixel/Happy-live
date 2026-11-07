@@ -61,7 +61,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       body: Stack(fit: StackFit.expand, children: [
         const _NightSky(),
         SafeArea(bottom: false, child: Column(children: [
-          _header(),
+          _header(context),
           _subHeader(),
           _seats(context),
           _listeners(),
@@ -104,7 +104,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   Widget _pill(Widget child, {EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6)}) =>
     Container(padding: padding, decoration: BoxDecoration(color: Colors.black.withOpacity(.28), borderRadius: BorderRadius.circular(18)), child: child);
 
-  Widget _header() => Directionality(textDirection: TextDirection.ltr, child: Padding(
+  Widget _header(BuildContext context) => Directionality(textDirection: TextDirection.ltr, child: Padding(
     padding: const EdgeInsets.fromLTRB(10, 8, 6, 0),
     child: Row(children: [
       const Icon(Icons.more_horiz_rounded, color: Colors.white, size: 28),
@@ -140,6 +140,88 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       ),
     ]),
   ));
+
+
+  void _showRoomMenu(BuildContext context) {
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'إغلاق قائمة الغرفة',
+      barrierColor: Colors.black.withOpacity(.35),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        final items = <Map<String, dynamic>>[
+          {'icon': Icons.settings_rounded, 'label': 'الإعدادات', 'color': Color(0xFF536D9B)},
+          {'icon': Icons.wallpaper_rounded, 'label': 'الخلفية', 'color': Color(0xFF8B6BC1)},
+          {'icon': Icons.lock_rounded, 'label': 'قفل الغرفة', 'color': Color(0xFFCA9A42)},
+          {'icon': Icons.share_rounded, 'label': 'مشاركة', 'color': Color(0xFF4C9A83)},
+          {'icon': Icons.delete_sweep_rounded, 'label': 'مسح الدردشة', 'color': Color(0xFFC65D66)},
+          {'icon': Icons.trending_up_rounded, 'label': 'رفع مستوى', 'color': Color(0xFFB17A42)},
+          {'icon': Icons.palette_rounded, 'label': 'السمة', 'color': Color(0xFF8870B8)},
+        ];
+        return SafeArea(
+          bottom: false,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Material(
+              color: Colors.white,
+              elevation: 12,
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 18, 10, 22),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 4,
+                  runSpacing: 16,
+                  children: items.map((item) {
+                    return SizedBox(
+                      width: MediaQuery.of(dialogContext).size.width / 4 - 10,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          Navigator.of(dialogContext).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('سيتم تفعيل ${item['label']} لاحقاً'),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(item['icon'] as IconData, color: item['color'] as Color, size: 27),
+                              const SizedBox(height: 7),
+                              Text(
+                                item['label'] as String,
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Color(0xFF29252E), fontSize: 11, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final slide = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        return SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(slide),
+          child: child,
+        );
+      },
+    );
+  }
 
     Widget _roomActionsPanel(BuildContext context) => AnimatedPositioned(
     duration: const Duration(milliseconds: 420),
