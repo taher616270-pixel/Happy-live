@@ -1209,7 +1209,14 @@ class _RoomPageState extends State<RoomPage> {
               ),
               itemBuilder: (context, index) {
                 final number = index < 4 ? 4 - index : 8 - (index - 4);
-                return _premiumSeatCard(number, micSize);
+                final seatCard = _premiumSeatCard(number, micSize);
+                if (isAndroid && number >= 5 && number <= 8) {
+                  return Transform.translate(
+                    offset: const Offset(0, 20),
+                    child: seatCard,
+                  );
+                }
+                return seatCard;
               },
             );
           },
