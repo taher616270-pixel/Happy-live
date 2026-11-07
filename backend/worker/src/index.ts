@@ -197,6 +197,107 @@ export default {
       return new Response(null, { status: 204, headers });
     }
 
+    // Admin API: roles are read from D1 only; browser-supplied roles are ignored.
+    if (url.pathname.startsWith("/api/v1/admin/")) {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const actor = await authenticatedUser(request, env.DB);
+        if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
+        const roleRow = await env.DB.prepare("SELECT role FROM admin_roles WHERE user_id = ? LIMIT 1")
+          .bind(actor.id).first<{ role: "owner" | "admin" | "moderator" }>();
+        if (!roleRow) return json({ error: "admin_access_required" }, 403, origin, env);
+        const role = roleRow.role;
+        const canManageUsers = role === "owner" || role === "admin";
+        const canManageRooms = role === "owner" || role === "admin";
+
+        if (url.pathname === "/api/v1/admin/me" && request.method === "GET") {
+          return json({ ok: true, admin: { id: actor.id, name: actor.display_name ?? "", email: actor.email, role } }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/overview" && request.method === "GET") {
+          const [users, rooms, posts] = await Promise.all([
+            env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM users").first<{total:number;active:number}>(),
+            env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM rooms").first<{total:number;active:number}>(),
+            env.DB.prepare("SELECT COUNT(*) AS total FROM posts WHERE status = 'published'").first<{total:number}>()
+          ]);
+          return json({ ok: true, overview: {
+            users: { total: users?.total ?? 0, active: users?.active ?? 0 },
+            rooms: { total: rooms?.total ?? 0, active: rooms?.active ?? 0 },
+            publishedPosts: posts?.total ?? 0
+          } }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/users" && request.method === "GET") {
+          const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
+          const limit = Math.max(1, Math.min(100, Number(url.searchParams.get("limit") ?? 50) || 50));
+          const result = await env.DB.prepare(
+            "SELECT u.id, u.email, u.status, u.auth_provider, u.created_at, p.display_name, p.gabo_id, ar.role AS admin_role " +
+            "FROM users u LEFT JOIN profiles p ON p.user_id = u.id LEFT JOIN admin_roles ar ON ar.user_id = u.id " +
+            "WHERE (? = '' OR u.email LIKE '%' || ? || '%' OR p.display_name LIKE '%' || ? || '%' OR p.gabo_id LIKE '%' || ? || '%') " +
+            "ORDER BY u.created_at DESC LIMIT ?"
+          ).bind(q, q, q, q, limit).all();
+          return json({ ok: true, users: result.results ?? [] }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/rooms" && request.method === "GET") {
+          const result = await env.DB.prepare(
+            "SELECT r.id, r.room_code, r.name, r.status, r.visibility, r.created_at, u.id AS owner_id, p.display_name AS owner_name " +
+            "FROM rooms r INNER JOIN users u ON u.id = r.owner_user_id LEFT JOIN profiles p ON p.user_id = u.id " +
+            "ORDER BY r.created_at DESC LIMIT 100"
+          ).all();
+          return json({ ok: true, rooms: result.results ?? [] }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/audit" && request.method === "GET") {
+          if (role === "moderator") return json({ error: "permission_denied" }, 403, origin, env);
+          const result = await env.DB.prepare(
+            "SELECT l.id, l.action, l.target_type, l.target_id, l.details_json, l.created_at, p.display_name AS actor_name, u.email AS actor_email " +
+            "FROM admin_audit_logs l LEFT JOIN users u ON u.id = l.actor_user_id LEFT JOIN profiles p ON p.user_id = l.actor_user_id " +
+            "ORDER BY l.created_at DESC LIMIT 100"
+          ).all();
+          return json({ ok: true, entries: result.results ?? [] }, 200, origin, env);
+        }
+        const userStatusRoute = url.pathname.match(/^\/api\/v1\/admin\/users\/([0-9a-f-]{36})\/status$/i);
+        if (userStatusRoute && request.method === "PATCH") {
+          if (!canManageUsers) return json({ error: "permission_denied" }, 403, origin, env);
+          const targetId = userStatusRoute[1];
+          if (targetId === actor.id) return json({ error: "cannot_change_own_status" }, 400, origin, env);
+          const body = await request.json() as Record<string, unknown>;
+          const status = body.status === "active" || body.status === "suspended" ? body.status : null;
+          if (!status) return json({ error: "invalid_status" }, 400, origin, env);
+          const target = await env.DB.prepare("SELECT u.id, ar.role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1")
+            .bind(targetId).first<{id:string;role:string|null}>();
+          if (!target) return json({ error: "user_not_found" }, 404, origin, env);
+          if (target.role && role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
+          const now = new Date().toISOString();
+          await env.DB.batch([
+            env.DB.prepare("UPDATE users SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, targetId),
+            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, 'user', ?, ?, ?)")
+              .bind(crypto.randomUUID(), actor.id, status === "suspended" ? "user.suspend" : "user.activate", targetId, JSON.stringify({ status }), now)
+          ]);
+          return json({ ok: true, userId: targetId, status }, 200, origin, env);
+        }
+        const roomStatusRoute = url.pathname.match(/^\/api\/v1\/admin\/rooms\/([0-9a-f-]{36})\/status$/i);
+        if (roomStatusRoute && request.method === "PATCH") {
+          if (!canManageRooms) return json({ error: "permission_denied" }, 403, origin, env);
+          const targetId = roomStatusRoute[1];
+          const body = await request.json() as Record<string, unknown>;
+          const status = body.status === "active" || body.status === "closed" ? body.status : null;
+          if (!status) return json({ error: "invalid_status" }, 400, origin, env);
+          const exists = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? LIMIT 1").bind(targetId).first();
+          if (!exists) return json({ error: "room_not_found" }, 404, origin, env);
+          const now = new Date().toISOString();
+          await env.DB.batch([
+            env.DB.prepare("UPDATE rooms SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, targetId),
+            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, 'room', ?, ?, ?)")
+              .bind(crypto.randomUUID(), actor.id, status === "closed" ? "room.close" : "room.reopen", targetId, JSON.stringify({ status }), now)
+          ]);
+          return json({ ok: true, roomId: targetId, status }, 200, origin, env);
+        }
+        return json({ error: "admin_route_not_found" }, 404, origin, env);
+      } catch (error) {
+        console.error("[admin.api] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "admin_operation_failed" }, 500, origin, env);
+      }
+    }
+
+
 
     if (url.pathname === "/api/v1/auth/register" && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
