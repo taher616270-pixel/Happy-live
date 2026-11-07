@@ -92,8 +92,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 _subHeader(),
                 const SizedBox(height: 10),
                 _seats(context),
-                const SizedBox(height: 8),
-                _listeners(),
                 Expanded(
                   child: Stack(
                     children: [
@@ -440,7 +438,10 @@ Widget _roomActionButton({
 
   Widget _seats(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 12),
-    child: GridView.builder(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: 8,
@@ -533,6 +534,10 @@ Widget _roomActionButton({
           ),
         );
       },
+        ),
+        const SizedBox(height: 3),
+        _listeners(),
+      ],
     ),
   );
 
@@ -642,7 +647,6 @@ Widget _roomActionButton({
 
   Widget _listeners() => Container(
     height: 52,
-    margin: const EdgeInsets.symmetric(horizontal: 12),
     padding: const EdgeInsets.symmetric(horizontal: 12),
     decoration: BoxDecoration(
       color: Colors.black.withOpacity(.35),
