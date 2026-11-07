@@ -93,7 +93,22 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           _subHeader(),
           _seats(context),
           _listeners(),
-          Expanded(child: Stack(children: [
+          Expanded(
+            child: AnimatedBuilder(
+              animation: chatFocusNode,
+              builder: (context, child) {
+                final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+                return Transform.translate(
+                  offset: Offset(
+                    0,
+                    chatFocusNode.hasFocus && keyboardHeight > 0
+                        ? -keyboardHeight
+                        : 0,
+                  ),
+                  child: child,
+                );
+              },
+              child: Stack(children: [
             Positioned.fill(child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 14, 12, 8),
               children: [
@@ -112,7 +127,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               _SideTile(icon: Icons.sports_esports_rounded, label: '', color: Color(0xFFB57BFF)),
               _SideTile(icon: Icons.diamond_rounded, label: '0/2500', color: Color(0xFFFF8A65)),
             ])),
-          ])),
+          ]),
+            ),
+          ),
           _bottomBar(context),
         ])),
         Positioned.fill(
