@@ -621,8 +621,8 @@ class _RoomPageState extends State<RoomPage> {
   Future<void> _sendRoomMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty || _chatSending) return;
-    if (text.length > 200) {
-      _showMessage('الرسالة يجب ألا تتجاوز 200 حرف');
+    if (text.length > 100) {
+      _showMessage('الرسالة يجب ألا تتجاوز 100 حرف');
       return;
     }
     if (!_chatSessionActive) {
@@ -863,7 +863,7 @@ class _RoomPageState extends State<RoomPage> {
         backgroundColor: const Color(0xFF15101C),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          side: BorderSide(color: Color(0x66E8C477)),
+          side: BorderSide(color: Color(0x4468E9D4)),
         ),
         builder: (sheetContext) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -873,55 +873,120 @@ class _RoomPageState extends State<RoomPage> {
           });
           return Padding(
             padding: EdgeInsets.fromLTRB(
-              14, 16, 14, MediaQuery.viewInsetsOf(sheetContext).bottom + 14,
+              10, 14, 10, MediaQuery.viewInsetsOf(sheetContext).bottom + 12,
             ),
             child: SafeArea(
               top: false,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      focusNode: inputFocusNode,
-                      autofocus: false,
-                      minLines: 1,
-                      maxLines: 4,
-                      maxLength: 200,
-                      textDirection: TextDirection.rtl,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendRoomMessage(),
-                      style: const TextStyle(color: Colors.white, fontSize: 15),
-                      decoration: InputDecoration(
-                        hintText: 'اكتب رسالتك هنا...',
-                        hintStyle: const TextStyle(color: _muted, fontSize: 14),
-                        counterText: '',
-                        filled: true,
-                        fillColor: const Color(0xFF29212F),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final screenWidth = MediaQuery.sizeOf(context).width;
+                      final isSmall = screenWidth < 360;
+                      final fieldHeight = isSmall ? 46.0 : 50.0;
+                      final sendWidth = isSmall ? 60.0 : 72.0;
+                      final sendHeight = isSmall ? 34.0 : 38.0;
+                      return Container(
+                        width: double.infinity,
+                        height: fieldHeight,
+                        margin: EdgeInsets.symmetric(
+                          horizontal: screenWidth * 0.015,
+                          vertical: 4,
                         ),
-                      ),
-                    ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2D2D35),
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        child: Row(
+                          textDirection: TextDirection.rtl,
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _messageController,
+                                focusNode: inputFocusNode,
+                                autofocus: false,
+                                minLines: 1,
+                                maxLines: 1,
+                                maxLength: 100,
+                                inputFormatters: [
+                                  LengthLimitingTextInputFormatter(100),
+                                ],
+                                textDirection: TextDirection.rtl,
+                                textInputAction: TextInputAction.send,
+                                onSubmitted: (_) => _sendRoomMessage(),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: isSmall ? 14 : 16,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'قل شيئاً...',
+                                  hintStyle: const TextStyle(
+                                    color: Color(0xFF9A9A9A),
+                                    fontSize: 14,
+                                  ),
+                                  border: InputBorder.none,
+                                  counterText: '',
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 12,
+                                  ),
+                                ),
+                                buildCounter: (
+                                  context, {
+                                  required currentLength,
+                                  required isFocused,
+                                  required maxLength,
+                                }) {
+                                  if (currentLength > 80) {
+                                    return Padding(
+                                      padding: const EdgeInsetsDirectional.only(end: 4),
+                                      child: Text(
+                                        '\$currentLength/100',
+                                        style: TextStyle(
+                                          color: currentLength >= 100
+                                              ? Colors.redAccent
+                                              : Colors.white54,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Container(
+                              width: sendWidth,
+                              height: sendHeight,
+                              margin: const EdgeInsetsDirectional.only(end: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00E5C0),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(20),
+                                child: InkWell(
+                                  onTap: _chatSending ? null : _sendRoomMessage,
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.send_rounded,
+                                      color: Colors.white,
+                                      size: isSmall ? 20 : 24,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    height: 50,
-                    width: 54,
-                    child: FilledButton(
-                      onPressed: _sendRoomMessage,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _gold,
-                        foregroundColor: const Color(0xFF21152B),
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      ),
-                      child: const Icon(Icons.send_rounded, size: 23),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           );
