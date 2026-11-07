@@ -653,27 +653,50 @@ Widget _roomActionButton({
     ),
     child: Row(
       children: [
-        if (audienceUsers.isNotEmpty)
-          CircleAvatar(
-            radius: 17,
-            backgroundColor: Colors.white24,
-            backgroundImage: (audienceUsers.first['avatarUrl'] ?? '').toString().startsWith('http')
-                ? NetworkImage(audienceUsers.first['avatarUrl'].toString())
-                : null,
-            child: !(audienceUsers.first['avatarUrl'] ?? '').toString().startsWith('http')
-                ? const Icon(Icons.person, color: Colors.white70, size: 18)
-                : null,
-          )
-        else
-          const CircleAvatar(
-            radius: 17,
-            backgroundColor: Colors.white24,
-            child: Icon(Icons.person, color: Colors.white70, size: 18),
-          ),
-        const Spacer(),
+        Expanded(
+          child: audienceUsers.isEmpty
+              ? const Align(
+                  alignment: Alignment.centerRight,
+                  child: CircleAvatar(
+                    radius: 17,
+                    backgroundColor: Colors.white24,
+                    child: Icon(Icons.person, color: Colors.white70, size: 18),
+                  ),
+                )
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  reverse: true,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: audienceUsers.map((user) {
+                      final avatar = (user['avatarUrl'] ??
+                              user['avatar'] ??
+                              user['photoUrl'] ??
+                              '')
+                          .toString();
+                      return Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 7),
+                        child: CircleAvatar(
+                          radius: 17,
+                          backgroundColor: Colors.white24,
+                          backgroundImage: avatar.startsWith('http')
+                              ? NetworkImage(avatar)
+                              : null,
+                          child: !avatar.startsWith('http')
+                              ? const Icon(Icons.person,
+                                  color: Colors.white70, size: 18)
+                              : null,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+        ),
+        const SizedBox(width: 10),
         Container(width: 1, height: 26, color: Colors.white12),
         const SizedBox(width: 10),
-        Text('$audienceCount', style: const TextStyle(color: Colors.white, fontSize: 15)),
+        Text('$audienceCount',
+            style: const TextStyle(color: Colors.white, fontSize: 15)),
         const SizedBox(width: 5),
         const Icon(Icons.person_outline, color: Colors.white, size: 19),
       ],
