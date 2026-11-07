@@ -209,11 +209,10 @@ class _RoomPageState extends State<RoomPage> {
     _audienceUsers = cachedAudience is List
         ? cachedAudience.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
         : <Map<String, dynamic>>[];
-    _mySeat = _seats.where((seat) => seat['isMe'] == true)
-        .map((seat) => seat['seatNumber'])
-        .whereType<num>()
-        .map((number) => number.toInt())
-        .firstOrNull;
+    final mySeatEntries = _seats.where((seat) => seat['isMe'] == true).toList();
+    _mySeat = mySeatEntries.isEmpty || mySeatEntries.first['seatNumber'] is! num
+        ? null
+        : (mySeatEntries.first['seatNumber'] as num).toInt();
     _audienceCount = cached['audienceCount'] is num ? (cached['audienceCount'] as num).toInt() : 0;
     _ownerName = (cached['ownerName'] ?? _ownerName).toString();
     _ownerId = (cached['ownerId'] ?? _ownerId).toString();
@@ -223,7 +222,6 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _rememberRoomPreview(
-    Map<String, dynamic> data,
     List<Map<String, dynamic>> seats,
     List<Map<String, dynamic>> audienceUsers,
     int audienceCount,
@@ -270,7 +268,7 @@ class _RoomPageState extends State<RoomPage> {
     final nextSelfMuted = meData is Map && meData['isMuted'] == true;
     final nextIsBanned = meData is Map && meData['isBanned'] == true;
     final nextVoiceEnabled = data['voiceEnabled'] != false;
-    _rememberRoomPreview(data, seats, nextAudienceUsers, nextAudienceCount, nextOwnerName, nextOwnerId, nextAnnouncement);
+    _rememberRoomPreview(seats, nextAudienceUsers, nextAudienceCount, nextOwnerName, nextOwnerId, nextAnnouncement);
     final voiceJustDisabled = _voiceEnabled && !nextVoiceEnabled;
     final voiceJustEnabled = !_voiceEnabled && nextVoiceEnabled;
     final lostMySeat = _mySeat != null && nextMySeat == null;
