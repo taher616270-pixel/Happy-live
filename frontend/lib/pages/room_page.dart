@@ -290,7 +290,7 @@ class _RoomPageState extends State<RoomPage> {
       }
     } catch (_) {
       _agoraJoinedPublish = null;
-      if (mounted && _agoraDesiredPublish == true) {
+      if (mounted && _mySeat != null && !_selfMicMuted && !_isBannedFromRoom) {
         _showMessage('تعذر الاتصال بخدمة الصوت، حاول مرة أخرى');
       }
     } finally {
