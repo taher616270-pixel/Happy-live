@@ -459,7 +459,9 @@ Widget _roomActionButton({
         final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
         final muted = seat?['isMuted'] == true;
         final locked = seat?['isLocked'] == true || seat?['locked'] == true;
-        return GestureDetector(
+        return Transform.translate(
+          offset: Offset(0, number >= 5 ? -12 : 0),
+          child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: occupied
               ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
@@ -531,7 +533,7 @@ Widget _roomActionButton({
                 ),
             ],
           ),
-        );
+        ));
       },
     ),
   );
