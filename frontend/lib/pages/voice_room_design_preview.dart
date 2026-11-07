@@ -473,8 +473,8 @@ Widget _roomActionButton({
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 54,
-                    height: 54,
+                    width: 50,
+                    height: 50,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.white.withOpacity(.10),
@@ -491,7 +491,7 @@ Widget _roomActionButton({
                         : Icon(
                             occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
                             color: Colors.white.withOpacity(.78),
-                            size: 24,
+                            size: 22,
                           ),
                   ),
                   if (muted || occupied)
