@@ -86,7 +86,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ])),
           _bottomBar(MediaQuery.viewPaddingOf(context).bottom),
         ])),
-        _roomActionsPanel(),
+        _roomActionsPanel(context),
       ]),
     ),
   );
@@ -130,7 +130,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     ]),
   ));
 
-    Widget _roomActionsPanel() => AnimatedPositioned(
+    Widget _roomActionsPanel(BuildContext context) => AnimatedPositioned(
     duration: const Duration(milliseconds: 420),
     curve: Curves.easeOutCubic,
     top: showRoomActions ? MediaQuery.paddingOf(context).top + 12 : -190,
