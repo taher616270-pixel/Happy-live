@@ -138,8 +138,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ]),
             ),
           ),
-          _bottomBar(context),
         ])),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: MediaQuery.of(context).viewInsets.bottom +
+              MediaQuery.of(context).viewPadding.bottom + 8,
+          child: _bottomBar(context),
+        ),
         Positioned.fill(
           child: IgnorePointer(
             ignoring: !showRoomActions,
@@ -613,15 +619,12 @@ Widget _roomActionButton({
 
   Widget _bottomBar(BuildContext context) {
     final media = MediaQuery.of(context);
-    final keyboardHeight = media.viewInsets.bottom;
     final screenWidth = media.size.width;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: media.viewPadding.bottom + 8),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: AnimatedBuilder(
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: AnimatedBuilder(
           animation: chatFocusNode,
           builder: (context, child) {
             final isFocused = chatFocusNode.hasFocus;
@@ -651,9 +654,11 @@ Widget _roomActionButton({
                   curve: Curves.easeOutCubic,
                   width: targetWidth.clamp(0.0, screenWidth - 20),
                   height: 44,
+                  // Keep horizontal offset only; the parent Positioned
+                  // anchors this field above the actual keyboard inset.
                   transform: Matrix4.translationValues(
                     isFocused ? 15 : 30,
-                    isFocused && keyboardHeight > 0 ? -keyboardHeight : 0,
+                    0,
                     0,
                   ),
                   decoration: BoxDecoration(
@@ -670,6 +675,7 @@ Widget _roomActionButton({
                         child: TextField(
                           controller: chatController,
                           focusNode: chatFocusNode,
+                          scrollPadding: EdgeInsets.zero,
                           minLines: 1,
                           maxLines: 1,
                           maxLength: 100,
@@ -725,7 +731,6 @@ Widget _roomActionButton({
             );
           },
         ),
-      ),
     );
   }
 }
