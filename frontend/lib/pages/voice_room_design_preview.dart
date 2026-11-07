@@ -189,24 +189,16 @@ Widget _roomActionButton({
     required String label,
     required Color color,
     required VoidCallback? onTap,
-  }) => Material(
-    color: color.withOpacity(.15),
+  }) => InkWell(
+    onTap: onTap,
     borderRadius: BorderRadius.circular(15),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(15),
-      child: Container(
-        height: 72,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: color.withOpacity(.55)),
-        ),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, color: color, size: 25),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
-        ]),
-      ),
+    child: SizedBox(
+      height: 72,
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(icon, color: color, size: 25),
+        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+      ]),
     ),
   );
 
