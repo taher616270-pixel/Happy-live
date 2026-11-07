@@ -26,6 +26,10 @@ class _RoomPageState extends State<RoomPage> {
   static const _gold = Color(0xFFE8C477);
   static const _muted = Color(0xFFAAA2B5);
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
+  // Short-lived in-memory room snapshots make recently visited rooms appear immediately.
+  // The authenticated seat response is scoped to this session and is always refreshed from the API.
+  static final Map<String, Map<String, dynamic>> _roomPreviewCache = <String, Map<String, dynamic>>{};
+  static const Duration _roomPreviewCacheTtl = Duration(seconds: 15);
 
   Timer? _refreshTimer;
   WebSocketChannel? _chatChannel;
@@ -110,6 +114,7 @@ class _RoomPageState extends State<RoomPage> {
   void initState() {
     super.initState();
     _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? '').toString();
+    _restoreRoomPreviewCache();
 
     // Let Flutter paint the room immediately from the room card data first.
     // Network work starts after the first frame and never blocks the room UI.
@@ -186,6 +191,57 @@ class _RoomPageState extends State<RoomPage> {
     }
   }
 
+  String get _roomCacheKey => '$_roomId:${widget.accessToken}';
+
+  void _restoreRoomPreviewCache() {
+    final cached = _roomPreviewCache[_roomCacheKey];
+    if (cached == null) return;
+    final savedAt = cached['savedAt'];
+    if (savedAt is! DateTime || DateTime.now().difference(savedAt) > _roomPreviewCacheTtl) {
+      _roomPreviewCache.remove(_roomCacheKey);
+      return;
+    }
+    final cachedSeats = cached['seats'];
+    final cachedAudience = cached['audienceUsers'];
+    _seats = cachedSeats is List
+        ? cachedSeats.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+        : <Map<String, dynamic>>[];
+    _audienceUsers = cachedAudience is List
+        ? cachedAudience.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+        : <Map<String, dynamic>>[];
+    _mySeat = _seats.where((seat) => seat['isMe'] == true)
+        .map((seat) => seat['seatNumber'])
+        .whereType<num>()
+        .map((number) => number.toInt())
+        .firstOrNull;
+    _audienceCount = cached['audienceCount'] is num ? (cached['audienceCount'] as num).toInt() : 0;
+    _ownerName = (cached['ownerName'] ?? _ownerName).toString();
+    _ownerId = (cached['ownerId'] ?? _ownerId).toString();
+    _roomAnnouncement = (cached['announcement'] ?? _roomAnnouncement).toString();
+    // Do not restore moderation, ban, mute, or global voice-control state from cache.
+    _isLoading = false;
+  }
+
+  void _rememberRoomPreview(
+    Map<String, dynamic> data,
+    List<Map<String, dynamic>> seats,
+    List<Map<String, dynamic>> audienceUsers,
+    int audienceCount,
+    String ownerName,
+    String ownerId,
+    String announcement,
+  ) {
+    _roomPreviewCache[_roomCacheKey] = <String, dynamic>{
+      'savedAt': DateTime.now(),
+      'seats': seats.map((seat) => Map<String, dynamic>.from(seat)).toList(),
+      'audienceUsers': audienceUsers.map((user) => Map<String, dynamic>.from(user)).toList(),
+      'audienceCount': audienceCount,
+      'ownerName': ownerName,
+      'ownerId': ownerId,
+      'announcement': announcement,
+    };
+  }
+
   void _applySeatData(Map<String, dynamic> data) {
     final rawSeats = data['seats'];
     final seats = rawSeats is List
@@ -214,6 +270,7 @@ class _RoomPageState extends State<RoomPage> {
     final nextSelfMuted = meData is Map && meData['isMuted'] == true;
     final nextIsBanned = meData is Map && meData['isBanned'] == true;
     final nextVoiceEnabled = data['voiceEnabled'] != false;
+    _rememberRoomPreview(data, seats, nextAudienceUsers, nextAudienceCount, nextOwnerName, nextOwnerId, nextAnnouncement);
     final voiceJustDisabled = _voiceEnabled && !nextVoiceEnabled;
     final voiceJustEnabled = !_voiceEnabled && nextVoiceEnabled;
     final lostMySeat = _mySeat != null && nextMySeat == null;
