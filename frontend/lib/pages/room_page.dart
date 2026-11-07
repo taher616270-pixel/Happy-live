@@ -793,7 +793,6 @@ class _RoomPageState extends State<RoomPage> {
             physics: const ClampingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
             ),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             dragStartBehavior: DragStartBehavior.start,
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
             initialItemCount: _messages.length + 1,
