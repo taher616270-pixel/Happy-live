@@ -509,7 +509,7 @@ Widget _roomActionButton({
       const SizedBox(width: 8),
       Expanded(
         child: SizedBox(
-          height: 30,
+          height: 34,
           child: ClipRect(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
@@ -522,12 +522,11 @@ Widget _roomActionButton({
               itemCount: audienceUsers.length,
               separatorBuilder: (_, __) => const SizedBox(width: 4),
               itemBuilder: (context, index) => SizedBox(
-                width: 26,
-                height: 26,
+                width: 32,
+                height: 32,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.2),
                     color: const Color(0xFF29434A),
                     image: (audienceUsers[index]['avatarUrl'] ?? '').toString().startsWith('https://')
                         ? DecorationImage(
