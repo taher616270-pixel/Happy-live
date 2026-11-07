@@ -578,7 +578,7 @@ Widget _roomActionButton({
           animation: chatFocusNode,
           builder: (context, child) {
             final isFocused = chatFocusNode.hasFocus;
-            final targetWidth = screenWidth * (isFocused ? 0.96 : 0.62);
+            final targetWidth = screenWidth * (isFocused ? 0.96 : 0.59);
             return Stack(
               alignment: Alignment.center,
               clipBehavior: Clip.none,
