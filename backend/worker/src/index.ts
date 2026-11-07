@@ -664,10 +664,6 @@ export default {
         ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; owner_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
 
-        const activeBan = await env.DB.prepare(
-          "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
-        ).bind(roomId, user.id).first<{ user_id: string }>();
-        if (activeBan) return json({ error: "room_banned", message: "تم حظرك من هذه الغرفة" }, 403, origin, env);
         const activeKick = await env.DB.prepare(
           "SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
         ).bind(roomId, user.id, now).first<{ kicked_until: string }>();
