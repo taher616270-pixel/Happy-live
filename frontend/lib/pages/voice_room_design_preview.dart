@@ -678,143 +678,139 @@ Widget _roomActionButton({
     ),
   );
 
-  Widget _bottomBar(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final screenWidth = media.size.width;
-    return SizedBox(
-      width: double.infinity,
-      height: 58,
-      child: AnimatedBuilder(
-        animation: chatFocusNode,
-        builder: (context, child) {
-          final isFocused = chatFocusNode.hasFocus;
-          final targetWidth = screenWidth * (isFocused ? .96 : .60);
-          final keyboardHeight = isFocused ? media.viewInsets.bottom : 0.0;
-          return Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
+  void _openChatComposer(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF20202A),
+      barrierColor: Colors.black54,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (sheetContext.mounted) chatFocusNode.requestFocus();
+        });
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            18,
+            16,
+            MediaQuery.of(sheetContext).viewInsets.bottom + 18,
+          ),
+          child: Row(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 5, 16, 0),
-                child: Row(
+              Expanded(
+                child: TextField(
+                  controller: chatController,
+                  focusNode: chatFocusNode,
+                  minLines: 1,
+                  maxLines: 4,
+                  maxLength: 100,
+                  inputFormatters: [LengthLimitingTextInputFormatter(100)],
                   textDirection: TextDirection.rtl,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Colors.white38),
-                        color: Colors.black.withOpacity(.20),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.chat_bubble_outline, color: Colors.white, size: 23),
-                          SizedBox(width: 7),
-                          Text('مرحبا', style: TextStyle(color: Colors.white, fontSize: 14)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        const Icon(Icons.mail_outline, color: Colors.white, size: 30),
-                        Positioned(
-                          top: -9,
-                          left: -8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF4D8D),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text('90', style: TextStyle(color: Colors.white, fontSize: 10)),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    const Icon(Icons.sports_esports_outlined, color: Colors.white, size: 30),
-                    const SizedBox(width: 13),
-                    const Icon(Icons.card_giftcard, color: Color(0xFFFFA726), size: 32),
-                    const SizedBox(width: 13),
-                    const Icon(Icons.apps, color: Colors.white, size: 30),
-                  ],
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: keyboardHeight,
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOutCubic,
-                    width: targetWidth.clamp(0.0, screenWidth - 20),
-                    height: 44,
-                    transform: Matrix4.translationValues(isFocused ? 0 : 24, 0, 0),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2D2D35),
-                      borderRadius: BorderRadius.circular(25),
-                      border: Border.all(color: isFocused ? Colors.white24 : Colors.white10),
-                    ),
-                    child: Row(
-                      textDirection: TextDirection.rtl,
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: chatController,
-                            focusNode: chatFocusNode,
-                            scrollPadding: EdgeInsets.zero,
-                            minLines: 1,
-                            maxLines: 1,
-                            maxLength: 100,
-                            inputFormatters: [LengthLimitingTextInputFormatter(100)],
-                            textDirection: TextDirection.rtl,
-                            textInputAction: TextInputAction.send,
-                            onSubmitted: (_) => onSendChat(),
-                            style: const TextStyle(color: Colors.white, fontSize: 15),
-                            decoration: const InputDecoration(
-                              hintText: 'قل شيئاً...',
-                              hintStyle: TextStyle(color: Colors.white54, fontSize: 13),
-                              border: InputBorder.none,
-                              counterText: '',
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              isDense: true,
-                            ),
-                          ),
-                        ),
-                        if (isFocused)
-                          Padding(
-                            padding: const EdgeInsetsDirectional.only(end: 4),
-                            child: SizedBox(
-                              width: 36,
-                              height: 36,
-                              child: Material(
-                                color: const Color(0xFF00D9B5),
-                                shape: const CircleBorder(),
-                                child: InkWell(
-                                  onTap: () async {
-                                    if (chatController.text.trim().isNotEmpty) await onSendChat();
-                                  },
-                                  customBorder: const CircleBorder(),
-                                  child: const Center(
-                                    child: Icon(Icons.send_rounded, color: Colors.white, size: 18),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) async {
+                    if (chatController.text.trim().isEmpty) return;
+                    await onSendChat();
+                    if (sheetContext.mounted) Navigator.pop(sheetContext);
+                  },
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: 'اكتب رسالتك...',
+                    hintStyle: const TextStyle(color: Colors.white54),
+                    counterText: '',
+                    filled: true,
+                    fillColor: Colors.black26,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
                     ),
                   ),
                 ),
               ),
+              const SizedBox(width: 10),
+              Material(
+                color: const Color(0xFF00D9B5),
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () async {
+                    if (chatController.text.trim().isEmpty) return;
+                    await onSendChat();
+                    if (sheetContext.mounted) Navigator.pop(sheetContext);
+                  },
+                  child: const SizedBox(
+                    width: 46,
+                    height: 46,
+                    child: Icon(Icons.send_rounded, color: Colors.white),
+                  ),
+                ),
+              ),
             ],
-          );
-        },
+          ),
+        );
+      },
+    ).whenComplete(() => chatFocusNode.unfocus());
+  }
+
+  Widget _bottomBar(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 58,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 5, 16, 0),
+        child: Row(
+          textDirection: TextDirection.rtl,
+          children: [
+            InkWell(
+              onTap: () => _openChatComposer(context),
+              borderRadius: BorderRadius.circular(30),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.white38),
+                  color: Colors.black.withOpacity(.20),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.chat_bubble_outline, color: Colors.white, size: 23),
+                    SizedBox(width: 7),
+                    Text('مرحبا', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.mail_outline, color: Colors.white, size: 30),
+                Positioned(
+                  top: -9,
+                  left: -8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF4D8D),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text('90', style: TextStyle(color: Colors.white, fontSize: 10)),
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            const Icon(Icons.sports_esports_outlined, color: Colors.white, size: 30),
+            const SizedBox(width: 13),
+            const Icon(Icons.card_giftcard, color: Color(0xFFFFA726), size: 32),
+            const SizedBox(width: 13),
+            const Icon(Icons.apps, color: Colors.white, size: 30),
+          ],
+        ),
       ),
     );
   }
