@@ -73,9 +73,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           if (!chatFocusNode.hasFocus) return;
           final fieldContext = _chatInputKey.currentContext;
           final renderObject = fieldContext?.findRenderObject();
-          if (renderObject is RenderBox) {
-            final fieldRect = renderObject.localToGlobal(Offset.zero) & renderObject.size;
-            if (!fieldRect.contains(event.position)) {
+          if (renderObject is RenderBox && renderObject.attached) {
+            final localPosition = renderObject.globalToLocal(event.position);
+            if (!renderObject.paintBounds.contains(localPosition)) {
               chatFocusNode.unfocus();
             }
           }
@@ -639,6 +639,7 @@ Widget _roomActionButton({
                         child: TextField(
                           controller: chatController,
                           focusNode: chatFocusNode,
+                          onTapOutside: (_) {},
                           minLines: 1,
                           maxLines: 1,
                           maxLength: 100,
