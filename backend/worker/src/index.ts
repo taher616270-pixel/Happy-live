@@ -149,14 +149,25 @@ async function checkAuthRateLimit(db: D1Database, ip: string): Promise<boolean> 
 }
 
 
-async function authenticatedAdmin(request: Request, db: D1Database) {
+type AdminRole = "owner" | "admin" | "moderator";
+type AdminPermission = "dashboard.read" | "users.read" | "users.manage" | "users.kick" | "users.roles.manage" | "rooms.read" | "rooms.manage" | "audit.read" | "agora.read" | "agora.manage";
+type AdminActor = { id: string; username: string; display_name: string; role: AdminRole };
+const ADMIN_ROLE_PERMISSIONS: Record<Exclude<AdminRole, "owner">, ReadonlySet<AdminPermission>> = {
+  admin: new Set<AdminPermission>(["dashboard.read","users.read","users.manage","users.kick","rooms.read","rooms.manage","audit.read","agora.read","agora.manage"]),
+  moderator: new Set<AdminPermission>(["dashboard.read","users.read","rooms.read","audit.read"])
+};
+function hasAdminPermission(actor: AdminActor, permission: AdminPermission): boolean {
+  return actor.role === "owner" || ADMIN_ROLE_PERMISSIONS[actor.role].has(permission);
+}
+async function authenticatedAdmin(request: Request, db: D1Database): Promise<AdminActor | null> {
   const authorization = request.headers.get("Authorization") ?? "";
   const match = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
   if (!match) return null;
   const row = await db.prepare(
-    "SELECT a.id, a.username, a.display_name FROM admin_sessions s INNER JOIN admin_accounts a ON a.id = s.admin_id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND a.status = 'active' LIMIT 1"
-  ).bind(await sha256(match[1]), new Date().toISOString()).first<{ id: string; username: string; display_name: string }>();
-  return row ? { id: row.id, username: row.username, display_name: row.display_name, role: "owner" as const } : null;
+    "SELECT a.id, a.username, a.display_name, r.role FROM admin_sessions s INNER JOIN admin_accounts a ON a.id = s.admin_id INNER JOIN admin_account_roles r ON r.admin_id = a.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND a.status = 'active' LIMIT 1"
+  ).bind(await sha256(match[1]), new Date().toISOString()).first<{ id: string; username: string; display_name: string; role: string }>();
+  if (!row || !["owner", "admin", "moderator"].includes(row.role)) return null;
+  return { id: row.id, username: row.username, display_name: row.display_name, role: row.role as AdminRole };
 }
 
 async function createAdminSession(db: D1Database, adminId: string) {
@@ -315,23 +326,25 @@ export default {
     if (
       url.pathname === "/api/v1/admin/me" ||
       url.pathname === "/api/v1/admin/overview" ||
+      url.pathname === "/api/v1/admin/stats" ||
       url.pathname === "/api/v1/admin/users" ||
+      url.pathname === "/api/v1/admin/moderators" ||
       url.pathname === "/api/v1/admin/rooms" ||
       url.pathname === "/api/v1/admin/audit" ||
       url.pathname === "/api/v1/admin/agora/status" ||
       url.pathname === "/api/v1/admin/agora/voice" ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
+      /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/kick$/i.test(url.pathname) ||
+      /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/role$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/status$/i.test(url.pathname)
     ) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
         const actor = await authenticatedAdmin(request, env.DB);
         if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
-        const role = "owner" as const;
-        const canManageUsers = role === "owner" || role === "admin";
-        const canManageRooms = role === "owner" || role === "admin";
 
         if (url.pathname === "/api/v1/admin/agora/status" && request.method === "GET") {
+          if (!hasAdminPermission(actor, "agora.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const voiceEnabled = await isAgoraVoiceEnabled(env.DB, env);
           return json({ ok: true, agora: {
             enabled: env.AGORA_ENABLED !== "false",
@@ -341,6 +354,7 @@ export default {
           } }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/agora/voice" && request.method === "PATCH") {
+          if (!hasAdminPermission(actor, "agora.manage")) return json({ error: "permission_denied" }, 403, origin, env);
           let body: Record<string, unknown>;
           try { body = await request.json() as Record<string, unknown>; }
           catch { return json({ error: "invalid_json" }, 400, origin, env); }
@@ -364,16 +378,17 @@ export default {
           ).bind(
             crypto.randomUUID(),
             body.enabled ? "agora.voice.enable" : "agora.voice.disable",
-            JSON.stringify({ enabled: body.enabled, adminUsername: actor.username, effect: body.enabled ? "voice_service_resumed" : "all_microphone_seats_released" }),
+            JSON.stringify({ enabled: body.enabled, adminUsername: actor.username, adminId: actor.id, effect: body.enabled ? "voice_service_resumed" : "all_microphone_seats_released" }),
             now
           ));
           await env.DB.batch(statements);
           return json({ ok: true, voiceEnabled: body.enabled }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/me" && request.method === "GET") {
-          return json({ ok: true, admin: { id: actor.id, name: actor.display_name, username: actor.username, role } }, 200, origin, env);
+          return json({ ok: true, admin: { id: actor.id, name: actor.display_name, username: actor.username, role: actor.role } }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/overview" && request.method === "GET") {
+          if (!hasAdminPermission(actor, "dashboard.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const [users, rooms, posts] = await Promise.all([
             env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM users").first<{total:number;active:number}>(),
             env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM rooms").first<{total:number;active:number}>(),
@@ -386,6 +401,7 @@ export default {
           } }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/users" && request.method === "GET") {
+          if (!hasAdminPermission(actor, "users.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
           const limit = Math.max(1, Math.min(100, Number(url.searchParams.get("limit") ?? 50) || 50));
           const result = await env.DB.prepare(
@@ -397,6 +413,7 @@ export default {
           return json({ ok: true, users: result.results ?? [] }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/rooms" && request.method === "GET") {
+          if (!hasAdminPermission(actor, "rooms.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const result = await env.DB.prepare(
             "SELECT r.id, r.room_code, r.name, r.status, r.visibility, r.created_at, u.id AS owner_id, p.display_name AS owner_name " +
             "FROM rooms r INNER JOIN users u ON u.id = r.owner_user_id LEFT JOIN profiles p ON p.user_id = u.id " +
@@ -405,17 +422,64 @@ export default {
           return json({ ok: true, rooms: result.results ?? [] }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/audit" && request.method === "GET") {
-          
+          if (!hasAdminPermission(actor, "audit.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const result = await env.DB.prepare(
             "SELECT l.id, l.action, l.target_type, l.target_id, l.details_json, l.created_at, p.display_name AS actor_name, u.email AS actor_email " +
             "FROM admin_audit_logs l LEFT JOIN users u ON u.id = l.actor_user_id LEFT JOIN profiles p ON p.user_id = l.actor_user_id " +
             "ORDER BY l.created_at DESC LIMIT 100"
           ).all();
-          return json({ ok: true, entries: result.results ?? [] }, 200, origin, env);
+          const entries = (result.results ?? []).map((entry) => {
+            let details: Record<string, unknown> = {};
+            try { details = JSON.parse(String(entry.details_json ?? "{}")) as Record<string, unknown>; } catch { /* Ignore malformed legacy details. */ }
+            return { ...entry, actor_name: entry.actor_name || String(details.adminUsername ?? entry.actor_email ?? "—") };
+          });
+          return json({ ok: true, entries }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/stats" && request.method === "GET") {
+          if (!hasAdminPermission(actor, "dashboard.read")) return json({ error: "permission_denied" }, 403, origin, env);
+          const since = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+          const [users, rooms, posts, messages, dailyUsers, dailyMessages] = await Promise.all([
+            env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active, SUM(CASE WHEN status = 'suspended' THEN 1 ELSE 0 END) AS suspended FROM users").first<{ total: number; active: number; suspended: number }>(),
+            env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM rooms").first<{ total: number; active: number }>(),
+            env.DB.prepare("SELECT COUNT(*) AS total FROM posts WHERE status = 'published'").first<{ total: number }>(),
+            env.DB.prepare("SELECT COUNT(*) AS total FROM room_messages WHERE created_at >= ?").bind(since).first<{ total: number }>(),
+            env.DB.prepare("SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total FROM users WHERE created_at >= ? GROUP BY substr(created_at, 1, 10) ORDER BY day").bind(since).all(),
+            env.DB.prepare("SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total FROM room_messages WHERE created_at >= ? GROUP BY substr(created_at, 1, 10) ORDER BY day").bind(since).all()
+          ]);
+          return json({ ok: true, stats: { summary: {
+            users: { total: users?.total ?? 0, active: users?.active ?? 0, suspended: users?.suspended ?? 0 },
+            rooms: { total: rooms?.total ?? 0, active: rooms?.active ?? 0 },
+            publishedPosts: posts?.total ?? 0, roomMessagesLast7Days: messages?.total ?? 0
+          }, daily: { users: dailyUsers.results ?? [], messages: dailyMessages.results ?? [] } } }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/moderators" && request.method === "GET") {
+          if (!hasAdminPermission(actor, "users.roles.manage")) return json({ error: "permission_denied" }, 403, origin, env);
+          const result = await env.DB.prepare("SELECT u.id, u.email, u.status, p.display_name, p.gabo_id, ar.role, ar.granted_at FROM admin_roles ar INNER JOIN users u ON u.id = ar.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE ar.role IN ('admin', 'moderator') ORDER BY ar.granted_at DESC LIMIT 200").all();
+          return json({ ok: true, moderators: result.results ?? [] }, 200, origin, env);
+        }
+        const userRoleRoute = url.pathname.match(/^\/api\/v1\/admin\/users\/([0-9a-f-]{36})\/role$/i);
+        if (userRoleRoute && request.method === "PATCH") {
+          if (!hasAdminPermission(actor, "users.roles.manage")) return json({ error: "permission_denied" }, 403, origin, env);
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const nextRole = body.role === "admin" || body.role === "moderator" ? body.role : body.role === null ? null : undefined;
+          if (nextRole === undefined) return json({ error: "invalid_admin_role" }, 400, origin, env);
+          const targetId = userRoleRoute[1];
+          const target = await env.DB.prepare("SELECT u.id, u.status, ar.role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1").bind(targetId).first<{ id: string; status: string; role: string | null }>();
+          if (!target) return json({ error: "user_not_found" }, 404, origin, env);
+          if (target.status !== "active") return json({ error: "user_must_be_active" }, 409, origin, env);
+          if (target.role === "owner") return json({ error: "owner_role_is_protected" }, 403, origin, env);
+          const now = new Date().toISOString(), action = nextRole ? "user.role.assign" : "user.role.remove";
+          const statements: D1PreparedStatement[] = [];
+          if (nextRole) statements.push(env.DB.prepare("INSERT INTO admin_roles (user_id, role, granted_by, granted_at) VALUES (?, ?, NULL, ?) ON CONFLICT(user_id) DO UPDATE SET role = excluded.role, granted_by = NULL, granted_at = excluded.granted_at").bind(targetId, nextRole, now));
+          else statements.push(env.DB.prepare("DELETE FROM admin_roles WHERE user_id = ? AND role <> 'owner'").bind(targetId));
+          statements.push(env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'user', ?, ?, ?)").bind(crypto.randomUUID(), action, targetId, JSON.stringify({ role: nextRole, adminUsername: actor.username, adminId: actor.id }), now));
+          await env.DB.batch(statements);
+          return json({ ok: true, userId: targetId, role: nextRole }, 200, origin, env);
         }
         const userStatusRoute = url.pathname.match(/^\/api\/v1\/admin\/users\/([0-9a-f-]{36})\/status$/i);
         if (userStatusRoute && request.method === "PATCH") {
-          if (!canManageUsers) return json({ error: "permission_denied" }, 403, origin, env);
+          if (!hasAdminPermission(actor, "users.manage")) return json({ error: "permission_denied" }, 403, origin, env);
           const targetId = userStatusRoute[1];
           
           const body = await request.json() as Record<string, unknown>;
@@ -425,18 +489,38 @@ export default {
             .bind(targetId).first<{id:string;status:string;role:string|null}>();
           if (!target) return json({ error: "user_not_found" }, 404, origin, env);
           if (target.status === "deleted") return json({ error: "deleted_user_cannot_be_reactivated" }, 409, origin, env);
-          if (target.role && role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
+          if (target.role && actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const now = new Date().toISOString();
-          await env.DB.batch([
-            env.DB.prepare("UPDATE users SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, targetId),
-            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, 'user', ?, ?, ?)")
-              .bind(crypto.randomUUID(), null, status === "suspended" ? "user.suspend" : "user.activate", targetId, JSON.stringify({ status, adminUsername: actor.username }), now)
-          ]);
+          const statements = [env.DB.prepare("UPDATE users SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, targetId)];
+          if (status === "suspended") {
+            statements.push(env.DB.prepare("UPDATE user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL").bind(now, targetId));
+            statements.push(env.DB.prepare("DELETE FROM room_seats WHERE user_id = ?").bind(targetId));
+            statements.push(env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE user_id = ? AND exited_at IS NULL").bind(now, targetId));
+          }
+          statements.push(env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'user', ?, ?, ?)").bind(crypto.randomUUID(), status === "suspended" ? "user.suspend" : "user.activate", targetId, JSON.stringify({ status, adminUsername: actor.username, adminId: actor.id }), now));
+          await env.DB.batch(statements);
           return json({ ok: true, userId: targetId, status }, 200, origin, env);
+        }
+        const userKickRoute = url.pathname.match(/^\/api\/v1\/admin\/users\/([0-9a-f-]{36})\/kick$/i);
+        if (userKickRoute && request.method === "POST") {
+          if (!hasAdminPermission(actor, "users.kick")) return json({ error: "permission_denied" }, 403, origin, env);
+          const targetId = userKickRoute[1];
+          const target = await env.DB.prepare("SELECT u.id, u.status, ar.role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1").bind(targetId).first<{ id: string; status: string; role: string | null }>();
+          if (!target) return json({ error: "user_not_found" }, 404, origin, env);
+          if (target.status === "deleted") return json({ error: "deleted_user_cannot_be_kicked" }, 409, origin, env);
+          if (target.role && actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
+          const now = new Date().toISOString();
+          const results = await env.DB.batch([
+            env.DB.prepare("UPDATE user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL").bind(now, targetId),
+            env.DB.prepare("DELETE FROM room_seats WHERE user_id = ?").bind(targetId),
+            env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE user_id = ? AND exited_at IS NULL").bind(now, targetId),
+            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'user.kick', 'user', ?, ?, ?)").bind(crypto.randomUUID(), targetId, JSON.stringify({ adminUsername: actor.username, adminId: actor.id, effect: "all_sessions_revoked" }), now)
+          ]);
+          return json({ ok: true, userId: targetId, revokedSessions: results[0]?.meta?.changes ?? 0 }, 200, origin, env);
         }
         const roomStatusRoute = url.pathname.match(/^\/api\/v1\/admin\/rooms\/([0-9a-f-]{36})\/status$/i);
         if (roomStatusRoute && request.method === "PATCH") {
-          if (!canManageRooms) return json({ error: "permission_denied" }, 403, origin, env);
+          if (!hasAdminPermission(actor, "rooms.manage")) return json({ error: "permission_denied" }, 403, origin, env);
           const targetId = roomStatusRoute[1];
           const body = await request.json() as Record<string, unknown>;
           const status = body.status === "active" || body.status === "closed" ? body.status : null;
