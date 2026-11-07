@@ -1145,8 +1145,8 @@ export default {
           "SELECT COUNT(DISTINCT user_id) AS count FROM room_chat_visits WHERE room_id = ? AND exited_at IS NULL AND last_seen_at >= ?"
         ).bind(roomId, audienceCutoff).first<{ count: number }>();
         const audienceUsersResult = await env.DB.prepare(
-          "SELECT p.user_id, p.display_name, p.avatar_key, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? GROUP BY p.user_id, p.display_name, p.avatar_key ORDER BY last_seen_at DESC LIMIT 5"
-        ).bind(roomId, audienceCutoff).all<{ user_id: string; display_name: string | null; avatar_key: string | null; last_seen_at: string }>();
+          "SELECT p.user_id, p.display_name, p.avatar_key, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? AND NOT EXISTS (SELECT 1 FROM room_seats s WHERE s.room_id = v.room_id AND s.user_id = v.user_id AND s.expires_at > ?) GROUP BY p.user_id, p.display_name, p.avatar_key ORDER BY last_seen_at DESC LIMIT 5"
+        ).bind(roomId, audienceCutoff, now).all<{ user_id: string; display_name: string | null; avatar_key: string | null; last_seen_at: string }>();
         const audienceUsers = (audienceUsersResult.results ?? []).map((visitor) => ({
           userId: visitor.user_id,
           name: visitor.display_name?.trim() || "مستخدم",
