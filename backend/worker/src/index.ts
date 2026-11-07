@@ -847,8 +847,8 @@ export default {
         }
 
         const result = await env.DB.prepare(
-          "SELECT m.id, m.user_id, m.message, m.image_url, m.created_at, p.display_name FROM room_messages m LEFT JOIN profiles p ON p.user_id = m.user_id WHERE m.room_id = ? AND m.created_at >= ? ORDER BY m.created_at DESC LIMIT 60"
-        ).bind(roomId, visit.entered_at).all<{
+          "SELECT m.id, m.user_id, m.message, m.image_url, m.created_at, p.display_name FROM room_messages m LEFT JOIN profiles p ON p.user_id = m.user_id WHERE m.room_id = ? ORDER BY m.created_at DESC LIMIT 60"
+        ).bind(roomId).all<{
           id: string; user_id: string; message: string; image_url: string | null;
           created_at: string; display_name: string | null;
         }>();
