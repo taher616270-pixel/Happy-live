@@ -433,10 +433,20 @@ class _RoomPageState extends State<RoomPage> {
 
   void _mergeRoomMessages(Iterable<Message> incoming) {
     if (!mounted) return;
+
+    // Keep the reader's position when they are browsing older chat messages.
+    // Only follow new messages automatically when the list was already near its bottom.
+    final shouldFollowLatest = !_roomMessagesController.hasClients ||
+        (_roomMessagesController.position.maxScrollExtent -
+                _roomMessagesController.position.pixels) <=
+            96;
+
     final ordered = incoming.toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    var insertedAny = false;
     for (final message in ordered) {
       if (message.id.isEmpty || !_messageIds.add(message.id)) continue;
       _messages.add(message);
+      insertedAny = true;
       final listState = _roomAnimatedListKey.currentState;
       if (listState != null) {
         listState.insertItem(_messages.length, duration: const Duration(milliseconds: 400));
@@ -444,7 +454,9 @@ class _RoomPageState extends State<RoomPage> {
         setState(() {});
       }
     }
-    _scrollChatToBottom();
+    if (insertedAny && shouldFollowLatest) {
+      _scrollChatToBottom();
+    }
   }
 
   Message _messageFromApi(Map<String, dynamic> item, {String type = 'text'}) {
