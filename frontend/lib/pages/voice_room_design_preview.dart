@@ -643,7 +643,7 @@ Widget _roomActionButton({
   );
 
   Widget _listeners() => Transform.translate(
-    offset: const Offset(0, -30),
+    offset: const Offset(0, -65),
     child: Container(
     height: 40,
     margin: const EdgeInsets.symmetric(horizontal: 12),
