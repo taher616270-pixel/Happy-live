@@ -867,7 +867,7 @@ export default {
     }
 
     // Agora RTC tokens are issued only to authenticated members of an active room.
-    const agoraTokenRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/([^/]+)\\/agora-token$/);
+    const agoraTokenRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/agora-token$/);
     if (agoraTokenRoute && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       if (!env.AGORA_APP_ID || !env.AGORA_APP_CERTIFICATE || env.AGORA_ENABLED === "false") {
