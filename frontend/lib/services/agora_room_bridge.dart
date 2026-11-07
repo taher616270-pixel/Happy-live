@@ -43,12 +43,11 @@ class AgoraRoomBridge {
     }
   }
 
-  static Future<bool> setMuted(bool muted) async {
+  static Future<void> setMuted(bool muted) async {
     try {
-      final result = await _agoraSetMuted(muted.toJS).toDart;
-      return result?.dartify() == true;
+      await _agoraSetMuted(muted.toJS).toDart;
     } catch (_) {
-      return false;
+      // The track may not be published while the user is a listener.
     }
   }
 
