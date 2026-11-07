@@ -90,9 +90,15 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               Positioned(
                 left: 58,
                 right: 12,
-                bottom: 8,
-                height: 176,
-                child: chatMessagesPanel!,
+                top: 0,
+                bottom: 154,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: SizedBox(
+                    height: 168,
+                    child: chatMessagesPanel!,
+                  ),
+                ),
               ),
             Positioned(left: 12, bottom: 4, child: Column(children: const [
               _SideTile(icon: Icons.campaign_rounded, label: '0%', color: Color(0xFFFFC857)),
