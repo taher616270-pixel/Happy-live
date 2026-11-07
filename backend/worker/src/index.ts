@@ -5,6 +5,7 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
   IMAGEKIT_PUBLIC_KEY?: string;
   IMAGEKIT_PRIVATE_KEY?: string;
+  ADMIN_SETUP_TOKEN?: string;
 }
 
 
@@ -25,6 +26,13 @@ function fromHex(value: string): Uint8Array {
 
 async function sha256(value: string): Promise<string> {
   return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))));
+}
+
+function constantTimeTextEqual(left: string, right: string): boolean {
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let i = 0; i < left.length; i++) difference |= left.charCodeAt(i) ^ right.charCodeAt(i);
+  return difference === 0;
 }
 
 async function hashPassword(password: string): Promise<string> {
@@ -216,6 +224,52 @@ export default {
       return new Response(null, { status: 204, headers });
     }
 
+
+    if (url.pathname === "/api/v1/admin/auth/setup-status" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      const state = await env.DB.prepare("SELECT id FROM admin_setup_state WHERE id = 'primary-owner' LIMIT 1").first();
+      return json({ setupRequired: !state }, 200, origin, env);
+    }
+
+    if (url.pathname === "/api/v1/admin/auth/setup" && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      if (!env.ADMIN_SETUP_TOKEN) return json({ error: "admin_setup_not_configured" }, 503, origin, env);
+      try {
+        const state = await env.DB.prepare("SELECT id FROM admin_setup_state WHERE id = 'primary-owner' LIMIT 1").first();
+        if (state) return json({ error: "admin_setup_already_completed" }, 409, origin, env);
+        const body = await request.json() as Record<string, unknown>;
+        const suppliedToken = typeof body.setupToken === "string" ? body.setupToken : "";
+        const password = typeof body.password === "string" ? body.password : "";
+        const confirmation = typeof body.confirmation === "string" ? body.confirmation : "";
+        if (!constantTimeTextEqual(await sha256(suppliedToken), await sha256(env.ADMIN_SETUP_TOKEN))) {
+          return json({ error: "invalid_setup_token", message: "رمز التهيئة غير صحيح" }, 403, origin, env);
+        }
+        if (password.length < 12 || password.length > 128 || password !== confirmation) {
+          return json({ error: "invalid_password", message: "استخدم كلمة مرور من 12 حرفًا على الأقل وتأكد من تطابق الحقلين" }, 400, origin, env);
+        }
+        const owner = await env.DB.prepare("SELECT id FROM admin_accounts WHERE username = 'owner' COLLATE NOCASE AND status = 'active' LIMIT 1")
+          .first<{ id: string }>();
+        if (!owner) return json({ error: "primary_admin_not_found" }, 404, origin, env);
+        const nonce = crypto.randomUUID();
+        const now = new Date().toISOString();
+        const passwordHash = await hashPassword(password);
+        const results = await env.DB.batch([
+          env.DB.prepare("INSERT OR IGNORE INTO admin_setup_state (id, setup_nonce, completed_at) VALUES ('primary-owner', ?, ?)")
+            .bind(nonce, now),
+          env.DB.prepare("UPDATE admin_accounts SET password_hash = ?, updated_at = ? WHERE id = ? AND EXISTS (SELECT 1 FROM admin_setup_state WHERE id = 'primary-owner' AND setup_nonce = ?)")
+            .bind(passwordHash, now, owner.id, nonce),
+          env.DB.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL")
+            .bind(now, owner.id)
+        ]);
+        if ((results[1]?.meta?.changes ?? 0) !== 1) {
+          return json({ error: "admin_setup_already_completed", message: "تم إعداد كلمة مرور المدير مسبقًا" }, 409, origin, env);
+        }
+        return json({ ok: true, message: "تم إنشاء كلمة مرور المدير الرئيسي بنجاح" }, 200, origin, env);
+      } catch (error) {
+        console.error("[admin.auth.setup] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "admin_setup_unavailable" }, 503, origin, env);
+      }
+    }
 
     if (url.pathname === "/api/v1/admin/auth/login" && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
