@@ -67,20 +67,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     child: Scaffold(
       backgroundColor: const Color(0xFF08141C),
       resizeToAvoidBottomInset: false,
-      body: Listener(
-        behavior: HitTestBehavior.translucent,
-        onPointerDown: (event) {
-          if (!chatFocusNode.hasFocus) return;
-          final fieldContext = _chatInputKey.currentContext;
-          final renderObject = fieldContext?.findRenderObject();
-          if (renderObject is RenderBox && renderObject.attached) {
-            final localPosition = renderObject.globalToLocal(event.position);
-            if (!renderObject.paintBounds.contains(localPosition)) {
-              chatFocusNode.unfocus();
-            }
-          }
-        },
-        child: Stack(fit: StackFit.expand, children: [
+      body: Stack(fit: StackFit.expand, children: [
         const _NightSky(),
         SafeArea(bottom: false, child: Column(children: [
           _header(context),
@@ -121,7 +108,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         ),
         _roomActionsPanel(context),
       ]),
-      ),
     ),
   );
 
@@ -614,7 +600,11 @@ Widget _roomActionButton({
                     ],
                   ),
                 ),
-                AnimatedContainer(
+                TapRegion(
+                  onTapOutside: (_) {
+                    if (chatFocusNode.hasFocus) chatFocusNode.unfocus();
+                  },
+                  child: AnimatedContainer(
                   key: _chatInputKey,
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOutCubic,
@@ -639,7 +629,6 @@ Widget _roomActionButton({
                         child: TextField(
                           controller: chatController,
                           focusNode: chatFocusNode,
-                          onTapOutside: (_) {},
                           minLines: 1,
                           maxLines: 1,
                           maxLength: 100,
@@ -689,6 +678,7 @@ Widget _roomActionButton({
                         ),
                       ],
                     ],
+                  ),
                   ),
                 ),
               ],
