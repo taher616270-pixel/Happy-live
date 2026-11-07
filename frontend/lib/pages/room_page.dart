@@ -1190,9 +1190,11 @@ class _RoomPageState extends State<RoomPage> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isAndroid = Theme.of(context).platform == TargetPlatform.android;
-            final tileWidth = (constraints.maxWidth - 34) / 4;
+            // LayoutBuilder already receives the width inside the card padding.
+            // Calculate the real grid tile width so every Android phone size fits.
+            final tileWidth = (constraints.maxWidth - 24) / 4;
             final micSize = isAndroid
-                ? (tileWidth * .66).clamp(42.0, 60.0)
+                ? (tileWidth * .62).clamp(34.0, 52.0)
                 : (tileWidth * .78).clamp(48.0, 70.0);
             return GridView.builder(
               shrinkWrap: true,
@@ -1200,9 +1202,10 @@ class _RoomPageState extends State<RoomPage> {
               itemCount: 8,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 4,
-                mainAxisSpacing: isAndroid ? 16 : 7,
+                mainAxisSpacing: isAndroid ? 14 : 7,
                 crossAxisSpacing: 8,
-                childAspectRatio: isAndroid ? .70 : .78,
+                mainAxisExtent: isAndroid ? micSize + 42 : null,
+                childAspectRatio: isAndroid ? 1 : .78,
               ),
               itemBuilder: (context, index) {
                 final number = index < 4 ? 4 - index : 8 - (index - 4);
