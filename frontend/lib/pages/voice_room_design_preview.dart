@@ -236,7 +236,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     Widget _roomActionsPanel(BuildContext context) => AnimatedPositioned(
     duration: const Duration(milliseconds: 420),
     curve: Curves.easeOutCubic,
-    top: showRoomActions ? 0 : -380,
+    top: showRoomActions ? 0 : -320,
     left: 0,
     right: 0,
     child: IgnorePointer(
@@ -247,7 +247,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: Container(
-            height: 360,
+            height: 300,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFFE0DDE2),
