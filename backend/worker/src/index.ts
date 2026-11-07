@@ -1,4 +1,4 @@
-import { RtcRole, RtcTokenBuilder } from "agora-token";
+import { RtcTokenBuilder } from "agora-token";
 export interface Env {
   DB?: D1Database;
   ROOM_CHAT?: DurableObjectNamespace;
@@ -883,7 +883,7 @@ export default {
         const now = new Date().toISOString();
         const [ban, kick, control, seat] = await Promise.all([
           env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
-          env.DB.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
+          env.DB.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
           env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
           env.DB.prepare("SELECT seat_number FROM room_seats WHERE room_id = ? AND user_id = ? AND expires_at > ? LIMIT 1").bind(roomId, user.id, now).first<{ seat_number: number }>()
         ]);
@@ -895,8 +895,12 @@ export default {
         }
         const channel = "hl" + (await sha256(roomId)).slice(0, 30);
         const ttl = 3600;
-        const role = canPublish ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
-        const rtcToken = RtcTokenBuilder.buildTokenWithUid(env.AGORA_APP_ID, env.AGORA_APP_CERTIFICATE, channel, numericUid, role, ttl, ttl);
+        // Explicitly omit publish privileges for listeners. Role.SUBSCRIBER alone is not
+        // sufficient unless Agora Co-host authentication is enabled for the project.
+        const rtcToken = RtcTokenBuilder.buildTokenWithUidAndPrivilege(
+          env.AGORA_APP_ID, env.AGORA_APP_CERTIFICATE, channel, numericUid,
+          ttl, ttl, canPublish ? ttl : 0, 0, 0
+        );
         return json({ ok: true, appId: env.AGORA_APP_ID, channel, uid: numericUid, token: rtcToken, role: canPublish ? "publisher" : "audience", expiresIn: ttl }, 200, origin, env);
       } catch (error) {
         console.error("[agora.token] failed", error instanceof Error ? error.message : "UnknownError");
