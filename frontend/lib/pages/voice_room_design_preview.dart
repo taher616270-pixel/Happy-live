@@ -504,26 +504,33 @@ Widget _roomActionButton({
       _pill(Row(mainAxisSize: MainAxisSize.min, children: [
         Text('$audienceCount', style: const TextStyle(color: Colors.white, fontSize: 12)),
         const SizedBox(width: 3),
-        Container(
-          width: 22,
-          height: 22,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 1.2),
-            color: const Color(0xFF29434A),
-            image: audienceUsers.isNotEmpty &&
-                    (audienceUsers.first['avatarUrl'] ?? '').toString().startsWith('https://')
-                ? DecorationImage(
-                    image: NetworkImage(audienceUsers.first['avatarUrl'].toString()),
-                    fit: BoxFit.cover,
-                  )
-                : null,
+        const Icon(Icons.person_outline_rounded, color: Colors.white, size: 16),
+        if (audienceUsers.isNotEmpty) ...[
+          const SizedBox(width: 6),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var index = 0; index < audienceUsers.length.clamp(0, 3); index++) ...[
+                if (index > 0) const SizedBox(width: 4),
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.2),
+                    color: const Color(0xFF29434A),
+                    image: (audienceUsers[index]['avatarUrl'] ?? '').toString().startsWith('https://')
+                        ? DecorationImage(
+                            image: NetworkImage(audienceUsers[index]['avatarUrl'].toString()),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                ),
+              ],
+            ],
           ),
-          child: audienceUsers.isEmpty ||
-                  !(audienceUsers.first['avatarUrl'] ?? '').toString().startsWith('https://')
-              ? const Icon(Icons.person_outline_rounded, color: Colors.white, size: 15)
-              : null,
-        ),
+        ],
       ]), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
       const Spacer(),
       _pill(Row(mainAxisSize: MainAxisSize.min, children: [
