@@ -691,6 +691,12 @@ class _RoomPageState extends State<RoomPage> {
   Widget _roomMessageItem(Message message) {
     if (message.type == 'system' || message.type == 'join') {
       final isWelcome = message.text.contains('دخل الغرفة') || message.text.contains('انضم');
+      final isOwnerEntry = isWelcome && message.senderId.isNotEmpty && message.senderId == _ownerId;
+      final noticeText = isWelcome
+          ? isOwnerEntry
+              ? 'مالك الغرفة @ ${message.senderName} دخل غرفة'
+              : '${message.senderName} دخل الغرفة'
+          : '${message.senderName} @ ${message.text}';
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(
@@ -706,7 +712,7 @@ class _RoomPageState extends State<RoomPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(color: Colors.black.withOpacity(0.42), borderRadius: BorderRadius.circular(14)),
-                child: Text('${message.senderName} @ ${message.text}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                child: Text(noticeText, style: const TextStyle(color: Colors.white70, fontSize: 11)),
               ),
             ),
           ],
