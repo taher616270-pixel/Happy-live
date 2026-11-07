@@ -870,6 +870,7 @@ class _RoomPageState extends State<RoomPage> {
         // The POST response already contains the authoritative seat list.
         // Apply it immediately instead of waiting for an additional GET.
         _applySeatData(Map<String, dynamic>.from(data));
+        await _joinAgora(publish: target != null);
       } else {
         if (response.statusCode == 409) {
           _showMessage('هذا المايك مشغول، اختر مايكًا آخر');
