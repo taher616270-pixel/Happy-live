@@ -71,9 +71,17 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       body: Listener(
         behavior: HitTestBehavior.translucent,
         onPointerDown: (event) {
-          if (chatFocusNode.hasFocus) {
-            _keyboardDismissStart = event.position;
+          if (!chatFocusNode.hasFocus) return;
+          final fieldContext = _chatInputKey.currentContext;
+          final renderObject = fieldContext?.findRenderObject();
+          if (renderObject is RenderBox && renderObject.attached) {
+            final localPosition = renderObject.globalToLocal(event.position);
+            if (renderObject.paintBounds.contains(localPosition)) {
+              _keyboardDismissStart = null;
+              return;
+            }
           }
+          _keyboardDismissStart = event.position;
         },
         onPointerMove: (event) {
           final start = _keyboardDismissStart;
