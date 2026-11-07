@@ -726,37 +726,81 @@ class _RoomPageState extends State<RoomPage> {
             : '${message.senderName} دخل الغرفة'
         : isSystem && message.type != 'announcement'
             ? '${message.senderName} @ ${message.text}'
-            : message.type == 'announcement'
-                ? message.text
-                : '${message.senderName}: ${message.text}';
+            : message.text;
 
     return Align(
       alignment: Alignment.centerRight,
       child: GestureDetector(
         onTap: message.type == 'announcement' && _isRoomOwner ? _editRoomAnnouncement : null,
         child: Padding(
-        padding: const EdgeInsets.only(left: 50, bottom: 8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: isSystem ? const Color(0xDD1E2A3A) : const Color(0xFFE84D8A),
-            borderRadius: BorderRadius.circular(16),
-          ),
+          padding: const EdgeInsets.only(left: 42, bottom: 9),
           child: Row(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             textDirection: TextDirection.rtl,
             children: [
+              if (isSystem)
+                Container(
+                  width: 27,
+                  height: 27,
+                  decoration: BoxDecoration(
+                    color: const Color(0xAA172A32),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Icon(Icons.notifications_active_rounded, color: Colors.white70, size: 14),
+                )
+              else
+                _chatAvatar(message.senderAvatar, message.senderName, size: 27),
+              const SizedBox(width: 7),
               Flexible(
-                child: Text(displayText, textAlign: TextAlign.right,
-                  style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.35, fontWeight: FontWeight.w600)),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.66),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!isSystem)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 3, bottom: 3),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  message.senderName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(color: Color(0xFFE7F1EF), fontSize: 10, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.graphic_eq_rounded, color: Color(0xFF54D8C0), size: 12),
+                            ],
+                          ),
+                        ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: isSystem ? const Color(0xB51A2830) : const Color(0xE52B7650),
+                          borderRadius: BorderRadius.circular(7),
+                          border: Border.all(color: isSystem ? Colors.white12 : const Color(0x557DE4B4)),
+                        ),
+                        child: Text(
+                          isSystem ? displayText : message.text,
+                          textAlign: TextAlign.right,
+                          textDirection: TextDirection.rtl,
+                          style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.35, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(width: 8),
-              Icon(isSystem ? Icons.notifications_active_rounded : Icons.graphic_eq_rounded,
-                size: 14, color: Colors.white.withOpacity(0.78)),
             ],
           ),
         ),
-      ),
       ),
     );
   }
