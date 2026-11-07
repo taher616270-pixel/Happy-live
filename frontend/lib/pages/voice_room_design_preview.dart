@@ -586,7 +586,7 @@ Widget _roomActionButton({
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
                   child: Row(
-                    textDirection: TextDirection.rtl,
+                    textDirection: TextDirection.ltr,
                     children: [
                       const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 28),
                       const SizedBox(width: 10),
