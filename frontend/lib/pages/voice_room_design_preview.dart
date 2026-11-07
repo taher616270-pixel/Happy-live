@@ -92,7 +92,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               _SideTile(icon: Icons.diamond_rounded, label: '0/2500', color: Color(0xFFFF8A65)),
             ])),
           ])),
-          _bottomBar(),
+          _bottomBar(context),
         ])),
         Positioned.fill(
           child: IgnorePointer(
@@ -564,7 +564,7 @@ Widget _roomActionButton({
     ]),
   ));
 
-  Widget _bottomBar() {
+  Widget _bottomBar(BuildContext context) {
     final media = MediaQuery.of(context);
     final keyboardHeight = media.viewInsets.bottom;
     final keyboardOpen = keyboardHeight > 0;
@@ -597,7 +597,7 @@ Widget _roomActionButton({
                   minLines: 1,
                   maxLines: 1,
                   maxLength: 100,
-                  inputFormatters: const [LengthLimitingTextInputFormatter(100)],
+                  inputFormatters: [LengthLimitingTextInputFormatter(100)],
                   textDirection: TextDirection.rtl,
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => onSendChat(),
