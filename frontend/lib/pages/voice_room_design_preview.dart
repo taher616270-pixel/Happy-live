@@ -208,6 +208,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           const SizedBox(width: 10),
           _headerAction(Icons.picture_in_picture_alt_rounded, onMinimizeRoom, 23),
           const SizedBox(width: 10),
+          _headerAction(Icons.more_horiz_rounded, onRoomActions, 25),
+          const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
             decoration: BoxDecoration(
