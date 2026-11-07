@@ -219,7 +219,15 @@ class _RoomPageState extends State<RoomPage> {
         _voiceEnabled != nextVoiceEnabled ||
         _isLoading ||
         _loadError != null;
-    if (!mounted || !changed) return;
+    if (!mounted) return;
+    if (!changed) {
+      if (!nextVoiceEnabled) {
+        _agoraDesiredPublish = null;
+        _agoraJoinedPublish = null;
+        unawaited(AgoraRoomBridge.leave());
+      }
+      return;
+    }
     setState(() {
       _seats = seats;
       _mySeat = nextMySeat;
@@ -235,14 +243,13 @@ class _RoomPageState extends State<RoomPage> {
       _isLoading = false;
       _loadError = null;
     });
-    if (voiceJustDisabled) {
+    if (!nextVoiceEnabled) {
       _agoraDesiredPublish = null;
       _agoraJoinedPublish = null;
       unawaited(AgoraRoomBridge.leave());
-      _showMessage('تم إيقاف الصوت في التطبيق من الإدارة');
+      if (voiceJustDisabled) _showMessage('تم إيقاف الصوت في التطبيق من الإدارة');
       return;
     }
-    if (!nextVoiceEnabled) return;
     if (voiceJustEnabled) {
       unawaited(_joinAgora(publish: false));
     } else if (lostMySeat || newlyMuted || newlyBanned) {
@@ -277,6 +284,11 @@ class _RoomPageState extends State<RoomPage> {
         ).timeout(const Duration(seconds: 12));
         final data = jsonDecode(response.body);
         if (!mounted) return;
+        if (!_voiceEnabled) {
+          await AgoraRoomBridge.leave();
+          _agoraJoinedPublish = null;
+          continue;
+        }
 
         // A newer seat or mute action arrived while the token request was in flight.
         if (_agoraDesiredPublish != null && _agoraDesiredPublish != targetPublish) {
