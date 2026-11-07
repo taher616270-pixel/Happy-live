@@ -109,11 +109,6 @@ class _RoomPageState extends State<RoomPage> {
   void initState() {
     super.initState();
     _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? '').toString();
-    if (_roomAnnouncement.trim().isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _appendRoomAnnouncementMessage(_roomAnnouncement);
-      });
-    }
     unawaited(_refreshSeats());
     unawaited(_startRoomChat());
     unawaited(_joinAgora(publish: false));
@@ -432,20 +427,6 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _appendLocalMessage(Message message) => _mergeRoomMessages([message]);
-
-  void _appendRoomAnnouncementMessage(String text) {
-    final value = text.trim();
-    if (value.isEmpty) return;
-    _appendLocalMessage(Message(
-      id: 'room-announcement-${DateTime.now().microsecondsSinceEpoch}',
-      type: 'announcement',
-      senderId: _ownerId,
-      senderName: _ownerName.isNotEmpty ? _ownerName : 'إعلان الغرفة',
-      senderAvatar: '',
-      text: value,
-      createdAt: DateTime.now(),
-    ));
-  }
 
   void _mergeRoomMessages(Iterable<Message> incoming) {
     if (!mounted) return;
@@ -771,8 +752,17 @@ class _RoomPageState extends State<RoomPage> {
             controller: _roomMessagesController,
             reverse: true,
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
-            initialItemCount: _messages.length,
-            itemBuilder: (context, index, animation) => _roomMessageAnimatedItem(_messages[index], animation),
+            initialItemCount: _messages.length + 1,
+            itemBuilder: (context, index, animation) {
+              if (index == _messages.length) {
+                return SizeTransition(
+                  sizeFactor: CurvedAnimation(parent: animation, curve: Curves.easeOutQuart),
+                  axisAlignment: -1,
+                  child: _roomAnnouncementCard(),
+                );
+              }
+              return _roomMessageAnimatedItem(_messages[index], animation);
+            },
           ),
         ),
       ),
@@ -849,7 +839,7 @@ class _RoomPageState extends State<RoomPage> {
         if (mounted) {
           final savedAnnouncement = (data['announcement'] ?? announcement).toString();
           setState(() => _roomAnnouncement = savedAnnouncement);
-          _appendRoomAnnouncementMessage(savedAnnouncement);
+
         }
         _showMessage('تم تحديث إعلان الغرفة');
       } else {
