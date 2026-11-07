@@ -385,7 +385,6 @@ export default {
         const activeBan = await env.DB.prepare(
           "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
         ).bind(roomId, user.id).first<{ user_id: string }>();
-        if (activeBan) return json({ error: "room_banned", message: "تم حظرك من هذه الغرفة" }, 403, origin, env);
         const activeKick = await env.DB.prepare(
           "SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
         ).bind(roomId, user.id, new Date().toISOString()).first<{ kicked_until: string }>();
@@ -452,6 +451,10 @@ export default {
         if (!visit) return json({ error: "chat_session_not_active" }, 409, origin, env);
 
         if (request.method === "POST") {
+          const activeBan = await env.DB.prepare(
+            "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
+          ).bind(roomId, user.id).first<{ user_id: string }>();
+          if (activeBan) return json({ error: "room_banned", message: "أنت محظور من الكتابة في هذه الغرفة" }, 403, origin, env);
           let body: Record<string, unknown>;
           try { body = await request.json() as Record<string, unknown>; }
           catch { return json({ error: "invalid_json" }, 400, origin, env); }
@@ -626,7 +629,7 @@ export default {
               "INSERT INTO room_kicks (room_id, user_id, kicked_by, kicked_until, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET kicked_by = excluded.kicked_by, kicked_until = excluded.kicked_until, created_at = excluded.created_at"
             ).bind(roomId, targetUserId, actor.id, kickedUntil, now).run();
           }
-          if (action === "kick" || action === "ban") {
+          if (action === "kick") {
             await env.DB.prepare(
               "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
             ).bind(now, roomId, targetUserId).run();
@@ -689,6 +692,7 @@ export default {
           } else if (body.seatNumber === null) {
             await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, user.id).run();
           } else {
+            if (activeBan) return json({ error: "room_banned", message: "أنت محظور من استخدام المايك في هذه الغرفة" }, 403, origin, env);
             const seatNumber = Number(body.seatNumber);
             if (!Number.isInteger(seatNumber) || seatNumber < 1 || seatNumber > 8) {
               return json({ error: "invalid_seat_number" }, 400, origin, env);
@@ -742,7 +746,7 @@ export default {
           audienceCount: audience?.count ?? 0,
           room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة" },
-          me: { id: user.id, name: user.display_name?.trim() || "مستخدم", isMuted: myControl?.is_muted === 1 },
+          me: { id: user.id, name: user.display_name?.trim() || "مستخدم", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
           isOwner: room.owner_user_id === user.id,
           isModerator: !!roomModerator,
           mySeat,
