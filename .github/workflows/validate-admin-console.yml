@@ -1,0 +1,52 @@
+name: Validate Happy Live Admin Console
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/worker/**"
+      - "frontend/web/admin/**"
+      - "admin/**"
+      - ".github/workflows/validate-admin-console.yml"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Worker dependencies
+        working-directory: backend/worker
+        run: npm install
+
+      - name: Type-check Worker
+        working-directory: backend/worker
+        run: npm run typecheck
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Build Flutter Web
+        working-directory: frontend
+        run: flutter build web --release
+
+      - name: Verify standalone admin page is included
+        working-directory: frontend
+        run: |
+          test -f build/web/admin/index.html
+          grep -q "لوحة إدارة Happy Live" build/web/admin/index.html
