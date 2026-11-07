@@ -57,6 +57,7 @@ class _RoomPageState extends State<RoomPage> {
   bool _amRoomOwner = false;
   bool _amRoomModerator = false;
   bool _selfMicMuted = false;
+  bool _isBannedFromRoom = false;
   String? _loadError;
   int? _mySeat;
   String _ownerName = 'صاحب الغرفة';
@@ -147,12 +148,9 @@ class _RoomPageState extends State<RoomPage> {
     try {
       final response = await http.get(_seatsUri, headers: _headers).timeout(const Duration(seconds: 8));
       final data = jsonDecode(response.body);
-      if (response.statusCode == 403 && data is Map &&
-          (data['error'] == 'room_kicked' || data['error'] == 'room_banned')) {
+      if (response.statusCode == 403 && data is Map && data['error'] == 'room_kicked') {
         if (mounted) {
-          _showMessage(data['error'] == 'room_banned'
-              ? 'تم حظرك من هذه الغرفة'
-              : 'تم طردك من الغرفة');
+          _showMessage('تم طردك من الغرفة');
           await Future<void>.delayed(const Duration(milliseconds: 250));
           if (mounted) Navigator.of(context).maybePop();
         }
@@ -193,6 +191,7 @@ class _RoomPageState extends State<RoomPage> {
     final nextIsModerator = data['isModerator'] == true;
     final meData = data['me'];
     final nextSelfMuted = meData is Map && meData['isMuted'] == true;
+    final nextIsBanned = meData is Map && meData['isBanned'] == true;
     final changed = jsonEncode(_seats) != jsonEncode(seats) ||
         _mySeat != nextMySeat ||
         _audienceCount != nextAudienceCount ||
@@ -202,6 +201,7 @@ class _RoomPageState extends State<RoomPage> {
         _amRoomOwner != nextIsOwner ||
         _amRoomModerator != nextIsModerator ||
         _selfMicMuted != nextSelfMuted ||
+        _isBannedFromRoom != nextIsBanned ||
         _isLoading ||
         _loadError != null;
     if (!mounted || !changed) return;
@@ -215,6 +215,7 @@ class _RoomPageState extends State<RoomPage> {
       _amRoomOwner = nextIsOwner;
       _amRoomModerator = nextIsModerator;
       _selfMicMuted = nextSelfMuted;
+      _isBannedFromRoom = nextIsBanned;
       _isLoading = false;
       _loadError = null;
     });
@@ -731,6 +732,28 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _roomChatComposer() {
+    if (_isBannedFromRoom) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: const Color(0xEE15101C),
+          border: Border(top: BorderSide(color: const Color(0x445F4775))),
+        ),
+        child: const SafeArea(
+          top: false,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.block_rounded, color: Color(0xFFE8C477), size: 17),
+              SizedBox(width: 8),
+              Text('تم حظرك من التحدث واستخدام المايك في هذه الغرفة',
+                style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
       decoration: BoxDecoration(color: const Color(0xEE15101C), border: Border(top: BorderSide(color: const Color(0x445F4775)))),
@@ -793,6 +816,10 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Future<void> _selectSeat(int seatNumber) async {
+    if (_isBannedFromRoom) {
+      _showMessage('أنت محظور من استخدام المايك في هذه الغرفة');
+      return;
+    }
     if (_isChangingSeat) return;
     final current = _seatAt(seatNumber);
     final occupiedByOther = current != null && current['isMe'] != true;
