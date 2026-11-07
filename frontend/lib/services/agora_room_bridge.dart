@@ -12,6 +12,12 @@ external JSPromise<JSAny?> _agoraJoin(
 @JS('window.happyLiveAgora.leave')
 external JSPromise<JSAny?> _agoraLeave();
 
+@JS('window.happyLiveAgora.setMuted')
+external JSPromise<JSAny?> _agoraSetMuted(JSBoolean muted);
+
+@JS('window.happyLiveAgora.resumeAudio')
+external JSPromise<JSAny?> _agoraResumeAudio();
+
 class AgoraRoomBridge {
   static Future<void> join({
     required String appId,
@@ -34,6 +40,23 @@ class AgoraRoomBridge {
       await _agoraLeave().toDart;
     } catch (_) {
       // The room may close before the browser SDK has initialized.
+    }
+  }
+
+  static Future<bool> setMuted(bool muted) async {
+    try {
+      final result = await _agoraSetMuted(muted.toJS).toDart;
+      return result?.dartify() == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> resumeAudio() async {
+    try {
+      await _agoraResumeAudio().toDart;
+    } catch (_) {
+      // The user can retry audio recovery with the browser's recovery prompt.
     }
   }
 }
