@@ -55,6 +55,7 @@ class _RoomPageState extends State<RoomPage> {
   OverlayEntry? _miniOverlayEntry;
   Route<dynamic>? _roomRoute;
   bool _isChangingSeat = false;
+  int _agoraSyncGeneration = 0;
   bool _amRoomOwner = false;
   bool _amRoomModerator = false;
   bool _selfMicMuted = false;
@@ -114,6 +115,7 @@ class _RoomPageState extends State<RoomPage> {
 
   @override
   void dispose() {
+    _agoraSyncGeneration++;
     unawaited(AgoraRoomBridge.leave());
     _miniOverlayEntry?.remove();
     _miniOverlayEntry = null;
@@ -232,13 +234,16 @@ class _RoomPageState extends State<RoomPage> {
 
   Future<void> _joinAgora({required bool publish}) async {
     if (_roomId.isEmpty || widget.accessToken.isEmpty) return;
+    final generation = ++_agoraSyncGeneration;
     try {
+      await AgoraRoomBridge.leave();
       final response = await http.post(
         Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/agora-token'),
         headers: _headers,
         body: jsonEncode({'publish': publish}),
       ).timeout(const Duration(seconds: 12));
       final data = jsonDecode(response.body);
+      if (!mounted || generation != _agoraSyncGeneration) return;
       if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
         if (publish && mounted) {
           final message = data is Map ? (data['message'] ?? '').toString() : '';
