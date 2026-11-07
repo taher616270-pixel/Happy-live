@@ -757,8 +757,8 @@ class _RoomPageState extends State<RoomPage> {
         opacity: curved,
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: removing ? Offset.zero : const Offset(0, 0.22),
-            end: removing ? const Offset(0, -0.16) : Offset.zero,
+            begin: removing ? const Offset(0, -0.16) : const Offset(0, 0.22),
+            end: Offset.zero,
           ).animate(curved),
           child: _roomMessageItem(message),
         ),
