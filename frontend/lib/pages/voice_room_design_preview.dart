@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
+  static final GlobalKey _chatInputKey = GlobalKey();
+
   const VoiceRoomDesignPreview({
     super.key,
     required this.room,
@@ -65,7 +67,20 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     child: Scaffold(
       backgroundColor: const Color(0xFF08141C),
       resizeToAvoidBottomInset: false,
-      body: Stack(fit: StackFit.expand, children: [
+      body: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (event) {
+          if (!chatFocusNode.hasFocus) return;
+          final fieldContext = _chatInputKey.currentContext;
+          final renderObject = fieldContext?.findRenderObject();
+          if (renderObject is RenderBox) {
+            final fieldRect = renderObject.localToGlobal(Offset.zero) & renderObject.size;
+            if (!fieldRect.contains(event.position)) {
+              chatFocusNode.unfocus();
+            }
+          }
+        },
+        child: Stack(fit: StackFit.expand, children: [
         const _NightSky(),
         SafeArea(bottom: false, child: Column(children: [
           _header(context),
@@ -106,6 +121,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         ),
         _roomActionsPanel(context),
       ]),
+      ),
     ),
   );
 
@@ -599,6 +615,7 @@ Widget _roomActionButton({
                   ),
                 ),
                 AnimatedContainer(
+                  key: _chatInputKey,
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOutCubic,
                   width: targetWidth.clamp(0.0, screenWidth - 20),
