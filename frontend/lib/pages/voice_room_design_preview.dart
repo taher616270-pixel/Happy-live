@@ -502,7 +502,6 @@ Widget _roomActionButton({
       _pill(Row(mainAxisSize: MainAxisSize.min, children: [
         Text('$audienceCount', style: const TextStyle(color: Colors.white, fontSize: 12)),
         SizedBox(width: 3), Icon(Icons.person_outline_rounded, color: Colors.white, size: 16),
-        SizedBox(width: 4), CircleAvatar(radius: 12, backgroundColor: Colors.white24, child: Icon(Icons.person, size: 13, color: Colors.white70)),
       ]), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
       const Spacer(),
       _pill(Row(mainAxisSize: MainAxisSize.min, children: [
