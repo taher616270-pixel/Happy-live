@@ -128,6 +128,25 @@ async function checkAuthRateLimit(db: D1Database, ip: string): Promise<boolean> 
   return Boolean(row && row.request_count <= AUTH_RATE_MAX_ATTEMPTS);
 }
 
+
+async function authenticatedAdmin(request: Request, db: D1Database) {
+  const authorization = request.headers.get("Authorization") ?? "";
+  const match = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
+  if (!match) return null;
+  const row = await db.prepare(
+    "SELECT a.id, a.username, a.display_name FROM admin_sessions s INNER JOIN admin_accounts a ON a.id = s.admin_id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND a.status = 'active' LIMIT 1"
+  ).bind(await sha256(match[1]), new Date().toISOString()).first<{ id: string; username: string; display_name: string }>();
+  return row ? { id: row.id, username: row.username, display_name: row.display_name, role: "owner" as const } : null;
+}
+
+async function createAdminSession(db: D1Database, adminId: string) {
+  const accessToken = `${crypto.randomUUID()}.${crypto.randomUUID()}`;
+  const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+  await db.prepare("INSERT INTO admin_sessions (id, admin_id, token_hash, expires_at) VALUES (?, ?, ?, ?)")
+    .bind(crypto.randomUUID(), adminId, await sha256(accessToken), expiresAt).run();
+  return { accessToken, expiresAt };
+}
+
 const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -197,7 +216,36 @@ export default {
       return new Response(null, { status: 204, headers });
     }
 
-    // Admin API: roles are read from D1 only; browser-supplied roles are ignored.
+
+    if (url.pathname === "/api/v1/admin/auth/login" && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+      try {
+        if (!(await checkAuthRateLimit(env.DB, "admin:" + ip))) return json({ error: "rate_limit_exceeded" }, 429, origin, env);
+        const body = await request.json() as Record<string, unknown>;
+        const username = typeof body.username === "string" ? body.username.trim().toLowerCase().slice(0, 80) : "";
+        const password = typeof body.password === "string" ? body.password : "";
+        if (!username || password.length < 1 || password.length > 256) return json({ error: "invalid_credentials" }, 401, origin, env);
+        const account = await env.DB.prepare("SELECT id, password_hash FROM admin_accounts WHERE username = ? COLLATE NOCASE AND status = 'active' LIMIT 1")
+          .bind(username).first<{ id: string; password_hash: string }>();
+        if (!account || !(await verifyPassword(password, account.password_hash))) return json({ error: "invalid_credentials", message: "اسم المستخدم أو كلمة المرور غير صحيحة" }, 401, origin, env);
+        const session = await createAdminSession(env.DB, account.id);
+        return json({ ok: true, ...session }, 200, origin, env);
+      } catch (error) {
+        console.error("[admin.auth.login] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "admin_login_unavailable" }, 503, origin, env);
+      }
+    }
+    if (url.pathname === "/api/v1/admin/auth/logout" && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      const authorization = request.headers.get("Authorization") ?? "";
+      const match = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
+      if (match) await env.DB.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL")
+        .bind(new Date().toISOString(), await sha256(match[1])).run();
+      return json({ ok: true }, 200, origin, env);
+    }
+
+    // Admin API: authentication uses a separate admin-only session table.
     if (
       url.pathname === "/api/v1/admin/me" ||
       url.pathname === "/api/v1/admin/overview" ||
@@ -209,17 +257,14 @@ export default {
     ) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
-        const actor = await authenticatedUser(request, env.DB);
+        const actor = await authenticatedAdmin(request, env.DB);
         if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
-        const roleRow = await env.DB.prepare("SELECT role FROM admin_roles WHERE user_id = ? LIMIT 1")
-          .bind(actor.id).first<{ role: "owner" | "admin" | "moderator" }>();
-        if (!roleRow) return json({ error: "admin_access_required" }, 403, origin, env);
-        const role = roleRow.role;
+        const role = "owner" as const;
         const canManageUsers = role === "owner" || role === "admin";
         const canManageRooms = role === "owner" || role === "admin";
 
         if (url.pathname === "/api/v1/admin/me" && request.method === "GET") {
-          return json({ ok: true, admin: { id: actor.id, name: actor.display_name ?? "", email: actor.email, role } }, 200, origin, env);
+          return json({ ok: true, admin: { id: actor.id, name: actor.display_name, username: actor.username, role } }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/overview" && request.method === "GET") {
           const [users, rooms, posts] = await Promise.all([
@@ -253,7 +298,7 @@ export default {
           return json({ ok: true, rooms: result.results ?? [] }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/audit" && request.method === "GET") {
-          if (role === "moderator") return json({ error: "permission_denied" }, 403, origin, env);
+          
           const result = await env.DB.prepare(
             "SELECT l.id, l.action, l.target_type, l.target_id, l.details_json, l.created_at, p.display_name AS actor_name, u.email AS actor_email " +
             "FROM admin_audit_logs l LEFT JOIN users u ON u.id = l.actor_user_id LEFT JOIN profiles p ON p.user_id = l.actor_user_id " +
@@ -265,7 +310,7 @@ export default {
         if (userStatusRoute && request.method === "PATCH") {
           if (!canManageUsers) return json({ error: "permission_denied" }, 403, origin, env);
           const targetId = userStatusRoute[1];
-          if (targetId === actor.id) return json({ error: "cannot_change_own_status" }, 400, origin, env);
+          
           const body = await request.json() as Record<string, unknown>;
           const status = body.status === "active" || body.status === "suspended" ? body.status : null;
           if (!status) return json({ error: "invalid_status" }, 400, origin, env);
@@ -278,7 +323,7 @@ export default {
           await env.DB.batch([
             env.DB.prepare("UPDATE users SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, targetId),
             env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, 'user', ?, ?, ?)")
-              .bind(crypto.randomUUID(), actor.id, status === "suspended" ? "user.suspend" : "user.activate", targetId, JSON.stringify({ status }), now)
+              .bind(crypto.randomUUID(), null, status === "suspended" ? "user.suspend" : "user.activate", targetId, JSON.stringify({ status, adminUsername: actor.username }), now)
           ]);
           return json({ ok: true, userId: targetId, status }, 200, origin, env);
         }
@@ -295,7 +340,7 @@ export default {
           await env.DB.batch([
             env.DB.prepare("UPDATE rooms SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, targetId),
             env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, 'room', ?, ?, ?)")
-              .bind(crypto.randomUUID(), actor.id, status === "closed" ? "room.close" : "room.reopen", targetId, JSON.stringify({ status }), now)
+              .bind(crypto.randomUUID(), null, status === "closed" ? "room.close" : "room.reopen", targetId, JSON.stringify({ status, adminUsername: actor.username }), now)
           ]);
           return json({ ok: true, roomId: targetId, status }, 200, origin, env);
         }
@@ -1052,13 +1097,9 @@ export default {
     if (url.pathname === "/api/v1/admin/reports/post-comments" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
-        const admin = await authenticatedUser(request, env.DB);
+        const admin = await authenticatedAdmin(request, env.DB);
         if (!admin) return json({ error: "authentication_required" }, 401, origin, env);
-        const role = await env.DB.prepare("SELECT role FROM admin_roles WHERE user_id = ? LIMIT 1")
-          .bind(admin.id).first<{ role: string }>();
-        if (!role || !["owner", "admin", "moderator"].includes(role.role)) {
-          return json({ error: "admin_permission_required" }, 403, origin, env);
-        }
+        
         const status = url.searchParams.get("status") || "pending";
         if (!["pending", "reviewed", "dismissed", "actioned", "all"].includes(status)) {
           return json({ error: "invalid_report_status" }, 400, origin, env);
