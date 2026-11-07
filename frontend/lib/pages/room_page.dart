@@ -774,8 +774,8 @@ class _RoomPageState extends State<RoomPage> {
 
   Widget _roomMessagesPanel() {
     return Container(
-      height: 250,
-      margin: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+      height: 176,
+      margin: const EdgeInsets.fromLTRB(2, 2, 2, 2),
       decoration: BoxDecoration(color: Colors.black.withOpacity(0.10), borderRadius: BorderRadius.circular(16)),
       child: ListView.builder(
         controller: _roomMessagesController,
@@ -1040,6 +1040,7 @@ class _RoomPageState extends State<RoomPage> {
     return VoiceRoomDesignPreview(
       room: widget.room,
       announcement: _roomAnnouncement,
+      chatMessagesPanel: _roomMessagesPanel(),
       canEditAnnouncement: _isRoomOwner,
       onEditAnnouncement: _editRoomAnnouncement,
       seats: _seats,
