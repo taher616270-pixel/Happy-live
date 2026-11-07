@@ -583,7 +583,7 @@ Widget _roomActionButton({
           animation: chatFocusNode,
           builder: (context, child) {
             final isFocused = chatFocusNode.hasFocus;
-            final targetWidth = screenWidth - 16;
+            final targetWidth = screenWidth * (isFocused ? 0.96 : 0.59);
             final keyboardHeight = isFocused ? media.viewInsets.bottom : 0.0;
             return Stack(
               alignment: Alignment.center,
@@ -613,8 +613,15 @@ Widget _roomActionButton({
                     child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOutCubic,
-                  width: targetWidth.clamp(0.0, screenWidth - 16),
-                  height: 42,
+                  width: targetWidth.clamp(0.0, screenWidth - 20),
+                  height: 44,
+                  // Keep horizontal offset only; the parent Positioned
+                  // anchors this field above the actual keyboard inset.
+                  transform: Matrix4.translationValues(
+                    isFocused ? 15 : 30,
+                    0,
+                    0,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2D2D35),
                     borderRadius: BorderRadius.circular(25),
@@ -648,34 +655,36 @@ Widget _roomActionButton({
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Padding(
-                        padding: const EdgeInsetsDirectional.only(end: 4),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF00D9B5),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () async {
-                                if (chatController.text.trim().isNotEmpty) {
-                                  await onSendChat();
-                                }
-                              },
-                              customBorder: const CircleBorder(),
-                              child: const SizedBox.expand(
-                                child: Center(
-                                  child: Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                      if (isFocused) ...[
+                        const SizedBox(width: 6),
+                        Padding(
+                          padding: const EdgeInsetsDirectional.only(end: 4),
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF00D9B5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () async {
+                                  if (chatController.text.trim().isNotEmpty) {
+                                    await onSendChat();
+                                  }
+                                },
+                                customBorder: const CircleBorder(),
+                                child: const SizedBox.expand(
+                                  child: Center(
+                                    child: Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                     ),
