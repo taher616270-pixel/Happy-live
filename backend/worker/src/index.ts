@@ -1144,9 +1144,18 @@ export default {
         const audience = await env.DB.prepare(
           "SELECT COUNT(DISTINCT user_id) AS count FROM room_chat_visits WHERE room_id = ? AND exited_at IS NULL AND last_seen_at >= ?"
         ).bind(roomId, audienceCutoff).first<{ count: number }>();
+        const audienceUsersResult = await env.DB.prepare(
+          "SELECT p.user_id, p.display_name, p.avatar_key, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? GROUP BY p.user_id, p.display_name, p.avatar_key ORDER BY last_seen_at DESC LIMIT 5"
+        ).bind(roomId, audienceCutoff).all<{ user_id: string; display_name: string | null; avatar_key: string | null; last_seen_at: string }>();
+        const audienceUsers = (audienceUsersResult.results ?? []).map((visitor) => ({
+          userId: visitor.user_id,
+          name: visitor.display_name?.trim() || "مستخدم",
+          avatarUrl: visitor.avatar_key ?? ""
+        }));
         return json({
           ok: true,
           audienceCount: audience?.count ?? 0,
+          audienceUsers,
           voiceEnabled,
           room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة" },
