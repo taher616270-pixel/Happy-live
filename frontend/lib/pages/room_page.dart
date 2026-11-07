@@ -110,6 +110,11 @@ class _RoomPageState extends State<RoomPage> {
   void initState() {
     super.initState();
     _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? '').toString();
+    if (_roomAnnouncement.trim().isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _appendRoomAnnouncementMessage(_roomAnnouncement);
+      });
+    }
     unawaited(_refreshSeats());
     unawaited(_startRoomChat());
     unawaited(_joinAgora(publish: false));
@@ -431,6 +436,20 @@ class _RoomPageState extends State<RoomPage> {
 
   void _appendLocalMessage(Message message) => _mergeRoomMessages([message]);
 
+  void _appendRoomAnnouncementMessage(String text) {
+    final value = text.trim();
+    if (value.isEmpty) return;
+    _appendLocalMessage(Message(
+      id: 'room-announcement-${DateTime.now().microsecondsSinceEpoch}',
+      type: 'announcement',
+      senderId: _ownerId,
+      senderName: _ownerName.isNotEmpty ? _ownerName : 'إعلان الغرفة',
+      senderAvatar: '',
+      text: value,
+      createdAt: DateTime.now(),
+    ));
+  }
+
   void _mergeRoomMessages(Iterable<Message> incoming) {
     if (!mounted) return;
     final ordered = incoming.toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -722,7 +741,9 @@ class _RoomPageState extends State<RoomPage> {
 
     return Align(
       alignment: Alignment.centerRight,
-      child: Padding(
+      child: GestureDetector(
+        onTap: message.type == 'announcement' && _isRoomOwner ? _editRoomAnnouncement : null,
+        child: Padding(
         padding: const EdgeInsets.only(left: 50, bottom: 8),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -744,6 +765,7 @@ class _RoomPageState extends State<RoomPage> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -852,7 +874,11 @@ class _RoomPageState extends State<RoomPage> {
       ).timeout(const Duration(seconds: 10));
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data is Map && data['ok'] == true) {
-        if (mounted) setState(() => _roomAnnouncement = (data['announcement'] ?? announcement).toString());
+        if (mounted) {
+          final savedAnnouncement = (data['announcement'] ?? announcement).toString();
+          setState(() => _roomAnnouncement = savedAnnouncement);
+          _appendRoomAnnouncementMessage(savedAnnouncement);
+        }
         _showMessage('تم تحديث إعلان الغرفة');
       } else {
         final message = data is Map ? (data['message'] ?? '').toString() : '';
