@@ -1191,7 +1191,9 @@ class _RoomPageState extends State<RoomPage> {
           builder: (context, constraints) {
             final isAndroid = Theme.of(context).platform == TargetPlatform.android;
             final tileWidth = (constraints.maxWidth - 34) / 4;
-            final micSize = (tileWidth * .78).clamp(48.0, 70.0);
+            final micSize = isAndroid
+                ? (tileWidth * .66).clamp(42.0, 60.0)
+                : (tileWidth * .78).clamp(48.0, 70.0);
             return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
