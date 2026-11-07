@@ -533,8 +533,6 @@ Widget _roomActionButton({
           ),
         );
       },
-        ),
-      },
     ),
   );
 
