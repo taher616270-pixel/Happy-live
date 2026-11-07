@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
-  static Offset? _keyboardDismissStart;
-  static final GlobalKey _chatInputKey = GlobalKey();
 
   const VoiceRoomDesignPreview({
     super.key,
@@ -68,33 +66,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     child: Scaffold(
       backgroundColor: const Color(0xFF08141C),
       resizeToAvoidBottomInset: false,
-      body: Listener(
-        behavior: HitTestBehavior.translucent,
-        onPointerDown: (event) {
-          if (!chatFocusNode.hasFocus) return;
-          final fieldContext = _chatInputKey.currentContext;
-          final renderObject = fieldContext?.findRenderObject();
-          if (renderObject is RenderBox && renderObject.attached) {
-            final localPosition = renderObject.globalToLocal(event.position);
-            if (renderObject.paintBounds.contains(localPosition)) {
-              _keyboardDismissStart = null;
-              return;
-            }
-          }
-          _keyboardDismissStart = event.position;
-        },
-        onPointerMove: (event) {
-          final start = _keyboardDismissStart;
-          if (!chatFocusNode.hasFocus || start == null) return;
-          final delta = event.position - start;
-          if (delta.dy > 60 && delta.dy > delta.dx.abs() * 1.2) {
-            _keyboardDismissStart = null;
-            chatFocusNode.unfocus();
-          }
-        },
-        onPointerUp: (_) => _keyboardDismissStart = null,
-        onPointerCancel: (_) => _keyboardDismissStart = null,
-        child: Stack(fit: StackFit.expand, children: [
+      body: Stack(fit: StackFit.expand, children: [
         const _NightSky(),
         SafeArea(bottom: false, child: Column(children: [
           _header(context),
@@ -142,7 +114,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         ),
         _roomActionsPanel(context),
       ]),
-      ),
     ),
   );
 
@@ -640,7 +611,6 @@ Widget _roomActionButton({
                   child: Align(
                     alignment: Alignment.bottomCenter,
                     child: AnimatedContainer(
-                  key: _chatInputKey,
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOutCubic,
                   width: targetWidth.clamp(0.0, screenWidth - 20),
