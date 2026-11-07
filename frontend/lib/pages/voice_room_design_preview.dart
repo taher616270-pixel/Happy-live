@@ -589,7 +589,7 @@ Widget _roomActionButton({
                   width: targetWidth.clamp(0.0, screenWidth - 20),
                   height: 44,
                   transform: Matrix4.translationValues(
-                    0,
+                    10,
                     isFocused && keyboardHeight > 0 ? -keyboardHeight : 0,
                     0,
                   ),
