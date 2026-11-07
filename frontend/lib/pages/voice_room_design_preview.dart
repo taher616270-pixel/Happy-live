@@ -679,78 +679,148 @@ Widget _roomActionButton({
   );
 
   void _openChatComposer(BuildContext context) {
-    showModalBottomSheet<void>(
+    showGeneralDialog<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF20202A),
-      barrierColor: Colors.black54,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (sheetContext) {
+      barrierDismissible: true,
+      barrierLabel: 'إغلاق الدردشة',
+      barrierColor: Colors.black.withOpacity(.48),
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (sheetContext.mounted) chatFocusNode.requestFocus();
+          if (dialogContext.mounted) chatFocusNode.requestFocus();
         });
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            16,
-            18,
-            16,
-            MediaQuery.of(sheetContext).viewInsets.bottom + 18,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: chatController,
-                  focusNode: chatFocusNode,
-                  minLines: 1,
-                  maxLines: 4,
-                  maxLength: 100,
-                  inputFormatters: [LengthLimitingTextInputFormatter(100)],
-                  textDirection: TextDirection.rtl,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) async {
-                    if (chatController.text.trim().isEmpty) return;
-                    await onSendChat();
-                    if (sheetContext.mounted) Navigator.pop(sheetContext);
-                  },
-                  style: const TextStyle(color: Colors.white, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: 'اكتب رسالتك...',
-                    hintStyle: const TextStyle(color: Colors.white54),
-                    counterText: '',
-                    filled: true,
-                    fillColor: Colors.black26,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Stack(
+              children: [
+                // تبقى رسائل الغرفة الحقيقية ظاهرة خلف طبقة التعتيم.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: SafeArea(
+                    top: false,
+                    child: Material(
+                      color: const Color(0xFF1B1A22),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          10,
+                          9,
+                          10,
+                          MediaQuery.of(dialogContext).viewInsets.bottom + 9,
+                        ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              tooltip: 'الصور',
+                              onPressed: () {},
+                              icon: const Icon(Icons.image_outlined,
+                                  color: Colors.white70, size: 27),
+                            ),
+                            Expanded(
+                              child: Container(
+                                constraints: const BoxConstraints(minHeight: 52),
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(.08),
+                                  borderRadius: BorderRadius.circular(28),
+                                ),
+                                child: Row(
+                                  children: [
+                                    IconButton(
+                                      tooltip: 'تنسيق النص',
+                                      onPressed: () {},
+                                      icon: const Icon(Icons.text_fields,
+                                          color: Colors.white70, size: 25),
+                                    ),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: chatController,
+                                        focusNode: chatFocusNode,
+                                        minLines: 1,
+                                        maxLines: 4,
+                                        maxLength: 100,
+                                        inputFormatters: [
+                                          LengthLimitingTextInputFormatter(100),
+                                        ],
+                                        textDirection: TextDirection.rtl,
+                                        textInputAction: TextInputAction.send,
+                                        onSubmitted: (_) => onSendChat(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                        decoration: const InputDecoration(
+                                          counterText: '',
+                                          hintText: 'قل شيئًا',
+                                          hintStyle: TextStyle(
+                                            color: Colors.white38,
+                                            fontSize: 16,
+                                          ),
+                                          border: InputBorder.none,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'الملصقات',
+                                      onPressed: () {},
+                                      icon: const Icon(
+                                        Icons.face_retouching_natural,
+                                        color: Colors.white70,
+                                        size: 25,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            AnimatedBuilder(
+                              animation: chatController,
+                              builder: (context, child) {
+                                final enabled =
+                                    chatController.text.trim().isNotEmpty;
+                                return GestureDetector(
+                                  onTap: enabled ? onSendChat : null,
+                                  child: Container(
+                                    width: 54,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: enabled
+                                          ? const Color(0xFF8E2DE2)
+                                          : Colors.white.withOpacity(.08),
+                                      borderRadius: BorderRadius.circular(25),
+                                    ),
+                                    child: Icon(
+                                      Icons.send_rounded,
+                                      color: enabled
+                                          ? Colors.white
+                                          : Colors.white30,
+                                      size: 24,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Material(
-                color: const Color(0xFF00D9B5),
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () async {
-                    if (chatController.text.trim().isEmpty) return;
-                    await onSendChat();
-                    if (sheetContext.mounted) Navigator.pop(sheetContext);
-                  },
-                  child: const SizedBox(
-                    width: 46,
-                    height: 46,
-                    child: Icon(Icons.send_rounded, color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        );
+        return FadeTransition(opacity: curved, child: child);
       },
     ).whenComplete(() => chatFocusNode.unfocus());
   }
