@@ -161,13 +161,13 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
         final items = <Map<String, dynamic>>[
-          {'icon': Icons.settings_rounded, 'label': 'الإعدادات', 'color': Color(0xFF536D9B)},
-          {'icon': Icons.wallpaper_rounded, 'label': 'الخلفية', 'color': Color(0xFF8B6BC1)},
-          {'icon': Icons.lock_rounded, 'label': 'قفل الغرفة', 'color': Color(0xFFCA9A42)},
-          {'icon': Icons.share_rounded, 'label': 'مشاركة', 'color': Color(0xFF4C9A83)},
-          {'icon': Icons.delete_sweep_rounded, 'label': 'مسح الدردشة', 'color': Color(0xFFC65D66)},
-          {'icon': Icons.trending_up_rounded, 'label': 'رفع مستوى', 'color': Color(0xFFB17A42)},
-          {'icon': Icons.palette_rounded, 'label': 'السمة', 'color': Color(0xFF8870B8)},
+          {'icon': Icons.settings_outlined, 'label': 'الإعدادات', 'highlight': false},
+          {'icon': Icons.palette_outlined, 'label': 'الخلفية', 'highlight': false},
+          {'icon': Icons.lock_outline, 'label': 'قفل الغرفة', 'highlight': false},
+          {'icon': Icons.share_outlined, 'label': 'مشاركة', 'highlight': false},
+          {'icon': Icons.cleaning_services_outlined, 'label': 'مسح الدردشة', 'highlight': false},
+          {'icon': Icons.rocket_launch_outlined, 'label': 'رفع مستوى', 'highlight': true},
+          {'icon': Icons.checkroom_outlined, 'label': 'السمة', 'highlight': false},
         ];
         return SafeArea(
           bottom: false,
@@ -178,16 +178,30 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               elevation: 12,
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 18, 10, 22),
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 4,
-                  runSpacing: 16,
-                  children: items.map((item) {
-                    return SizedBox(
-                      width: MediaQuery.of(dialogContext).size.width / 4 - 10,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
+                padding: const EdgeInsets.fromLTRB(10, 16, 10, 20),
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: items.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      mainAxisExtent: 100,
+                      crossAxisSpacing: 4,
+                      mainAxisSpacing: 8,
+                    ),
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      final highlighted = item['highlight'] == true;
+                      final iconColor = highlighted
+                          ? const Color(0xFFFF6A00)
+                          : const Color(0xFF555555);
+                      final circleColor = highlighted
+                          ? const Color(0xFFFFF0E6)
+                          : const Color(0xFFF0F0F0);
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(14),
                         onTap: () {
                           Navigator.of(dialogContext).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -197,26 +211,40 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             ),
                           );
                         },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 5),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(item['icon'] as IconData, color: item['color'] as Color, size: 27),
-                              const SizedBox(height: 7),
-                              Text(
-                                item['label'] as String,
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Color(0xFF29252E), fontSize: 11, fontWeight: FontWeight.w700),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: circleColor,
+                                shape: BoxShape.circle,
                               ),
-                            ],
-                          ),
+                              child: Icon(
+                                item['icon'] as IconData,
+                                color: iconColor,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              item['label'] as String,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF444444),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
