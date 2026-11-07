@@ -751,13 +751,24 @@ export default {
           await env.DB.prepare(
             "INSERT INTO room_chat_visits (id, room_id, user_id, entered_at, last_seen_at) VALUES (?, ?, ?, ?, ?)"
           ).bind(visitId, roomId, user.id, now, now).run();
+          const entryMessageId = crypto.randomUUID();
+          const entryMessage = {
+            id: entryMessageId,
+            userId: user.id,
+            name: user.display_name?.trim() || "مستخدم",
+            message: "انضم للغرفة",
+            imageUrl: null,
+            createdAt: now,
+            isMe: false
+          };
+          // Keep room-entry system messages in the same persistent room chat
+          // so current and later visitors can see them in the conversation.
+          await env.DB.prepare(
+            "INSERT INTO room_messages (id, room_id, user_id, message, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+          ).bind(entryMessageId, roomId, user.id, "انضم للغرفة", null, now).run();
           await broadcastRoomChat(env, roomId, {
             type: "system",
-            message: {
-              id: crypto.randomUUID(), userId: user.id,
-              name: user.display_name?.trim() || "مستخدم",
-              message: "انضم للغرفة", imageUrl: null, createdAt: now, isMe: false
-            }
+            message: entryMessage
           });
           return json({ ok: true, enteredAt: now }, 200, origin, env);
         }
