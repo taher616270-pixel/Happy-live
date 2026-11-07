@@ -42,6 +42,8 @@ class _RoomPageState extends State<RoomPage> {
   final Set<String> _messageIds = <String>{};
   final TextEditingController _messageController = TextEditingController();
   final List<Message> _messages = [];
+  String _roomEntryNotice = '';
+  Timer? _roomEntryNoticeTimer;
   final ScrollController _roomMessagesController = ScrollController();
   DateTime _lastLocalMessageAt = DateTime.fromMillisecondsSinceEpoch(0);
   late String _roomAnnouncement;
@@ -476,6 +478,24 @@ class _RoomPageState extends State<RoomPage> {
               ? 'announcement'
               : 'text';
       _appendLocalMessage(_messageFromApi(item, type: type));
+      final eventText = (item['message'] ?? item['text'] ?? '').toString();
+      final senderId = (item['userId'] ?? item['senderId'] ?? '').toString();
+      if (eventType == 'system' &&
+          (eventText.contains('انضم') || eventText.contains('دخل الغرفة'))) {
+        final senderName = (item['name'] ?? item['senderName'] ?? 'مستخدم').toString();
+        final isOwnerEntry = senderId.isNotEmpty && senderId == _ownerId;
+        if (mounted) {
+          setState(() {
+            _roomEntryNotice = isOwnerEntry
+                ? 'مالك الغرفة @ $senderName دخل غرفة'
+                : '$senderName دخل الغرفة';
+          });
+          _roomEntryNoticeTimer?.cancel();
+          _roomEntryNoticeTimer = Timer(const Duration(seconds: 4), () {
+            if (mounted) setState(() => _roomEntryNotice = '');
+          });
+        }
+      }
     } catch (_) {
       // Ignore malformed or unrelated stream frames without interrupting the chat.
     }
@@ -1035,6 +1055,7 @@ class _RoomPageState extends State<RoomPage> {
     return VoiceRoomDesignPreview(
       room: widget.room,
       announcement: _roomAnnouncement,
+      entryNotice: _roomEntryNotice,
       canEditAnnouncement: _isRoomOwner,
       onEditAnnouncement: _editRoomAnnouncement,
       seats: _seats,
