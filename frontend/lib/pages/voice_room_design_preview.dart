@@ -64,109 +64,180 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   Widget build(BuildContext context) => Directionality(
     textDirection: TextDirection.rtl,
     child: Scaffold(
-      backgroundColor: const Color(0xFF08141C),
+      backgroundColor: const Color(0xFF0E1A3A),
       resizeToAvoidBottomInset: false,
-      body: Stack(fit: StackFit.expand, children: [
-        const _NightSky(),
-        SafeArea(bottom: false, child: Column(children: [
-          _header(context),
-          _subHeader(),
-          _seats(context),
-          _listeners(),
-          Expanded(
-            child: Stack(children: [
-            Positioned.fill(child: ListView(
-              padding: const EdgeInsets.fromLTRB(12, 14, 12, 8),
-              children: [
-              ],
-            )),
-            if (chatMessagesPanel != null)
-              Positioned(
-                left: 58,
-                right: 12,
-                top: 0,
-                bottom: 14,
-                child: chatMessagesPanel!,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF0E1A3A),
+                  Color(0xFF1B1840),
+                  Color(0xFF4A2346),
+                  Color(0xFF7A3A4A),
+                ],
+                stops: [0, .35, .75, 1],
               ),
-            Positioned(left: 12, bottom: 4, child: Column(children: const [
-              _SideTile(icon: Icons.campaign_rounded, label: '0%', color: Color(0xFFFFC857)),
-              _SideTile(icon: Icons.sports_esports_rounded, label: '', color: Color(0xFFB57BFF)),
-              _SideTile(icon: Icons.diamond_rounded, label: '0/2500', color: Color(0xFFFF8A65)),
-            ])),
-          ]),
-          ),
-        ])),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: MediaQuery.of(context).viewPadding.bottom + 8,
-          child: _bottomBar(context),
-        ),
-        Positioned.fill(
-          child: IgnorePointer(
-            ignoring: !showRoomActions,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: onRoomActions,
-              child: const SizedBox.expand(),
             ),
           ),
-        ),
-        _roomActionsPanel(context),
-      ]),
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                _header(context),
+                _subHeader(),
+                const SizedBox(height: 10),
+                _seats(context),
+                const SizedBox(height: 8),
+                _listeners(),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      if (chatMessagesPanel != null)
+                        Positioned(
+                          left: 58,
+                          right: 12,
+                          top: 8,
+                          bottom: 8,
+                          child: chatMessagesPanel!,
+                        ),
+                      Positioned(
+                        left: 12,
+                        bottom: 8,
+                        child: Column(
+                          children: const [
+                            _RoomGameTile(
+                              color1: Color(0xFF3FA7D6),
+                              color2: Color(0xFFE8A04A),
+                              badge: 'BET',
+                              timer: '19s',
+                            ),
+                            SizedBox(height: 8),
+                            _RoomGameTile(
+                              color1: Color(0xFF7A1F2B),
+                              color2: Color(0xFFC9972C),
+                              badge: 'VIP EXP ×1.8',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _bottomBar(context),
+                SizedBox(height: MediaQuery.of(context).viewPadding.bottom + 8),
+              ],
+            ),
+          ),
+          _roomActionsPanel(context),
+        ],
+      ),
     ),
   );
 
   Widget _pill(Widget child, {EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6)}) =>
     Container(padding: padding, decoration: BoxDecoration(color: Colors.black.withOpacity(.28), borderRadius: BorderRadius.circular(18)), child: child);
 
-  Widget _header(BuildContext context) => Directionality(textDirection: TextDirection.ltr, child: Padding(
-    padding: const EdgeInsets.fromLTRB(10, 8, 6, 0),
-    child: Row(children: [
-      InkWell(
-        onTap: () => _showRoomMenu(context),
-        borderRadius: BorderRadius.circular(20),
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        child: const SizedBox(
-          width: 42,
-          height: 42,
-          child: Icon(Icons.more_horiz_rounded, color: Colors.white, size: 28),
-        ),
-      ),
-      const SizedBox(width: 8),
-      Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 46, height: 46, decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [Color(0xFFFFD27A), Color(0xFFB8672A)])), child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 26)),
-        const Padding(padding: EdgeInsets.only(top: 2), child: Text('2026.11.07', style: TextStyle(color: Colors.white54, fontSize: 8))),
-      ]),
-      const Spacer(),
-      _pill(Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 28, height: 28, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE8892B)), child: const Icon(Icons.military_tech_rounded, color: Colors.white, size: 18)),
-        const SizedBox(width: 8),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
-          ConstrainedBox(constraints: const BoxConstraints(maxWidth: 120), child: Text(_name, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.rtl, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800))),
-          Text('ID:$_id', style: const TextStyle(color: Colors.white70, fontSize: 11)),
-        ]),
-        const SizedBox(width: 8),
-        ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 38, height: 38, child: _cover == null ? Container(color: Colors.white24, child: const Icon(Icons.mic_rounded, color: Colors.white70)) : Image.network(_cover!, fit: BoxFit.cover))),
-      ]), padding: const EdgeInsets.fromLTRB(6, 5, 6, 5)),
-      Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _showSaveLeaveDialog(context),
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          child: const SizedBox(
-            width: 38,
-            height: 42,
-            child: Icon(Icons.chevron_right_rounded, color: Colors.white, size: 30),
+  Widget _header(BuildContext context) {
+    final avatar = (room['ownerAvatar'] ?? room['ownerAvatarUrl'] ?? _cover ?? '').toString();
+    final trophies = (room['trophies'] ?? room['trophyCount'] ?? 0).toString();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(.25),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(.12)),
+              ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: avatar.startsWith('http')
+                          ? Image.network(avatar, fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const ColoredBox(
+                                color: Colors.white12,
+                                child: Icon(Icons.person, color: Colors.white70),
+                              ))
+                          : const ColoredBox(
+                              color: Colors.white12,
+                              child: Icon(Icons.person, color: Colors.white70),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'ID: $_id',
+                          style: const TextStyle(color: Colors.white60, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
+          const SizedBox(width: 10),
+          _headerAction(Icons.close_rounded, () => _showSaveLeaveDialog(context), 28),
+          const SizedBox(width: 10),
+          _headerAction(Icons.picture_in_picture_alt_rounded, onMinimizeRoom, 23),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(.3),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(trophies, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 4),
+                const Text('🏆', style: TextStyle(fontSize: 16)),
+              ],
+            ),
+          ),
+        ],
       ),
-    ]),
-  ));
+    );
+  }
 
+  Widget _headerAction(IconData icon, VoidCallback? onTap, double size) =>
+      InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: SizedBox(
+          width: 28,
+          height: 42,
+          child: Icon(icon, color: Colors.white, size: size),
+        ),
+      );
 
   void _showRoomMenu(BuildContext context) {
     showGeneralDialog<void>(
@@ -340,72 +411,127 @@ Widget _roomActionButton({
     ),
   );
 
-  Widget _subHeader() => Directionality(textDirection: TextDirection.ltr, child: Padding(
-    padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
-    child: Row(children: [
-      _pill(const Text('هدايا الغرفة 🌻', textDirection: TextDirection.rtl, style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))),
-      const Spacer(),
-      Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF1E8E5A), borderRadius: BorderRadius.circular(14)), child: const Row(mainAxisSize: MainAxisSize.min, children: [
-        Text('Lv.1', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
-        SizedBox(width: 4), Icon(Icons.eco_rounded, color: Colors.white, size: 15),
-      ])),
-    ]),
-  ));
+  Widget _subHeader() => Padding(
+    padding: const EdgeInsetsDirectional.fromSTEB(12, 9, 12, 0),
+    child: Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(.30),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🔥', style: TextStyle(fontSize: 16)),
+            const SizedBox(width: 6),
+            Text(
+              (room['hotRankText'] ?? 'الساعة رقم 100+').toString(),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 
   Widget _seats(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(14, 18, 14, 0),
-    child: Column(children: List.generate(2, (r) => Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(children: List.generate(4, (c) {
-        final n = r * 4 + c + 1;
-        final seat = _seatAt(n);
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    child: GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 8,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        mainAxisSpacing: 7,
+        crossAxisSpacing: 4,
+        childAspectRatio: .78,
+      ),
+      itemBuilder: (context, index) {
+        final number = index + 1;
+        final seat = _seatAt(number);
         final occupied = seat != null;
         final mine = seat?['isMe'] == true;
         final name = (seat?['name'] ?? '').toString();
         final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
-        final canTap = (!occupied || mine) && !isChangingSeat;
-        return Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: occupied
-                ? (avatar.startsWith('http')
-                    ? () => _showUserProfile(context, seat!)
-                    : null)
-                : (canTap ? () => onTapSeat(n) : null),
-            child: Container(
-              width: 54, height: 54,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: occupied ? const Color(0xFF17434C) : Colors.white.withOpacity(.16),
-                border: Border.all(color: mine ? const Color(0xFFFFD98B) : Colors.white.withOpacity(.35), width: mine ? 2.5 : 1),
-                boxShadow: mine ? const [BoxShadow(color: Color(0x66FFD98B), blurRadius: 12)] : null,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: occupied && avatar.startsWith('http')
-                  ? ClipOval(
-                      child: SizedBox.expand(
-                        child: Image.network(
-                          avatar,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Center(
-                            child: Text(
-                              name.isEmpty ? '؟' : name.characters.first,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            ),
+        final muted = seat?['isMuted'] == true;
+        final locked = seat?['isLocked'] == true || seat?['locked'] == true;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: occupied
+              ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
+              : (!locked && !isChangingSeat ? () => onTapSeat(number) : null),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(.10),
+                      border: Border.all(
+                        color: mine ? const Color(0xFFFFD98B) : Colors.white.withOpacity(occupied ? .60 : .18),
+                        width: mine ? 2.2 : occupied ? 2 : 1,
+                      ),
+                      image: avatar.startsWith('http')
+                          ? DecorationImage(image: NetworkImage(avatar), fit: BoxFit.cover)
+                          : null,
+                    ),
+                    child: avatar.startsWith('http')
+                        ? null
+                        : Icon(
+                            occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
+                            color: Colors.white.withOpacity(.78),
+                            size: 28,
                           ),
+                  ),
+                  if (muted || occupied)
+                    Positioned(
+                      bottom: -2,
+                      left: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                        child: Icon(
+                          muted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                          size: 13,
+                          color: muted ? const Color(0xFFE91E63) : const Color(0xFF319B70),
                         ),
                       ),
-                    )
-                  : Icon(occupied ? Icons.mic_rounded : Icons.add_rounded, color: mine ? const Color(0xFFFFD98B) : Colors.white70, size: 32),
-            ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              if (occupied)
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 86),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    mine ? 'أنت' : (name.isEmpty ? 'مستخدم' : name),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w700),
+                  ),
+                )
+              else
+                Text(
+                  locked ? 'مقفل' : '$number',
+                  style: TextStyle(color: Colors.white.withOpacity(.65), fontSize: 13),
+                ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(occupied ? (name.isNotEmpty ? name : 'مستخدم') : '$n',
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white70, fontSize: 10)),
-        ]));
-      })),
-    ))),
+        );
+      },
+    ),
   );
 
   void _showUserProfile(BuildContext context, Map<String, dynamic> user) {
@@ -512,192 +638,240 @@ Widget _roomActionButton({
     ),
   );
 
-  Widget _listeners() => Directionality(textDirection: TextDirection.ltr, child: Padding(
-    padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
-    child: Row(children: [
-      _pill(Row(mainAxisSize: MainAxisSize.min, children: [
-        Text('$audienceCount', style: const TextStyle(color: Colors.white, fontSize: 12)),
-        const SizedBox(width: 3),
-        const Icon(Icons.person_outline_rounded, color: Colors.white, size: 16),
-      ]), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
-      const SizedBox(width: 8),
-      Expanded(
-        child: SizedBox(
-          height: 34,
-          child: ClipRect(
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              reverse: false,
-              primary: false,
-              padding: EdgeInsets.zero,
-              physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
-              ),
-              itemCount: audienceUsers.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 4),
-              itemBuilder: (context, index) => SizedBox(
-                width: 32,
-                height: 32,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF29434A),
-                    image: (audienceUsers[index]['avatarUrl'] ?? '').toString().startsWith('https://')
-                        ? DecorationImage(
-                            image: NetworkImage(audienceUsers[index]['avatarUrl'].toString()),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                ),
-              ),
-            ),
+  Widget _listeners() => Container(
+    height: 52,
+    margin: const EdgeInsets.symmetric(horizontal: 12),
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    decoration: BoxDecoration(
+      color: Colors.black.withOpacity(.35),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Colors.white.withOpacity(.10)),
+    ),
+    child: Row(
+      children: [
+        if (audienceUsers.isNotEmpty)
+          CircleAvatar(
+            radius: 17,
+            backgroundColor: Colors.white24,
+            backgroundImage: (audienceUsers.first['avatarUrl'] ?? '').toString().startsWith('http')
+                ? NetworkImage(audienceUsers.first['avatarUrl'].toString())
+                : null,
+            child: !(audienceUsers.first['avatarUrl'] ?? '').toString().startsWith('http')
+                ? const Icon(Icons.person, color: Colors.white70, size: 18)
+                : null,
+          )
+        else
+          const CircleAvatar(
+            radius: 17,
+            backgroundColor: Colors.white24,
+            child: Icon(Icons.person, color: Colors.white70, size: 18),
           ),
-        ),
-      ),
-      const SizedBox(width: 8),
-      _pill(Row(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 18),
-        Container(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), decoration: BoxDecoration(color: Colors.white.withOpacity(.8), borderRadius: BorderRadius.circular(3)), child: const Text('ALL', style: TextStyle(color: Color(0xFF123240), fontSize: 8, fontWeight: FontWeight.w900))),
+        const Spacer(),
+        Container(width: 1, height: 26, color: Colors.white12),
         const SizedBox(width: 10),
-        InkWell(
-          onTap: onRoomActions,
-          borderRadius: BorderRadius.circular(16),
-          child: const Padding(
-            padding: EdgeInsets.all(2),
-            child: Icon(Icons.open_in_full_rounded, color: Colors.white70, size: 16),
-          ),
-        ),
-      ]), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5)),
-    ]),
-  ));
+        Text('$audienceCount', style: const TextStyle(color: Colors.white, fontSize: 15)),
+        const SizedBox(width: 5),
+        const Icon(Icons.person_outline, color: Colors.white, size: 19),
+      ],
+    ),
+  );
 
   Widget _bottomBar(BuildContext context) {
     final media = MediaQuery.of(context);
     final screenWidth = media.size.width;
-
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 58,
       child: AnimatedBuilder(
-          animation: chatFocusNode,
-          builder: (context, child) {
-            final isFocused = chatFocusNode.hasFocus;
-            final targetWidth = screenWidth * (isFocused ? 0.96 : 0.59);
-            final keyboardHeight = isFocused ? media.viewInsets.bottom : 0.0;
-            return Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
-                  child: Row(
-                    textDirection: TextDirection.ltr,
-                    children: [
-                      const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 28),
-                      const SizedBox(width: 10),
-                      const Icon(Icons.card_giftcard_rounded, color: Color(0xFFFF6FA5), size: 28),
-                      const SizedBox(width: 10),
-                      const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
-                      const Spacer(),
-                      const Icon(Icons.volume_up_rounded, color: Colors.white, size: 28),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: keyboardHeight,
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
-                    child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOutCubic,
-                  width: targetWidth.clamp(0.0, screenWidth - 20),
-                  height: 44,
-                  // Keep horizontal offset only; the parent Positioned
-                  // anchors this field above the actual keyboard inset.
-                  transform: Matrix4.translationValues(
-                    isFocused ? 15 : 30,
-                    0,
-                    0,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2D2D35),
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(
-                      color: isFocused ? Colors.white10 : Colors.transparent,
+        animation: chatFocusNode,
+        builder: (context, child) {
+          final isFocused = chatFocusNode.hasFocus;
+          final targetWidth = screenWidth * (isFocused ? .96 : .60);
+          final keyboardHeight = isFocused ? media.viewInsets.bottom : 0.0;
+          return Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 5, 16, 0),
+                child: Row(
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.white38),
+                        color: Colors.black.withOpacity(.20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.chat_bubble_outline, color: Colors.white, size: 23),
+                          SizedBox(width: 7),
+                          Text('مرحبا', style: TextStyle(color: Colors.white, fontSize: 14)),
+                        ],
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    textDirection: TextDirection.rtl,
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: chatController,
-                          focusNode: chatFocusNode,
-                          scrollPadding: EdgeInsets.zero,
-                          minLines: 1,
-                          maxLines: 1,
-                          maxLength: 100,
-                          inputFormatters: [LengthLimitingTextInputFormatter(100)],
-                          textDirection: TextDirection.rtl,
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => onSendChat(),
-                          style: const TextStyle(color: Colors.white, fontSize: 15),
-                          decoration: const InputDecoration(
-                            hintText: 'قل شيئاً...',
-                            hintStyle: TextStyle(color: Colors.white54, fontSize: 13),
-                            border: InputBorder.none,
-                            counterText: '',
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            isDense: true,
+                    const SizedBox(width: 12),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.mail_outline, color: Colors.white, size: 30),
+                        Positioned(
+                          top: -9,
+                          left: -8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF4D8D),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text('90', style: TextStyle(color: Colors.white, fontSize: 10)),
                           ),
                         ),
-                      ),
-                      if (isFocused) ...[
-                        const SizedBox(width: 6),
-                        Padding(
-                          padding: const EdgeInsetsDirectional.only(end: 4),
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF00D9B5),
-                              shape: BoxShape.circle,
+                      ],
+                    ),
+                    const Spacer(),
+                    const Icon(Icons.sports_esports_outlined, color: Colors.white, size: 30),
+                    const SizedBox(width: 13),
+                    const Icon(Icons.card_giftcard, color: Color(0xFFFFA726), size: 32),
+                    const SizedBox(width: 13),
+                    const Icon(Icons.apps, color: Colors.white, size: 30),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: keyboardHeight,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    width: targetWidth.clamp(0.0, screenWidth - 20),
+                    height: 44,
+                    transform: Matrix4.translationValues(isFocused ? 0 : 24, 0, 0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2D2D35),
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(color: isFocused ? Colors.white24 : Colors.white10),
+                    ),
+                    child: Row(
+                      textDirection: TextDirection.rtl,
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: chatController,
+                            focusNode: chatFocusNode,
+                            scrollPadding: EdgeInsets.zero,
+                            minLines: 1,
+                            maxLines: 1,
+                            maxLength: 100,
+                            inputFormatters: [LengthLimitingTextInputFormatter(100)],
+                            textDirection: TextDirection.rtl,
+                            textInputAction: TextInputAction.send,
+                            onSubmitted: (_) => onSendChat(),
+                            style: const TextStyle(color: Colors.white, fontSize: 15),
+                            decoration: const InputDecoration(
+                              hintText: 'قل شيئاً...',
+                              hintStyle: TextStyle(color: Colors.white54, fontSize: 13),
+                              border: InputBorder.none,
+                              counterText: '',
+                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              isDense: true,
                             ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () async {
-                                  if (chatController.text.trim().isNotEmpty) {
-                                    await onSendChat();
-                                  }
-                                },
-                                customBorder: const CircleBorder(),
-                                child: const SizedBox.expand(
-                                  child: Center(
+                          ),
+                        ),
+                        if (isFocused)
+                          Padding(
+                            padding: const EdgeInsetsDirectional.only(end: 4),
+                            child: SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: Material(
+                                color: const Color(0xFF00D9B5),
+                                shape: const CircleBorder(),
+                                child: InkWell(
+                                  onTap: () async {
+                                    if (chatController.text.trim().isNotEmpty) await onSendChat();
+                                  },
+                                  customBorder: const CircleBorder(),
+                                  child: const Center(
                                     child: Icon(Icons.send_rounded, color: Colors.white, size: 18),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
                       ],
-                    ],
-                  ),
                     ),
                   ),
                 ),
-              ],
-            );
-          },
-        ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
+
 }
 
+
+class _RoomGameTile extends StatelessWidget {
+  const _RoomGameTile({
+    required this.color1,
+    required this.color2,
+    required this.badge,
+    this.timer,
+  });
+
+  final Color color1;
+  final Color color2;
+  final String badge;
+  final String? timer;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 72,
+    height: 72,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(10),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [color1, color2],
+      ),
+    ),
+    child: Stack(
+      children: [
+        if (timer != null)
+          Positioned(
+            top: 3,
+            right: 6,
+            child: Text(timer!, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+          ),
+        Positioned(
+          bottom: 4,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: timer != null ? const Color(0xFF3B8DEB) : Colors.black26,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(badge, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
 class UserInfoBottomSheet extends StatelessWidget {
   const UserInfoBottomSheet({
