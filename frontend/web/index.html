@@ -17,6 +17,7 @@
     :root {
       color-scheme: dark;
       background: #09080D;
+      --app-height: 100%;
     }
     html, body {
       width: 100%;
@@ -33,21 +34,63 @@
     }
     body {
       position: fixed;
-      inset: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: auto;
+      height: var(--app-height);
+      min-height: var(--app-height);
     }
     flt-glass-pane {
+      display: block;
+      width: 100%;
+      height: var(--app-height);
       background: transparent !important;
     }
     #flutter-view {
       display: block;
       width: 100%;
-      height: 100%;
+      height: var(--app-height);
     }
   </style>
 </head>
 <body>
   <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.24.8.js"></script>
   <script src="agora_bridge.js"></script>
+  <script>
+    // Safari on iOS only: size the Flutter surface to the actually visible viewport.
+    // Chrome and other browsers keep their existing viewport behavior.
+    (() => {
+      const ua = navigator.userAgent;
+      const isIOS = /iPhone|iPad|iPod/.test(ua) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isOtherIOSBrowser = /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+      if (!isIOS || isOtherIOSBrowser || !window.visualViewport) return;
+
+      const viewport = window.visualViewport;
+      let frame = 0;
+      const syncSafariHeight = () => {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => {
+          const height = Math.max(1, Math.round(viewport.height));
+          document.documentElement.style.setProperty('--app-height', height + 'px');
+          document.documentElement.style.height = height + 'px';
+          document.body.style.height = height + 'px';
+          document.body.style.minHeight = height + 'px';
+          const pane = document.querySelector('flt-glass-pane');
+          const flutterView = document.querySelector('#flutter-view');
+          if (pane) pane.style.height = height + 'px';
+          if (flutterView) flutterView.style.height = height + 'px';
+          window.dispatchEvent(new Event('resize'));
+        });
+      };
+
+      syncSafariHeight();
+      viewport.addEventListener('resize', syncSafariHeight, { passive: true });
+      viewport.addEventListener('scroll', syncSafariHeight, { passive: true });
+      window.addEventListener('orientationchange', syncSafariHeight, { passive: true });
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 
 </body>
