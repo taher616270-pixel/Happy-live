@@ -137,7 +137,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onRoomActions,
+          onTap: () => _showSaveLeaveDialog(context),
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
           hoverColor: Colors.transparent,
@@ -510,7 +510,7 @@ Widget _roomActionButton({
         Container(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), decoration: BoxDecoration(color: Colors.white.withOpacity(.8), borderRadius: BorderRadius.circular(3)), child: const Text('ALL', style: TextStyle(color: Color(0xFF123240), fontSize: 8, fontWeight: FontWeight.w900))),
         const SizedBox(width: 10),
         InkWell(
-          onTap: () => _showSaveLeaveDialog(context),
+          onTap: onRoomActions,
           borderRadius: BorderRadius.circular(16),
           child: const Padding(
             padding: EdgeInsets.all(2),
