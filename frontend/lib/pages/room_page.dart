@@ -864,12 +864,6 @@ class _RoomPageState extends State<RoomPage> {
         barrierColor: Colors.transparent,
         transitionDuration: Duration.zero,
         pageBuilder: (dialogContext, animation, secondaryAnimation) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (inputFocusNode.canRequestFocus && !inputFocusNode.hasFocus) {
-              FocusScope.of(dialogContext).requestFocus(inputFocusNode);
-            }
-          });
-
           final media = MediaQuery.of(dialogContext);
           final keyboardInset = media.viewInsets.bottom;
           final bottomOffset = keyboardInset > 0
