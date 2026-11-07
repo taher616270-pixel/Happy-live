@@ -62,7 +62,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         const _NightSky(),
         SafeArea(bottom: false, child: Column(children: [
           _header(),
-          _roomActionsPanel(),
           _subHeader(),
           _seats(context),
           _listeners(),
@@ -87,6 +86,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ])),
           _bottomBar(MediaQuery.viewPaddingOf(context).bottom),
         ])),
+        _roomActionsPanel(),
       ]),
     ),
   );
@@ -130,55 +130,51 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     ]),
   ));
 
-  Widget _roomActionsPanel() => ClipRect(
-    child: AnimatedSize(
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-      alignment: Alignment.topCenter,
-      child: Align(
-        alignment: Alignment.topCenter,
-        heightFactor: showRoomActions ? 1 : 0,
-        child: AnimatedSlide(
-          duration: const Duration(milliseconds: 320),
-          curve: Curves.easeOutCubic,
-          offset: showRoomActions ? Offset.zero : const Offset(0, -0.22),
-          child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 220),
-            opacity: showRoomActions ? 1 : 0,
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xF21A1422),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0x88E8C477)),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x88000000), blurRadius: 22, offset: Offset(0, 9)),
-                ],
-              ),
-              child: Row(children: [
-                Expanded(child: _roomActionButton(
-                  icon: Icons.picture_in_picture_alt_rounded,
-                  label: 'تصغير الغرفة',
-                  color: const Color(0xFFD9A93C),
-                  onTap: onMinimizeRoom,
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: _roomActionButton(
-                  icon: Icons.logout_rounded,
-                  label: 'إغلاق الغرفة',
-                  color: const Color(0xFFBD5361),
-                  onTap: onCloseRoom,
-                )),
-              ]),
+    Widget _roomActionsPanel() => AnimatedPositioned(
+    duration: const Duration(milliseconds: 420),
+    curve: Curves.easeOutCubic,
+    top: showRoomActions ? MediaQuery.paddingOf(context).top + 12 : -190,
+    left: 12,
+    right: 12,
+    child: IgnorePointer(
+      ignoring: !showRoomActions,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 240),
+        opacity: showRoomActions ? 1 : 0,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xF21A1422),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0x88E8C477)),
+              boxShadow: const [
+                BoxShadow(color: Color(0x99000000), blurRadius: 26, offset: Offset(0, 12)),
+              ],
             ),
+            child: Row(children: [
+              Expanded(child: _roomActionButton(
+                icon: Icons.picture_in_picture_alt_rounded,
+                label: 'تصغير الغرفة',
+                color: const Color(0xFFD9A93C),
+                onTap: onMinimizeRoom,
+              )),
+              const SizedBox(width: 10),
+              Expanded(child: _roomActionButton(
+                icon: Icons.logout_rounded,
+                label: 'إغلاق الغرفة',
+                color: const Color(0xFFBD5361),
+                onTap: onCloseRoom,
+              )),
+            ]),
           ),
         ),
       ),
     ),
   );
 
-  Widget _roomActionButton({
+Widget _roomActionButton({
     required IconData icon,
     required String label,
     required Color color,
