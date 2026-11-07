@@ -49,12 +49,13 @@ class _VoiceRoomsPageState extends State<VoiceRoomsPage> {
 
   Future<void> _openRoom(Map<String, dynamic> room) async {
     await Navigator.of(context).push(PageRouteBuilder<void>(
-      opaque: false,
-      barrierColor: Colors.transparent,
+      // Render the room as a full page instead of compositing it over the
+      // rooms list; this reduces the work during the opening transition.
+      opaque: true,
       pageBuilder: (_, __, ___) => RoomPage(room: room, accessToken: widget.accessToken),
       transitionsBuilder: (_, animation, __, child) =>
           FadeTransition(opacity: animation, child: child),
-      transitionDuration: const Duration(milliseconds: 180),
+      transitionDuration: const Duration(milliseconds: 90),
     ));
     if (mounted) _loadRooms();
   }
