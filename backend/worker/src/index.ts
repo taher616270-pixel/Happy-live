@@ -840,10 +840,11 @@ export default {
           };
           // Never write chat content to D1. Deliver it only to live room sockets.
           await broadcastRoomChat(env, roomId, { type: "message", message: createdMessage });
+          // Echo only this just-sent message to its sender; never return room history.
+          return json({ ok: true, messages: [createdMessage], enteredAt: visit.entered_at }, 200, origin, env);
         }
 
-        // This endpoint intentionally returns no history. Messages are transient
-        // WebSocket broadcasts and are visible only to users connected at send time.
+        // A new visit always starts with an empty chat view.
         return json({ ok: true, messages: [], enteredAt: visit.entered_at }, 200, origin, env);
       } catch (error) {
         const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
