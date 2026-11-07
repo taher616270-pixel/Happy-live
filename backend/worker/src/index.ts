@@ -761,11 +761,9 @@ export default {
             createdAt: now,
             isMe: false
           };
-          // Keep room-entry system messages in the same persistent room chat
-          // so current and later visitors can see them in the conversation.
-          await env.DB.prepare(
-            "INSERT INTO room_messages (id, room_id, user_id, message, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-          ).bind(entryMessageId, roomId, user.id, "انضم للغرفة", null, now).run();
+          // Chat is live-only: clear any legacy persisted chat rows and
+          // broadcast this join event only to users currently connected.
+          await env.DB.prepare("DELETE FROM room_messages").run();
           await broadcastRoomChat(env, roomId, {
             type: "system",
             message: entryMessage
@@ -836,36 +834,17 @@ export default {
           ).bind(roomId, user.id, now, cutoff).first<{ last_sent_at: string }>();
           if (!rate) return json({ error: "chat_rate_limited", message: "انتظر ثانية قبل إرسال رسالة أخرى" }, 429, origin, env);
           const id = crypto.randomUUID();
-          await env.DB.prepare(
-            "INSERT INTO room_messages (id, room_id, user_id, message, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-          ).bind(id, roomId, user.id, message, imageUrl || null, now).run();
           const createdMessage = {
             id, userId: user.id, name: user.display_name?.trim() || "مستخدم",
             message, imageUrl: imageUrl || null, createdAt: now, isMe: false
           };
+          // Never write chat content to D1. Deliver it only to live room sockets.
           await broadcastRoomChat(env, roomId, { type: "message", message: createdMessage });
         }
 
-        const result = await env.DB.prepare(
-          "SELECT m.id, m.user_id, m.message, m.image_url, m.created_at, p.display_name FROM room_messages m LEFT JOIN profiles p ON p.user_id = m.user_id WHERE m.room_id = ? ORDER BY m.created_at DESC LIMIT 60"
-        ).bind(roomId).all<{
-          id: string; user_id: string; message: string; image_url: string | null;
-          created_at: string; display_name: string | null;
-        }>();
-        const messages = (result.results ?? []).reverse().map((item) => ({
-          id: item.id,
-          userId: item.user_id,
-          name: item.display_name?.trim() || "مستخدم",
-          senderId: item.user_id,
-          senderName: item.display_name?.trim() || "مستخدم",
-          senderAvatar: "",
-          text: item.message,
-          message: item.message,
-          imageUrl: item.image_url,
-          createdAt: item.created_at,
-          isMe: item.user_id === user.id
-        }));
-        return json({ ok: true, messages, enteredAt: visit.entered_at }, 200, origin, env);
+        // This endpoint intentionally returns no history. Messages are transient
+        // WebSocket broadcasts and are visible only to users connected at send time.
+        return json({ ok: true, messages: [], enteredAt: visit.entered_at }, 200, origin, env);
       } catch (error) {
         const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
         console.error("[rooms.messages] failed", diagnostic);
