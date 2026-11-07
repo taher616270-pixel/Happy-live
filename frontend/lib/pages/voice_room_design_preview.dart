@@ -73,12 +73,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             Positioned.fill(child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 14, 12, 8),
               children: [
-                _Notice(
-                  text: announcement.isEmpty ? 'مرحباً بكم في الغرفة. نتمنى لكم وقتاً ممتعاً.' : announcement,
-                  icon: Icons.notifications_rounded,
-                  onTap: canEditAnnouncement ? onEditAnnouncement : null,
-                ),
-                SizedBox(height: 9),
+                if (announcement.trim().isNotEmpty &&
+                    !announcement.contains('مالك الغرفة') &&
+                    !announcement.contains('دخل غرفة'))
+                  _Notice(
+                    text: announcement,
+                    icon: Icons.notifications_rounded,
+                    onTap: canEditAnnouncement ? onEditAnnouncement : null,
+                  ),
 
               ],
             )),
