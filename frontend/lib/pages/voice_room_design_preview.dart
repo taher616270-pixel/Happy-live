@@ -578,26 +578,11 @@ Widget _roomActionButton({
           animation: chatFocusNode,
           builder: (context, child) {
             final isFocused = chatFocusNode.hasFocus;
-            final targetWidth = screenWidth * (isFocused ? 0.92 : 0.65);
+            final targetWidth = screenWidth * (isFocused ? 0.84 : 0.62);
             return Stack(
               alignment: Alignment.center,
               clipBehavior: Clip.none,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
-                  child: Row(
-                    textDirection: TextDirection.ltr,
-                    children: [
-                      const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 28),
-                      const SizedBox(width: 10),
-                      const Icon(Icons.card_giftcard_rounded, color: Color(0xFFFF6FA5), size: 28),
-                      const SizedBox(width: 10),
-                      const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
-                      const Spacer(),
-                      const Icon(Icons.volume_up_rounded, color: Colors.white, size: 28),
-                    ],
-                  ),
-                ),
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOutCubic,
@@ -658,6 +643,21 @@ Widget _roomActionButton({
                           ),
                         ),
                       ],
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
+                  child: Row(
+                    textDirection: TextDirection.ltr,
+                    children: [
+                      const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 28),
+                      const SizedBox(width: 10),
+                      const Icon(Icons.card_giftcard_rounded, color: Color(0xFFFF6FA5), size: 28),
+                      const SizedBox(width: 10),
+                      const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
+                      const Spacer(),
+                      const Icon(Icons.volume_up_rounded, color: Colors.white, size: 28),
                     ],
                   ),
                 ),
