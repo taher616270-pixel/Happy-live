@@ -45,24 +45,28 @@
       height: 100%;
     }
 
-    /* iOS Safari only. The class is added by the Safari-only UA check below. */
+    /* iPhone Safari only. Activated by the Safari-only script below. */
     @supports (-webkit-touch-callout: none) {
       html.safari-ios {
+        width: 100%;
         height: -webkit-fill-available;
+        overflow: hidden;
       }
+
       html.safari-ios body {
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: auto;
+        inset: 0 auto auto 0;
+        width: 100%;
         height: -webkit-fill-available;
-        min-height: -webkit-fill-available;
+        min-height: 0;
+        overflow: hidden;
       }
+
       html.safari-ios flt-glass-pane,
       html.safari-ios #flutter-view {
         display: block;
         width: 100%;
-        height: -webkit-fill-available;
+        height: 100%;
+        max-width: 100%;
       }
     }
   </style>
@@ -71,85 +75,106 @@
   <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.24.8.js"></script>
   <script src="agora_bridge.js"></script>
   <script>
-    // Restrict all viewport handling to Safari on iOS. CriOS/FxiOS/Edge iOS are excluded.
+    // Adjust only iPhone Safari to the actually visible browser viewport.
     (() => {
       const ua = navigator.userAgent;
-      const isSafari = /Safari/i.test(ua) &&
+      const isSafari =
+        /Safari/i.test(ua) &&
         !/(CriOS|Chrome|Chromium|FxiOS|Firefox|EdgiOS|EdgA|Edg|OPiOS|OPR|DuckDuckGo)/i.test(ua);
-      const isIOS = /iPhone|iPad|iPod/i.test(ua) ||
-        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      if (!isSafari || !isIOS || !window.visualViewport) return;
+      const isIPhone = /iPhone|iPod/i.test(ua);
 
-      document.documentElement.classList.add('safari-ios');
+      if (!isSafari || !isIPhone || !window.visualViewport) return;
 
+      const root = document.documentElement;
+      const body = document.body;
       const viewport = window.visualViewport;
-      let fullHeight = 0;
-      let frame = 0;
+
+      root.classList.add('safari-ios');
+
+      let lastNormalHeight = 0;
+      let lastBounds = '';
       let keyboardOpen = false;
+      let frame = 0;
 
-      const applyHeight = (height) => {
-        const value = Math.max(1, Math.round(height)) + 'px';
-        document.body.style.height = value;
-        document.body.style.minHeight = value;
+      const setViewportBounds = (width, height, top, left, notifyFlutter) => {
+        const w = Math.max(1, Math.round(width));
+        const h = Math.max(1, Math.round(height));
+        const t = Math.round(top);
+        const l = Math.round(left);
+        const bounds = [w, h, t, l].join(':');
+
+        body.style.top = t + 'px';
+        body.style.left = l + 'px';
+        body.style.right = 'auto';
+        body.style.bottom = 'auto';
+        body.style.width = w + 'px';
+        body.style.height = h + 'px';
+        body.style.minHeight = '0';
+
         const pane = document.querySelector('flt-glass-pane');
         const flutterView = document.querySelector('#flutter-view');
-        if (pane) pane.style.height = value;
-        if (flutterView) flutterView.style.height = value;
+
+        if (pane) {
+          pane.style.width = '100%';
+          pane.style.height = '100%';
+        }
+        if (flutterView) {
+          flutterView.style.width = '100%';
+          flutterView.style.height = '100%';
+        }
+
+        if (notifyFlutter && bounds !== lastBounds) {
+          lastBounds = bounds;
+          // Notify Flutter only for real browser-viewport changes, never for keyboard opening.
+          window.dispatchEvent(new Event('resize'));
+        } else {
+          lastBounds = bounds;
+        }
       };
 
-      const measureNaturalHeight = () => {
-        // Temporarily let Safari's -webkit-fill-available calculate the full page height.
-        document.body.style.removeProperty('height');
-        document.body.style.removeProperty('min-height');
-        const pane = document.querySelector('flt-glass-pane');
-        const flutterView = document.querySelector('#flutter-view');
-        if (pane) pane.style.removeProperty('height');
-        if (flutterView) flutterView.style.removeProperty('height');
-        fullHeight = Math.max(
-          1,
-          document.body.offsetHeight,
-          document.documentElement.clientHeight
-        );
-        applyHeight(fullHeight);
-      };
-
-      const syncKeyboardAndViewport = () => {
+      const syncViewport = () => {
         cancelAnimationFrame(frame);
         frame = requestAnimationFrame(() => {
           const visibleHeight = viewport.height;
-          const keyboardNowOpen = fullHeight > 0 && (fullHeight - visibleHeight) > 100;
+          const keyboardHeight = window.innerHeight - visibleHeight;
+          const keyboardNowOpen = keyboardHeight > 120;
 
           if (keyboardNowOpen) {
-            // Keep the whole Flutter page at its natural height; the keyboard overlays it.
             keyboardOpen = true;
-            applyHeight(fullHeight);
+            // Keep the page at its pre-keyboard dimensions.
             return;
           }
 
-          if (keyboardOpen || fullHeight === 0) {
+          const width = viewport.width;
+          const height = visibleHeight;
+          const top = viewport.offsetTop;
+          const left = viewport.offsetLeft;
+
+          if (!keyboardOpen || !lastNormalHeight) {
+            lastNormalHeight = height;
+            setViewportBounds(width, height, top, left, true);
+          } else {
+            // Keyboard closed: restore the current Safari visible viewport.
             keyboardOpen = false;
-            measureNaturalHeight();
+            lastNormalHeight = height;
+            setViewportBounds(width, height, top, left, true);
           }
         });
       };
 
-      const initialMeasure = () => {
-        measureNaturalHeight();
-        syncKeyboardAndViewport();
-      };
-
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initialMeasure, { once: true });
+        document.addEventListener('DOMContentLoaded', syncViewport, { once: true });
       } else {
-        initialMeasure();
+        syncViewport();
       }
 
-      viewport.addEventListener('resize', syncKeyboardAndViewport, { passive: true });
-      viewport.addEventListener('scroll', syncKeyboardAndViewport, { passive: true });
+      viewport.addEventListener('resize', syncViewport, { passive: true });
+      viewport.addEventListener('scroll', syncViewport, { passive: true });
+      window.addEventListener('resize', syncViewport, { passive: true });
       window.addEventListener('orientationchange', () => {
         keyboardOpen = false;
-        fullHeight = 0;
-        setTimeout(initialMeasure, 250);
+        lastNormalHeight = 0;
+        setTimeout(syncViewport, 300);
       }, { passive: true });
     })();
   </script>
