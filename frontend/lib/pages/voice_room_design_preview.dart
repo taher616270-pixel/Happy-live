@@ -946,25 +946,57 @@ class _SideTile extends StatelessWidget {
   ]));
 }
 
-class _NightSky extends StatelessWidget {
+class _NightSky extends StatefulWidget {
   const _NightSky();
+
   @override
-  Widget build(BuildContext context) => const CustomPaint(painter: _SkyPainter());
+  State<_NightSky> createState() => _NightSkyState();
+}
+
+class _NightSkyState extends State<_NightSky> with SingleTickerProviderStateMixin {
+  late final AnimationController _twinkle = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 8),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _twinkle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _twinkle,
+    builder: (context, child) => CustomPaint(
+      painter: _SkyPainter(_twinkle.value),
+      child: child,
+    ),
+  );
+
 }
 
 class _SkyPainter extends CustomPainter {
-  const _SkyPainter();
+  const _SkyPainter(this.phase);
+  final double phase;
+
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     canvas.drawRect(rect, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF0F5560), Color(0xFF0A3440), Color(0xFF08202B), Color(0xFF060F16)], stops: [0, .35, .7, 1]).createShader(rect));
     final rnd = math.Random(7);
-    final star = Paint();
-    for (var i = 0; i < 140; i++) {
+    final stars = List.generate(140, (index) {
       final dx = rnd.nextDouble() * size.width;
       final dy = rnd.nextDouble() * size.height * .7;
-      star.color = Colors.white.withOpacity(.25 + rnd.nextDouble() * .6);
-      canvas.drawCircle(Offset(dx, dy), rnd.nextDouble() * 1.2 + .3, star);
+      final radius = rnd.nextDouble() * 1.2 + .3;
+      return (dx, dy, radius, rnd.nextDouble() * math.pi * 2);
+    });
+    final star = Paint();
+    for (var i = 0; i < stars.length; i++) {
+      final (dx, dy, radius, offset) = stars[i];
+      final shimmer = (math.sin(phase * math.pi * 2 + offset) + 1) / 2;
+      star.color = Colors.white.withOpacity(.18 + shimmer * .62);
+      canvas.drawCircle(Offset(dx, dy), radius * (.8 + shimmer * .35), star);
     }
     final w = size.width, h = size.height;
     final mountain = Path()
@@ -976,6 +1008,7 @@ class _SkyPainter extends CustomPainter {
       ..lineTo(w, h)..lineTo(0, h)..close();
     canvas.drawPath(mountain, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF16313B), Color(0xFF07131A)]).createShader(Rect.fromLTWH(0, h * .66, w, h * .34)));
   }
+
   @override
-  bool shouldRepaint(covariant _SkyPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _SkyPainter oldDelegate) => oldDelegate.phase != phase;
 }
