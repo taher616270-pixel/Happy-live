@@ -57,7 +57,11 @@
 - Cloudflare Pages: نشر الإنتاج للـ commit أعلاه اكتمل بنجاح، deployment `c9f70376-9e76-4dc0-984e-2b4d8a5f6e5b` بتاريخ 2026-11-08 06:21 UTC.
 - Worker: آخر نشر ظاهر هو `c27bdc30-bfea-4ede-99e8-24484e83c9a7` بتاريخ 2026-11-08 04:15 UTC، ويوجه 100% من الحركة إلى version `87d2f750-41ab-4bd6-ae26-814af9ed2e84`.
 - GitHub Combined Status لم يُرجع status checks لهذا الـ commit، وأداة جلب Workflow Runs المتاحة تقتصر على runs المرتبطة بطلبات الدمج؛ لذلك لم أؤكد نتيجة تشغيل Android APK على push.
-- لم أشغّل `npm run typecheck` أو `npm test` محليًا في هذه المراجعة. أوامرها معرفة في `backend/worker/package.json`، لكن يلزم تشغيلها في بيئة المشروع لتأكيد النتيجة. نجاح Pages build لا يثبت وحده نجاح فحوص TypeScript أو اختبارات Worker.
+- أُضيف `backend/worker/tests/admin-security-contract.test.mjs` وفيه 5 حواجز عقدية ثابتة تتحقق من مصدر دور المدير في D1، واشتراط الجلسة والصلاحية، وبيانات سجل التدقيق، وعدم اتصال الواجهة بـ D1 مباشرة، وعدم عرض خدمات مالية غير مدعومة كبيانات حقيقية.
+- أُضيف `.github/workflows/worker-checks.yml` لتشغيل `npm run typecheck` و`npm test` عند تغييرات Worker وعلى طلبات الدمج.
+- فحصت صياغة ملف الاختبارات بـ `node --check` وصياغة Workflow بـ Ruby YAML parser؛ كلاهما سليم. هذه فحوص صياغة فقط وليست تشغيلًا للاختبارات على ملفات المشروع.
+- GitHub Combined Status لم يُرجع status checks حتى وقت التحديث، وأداة جلب Workflow Runs المتاحة تقتصر على runs المرتبطة بطلبات الدمج؛ لذلك لم أؤكد نتيجة CI الفعلية بعد. لا تُعد فحوص الصياغة بديلًا عن نجاح `npm run typecheck` و`npm test`.
+- نجاح Pages build لا يثبت وحده نجاح فحوص TypeScript أو اختبارات Worker.
 
 ## الخطوات التالية الآمنة
 
