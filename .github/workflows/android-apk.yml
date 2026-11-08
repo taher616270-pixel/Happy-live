@@ -64,16 +64,20 @@ jobs:
           # library subprojects too, not only the app module.
           root = Path("android/build.gradle.kts")
           root_text = root.read_text()
-          # Apply the override as soon as each Android library plugin is added.
-          # afterEvaluate is too late for projects that Gradle has already evaluated.
-          start = root_text.find("\\nsubprojects {\\n    afterEvaluate {")
-          if start >= 0:
-              root_text = root_text[:start].rstrip() + "\\n"
+          # Re-apply the final value after all Android plugin DSL scripts have
+          # been evaluated. Agora's plugin resets its library compileSdk to 31.
+          root = Path("android/build.gradle.kts")
+          root_text = root.read_text()
+          marker = "          gradle.projectsEvaluated {"
+          if marker in root_text:
+              root_text = root_text[:root_text.index(marker)].rstrip() + "\\n"
           root_text += """
-          subprojects {
-              plugins.withId("com.android.library") {
-                  extensions.configure<com.android.build.gradle.LibraryExtension> {
-                      compileSdk = 37
+          gradle.projectsEvaluated {
+              allprojects {
+                  if (plugins.hasPlugin("com.android.library")) {
+                      extensions.configure<com.android.build.gradle.LibraryExtension> {
+                          compileSdk = 36
+                      }
                   }
               }
           }
