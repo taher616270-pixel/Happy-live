@@ -10,6 +10,7 @@ export interface Env {
   AGORA_APP_ID?: string;
   AGORA_APP_CERTIFICATE?: string;
   AGORA_ENABLED?: string;
+  GOOGLE_CLIENT_ID?: string;
 }
 
 
@@ -543,6 +544,112 @@ export default {
     }
 
 
+
+    if (url.pathname === "/api/v1/auth/google" && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      if (!env.GOOGLE_CLIENT_ID) return json({ error: "google_signin_not_configured" }, 503, origin, env);
+      const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+      try {
+        if (!await checkAuthRateLimit(env.DB, ip)) return json({ error: "too_many_attempts" }, 429, origin, env);
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; }
+        catch { return json({ error: "invalid_json" }, 400, origin, env); }
+
+        const idToken = typeof body.idToken === "string" ? body.idToken : "";
+        if (!idToken || idToken.length > 10000) return json({ error: "invalid_google_token" }, 401, origin, env);
+
+        // Ask Google's token validation endpoint to verify the signed ID token,
+        // then independently enforce this project's audience and identity claims.
+        const verifyResponse = await fetch(
+          "https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(idToken),
+          { headers: { "accept": "application/json" } }
+        );
+        if (!verifyResponse.ok) return json({ error: "invalid_google_token", message: "تعذر التحقق من حساب Google" }, 401, origin, env);
+        const claims = await verifyResponse.json() as Record<string, unknown>;
+        const issuer = String(claims.iss ?? "");
+        const audience = String(claims.aud ?? "");
+        const expiresAt = Number(claims.exp ?? 0);
+        const subject = String(claims.sub ?? "");
+        const email = String(claims.email ?? "").trim().toLowerCase();
+        const emailVerified = claims.email_verified === true || claims.email_verified === "true";
+        const displayName = String(claims.name ?? "").trim().slice(0, 50);
+
+        if (
+          audience !== env.GOOGLE_CLIENT_ID ||
+          !["accounts.google.com", "https://accounts.google.com"].includes(issuer) ||
+          !Number.isFinite(expiresAt) || expiresAt <= Math.floor(Date.now() / 1000) ||
+          !subject || subject.length > 255 ||
+          !emailVerified || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+        ) {
+          return json({ error: "invalid_google_identity", message: "بيانات حساب Google غير صالحة" }, 401, origin, env);
+        }
+
+        let user = await env.DB.prepare(
+          "SELECT u.id, u.email, u.status, p.display_name, p.gabo_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.auth_provider = 'google' AND u.auth_subject = ? LIMIT 1"
+        ).bind(subject).first<{ id: string; email: string; status: string; display_name: string | null; gabo_id: string | null }>();
+
+        let isNewUser = false;
+        if (!user) {
+          const existingEmail = await env.DB.prepare(
+            "SELECT id, auth_provider FROM users WHERE email = ? COLLATE NOCASE LIMIT 1"
+          ).bind(email).first<{ id: string; auth_provider: string }>();
+          if (existingEmail) {
+            return json({
+              error: "email_already_registered",
+              message: "هذا البريد مرتبط بحساب موجود. سجّل الدخول بالطريقة التي أنشأت بها حسابك أولاً."
+            }, 409, origin, env);
+          }
+          if (body.acceptedTerms !== true) {
+            return json({ error: "terms_required", message: "يجب تأكيد العمر والموافقة على الشروط والخصوصية لإنشاء حساب جديد" }, 400, origin, env);
+          }
+
+          const userId = crypto.randomUUID();
+          let publicId = "";
+          for (let attempt = 0; attempt < 20; attempt++) {
+            const candidate = String(10000000 + crypto.getRandomValues(new Uint32Array(1))[0] % 90000000);
+            const exists = await env.DB.prepare("SELECT 1 FROM profiles WHERE gabo_id = ? LIMIT 1").bind(candidate).first();
+            if (!exists) { publicId = candidate; break; }
+          }
+          if (!publicId) throw new Error("public_id_generation_failed");
+
+          const now = new Date().toISOString();
+          try {
+            await env.DB.batch([
+              env.DB.prepare(
+                "INSERT INTO users (id, email, password_hash, auth_provider, auth_subject, status, email_verified_at, terms_accepted_at) VALUES (?, ?, NULL, 'google', ?, 'active', ?, ?)"
+              ).bind(userId, email, subject, now, now),
+              env.DB.prepare(
+                "INSERT INTO profiles (user_id, display_name, gabo_id) VALUES (?, ?, ?)"
+              ).bind(userId, displayName || email.split("@")[0], publicId)
+            ]);
+          } catch (error) {
+            const racedUser = await env.DB.prepare(
+              "SELECT u.id, u.email, u.status, p.display_name, p.gabo_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.auth_provider = 'google' AND u.auth_subject = ? LIMIT 1"
+            ).bind(subject).first<{ id: string; email: string; status: string; display_name: string | null; gabo_id: string | null }>();
+            if (!racedUser) throw error;
+            user = racedUser;
+          }
+          if (!user) {
+            user = {
+              id: userId, email, status: "active",
+              display_name: displayName || email.split("@")[0], gabo_id: publicId
+            };
+            isNewUser = true;
+          }
+        }
+
+        if (user.status !== "active") return json({ error: "account_unavailable", message: "هذا الحساب موقوف حاليًا" }, 403, origin, env);
+        user.gabo_id = await ensurePublicUserId(env.DB, user.id, user.gabo_id);
+        const session = await createSession(env.DB, user.id);
+        return json({
+          ok: true, ...session, isNewUser,
+          user: { id: user.id, gabo_id: user.gabo_id ?? "", email: user.email, name: user.display_name ?? displayName ?? "" }
+        }, 200, origin, env);
+      } catch (error) {
+        console.error("[auth.google] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "google_login_failed", message: "تعذر تسجيل الدخول عبر Google حاليًا" }, 503, origin, env);
+      }
+    }
 
     if (url.pathname === "/api/v1/auth/register" && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
@@ -1949,7 +2056,7 @@ export default {
         name: "Happy Live API",
         version: "v1",
         status: "scaffold",
-        endpoints: ["/api/v1/health", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/me", "/api/v1/auth/logout", "/api/v1/rooms", "/api/v1/imagekit/health", "/api/v1/imagekit/auth"]
+        endpoints: ["/api/v1/health", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/google", "/api/v1/auth/me", "/api/v1/auth/logout", "/api/v1/rooms", "/api/v1/imagekit/health", "/api/v1/imagekit/auth"]
       }, 200, origin, env);
     }
 
