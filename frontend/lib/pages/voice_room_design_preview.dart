@@ -595,7 +595,9 @@ Widget _roomActionButton({
   }
 
   Widget _listeners() => Transform.translate(
-    offset: const Offset(0, -65),
+    offset: Theme.of(context).platform == TargetPlatform.android
+        ? const Offset(0, -105)
+        : const Offset(0, -65),
     child: Container(
     height: 40,
     margin: const EdgeInsets.symmetric(horizontal: 12),
