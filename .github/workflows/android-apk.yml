@@ -146,6 +146,47 @@ jobs:
           ''')
           PY
 
+      - name: Configure private Android release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > frontend/android/app/happy-live-upload.jks
+          chmod 600 frontend/android/app/happy-live-upload.jks
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("frontend/android/app/build.gradle.kts")
+          s = p.read_text()
+          if 'create("release")' not in s:
+              signing = """
+              signingConfigs {
+                  create("release") {
+                      storeFile = file("happy-live-upload.jks")
+                      storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                      keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                      keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+                  }
+              }
+          """
+              if "    buildTypes {" not in s:
+                  raise SystemExit("Could not find buildTypes block in generated Android Gradle file")
+              s = s.replace("    buildTypes {", signing + "\n    buildTypes {", 1)
+          s = s.replace('signingConfig = signingConfigs.getByName("debug")',
+                        'signingConfig = signingConfigs.getByName("release")', 1)
+          if 'signingConfig = signingConfigs.getByName("release")' not in s:
+              raise SystemExit("Release signing configuration was not applied")
+          p.write_text(s)
+          print("Private release signing configured.")
+          PY
+
       - name: Resolve Flutter dependencies
         run: |
           cd frontend
@@ -170,7 +211,7 @@ jobs:
           cd frontend
           for attempt in 1 2 3 4; do
             echo "Android release build attempt ${attempt}/4"
-            if flutter build apk --release; then
+            if flutter build apk --release --build-number "$GITHUB_RUN_NUMBER"; then
               exit 0
             fi
             if [ "$attempt" -lt 4 ]; then
