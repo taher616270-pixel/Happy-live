@@ -1885,7 +1885,7 @@ class _BrandHeader extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(4),
               child: Image.asset(
-                'assets/images/app_icon1.png',
+                'assets/images/app_icon2.png.PNG',
                 width: 80,
                 height: 80,
                 fit: BoxFit.contain,
