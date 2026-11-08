@@ -971,7 +971,7 @@ class _LoginPageState extends State<LoginPage> {
   }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF9A98AD), fontSize: 14),
+      hintStyle: const TextStyle(color: Color(0xFF73798C), fontSize: 14),
       prefixIcon: Icon(icon, color: HappyLiveApp.gold, size: 20),
       suffixIcon: suffix,
       filled: true,
@@ -979,7 +979,7 @@ class _LoginPageState extends State<LoginPage> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: Color(0xFFE4E4EC)),
+        borderSide: const BorderSide(color: Color(0xFFD5D9E3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
@@ -1053,7 +1053,7 @@ class _LoginPageState extends State<LoginPage> {
                               : 'سجّل دخولك وتواصل مع عالمك',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            color: const Color(0xFF8B899A),
+                            color: const Color(0xFF62697D),
                             fontSize: 14,
                           ),
                         ),
@@ -1109,7 +1109,7 @@ class _LoginPageState extends State<LoginPage> {
                               onPressed: () => setState(() => _hidePassword = !_hidePassword),
                               icon: Icon(
                                 _hidePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                color: const Color(0xFF8B899A),
+                                color: const Color(0xFF62697D),
                                 size: 20,
                               ),
                             ),
@@ -1133,7 +1133,7 @@ class _LoginPageState extends State<LoginPage> {
                                 onPressed: () => setState(() => _hideConfirmPassword = !_hideConfirmPassword),
                                 icon: Icon(
                                   _hideConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                  color: const Color(0xFF8B899A),
+                                  color: const Color(0xFF62697D),
                                   size: 20,
                                 ),
                               ),
@@ -1153,7 +1153,7 @@ class _LoginPageState extends State<LoginPage> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFAF6EA),
                                 borderRadius: BorderRadius.circular(15),
-                                border: Border.all(color: const Color(0xFFE4E4EC)),
+                                border: Border.all(color: const Color(0xFFD5D9E3)),
                               ),
                               child: Row(
                                 children: [
@@ -1167,14 +1167,14 @@ class _LoginPageState extends State<LoginPage> {
                                           : '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}',
                                       style: TextStyle(
                                         color: _birthDate == null
-                                            ? const Color(0xFF9A98AD)
+                                            ? const Color(0xFF73798C)
                                             : const Color(0xFF1E2233),
                                         fontSize: 14,
                                       ),
                                     ),
                                   ),
                                   const Icon(Icons.keyboard_arrow_down_rounded,
-                                      color: const Color(0xFF8B899A)),
+                                      color: const Color(0xFF62697D)),
                                 ],
                               ),
                             ),
@@ -1190,12 +1190,12 @@ class _LoginPageState extends State<LoginPage> {
                             title: Wrap(
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                const Text('أوافق على ', style: TextStyle(color: const Color(0xFF8B899A), fontSize: 12)),
+                                const Text('أوافق على ', style: TextStyle(color: const Color(0xFF62697D), fontSize: 12)),
                                 InkWell(
                                   onTap: () => _openLegalDocument('terms'),
                                   child: const Text('الشروط والأحكام', style: TextStyle(color: HappyLiveApp.gold, fontSize: 12, decoration: TextDecoration.underline)),
                                 ),
-                                const Text(' و', style: TextStyle(color: const Color(0xFF8B899A), fontSize: 12)),
+                                const Text(' و', style: TextStyle(color: const Color(0xFF62697D), fontSize: 12)),
                                 InkWell(
                                   onTap: () => _openLegalDocument('privacy'),
                                   child: const Text('سياسة الخصوصية', style: TextStyle(color: HappyLiveApp.gold, fontSize: 12, decoration: TextDecoration.underline)),
@@ -1248,12 +1248,12 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 22),
                         const Row(
                           children: [
-                            Expanded(child: Divider(color: Color(0xFFE4E4EC))),
+                            Expanded(child: Divider(color: Color(0xFFD5D9E3))),
                             Padding(
                               padding: EdgeInsets.symmetric(horizontal: 14),
-                              child: Text('أو', style: TextStyle(color: const Color(0xFF8B899A), fontSize: 12)),
+                              child: Text('أو', style: TextStyle(color: const Color(0xFF62697D), fontSize: 12)),
                             ),
-                            Expanded(child: Divider(color: Color(0xFFE4E4EC))),
+                            Expanded(child: Divider(color: Color(0xFFD5D9E3))),
                           ],
                         ),
                         const SizedBox(height: 20),
@@ -1262,7 +1262,7 @@ class _LoginPageState extends State<LoginPage> {
                           child: OutlinedButton(
                             onPressed: _isSubmitting ? null : _signInWithGoogle,
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFFE4E4EC)),
+                              side: const BorderSide(color: Color(0xFFD5D9E3)),
                               backgroundColor: const Color(0xFFFAF6EA),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                               foregroundColor: const Color(0xFF1E2233),
@@ -1284,7 +1284,7 @@ class _LoginPageState extends State<LoginPage> {
                             child: OutlinedButton(
                               onPressed: _showNotConnected,
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFFE4E4EC)),
+                                side: const BorderSide(color: Color(0xFFD5D9E3)),
                                 backgroundColor: const Color(0xFFFAF6EA),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                                 foregroundColor: const Color(0xFF1E2233),
@@ -1303,15 +1303,15 @@ class _LoginPageState extends State<LoginPage> {
                         ],
                         const Row(
                           children: [
-                            Expanded(child: Divider(color: Color(0xFFE4E4EC))),
+                            Expanded(child: Divider(color: Color(0xFFD5D9E3))),
                             Padding(
                               padding: EdgeInsets.symmetric(horizontal: 14),
                               child: Text(
                                 'طرق تسجيل دخول أخرى',
-                                style: TextStyle(color: const Color(0xFF8B899A), fontSize: 12),
+                                style: TextStyle(color: const Color(0xFF62697D), fontSize: 12),
                               ),
                             ),
-                            Expanded(child: Divider(color: Color(0xFFE4E4EC))),
+                            Expanded(child: Divider(color: Color(0xFFD5D9E3))),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -1325,7 +1325,7 @@ class _LoginPageState extends State<LoginPage> {
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(50),
                                   foregroundColor: const Color(0xFF1E2233),
-                                  side: const BorderSide(color: Color(0xFFE4E4EC)),
+                                  side: const BorderSide(color: Color(0xFFD5D9E3)),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                 ),
                               ),
@@ -1339,7 +1339,7 @@ class _LoginPageState extends State<LoginPage> {
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(50),
                                   foregroundColor: const Color(0xFF1E2233),
-                                  side: const BorderSide(color: Color(0xFFE4E4EC)),
+                                  side: const BorderSide(color: Color(0xFFD5D9E3)),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                 ),
                               ),
@@ -1352,7 +1352,7 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             Text(
                               _isRegister ? 'لديك حساب بالفعل؟' : 'ليس لديك حساب؟',
-                              style: const TextStyle(color: const Color(0xFF8B899A), fontSize: 13),
+                              style: const TextStyle(color: const Color(0xFF62697D), fontSize: 13),
                             ),
                             TextButton(
                               onPressed: () => setState(() {
@@ -1370,7 +1370,7 @@ class _LoginPageState extends State<LoginPage> {
                         const Text(
                           'HAPPY LIVE  •  عالمك يبدأ هنا',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Color(0xFF9A98AD), fontSize: 10, letterSpacing: 1.2),
+                          style: TextStyle(color: Color(0xFF73798C), fontSize: 10, letterSpacing: 1.2),
                         ),
                       ],
                     ),
@@ -2001,7 +2001,7 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 9),
-    child: Text(label, style: const TextStyle(color: Color(0xFFE9E3EF), fontSize: 13, fontWeight: FontWeight.w700)),
+    child: Text(label, style: const TextStyle(color: Color(0xFF30364A), fontSize: 13, fontWeight: FontWeight.w700)),
   );
 }
 
