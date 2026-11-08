@@ -851,17 +851,24 @@ class _RoomPageState extends State<RoomPage> {
         alignment: Alignment.centerRight,
         child: SizedBox(
           width: MediaQuery.sizeOf(context).width * 0.75,
-          child: AnimatedList(
-            key: _roomAnimatedListKey,
+          height: double.infinity,
+          child: Scrollbar(
             controller: _roomMessagesController,
-            reverse: false,
-            primary: false,
-            physics: const ClampingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
-            initialItemCount: _messages.length + 1,
-            itemBuilder: (context, index, animation) {
+            thumbVisibility: true,
+            interactive: true,
+            child: AnimatedList(
+              key: _roomAnimatedListKey,
+              controller: _roomMessagesController,
+              reverse: false,
+              primary: false,
+              shrinkWrap: false,
+              dragStartBehavior: DragStartBehavior.down,
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+              initialItemCount: _messages.length + 1,
+              itemBuilder: (context, index, animation) {
               if (index == 0) {
                 return SizeTransition(
                   sizeFactor: CurvedAnimation(parent: animation, curve: Curves.easeOutQuart),
@@ -869,8 +876,9 @@ class _RoomPageState extends State<RoomPage> {
                   child: _roomAnnouncementCard(),
                 );
               }
-              return _roomMessageAnimatedItem(_messages[index - 1], animation);
-            },
+                return _roomMessageAnimatedItem(_messages[index - 1], animation);
+              },
+            ),
           ),
         ),
       ),
