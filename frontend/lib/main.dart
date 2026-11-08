@@ -15,7 +15,28 @@ import 'widgets/custom_bottom_nav.dart';
 import 'widgets/purple_tech_background.dart';
 import 'services/session_token_store.dart';
 
-void main() => runApp(const HappyLiveApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Happy Live is a portrait-first social app on Android phones.
+  // Keep the web experience and other platforms unchanged.
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    await SystemChrome.setPreferredOrientations(
+      const [DeviceOrientation.portraitUp],
+    );
+    await SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Color(0xFF09080D),
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: Color(0xFF09080D),
+      ),
+    );
+  }
+
+  runApp(const HappyLiveApp());
+}
 
 class HappyLiveApp extends StatelessWidget {
   const HappyLiveApp({super.key});
