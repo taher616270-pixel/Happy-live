@@ -130,7 +130,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       Positioned(
                         left: 12,
                         bottom: Theme.of(context).platform == TargetPlatform.android
-                            ? 56
+                            ? 36
                             : 68,
                         child: Column(
                           children: const [
