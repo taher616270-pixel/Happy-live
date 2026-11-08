@@ -1364,20 +1364,20 @@ class ExitMenuOverlay extends StatelessWidget {
                 children: [
                   _ExitHalfPanel(
                     fromRight: true,
-                    icon: Icons.power_settings_new,
-                    label: 'اغلاق',
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      onLeave();
-                    },
-                  ),
-                  _ExitHalfPanel(
-                    fromRight: false,
                     icon: Icons.close_fullscreen,
                     label: 'تصغير',
                     onTap: () {
                       Navigator.of(context).pop();
                       onMinimize();
+                    },
+                  ),
+                  _ExitHalfPanel(
+                    fromRight: false,
+                    icon: Icons.power_settings_new,
+                    label: 'اغلاق',
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      onLeave();
                     },
                   ),
                 ],
