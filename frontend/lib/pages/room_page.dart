@@ -217,8 +217,8 @@ class _RoomPageState extends State<RoomPage> {
     _ownerName = (cached['ownerName'] ?? _ownerName).toString();
     _ownerId = (cached['ownerId'] ?? _ownerId).toString();
     _roomAnnouncement = (cached['announcement'] ?? _roomAnnouncement).toString();
-    // Do not restore moderation, ban, mute, or global voice-control state from cache.
-    _isLoading = false;
+    // Keep the entry loader visible until the authenticated room response arrives.
+    // Cached seat data may render underneath, but it does not count as a fresh DB response.
   }
 
   void _rememberRoomPreview(
@@ -1074,7 +1074,10 @@ class _RoomPageState extends State<RoomPage> {
         body: SizedBox.expand(),
       );
     }
-    return VoiceRoomDesignPreview(
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        VoiceRoomDesignPreview(
       room: widget.room,
       chatMessagesPanel: _roomMessagesPanel(),
       chatController: _messageController,
@@ -1094,6 +1097,26 @@ class _RoomPageState extends State<RoomPage> {
       onRoomActions: () => setState(() => _showRoomActions = !_showRoomActions),
       onMinimizeRoom: _minimizeRoom,
       onCloseRoom: _closeRoom,
+        ),
+        if (_isLoading)
+          Positioned.fill(
+            child: AbsorbPointer(
+              child: ColoredBox(
+                color: Color(0x9909080D),
+                child: Center(
+                  child: SizedBox(
+                    width: 42,
+                    height: 42,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(_gold),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
