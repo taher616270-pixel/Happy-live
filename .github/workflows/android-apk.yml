@@ -42,6 +42,24 @@ jobs:
           rm -rf android
           flutter create --platforms=android --org com.happylive --project-name happy_live .
 
+      - name: Use direct Gradle distribution host
+        shell: bash
+        run: |
+          cd frontend
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/gradle/wrapper/gradle-wrapper.properties")
+          s = p.read_text()
+          old = "https\\://services.gradle.org/distributions/"
+          new = "https\\://downloads.gradle.org/distributions/"
+          if old in s:
+              s = s.replace(old, new)
+          elif new not in s:
+              raise SystemExit("Could not find the generated Gradle distribution URL")
+          p.write_text(s)
+          print("Gradle distribution:", [line for line in s.splitlines() if line.startswith("distributionUrl=")][0])
+          PY
+
       - name: Set Android compile SDK 37
         shell: bash
         run: |
