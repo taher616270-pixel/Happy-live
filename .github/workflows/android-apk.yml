@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-android:
@@ -240,3 +240,17 @@ jobs:
           path: frontend/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish direct APK download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="frontend/build/app/outputs/flutter-apk/app-release.apk"
+          if ! gh release view android-latest >/dev/null 2>&1; then
+            gh release create android-latest --title "Happy Live Android" --notes "Direct download for the latest Happy Live Android APK."
+          fi
+          cp "$APK" HappyLive.apk
+          gh release upload android-latest HappyLive.apk --clobber
+          echo "Stable APK URL: https://github.com/taher616270-pixel/Happy-live/releases/download/android-latest/HappyLive.apk"
