@@ -1443,12 +1443,8 @@ class _ExitHalfPanelState extends State<_ExitHalfPanel>
           onTap: widget.onTap,
           child: Container(
             height: 150,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(.07),
-              border: Border(
-                left: BorderSide(color: Colors.white.withOpacity(.12)),
-                right: BorderSide(color: Colors.white.withOpacity(.12)),
-              ),
+            decoration: const BoxDecoration(
+              color: Colors.transparent,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
