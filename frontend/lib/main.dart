@@ -1958,19 +1958,21 @@ class _BrandHeader extends StatelessWidget {
             ],
           ),
           child: Center(
-            child: Transform.translate(
-              offset: const Offset(0, 10),
-              child: const Text(
-                'H',
-                style: TextStyle(
-                  fontSize: 66,
-                  height: 1,
-                  fontWeight: FontWeight.w900,
+            child: Padding(
+              padding: const EdgeInsets.all(9),
+              child: Image.asset(
+                'assets/images/app_icon.PNG',
+                width: 70,
+                height: 70,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.image_not_supported_outlined,
                   color: HappyLiveApp.gold,
-                  shadows: [Shadow(color: Color(0x44D9A93C), blurRadius: 12)],
+                  size: 42,
                 ),
               ),
             ),
+          ),
           ),
         ),
         const SizedBox(height: 15),
