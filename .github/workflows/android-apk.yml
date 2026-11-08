@@ -74,7 +74,7 @@ jobs:
           # Give the Android app its permanent public package identifier.
           import re
           application_id = 'applicationId = "com.happylive.app"'
-          s, count = re.subn(r'applicationId\\s*=\\s*"[^"]+"', application_id, s, count=1)
+          s, count = re.subn(r'applicationId\s*=\s*"[^"]+"', application_id, s, count=1)
           if count != 1:
               raise SystemExit("Could not set Android applicationId")
           if old in s:
