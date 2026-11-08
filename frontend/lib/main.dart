@@ -738,7 +738,7 @@ class _LoginPageState extends State<LoginPage> {
                 message,
                 textAlign: TextAlign.right,
                 style: const TextStyle(
-                  color: const Color(0xFF1E2233),
+                  color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   height: 1.4,
