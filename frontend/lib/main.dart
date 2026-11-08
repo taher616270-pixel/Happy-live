@@ -1973,7 +1973,6 @@ class _BrandHeader extends StatelessWidget {
               ),
             ),
           ),
-          ),
         ),
         const SizedBox(height: 15),
         const Text(
