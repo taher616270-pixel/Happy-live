@@ -60,29 +60,6 @@ jobs:
           p.write_text(s)
           if "compileSdk = 37" not in p.read_text():
               raise SystemExit("compileSdk 37 was not applied")
-          # Agora's Android library module pins compileSdk 31. Override Android
-          # library subprojects too, not only the app module.
-          root = Path("android/build.gradle.kts")
-          root_text = root.read_text()
-          # Re-apply the final value after all Android plugin DSL scripts have
-          # been evaluated. Agora's plugin resets its library compileSdk to 31.
-          root = Path("android/build.gradle.kts")
-          root_text = root.read_text()
-          marker = "          gradle.projectsEvaluated {"
-          if marker in root_text:
-              root_text = root_text[:root_text.index(marker)].rstrip() + "\\n"
-          root_text += """
-          gradle.projectsEvaluated {
-              allprojects {
-                  if (plugins.hasPlugin("com.android.library")) {
-                      extensions.configure<com.android.build.gradle.LibraryExtension> {
-                          compileSdk = 36
-                      }
-                  }
-              }
-          }
-          """
-          root.write_text(root_text)
           PY
           python3 - <<'PY'
           from pathlib import Path
@@ -115,6 +92,32 @@ jobs:
         run: |
           cd frontend
           flutter pub get
+
+      - name: Patch Agora Android library compile SDK
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          roots = list(Path.home().joinpath(".pub-cache/hosted/pub.dev").glob("agora_rtc_engine-*/android"))
+          if not roots:
+              raise SystemExit("Agora Android plugin directory was not found in pub cache")
+          changed = []
+          for root in roots:
+              for p in (root / "build.gradle", root / "build.gradle.kts"):
+                  if not p.exists():
+                      continue
+                  text = p.read_text()
+                  updated = re.sub(r"(compileSdkVersion\\s+|compileSdk\\s*=\\s*)31\\b", r"\\g<1>36", text)
+                  if updated != text:
+                      p.write_text(updated)
+                      changed.append(str(p))
+                  elif re.search(r"compileSdkVersion\\s+31\\b|compileSdk\\s*=\\s*31\\b", text):
+                      raise SystemExit(f"Could not patch compileSdk 31 in {p}")
+          if not changed:
+              raise SystemExit("Agora library compileSdk 31 declaration was not found; refusing to continue with an unpatched native plugin")
+          print("Patched Agora compile SDK in:", *changed, sep="\\n - ")
+          PY
 
       - name: Build release APK
         run: |
