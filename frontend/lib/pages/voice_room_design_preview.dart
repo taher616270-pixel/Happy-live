@@ -554,90 +554,12 @@ Widget _roomActionButton({
   }
 
   void _showSaveLeaveDialog(BuildContext context) {
-    showGeneralDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'إغلاق نافذة الغرفة',
-      barrierColor: Colors.black.withOpacity(0.35),
-      transitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        return SafeArea(
-          bottom: false,
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: double.infinity,
-                height: 250,
-                color: Colors.black.withOpacity(0.85),
-                child: Directionality(
-                  textDirection: TextDirection.rtl,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _saveLeaveAction(
-                        icon: Icons.close_fullscreen_rounded,
-                        label: 'حفظ',
-                        onTap: () {
-                          Navigator.of(dialogContext).pop();
-                          onMinimizeRoom?.call();
-                        },
-                      ),
-                      _saveLeaveAction(
-                        icon: Icons.power_settings_new_rounded,
-                        label: 'مغادرة',
-                        onTap: () {
-                          Navigator.of(dialogContext).pop();
-                          onCloseRoom?.call();
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        final slide = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-        return SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, -0.35), end: Offset.zero).animate(slide),
-          child: child,
-        );
-      },
+    ExitMenuOverlay.show(
+      context,
+      onLeave: () => onCloseRoom?.call(),
+      onMinimize: () => onMinimizeRoom?.call(),
     );
   }
-
-  Widget _saveLeaveAction({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(18),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 70,
-            height: 70,
-            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-            child: Icon(icon, size: 38, color: Colors.black87),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
-          ),
-        ],
-      ),
-    ),
-  );
 
   Widget _listeners() => Transform.translate(
     offset: const Offset(0, -65),
@@ -1390,3 +1312,117 @@ class _SkyPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _SkyPainter oldDelegate) => oldDelegate.phase != phase;
 }
+
+/// نافذة خيارات زر X: مغادرة الغرفة أو تصغيرها.
+class ExitMenuOverlay extends StatelessWidget {
+  final VoidCallback onLeave;
+  final VoidCallback onMinimize;
+
+  const ExitMenuOverlay({
+    super.key,
+    required this.onLeave,
+    required this.onMinimize,
+  });
+
+  static Future<void> show(
+    BuildContext context, {
+    required VoidCallback onLeave,
+    required VoidCallback onMinimize,
+  }) {
+    return Navigator.of(context).push(PageRouteBuilder(
+      opaque: false,
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (_, __, ___) =>
+          ExitMenuOverlay(onLeave: onLeave, onMinimize: onMinimize),
+      transitionsBuilder: (_, anim, __, child) =>
+          FadeTransition(opacity: anim, child: child),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: const Color(0xF2121217),
+        body: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.of(context).pop(),
+          child: SafeArea(
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _ExitCircleAction(
+                    icon: Icons.power_settings_new,
+                    label: 'اغلاق',
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      onLeave();
+                    },
+                  ),
+                  const SizedBox(width: 90),
+                  _ExitCircleAction(
+                    icon: Icons.close_fullscreen,
+                    label: 'تصغير',
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      onMinimize();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExitCircleAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ExitCircleAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(.10),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white.withOpacity(.85),
+              size: 38,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withOpacity(.55),
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
