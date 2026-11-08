@@ -100,9 +100,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     children: [
                       if (chatMessagesPanel != null)
                         Positioned(
-                          left: 76,
+                          left: 83,
                           width: MediaQuery.sizeOf(context).width * 0.75,
-                          top: -60,
+                          top: -50,
                           bottom: 8,
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 220),
