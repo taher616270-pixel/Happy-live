@@ -104,6 +104,28 @@ jobs:
           if "com.yalantis.ucrop.UCropActivity" not in s:
               s = s.replace("</application>", activity + "\n    </application>")
           p.write_text(s)
+          # image_cropper 12.x expects Ucrop.CropTheme (introduced in v9).
+          # Keep the Android 15 edge-to-edge workaround in the generated CI project.
+          values = Path("android/app/src/main/res/values")
+          values.mkdir(parents=True, exist_ok=True)
+          styles = values / "styles.xml"
+          style = '    <style name="Ucrop.CropTheme" parent="Theme.AppCompat.Light.NoActionBar" />'
+          if styles.exists():
+              xml = styles.read_text()
+              if 'name="Ucrop.CropTheme"' not in xml:
+                  xml = xml.replace("</resources>", style + "\\n</resources>")
+              styles.write_text(xml)
+          else:
+              styles.write_text('<?xml version="1.0" encoding="utf-8"?>\\n<resources>\\n' + style + '\\n</resources>\\n')
+          values35 = Path("android/app/src/main/res/values-v35")
+          values35.mkdir(parents=True, exist_ok=True)
+          (values35 / "styles.xml").write_text('''<?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="Ucrop.CropTheme" parent="Theme.AppCompat.Light.NoActionBar">
+                  <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+              </style>
+          </resources>
+          ''')
           PY
 
       - name: Resolve Flutter dependencies
