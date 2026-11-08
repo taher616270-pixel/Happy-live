@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -1760,11 +1759,8 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _microphoneStage() {
-    // Android room layout only: lower the microphone seats by exactly 30 logical pixels.
-    // Keep the web and iOS layouts unchanged.
-    final androidOffset = !kIsWeb && defaultTargetPlatform == TargetPlatform.android ? 30.0 : 0.0;
     return Padding(
-      padding: EdgeInsets.fromLTRB(4, 12 + androidOffset, 4, 10),
+      padding: const EdgeInsets.fromLTRB(4, 12, 4, 10),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final tileWidth = (constraints.maxWidth - 24) / 4;
