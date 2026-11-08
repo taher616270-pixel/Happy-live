@@ -15,14 +15,14 @@ permissions:
 
 jobs:
   build-android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -202,7 +202,7 @@ jobs:
       # Reuse Gradle distributions and downloaded Kotlin/Android dependencies
       # so transient upstream 502/504 responses do not repeatedly break builds.
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.gradle/caches
@@ -234,7 +234,7 @@ jobs:
           exit 1
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: happy-live-android-apk
           path: frontend/build/app/outputs/flutter-apk/app-release.apk
