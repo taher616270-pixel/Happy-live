@@ -397,7 +397,9 @@ class _LoginPageState extends State<LoginPage> {
 
       final response = await http.post(
         Uri.parse('$_apiBase/auth/google'),
-        headers: {'Content-Type': 'application/json'},
+        // Use a CORS-safelisted content type to avoid a browser OPTIONS preflight.
+        // The Worker parses the JSON body directly and does not depend on this header.
+        headers: {'Content-Type': 'text/plain;charset=UTF-8'},
         body: jsonEncode({'idToken': idToken, 'acceptedTerms': true}),
       ).timeout(const Duration(seconds: 25));
 
