@@ -5,10 +5,11 @@ import 'pages/posts_page.dart';
 import 'pages/edit_profile_page.dart';
 import 'package:flutter/services.dart';
 import 'package:country_picker/country_picker.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:convert';
 import 'widgets/custom_bottom_nav.dart';
 import 'widgets/purple_tech_background.dart';
@@ -92,7 +93,9 @@ class _LoginPageState extends State<LoginPage> {
   String? _sessionRestoreError;
 
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
+  static const String _googleClientId = '999298541545-5i0kn2d1emj2rohuvruj4o8ej49ho9kg.apps.googleusercontent.com';
   static const _registeredDeviceKey = 'happy_live_registered_on_device';
+  final GoogleSignIn _googleSignIn = GoogleSignIn(clientId: _googleClientId, scopes: const ['email', 'profile']);
 
   @override
   void initState() {
@@ -297,6 +300,146 @@ class _LoginPageState extends State<LoginPage> {
     _phoneNumber.dispose();
     _phoneCountryCodeInput.dispose();
     super.dispose();
+  }
+
+  Future<bool> _confirmGoogleTerms() async {
+    var accepted = false;
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, refreshDialog) => AlertDialog(
+          backgroundColor: const Color(0xFFFAF6EA),
+          title: const Text(
+            'تأكيد إنشاء الحساب',
+            style: TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.w900),
+            textAlign: TextAlign.center,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'إذا لم يكن لديك حساب في Happy Live، فسيتم إنشاء حساب جديد باستخدام بريد Google. يجب أن يكون عمرك 18 سنة أو أكثر.',
+                style: TextStyle(color: Color(0xFF555568), height: 1.6),
+                textAlign: TextAlign.center,
+              ),
+              CheckboxListTile(
+                value: accepted,
+                onChanged: (value) => refreshDialog(() => accepted = value ?? false),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                activeColor: const Color(0xFFC99B4D),
+                title: const Text(
+                  'أؤكد أن عمري 18 سنة أو أكثر وأوافق على الشروط وسياسة الخصوصية',
+                  style: TextStyle(color: Color(0xFF1E2233), fontSize: 12, height: 1.4),
+                ),
+              ),
+              Wrap(
+                alignment: WrapAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).push(
+                      MaterialPageRoute<void>(builder: (_) => const LegalDocumentPage(type: 'terms')),
+                    ),
+                    child: const Text('الشروط والأحكام'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).push(
+                      MaterialPageRoute<void>(builder: (_) => const LegalDocumentPage(type: 'privacy')),
+                    ),
+                    child: const Text('سياسة الخصوصية'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: accepted ? () => Navigator.pop(dialogContext, true) : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFD9A93C),
+                foregroundColor: const Color(0xFF1E2233),
+              ),
+              child: const Text('متابعة'),
+            ),
+          ],
+        ),
+      ),
+    );
+    return result == true;
+  }
+
+  Future<void> _signInWithGoogle() async {
+    if (_isSubmitting) return;
+    if (!kIsWeb) {
+      _showValidationNotice('تسجيل Google للنسخة الأصلية من التطبيق يحتاج إعدادات Android وiOS إضافية');
+      return;
+    }
+
+    final acceptedTerms = await _confirmGoogleTerms();
+    if (!acceptedTerms || !mounted) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      final account = await _googleSignIn.signIn();
+      if (account == null) return;
+
+      final authentication = await account.authentication;
+      final idToken = authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        _showValidationNotice('لم نستلم رمز التحقق من Google. حاول مرة أخرى.');
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('$_apiBase/auth/google'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'idToken': idToken, 'acceptedTerms': true}),
+      ).timeout(const Duration(seconds: 25));
+
+      Map<String, dynamic> data = {};
+      try {
+        data = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {}
+
+      if (response.statusCode != 200) {
+        _showValidationNotice((data['message'] ?? 'تعذر تسجيل الدخول باستخدام Google').toString());
+        return;
+      }
+
+      final token = (data['accessToken'] ?? '').toString();
+      final user = data['user'] as Map<String, dynamic>? ?? {};
+      if (token.isEmpty) {
+        _showValidationNotice('استلم التطبيق ردًا غير مكتمل من الخادم');
+        return;
+      }
+
+      await SessionTokenStore.write(token);
+      await SessionTokenStore.writeUser(jsonEncode(user));
+      await SessionTokenStore.writeTab(0);
+      if (data['isNewUser'] == true) await _rememberSuccessfulRegistrationOnThisDevice();
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => SessionHomePage(
+            name: (user['name'] ?? account.displayName ?? '').toString(),
+            email: (user['email'] ?? account.email).toString(),
+            userId: (user['gabo_id'] ?? user['id'] ?? '').toString(),
+            accessToken: token,
+          ),
+        ),
+      );
+    } on http.ClientException {
+      if (mounted) _showValidationNotice('تعذر الاتصال بالخادم، تحقق من الإنترنت');
+    } catch (_) {
+      if (mounted) _showValidationNotice('تعذر إكمال تسجيل الدخول عبر Google. حاول مرة أخرى.');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   void _showNotConnected() {
@@ -1094,7 +1237,7 @@ class _LoginPageState extends State<LoginPage> {
                         SizedBox(
                           height: 52,
                           child: OutlinedButton(
-                            onPressed: _showNotConnected,
+                            onPressed: _isSubmitting ? null : _signInWithGoogle,
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: Color(0xFFE4E4EC)),
                               backgroundColor: const Color(0xFFFAF6EA),
