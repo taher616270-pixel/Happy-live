@@ -104,7 +104,16 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           right: 12,
                           top: -34,
                           bottom: 8,
-                          child: chatMessagesPanel!,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                            transform: Matrix4.translationValues(
+                              0,
+                              -MediaQuery.viewInsetsOf(context).bottom,
+                              0,
+                            ),
+                            child: chatMessagesPanel!,
+                          ),
                         ),
                       Positioned(
                         left: 12,
