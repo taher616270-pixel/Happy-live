@@ -99,7 +99,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     children: [
                       if (chatMessagesPanel != null)
                         Positioned(
-                          left: 58,
+                          left: 12,
                           right: 12,
                           top: 8,
                           bottom: 8,
