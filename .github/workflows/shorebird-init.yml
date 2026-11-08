@@ -1,0 +1,61 @@
+name: Initialize Happy Live with Shorebird
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  initialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android project in CI workspace
+        shell: bash
+        run: |
+          cd frontend
+          rm -rf android
+          flutter create --platforms=android --org com.happylive --project-name happy_live .
+
+      - name: Set up Shorebird
+        uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+
+      - name: Initialize Shorebird app
+        working-directory: frontend
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: shorebird init --display-name "Happy Live"
+
+      - name: Commit Shorebird app configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f frontend/shorebird.yaml
+          grep -q '^app_id:' frontend/shorebird.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/shorebird.yaml frontend/pubspec.yaml
+          if git diff --cached --quiet; then
+            echo "Shorebird configuration is already committed."
+          else
+            git commit -m "Initialize Happy Live with Shorebird"
+            git push
+          fi
