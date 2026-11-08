@@ -55,7 +55,7 @@ jobs:
               <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
           """
           if "android.permission.RECORD_AUDIO" not in s:
-              s = s.replace("<application>", permissions + "\\n    <application>")
+              s = s.replace("<application>", permissions + "\n    <application>")
           activity = '''
                   <activity
                       android:name="com.yalantis.ucrop.UCropActivity"
@@ -64,7 +64,7 @@ jobs:
                       android:exported="false" />
           '''
           if "com.yalantis.ucrop.UCropActivity" not in s:
-              s = s.replace("</application>", activity + "\\n    </application>")
+              s = s.replace("</application>", activity + "\n    </application>")
           p.write_text(s)
           PY
 
