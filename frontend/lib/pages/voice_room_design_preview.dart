@@ -251,6 +251,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           _headerAction(Icons.close_rounded, () => _showSaveLeaveDialog(context), 28),
         ],
       ),
+      ),
     );
   }
 
