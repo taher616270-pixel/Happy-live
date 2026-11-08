@@ -1959,11 +1959,11 @@ class _BrandHeader extends StatelessWidget {
           ),
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.all(9),
+              padding: const EdgeInsets.all(4),
               child: Image.asset(
                 'assets/images/app_icon.PNG',
-                width: 70,
-                height: 70,
+                width: 80,
+                height: 80,
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Icon(
                   Icons.image_not_supported_outlined,
