@@ -903,14 +903,6 @@ class _RoomPageState extends State<RoomPage> {
               Text(_roomAnnouncement, style: const TextStyle(color: Colors.white, fontSize: 11, height: 1.4)),
             ],
           )),
-          if (_isRoomOwner) ...[
-            const SizedBox(width: 8),
-            TextButton(
-              onPressed: _editRoomAnnouncement,
-              style: TextButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF21152B), minimumSize: const Size(54, 34), padding: const EdgeInsets.symmetric(horizontal: 10)),
-              child: const Text('تعديل', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
-            ),
-          ],
         ],
       ),
     );
