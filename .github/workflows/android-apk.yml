@@ -113,10 +113,10 @@ jobs:
           if styles.exists():
               xml = styles.read_text()
               if 'name="Ucrop.CropTheme"' not in xml:
-                  xml = xml.replace("</resources>", style + "\\n</resources>")
+                  xml = xml.replace("</resources>", style + chr(10) + "</resources>")
               styles.write_text(xml)
           else:
-              styles.write_text('<?xml version="1.0" encoding="utf-8"?>\\n<resources>\\n' + style + '\\n</resources>\\n')
+              styles.write_text('<?xml version="1.0" encoding="utf-8"?>' + chr(10) + '<resources>' + chr(10) + style + chr(10) + '</resources>' + chr(10))
           values35 = Path("android/app/src/main/res/values-v35")
           values35.mkdir(parents=True, exist_ok=True)
           (values35 / "styles.xml").write_text('''<?xml version="1.0" encoding="utf-8"?>
