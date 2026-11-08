@@ -134,10 +134,35 @@ jobs:
           flutter pub get
           dart run flutter_launcher_icons
 
-      - name: Build release APK
+      # Reuse Gradle distributions and downloaded Kotlin/Android dependencies
+      # so transient upstream 502/504 responses do not repeatedly break builds.
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-happy-live-gradle-${{ hashFiles('frontend/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-happy-live-gradle-
+
+      - name: Build release APK (retry transient download failures)
+        shell: bash
         run: |
           cd frontend
-          flutter build apk --release
+          for attempt in 1 2 3 4; do
+            echo "Android release build attempt ${attempt}/4"
+            if flutter build apk --release; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 4 ]; then
+              delay=$((attempt * 30))
+              echo "Build failed; waiting ${delay}s before retrying Gradle/Maven downloads..."
+              sleep "$delay"
+            fi
+          done
+          echo "Android release build failed after 4 attempts."
+          exit 1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
