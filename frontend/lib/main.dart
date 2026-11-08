@@ -24,6 +24,9 @@ Future<void> main() async {
     await SystemChrome.setPreferredOrientations(
       const [DeviceOrientation.portraitUp],
     );
+    // Android only: use the entire display and hide the status/navigation bars.
+    // The bars can be temporarily revealed with a system swipe (immersive sticky).
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
