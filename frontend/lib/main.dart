@@ -115,7 +115,11 @@ class _LoginPageState extends State<LoginPage> {
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
   static const String _googleClientId = '999298541545-5i0kn2d1emj2rohuvruj4o8ej49ho9kg.apps.googleusercontent.com';
   static const _registeredDeviceKey = 'happy_live_registered_on_device';
-  final GoogleSignIn _googleSignIn = GoogleSignIn(clientId: _googleClientId, scopes: const ['email', 'profile']);
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: kIsWeb ? _googleClientId : null,
+    serverClientId: kIsWeb ? null : _googleClientId,
+    scopes: const ['email', 'profile'],
+  );
 
   @override
   void initState() {
@@ -395,11 +399,6 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _signInWithGoogle() async {
     if (_isSubmitting) return;
-    if (!kIsWeb) {
-      _showValidationNotice('تسجيل Google للنسخة الأصلية من التطبيق يحتاج إعدادات Android وiOS إضافية');
-      return;
-    }
-
     final acceptedTerms = await _confirmGoogleTerms();
     if (!acceptedTerms || !mounted) return;
 
