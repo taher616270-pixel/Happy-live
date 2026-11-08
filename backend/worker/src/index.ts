@@ -1138,8 +1138,8 @@ export default {
         ).bind(now, roomId, audienceCutoff).run();
         const [audience, audienceUsersResult] = await Promise.all([
           env.DB.prepare(
-            "SELECT COUNT(DISTINCT user_id) AS count FROM room_chat_visits WHERE room_id = ? AND exited_at IS NULL AND last_seen_at >= ?"
-          ).bind(roomId, audienceCutoff).first<{ count: number }>(),
+            "SELECT COUNT(DISTINCT v.user_id) AS count FROM room_chat_visits v WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? AND NOT EXISTS (SELECT 1 FROM room_seats s WHERE s.room_id = v.room_id AND s.user_id = v.user_id AND s.expires_at > ?)"
+          ).bind(roomId, audienceCutoff, now).first<{ count: number }>(),
           env.DB.prepare(
             "SELECT p.user_id, p.display_name, p.avatar_key, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? AND NOT EXISTS (SELECT 1 FROM room_seats s WHERE s.room_id = v.room_id AND s.user_id = v.user_id AND s.expires_at > ?) GROUP BY p.user_id, p.display_name, p.avatar_key ORDER BY last_seen_at DESC LIMIT 100"
           ).bind(roomId, audienceCutoff, now).all<{ user_id: string; display_name: string | null; avatar_key: string | null; last_seen_at: string }>()
