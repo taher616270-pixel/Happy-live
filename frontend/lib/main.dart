@@ -316,11 +316,11 @@ class _LoginPageState extends State<LoginPage> {
       builder: (dialogContext) => Directionality(
         textDirection: TextDirection.rtl,
         child: Dialog(
-          backgroundColor: HappyLiveApp.surface,
+          backgroundColor: const Color(0xFF1E2233),
           insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
-            side: const BorderSide(color: Color(0xFF51415F)),
+            side: const BorderSide(color: Color(0xFFE4E4EC)),
           ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 390),
@@ -344,7 +344,7 @@ class _LoginPageState extends State<LoginPage> {
                     const Text(
                       'اختر رمز الدولة ثم أدخل رقم هاتفك',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: HappyLiveApp.muted, fontSize: 12),
+                      style: TextStyle(color: const Color(0xFF8B899A), fontSize: 12),
                     ),
                     const SizedBox(height: 22),
                     InkWell(
@@ -354,7 +354,7 @@ class _LoginPageState extends State<LoginPage> {
                         showModalBottomSheet<void>(
                           context: dialogContext,
                           isScrollControlled: true,
-                          backgroundColor: HappyLiveApp.surface,
+                          backgroundColor: const Color(0xFF1E2233),
                           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
                           builder: (countryContext) => StatefulBuilder(
                             builder: (countryContext, refreshCountries) {
@@ -377,14 +377,14 @@ class _LoginPageState extends State<LoginPage> {
                                         autofocus: true,
                                         textDirection: TextDirection.rtl,
                                         onChanged: (value) => refreshCountries(() => searchQuery = value),
-                                        style: const TextStyle(color: Colors.white),
+                                        style: const TextStyle(color: const Color(0xFF1E2233)),
                                         decoration: InputDecoration(
                                           hintText: 'ابحث عن اسم الدولة أو رمزها',
-                                          hintStyle: const TextStyle(color: HappyLiveApp.muted),
+                                          hintStyle: const TextStyle(color: const Color(0xFF8B899A)),
                                           prefixIcon: const Icon(Icons.search, color: HappyLiveApp.gold),
-                                          filled: true, fillColor: const Color(0xFF100D15),
+                                          filled: true, fillColor: const Color(0xFFFAF6EA),
                                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF51415F))),
+                                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE4E4EC))),
                                         ),
                                       ),
                                     ),
@@ -398,7 +398,7 @@ class _LoginPageState extends State<LoginPage> {
                                             if (!matchesSouth) return const SizedBox.shrink();
                                             return ListTile(
                                               leading: ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.asset('web/assets/south-arabia-v2.png', width: 31, height: 27, cacheWidth: 124, cacheHeight: 108, fit: BoxFit.cover)),
-                                              title: const Text('الجنوب العربي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                                              title: const Text('الجنوب العربي', style: TextStyle(color: const Color(0xFF1E2233), fontWeight: FontWeight.w800)),
                                               onTap: () {
                                                 refreshDialog(() {
                                                   _phoneCountryName = 'الجنوب العربي';
@@ -415,7 +415,7 @@ class _LoginPageState extends State<LoginPage> {
                                           final translatedName = country.getTranslatedName(countryContext) ?? country.name;
                                           return ListTile(
                                             leading: Text(country.flagEmoji, style: const TextStyle(fontSize: 24)),
-                                            title: Text(translatedName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                                            title: Text(translatedName, style: const TextStyle(color: const Color(0xFF1E2233), fontWeight: FontWeight.w700)),
                                             onTap: () {
                                               refreshDialog(() {
                                                 _phoneCountryName = translatedName;
@@ -441,9 +441,9 @@ class _LoginPageState extends State<LoginPage> {
                         height: 52,
                         padding: const EdgeInsets.symmetric(horizontal: 13),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF100D15),
+                          color: const Color(0xFFFAF6EA),
                           borderRadius: BorderRadius.circular(13),
-                          border: Border.all(color: const Color(0xFF51415F)),
+                          border: Border.all(color: const Color(0xFFE4E4EC)),
                         ),
                         child: Row(
                           children: [
@@ -451,7 +451,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ? ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.asset('web/assets/south-arabia-v2.png', width: 31, height: 27, cacheWidth: 124, cacheHeight: 108, fit: BoxFit.cover))
                                 : Text(_phoneCountryFlag, style: const TextStyle(fontSize: 23)),
                             const SizedBox(width: 11),
-                            Expanded(child: Text(_phoneCountryName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+                            Expanded(child: Text(_phoneCountryName, style: const TextStyle(color: const Color(0xFF1E2233), fontWeight: FontWeight.w700))),
                             const Icon(Icons.keyboard_arrow_down_rounded, color: HappyLiveApp.gold),
                           ],
                         ),
@@ -475,13 +475,13 @@ class _LoginPageState extends State<LoginPage> {
                               style: const TextStyle(color: HappyLiveApp.gold, fontSize: 16, fontWeight: FontWeight.w900),
                               decoration: InputDecoration(
                                 hintText: '+966',
-                                hintStyle: const TextStyle(color: HappyLiveApp.muted),
+                                hintStyle: const TextStyle(color: const Color(0xFF8B899A)),
                                 filled: true,
-                                fillColor: const Color(0xFF100D15),
+                                fillColor: const Color(0xFFFAF6EA),
 
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF51415F))),
-                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF51415F))),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE4E4EC))),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE4E4EC))),
                                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: HappyLiveApp.gold)),
                               ),
                             ),
@@ -492,16 +492,16 @@ class _LoginPageState extends State<LoginPage> {
                               controller: _phoneNumber,
                               keyboardType: TextInputType.phone,
                               textDirection: TextDirection.ltr,
-                              style: const TextStyle(color: Colors.white, fontSize: 17, letterSpacing: 1),
+                              style: const TextStyle(color: const Color(0xFF1E2233), fontSize: 17, letterSpacing: 1),
                               decoration: InputDecoration(
                                 hintText: 'رقم الهاتف',
-                                hintStyle: const TextStyle(color: HappyLiveApp.muted, fontSize: 14),
+                                hintStyle: const TextStyle(color: const Color(0xFF8B899A), fontSize: 14),
                                 filled: true,
-                                fillColor: const Color(0xFF100D15),
+                                fillColor: const Color(0xFFFAF6EA),
                                 prefixIcon: const Icon(Icons.phone_rounded, color: HappyLiveApp.gold, size: 20),
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF51415F))),
-                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF51415F))),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE4E4EC))),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE4E4EC))),
                                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: HappyLiveApp.gold)),
                               ),
                             ),
@@ -516,8 +516,8 @@ class _LoginPageState extends State<LoginPage> {
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(dialogContext),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white70,
-                              side: const BorderSide(color: Color(0xFF51415F)),
+                              foregroundColor: const Color(0xFF8B899A),
+                              side: const BorderSide(color: Color(0xFFE4E4EC)),
                               minimumSize: const Size.fromHeight(47),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
@@ -541,7 +541,7 @@ class _LoginPageState extends State<LoginPage> {
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: HappyLiveApp.gold,
-                              foregroundColor: const Color(0xFF17131F),
+                              foregroundColor: const Color(0xFFFFFFFF),
                               minimumSize: const Size.fromHeight(47),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
@@ -574,7 +574,7 @@ class _LoginPageState extends State<LoginPage> {
                 message,
                 textAlign: TextAlign.right,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: const Color(0xFF1E2233),
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   height: 1.4,
@@ -584,7 +584,7 @@ class _LoginPageState extends State<LoginPage> {
           ],
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF241B2D),
+        backgroundColor: const Color(0xFF292B3A),
         elevation: 12,
         duration: const Duration(seconds: 4),
         margin: EdgeInsets.fromLTRB(
@@ -805,15 +805,15 @@ class _LoginPageState extends State<LoginPage> {
   }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF81798C), fontSize: 14),
+      hintStyle: const TextStyle(color: Color(0xFF9A98AD), fontSize: 14),
       prefixIcon: Icon(icon, color: HappyLiveApp.gold, size: 20),
       suffixIcon: suffix,
       filled: true,
-      fillColor: const Color(0xFF15121B),
+      fillColor: const Color(0xFFFAF6EA),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: Color(0xFF30283A)),
+        borderSide: const BorderSide(color: Color(0xFFE4E4EC)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
@@ -838,19 +838,19 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
       body: Container(
-        color: Colors.transparent,
+        color: const Color(0xFFF6F7FB),
         child: Stack(
           fit: StackFit.expand,
           children: [
           const Positioned(
             top: -110,
             right: -90,
-            child: _GlowOrb(color: Color(0x33D9A93C), size: 280),
+            child: _GlowOrb(color: Color(0x22D9A93C), size: 280),
           ),
           const Positioned(
             bottom: -140,
             left: -100,
-            child: _GlowOrb(color: Color(0x22E8C477), size: 300),
+            child: _GlowOrb(color: Color(0x18D9A93C), size: 300),
           ),
           SafeArea(
             bottom: false,
@@ -877,7 +877,7 @@ class _LoginPageState extends State<LoginPage> {
                           style: const TextStyle(
                             fontSize: 27,
                             fontWeight: FontWeight.w900,
-                            color: Colors.white,
+                            color: const Color(0xFF1E2233),
                           ),
                         ),
                         const SizedBox(height: 9),
@@ -887,7 +887,7 @@ class _LoginPageState extends State<LoginPage> {
                               : 'سجّل دخولك وتواصل مع عالمك',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            color: HappyLiveApp.muted,
+                            color: const Color(0xFF8B899A),
                             fontSize: 14,
                           ),
                         ),
@@ -943,7 +943,7 @@ class _LoginPageState extends State<LoginPage> {
                               onPressed: () => setState(() => _hidePassword = !_hidePassword),
                               icon: Icon(
                                 _hidePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                color: HappyLiveApp.muted,
+                                color: const Color(0xFF8B899A),
                                 size: 20,
                               ),
                             ),
@@ -967,7 +967,7 @@ class _LoginPageState extends State<LoginPage> {
                                 onPressed: () => setState(() => _hideConfirmPassword = !_hideConfirmPassword),
                                 icon: Icon(
                                   _hideConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                  color: HappyLiveApp.muted,
+                                  color: const Color(0xFF8B899A),
                                   size: 20,
                                 ),
                               ),
@@ -985,9 +985,9 @@ class _LoginPageState extends State<LoginPage> {
                               height: 56,
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF15121B),
+                                color: const Color(0xFFFAF6EA),
                                 borderRadius: BorderRadius.circular(15),
-                                border: Border.all(color: const Color(0xFF30283A)),
+                                border: Border.all(color: const Color(0xFFE4E4EC)),
                               ),
                               child: Row(
                                 children: [
@@ -1001,14 +1001,14 @@ class _LoginPageState extends State<LoginPage> {
                                           : '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}',
                                       style: TextStyle(
                                         color: _birthDate == null
-                                            ? const Color(0xFF81798C)
-                                            : Colors.white,
+                                            ? const Color(0xFF9A98AD)
+                                            : const Color(0xFF1E2233),
                                         fontSize: 14,
                                       ),
                                     ),
                                   ),
                                   const Icon(Icons.keyboard_arrow_down_rounded,
-                                      color: HappyLiveApp.muted),
+                                      color: const Color(0xFF8B899A)),
                                 ],
                               ),
                             ),
@@ -1024,12 +1024,12 @@ class _LoginPageState extends State<LoginPage> {
                             title: Wrap(
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                const Text('أوافق على ', style: TextStyle(color: HappyLiveApp.muted, fontSize: 12)),
+                                const Text('أوافق على ', style: TextStyle(color: const Color(0xFF8B899A), fontSize: 12)),
                                 InkWell(
                                   onTap: () => _openLegalDocument('terms'),
                                   child: const Text('الشروط والأحكام', style: TextStyle(color: HappyLiveApp.gold, fontSize: 12, decoration: TextDecoration.underline)),
                                 ),
-                                const Text(' و', style: TextStyle(color: HappyLiveApp.muted, fontSize: 12)),
+                                const Text(' و', style: TextStyle(color: const Color(0xFF8B899A), fontSize: 12)),
                                 InkWell(
                                   onTap: () => _openLegalDocument('privacy'),
                                   child: const Text('سياسة الخصوصية', style: TextStyle(color: HappyLiveApp.gold, fontSize: 12, decoration: TextDecoration.underline)),
@@ -1059,7 +1059,7 @@ class _LoginPageState extends State<LoginPage> {
                                 colors: [HappyLiveApp.gold, Color(0xFFC99B4D)],
                               ),
                               boxShadow: const [
-                                BoxShadow(color: Color(0x33E8C477), blurRadius: 18, offset: Offset(0, 7)),
+                                BoxShadow(color: Color(0x22D9A93C), blurRadius: 18, offset: Offset(0, 7)),
                               ],
                             ),
                             child: ElevatedButton(
@@ -1067,11 +1067,11 @@ class _LoginPageState extends State<LoginPage> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
                                 shadowColor: Colors.transparent,
-                                foregroundColor: const Color(0xFF171019),
+                                foregroundColor: const Color(0xFF1E2233),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                               ),
                               child: _isSubmitting
-                                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF171019)))
+                                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1E2233)))
                                   : Text(
                                       _isRegister ? 'إنشاء حساب' : 'تسجيل الدخول',
                                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
@@ -1082,12 +1082,12 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 22),
                         const Row(
                           children: [
-                            Expanded(child: Divider(color: Color(0xFF393141))),
+                            Expanded(child: Divider(color: Color(0xFFE4E4EC))),
                             Padding(
                               padding: EdgeInsets.symmetric(horizontal: 14),
-                              child: Text('أو', style: TextStyle(color: HappyLiveApp.muted, fontSize: 12)),
+                              child: Text('أو', style: TextStyle(color: const Color(0xFF8B899A), fontSize: 12)),
                             ),
-                            Expanded(child: Divider(color: Color(0xFF393141))),
+                            Expanded(child: Divider(color: Color(0xFFE4E4EC))),
                           ],
                         ),
                         const SizedBox(height: 20),
@@ -1096,10 +1096,10 @@ class _LoginPageState extends State<LoginPage> {
                           child: OutlinedButton(
                             onPressed: _showNotConnected,
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFF44394F)),
-                              backgroundColor: const Color(0xFF15121B),
+                              side: const BorderSide(color: Color(0xFFE4E4EC)),
+                              backgroundColor: const Color(0xFFFAF6EA),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                              foregroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF1E2233),
                             ),
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -1118,15 +1118,15 @@ class _LoginPageState extends State<LoginPage> {
                             child: OutlinedButton(
                               onPressed: _showNotConnected,
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFF44394F)),
-                                backgroundColor: const Color(0xFF15121B),
+                                side: const BorderSide(color: Color(0xFFE4E4EC)),
+                                backgroundColor: const Color(0xFFFAF6EA),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                                foregroundColor: Colors.white,
+                                foregroundColor: const Color(0xFF1E2233),
                               ),
                               child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.phone_iphone_rounded, color: Colors.white, size: 21),
+                                  Icon(Icons.phone_iphone_rounded, color: const Color(0xFF1E2233), size: 21),
                                   SizedBox(width: 12),
                                   Text('سجل الدخول باستخدام Apple', style: TextStyle(fontWeight: FontWeight.w700)),
                                 ],
@@ -1137,15 +1137,15 @@ class _LoginPageState extends State<LoginPage> {
                         ],
                         const Row(
                           children: [
-                            Expanded(child: Divider(color: Color(0xFF393141))),
+                            Expanded(child: Divider(color: Color(0xFFE4E4EC))),
                             Padding(
                               padding: EdgeInsets.symmetric(horizontal: 14),
                               child: Text(
                                 'طرق تسجيل دخول أخرى',
-                                style: TextStyle(color: HappyLiveApp.muted, fontSize: 12),
+                                style: TextStyle(color: const Color(0xFF8B899A), fontSize: 12),
                               ),
                             ),
-                            Expanded(child: Divider(color: Color(0xFF393141))),
+                            Expanded(child: Divider(color: Color(0xFFE4E4EC))),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -1158,8 +1158,8 @@ class _LoginPageState extends State<LoginPage> {
                                 label: const SizedBox.shrink(),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(50),
-                                  foregroundColor: Colors.white,
-                                  side: const BorderSide(color: Color(0xFF44394F)),
+                                  foregroundColor: const Color(0xFF1E2233),
+                                  side: const BorderSide(color: Color(0xFFE4E4EC)),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                 ),
                               ),
@@ -1172,8 +1172,8 @@ class _LoginPageState extends State<LoginPage> {
                                 label: const Text('ID', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 1.8, color: HappyLiveApp.gold)),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(50),
-                                  foregroundColor: Colors.white,
-                                  side: const BorderSide(color: Color(0xFF44394F)),
+                                  foregroundColor: const Color(0xFF1E2233),
+                                  side: const BorderSide(color: Color(0xFFE4E4EC)),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                 ),
                               ),
@@ -1186,7 +1186,7 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             Text(
                               _isRegister ? 'لديك حساب بالفعل؟' : 'ليس لديك حساب؟',
-                              style: const TextStyle(color: HappyLiveApp.muted, fontSize: 13),
+                              style: const TextStyle(color: const Color(0xFF8B899A), fontSize: 13),
                             ),
                             TextButton(
                               onPressed: () => setState(() {
@@ -1204,7 +1204,7 @@ class _LoginPageState extends State<LoginPage> {
                         const Text(
                           'HAPPY LIVE  •  عالمك يبدأ هنا',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Color(0xFF706779), fontSize: 10, letterSpacing: 1.2),
+                          style: TextStyle(color: Color(0xFF9A98AD), fontSize: 10, letterSpacing: 1.2),
                         ),
                       ],
                     ),
@@ -1236,10 +1236,10 @@ class _LoginPageState extends State<LoginPage> {
         insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         contentPadding: const EdgeInsets.fromLTRB(24, 18, 24, 12),
         actionsPadding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
-        backgroundColor: HappyLiveApp.surface,
+        backgroundColor: const Color(0xFF1E2233),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(22),
-          side: const BorderSide(color: Color(0xFF51405F), width: 1),
+          side: const BorderSide(color: Color(0xFFE4E4EC), width: 1),
         ),
         title: const Text(
           'استعادة كلمة المرور',
@@ -1254,7 +1254,7 @@ class _LoginPageState extends State<LoginPage> {
               const Text(
                 'أدخل بريدك الإلكتروني لاستعادة الوصول إلى حسابك',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: HappyLiveApp.muted, fontSize: 13, height: 1.5),
+                style: TextStyle(color: const Color(0xFF8B899A), fontSize: 13, height: 1.5),
               ),
               const SizedBox(height: 18),
               TextField(
@@ -1264,15 +1264,15 @@ class _LoginPageState extends State<LoginPage> {
                   hintText: 'البريد الإلكتروني',
                   prefixIcon: const Icon(Icons.mail_outline_rounded, color: HappyLiveApp.gold),
                   filled: true,
-                  fillColor: const Color(0xFF100E15),
+                  fillColor: const Color(0xFFFAF6EA),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF51405F)),
+                    borderSide: const BorderSide(color: Color(0xFFE4E4EC)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF51405F)),
+                    borderSide: const BorderSide(color: Color(0xFFE4E4EC)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -1784,11 +1784,11 @@ class _BrandHeader extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
-              colors: [Color(0xFF3B2450), Color(0xFF17121F)],
+              colors: [Color(0xFFFFF9EC), Color(0xFFFFF2D3)],
             ),
-            border: Border.all(color: const Color(0x99E8C477), width: 1.2),
+            border: Border.all(color: const Color(0xFFD9A93C), width: 1.2),
             boxShadow: const [
-              BoxShadow(color: Color(0x44D9A93C), blurRadius: 28, spreadRadius: 2),
+              BoxShadow(color: Color(0x22D9A93C), blurRadius: 24, spreadRadius: 1),
             ],
           ),
           child: Center(
@@ -1801,7 +1801,7 @@ class _BrandHeader extends StatelessWidget {
                   height: 1,
                   fontWeight: FontWeight.w900,
                   color: HappyLiveApp.gold,
-                  shadows: [Shadow(color: HappyLiveApp.purple, blurRadius: 16)],
+                  shadows: [Shadow(color: Color(0x44D9A93C), blurRadius: 12)],
                 ),
               ),
             ),
