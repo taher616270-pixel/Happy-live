@@ -88,7 +88,23 @@ class HappyProfilePage extends StatelessWidget {
       onStore: () => onSoon('المتجر'),
       onWallet: () => onSoon('المحفظة'),
       onTasks: () => onSoon('مركز المهام'),
-      onSettings: () => onSoon('الإعدادات'),
+      onSettings: () {
+        Navigator.of(context).push(
+          PageRouteBuilder<void>(
+            opaque: true,
+            pageBuilder: (_, __, ___) => _ProfileSettingsPage(onLogout: onLogout),
+            transitionDuration: const Duration(milliseconds: 320),
+            reverseTransitionDuration: const Duration(milliseconds: 280),
+            transitionsBuilder: (_, animation, __, child) {
+              final slide = Tween<Offset>(
+                begin: const Offset(-1, 0),
+                end: Offset.zero,
+              ).chain(CurveTween(curve: Curves.easeOutCubic));
+              return SlideTransition(position: animation.drive(slide), child: child);
+            },
+          ),
+        );
+      },
     );
   }
 }
@@ -538,4 +554,80 @@ class ProfilePage extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
       );
+}
+
+
+class _ProfileSettingsPage extends StatelessWidget {
+  const _ProfileSettingsPage({required this.onLogout});
+
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF6F7FB),
+        body: SafeArea(
+          child: Column(
+            children: [
+              SizedBox(
+                height: 58,
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                      color: const Color(0xFF1E2233),
+                      tooltip: 'رجوع',
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'الإعدادات',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Color(0xFF1E2233),
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                  ],
+                ),
+              ),
+              const Expanded(child: SizedBox.expand()),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton.icon(
+                    onPressed: onLogout,
+                    icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                    label: const Text(
+                      'تسجيل الخروج',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE53E4D),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
