@@ -534,9 +534,12 @@ Widget _roomActionButton({
                   ),
                 )
               else
-                Text(
-                  locked ? 'مقفل' : '$number',
-                  style: TextStyle(color: Colors.white.withOpacity(.65), fontSize: 13),
+                Transform.translate(
+                  offset: const Offset(0, 2),
+                  child: Text(
+                    locked ? 'مقفل' : '$number',
+                    style: TextStyle(color: Colors.white.withOpacity(.65), fontSize: 13),
+                  ),
                 ),
             ],
           ),
