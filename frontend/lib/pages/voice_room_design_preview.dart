@@ -93,7 +93,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 const SizedBox(height: 10),
                 Transform.translate(
                   offset: Theme.of(context).platform == TargetPlatform.android
-                      ? const Offset(0, 30)
+                      ? const Offset(0, 15)
                       : Offset.zero,
                   child: _seats(context),
                 ),
@@ -477,7 +477,7 @@ Widget _roomActionButton({
         final locked = seat?['isLocked'] == true || seat?['locked'] == true;
         final isAndroid = Theme.of(context).platform == TargetPlatform.android;
         return Transform.translate(
-          offset: Offset(0, number >= 5 ? (isAndroid ? 20 : -34) : 0),
+          offset: Offset(0, number >= 5 ? (isAndroid ? 5 : -34) : 0),
           child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: occupied
