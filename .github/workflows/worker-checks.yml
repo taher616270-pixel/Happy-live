@@ -1,0 +1,44 @@
+name: Worker checks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/worker/**"
+      - ".github/workflows/worker-checks.yml"
+  pull_request:
+    paths:
+      - "backend/worker/**"
+      - ".github/workflows/worker-checks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  worker-checks:
+    name: TypeScript and Worker tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend/worker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # A package lock is not checked in yet, so install from the declared ranges.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund --no-package-lock
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Worker tests
+        run: npm test
