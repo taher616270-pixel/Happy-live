@@ -93,7 +93,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 const SizedBox(height: 10),
                 Transform.translate(
                   offset: Theme.of(context).platform == TargetPlatform.android
-                      ? const Offset(0, -30)
+                      ? const Offset(0, 30)
                       : Offset.zero,
                   child: _seats(context),
                 ),
