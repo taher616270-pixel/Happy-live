@@ -132,6 +132,7 @@ jobs:
         run: |
           cd frontend
           flutter pub get
+          dart run flutter_launcher_icons
 
       - name: Build release APK
         run: |
