@@ -1,0 +1,73 @@
+name: Build Happy Live Android APK
+
+on:
+  push:
+    paths:
+      - ".github/workflows/android-apk.yml"
+      - "frontend/lib/**"
+      - "frontend/assets/**"
+      - "frontend/pubspec.yaml"
+      - "frontend/pubspec.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # Generate the Android runner only inside this temporary CI checkout.
+      # No Android or web source files are committed by this step.
+      - name: Generate Android project in CI workspace
+        shell: bash
+        run: |
+          cd frontend
+          rm -rf android
+          flutter create --platforms=android --org com.happylive --project-name happy_live .
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          s = s.replace('android:label="happy_live"', 'android:label="Happy Live"')
+          activity = '''
+                  <activity
+                      android:name="com.yalantis.ucrop.UCropActivity"
+                      android:screenOrientation="portrait"
+                      android:theme="@style/Ucrop.CropTheme"
+                      android:exported="false" />
+          '''
+          if "com.yalantis.ucrop.UCropActivity" not in s:
+              s = s.replace("</application>", activity + "\n    </application>")
+          p.write_text(s)
+          PY
+          flutter pub get
+
+      - name: Build release APK
+        run: |
+          cd frontend
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: happy-live-android-apk
+          path: frontend/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
