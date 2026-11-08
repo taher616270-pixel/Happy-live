@@ -41,6 +41,26 @@ jobs:
           cd frontend
           rm -rf android
           flutter create --platforms=android --org com.happylive --project-name happy_live .
+
+      - name: Set Android compile SDK 37
+        shell: bash
+        run: |
+          cd frontend
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/build.gradle.kts")
+          if not p.exists():
+              raise SystemExit("Expected Kotlin Gradle file was not generated")
+          s = p.read_text()
+          old = "compileSdk = flutter.compileSdkVersion"
+          if old in s:
+              s = s.replace(old, "compileSdk = 37", 1)
+          elif "compileSdk = 37" not in s:
+              raise SystemExit("Could not locate Flutter compileSdk declaration")
+          p.write_text(s)
+          if "compileSdk = 37" not in p.read_text():
+              raise SystemExit("compileSdk 37 was not applied")
+          PY
           python3 - <<'PY'
           from pathlib import Path
           p = Path("android/app/src/main/AndroidManifest.xml")
