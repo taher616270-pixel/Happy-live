@@ -89,7 +89,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             child: Column(
               children: [
                 _header(context),
-                _subHeader(),
+                _subHeader(context),
                 const SizedBox(height: 10),
                 Transform.translate(
                   offset: Theme.of(context).platform == TargetPlatform.android
@@ -98,7 +98,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   child: _seats(context),
                 ),
                 const SizedBox(height: 3),
-                _listeners(),
+                _listeners(context),
                 Expanded(
                   child: Stack(
                     clipBehavior: Clip.none,
@@ -251,7 +251,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           _headerAction(Icons.close_rounded, () => _showSaveLeaveDialog(context), 28),
         ],
       ),
-    );
     );
   }
 
@@ -438,7 +437,7 @@ Widget _roomActionButton({
     ),
   );
 
-  Widget _subHeader() => Transform.translate(
+  Widget _subHeader(BuildContext context) => Transform.translate(
     offset: Theme.of(context).platform == TargetPlatform.android
         ? const Offset(0, -10)
         : Offset.zero,
@@ -603,7 +602,7 @@ Widget _roomActionButton({
     );
   }
 
-  Widget _listeners() => Transform.translate(
+  Widget _listeners(BuildContext context) => Transform.translate(
     offset: Theme.of(context).platform == TargetPlatform.android
         ? const Offset(0, -105)
         : const Offset(0, -65),
