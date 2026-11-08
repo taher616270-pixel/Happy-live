@@ -5,6 +5,7 @@ workers_dev = true
 
 [vars]
 APP_ENV = "production"
+GOOGLE_CLIENT_ID = "999298541545-5i0kn2d1emj2rohuvruj4o8ej49ho9kg.apps.googleusercontent.com"
 
 [[d1_databases]]
 binding = "DB"
