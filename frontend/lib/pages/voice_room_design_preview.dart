@@ -496,7 +496,7 @@ Widget _roomActionButton({
         final locked = seat?['isLocked'] == true || seat?['locked'] == true;
         final isAndroid = Theme.of(context).platform == TargetPlatform.android;
         return Transform.translate(
-          offset: Offset(0, isAndroid ? (number >= 5 ? -15 : -5) : (number >= 5 ? -34 : 0)),
+          offset: Offset(0, isAndroid ? (number >= 5 ? -25 : -5) : (number >= 5 ? -34 : 0)),
           child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: occupied
