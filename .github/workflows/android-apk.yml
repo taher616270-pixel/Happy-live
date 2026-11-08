@@ -145,10 +145,10 @@ jobs:
           for permission in permission_lines:
               match = re.search(r'android:name="([^"]+)"', permission)
               if match and match.group(1) not in s:
-                  app = re.search(r'<application\\b', s)
+                  app = re.search(r'<application\b', s)
                   if not app:
                       raise SystemExit("Could not find <application> in AndroidManifest.xml")
-                  s = s[:app.start()] + "    " + permission + "\\n    " + s[app.start():]
+                  s = s[:app.start()] + "    " + permission + "\n    " + s[app.start():]
           if 'android:name="android.permission.INTERNET"' not in s:
               raise SystemExit("INTERNET permission was not added to AndroidManifest.xml")
           activity = '''
