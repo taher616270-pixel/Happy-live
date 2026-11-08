@@ -459,8 +459,9 @@ Widget _roomActionButton({
         final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
         final muted = seat?['isMuted'] == true;
         final locked = seat?['isLocked'] == true || seat?['locked'] == true;
+        final isAndroid = Theme.of(context).platform == TargetPlatform.android;
         return Transform.translate(
-          offset: Offset(0, number >= 5 ? -34 : 0),
+          offset: Offset(0, number >= 5 ? (isAndroid ? 20 : -34) : 0),
           child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: occupied
