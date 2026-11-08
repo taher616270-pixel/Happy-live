@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:happy_live/models/message.dart';
 import 'package:happy_live/pages/voice_room_design_preview.dart';
+import 'package:happy_live/widgets/room_chat_panel.dart';
 import 'package:happy_live/services/agora_room_bridge.dart';
 
 class RoomPage extends StatefulWidget {
@@ -845,35 +846,42 @@ class _RoomPageState extends State<RoomPage> {
     );
   }
 
+  List<ChatMessage> _chatPanelMessages() {
+    return _messages.map((message) {
+      final type = message.type == 'join'
+          ? MsgType.join
+          : (message.type == 'system' || message.type == 'announcement')
+              ? MsgType.system
+              : MsgType.user;
+      return ChatMessage(
+        type: type,
+        sender: message.senderName,
+        text: message.text,
+        avatarUrl: message.senderAvatar.isNotEmpty ? message.senderAvatar : null,
+      );
+    }).toList(growable: false);
+  }
+
+  void _sendChatPanelMessage(String text) {
+    _messageController.text = text;
+    unawaited(_sendRoomMessage());
+  }
+
   Widget _roomMessagesPanel() {
-    return SizedBox.expand(
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: SizedBox(
-          width: MediaQuery.sizeOf(context).width * 0.75,
-          child: AnimatedList(
-            key: _roomAnimatedListKey,
-            controller: _roomMessagesController,
-            reverse: false,
-            primary: false,
-            physics: const ClampingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
-            initialItemCount: _messages.length + 1,
-            itemBuilder: (context, index, animation) {
-              if (index == 0) {
-                return SizeTransition(
-                  sizeFactor: CurvedAnimation(parent: animation, curve: Curves.easeOutQuart),
-                  axisAlignment: -1,
-                  child: _roomAnnouncementCard(),
-                );
-              }
-              return _roomMessageAnimatedItem(_messages[index - 1], animation);
-            },
-          ),
-        ),
-      ),
+    return RoomChatPanel(
+      expanded: false,
+      onCollapse: () {},
+      messages: _chatPanelMessages(),
+      onSend: _sendChatPanelMessage,
+    );
+  }
+
+  Widget _expandedRoomMessagesPanel() {
+    return RoomChatPanel(
+      expanded: true,
+      onCollapse: () => Navigator.of(context, rootNavigator: true).pop(),
+      messages: _chatPanelMessages(),
+      onSend: _sendChatPanelMessage,
     );
   }
 
@@ -1077,6 +1085,7 @@ class _RoomPageState extends State<RoomPage> {
     return VoiceRoomDesignPreview(
       room: widget.room,
       chatMessagesPanel: _roomMessagesPanel(),
+      expandedChatMessagesPanel: _expandedRoomMessagesPanel(),
       chatController: _messageController,
       chatFocusNode: _roomChatFocusNode,
       onSendChat: _sendRoomMessage,
