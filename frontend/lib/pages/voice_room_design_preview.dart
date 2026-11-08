@@ -1332,11 +1332,19 @@ class ExitMenuOverlay extends StatelessWidget {
     return Navigator.of(context).push(PageRouteBuilder(
       opaque: false,
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 180),
+      transitionDuration: const Duration(milliseconds: 420),
       pageBuilder: (_, __, ___) =>
           ExitMenuOverlay(onLeave: onLeave, onMinimize: onMinimize),
-      transitionsBuilder: (_, anim, __, child) =>
-          FadeTransition(opacity: anim, child: child),
+      transitionsBuilder: (_, animation, __, child) {
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        );
+        return FadeTransition(
+          opacity: curve,
+          child: child,
+        );
+      },
     ));
   }
 
@@ -1354,7 +1362,8 @@ class ExitMenuOverlay extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _ExitCircleAction(
+                  _ExitHalfPanel(
+                    fromRight: true,
                     icon: Icons.power_settings_new,
                     label: 'اغلاق',
                     onTap: () {
@@ -1362,8 +1371,8 @@ class ExitMenuOverlay extends StatelessWidget {
                       onLeave();
                     },
                   ),
-                  const SizedBox(width: 90),
-                  _ExitCircleAction(
+                  _ExitHalfPanel(
+                    fromRight: false,
                     icon: Icons.close_fullscreen,
                     label: 'تصغير',
                     onTap: () {
@@ -1381,48 +1390,98 @@ class ExitMenuOverlay extends StatelessWidget {
   }
 }
 
-class _ExitCircleAction extends StatelessWidget {
+class _ExitHalfPanel extends StatefulWidget {
+  final bool fromRight;
   final IconData icon;
   final String label;
   final VoidCallback onTap;
 
-  const _ExitCircleAction({
+  const _ExitHalfPanel({
+    required this.fromRight,
     required this.icon,
     required this.label,
     required this.onTap,
   });
 
   @override
+  State<_ExitHalfPanel> createState() => _ExitHalfPanelState();
+}
+
+class _ExitHalfPanelState extends State<_ExitHalfPanel>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 380),
+  );
+  late final Animation<Offset> _slide = Tween<Offset>(
+    begin: Offset(widget.fromRight ? 1 : -1, 0),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  ));
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 88,
-            height: 88,
+    return Expanded(
+      child: SlideTransition(
+        position: _slide,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: Container(
+            height: 150,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withOpacity(.10),
+              color: Colors.white.withOpacity(.07),
+              border: Border(
+                left: BorderSide(color: Colors.white.withOpacity(.12)),
+                right: BorderSide(color: Colors.white.withOpacity(.12)),
+              ),
             ),
-            child: Icon(
-              icon,
-              color: Colors.white.withOpacity(.85),
-              size: 38,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 88,
+                  height: 88,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(.10),
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    color: Colors.white.withOpacity(.88),
+                    size: 38,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(.72),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withOpacity(.55),
-              fontSize: 14,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
+
+
 
