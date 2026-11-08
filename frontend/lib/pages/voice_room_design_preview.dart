@@ -446,7 +446,11 @@ Widget _roomActionButton({
     padding: const EdgeInsetsDirectional.fromSTEB(12, 9, 12, 0),
     child: Align(
       alignment: AlignmentDirectional.centerStart,
-      child: Container(
+      child: Transform.translate(
+        offset: Theme.of(context).platform == TargetPlatform.android
+            ? const Offset(0, -10)
+            : Offset.zero,
+        child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(.30),
@@ -462,6 +466,7 @@ Widget _roomActionButton({
               style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
           ],
+        ),
         ),
       ),
     ),
