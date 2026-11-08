@@ -171,7 +171,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     final trophies = (room['trophies'] ?? room['trophyCount'] ?? 0).toString();
     return Transform.translate(
       offset: Theme.of(context).platform == TargetPlatform.android
-          ? const Offset(0, -10)
+          ? const Offset(0, -17)
           : Offset.zero,
       child: Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
