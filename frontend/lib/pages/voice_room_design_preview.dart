@@ -107,7 +107,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         Positioned(
                           left: 98,
                           width: MediaQuery.sizeOf(context).width * 0.75,
-                          top: -50,
+                          top: Theme.of(context).platform == TargetPlatform.android
+                              ? -85
+                              : -50,
                           bottom: 8,
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 220),
