@@ -100,7 +100,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     children: [
                       if (chatMessagesPanel != null)
                         Positioned(
-                          left: 29,
+                          left: 49,
                           width: MediaQuery.sizeOf(context).width * 0.75,
                           top: -70,
                           bottom: 8,
@@ -625,7 +625,7 @@ Widget _roomActionButton({
                       return Padding(
                         padding: const EdgeInsetsDirectional.only(end: 7),
                         child: CircleAvatar(
-                          radius: 17,
+                          radius: 15,
                           backgroundColor: Colors.white24,
                           backgroundImage: avatar.startsWith('http')
                               ? NetworkImage(avatar)
