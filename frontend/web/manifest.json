@@ -1,0 +1,17 @@
+{
+  "name": "Happy Live",
+  "short_name": "Happy Live",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#09080D",
+  "theme_color": "#09080D",
+  "description": "Happy Live - عالمك الاجتماعي في مكان واحد",
+  "icons": [
+    {
+      "src": "assets/assets/images/app_icon.PNG",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
