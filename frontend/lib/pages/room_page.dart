@@ -807,7 +807,7 @@ class _RoomPageState extends State<RoomPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
-            color: isSystem ? const Color(0xDD1E2A3A) : const Color(0xFFE84D8A),
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
@@ -889,7 +889,7 @@ class _RoomPageState extends State<RoomPage> {
     return Container(
       margin: const EdgeInsets.fromLTRB(4, 0, 4, 8),
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-      decoration: BoxDecoration(color: const Color(0xAA17121E), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x55E8C477))),
+      decoration: BoxDecoration(color: Colors.transparent, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.transparent)),
       child: Row(
         textDirection: TextDirection.rtl,
         children: [
