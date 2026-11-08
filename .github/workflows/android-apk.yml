@@ -138,8 +138,19 @@ jobs:
               <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
               <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
           """
-          if "android.permission.RECORD_AUDIO" not in s:
-              s = s.replace("<application>", permissions + "\n    <application>")
+          # Add each permission independently. Do not gate INTERNET on RECORD_AUDIO:
+          # Shorebird requires INTERNET to be present in the app manifest.
+          import re
+          permission_lines = [line.strip() for line in permissions.splitlines() if "uses-permission" in line]
+          for permission in permission_lines:
+              match = re.search(r'android:name="([^"]+)"', permission)
+              if match and match.group(1) not in s:
+                  app = re.search(r'<application\\b', s)
+                  if not app:
+                      raise SystemExit("Could not find <application> in AndroidManifest.xml")
+                  s = s[:app.start()] + "    " + permission + "\\n    " + s[app.start():]
+          if 'android:name="android.permission.INTERNET"' not in s:
+              raise SystemExit("INTERNET permission was not added to AndroidManifest.xml")
           activity = '''
                   <activity
                       android:name="com.yalantis.ucrop.UCropActivity"
