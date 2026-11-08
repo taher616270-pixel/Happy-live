@@ -96,6 +96,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 _listeners(),
                 Expanded(
                   child: Stack(
+                    clipBehavior: Clip.none,
                     children: [
                       if (chatMessagesPanel != null)
                         Positioned(
@@ -561,20 +562,10 @@ Widget _roomActionButton({
     );
   }
 
-  Widget _listeners() => LayoutBuilder(
-    builder: (context, constraints) => SizedBox(
-      height: 0,
-      child: OverflowBox(
-        alignment: Alignment.topCenter,
-        minWidth: constraints.maxWidth,
-        maxWidth: constraints.maxWidth,
-        minHeight: 40,
-        maxHeight: 40,
-        child: Transform.translate(
-          offset: const Offset(0, -40),
-          child: Container(
-            width: constraints.maxWidth,
-            height: 40,
+  Widget _listeners() => Transform.translate(
+    offset: const Offset(0, -40),
+    child: Container(
+    height: 40,
     margin: const EdgeInsets.symmetric(horizontal: 12),
     padding: const EdgeInsets.symmetric(horizontal: 12),
     decoration: BoxDecoration(
@@ -630,11 +621,7 @@ Widget _roomActionButton({
         const Icon(Icons.person_outline, color: Colors.white, size: 19),
       ],
     ),
-          ),
-        ),
-      ),
-    ),
-  );
+  ));
 
   void _openChatComposer(BuildContext context) {
     showGeneralDialog<void>(
