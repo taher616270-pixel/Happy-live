@@ -102,7 +102,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         Positioned(
                           left: 12,
                           right: 12,
-                          top: -44,
+                          top: -60,
                           bottom: 8,
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 220),
