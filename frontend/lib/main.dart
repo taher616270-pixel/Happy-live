@@ -107,7 +107,6 @@ class _LoginPageState extends State<LoginPage> {
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
   bool _acceptedTerms = false;
-  DateTime? _birthDate;
   bool _hasRegisteredOnThisDevice = false;
   bool _isSubmitting = false;
   bool _isRestoringSession = true;
@@ -767,33 +766,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  int? _calculatedAge(DateTime birthDate) {
-    final today = DateTime.now();
-    var age = today.year - birthDate.year;
-    if (today.month < birthDate.month ||
-        (today.month == birthDate.month && today.day < birthDate.day)) {
-      age--;
-    }
-    return age;
-  }
-
-  Future<void> _pickBirthDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _birthDate ?? DateTime(now.year - 18, now.month, now.day),
-      firstDate: DateTime(1900),
-      lastDate: now,
-      helpText: 'اختر تاريخ ميلادك',
-      cancelText: 'إلغاء',
-      confirmText: 'تأكيد',
-      initialEntryMode: DatePickerEntryMode.calendar,
-    );
-    if (picked != null && mounted) {
-      setState(() => _birthDate = picked);
-    }
-  }
-
   Future<void> _restoreSession() async {
     if (mounted) {
       setState(() {
@@ -886,14 +858,6 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _submit() async {
     if (_isSubmitting) return;
     if (!_formKey.currentState!.validate()) return;
-    if (_isRegister && _birthDate == null) {
-      _showValidationNotice('يرجى تحديد تاريخ ميلادك');
-      return;
-    }
-    if (_isRegister && _calculatedAge(_birthDate!)! < 18) {
-      _showValidationNotice('عذراً، يجب أن يكون عمرك 18 سنة أو أكثر لإنشاء حساب');
-      return;
-    }
     if (_isRegister && !_acceptedTerms) {
       _showValidationNotice('يرجى الموافقة على الشروط والأحكام وسياسة الخصوصية');
       return;
@@ -908,10 +872,8 @@ class _LoginPageState extends State<LoginPage> {
         'password': _password.text,
       };
       if (isRegistering) {
-        final date = _birthDate!;
         payload.addAll({
           'name': _name.text.trim(),
-          'birthday': '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
           'acceptedTerms': _acceptedTerms,
         });
       }
@@ -1141,43 +1103,6 @@ class _LoginPageState extends State<LoginPage> {
                             validator: (value) => value != _password.text
                                 ? 'كلمتا المرور غير متطابقتين'
                                 : null,
-                          ),
-                          const SizedBox(height: 12),
-                          const _FieldLabel('تاريخ الميلاد'),
-                          InkWell(
-                            onTap: _pickBirthDate,
-                            borderRadius: BorderRadius.circular(15),
-                            child: Container(
-                              height: 56,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFAF6EA),
-                                borderRadius: BorderRadius.circular(15),
-                                border: Border.all(color: const Color(0xFFD5D9E3)),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.calendar_month_rounded,
-                                      color: HappyLiveApp.gold, size: 20),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      _birthDate == null
-                                          ? 'اختر تاريخ ميلادك'
-                                          : '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}',
-                                      style: TextStyle(
-                                        color: _birthDate == null
-                                            ? const Color(0xFF73798C)
-                                            : const Color(0xFF1E2233),
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                  const Icon(Icons.keyboard_arrow_down_rounded,
-                                      color: const Color(0xFF62697D)),
-                                ],
-                              ),
-                            ),
                           ),
                           const SizedBox(height: 8),
                           CheckboxListTile(
