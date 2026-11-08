@@ -850,7 +850,7 @@ class _RoomPageState extends State<RoomPage> {
       child: Align(
         alignment: Alignment.centerRight,
         child: SizedBox(
-          width: MediaQuery.sizeOf(context).width * 0.75,
+          width: MediaQuery.sizeOf(context).width * 0.90,
           height: double.infinity,
           child: Scrollbar(
             controller: _roomMessagesController,
