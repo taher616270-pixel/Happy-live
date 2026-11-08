@@ -807,7 +807,7 @@ class _RoomPageState extends State<RoomPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
-            color: Colors.transparent,
+            color: const Color(0x5520182A),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
