@@ -102,7 +102,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         Positioned(
                           left: 12,
                           right: 12,
-                          top: -34,
+                          top: -44,
                           bottom: 8,
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 220),
@@ -117,7 +117,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         ),
                       Positioned(
                         left: 12,
-                        bottom: 8,
+                        bottom: 18,
                         child: Column(
                           children: const [
                             _RoomGameTile(
