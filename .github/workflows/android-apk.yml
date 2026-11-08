@@ -77,7 +77,7 @@ jobs:
           }
           """
           if 'extra["compileSdkVersion"] = 37' not in root_text:
-              root.write_text(root_text.rstrip() + "\\n\\n" + config)
+              root.write_text(root_text.rstrip() + chr(10) + chr(10) + config)
           PY
           python3 - <<'PY'
           from pathlib import Path
