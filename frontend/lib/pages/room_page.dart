@@ -501,10 +501,11 @@ class _RoomPageState extends State<RoomPage> {
 
     // Keep the reader's position when they are browsing older chat messages.
     // Only follow new messages automatically when the list was already near its bottom.
-    final shouldFollowLatest = !_roomMessagesController.hasClients ||
-        (_roomMessagesController.position.maxScrollExtent -
-                _roomMessagesController.position.pixels) <=
-            96;
+    final shouldFollowLatest = _messages.isNotEmpty &&
+        (!_roomMessagesController.hasClients ||
+            (_roomMessagesController.position.maxScrollExtent -
+                    _roomMessagesController.position.pixels) <=
+                96);
 
     final ordered = incoming.toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     var insertedAny = false;
@@ -865,7 +866,7 @@ class _RoomPageState extends State<RoomPage> {
               physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 0),
               initialItemCount: _messages.length + 1,
               itemBuilder: (context, index, animation) {
               if (index == 0) {
@@ -886,7 +887,7 @@ class _RoomPageState extends State<RoomPage> {
 
   Widget _roomAnnouncementCard() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+      margin: const EdgeInsets.fromLTRB(4, 0, 4, 8),
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(color: const Color(0xAA17121E), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x55E8C477))),
       child: Row(
