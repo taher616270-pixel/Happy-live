@@ -108,15 +108,15 @@ jobs:
                   if not p.exists():
                       continue
                   text = p.read_text()
-                  updated = re.sub(r"(compileSdkVersion\\s+|compileSdk\\s*=\\s*)31\\b", r"\\g<1>36", text)
+                  updated = re.sub(r"(compileSdkVersion\s+|compileSdk\s*=\s*)31\b", r"\g<1>36", text)
                   if updated != text:
                       p.write_text(updated)
                       changed.append(str(p))
-                  elif re.search(r"compileSdkVersion\\s+31\\b|compileSdk\\s*=\\s*31\\b", text):
+                  elif re.search(r"compileSdkVersion\s+31\b|compileSdk\s*=\s*31\b", text):
                       raise SystemExit(f"Could not patch compileSdk 31 in {p}")
           if not changed:
               raise SystemExit("Agora library compileSdk 31 declaration was not found; refusing to continue with an unpatched native plugin")
-          print("Patched Agora compile SDK in:", *changed, sep="\\n - ")
+          print("Patched Agora compile SDK in:", *changed, sep="\n - ")
           PY
 
       - name: Build release APK
