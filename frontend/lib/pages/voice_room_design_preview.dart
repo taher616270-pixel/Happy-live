@@ -113,20 +113,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               0,
                             ),
                             child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0x33100D16),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: const Color(0x88E8C477),
-                                  width: 1,
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x26000000),
-                                    blurRadius: 10,
-                                    spreadRadius: 1,
-                                  ),
-                                ],
+                              decoration: const BoxDecoration(
+                                color: Colors.transparent,
                               ),
                               child: chatMessagesPanel!,
                             ),
