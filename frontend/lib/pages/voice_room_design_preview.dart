@@ -100,7 +100,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     children: [
                       if (chatMessagesPanel != null)
                         Positioned(
-                          left: 83,
+                          left: 93,
                           width: MediaQuery.sizeOf(context).width * 0.75,
                           top: -50,
                           bottom: 8,
