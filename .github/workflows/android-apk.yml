@@ -54,9 +54,38 @@ jobs:
                       android:exported="false" />
           '''
           if "com.yalantis.ucrop.UCropActivity" not in s:
-              s = s.replace("</application>", activity + "\n    </application>")
+              s = s.replace("</application>", activity + "\\n    </application>")
           p.write_text(s)
           PY
+
+      # The current Agora bridge is implemented with browser JavaScript interop.
+      # Replace it only in this disposable CI checkout so Android can compile;
+      # the committed web bridge and production website remain untouched.
+      - name: Use Android-safe Agora bridge for APK compilation
+        shell: bash
+        run: |
+          cd frontend
+          cat > lib/services/agora_room_bridge.dart <<'DART'
+          class AgoraRoomBridge {
+            static Future<void> join({
+              required String appId,
+              required String channel,
+              required String token,
+              required int uid,
+              required bool publish,
+            }) async {
+              throw UnsupportedError(
+                'Native Agora audio is not configured in this Android build.',
+              );
+            }
+
+            static Future<void> leave() async {}
+
+            static Future<void> setMuted(bool muted) async {}
+
+            static Future<void> resumeAudio() async {}
+          }
+          DART
           flutter pub get
 
       - name: Build release APK
