@@ -24,7 +24,9 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: flutter pub get
+        run: |
+          flutter pub get
+          dart run flutter_launcher_icons
 
       - name: Build web release
         working-directory: frontend
