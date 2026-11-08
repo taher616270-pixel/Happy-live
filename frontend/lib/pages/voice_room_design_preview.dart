@@ -13,7 +13,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     required this.audienceCount,
     this.audienceUsers = const [],
     this.chatMessagesPanel,
-    this.expandedChatMessagesPanel,
     this.ownerName = 'صاحب الغرفة',
     this.canModerateUsers = false,
     this.selfMicMuted = false,
@@ -34,7 +33,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final int audienceCount;
   final List<Map<String, dynamic>> audienceUsers;
   final Widget? chatMessagesPanel;
-  final Widget? expandedChatMessagesPanel;
   final String ownerName;
   final bool canModerateUsers;
   final bool selfMicMuted;
@@ -625,33 +623,6 @@ Widget _roomActionButton({
   ));
 
   void _openChatComposer(BuildContext context) {
-    if (expandedChatMessagesPanel != null) {
-      showGeneralDialog<void>(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: 'إغلاق الدردشة',
-        barrierColor: Colors.black.withOpacity(.48),
-        transitionDuration: const Duration(milliseconds: 220),
-        pageBuilder: (dialogContext, animation, secondaryAnimation) {
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: Scaffold(
-              backgroundColor: const Color(0xFF09080D),
-              resizeToAvoidBottomInset: true,
-              body: SizedBox.expand(child: expandedChatMessagesPanel!),
-            ),
-          );
-        },
-        transitionBuilder: (context, animation, secondaryAnimation, child) {
-          final curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          );
-          return FadeTransition(opacity: curved, child: child);
-        },
-      ).whenComplete(() => chatFocusNode.unfocus());
-      return;
-    }
     showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
