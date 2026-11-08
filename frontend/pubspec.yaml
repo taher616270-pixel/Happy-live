@@ -18,6 +18,8 @@ dependencies:
   image_cropper: ^12.2.1
   emoji_picker_flutter: ^4.4.0
   web_socket_channel: ^3.0.3
+  agora_rtc_engine: ^6.6.4
+  permission_handler: ^13.0.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
