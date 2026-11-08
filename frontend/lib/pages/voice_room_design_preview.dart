@@ -117,7 +117,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         ),
                       Positioned(
                         left: 12,
-                        bottom: 38,
+                        bottom: 68,
                         child: Column(
                           children: const [
                             _RoomGameTile(
