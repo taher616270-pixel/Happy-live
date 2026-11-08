@@ -61,7 +61,487 @@ jobs:
         run: |
           set -euo pipefail
           test -f shorebird.yaml
-          grep -q '^app_id: df7c3047-49d5-4cf5-bfb0-40b5c487f4f5      # No Android or web source files are committed by this step.
+          grep -q '^app_id: df7c3047-49d5-4cf5-bfb0-40b5c487f4f5
+      - name: Generate Android project in CI workspace
+        shell: bash
+        run: |
+          cd frontend
+          rm -rf android
+          flutter create --platforms=android --org com.happylive --project-name happy_live .
+
+      - name: Use direct Gradle distribution host
+        shell: bash
+        run: |
+          cd frontend
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/gradle/wrapper/gradle-wrapper.properties")
+          s = p.read_text()
+          old = "https\\://services.gradle.org/distributions/"
+          new = "https\\://downloads.gradle.org/distributions/"
+          if old in s:
+              s = s.replace(old, new)
+          elif new not in s:
+              raise SystemExit("Could not find the generated Gradle distribution URL")
+          p.write_text(s)
+          print("Gradle distribution:", [line for line in s.splitlines() if line.startswith("distributionUrl=")][0])
+          PY
+
+      - name: Set Android compile SDK 37
+        shell: bash
+        run: |
+          cd frontend
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/build.gradle.kts")
+          if not p.exists():
+              raise SystemExit("Expected Kotlin Gradle file was not generated")
+          s = p.read_text()
+          old = "compileSdk = flutter.compileSdkVersion"
+          # Give the Android app its permanent public package identifier.
+          import re
+          application_id = 'applicationId = "com.happylive.app"'
+          s, count = re.subn(r'applicationId\s*=\s*"[^"]+"', application_id, s, count=1)
+          if count != 1:
+              raise SystemExit("Could not set Android applicationId")
+          if old in s:
+              s = s.replace(old, "compileSdk = 37", 1)
+          elif "compileSdk = 37" not in s:
+              raise SystemExit("Could not locate Flutter compileSdk declaration")
+          p.write_text(s)
+          if "compileSdk = 37" not in p.read_text():
+              raise SystemExit("compileSdk 37 was not applied")
+          # Agora's iris_method_channel uses safeExtGet("compileSdkVersion", 31).
+          # Supply the expected root extra property and configure every Android
+          # library as its Android plugin is applied (before variant/AAR checks).
+          root = Path("android/build.gradle.kts")
+          root_text = root.read_text()
+          config = """
+          extra["compileSdkVersion"] = 37
+
+          subprojects {
+              pluginManager.withPlugin("com.android.library") {
+                  extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
+                      compileSdk = 37
+                  }
+              }
+          }
+          """
+          if 'extra["compileSdkVersion"] = 37' not in root_text:
+              root.write_text(root_text.rstrip() + chr(10) + chr(10) + config)
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          s = s.replace('android:label="happy_live"', 'android:label="Happy Live"')
+          permissions = """    <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+              <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+              <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+          """
+          if "android.permission.RECORD_AUDIO" not in s:
+              s = s.replace("<application>", permissions + "\n    <application>")
+          activity = '''
+                  <activity
+                      android:name="com.yalantis.ucrop.UCropActivity"
+                      android:screenOrientation="portrait"
+                      android:theme="@style/Ucrop.CropTheme"
+                      android:exported="false" />
+          '''
+          if "com.yalantis.ucrop.UCropActivity" not in s:
+              s = s.replace("</application>", activity + "\n    </application>")
+          p.write_text(s)
+          # image_cropper 12.x expects Ucrop.CropTheme (introduced in v9).
+          # Keep the Android 15 edge-to-edge workaround in the generated CI project.
+          values = Path("android/app/src/main/res/values")
+          values.mkdir(parents=True, exist_ok=True)
+          styles = values / "styles.xml"
+          style = '    <style name="Ucrop.CropTheme" parent="Theme.AppCompat.Light.NoActionBar" />'
+          if styles.exists():
+              xml = styles.read_text()
+              if 'name="Ucrop.CropTheme"' not in xml:
+                  xml = xml.replace("</resources>", style + chr(10) + "</resources>")
+              styles.write_text(xml)
+          else:
+              styles.write_text('<?xml version="1.0" encoding="utf-8"?>' + chr(10) + '<resources>' + chr(10) + style + chr(10) + '</resources>' + chr(10))
+          values35 = Path("android/app/src/main/res/values-v35")
+          values35.mkdir(parents=True, exist_ok=True)
+          (values35 / "styles.xml").write_text('''<?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="Ucrop.CropTheme" parent="Theme.AppCompat.Light.NoActionBar">
+                  <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+              </style>
+          </resources>
+          ''')
+          PY
+
+      - name: Configure private Android release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > frontend/android/app/happy-live-upload.jks
+          chmod 600 frontend/android/app/happy-live-upload.jks
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("frontend/android/app/build.gradle.kts")
+          s = p.read_text()
+          if 'create("release")' not in s:
+              signing = """
+              signingConfigs {
+                  create("release") {
+                      storeFile = file("happy-live-upload.jks")
+                      storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                      keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                      keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+                  }
+              }
+          """
+              if "    buildTypes {" not in s:
+                  raise SystemExit("Could not find buildTypes block in generated Android Gradle file")
+              s = s.replace("    buildTypes {", signing + "\n    buildTypes {", 1)
+          s = s.replace('signingConfig = signingConfigs.getByName("debug")',
+                        'signingConfig = signingConfigs.getByName("release")', 1)
+          if 'signingConfig = signingConfigs.getByName("release")' not in s:
+              raise SystemExit("Release signing configuration was not applied")
+          p.write_text(s)
+          print("Private release signing configured.")
+          PY
+
+      - name: Resolve Flutter dependencies
+        run: |
+          cd frontend
+          flutter pub get
+          dart run flutter_launcher_icons
+
+      # Reuse Gradle distributions and downloaded Kotlin/Android dependencies
+      # so transient upstream 502/504 responses do not repeatedly break builds.
+      - name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-happy-live-gradle-${{ hashFiles('frontend/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-happy-live-gradle-
+
+      - name: Build release APK with Flutter (retry transient download failures)
+        if: ${{ inputs.build_mode != 'shorebird-release' && inputs.build_mode != 'shorebird-patch' }}
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          cd frontend
+          for attempt in 1 2 3 4; do
+            echo "Android release build attempt ${attempt}/4"
+            if flutter build apk --release --build-number "$GITHUB_RUN_NUMBER"; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 4 ]; then
+              delay=$((attempt * 30))
+              echo "Build failed; waiting ${delay}s before retrying Gradle/Maven downloads..."
+              sleep "$delay"
+            fi
+          done
+          echo "Android release build failed after 4 attempts."
+          exit 1
+
+      - name: Publish Shorebird Android release
+        if: ${{ inputs.build_mode == 'shorebird-release' }}
+        working-directory: frontend
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SHOREBIRD_TOKEN"
+          shorebird release android --artifact apk
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          echo "Shorebird Android release APK built successfully."
+
+      - name: Publish Shorebird Android patch
+        if: ${{ inputs.build_mode == 'shorebird-patch' }}
+        working-directory: frontend
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SHOREBIRD_TOKEN"
+          RELEASE_VERSION="${{ inputs.release_version }}"
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+\\+[0-9]+$ ]]; then
+            echo "Invalid release version: $RELEASE_VERSION"
+            exit 1
+          fi
+          shorebird patch android --release-version "$RELEASE_VERSION"
+          echo "Shorebird patch published for $RELEASE_VERSION."
+
+      - name: Upload APK
+        if: ${{ inputs.build_mode != 'shorebird-patch' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: happy-live-android-apk
+          path: frontend/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish direct APK download
+        if: ${{ inputs.build_mode != 'shorebird-patch' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="frontend/build/app/outputs/flutter-apk/app-release.apk"
+          if ! gh release view android-latest >/dev/null 2>&1; then
+            gh release create android-latest --title "Happy Live Android" --notes "Direct download for the latest Happy Live Android APK."
+          fi
+          cp "$APK" HappyLive.apk
+          gh release upload android-latest HappyLive.apk --clobber
+          echo "Stable APK URL: https://github.com/taher616270-pixel/Happy-live/releases/download/android-latest/HappyLive.apk"
+
+      # No Android or web source files are committed by this step.
+      - name: Generate Android project in CI workspace
+        shell: bash
+        run: |
+          cd frontend
+          rm -rf android
+          flutter create --platforms=android --org com.happylive --project-name happy_live .
+
+      - name: Use direct Gradle distribution host
+        shell: bash
+        run: |
+          cd frontend
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/gradle/wrapper/gradle-wrapper.properties")
+          s = p.read_text()
+          old = "https\\://services.gradle.org/distributions/"
+          new = "https\\://downloads.gradle.org/distributions/"
+          if old in s:
+              s = s.replace(old, new)
+          elif new not in s:
+              raise SystemExit("Could not find the generated Gradle distribution URL")
+          p.write_text(s)
+          print("Gradle distribution:", [line for line in s.splitlines() if line.startswith("distributionUrl=")][0])
+          PY
+
+      - name: Set Android compile SDK 37
+        shell: bash
+        run: |
+          cd frontend
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/build.gradle.kts")
+          if not p.exists():
+              raise SystemExit("Expected Kotlin Gradle file was not generated")
+          s = p.read_text()
+          old = "compileSdk = flutter.compileSdkVersion"
+          # Give the Android app its permanent public package identifier.
+          import re
+          application_id = 'applicationId = "com.happylive.app"'
+          s, count = re.subn(r'applicationId\s*=\s*"[^"]+"', application_id, s, count=1)
+          if count != 1:
+              raise SystemExit("Could not set Android applicationId")
+          if old in s:
+              s = s.replace(old, "compileSdk = 37", 1)
+          elif "compileSdk = 37" not in s:
+              raise SystemExit("Could not locate Flutter compileSdk declaration")
+          p.write_text(s)
+          if "compileSdk = 37" not in p.read_text():
+              raise SystemExit("compileSdk 37 was not applied")
+          # Agora's iris_method_channel uses safeExtGet("compileSdkVersion", 31).
+          # Supply the expected root extra property and configure every Android
+          # library as its Android plugin is applied (before variant/AAR checks).
+          root = Path("android/build.gradle.kts")
+          root_text = root.read_text()
+          config = """
+          extra["compileSdkVersion"] = 37
+
+          subprojects {
+              pluginManager.withPlugin("com.android.library") {
+                  extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
+                      compileSdk = 37
+                  }
+              }
+          }
+          """
+          if 'extra["compileSdkVersion"] = 37' not in root_text:
+              root.write_text(root_text.rstrip() + chr(10) + chr(10) + config)
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          s = s.replace('android:label="happy_live"', 'android:label="Happy Live"')
+          permissions = """    <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+              <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+              <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+          """
+          if "android.permission.RECORD_AUDIO" not in s:
+              s = s.replace("<application>", permissions + "\n    <application>")
+          activity = '''
+                  <activity
+                      android:name="com.yalantis.ucrop.UCropActivity"
+                      android:screenOrientation="portrait"
+                      android:theme="@style/Ucrop.CropTheme"
+                      android:exported="false" />
+          '''
+          if "com.yalantis.ucrop.UCropActivity" not in s:
+              s = s.replace("</application>", activity + "\n    </application>")
+          p.write_text(s)
+          # image_cropper 12.x expects Ucrop.CropTheme (introduced in v9).
+          # Keep the Android 15 edge-to-edge workaround in the generated CI project.
+          values = Path("android/app/src/main/res/values")
+          values.mkdir(parents=True, exist_ok=True)
+          styles = values / "styles.xml"
+          style = '    <style name="Ucrop.CropTheme" parent="Theme.AppCompat.Light.NoActionBar" />'
+          if styles.exists():
+              xml = styles.read_text()
+              if 'name="Ucrop.CropTheme"' not in xml:
+                  xml = xml.replace("</resources>", style + chr(10) + "</resources>")
+              styles.write_text(xml)
+          else:
+              styles.write_text('<?xml version="1.0" encoding="utf-8"?>' + chr(10) + '<resources>' + chr(10) + style + chr(10) + '</resources>' + chr(10))
+          values35 = Path("android/app/src/main/res/values-v35")
+          values35.mkdir(parents=True, exist_ok=True)
+          (values35 / "styles.xml").write_text('''<?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="Ucrop.CropTheme" parent="Theme.AppCompat.Light.NoActionBar">
+                  <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+              </style>
+          </resources>
+          ''')
+          PY
+
+      - name: Configure private Android release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > frontend/android/app/happy-live-upload.jks
+          chmod 600 frontend/android/app/happy-live-upload.jks
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("frontend/android/app/build.gradle.kts")
+          s = p.read_text()
+          if 'create("release")' not in s:
+              signing = """
+              signingConfigs {
+                  create("release") {
+                      storeFile = file("happy-live-upload.jks")
+                      storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                      keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                      keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+                  }
+              }
+          """
+              if "    buildTypes {" not in s:
+                  raise SystemExit("Could not find buildTypes block in generated Android Gradle file")
+              s = s.replace("    buildTypes {", signing + "\n    buildTypes {", 1)
+          s = s.replace('signingConfig = signingConfigs.getByName("debug")',
+                        'signingConfig = signingConfigs.getByName("release")', 1)
+          if 'signingConfig = signingConfigs.getByName("release")' not in s:
+              raise SystemExit("Release signing configuration was not applied")
+          p.write_text(s)
+          print("Private release signing configured.")
+          PY
+
+      - name: Resolve Flutter dependencies
+        run: |
+          cd frontend
+          flutter pub get
+          dart run flutter_launcher_icons
+
+      # Reuse Gradle distributions and downloaded Kotlin/Android dependencies
+      # so transient upstream 502/504 responses do not repeatedly break builds.
+      - name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-happy-live-gradle-${{ hashFiles('frontend/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-happy-live-gradle-
+
+      - name: Build release APK (retry transient download failures)
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          cd frontend
+          for attempt in 1 2 3 4; do
+            echo "Android release build attempt ${attempt}/4"
+            if flutter build apk --release --build-number "$GITHUB_RUN_NUMBER"; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 4 ]; then
+              delay=$((attempt * 30))
+              echo "Build failed; waiting ${delay}s before retrying Gradle/Maven downloads..."
+              sleep "$delay"
+            fi
+          done
+          echo "Android release build failed after 4 attempts."
+          exit 1
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: happy-live-android-apk
+          path: frontend/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish direct APK download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="frontend/build/app/outputs/flutter-apk/app-release.apk"
+          if ! gh release view android-latest >/dev/null 2>&1; then
+            gh release create android-latest --title "Happy Live Android" --notes "Direct download for the latest Happy Live Android APK."
+          fi
+          cp "$APK" HappyLive.apk
+          gh release upload android-latest HappyLive.apk --clobber
+          echo "Stable APK URL: https://github.com/taher616270-pixel/Happy-live/releases/download/android-latest/HappyLive.apk"
+ shorebird.yaml
+          echo "Happy Live Shorebird app configuration verified."
+
+      # No Android or web source files are committed by this step.
       - name: Generate Android project in CI workspace
         shell: bash
         run: |
