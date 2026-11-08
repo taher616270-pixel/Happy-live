@@ -1882,13 +1882,11 @@ class _BrandHeader extends StatelessWidget {
             ],
           ),
           child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Image.asset(
-                'assets/images/app_icon2.png.PNG',
-                width: 80,
-                height: 80,
-                fit: BoxFit.contain,
+            child: Image.asset(
+              'assets/images/app_icon2.png.PNG',
+              width: 88,
+              height: 88,
+              fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Icon(
                   Icons.image_not_supported_outlined,
                   color: HappyLiveApp.gold,
