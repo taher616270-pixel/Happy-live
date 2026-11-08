@@ -165,7 +165,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   Widget _header(BuildContext context) {
     final avatar = (room['ownerAvatar'] ?? room['ownerAvatarUrl'] ?? _cover ?? '').toString();
     final trophies = (room['trophies'] ?? room['trophyCount'] ?? 0).toString();
-    return Padding(
+    return Transform.translate(
+      offset: Theme.of(context).platform == TargetPlatform.android
+          ? const Offset(0, -10)
+          : Offset.zero,
+      child: Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Row(
         children: [
@@ -243,6 +247,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           _headerAction(Icons.close_rounded, () => _showSaveLeaveDialog(context), 28),
         ],
       ),
+    );
     );
   }
 
@@ -429,7 +434,11 @@ Widget _roomActionButton({
     ),
   );
 
-  Widget _subHeader() => Padding(
+  Widget _subHeader() => Transform.translate(
+    offset: Theme.of(context).platform == TargetPlatform.android
+        ? const Offset(0, -10)
+        : Offset.zero,
+    child: Padding(
     padding: const EdgeInsetsDirectional.fromSTEB(12, 9, 12, 0),
     child: Align(
       alignment: AlignmentDirectional.centerStart,
@@ -451,6 +460,7 @@ Widget _roomActionButton({
           ],
         ),
       ),
+    ),
     ),
   );
 
