@@ -862,7 +862,6 @@ class _RoomPageState extends State<RoomPage> {
               reverse: false,
               primary: false,
               shrinkWrap: false,
-              dragStartBehavior: DragStartBehavior.down,
               physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
               ),
