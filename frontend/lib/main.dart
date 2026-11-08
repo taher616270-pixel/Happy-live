@@ -1887,11 +1887,10 @@ class _BrandHeader extends StatelessWidget {
               width: 88,
               height: 88,
               fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.image_not_supported_outlined,
-                  color: HappyLiveApp.gold,
-                  size: 42,
-                ),
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.image_not_supported_outlined,
+                color: HappyLiveApp.gold,
+                size: 42,
               ),
             ),
           ),
