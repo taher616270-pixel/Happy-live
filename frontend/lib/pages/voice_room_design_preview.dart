@@ -101,8 +101,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         Positioned(
                           left: 12,
                           right: 12,
-                          top: 6,
-                          bottom: 8,
+                          top: -22,
+                          bottom: 38,
                           child: chatMessagesPanel!,
                         ),
                       Positioned(
@@ -575,69 +575,213 @@ Widget _roomActionButton({
           child: Container(
             width: constraints.maxWidth,
             height: 40,
-            margin: const EdgeInsets.symmetric(horizontal: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(.10)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: audienceUsers.isEmpty
-                      ? const SizedBox.shrink()
-                      : Directionality(
-                          textDirection: TextDirection.rtl,
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            reverse: false,
-                            physics: const BouncingScrollPhysics(
-                              parent: AlwaysScrollableScrollPhysics(),
-                            ),
-                            child: Row(
-                              children: audienceUsers.map((user) {
-                                final avatar = (user['avatarUrl'] ??
-                                        user['avatar'] ??
-                                        user['photoUrl'] ??
-                                        '')
-                                    .toString();
-                                final name = (user['name'] ?? user['displayName'] ?? 'مستخدم').toString();
-                                return Padding(
-                                  padding: const EdgeInsetsDirectional.only(end: 7),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 17,
-                                        backgroundColor: Colors.white24,
-                                        backgroundImage: avatar.startsWith('http')
-                                            ? NetworkImage(avatar)
-                                            : null,
-                                        child: !avatar.startsWith('http')
-                                            ? const Icon(Icons.person, color: Colors.white70, size: 18)
-                                            : null,
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        name,
-                                        style: const TextStyle(color: Colors.white, fontSize: 10),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
+    margin: const EdgeInsets.symmetric(horizontal: 12),
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    decoration: BoxDecoration(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Colors.white.withOpacity(.10)),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: audienceUsers.isEmpty
+              ? const SizedBox.shrink()
+              : Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    reverse: false,
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    child: Row(
+                    children: audienceUsers.map((user) {
+                      final avatar = (user['avatarUrl'] ??
+                              user['avatar'] ??
+                              user['photoUrl'] ??
+                              '')
+                          .toString();
+                      return Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 7),
+                        child: CircleAvatar(
+                          radius: 17,
+                          backgroundColor: Colors.white24,
+                          backgroundImage: avatar.startsWith('http')
+                              ? NetworkImage(avatar)
+                              : null,
+                          child: !avatar.startsWith('http')
+                              ? const Icon(Icons.person,
+                                  color: Colors.white70, size: 18)
+                              : null,
                         ),
+                      );
+                    }).toList(),
+                    ),
+                  ),
                 ),
-              ],
-            ),
+        ),
+        const SizedBox(width: 10),
+        Container(width: 1, height: 26, color: Colors.white12),
+        const SizedBox(width: 10),
+        Text('$audienceCount',
+            style: const TextStyle(color: Colors.white, fontSize: 15)),
+        const SizedBox(width: 5),
+        const Icon(Icons.person_outline, color: Colors.white, size: 19),
+      ],
+    ),
           ),
         ),
       ),
     ),
   );
+
+  void _openChatComposer(BuildContext context) {
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'إغلاق الدردشة',
+      barrierColor: Colors.black.withOpacity(.48),
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (dialogContext.mounted) chatFocusNode.requestFocus();
+        });
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Stack(
+              children: [
+                // تبقى رسائل الغرفة الحقيقية ظاهرة خلف طبقة التعتيم.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: SafeArea(
+                    top: false,
+                    child: Material(
+                      color: const Color(0xFF1B1A22),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          10,
+                          9,
+                          10,
+                          MediaQuery.of(dialogContext).viewInsets.bottom + 9,
+                        ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              tooltip: 'الصور',
+                              onPressed: () {},
+                              icon: const Icon(Icons.image_outlined,
+                                  color: Colors.white70, size: 27),
+                            ),
+                            Expanded(
+                              child: Container(
+                                constraints: const BoxConstraints(minHeight: 52),
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(.08),
+                                  borderRadius: BorderRadius.circular(28),
+                                ),
+                                child: Row(
+                                  children: [
+                                    IconButton(
+                                      tooltip: 'تنسيق النص',
+                                      onPressed: () {},
+                                      icon: const Icon(Icons.text_fields,
+                                          color: Colors.white70, size: 25),
+                                    ),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: chatController,
+                                        focusNode: chatFocusNode,
+                                        minLines: 1,
+                                        maxLines: 4,
+                                        maxLength: 100,
+                                        inputFormatters: [
+                                          LengthLimitingTextInputFormatter(100),
+                                        ],
+                                        textDirection: TextDirection.rtl,
+                                        textInputAction: TextInputAction.send,
+                                        onSubmitted: (_) => onSendChat(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                        decoration: const InputDecoration(
+                                          counterText: '',
+                                          hintText: 'قل شيئًا',
+                                          hintStyle: TextStyle(
+                                            color: Colors.white38,
+                                            fontSize: 16,
+                                          ),
+                                          border: InputBorder.none,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'الملصقات',
+                                      onPressed: () {},
+                                      icon: const Icon(
+                                        Icons.face_retouching_natural,
+                                        color: Colors.white70,
+                                        size: 25,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            AnimatedBuilder(
+                              animation: chatController,
+                              builder: (context, child) {
+                                final enabled =
+                                    chatController.text.trim().isNotEmpty;
+                                return GestureDetector(
+                                  onTap: enabled ? onSendChat : null,
+                                  child: Container(
+                                    width: 54,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: enabled
+                                          ? const Color(0xFF8E2DE2)
+                                          : Colors.white.withOpacity(.08),
+                                      borderRadius: BorderRadius.circular(25),
+                                    ),
+                                    child: Icon(
+                                      Icons.send_rounded,
+                                      color: enabled
+                                          ? Colors.white
+                                          : Colors.white30,
+                                      size: 24,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        );
+        return FadeTransition(opacity: curved, child: child);
+      },
+    ).whenComplete(() => chatFocusNode.unfocus());
+  }
 
   Widget _bottomBar(BuildContext context) {
     return SizedBox(
