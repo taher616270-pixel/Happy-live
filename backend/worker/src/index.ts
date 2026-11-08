@@ -19,6 +19,8 @@ const PASSWORD_ITERATIONS = 100000;
 const AUTH_RATE_WINDOW_SECONDS = 900;
 const AUTH_RATE_MAX_ATTEMPTS = 8;
 
+const DEFAULT_GOOGLE_CLIENT_ID = '999298541545-5i0kn2d1emj2rohuvruj4o8ej49ho9kg.apps.googleusercontent.com';
+
 function toHex(bytes: Uint8Array): string {
   return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
@@ -547,7 +549,7 @@ export default {
 
     if (url.pathname === "/api/v1/auth/google" && request.method === "POST") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
-      if (!env.GOOGLE_CLIENT_ID) return json({ error: "google_signin_not_configured" }, 503, origin, env);
+      const expectedGoogleClientId = env.GOOGLE_CLIENT_ID ?? DEFAULT_GOOGLE_CLIENT_ID;
       const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
       try {
         if (!await checkAuthRateLimit(env.DB, ip)) return json({ error: "too_many_attempts" }, 429, origin, env);
@@ -575,7 +577,7 @@ export default {
         const displayName = String(claims.name ?? "").trim().slice(0, 50);
 
         if (
-          audience !== env.GOOGLE_CLIENT_ID ||
+          audience !== expectedGoogleClientId ||
           !["accounts.google.com", "https://accounts.google.com"].includes(issuer) ||
           !Number.isFinite(expiresAt) || expiresAt <= Math.floor(Date.now() / 1000) ||
           !subject || subject.length > 255 ||
