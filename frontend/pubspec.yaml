@@ -24,9 +24,23 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
 flutter:
   uses-material-design: true
   assets:
+    - assets/images/app_icon.PNG
     - assets/images/boy_headset.png.png
     - web/assets/south-arabia-v2.png
     - web/assets/images/profile_cover/profile_cover.jpg.JPG
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/images/app_icon.PNG
+  adaptive_icon_background: "#09080D"
+  adaptive_icon_foreground: assets/images/app_icon.PNG
+  web:
+    generate: true
+    image_path: assets/images/app_icon.PNG
+    background_color: "#09080D"
+    theme_color: "#09080D"
