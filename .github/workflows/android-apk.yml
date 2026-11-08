@@ -293,7 +293,7 @@ jobs:
           set -euo pipefail
           test -n "$SHOREBIRD_TOKEN"
           test -n "$RELEASE_VERSION"
-          shorebird patch android --release-version "$RELEASE_VERSION"
+          shorebird patch android --release-version "$RELEASE_VERSION" --artifact apk
 
       - name: Upload APK
         if: ${{ inputs.build_mode != 'shorebird-patch' }}
