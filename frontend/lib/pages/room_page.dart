@@ -1932,7 +1932,7 @@ class _RoomPageState extends State<RoomPage> {
                 ),
               ),
               if (isSpeaking)
-                Positioned(top: -11, left: 0, right: 0, child: Center(child: _LiveVoiceBars(level: voiceLevel))),
+                Positioned(top: -11, left: 0, right: 0, child: Center(child: _LiveVoiceBars())),
               Positioned(
                 bottom: -2,
                 right: -3,
@@ -2096,37 +2096,70 @@ class _RoomPageState extends State<RoomPage> {
 }
 
 
-class _LiveVoiceBars extends StatelessWidget {
-  const _LiveVoiceBars({required this.level});
-  final double level;
+class _LiveVoiceBars extends StatefulWidget {
+  const _LiveVoiceBars();
+
+  @override
+  State<_LiveVoiceBars> createState() => _LiveVoiceBarsState();
+}
+
+class _LiveVoiceBarsState extends State<_LiveVoiceBars>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 850),
+  )..repeat();
+
+  static const _baseHeights = <double>[
+    20, 32, 43, 28, 39, 25, 48, 31, 42, 24, 36, 28, 44, 30, 40,
+  ];
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final strength = level.clamp(0.0, 1.0);
-    const heights = <double>[20, 32, 43, 28, 39, 25, 48, 31, 42, 24, 36, 28, 44, 30, 40];
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xF217121F),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: const Color(0xFFFFD98B), width: 1.5),
-        boxShadow: [BoxShadow(color: const Color(0x99D9A93C).withOpacity(0.42 + strength * 0.5), blurRadius: 16 + strength * 11)],
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: List<Widget>.generate(heights.length, (index) {
-        final h = (heights[index] * (0.35 + strength * 0.65)).clamp(7.0, 50.0);
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
-          curve: Curves.easeOut,
-          width: 5, height: h,
-          margin: const EdgeInsets.symmetric(horizontal: 1.7),
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
           decoration: BoxDecoration(
-            color: index % 3 == 1 ? const Color(0xFFFFE7A8) : const Color(0xFFE8C477),
-            borderRadius: BorderRadius.circular(5),
-            boxShadow: [BoxShadow(color: const Color(0x99E8C477), blurRadius: 6 + strength * 4)],
+            color: const Color(0xF217121F),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: const Color(0xFFFFD98B), width: 1.5),
+            boxShadow: const [
+              BoxShadow(color: Color(0x99D9A93C), blurRadius: 22),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List<Widget>.generate(_baseHeights.length, (index) {
+              final phase = (_controller.value + index * 0.105) % 1.0;
+              final pulse = 1.0 - (phase * 2.0 - 1.0).abs();
+              final height = 10.0 + pulse * 38.0;
+              return Container(
+                width: 5,
+                height: height,
+                margin: const EdgeInsets.symmetric(horizontal: 1.7),
+                decoration: BoxDecoration(
+                  color: index % 3 == 1
+                      ? const Color(0xFFFFE7A8)
+                      : const Color(0xFFE8C477),
+                  borderRadius: BorderRadius.circular(5),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x99E8C477), blurRadius: 7),
+                  ],
+                ),
+              );
+            }),
           ),
         );
-      })),
+      },
     );
   }
 }
