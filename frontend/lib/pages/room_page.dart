@@ -2118,10 +2118,7 @@ class _RoomPageState extends State<RoomPage> {
 }
 
 
-class _LiveVoiceBars extends StatefulWidget {
-  const _LiveVoiceBars();
-
-  @overrclass _LiveVoiceRing extends StatefulWidget {
+class _LiveVoiceRing extends StatefulWidget {
   const _LiveVoiceRing();
 
   @override
