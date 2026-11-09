@@ -268,10 +268,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 4),
-                            Container(
-                              width: 44,
-                              height: 30,
-                              decoration: BoxDecoration(
+                            Transform.translate(
+                              offset: const Offset(0, 8),
+                              child: Container(
+                                width: 44,
+                                height: 30,
+                                decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(30),
                                 gradient: const LinearGradient(
                                   begin: Alignment.topLeft,
@@ -293,12 +295,13 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                Icons.add,
-                                color: Colors.white,
-                                size: 20,
-                                weight: 800,
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.add,
+                                  color: Colors.white,
+                                  size: 20,
+                                  weight: 800,
+                                ),
                               ),
                             ),
                           ],
