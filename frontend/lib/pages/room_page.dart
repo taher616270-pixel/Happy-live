@@ -36,8 +36,8 @@ class _RoomPageState extends State<RoomPage> {
   Timer? _volumeTimer;
   Map<int, double> _speakerLevels = <int, double>{};
   final Map<int, DateTime> _speakerLastHeardAt = <int, DateTime>{};
-  final Map<int, DateTime> _speakerWaveUntil = <int, DateTime>{};
-  final Set<int> _speakerWaveLatched = <int>{};
+  final Map<int, Timer> _speakerWaveTimers = <int, Timer>{};
+  final Set<int> _visibleSpeakerWaves = <int>{};
   WebSocketChannel? _chatChannel;
   StreamSubscription<dynamic>? _chatSubscription;
   Timer? _chatReconnectTimer;
@@ -146,6 +146,11 @@ class _RoomPageState extends State<RoomPage> {
     _miniOverlayEntry = null;
     _refreshTimer?.cancel();
     _volumeTimer?.cancel();
+    for (final timer in _speakerWaveTimers.values) {
+      timer.cancel();
+    }
+    _speakerWaveTimers.clear();
+    _visibleSpeakerWaves.clear();
     _chatReconnectTimer?.cancel();
     _chatFallbackTimer?.cancel();
     _chatSubscription?.cancel();
@@ -325,6 +330,11 @@ class _RoomPageState extends State<RoomPage> {
       _loadError = null;
     });
     if (!nextVoiceEnabled) {
+      for (final timer in _speakerWaveTimers.values) {
+        timer.cancel();
+      }
+      _speakerWaveTimers.clear();
+      _visibleSpeakerWaves.clear();
       _agoraDesiredPublish = null;
       _agoraJoinedPublish = null;
       unawaited(AgoraRoomBridge.leave());
@@ -347,33 +357,31 @@ class _RoomPageState extends State<RoomPage> {
       final raw = await AgoraRoomBridge.getVolumeLevels();
       final next = <int, double>{};
       final now = DateTime.now();
-      final visibleWavesBefore = _speakerWaveUntil.entries
-          .where((entry) => now.isBefore(entry.value))
-          .map((entry) => entry.key)
-          .toSet();
 
-      // Audio only starts a wave burst. It does not control the animation or
-      // extend its visibility while the same speaking burst continues.
       raw.forEach((uid, level) {
         if (level >= 0.0002) {
           next[uid] = level.clamp(0.0, 1.0).toDouble();
           _speakerLastHeardAt[uid] = now;
-          if (_speakerWaveLatched.add(uid)) {
-            _speakerWaveUntil[uid] = now.add(const Duration(seconds: 5));
+
+          // Any detected sound shows the wave immediately and restarts its
+          // seven-second hide timer. The wave animation itself is independent.
+          final wasVisible = _visibleSpeakerWaves.add(uid);
+          _speakerWaveTimers.remove(uid)?.cancel();
+          _speakerWaveTimers[uid] = Timer(const Duration(seconds: 7), () {
+            _speakerWaveTimers.remove(uid);
+            if (!mounted) return;
+            if (_visibleSpeakerWaves.remove(uid)) {
+              setState(() {});
+            }
+          });
+          if (wasVisible && mounted) {
+            setState(() {});
           }
         }
       });
 
-      // Re-arm only after a short silence, so a continuous speaker cannot
-      // keep the wave visible indefinitely.
-      _speakerWaveLatched.removeWhere((uid) {
-        final heardAt = _speakerLastHeardAt[uid];
-        return heardAt == null ||
-            now.difference(heardAt) > const Duration(milliseconds: 500);
-      });
-      _speakerWaveUntil.removeWhere((uid, until) => !now.isBefore(until));
-
-      // Preserve the existing speaker-level grace period for other room UI.
+      // Keep the existing speaker-level grace period unchanged for the
+      // room's other voice UI; it does not control the circular wave.
       _speakerLastHeardAt.removeWhere(
         (uid, heardAt) =>
             now.difference(heardAt) > const Duration(milliseconds: 7000),
@@ -384,13 +392,7 @@ class _RoomPageState extends State<RoomPage> {
         }
       }
 
-      final visibleWavesAfter = _speakerWaveUntil.entries
-          .where((entry) => now.isBefore(entry.value))
-          .map((entry) => entry.key)
-          .toSet();
-      var changed = next.length != _speakerLevels.length ||
-          visibleWavesBefore.length != visibleWavesAfter.length ||
-          !visibleWavesBefore.containsAll(visibleWavesAfter);
+      var changed = next.length != _speakerLevels.length;
       if (!changed) {
         for (final entry in next.entries) {
           if (((_speakerLevels[entry.key] ?? 0) - entry.value).abs() > 0.06) {
@@ -1926,7 +1928,7 @@ class _RoomPageState extends State<RoomPage> {
     final isMuted = seat?['isMuted'] == true;
     final speakerUid = int.tryParse((seat?['userCode'] ?? '').toString());
     final voiceLevel = speakerUid == null ? 0.0 : (_speakerLevels[speakerUid] ?? 0.0);
-    final isWaveVisible = occupied && !isMuted && speakerUid != null && _speakerWaveUntil.containsKey(speakerUid) && DateTime.now().isBefore(_speakerWaveUntil[speakerUid]!);
+    final isWaveVisible = occupied && !isMuted && speakerUid != null && _visibleSpeakerWaves.contains(speakerUid);
     return InkWell(
       onTap: (!occupied || mine) && !_isChangingSeat ? () => _selectSeat(number) : null,
       borderRadius: BorderRadius.circular(18),
