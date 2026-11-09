@@ -1260,7 +1260,10 @@ class _RoomPageState extends State<RoomPage> {
                   ],
                 ),
               Padding(
-                padding: EdgeInsetsDirectional.only(start: hasSender ? 36 : 0),
+                padding: EdgeInsetsDirectional.only(
+                  start: hasSender ? 36 : 0,
+                  end: 5,
+                ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
