@@ -144,6 +144,18 @@ async function broadcastRoomChat(env: Env, roomId: string, payload: Record<strin
   }
 }
 
+async function removeUserFromAllRoomSeats(env: Env, db: D1Database, userId: string): Promise<void> {
+  if (!env.ROOM_SEATS) return;
+  const rooms = await db.prepare("SELECT id FROM rooms WHERE status = 'active'").all<{ id: string }>();
+  await Promise.all((rooms.results ?? []).map((room) => {
+    const stub = env.ROOM_SEATS!.get(env.ROOM_SEATS!.idFromName(room.id));
+    return stub.fetch(new Request("https://room-seats.internal/remove-user", {
+      method: "POST",
+      headers: { "x-target-user-id": userId }
+    }));
+  }));
+}
+
 async function checkAuthRateLimit(db: D1Database, ip: string): Promise<boolean> {
   const now = Math.floor(Date.now() / 1000);
   const cutoff = now - AUTH_RATE_WINDOW_SECONDS;
@@ -512,6 +524,7 @@ export default {
           }
           statements.push(env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'user', ?, ?, ?)").bind(crypto.randomUUID(), status === "suspended" ? "user.suspend" : "user.activate", targetId, JSON.stringify({ status, adminUsername: actor.username, adminId: actor.id }), now));
           await env.DB.batch(statements);
+          if (status === "suspended") await removeUserFromAllRoomSeats(env, env.DB, targetId);
           return json({ ok: true, userId: targetId, status }, 200, origin, env);
         }
         const userKickRoute = url.pathname.match(/^\/api\/v1\/admin\/users\/([0-9a-f-]{36})\/kick$/i);
@@ -529,6 +542,7 @@ export default {
             env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE user_id = ? AND exited_at IS NULL").bind(now, targetId),
             env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'user.kick', 'user', ?, ?, ?)").bind(crypto.randomUUID(), targetId, JSON.stringify({ adminUsername: actor.username, adminId: actor.id, effect: "all_sessions_revoked" }), now)
           ]);
+          await removeUserFromAllRoomSeats(env, env.DB, targetId);
           return json({ ok: true, userId: targetId, revokedSessions: results[0]?.meta?.changes ?? 0 }, 200, origin, env);
         }
         const roomModerationRoute = url.pathname.match(/^\/api\/v1\/admin\/rooms\/([0-9a-f-]{36})\/moderation$/i);
