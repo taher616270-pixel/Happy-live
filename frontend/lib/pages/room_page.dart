@@ -1963,8 +1963,8 @@ class _RoomPageState extends State<RoomPage> {
                                   : const [Color(0x665D7D82), Color(0x553C626A)],
                         ),
                         border: Border.all(
-                          color: mine ? _gold : occupied ? const Color(0xFFD9A93C) : const Color(0x665F4775),
-                          width: mine ? 2.2 : 1.5,
+                          color: mine ? Colors.transparent : occupied ? const Color(0xFFD9A93C) : const Color(0x665F4775),
+                          width: mine ? 0 : 1.5,
                         ),
                         boxShadow: mine
                             ? const [BoxShadow(color: Color(0x559B63D9), blurRadius: 15, spreadRadius: 1)]
