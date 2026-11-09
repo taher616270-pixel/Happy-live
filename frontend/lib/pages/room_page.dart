@@ -377,6 +377,7 @@ class _RoomPageState extends State<RoomPage> {
         name: (mine['name'] ?? 'مستخدم').toString(),
         userCode: (mine['userCode'] ?? '').toString(),
         avatarUrl: (mine['avatarUrl'] ?? mine['avatar'] ?? '').toString(),
+        countryName: (mine['countryName'] ?? mine['country_name'] ?? '').toString(),
       );
     }
     _seatStateStore.applySnapshot(_seats, mySeat: _mySeat);
@@ -441,6 +442,7 @@ class _RoomPageState extends State<RoomPage> {
         name: (meData['name'] ?? 'مستخدم').toString(),
         userCode: (meData['userCode'] ?? '').toString(),
         avatarUrl: (meData['avatarUrl'] ?? '').toString(),
+        countryName: (meData['countryName'] ?? meData['country_name'] ?? '').toString(),
       );
     }
     if (!_seatStateStore.hasPendingMoves) {
