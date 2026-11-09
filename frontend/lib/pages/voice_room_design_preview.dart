@@ -572,8 +572,9 @@ Widget _roomActionButton({
                             }
                           }
                         : null),
-                child: SizedBox.square(
-                  dimension: 72,
+                child: SizedBox(
+                  width: 72,
+                  height: number == 5 ? 82 : 72,
                   child: Transform.translate(
                     offset: Offset(number == 5 ? -5 : 0, number > 4 ? 5 : 0),
                     transformHitTests: false,
