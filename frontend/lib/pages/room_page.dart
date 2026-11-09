@@ -1938,7 +1938,7 @@ class _RoomPageState extends State<RoomPage> {
                   minHeight: micSize * 1.7,
                   maxHeight: micSize * 1.7,
                   child: SpeakingWave(
-                    active: isWaveVisible,
+                    active: isWaveVisible && !mine,
                     size: micSize,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 220),
