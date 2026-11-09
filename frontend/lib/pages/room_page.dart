@@ -135,7 +135,7 @@ class _RoomPageState extends State<RoomPage> {
       if (!mounted) return;
       unawaited(_refreshSeats());
       unawaited(_startRoomChat());
-      if (kIsWeb) unawaited(_connectRoomSeatSocket());
+      unawaited(_connectRoomSeatSocket());
       unawaited(_joinAgora(publish: false));
     });
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -148,7 +148,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Future<void> _connectRoomSeatSocket() async {
-    if (!kIsWeb || _roomId.isEmpty || widget.accessToken.isEmpty || _seatSocket != null) return;
+    if (_roomId.isEmpty || widget.accessToken.isEmpty || _seatSocket != null) return;
     final socket = RoomSeatSocket(
       apiBase: _apiBase,
       roomId: _roomId,
@@ -358,8 +358,8 @@ class _RoomPageState extends State<RoomPage> {
         ? rawSeats.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
         : <Map<String, dynamic>>[];
     final nextMySeat = data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null;
-    final hasPendingWebMove = kIsWeb && _seatStateStore.hasPendingMoves;
-    final effectiveMySeat = hasPendingWebMove ? _seatStateStore.mySeat : nextMySeat;
+    final hasPendingSeatMove = _seatStateStore.hasPendingMoves;
+    final effectiveMySeat = hasPendingSeatMove ? _seatStateStore.mySeat : nextMySeat;
     final nextAudienceCount = data['audienceCount'] is num ? (data['audienceCount'] as num).toInt() : _audienceCount;
     final rawAudienceUsers = data['audienceUsers'];
     final nextAudienceUsers = rawAudienceUsers is List
@@ -387,7 +387,7 @@ class _RoomPageState extends State<RoomPage> {
         avatarUrl: (meData['avatarUrl'] ?? '').toString(),
       );
     }
-    if (!kIsWeb || !_seatStateStore.hasPendingMoves) {
+    if (!_seatStateStore.hasPendingMoves) {
       _seatStateStore.applySnapshot(seats, mySeat: nextMySeat);
     }
     final nextSelfMuted = meData is Map && meData['isMuted'] == true;
@@ -1184,7 +1184,7 @@ class _RoomPageState extends State<RoomPage> {
       _showMessage('أنت محظور من استخدام المايك في هذه الغرفة');
       return;
     }
-    if (kIsWeb) {
+    {
       final command = _seatStateStore.beginOptimisticMove(seatNumber);
       if (command == null) return;
       final socket = _seatSocket;
