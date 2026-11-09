@@ -1,7 +1,9 @@
 import { RtcTokenBuilder } from "agora-token";
+export { RoomSeatsHub } from "./room_seats_hub";
 export interface Env {
   DB?: D1Database;
   ROOM_CHAT?: DurableObjectNamespace;
+  ROOM_SEATS?: DurableObjectNamespace;
   APP_ENV?: string;
   ALLOWED_ORIGINS?: string;
   IMAGEKIT_PUBLIC_KEY?: string;
@@ -964,6 +966,60 @@ export default {
       }
     }
 
+
+    // Authenticated, room-scoped WebSocket for atomic microphone-seat state.
+    const seatStreamRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/([^/]+)\\/seat-stream$/);
+    if (seatStreamRoute && request.method === "GET") {
+      if (!env.DB || !env.ROOM_SEATS) return json({ error: "room_seats_realtime_unavailable" }, 503, origin, env);
+      try {
+        if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+          return json({ error: "websocket_upgrade_required" }, 426, origin, env);
+        }
+        const protocols = (request.headers.get("Sec-WebSocket-Protocol") ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+        if (!protocols.includes("happy-live-seats")) return json({ error: "websocket_protocol_required" }, 400, origin, env);
+        const streamToken = protocols.find((value) => value !== "happy-live-seats");
+        if (!streamToken || !/^[A-Za-z0-9._~-]{32,512}$/.test(streamToken)) {
+          return json({ error: "authentication_required" }, 401, origin, env);
+        }
+        const authHeaders = new Headers(request.headers);
+        authHeaders.set("Authorization", `Bearer ${streamToken}`);
+        const user = await authenticatedUser(new Request(request, { headers: authHeaders }), env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = decodeURIComponent(seatStreamRoute[1]);
+        const room = await env.DB.prepare("SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
+          .bind(roomId).first<{ id: string; owner_user_id: string }>();
+        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        const now = new Date().toISOString();
+        const [voiceEnabled, ban, kick, profile, control, moderator] = await Promise.all([
+          isAgoraVoiceEnabled(env.DB, env),
+          env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
+          env.DB.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
+          env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null }>(),
+          env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
+          env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
+        ]);
+        if (kick) return json({ error: "room_kicked" }, 403, origin, env);
+        if (ban) return json({ error: "room_banned" }, 403, origin, env);
+        if (!voiceEnabled) return json({ error: "agora_voice_disabled" }, 503, origin, env);
+
+        const stub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+        const headers = new Headers({
+          "Upgrade": "websocket",
+          "Sec-WebSocket-Protocol": "happy-live-seats",
+          "x-user-id": user.id,
+          "x-user-name": user.display_name?.trim() || "مستخدم",
+          "x-user-code": user.gabo_id ?? "",
+          "x-avatar-url": profile?.avatar_key ?? "",
+          "x-is-muted": control?.is_muted === 1 ? "true" : "false",
+          "x-is-room-owner": room.owner_user_id === user.id ? "true" : "false",
+          "x-is-room-moderator": moderator ? "true" : "false"
+        });
+        return await stub.fetch(new Request("https://room-seats.internal/connect", { method: "GET", headers }));
+      } catch (error) {
+        console.error("[rooms.seat-stream] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "room_seat_stream_failed" }, 503, origin, env);
+      }
+    }
 
     // Authenticated text and image chat scoped to a single active room.
     const chatStreamRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/chat-stream$/);
