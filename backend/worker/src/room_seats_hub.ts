@@ -227,6 +227,7 @@ export class RoomSeatsHub {
   }
 
   private async handleSocketMessage(socket: WebSocket, identity: SocketIdentity, raw: unknown): Promise<void> {
+    if (this.sockets.get(socket) !== identity) return;
     if (typeof raw !== "string" || raw.length > 4096) {
       this.send(socket, { type: "error", code: "invalid_message" });
       return;
