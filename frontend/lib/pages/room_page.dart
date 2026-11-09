@@ -1214,110 +1214,66 @@ class _RoomPageState extends State<RoomPage> {
       _showMessage('أنت محظور من استخدام المايك في هذه الغرفة');
       return;
     }
-    {
-      final tapTimer = Stopwatch()..start();
-      final command = _seatStateStore.beginOptimisticMove(seatNumber);
-      if (command == null) return;
-      _seatMoveTimers[command.version] = tapTimer;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        debugPrint('[SeatLatency] optimistic_avatar_frame_ms=${(tapTimer.elapsedMicroseconds / 1000).toStringAsFixed(2)} version=${command.version}');
-      });
-      final socket = _seatSocket;
-      if (socket != null && socket.isConnected &&
-          socket.sendMove(from: command.from, to: command.to, version: command.version)) {
-        return;
-      }
-      // The authenticated HTTP endpoint is a short reconnect fallback; it
-      // still commits through the room Durable Object, never through D1.
-      try {
-        final response = await http.post(
-          _seatsUri,
-          headers: _headers,
-          body: jsonEncode({'seatNumber': command.to, 'version': command.version}),
-        ).timeout(const Duration(seconds: 8));
-        final data = jsonDecode(response.body);
-        final fallbackTimer = _seatMoveTimers.remove(command.version);
-        if (fallbackTimer != null) {
-          debugPrint('[SeatLatency] http_fallback_ack_ms=${(fallbackTimer.elapsedMicroseconds / 1000).toStringAsFixed(2)} version=${command.version}');
-        }
-        final accepted = response.statusCode == 200 && data is Map && data['ok'] == true;
-        final rawSeats = data is Map && data['seats'] is List ? data['seats'] as List : const <dynamic>[];
-        final isLatest = _seatStateStore.isLatest(command.version);
-        _seatStateStore.resolveMove(
-          version: command.version,
-          accepted: accepted,
-          serverSeats: rawSeats,
-          serverMySeat: data is Map && data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null,
-        );
-        if (isLatest) {
-          _applyRealtimeSeatSnapshot(
-            rawSeats,
-            mySeat: data is Map && data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null,
-            updateStore: false,
-          );
-        }
-        if (!accepted && mounted) {
-          _showMessage(response.statusCode == 409
-              ? 'هذا المايك مشغول، اختر مايكًا آخر'
-              : 'تعذر تغيير المايك، تمت استعادة الحالة السابقة');
-        }
-      } catch (_) {
-        _seatMoveTimers.remove(command.version);
-        _seatStateStore.rollbackAfterDisconnect(command.version);
-        _showMessage('تعذر الاتصال بالغرفة، تمت استعادة المقعد السابق');
-      }
-      return;
-    }
-    // On web, lock only the seat being tapped. Other mic circles stay
-    // independently responsive instead of waiting for this request.
-    if (kIsWeb) {
-      if (_pendingSeatNumbers.contains(seatNumber)) return;
-    } else if (_isChangingSeat) {
-      return;
-    }
-    final current = _seatAt(seatNumber);
-    final occupiedByOther = current != null && current['isMe'] != true;
-    if (occupiedByOther) return;
 
-    setState(() {
-      if (kIsWeb) {
-        _pendingSeatNumbers.add(seatNumber);
-      } else {
-        _isChangingSeat = true;
-      }
+    final tapTimer = Stopwatch()..start();
+    final command = _seatStateStore.beginOptimisticMove(seatNumber);
+    if (command == null) return;
+    _seatMoveTimers[command.version] = tapTimer;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint('[SeatLatency] optimistic_avatar_frame_ms=${(tapTimer.elapsedMicroseconds / 1000).toStringAsFixed(2)} version=${command.version}');
     });
+
+    final socket = _seatSocket;
+    if (socket != null && socket.isConnected &&
+        socket.sendMove(from: command.from, to: command.to, version: command.version)) {
+      return;
+    }
+
+    // Short reconnect fallback. The Worker forwards this mutation to the
+    // same room Durable Object; the move itself is never committed in D1.
     try {
-      final target = _mySeat == seatNumber ? null : seatNumber;
       final response = await http.post(
         _seatsUri,
         headers: _headers,
-        body: jsonEncode({'seatNumber': target}),
+        body: jsonEncode({'seatNumber': command.to, 'version': command.version}),
       ).timeout(const Duration(seconds: 8));
       final data = jsonDecode(response.body);
-      if (response.statusCode == 200 && data is Map && data['ok'] == true) {
-        // The POST response already contains the authoritative seat list.
-        // Apply it immediately instead of waiting for an additional GET.
-        _applySeatData(Map<String, dynamic>.from(data));
-      } else {
-        if (response.statusCode == 409) {
-          _showMessage('هذا المايك مشغول، اختر مايكًا آخر');
-        } else {
-          _showMessage('تعذر تغيير المايك، حاول مرة أخرى');
-        }
+      final fallbackTimer = _seatMoveTimers.remove(command.version);
+      if (fallbackTimer != null) {
+        debugPrint('[SeatLatency] http_fallback_ack_ms=${(fallbackTimer.elapsedMicroseconds / 1000).toStringAsFixed(2)} version=${command.version}');
+      }
+      final hasSnapshot = data is Map && data['seats'] is List;
+      if (!hasSnapshot) {
+        _seatStateStore.rollbackAfterDisconnect(command.version);
         await _refreshSeats();
+        _showMessage('تعذر تأكيد تغيير المايك، تمت مزامنة الغرفة');
+        return;
+      }
+      final accepted = response.statusCode == 200 && data['ok'] == true;
+      final rawSeats = data['seats'] as List;
+      final isLatest = _seatStateStore.isLatest(command.version);
+      _seatStateStore.resolveMove(
+        version: command.version,
+        accepted: accepted,
+        serverSeats: rawSeats,
+        serverMySeat: data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null,
+      );
+      if (isLatest) {
+        _applyRealtimeSeatSnapshot(
+          rawSeats,
+          mySeat: data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null,
+          updateStore: false,
+        );
+      }
+      if (!accepted) {
+        _showMessage(response.statusCode == 409
+            ? 'هذا المايك مشغول، اختر مايكًا آخر'
+            : 'تعذر تغيير المايك، تمت استعادة الحالة السابقة');
       }
     } catch (_) {
-      _showMessage('تعذر الاتصال بالخادم، لم يتم تغيير المايك');
-    } finally {
-      if (mounted) {
-        setState(() {
-          if (kIsWeb) {
-            _pendingSeatNumbers.remove(seatNumber);
-          } else {
-            _isChangingSeat = false;
-          }
-        });
-      }
+      _seatMoveTimers.remove(command.version);
+      _seatStateStore.rollbackAfterDisconnect(command.version);
+      _showMessage('تعذر الاتصال بالغرفة، تمت استعادة المقعد السابق');
     }
   }
 
