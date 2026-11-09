@@ -165,8 +165,16 @@ class _RoomPageState extends State<RoomPage> {
     final rawSeats = event['seats'];
     final seats = rawSeats is List ? rawSeats : const <dynamic>[];
 
-    if (type == 'seat_snapshot' || type == 'seat_updated') {
-      _applyRealtimeSeatSnapshot(seats, mySeat: event['mySeat'] is num ? (event['mySeat'] as num).toInt() : null);
+    if (type == 'seat_snapshot') {
+      _applyRealtimeSeatSnapshot(
+        seats,
+        mySeat: event['mySeat'] is num ? (event['mySeat'] as num).toInt() : null,
+        reconcilePending: true,
+      );
+      return;
+    }
+    if (type == 'seat_updated') {
+      _applyRealtimeSeatSnapshot(seats);
       return;
     }
 
@@ -207,6 +215,7 @@ class _RoomPageState extends State<RoomPage> {
     List<dynamic> rawSeats, {
     int? mySeat,
     bool updateStore = true,
+    bool reconcilePending = false,
   }) {
     final normalized = rawSeats.whereType<Map>().map((item) {
       final seat = Map<String, dynamic>.from(item);
@@ -217,7 +226,13 @@ class _RoomPageState extends State<RoomPage> {
     final mine = normalized.where((seat) => seat['isMe'] == true).toList();
     final nextMySeat = mySeat ?? (mine.isEmpty ? null : (mine.first['seatNumber'] as num).toInt());
     final previousMySeat = _mySeat;
-    if (updateStore) _seatStateStore.applySnapshot(normalized, mySeat: nextMySeat);
+    if (updateStore) {
+      if (reconcilePending) {
+        _seatStateStore.reconcileSnapshot(normalized, mySeat: nextMySeat);
+      } else {
+        _seatStateStore.applySnapshot(normalized, mySeat: nextMySeat);
+      }
+    }
     if (mounted) {
       setState(() {
         _seats = normalized;
@@ -1198,8 +1213,8 @@ class _RoomPageState extends State<RoomPage> {
       final command = _seatStateStore.beginOptimisticMove(seatNumber);
       if (command == null) return;
       final socket = _seatSocket;
-      if (socket != null && socket.isConnected) {
-        socket.sendMove(from: command.from, to: command.to, version: command.version);
+      if (socket != null && socket.isConnected &&
+          socket.sendMove(from: command.from, to: command.to, version: command.version)) {
         return;
       }
       // The authenticated HTTP endpoint is a short reconnect fallback; it
