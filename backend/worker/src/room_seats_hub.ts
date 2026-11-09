@@ -58,6 +58,7 @@ export class RoomSeatsHub {
         this.snapshot.seats = {};
         this.snapshot.revision++;
         await this.persist();
+        await this.scheduleExpiry();
         this.broadcast({ type: "seat_updated", ...this.publicSnapshot() });
       });
       return Response.json({ ok: true, ...this.publicSnapshot() });
@@ -91,6 +92,44 @@ export class RoomSeatsHub {
         if (result.ok === true) this.broadcast({ type: "seat_updated", ...this.publicSnapshot() });
       });
       return Response.json(result, { status: result.ok === true ? 200 : result.code === "seat_occupied" ? 409 : 409 });
+    }
+
+    if (url.pathname === "/remove-user" && request.method === "POST") {
+      const targetUserId = request.headers.get("x-target-user-id") ?? "";
+      if (!targetUserId) return Response.json({ error: "target_required" }, { status: 400 });
+      await this.enqueue(async () => {
+        const current = Object.values(this.snapshot.seats).find((seat) => seat.userId === targetUserId);
+        if (current) {
+          delete this.snapshot.seats[String(current.seatNumber)];
+          this.snapshot.revision++;
+          await this.persist();
+          this.broadcast({ type: "seat_updated", ...this.publicSnapshot() });
+        }
+        for (const [socket, identity] of this.sockets) {
+          if (identity.userId === targetUserId) {
+            try { socket.close(4003, "room_moderation"); } catch { /* already closed */ }
+            this.sockets.delete(socket);
+          }
+        }
+        await this.scheduleExpiry();
+      });
+      return Response.json({ ok: true, ...this.publicSnapshot() });
+    }
+
+    if (url.pathname === "/set-muted" && request.method === "POST") {
+      const targetUserId = request.headers.get("x-target-user-id") ?? "";
+      const muted = request.headers.get("x-is-muted") === "true";
+      if (!targetUserId) return Response.json({ error: "target_required" }, { status: 400 });
+      await this.enqueue(async () => {
+        const member = Object.values(this.snapshot.seats).find((seat) => seat.userId === targetUserId);
+        if (member) {
+          member.isMuted = muted;
+          this.snapshot.revision++;
+          await this.persist();
+          this.broadcast({ type: "seat_updated", ...this.publicSnapshot() });
+        }
+      });
+      return Response.json({ ok: true, ...this.publicSnapshot() });
     }
 
     if (url.pathname === "/heartbeat" && request.method === "POST") {
