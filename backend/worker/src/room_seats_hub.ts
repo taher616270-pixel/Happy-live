@@ -42,6 +42,9 @@ export class RoomSeatsHub {
   constructor(private readonly state: DurableObjectState, private readonly env: unknown) {
     this.ready = this.state.blockConcurrencyWhile(async () => {
       this.snapshot = (await this.state.storage.get<RoomSeatSnapshot>("room-seat-snapshot")) ?? structuredClone(EMPTY_SNAPSHOT);
+      if (!this.snapshot.seats) this.snapshot.seats = {};
+      if (!this.snapshot.versions) this.snapshot.versions = {};
+      if (!Number.isFinite(this.snapshot.revision)) this.snapshot.revision = 0;
       if (typeof this.snapshot.voiceEnabled !== "boolean") this.snapshot.voiceEnabled = true;
       await this.expireSeats(false);
     });
