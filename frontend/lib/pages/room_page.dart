@@ -238,6 +238,8 @@ class _RoomPageState extends State<RoomPage> {
     if (updateStore) {
       if (reconcilePending) {
         _seatStateStore.reconcileSnapshot(normalized, mySeat: nextMySeat);
+      } else if (_seatStateStore.hasPendingMoves) {
+        _seatStateStore.applyRemoteSnapshotPreservingPending(normalized);
       } else {
         _seatStateStore.applySnapshot(normalized, mySeat: nextMySeat);
       }
