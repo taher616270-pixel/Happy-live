@@ -510,15 +510,15 @@ Widget _roomActionButton({
             offset: Offset(0, seatOffset),
             child: Align(
               alignment: Alignment.topCenter,
-              child: GestureDetector(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+              GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: occupied
                     ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
                     : (!locked && !isChangingSeat ? () => onTapSeat(number) : null),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-              Stack(
+                child: Stack(
                 clipBehavior: Clip.none,
                 children: [
                   _GoldenVoiceWave(
@@ -565,6 +565,7 @@ Widget _roomActionButton({
                     ),
                 ],
               ),
+              ),
               const SizedBox(height: 4),
               if (occupied)
                 Container(
@@ -591,7 +592,6 @@ Widget _roomActionButton({
                 ),
                   ],
                 ),
-              ),
             ),
           ),
         );
