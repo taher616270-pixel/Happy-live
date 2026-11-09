@@ -296,7 +296,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                            ),
                             const SizedBox(width: 4),
                             Transform.translate(
                               offset: const Offset(5, 0),
