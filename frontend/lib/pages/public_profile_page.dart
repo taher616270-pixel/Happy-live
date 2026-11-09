@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
+import 'package:country_picker/country_picker.dart';
 
 class PublicProfilePage extends StatefulWidget {
   const PublicProfilePage({
@@ -270,7 +271,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                           right: 0,
                                           top: -shift,
                                           height: (_coverH - _cardLift) + _cardH + topPad,
-                                          child: _heroStack(topPad),
+                                          child: _heroStack(context, topPad),
                                         ),
                                         // خلفية الشريط العلوي (كريمي تدريجياً)
                                         Positioned(
@@ -399,13 +400,26 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     return list;
   }
 
-  // علم الدولة من رمز مكوّن من حرفين (مثال: SA)
-  String _flagEmoji() {
-    final code = _firstText(['countryCode', 'country_code', 'country']).toUpperCase();
-    if (code.length != 2) return '';
-    final a = code.codeUnitAt(0), b = code.codeUnitAt(1);
-    if (a < 65 || a > 90 || b < 65 || b > 90) return '';
-    return String.fromCharCodes([0x1F1E6 + a - 65, 0x1F1E6 + b - 65]);
+  // يدعم رموز الدول وأسماءها المحفوظة في الملف الشخصي.
+  String _flagEmoji(BuildContext context) {
+    final countryName = _firstText(['country', 'countryName', 'country_name', 'countryCode']);
+    if (countryName.isEmpty) return '';
+    final code = countryName.toUpperCase();
+    if (code.length == 2 &&
+        code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
+      return String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65));
+    }
+    if (countryName == 'دولة الجنوب العربي' || countryName == 'الجنوب العربي') {
+      return '🇾🇪';
+    }
+    for (final country in CountryService().getAll()) {
+      final translated = country.getTranslatedName(context) ?? country.name;
+      if (translated.trim() == countryName.trim() ||
+          country.name.trim().toLowerCase() == countryName.trim().toLowerCase()) {
+        return country.flagEmoji;
+      }
+    }
+    return '';
   }
 
   // 'f' أنثى، 'm' ذكر، '' غير معروف
@@ -416,7 +430,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     return '';
   }
 
-  Widget _heroStack(double topPad) {
+  Widget _heroStack(BuildContext context, double topPad) {
     final covers = _coverList();
     final name = _firstText(['name', 'displayName', 'display_name'], widget.name);
     final code = _firstText(['userCode', 'user_code', 'gabo_id'], widget.userCode);
@@ -424,7 +438,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     final badge = _firstText(['badgeName', 'badge', 'titleBadge']);
     final level = _firstText(['levelName', 'level', 'userLevel']);
     final vip = _firstText(['vipText', 'vipLevel', 'vip_level']);
-    final flag = _flagEmoji();
+    final flag = _flagEmoji(context);
     final gender = _genderKind();
     final cardTop = _coverH + topPad - _cardLift;
 
