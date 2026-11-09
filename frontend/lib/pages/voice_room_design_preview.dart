@@ -261,15 +261,26 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         Row(
                           children: [
                             Expanded(
-                              child: Text(
-                                _name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'ID: $_id',
+                                    style: const TextStyle(color: Colors.white60, fontSize: 9),
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -279,27 +290,27 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 width: 44,
                                 height: 30,
                                 decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(14),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Color(0xFFD4AF37),
-                                    Color(0xFFF5E9C6),
+                                  borderRadius: BorderRadius.circular(14),
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFFD4AF37),
+                                      Color(0xFFF5E9C6),
+                                    ],
+                                  ),
+                                  border: Border.all(
+                                    color: const Color(0xFFB8962E),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
                                   ],
                                 ),
-                                border: Border.all(
-                                  color: const Color(0xFFB8962E),
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
                                 alignment: Alignment.center,
                                 child: const Icon(
                                   Icons.add,
@@ -310,10 +321,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               ),
                             ),
                           ],
-                        ),
-                        Text(
-                          'ID: $_id',
-                          style: const TextStyle(color: Colors.white60, fontSize: 9),
                         ),
                       ],
                     ),
