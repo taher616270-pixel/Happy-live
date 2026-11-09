@@ -505,7 +505,7 @@ Widget _roomActionButton({
             ? (number <= 4 ? 2.0 : -12.0)
             : (number <= 4 ? -5.0 : -21.0);
         return Transform.translate(
-          offset: Offset(0, seatOffset),
+          offset: Offset(0, seatOffset + (isAndroid ? 0 : 5)),
           child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: occupied
