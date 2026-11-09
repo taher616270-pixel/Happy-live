@@ -506,16 +506,18 @@ Widget _roomActionButton({
             : (number <= 4 ? -5.0 : -21.0);
         return Transform.translate(
           offset: Offset(0, seatOffset + (isAndroid ? 0 : 5)),
-          child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: occupied
-              ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
-              : (!locked && !isChangingSeat ? () => onTapSeat(number) : null),
           child: Transform.translate(
             offset: Offset(0, seatOffset),
-            child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: occupied
+                    ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
+                    : (!locked && !isChangingSeat ? () => onTapSeat(number) : null),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
               Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -587,9 +589,10 @@ Widget _roomActionButton({
                     style: TextStyle(color: Colors.white.withOpacity(.65), fontSize: 13),
                   ),
                 ),
-            ],
-          ),
-          ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
