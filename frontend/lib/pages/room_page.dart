@@ -1200,16 +1200,60 @@ class _RoomPageState extends State<RoomPage> {
                     color: const Color(0x5520182A),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Text(
-                    displayText,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      height: 1.35,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: message.senderId.isNotEmpty &&
+                          message.type != 'announcement'
+                      ? Text.rich(
+                          TextSpan(
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              height: 1.35,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            children: [
+                              if (isOwnerEntry)
+                                const TextSpan(text: 'مالك الغرفة @ '),
+                              WidgetSpan(
+                                alignment: PlaceholderAlignment.baseline,
+                                baseline: TextBaseline.alphabetic,
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () => _showChatUserProfile(message),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 2),
+                                    child: Text(
+                                      message.senderName,
+                                      style: const TextStyle(
+                                        color: Color(0xFFFFD66B),
+                                        fontSize: 12,
+                                        height: 1.35,
+                                        fontWeight: FontWeight.w800,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: Color(0xFFFFD66B),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              TextSpan(
+                                text: isSystem
+                                    ? (isWelcome ? ' دخل الغرفة' : ' @ ${message.text}')
+                                    : ': ${message.text}',
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.right,
+                        )
+                      : Text(
+                          displayText,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            height: 1.35,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(width: 6),
