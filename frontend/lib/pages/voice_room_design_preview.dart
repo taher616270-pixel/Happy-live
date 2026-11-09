@@ -111,14 +111,16 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           width: MediaQuery.sizeOf(context).width * 0.75,
                           top: Theme.of(context).platform == TargetPlatform.android
                               ? -92
-                              : 0,
-                          bottom: 8,
+                              : 50,
+                          bottom: Theme.of(context).platform == TargetPlatform.android
+                              ? 8
+                              : -42,
                           child: Transform.translate(
-                            // Preserve the web chat's visual position while
-                            // allowing mic taps through its transparent top overflow.
+                            // Keep the chat exactly where it was painted, but
+                            // move its hit-test bounds below the lower mic row.
                             offset: Theme.of(context).platform == TargetPlatform.android
                                 ? Offset.zero
-                                : const Offset(0, -50),
+                                : const Offset(0, -100),
                             transformHitTests: false,
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 220),
