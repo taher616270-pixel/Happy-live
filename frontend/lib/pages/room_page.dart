@@ -147,6 +147,93 @@ class _RoomPageState extends State<RoomPage> {
     });
   }
 
+  Future<void> _connectRoomSeatSocket() async {
+    if (!kIsWeb || _roomId.isEmpty || widget.accessToken.isEmpty || _seatSocket != null) return;
+    final socket = RoomSeatSocket(
+      apiBase: _apiBase,
+      roomId: _roomId,
+      accessToken: widget.accessToken,
+      onEvent: _handleSeatSocketEvent,
+    );
+    _seatSocket = socket;
+    await socket.connect();
+  }
+
+  void _handleSeatSocketEvent(Map<String, dynamic> event) {
+    if (!mounted) return;
+    final type = event['type']?.toString();
+    final rawSeats = event['seats'];
+    final seats = rawSeats is List ? rawSeats : const <dynamic>[];
+
+    if (type == 'seat_snapshot' || type == 'seat_updated') {
+      _applyRealtimeSeatSnapshot(seats, mySeat: event['mySeat'] is num ? (event['mySeat'] as num).toInt() : null);
+      return;
+    }
+
+    if (type == 'ack') {
+      final version = event['version'];
+      if (version is! num) return;
+      final moveVersion = version.toInt();
+      final accepted = event['ok'] == true;
+      final isLatest = _seatStateStore.isLatest(moveVersion);
+      _seatStateStore.resolveMove(
+        version: moveVersion,
+        accepted: accepted,
+        serverSeats: seats,
+        serverMySeat: event['mySeat'] is num ? (event['mySeat'] as num).toInt() : null,
+      );
+      if (isLatest) {
+        _applyRealtimeSeatSnapshot(
+          seats,
+          mySeat: event['mySeat'] is num ? (event['mySeat'] as num).toInt() : null,
+          updateStore: false,
+        );
+        if (!accepted && event['code'] == 'seat_occupied') {
+          _showMessage('هذا المايك مشغول، اختر مايكًا آخر');
+        } else if (!accepted) {
+          _showMessage('تعذر تغيير المايك، تمت استعادة المقعد السابق');
+        }
+      }
+      return;
+    }
+
+    if (type == 'socket_unavailable') {
+      // The optimistic avatar remains visible while the socket reconnects.
+      return;
+    }
+  }
+
+  void _applyRealtimeSeatSnapshot(
+    List<dynamic> rawSeats, {
+    int? mySeat,
+    bool updateStore = true,
+  }) {
+    final normalized = rawSeats.whereType<Map>().map((item) {
+      final seat = Map<String, dynamic>.from(item);
+      seat['isMe'] = (seat['userId'] ?? '').toString().isNotEmpty &&
+          (seat['userId'] ?? '').toString() == _seatStateStore.currentUserId;
+      return seat;
+    }).toList();
+    final nextMySeat = mySeat ??
+        (normalized.where((seat) => seat['isMe'] == true).map((seat) => (seat['seatNumber'] as num).toInt()).firstOrNull);
+    final previousMySeat = _mySeat;
+    if (updateStore) _seatStateStore.applySnapshot(normalized, mySeat: nextMySeat);
+    if (mounted) {
+      setState(() {
+        _seats = normalized;
+        _mySeat = nextMySeat;
+      });
+    } else {
+      _seats = normalized;
+      _mySeat = nextMySeat;
+    }
+    if (previousMySeat == null && nextMySeat != null) {
+      unawaited(_joinAgora(publish: true));
+    } else if (previousMySeat != null && nextMySeat == null) {
+      unawaited(_joinAgora(publish: false));
+    }
+  }
+
   @override
   void dispose() {
     unawaited(AgoraRoomBridge.leave());
