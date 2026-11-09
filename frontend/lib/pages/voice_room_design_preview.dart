@@ -8,6 +8,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     super.key,
     required this.room,
     required this.seats,
+    this.speakerLevels = const <int, double>{},
     required this.onTapSeat,
     required this.isChangingSeat,
     required this.audienceCount,
@@ -28,6 +29,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
+  final Map<int, double> speakerLevels;
   final ValueChanged<int> onTapSeat;
   final bool isChangingSeat;
   final int audienceCount;
@@ -494,6 +496,9 @@ Widget _roomActionButton({
         final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
         final muted = seat?['isMuted'] == true;
         final locked = seat?['isLocked'] == true || seat?['locked'] == true;
+        final speakerUid = int.tryParse((seat?['userCode'] ?? '').toString());
+        final voiceLevel = speakerUid == null ? 0.0 : (speakerLevels[speakerUid] ?? 0.0);
+        final isSpeaking = occupied && !muted && voiceLevel >= 0.055;
         // Keep the lower row's hit-test area separate from the upper row.
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -506,6 +511,12 @@ Widget _roomActionButton({
               Stack(
                 clipBehavior: Clip.none,
                 children: [
+                  if (isSpeaking)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: CustomPaint(painter: _SeatVoiceGlowPainter(voiceLevel)),
+                      ),
+                    ),
                   Container(
                     width: 48,
                     height: 48,
@@ -528,6 +539,13 @@ Widget _roomActionButton({
                             size: 21,
                           ),
                   ),
+                  if (isSpeaking)
+                    Positioned(
+                      top: -8,
+                      left: 0,
+                      right: 0,
+                      child: Center(child: _SeatVoiceBars(voiceLevel)),
+                    ),
                   if (muted || occupied)
                     Positioned(
                       bottom: -2,
@@ -1520,6 +1538,59 @@ class _ExitHalfPanelState extends State<_ExitHalfPanel>
     );
   }
 }
+class _SeatVoiceBars extends StatelessWidget {
+  const _SeatVoiceBars(this.level);
+  final double level;
 
+  @override
+  Widget build(BuildContext context) {
+    final strength = level.clamp(0.0, 1.0).toDouble();
+    return Container(
+      height: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xEE17121F),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD9A93C), width: .8),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: List.generate(5, (i) {
+        final h = (5 + ((i * 7) % 9) * strength).clamp(3.0, 14.0).toDouble();
+        return Container(
+          width: 2.5,
+          height: h,
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(
+            color: i.isEven ? const Color(0xFFFFD98B) : const Color(0xFFB98AF0),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        );
+      })),
+    );
+  }
+}
 
+class _SeatVoiceGlowPainter extends CustomPainter {
+  const _SeatVoiceGlowPainter(this.level);
+  final double level;
 
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strength = level.clamp(0.0, 1.0).toDouble();
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide * .49 + 2 + strength * 5;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8 + strength
+      ..color = const Color(0xFFE8C477).withOpacity(.35 + strength * .45)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 3 + strength * 3);
+    canvas.drawCircle(center, radius, paint);
+    canvas.drawCircle(center, radius + 4, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = const Color(0xFFB98AF0).withOpacity(.35));
+  }
+
+  @override
+  bool shouldRepaint(covariant _SeatVoiceGlowPainter oldDelegate) =>
+      (oldDelegate.level - level).abs() > .03;
+}
