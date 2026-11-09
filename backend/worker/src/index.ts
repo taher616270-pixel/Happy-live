@@ -1503,7 +1503,7 @@ export default {
           seatRevision: snapshot.revision ?? 0,
           room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة" },
-          me: { id: user.id, name: user.display_name?.trim() || "مستخدم", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
+          me: { id: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id ?? "", avatarUrl: profile?.avatar_key ?? "", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
           isOwner: room.owner_user_id === user.id,
           isModerator: !!roomModerator,
           mySeat,
