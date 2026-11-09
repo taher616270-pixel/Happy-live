@@ -1203,17 +1203,11 @@ class _RoomPageState extends State<RoomPage> {
                   mainAxisSize: MainAxisSize.min,
                   textDirection: TextDirection.rtl,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 1),
-                      child: Transform.translate(
-                        offset: const Offset(0, -1),
-                        child: _chatAvatar(
-                          message.senderAvatar,
-                          message.senderName,
-                          size: 30,
-                          onTap: () => _showChatUserProfile(message),
-                        ),
-                      ),
+                    _chatAvatar(
+                      message.senderAvatar,
+                      message.senderName,
+                      size: 30,
+                      onTap: () => _showChatUserProfile(message),
                     ),
                     const SizedBox(width: 6),
                     Transform.translate(
