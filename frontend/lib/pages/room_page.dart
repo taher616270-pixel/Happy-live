@@ -231,6 +231,9 @@ class _RoomPageState extends State<RoomPage> {
     final mine = normalized.where((seat) => seat['isMe'] == true).toList();
     final nextMySeat = mySeat ?? (mine.isEmpty ? null : (mine.first['seatNumber'] as num).toInt());
     final previousMySeat = _mySeat;
+    final mySeatEntries = normalized.where((seat) => seat['isMe'] == true).toList();
+    final nextRealtimeMuted = mySeatEntries.isNotEmpty && mySeatEntries.first['isMuted'] == true;
+    final realtimeMuteChanged = mySeatEntries.isNotEmpty && _selfMicMuted != nextRealtimeMuted;
     if (updateStore) {
       if (reconcilePending) {
         _seatStateStore.reconcileSnapshot(normalized, mySeat: nextMySeat);
@@ -242,12 +245,16 @@ class _RoomPageState extends State<RoomPage> {
       setState(() {
         _seats = normalized;
         _mySeat = nextMySeat;
+        if (mySeatEntries.isNotEmpty) _selfMicMuted = nextRealtimeMuted;
       });
     } else {
       _seats = normalized;
       _mySeat = nextMySeat;
     }
-    if (previousMySeat == null && nextMySeat != null) {
+    if (realtimeMuteChanged) {
+      if (nextRealtimeMuted) unawaited(AgoraRoomBridge.setMuted(true));
+      unawaited(_joinAgora(publish: nextMySeat != null && !nextRealtimeMuted));
+    } else if (previousMySeat == null && nextMySeat != null) {
       unawaited(_joinAgora(publish: true));
     } else if (previousMySeat != null && nextMySeat == null) {
       unawaited(_joinAgora(publish: false));
