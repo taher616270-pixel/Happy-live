@@ -1204,7 +1204,7 @@ class _RoomPageState extends State<RoomPage> {
                   textDirection: TextDirection.rtl,
                   children: [
                     Transform.translate(
-                      offset: const Offset(0, -4),
+                      offset: const Offset(0, -3),
                       child: _chatAvatar(
                         message.senderAvatar,
                         message.senderName,
