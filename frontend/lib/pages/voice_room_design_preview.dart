@@ -668,17 +668,18 @@ Widget _roomActionButton({
                 offset: number == 5 ? const Offset(5, 0) : Offset.zero,
                 child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: !occupied && (!isChangingSeat &&
-                            !seatState.isPending &&
-                            (canModerateUsers || !locked)
-                        ? () {
-                            if (canModerateUsers) {
-                              _showEmptySeatActions(context, number);
-                            } else {
-                              onTapSeat(number);
-                            }
-                          }
-                        : null),
+                onTap: !occupied &&
+                        !isChangingSeat &&
+                        !seatState.isPending &&
+                        (canModerateUsers || !locked)
+                    ? () {
+                        if (canModerateUsers) {
+                          _showEmptySeatActions(context, number);
+                        } else {
+                          onTapSeat(number);
+                        }
+                      }
+                    : null,
                 child: SizedBox(
                   width: 72,
                   height: number == 5 ? 82 : 72,
