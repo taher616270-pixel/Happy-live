@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:happy_live/models/message.dart';
 import 'package:happy_live/models/seat_state.dart';
@@ -35,6 +36,11 @@ class _RoomPageState extends State<RoomPage> {
   // The authenticated seat response is scoped to this session and is always refreshed from the API.
   static final Map<String, Map<String, dynamic>> _roomPreviewCache = <String, Map<String, dynamic>>{};
   static const Duration _roomPreviewCacheTtl = Duration(seconds: 15);
+  // Persistent country fallback keeps speaker flags visible during temporary
+  // network loss or incomplete realtime seat snapshots.
+  static const String _countryNameCacheKey = 'happy_live_country_name_cache_v1';
+  final Map<String, String> _countryNameCache = <String, String>{};
+  bool _countryNameCacheLoaded = false;
 
   Timer? _refreshTimer;
   Timer? _volumeTimer;
@@ -129,6 +135,7 @@ class _RoomPageState extends State<RoomPage> {
     super.initState();
     _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? '').toString();
     _restoreRoomPreviewCache();
+    unawaited(_restoreCountryNameCache());
 
     // Let Flutter paint the room immediately from the room card data first.
     // Network work starts after the first frame and never blocks the room UI.
@@ -146,6 +153,66 @@ class _RoomPageState extends State<RoomPage> {
     _volumeTimer = Timer.periodic(const Duration(milliseconds: 160), (_) {
       unawaited(_refreshAudioLevels());
     });
+  }
+
+  Future<void> _restoreCountryNameCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_countryNameCacheKey);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          decoded.forEach((key, value) {
+            final userId = key.toString().trim();
+            final countryName = value?.toString().trim() ?? '';
+            if (userId.isNotEmpty && countryName.isNotEmpty) {
+              _countryNameCache[userId] = countryName;
+            }
+          });
+        }
+      }
+    } catch (_) {
+      // Cache is best-effort; room functionality must not depend on it.
+    } finally {
+      _countryNameCacheLoaded = true;
+    }
+    if (!mounted || _seats.isEmpty || _countryNameCache.isEmpty) return;
+    var changed = false;
+    final restored = _seats.map((seat) {
+      final next = Map<String, dynamic>.from(seat);
+      final userId = (next['userId'] ?? '').toString();
+      if ((next['countryName'] ?? '').toString().trim().isEmpty &&
+          (_countryNameCache[userId] ?? '').isNotEmpty) {
+        next['countryName'] = _countryNameCache[userId];
+        changed = true;
+      }
+      return next;
+    }).toList();
+    if (changed) setState(() => _seats = restored);
+  }
+
+  void _rememberCountryNames(List<Map<String, dynamic>> seats) {
+    var changed = false;
+    for (final seat in seats) {
+      final userId = (seat['userId'] ?? '').toString().trim();
+      final countryName = (seat['countryName'] ?? seat['country_name'] ?? '').toString().trim();
+      if (userId.isEmpty || countryName.isEmpty) continue;
+      if (_countryNameCache[userId] != countryName) {
+        _countryNameCache[userId] = countryName;
+        changed = true;
+      }
+    }
+    if (changed) unawaited(_persistCountryNameCache());
+  }
+
+  Future<void> _persistCountryNameCache() async {
+    if (!_countryNameCacheLoaded) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_countryNameCacheKey, jsonEncode(_countryNameCache));
+    } catch (_) {
+      // A failed local write must never interrupt room updates.
+    }
   }
 
   Future<void> _connectRoomSeatSocket() async {
@@ -233,14 +300,19 @@ class _RoomPageState extends State<RoomPage> {
       final userId = (seat['userId'] ?? '').toString();
       final previous = previousSeatsByUserId[userId];
       // Keep the latest DB-backed country while realtime seat events update mic state.
-      if ((seat['countryName'] ?? '').toString().isEmpty &&
-          (previous?['countryName'] ?? '').toString().isNotEmpty) {
+      if ((seat['countryName'] ?? '').toString().trim().isEmpty &&
+          (previous?['countryName'] ?? '').toString().trim().isNotEmpty) {
         seat['countryName'] = previous!['countryName'];
+      }
+      if ((seat['countryName'] ?? '').toString().trim().isEmpty &&
+          (_countryNameCache[userId] ?? '').isNotEmpty) {
+        seat['countryName'] = _countryNameCache[userId];
       }
       seat['isMe'] = userId.isNotEmpty &&
           userId == _seatStateStore.currentUserId;
       return seat;
     }).toList();
+    _rememberCountryNames(normalized);
     final mine = normalized.where((seat) => seat['isMe'] == true).toList();
     final nextMySeat = mySeat ?? (mine.isEmpty ? null : (mine.first['seatNumber'] as num).toInt());
     final hasPendingLocalMove = updateStore && !reconcilePending && _seatStateStore.hasPendingMoves;
@@ -412,8 +484,17 @@ class _RoomPageState extends State<RoomPage> {
     if (!mounted) return;
     final rawSeats = data['seats'];
     final seats = rawSeats is List
-        ? rawSeats.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+        ? rawSeats.whereType<Map>().map((item) {
+            final seat = Map<String, dynamic>.from(item);
+            final userId = (seat['userId'] ?? '').toString();
+            if ((seat['countryName'] ?? '').toString().trim().isEmpty &&
+                (_countryNameCache[userId] ?? '').isNotEmpty) {
+              seat['countryName'] = _countryNameCache[userId];
+            }
+            return seat;
+          }).toList()
         : <Map<String, dynamic>>[];
+    _rememberCountryNames(seats);
     final nextMySeat = data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null;
     final hasPendingSeatMove = _seatStateStore.hasPendingMoves;
     final effectiveMySeat = hasPendingSeatMove ? _seatStateStore.mySeat : nextMySeat;
