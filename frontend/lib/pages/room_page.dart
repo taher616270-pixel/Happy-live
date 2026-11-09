@@ -1320,7 +1320,7 @@ class _RoomPageState extends State<RoomPage> {
   Widget _premiumSeatCard(int number, double micSize) {
     final seat = _seatAt(number);
     final occupied = seat != null;
-    final mine = seat?['isMe'] == true;
+    final mine = _mySeat == number;
     final name = (seat?['name'] ?? '').toString();
     final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
     final locked = occupied && !mine;
@@ -1347,8 +1347,8 @@ class _RoomPageState extends State<RoomPage> {
                       : const [Color(0xAA164552), Color(0xAA092B38)],
                   ),
                   border: Border.all(
-                    color: mine ? Colors.transparent : occupied ? const Color(0xFF9BC6C8) : const Color(0x7797B9B8),
-                    width: mine ? 0 : 1.5,
+                    color: mine ? const Color(0xFFFFD98B) : occupied ? const Color(0xFF9BC6C8) : const Color(0x7797B9B8),
+                    width: mine ? 2.4 : 1.5,
                   ),
                   boxShadow: [BoxShadow(color: occupied ? const Color(0x5539A2A5) : const Color(0x22000000), blurRadius: 12, offset: const Offset(0, 4))],
                 ),
@@ -1912,7 +1912,7 @@ class _RoomPageState extends State<RoomPage> {
   Widget _micCard(int number, double micSize) {
     final seat = _seatAt(number);
     final occupied = seat != null;
-    final mine = seat?['isMe'] == true;
+    final mine = _mySeat == number;
     final name = (seat?['name'] ?? '').toString();
     final isLocked = occupied && !mine;
     final isMuted = seat?['isMuted'] == true;
@@ -1956,8 +1956,8 @@ class _RoomPageState extends State<RoomPage> {
                                   : const [Color(0x665D7D82), Color(0x553C626A)],
                         ),
                         border: Border.all(
-                          color: mine ? Colors.transparent : occupied ? const Color(0xFFD9A93C) : const Color(0x665F4775),
-                          width: mine ? 0 : 1.5,
+                          color: mine ? const Color(0xFFFFD98B) : occupied ? const Color(0xFFD9A93C) : const Color(0x665F4775),
+                          width: mine ? 2.2 : 1.5,
                         ),
                         boxShadow: mine
                             ? const [BoxShadow(color: Color(0x559B63D9), blurRadius: 15, spreadRadius: 1)]
