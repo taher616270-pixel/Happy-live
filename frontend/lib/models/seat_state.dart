@@ -162,7 +162,7 @@ class SeatStateStore extends ChangeNotifier {
   SeatMoveCommand? beginOptimisticMove(int target) {
     if (target < 1 || target > 8 || _pendingTargets.contains(target)) return null;
     final destination = _seats[target]!;
-    if (destination.occupied && !destination.isMe) return null;
+    if (destination.isLocked || (destination.occupied && !destination.isMe)) return null;
     if (_mySeat == target) return null;
 
     final previous = Map<int, SeatState>.from(_seats);
@@ -235,6 +235,13 @@ class SeatStateStore extends ChangeNotifier {
       _mySeat = _seats.values.where((seat) => seat.isMe).map((seat) => seat.seatNumber).firstOrNull;
     }
     notifyListeners();
+  }
+
+  void reconcileSnapshot(List<dynamic> rawSeats, {int? mySeat}) {
+    _rollbackSnapshots.clear();
+    _pendingTargetByVersion.clear();
+    _pendingTargets.clear();
+    applySnapshot(rawSeats, mySeat: mySeat);
   }
 
   void applyRealtimeSnapshot(List<dynamic> rawSeats) {
