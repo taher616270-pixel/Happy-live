@@ -567,9 +567,29 @@ Widget _roomActionButton({
                     rippleStartSize: 54,
                     rippleEndSize: 70,
                     avatar: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 170),
+                      duration: const Duration(milliseconds: 460),
                       switchInCurve: Curves.easeOutCubic,
                       switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) {
+                        final curved = CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                          reverseCurve: Curves.easeInCubic,
+                        );
+                        return FadeTransition(
+                          opacity: curved,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, .55),
+                              end: Offset.zero,
+                            ).animate(curved),
+                            child: ScaleTransition(
+                              scale: Tween<double>(begin: .88, end: 1).animate(curved),
+                              child: child,
+                            ),
+                          ),
+                        );
+                      },
                       child: Container(
                       key: ValueKey<String>(seat?['userId']?.toString().isNotEmpty == true
                           ? seat!['userId'].toString()
