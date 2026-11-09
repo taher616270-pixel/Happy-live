@@ -9,233 +9,54 @@ const _grey = Color(0xFF8E8CA0);
 const _fieldBg = Color(0xFFF2F4F6);
 
 const List<String> _countryEntries = [
-  '🏳️|دولة الجنوب العربي',
-  '🇦🇫|أفغانستان',
-  '🇦🇱|ألبانيا',
-  '🇩🇿|الجزائر',
-  '🇦🇩|أندورا',
-  '🇦🇴|أنغولا',
-  '🇦🇬|أنتيغوا وباربودا',
-  '🇦🇷|الأرجنتين',
-  '🇦🇲|أرمينيا',
-  '🇦🇺|أستراليا',
-  '🇦🇹|النمسا',
-  '🇦🇿|أذربيجان',
-  '🇧🇸|البهاما',
-  '🇧🇭|البحرين',
-  '🇧🇩|بنغلاديش',
-  '🇧🇧|بربادوس',
-  '🇧🇾|بيلاروس',
-  '🇧🇪|بلجيكا',
-  '🇧🇿|بليز',
-  '🇧🇯|بنين',
-  '🇧🇹|بوتان',
-  '🇧🇴|بوليفيا',
-  '🇧🇦|البوسنة والهرسك',
-  '🇧🇼|بوتسوانا',
-  '🇧🇷|البرازيل',
-  '🇧🇳|بروناي',
-  '🇧🇬|بلغاريا',
-  '🇧🇫|بوركينا فاسو',
-  '🇧🇮|بوروندي',
-  '🇨🇻|الرأس الأخضر',
-  '🇰🇭|كمبوديا',
-  '🇨🇲|الكاميرون',
-  '🇨🇦|كندا',
-  '🇨🇫|جمهورية أفريقيا الوسطى',
-  '🇹🇩|تشاد',
-  '🇨🇱|تشيلي',
-  '🇨🇳|الصين',
-  '🇨🇴|كولومبيا',
-  '🇰🇲|جزر القمر',
-  '🇨🇬|الكونغو',
-  '🇨🇷|كوستاريكا',
-  '🇨🇮|ساحل العاج',
-  '🇭🇷|كرواتيا',
-  '🇨🇺|كوبا',
-  '🇨🇾|قبرص',
-  '🇨🇿|التشيك',
-  '🇰🇵|كوريا الشمالية',
-  '🇨🇩|جمهورية الكونغو الديمقراطية',
-  '🇩🇰|الدنمارك',
-  '🇩🇯|جيبوتي',
-  '🇩🇲|دومينيكا',
-  '🇩🇴|جمهورية الدومينيكان',
-  '🇪🇨|الإكوادور',
-  '🇪🇬|مصر',
-  '🇸🇻|السلفادور',
-  '🇬🇶|غينيا الاستوائية',
-  '🇪🇷|إريتريا',
-  '🇪🇪|إستونيا',
-  '🇸🇿|إسواتيني',
-  '🇪🇹|إثيوبيا',
-  '🇫🇯|فيجي',
-  '🇫🇮|فنلندا',
-  '🇫🇷|فرنسا',
-  '🇬🇦|الغابون',
-  '🇬🇲|غامبيا',
-  '🇬🇪|جورجيا',
-  '🇩🇪|ألمانيا',
-  '🇬🇭|غانا',
-  '🇬🇷|اليونان',
-  '🇬🇩|غرينادا',
-  '🇬🇹|غواتيمالا',
-  '🇬🇳|غينيا',
-  '🇬🇼|غينيا بيساو',
-  '🇬🇾|غيانا',
-  '🇭🇹|هايتي',
-  '🇭🇳|هندوراس',
-  '🇭🇺|المجر',
-  '🇮🇸|آيسلندا',
-  '🇮🇳|الهند',
-  '🇮🇩|إندونيسيا',
-  '🇮🇷|إيران',
-  '🇮🇶|العراق',
-  '🇮🇪|أيرلندا',
-  '🇮🇱|إسرائيل',
-  '🇮🇹|إيطاليا',
-  '🇯🇲|جامايكا',
-  '🇯🇵|اليابان',
-  '🇯🇴|الأردن',
-  '🇰🇿|كازاخستان',
-  '🇰🇪|كينيا',
-  '🇰🇮|كيريباتي',
-  '🇰🇼|الكويت',
-  '🇰🇬|قيرغيزستان',
-  '🇱🇦|لاوس',
-  '🇱🇻|لاتفيا',
-  '🇱🇧|لبنان',
-  '🇱🇸|ليسوتو',
-  '🇱🇷|ليبيريا',
-  '🇱🇾|ليبيا',
-  '🇱🇮|ليختنشتاين',
-  '🇱🇹|ليتوانيا',
-  '🇱🇺|لوكسمبورغ',
-  '🇲🇬|مدغشقر',
-  '🇲🇼|ملاوي',
-  '🇲🇾|ماليزيا',
-  '🇲🇻|المالديف',
-  '🇲🇱|مالي',
-  '🇲🇹|مالطا',
-  '🇲🇭|جزر مارشال',
-  '🇲🇷|موريتانيا',
-  '🇲🇺|موريشيوس',
-  '🇲🇽|المكسيك',
-  '🇫🇲|ميكرونيزيا',
-  '🇲🇩|مولدوفا',
-  '🇲🇨|موناكو',
-  '🇲🇳|منغوليا',
-  '🇲🇪|الجبل الأسود',
-  '🇲🇦|المغرب',
-  '🇲🇿|موزمبيق',
-  '🇲🇲|ميانمار',
-  '🇳🇦|ناميبيا',
-  '🇳🇷|ناورو',
-  '🇳🇵|نيبال',
-  '🇳🇱|هولندا',
-  '🇳🇿|نيوزيلندا',
-  '🇳🇮|نيكاراغوا',
-  '🇳🇪|النيجر',
-  '🇳🇬|نيجيريا',
-  '🇲🇰|مقدونيا الشمالية',
-  '🇳🇴|النرويج',
-  '🇴🇲|عُمان',
-  '🇵🇰|باكستان',
-  '🇵🇼|بالاو',
-  '🇵🇸|فلسطين',
-  '🇵🇦|بنما',
-  '🇵🇬|بابوا غينيا الجديدة',
-  '🇵🇾|باراغواي',
-  '🇵🇪|بيرو',
-  '🇵🇭|الفلبين',
-  '🇵🇱|بولندا',
-  '🇵🇹|البرتغال',
-  '🇶🇦|قطر',
-  '🇰🇷|كوريا الجنوبية',
-  '🇷🇴|رومانيا',
-  '🇷🇺|روسيا',
-  '🇷🇼|رواندا',
-  '🇰🇳|سانت كيتس ونيفيس',
-  '🇱🇨|سانت لوسيا',
-  '🇻🇨|سانت فنسنت والغرينادين',
-  '🇼🇸|ساموا',
-  '🇸🇲|سان مارينو',
-  '🇸🇹|ساو تومي وبرينسيب',
-  '🇸🇦|السعودية',
-  '🇸🇳|السنغال',
-  '🇷🇸|صربيا',
-  '🇸🇨|سيشل',
-  '🇸🇱|سيراليون',
-  '🇸🇬|سنغافورة',
-  '🇸🇰|سلوفاكيا',
-  '🇸🇮|سلوفينيا',
-  '🇸🇧|جزر سليمان',
-  '🇸🇴|الصومال',
-  '🇿🇦|جنوب أفريقيا',
-  '🇸🇸|جنوب السودان',
-  '🇪🇸|إسبانيا',
-  '🇱🇰|سريلانكا',
-  '🇸🇩|السودان',
-  '🇸🇷|سورينام',
-  '🇸🇪|السويد',
-  '🇨🇭|سويسرا',
-  '🇸🇾|سوريا',
-  '🇹🇯|طاجيكستان',
-  '🇹🇿|تنزانيا',
-  '🇹🇭|تايلاند',
-  '🇹🇱|تيمور الشرقية',
-  '🇹🇬|توغو',
-  '🇹🇴|تونغا',
-  '🇹🇹|ترينيداد وتوباغو',
-  '🇹🇳|تونس',
-  '🇹🇷|تركيا',
-  '🇹🇲|تركمانستان',
-  '🇹🇻|توفالو',
-  '🇺🇬|أوغندا',
-  '🇺🇦|أوكرانيا',
-  '🇦🇪|الإمارات العربية المتحدة',
-  '🇬🇧|المملكة المتحدة',
-  '🇺🇸|الولايات المتحدة',
-  '🇺🇾|أوروغواي',
-  '🇺🇿|أوزبكستان',
-  '🇻🇺|فانواتو',
-  '🇻🇦|الفاتيكان',
-  '🇻🇪|فنزويلا',
-  '🇻🇳|فيتنام',
-  '🇾🇪|اليمن',
-  '🇿🇲|زامبيا',
-  '🇿🇼|زيمبابوي',
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
 ];
 
 String _countryFlag(String name) {
-  if (name == 'دولة الجنوب العربي') return 'SOUTH_ARABIA';
+  final value = name.trim();
+  if (value == 'دولة الجنوب العربي' || value == 'الجنوب العربي' ||
+      value == 'South Arabia') return 'SOUTH_ARABIA';
   for (final entry in _countryEntries) {
     final parts = entry.split('|');
-    if (parts.length == 2 && parts[1] == name) return parts[0];
+    if (parts.length == 3 && (parts[1] == value || parts[2] == value)) {
+      return parts[0];
+    }
   }
-  const legacy = {
-    'Saudi Arabia': '🇸🇦', 'Kuwait': '🇰🇼', 'United Arab Emirates': '🇦🇪',
-    'Qatar': '🇶🇦', 'Bahrain': '🇧🇭', 'Oman': '🇴🇲', 'Iraq': '🇮🇶',
-    'Yemen': '🇾🇪', 'Egypt': '🇪🇬', 'Jordan': '🇯🇴',
-  };
-  return legacy[name] ?? '';
+  return '';
 }
 
-String countryFlagForProfileName(String name) {
-  final value = name.trim();
-  if (value.isEmpty) return '';
-  if (value == 'الجنوب العربي') return 'SOUTH_ARABIA';
-  return _countryFlag(value);
-}
+String countryFlagForProfileName(String name) => _countryFlag(name);
 
 String _countryArabicName(String name) {
-  const legacy = {
-    'Saudi Arabia': 'السعودية', 'Kuwait': 'الكويت',
-    'United Arab Emirates': 'الإمارات العربية المتحدة', 'Qatar': 'قطر',
-    'Bahrain': 'البحرين', 'Oman': 'عُمان', 'Iraq': 'العراق',
-    'Yemen': 'اليمن', 'Egypt': 'مصر', 'Jordan': 'الأردن',
-  };
-  return legacy[name] ?? name;
+  final value = name.trim();
+  if (value == 'دولة الجنوب العربي' || value == 'الجنوب العربي') {
+    return 'دولة الجنوب العربي';
+  }
+  for (final entry in _countryEntries) {
+    final parts = entry.split('|');
+    if (parts.length == 3 && (parts[1] == value || parts[2] == value)) {
+      return parts[2];
+    }
+  }
+  return value;
 }
 
 class EditProfileData {
@@ -464,11 +285,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
         return StatefulBuilder(builder: (context, setSheetState) {
           final filtered = _countryEntries.where((entry) {
             final parts = entry.split('|');
-            return parts.length == 2 && parts[1].contains(query.trim());
+            return parts.length == 3 && (parts[1].toLowerCase().contains(query.trim().toLowerCase()) || parts[2].contains(query.trim()));
           }).toList()
             ..sort((a, b) {
-              if (a.startsWith('🏳️|')) return -1;
-              if (b.startsWith('🏳️|')) return 1;
+              if (a.startsWith('SOUTH_ARABIA|')) return -1;
+              if (b.startsWith('SOUTH_ARABIA|')) return 1;
               return a.split('|')[1].compareTo(b.split('|')[1]);
             });
           return Directionality(
@@ -502,12 +323,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     itemCount: filtered.length,
                     itemBuilder: (_, index) {
                       final parts = filtered[index].split('|');
-                      final flag = parts[0], name = parts[1];
+                      final flag = parts[0], name = parts[2];
                       return ListTile(
-                        leading: flag == '🏳️' ? Image.asset('web/assets/south-arabia-v2.png', width: 32, height: 22, fit: BoxFit.cover)
+                        leading: flag == 'SOUTH_ARABIA' ? Image.asset('web/assets/south-arabia-v2.png', width: 32, height: 22, fit: BoxFit.cover)
                             : SizedBox(width: 32, child: Center(child: Text(flag, style: const TextStyle(fontSize: 24))),),
                         title: Text(name, style: const TextStyle(fontSize: 15, color: _ink)),
-                        onTap: () => Navigator.pop(sheetContext, name),
+                        onTap: () => Navigator.pop(sheetContext, parts[1]),
                       );
                     },
                   )),
