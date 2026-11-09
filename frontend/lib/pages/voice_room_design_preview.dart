@@ -111,21 +111,29 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           width: MediaQuery.sizeOf(context).width * 0.75,
                           top: Theme.of(context).platform == TargetPlatform.android
                               ? -92
-                              : -50,
+                              : 0,
                           bottom: 8,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOutCubic,
-                            transform: Matrix4.translationValues(
-                              0,
-                              -MediaQuery.viewInsetsOf(context).bottom,
-                              0,
-                            ),
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.transparent,
+                          child: Transform.translate(
+                            // Preserve the web chat's visual position while
+                            // allowing mic taps through its transparent top overflow.
+                            offset: Theme.of(context).platform == TargetPlatform.android
+                                ? Offset.zero
+                                : const Offset(0, -50),
+                            transformHitTests: false,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeOutCubic,
+                              transform: Matrix4.translationValues(
+                                0,
+                                -MediaQuery.viewInsetsOf(context).bottom,
+                                0,
                               ),
-                              child: chatMessagesPanel!,
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  color: Colors.transparent,
+                                ),
+                                child: chatMessagesPanel!,
+                              ),
                             ),
                           ),
                         ),
