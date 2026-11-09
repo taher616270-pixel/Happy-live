@@ -1265,29 +1265,30 @@ class _RoomPageState extends State<RoomPage> {
                   constraints: BoxConstraints(
                     maxWidth: MediaQuery.sizeOf(context).width * 0.78,
                   ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0x5520182A),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    isSystem && isWelcome
-                        ? 'دخل الغرفة'
-                        : isSystem && message.type != 'announcement'
-                            ? message.text
-                            : message.type == 'announcement'
-                                ? displayText
-                                : message.text,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      height: 1.35,
-                      fontWeight: FontWeight.w600,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0x5520182A),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      isSystem && isWelcome
+                          ? 'دخل الغرفة'
+                          : isSystem && message.type != 'announcement'
+                              ? message.text
+                              : message.type == 'announcement'
+                                  ? displayText
+                                  : message.text,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
