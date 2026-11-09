@@ -502,7 +502,7 @@ Widget _roomActionButton({
         final isAndroid = Theme.of(context).platform == TargetPlatform.android;
         final seatOffset = isAndroid
             ? (number <= 4 ? 2.0 : -12.0)
-            : (number <= 4 ? 7.0 : -21.0);
+            : (number <= 4 ? -5.0 : -21.0);
         return Transform.translate(
           offset: Offset(0, seatOffset),
           child: GestureDetector(
