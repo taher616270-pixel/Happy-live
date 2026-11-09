@@ -1064,15 +1064,17 @@ export default {
           .bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
         const now = new Date().toISOString();
-        const [voiceEnabled, ban, kick, profile, control, moderator] = await Promise.all([
+        const [voiceEnabled, ban, kick, controlKick, profile, control, moderator] = await Promise.all([
           isAgoraVoiceEnabled(env.DB, env),
           env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
+          env.DB.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
+          env.DB.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
           env.DB.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
           env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null }>(),
           env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
           env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
         ]);
-        if (kick) return json({ error: "room_kicked" }, 403, origin, env);
+        if (kick || controlKick) return json({ error: "room_kicked" }, 403, origin, env);
         if (ban) return json({ error: "room_banned" }, 403, origin, env);
         if (!voiceEnabled) return json({ error: "agora_voice_disabled" }, 503, origin, env);
 
@@ -1152,7 +1154,7 @@ export default {
         const activeKick = await env.DB.prepare(
           "SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
         ).bind(roomId, user.id, new Date().toISOString()).first<{ kicked_until: string }>();
-        if (activeKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
+        if (activeKick || controlKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
         let body: Record<string, unknown>;
         try { body = await request.json() as Record<string, unknown>; }
         catch { return json({ error: "invalid_json" }, 400, origin, env); }
@@ -1434,12 +1436,13 @@ export default {
           .bind(roomId).first<{ id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
         const now = new Date().toISOString();
-        const [ban, kick, control] = await Promise.all([
+        const [ban, kick, controlKick, control] = await Promise.all([
           env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
+          env.DB.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
           env.DB.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
           env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>()
         ]);
-        if (ban || kick) return json({ error: ban ? "room_banned" : "room_kicked" }, 403, origin, env);
+        if (ban || kick || controlKick) return json({ error: ban ? "room_banned" : "room_kicked" }, 403, origin, env);
         let requestedPublish = false;
         try {
           const body = await request.json() as Record<string, unknown>;
@@ -1486,7 +1489,7 @@ export default {
         ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; owner_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
 
-        const [voiceEnabled, activeBan, activeKick, profile, myControl, roomModerator] = await Promise.all([
+        const [voiceEnabled, activeBan, activeKick, controlKick, profile, myControl, roomModerator] = await Promise.all([
           isAgoraVoiceEnabled(env.DB, env),
           env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
           env.DB.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
