@@ -2103,34 +2103,33 @@ class _LiveVoiceBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strength = level.clamp(0.0, 1.0);
-    const heights = <double>[13, 20, 27, 17, 24, 15, 29, 18, 25, 14, 21];
+    const heights = <double>[17, 27, 36, 23, 33, 20, 40, 25, 35, 19, 30, 23, 37];
     return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
       decoration: BoxDecoration(
         color: const Color(0xF217121F),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE8C477), width: 1.1),
-        boxShadow: [BoxShadow(color: const Color(0x99D9A93C).withOpacity(0.35 + strength * 0.5), blurRadius: 11 + strength * 9)],
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFFFD98B), width: 1.4),
+        boxShadow: [BoxShadow(color: const Color(0x99D9A93C).withOpacity(0.4 + strength * 0.5), blurRadius: 14 + strength * 10)],
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: List<Widget>.generate(heights.length, (index) {
-        final h = (heights[index] * (0.35 + strength * 0.65)).clamp(5.0, 30.0);
+        final h = (heights[index] * (0.35 + strength * 0.65)).clamp(6.0, 42.0);
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 110),
+          duration: const Duration(milliseconds: 100),
           curve: Curves.easeOut,
-          width: 3.5, height: h,
+          width: 4.5, height: h,
           margin: const EdgeInsets.symmetric(horizontal: 1.5),
           decoration: BoxDecoration(
             color: index % 3 == 1 ? const Color(0xFFFFE7A8) : const Color(0xFFE8C477),
-            borderRadius: BorderRadius.circular(4),
-            boxShadow: [BoxShadow(color: const Color(0x88E8C477), blurRadius: 4 + strength * 3)],
+            borderRadius: BorderRadius.circular(5),
+            boxShadow: [BoxShadow(color: const Color(0x99E8C477), blurRadius: 5 + strength * 4)],
           ),
         );
       })),
     );
   }
 }
-
 class _VoiceGlowPainter extends CustomPainter {
   const _VoiceGlowPainter({required this.level});
   final double level;
