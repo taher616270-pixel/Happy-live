@@ -358,6 +358,16 @@ class _RoomPageState extends State<RoomPage> {
     _mySeat = mySeatEntries.isEmpty || mySeatEntries.first['seatNumber'] is! num
         ? null
         : (mySeatEntries.first['seatNumber'] as num).toInt();
+    if (mySeatEntries.isNotEmpty) {
+      final mine = mySeatEntries.first;
+      _seatStateStore.setCurrentUser(
+        userId: (mine['userId'] ?? '').toString(),
+        name: (mine['name'] ?? 'مستخدم').toString(),
+        userCode: (mine['userCode'] ?? '').toString(),
+        avatarUrl: (mine['avatarUrl'] ?? mine['avatar'] ?? '').toString(),
+      );
+    }
+    _seatStateStore.applySnapshot(_seats, mySeat: _mySeat);
     _audienceCount = cached['audienceCount'] is num ? (cached['audienceCount'] as num).toInt() : 0;
     _ownerName = (cached['ownerName'] ?? _ownerName).toString();
     _ownerId = (cached['ownerId'] ?? _ownerId).toString();
