@@ -1447,9 +1447,26 @@ export default {
             }));
             const moveData = await moveResponse.json() as Record<string, unknown>;
             if (!moveResponse.ok || moveData.ok !== true) {
+              const failedSnapshotResponse = await seatHub.fetch(new Request("https://room-seats.internal/snapshot"));
+              const failedSnapshot = await failedSnapshotResponse.json() as { seats?: Array<Record<string, unknown>> };
+              const failedSeats = (failedSnapshot.seats ?? []).map((seat) => ({
+                seatNumber: seat.seatNumber,
+                userId: seat.userId,
+                userCode: seat.userCode ?? "",
+                uid: seat.uid ?? null,
+                isMuted: seat.isMuted === true,
+                isRoomOwner: seat.isRoomOwner === true,
+                isRoomModerator: seat.isRoomModerator === true,
+                name: seat.name || "مستخدم",
+                avatarUrl: seat.avatarUrl ?? "",
+                isMe: seat.userId === user.id
+              }));
               return json({
+                ok: false,
                 error: moveData.code === "seat_occupied" ? "seat_occupied" : "seat_move_failed",
-                message: moveData.code === "seat_occupied" ? "هذا المايك مشغول" : "تعذر تغيير المايك"
+                message: moveData.code === "seat_occupied" ? "هذا المايك مشغول" : "تعذر تغيير المايك",
+                mySeat: failedSeats.find((seat) => seat.userId === user.id)?.seatNumber ?? null,
+                seats: failedSeats
               }, moveResponse.status, origin, env);
             }
           }
