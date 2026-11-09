@@ -128,7 +128,8 @@ class RoomSeatSocket {
   void _scheduleReconnect() {
     if (_disposed || (_reconnect?.isActive ?? false)) return;
     const delays = <int>[1, 2, 3, 5, 8, 13, 20];
-    final seconds = delays[_reconnectAttempt.clamp(0, delays.length - 1)];
+    final index = _reconnectAttempt.clamp(0, delays.length - 1) as int;
+    final seconds = delays[index];
     _reconnectAttempt++;
     _reconnect = Timer(Duration(seconds: seconds), () {
       _reconnect = null;
