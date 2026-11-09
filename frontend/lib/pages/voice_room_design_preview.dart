@@ -560,7 +560,13 @@ Widget _roomActionButton({
                 onTap: occupied
                     ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
                     : (!locked && !isChangingSeat && !seatState.isPending
-                        ? () => onTapSeat(number)
+                        ? () {
+                            if (canModerateUsers) {
+                              _showEmptySeatActions(context, number);
+                            } else {
+                              onTapSeat(number);
+                            }
+                          }
                         : null),
                 child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -678,6 +684,68 @@ Widget _roomActionButton({
       },
     ),
   );
+
+  void _showEmptySeatActions(BuildContext context, int seatNumber) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(.58),
+      isScrollControlled: true,
+      enableDrag: true,
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(
+            22,
+            30,
+            22,
+            MediaQuery.of(sheetContext).padding.bottom + 28,
+          ),
+          decoration: const BoxDecoration(
+            color: Color(0xFF211936),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(42)),
+            border: Border(top: BorderSide(color: Color(0xFF493866), width: 1)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _EmptySeatAction(
+                  icon: Icons.lock_outline_rounded,
+                  label: 'إغلاق المايك',
+                  onTap: () {},
+                ),
+              ),
+              Expanded(
+                child: _EmptySeatAction(
+                  icon: Icons.mic_off_rounded,
+                  label: 'ميوت',
+                  onTap: () {},
+                ),
+              ),
+              Expanded(
+                child: _EmptySeatAction(
+                  icon: Icons.business_center_outlined,
+                  label: 'دعوة',
+                  onTap: () {},
+                ),
+              ),
+              Expanded(
+                child: _EmptySeatAction(
+                  icon: Icons.weekend_outlined,
+                  label: 'اطلع المايك',
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    onTapSeat(seatNumber);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   void _showUserProfile(BuildContext context, Map<String, dynamic> user) {
     showModalBottomSheet<void>(
@@ -1309,6 +1377,51 @@ class _ProfileInfoCard extends StatelessWidget {
         Flexible(
           child: Text('$title $count', maxLines: 2, textAlign: TextAlign.center,
             style: TextStyle(color: iconColor, fontSize: 12, fontWeight: FontWeight.w800)),
+        ),
+      ],
+    ),
+  );
+}
+
+class _EmptySeatAction extends StatelessWidget {
+  const _EmptySeatAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(24),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: const Color(0xFF34294D),
+            borderRadius: BorderRadius.circular(28),
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, color: const Color(0xFFE5DFF0), size: 39),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFFB9AACF),
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ],
     ),
