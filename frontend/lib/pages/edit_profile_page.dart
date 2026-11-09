@@ -439,7 +439,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
           final filtered = _countryEntries.where((entry) {
             final parts = entry.split('|');
             return parts.length == 2 && parts[1].contains(query.trim());
-          }).toList();
+          }).toList()
+            ..sort((a, b) {
+              if (a.startsWith('🏳️|')) return -1;
+              if (b.startsWith('🏳️|')) return 1;
+              return a.split('|')[1].compareTo(b.split('|')[1]);
+            });
           return Directionality(
             textDirection: TextDirection.rtl,
             child: SafeArea(
@@ -565,7 +570,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     final value = await _pickCountry();
                     if (value != null) setState(() => _country = value);
                   } : null, child: Directionality(
-                    textDirection: TextDirection.ltr,
+                    textDirection: TextDirection.rtl,
                     child: Align(alignment: Alignment.centerRight,
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         if (_countryFlag(_country) == 'SOUTH_ARABIA')
