@@ -1183,107 +1183,115 @@ class _RoomPageState extends State<RoomPage> {
                 ? message.text
                 : '${message.senderName}: ${message.text}';
 
+    final hasSender = message.senderId.isNotEmpty;
+    final senderLabel = isOwnerEntry
+        ? 'مالك الغرفة @ ${message.senderName}'
+        : message.senderName;
+
     return Align(
       alignment: Alignment.centerRight,
       child: GestureDetector(
         onTap: message.type == 'announcement' && _isRoomOwner ? _editRoomAnnouncement : null,
         child: Padding(
-        padding: const EdgeInsets.only(left: 50, bottom: 8),
-        child: Row(
+          padding: const EdgeInsets.only(left: 50, bottom: 8),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
-            textDirection: TextDirection.rtl,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (message.senderId.isNotEmpty)
-                _chatAvatar(
-                  message.senderAvatar,
-                  message.senderName,
-                  size: 30,
-                  onTap: () => _showChatUserProfile(message),
-                )
-              else
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: const Color(0x5520182A),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withOpacity(.12)),
-                  ),
-                  child: Icon(
-                    Icons.notifications_active_rounded,
-                    size: 14,
-                    color: Colors.white.withOpacity(0.82),
-                  ),
-                ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+              if (hasSender && message.type != 'announcement')
+                Row(
                   mainAxisSize: MainAxisSize.min,
+                  textDirection: TextDirection.rtl,
                   children: [
-                    if (message.senderId.isNotEmpty &&
-                        message.type != 'announcement')
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => _showChatUserProfile(message),
-                        child: Padding(
-                          padding: const EdgeInsetsDirectional.only(
-                            end: 8,
-                            bottom: 4,
-                            top: 1,
-                          ),
-                          child: Text(
-                            isOwnerEntry
-                                ? 'مالك الغرفة @ ${message.senderName}'
-                                : message.senderName,
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(
-                              color: Color(0xFFFFD66B),
-                              fontSize: 11,
-                              height: 1.2,
-                              fontWeight: FontWeight.w800,
-                              decoration: TextDecoration.underline,
-                              decorationColor: Color(0xFFFFD66B),
-                            ),
-                          ),
+                    _chatAvatar(
+                      message.senderAvatar,
+                      message.senderName,
+                      size: 30,
+                      onTap: () => _showChatUserProfile(message),
+                    ),
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _showChatUserProfile(message),
+                      child: Padding(
+                        padding: const EdgeInsetsDirectional.only(
+                          end: 2,
+                          top: 1,
+                          bottom: 4,
                         ),
-                      ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 9,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0x5520182A),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        isSystem && isWelcome
-                            ? 'دخل الغرفة'
-                            : isSystem && message.type != 'announcement'
-                                ? message.text
-                                : message.type == 'announcement'
-                                    ? displayText
-                                    : message.text,
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          height: 1.35,
-                          fontWeight: FontWeight.w600,
+                        child: Text(
+                          senderLabel,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            color: Color(0xFFFFD66B),
+                            fontSize: 11,
+                            height: 1.2,
+                            fontWeight: FontWeight.w800,
+                            decoration: TextDecoration.underline,
+                            decorationColor: Color(0xFFFFD66B),
+                          ),
                         ),
                       ),
                     ),
                   ],
+                )
+              else
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: const Color(0x5520182A),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withOpacity(.12)),
+                      ),
+                      child: Icon(
+                        Icons.notifications_active_rounded,
+                        size: 14,
+                        color: Colors.white.withOpacity(0.82),
+                      ),
+                    ),
+                  ],
+                ),
+              Padding(
+                padding: EdgeInsetsDirectional.only(start: hasSender ? 36 : 0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0x5520182A),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    isSystem && isWelcome
+                        ? 'دخل الغرفة'
+                        : isSystem && message.type != 'announcement'
+                            ? message.text
+                            : message.type == 'announcement'
+                                ? displayText
+                                : message.text,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      height: 1.35,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
-
             ],
           ),
-      ),
+        ),
       ),
     );
   }
+
   Widget _roomMessageAnimatedItem(Message message, Animation<double> animation, {bool removing = false}) {
     final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutQuart, reverseCurve: Curves.easeInCubic);
     return SizeTransition(
