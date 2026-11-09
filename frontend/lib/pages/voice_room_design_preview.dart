@@ -550,7 +550,7 @@ Widget _roomActionButton({
             ? (number <= 4 ? 2.0 : -12.0)
             : (number <= 4 ? -5.0 : -21.0);
         return Transform.translate(
-          offset: Offset(0, seatOffset + (isAndroid ? 0 : 5)),
+          offset: Offset(0, seatOffset + (isAndroid ? 0 : 5) + (number > 4 ? 5 : 0)),
           child: Transform.translate(
             offset: Offset(0, seatOffset),
             child: Align(
