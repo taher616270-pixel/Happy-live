@@ -1193,6 +1193,29 @@ class _RoomPageState extends State<RoomPage> {
             mainAxisSize: MainAxisSize.min,
             textDirection: TextDirection.rtl,
             children: [
+              if (message.senderId.isNotEmpty)
+                _chatAvatar(
+                  message.senderAvatar,
+                  message.senderName,
+                  size: 30,
+                  onTap: () => _showChatUserProfile(message),
+                )
+              else
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: const Color(0x5520182A),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withOpacity(.12)),
+                  ),
+                  child: Icon(
+                    Icons.notifications_active_rounded,
+                    size: 14,
+                    color: Colors.white.withOpacity(0.82),
+                  ),
+                ),
+              const SizedBox(width: 6),
               Flexible(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -1256,29 +1279,7 @@ class _RoomPageState extends State<RoomPage> {
                         ),
                 ),
               ),
-              const SizedBox(width: 6),
-              if (message.senderId.isNotEmpty)
-                _chatAvatar(
-                  message.senderAvatar,
-                  message.senderName,
-                  size: 30,
-                  onTap: () => _showChatUserProfile(message),
-                )
-              else
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: const Color(0x5520182A),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withOpacity(.12)),
-                  ),
-                  child: Icon(
-                    Icons.notifications_active_rounded,
-                    size: 14,
-                    color: Colors.white.withOpacity(0.82),
-                  ),
-                ),
+
             ],
           ),
       ),
