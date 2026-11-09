@@ -17,6 +17,14 @@ migrations_dir = "migrations"
 name = "ROOM_CHAT"
 class_name = "RoomChatHub"
 
+[[durable_objects.bindings]]
+name = "ROOM_SEATS"
+class_name = "RoomSeatsHub"
+
 [[migrations]]
 tag = "v1-room-chat"
 new_sqlite_classes = ["RoomChatHub"]
+
+[[migrations]]
+tag = "v2-room-seats"
+new_sqlite_classes = ["RoomSeatsHub"]
