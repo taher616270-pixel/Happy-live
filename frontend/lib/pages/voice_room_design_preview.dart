@@ -226,8 +226,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(.25),
                 borderRadius: const BorderRadiusDirectional.only(
-                  topStart: Radius.circular(14),
-                  bottomStart: Radius.circular(14),
+                  topStart: Radius.zero,
+                  bottomStart: Radius.zero,
                   topEnd: Radius.circular(22),
                   bottomEnd: Radius.circular(22),
                 ),
