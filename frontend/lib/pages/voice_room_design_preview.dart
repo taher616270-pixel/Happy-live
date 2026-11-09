@@ -344,7 +344,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 4,
                       mainAxisExtent: 100,
-                      crossAxisSpacing: 4,
+                      crossAxisSpacing: 9,
                       mainAxisSpacing: 8,
                     ),
                     itemBuilder: (context, index) {
