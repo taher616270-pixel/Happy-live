@@ -1184,10 +1184,14 @@ export default {
             "INSERT INTO room_chat_visits (id, room_id, user_id, entered_at, last_seen_at) VALUES (?, ?, ?, ?, ?)"
           ).bind(visitId, roomId, user.id, now, now).run();
           const entryMessageId = crypto.randomUUID();
+          const entryProfile = await env.DB.prepare(
+            "SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1"
+          ).bind(user.id).first<{ avatar_key: string | null }>();
           const entryMessage = {
             id: entryMessageId,
             userId: user.id,
             name: user.display_name?.trim() || "مستخدم",
+            avatarUrl: entryProfile?.avatar_key ?? "",
             message: "انضم للغرفة",
             imageUrl: null,
             createdAt: now,
@@ -1205,11 +1209,15 @@ export default {
         await env.DB.prepare(
           "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
         ).bind(now, roomId, user.id).run();
+        const exitProfile = await env.DB.prepare(
+          "SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1"
+        ).bind(user.id).first<{ avatar_key: string | null }>();
         await broadcastRoomChat(env, roomId, {
           type: "system",
           message: {
             id: crypto.randomUUID(), userId: user.id,
             name: user.display_name?.trim() || "مستخدم",
+            avatarUrl: exitProfile?.avatar_key ?? "",
             message: "غادر الغرفة", imageUrl: null, createdAt: now, isMe: false
           }
         });
@@ -1265,9 +1273,13 @@ export default {
             "INSERT INTO room_chat_rate_limits (room_id, user_id, last_sent_at) VALUES (?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET last_sent_at = excluded.last_sent_at WHERE room_chat_rate_limits.last_sent_at <= ? RETURNING last_sent_at"
           ).bind(roomId, user.id, now, cutoff).first<{ last_sent_at: string }>();
           if (!rate) return json({ error: "chat_rate_limited", message: "انتظر ثانية قبل إرسال رسالة أخرى" }, 429, origin, env);
+          const senderProfile = await env.DB.prepare(
+            "SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1"
+          ).bind(user.id).first<{ avatar_key: string | null }>();
           const id = crypto.randomUUID();
           const createdMessage = {
             id, userId: user.id, name: user.display_name?.trim() || "مستخدم",
+            avatarUrl: senderProfile?.avatar_key ?? "",
             message, imageUrl: imageUrl || null, createdAt: now, isMe: false
           };
           // Never write chat content to D1. Deliver it only to live room sockets.
