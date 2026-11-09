@@ -7,6 +7,7 @@ class AgoraRoomBridge {
   static bool _joined = false;
   static bool _muted = false;
   static final Map<int, double> _volumeLevels = <int, double>{};
+  static final Map<int, DateTime> _volumeSeenAt = <int, DateTime>{};
 
   static Future<void> join({required String appId, required String channel, required String token, required int uid, required bool publish}) async {
     if (appId.isEmpty || channel.isEmpty || token.isEmpty || uid <= 0) throw ArgumentError('Agora connection details are incomplete.');
@@ -21,11 +22,18 @@ class AgoraRoomBridge {
     try {
       await engine.initialize(RtcEngineContext(appId: appId, channelProfile: ChannelProfileType.channelProfileLiveBroadcasting));
       engine.registerEventHandler(RtcEngineEventHandler(
-        onAudioVolumeIndication: (connection, speakers, totalVolume) {
-          _volumeLevels.clear();
+        onAudioVolumeIndication: (connection, speakers, speakerNumber, totalVolume) {
+          final now = DateTime.now();
           for (final speaker in speakers) {
+            if (speaker.uid <= 0) continue;
             final level = (speaker.volume / 255.0).clamp(0.0, 1.0).toDouble();
-            if (speaker.uid > 0 && level >= 0.035) _volumeLevels[speaker.uid] = level;
+            if (level >= 0.035) {
+              _volumeLevels[speaker.uid] = level;
+              _volumeSeenAt[speaker.uid] = now;
+            } else {
+              _volumeLevels.remove(speaker.uid);
+              _volumeSeenAt.remove(speaker.uid);
+            }
           }
         },
       ));
@@ -45,6 +53,7 @@ class AgoraRoomBridge {
     } catch (_) {
       try { await engine.release(); } catch (_) {}
       _engine = null; _activeAppId = null; _joined = false; _volumeLevels.clear();
+      _volumeSeenAt.clear();
       rethrow;
     }
   }
@@ -65,7 +74,17 @@ class AgoraRoomBridge {
     if (muted) _volumeLevels.clear();
   }
 
-  static Future<Map<int, double>> getVolumeLevels() async => Map<int, double>.from(_volumeLevels);
+  static Future<Map<int, double>> getVolumeLevels() async {
+    final cutoff = DateTime.now().subtract(const Duration(milliseconds: 650));
+    _volumeSeenAt.removeWhere((uid, seenAt) {
+      if (seenAt.isBefore(cutoff)) {
+        _volumeLevels.remove(uid);
+        return true;
+      }
+      return false;
+    });
+    return Map<int, double>.from(_volumeLevels);
+  }
 
   static Future<void> resumeAudio() async {
     final engine = _engine;
