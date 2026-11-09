@@ -1051,7 +1051,7 @@ export default {
 
 
     // Authenticated, room-scoped WebSocket for atomic microphone-seat state.
-    const seatStreamRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/([^/]+)\\/seat-stream$/);
+    const seatStreamRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/seat-stream$/);
     if (seatStreamRoute && request.method === "GET") {
       if (!env.DB || !env.ROOM_SEATS) return json({ error: "room_seats_realtime_unavailable" }, 503, origin, env);
       try {
@@ -1492,7 +1492,7 @@ export default {
 
     // Eight shared microphone seats. A seat is leased for 45 seconds and renewed by
     // authenticated clients, so abandoned seats disappear after disconnects.
-    const seatRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/([^/]+)\\/seats$/);
+    const seatRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/seats$/);
     if (seatRoute && (request.method === "GET" || request.method === "POST")) {
       if (!env.DB || !env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
       try {
