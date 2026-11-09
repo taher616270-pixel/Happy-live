@@ -9,25 +9,25 @@ const _grey = Color(0xFF8E8CA0);
 const _fieldBg = Color(0xFFF2F4F6);
 
 const List<String> _countryEntries = [
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
+  'SOUTH_ARABIA|South Arabia|دولة الجنوب العربي',
+  '🇰🇼|Kuwait|الكويت',
+  '🇦🇪|United Arab Emirates|الإمارات العربية المتحدة',
+  '🇶🇦|Qatar|قطر',
+  '🇲🇦|Morocco|المغرب',
+  '🇪🇬|Egypt|مصر',
+  '🇸🇾|Syria|سوريا',
+  '🇹🇷|Turkey|تركيا',
+  '🇩🇿|Algeria|الجزائر',
+  '🇧🇭|Bahrain|البحرين',
+  '🇮🇶|Iraq|العراق',
+  '🇯🇴|Jordan|الأردن',
+  '🇱🇧|Lebanon|لبنان',
+  '🇴🇲|Oman|عُمان',
+  '🇵🇰|Pakistan|باكستان',
+  '🇵🇸|Palestine|فلسطين',
+  '🇸🇩|Sudan|السودان',
+  '🇾🇪|Yemen|اليمن',
+  '🇸🇦|Saudi Arabia|السعودية',
 ];
 
 String _countryFlag(String name) {
