@@ -99,6 +99,7 @@ class SeatMoveCommand {
 
 class SeatStateStore extends ChangeNotifier {
   SeatStateStore() {
+    _version = DateTime.now().microsecondsSinceEpoch;
     for (var number = 1; number <= 8; number++) {
       _seats[number] = SeatState.empty(number);
     }
