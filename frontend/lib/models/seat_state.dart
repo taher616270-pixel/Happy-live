@@ -146,9 +146,9 @@ class SeatStateStore extends ChangeNotifier {
       if (number is! num || number < 1 || number > 8) continue;
       final seatNumber = number.toInt();
       final ownerId = (map['userId'] ?? '').toString();
-      final isMine = ownerId.isNotEmpty
-          ? ownerId == currentUserId
-          : mySeat == seatNumber || map['isMe'] == true;
+      final isMine = mySeat == seatNumber ||
+          (ownerId.isNotEmpty && ownerId == currentUserId) ||
+          map['isMe'] == true;
       next[seatNumber] = SeatState.fromMap(map, isMe: isMine);
     }
     _seats
