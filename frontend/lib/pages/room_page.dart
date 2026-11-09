@@ -1259,10 +1259,12 @@ class _RoomPageState extends State<RoomPage> {
                     ),
                   ],
                 ),
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.sizeOf(context).width * 0.78,
-                ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+                  ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
