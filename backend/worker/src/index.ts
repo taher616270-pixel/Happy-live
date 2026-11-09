@@ -1332,7 +1332,7 @@ export default {
     // Agora RTC tokens are issued only to authenticated members of an active room.
     const agoraTokenRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/agora-token$/);
     if (agoraTokenRoute && request.method === "POST") {
-      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      if (!env.DB || !env.ROOM_SEATS) return json({ error: "database_unavailable" }, 503, origin, env);
       if (!env.AGORA_APP_ID || !env.AGORA_APP_CERTIFICATE || !(await isAgoraVoiceEnabled(env.DB, env))) {
         return json({ error: "agora_voice_disabled", message: "خدمة الصوت متوقفة حاليًا من إدارة Happy Live" }, 503, origin, env);
       }
@@ -1344,11 +1344,10 @@ export default {
           .bind(roomId).first<{ id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
         const now = new Date().toISOString();
-        const [ban, kick, control, seat] = await Promise.all([
+        const [ban, kick, control] = await Promise.all([
           env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
           env.DB.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
-          env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
-          env.DB.prepare("SELECT seat_number FROM room_seats WHERE room_id = ? AND user_id = ? AND expires_at > ? LIMIT 1").bind(roomId, user.id, now).first<{ seat_number: number }>()
+          env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>()
         ]);
         if (ban || kick) return json({ error: ban ? "room_banned" : "room_kicked" }, 403, origin, env);
         let requestedPublish = false;
@@ -1358,20 +1357,24 @@ export default {
         } catch {
           requestedPublish = false;
         }
-        const canPublish = requestedPublish && Boolean(seat) && control?.is_muted !== 1;
+        const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+        const seatSnapshotResponse = await seatHub.fetch(new Request("https://room-seats.internal/snapshot"));
+        const seatSnapshot = await seatSnapshotResponse.json() as { seats?: Array<{ userId: string }> };
+        const hasSeat = (seatSnapshot.seats ?? []).some((entry) => entry.userId === user.id);
+        const canPublish = requestedPublish && hasSeat && control?.is_muted !== 1;
         const numericUid = Number(user.gabo_id);
         if (!Number.isSafeInteger(numericUid) || numericUid < 1 || numericUid > 2147483647) {
           return json({ error: "invalid_user_id" }, 400, origin, env);
         }
         const channel = "hl" + (await sha256(roomId)).slice(0, 30);
         const ttl = 3600;
-        // Explicitly omit publish privileges for listeners. Role.SUBSCRIBER alone is not
-        // sufficient unless Agora Co-host authentication is enabled for the project.
+        // Publisher privilege is issued only while the authenticated user owns a live seat.
+        // Clients stay in the broadcaster role; publication is toggled without rejoining.
         const rtcToken = RtcTokenBuilder.buildTokenWithUidAndPrivilege(
           env.AGORA_APP_ID, env.AGORA_APP_CERTIFICATE, channel, numericUid,
           ttl, ttl, canPublish ? ttl : 0, 0, 0
         );
-        return json({ ok: true, appId: env.AGORA_APP_ID, channel, uid: numericUid, token: rtcToken, role: canPublish ? "publisher" : "audience", canPublish, expiresIn: ttl }, 200, origin, env);
+        return json({ ok: true, appId: env.AGORA_APP_ID, channel, uid: numericUid, token: rtcToken, role: "broadcaster", canPublish, expiresIn: ttl }, 200, origin, env);
       } catch (error) {
         console.error("[agora.token] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "agora_token_failed", message: "تعذر تجهيز اتصال الصوت" }, 500, origin, env);
