@@ -570,9 +570,12 @@ Widget _roomActionButton({
                             }
                           }
                         : null),
-                child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+                child: SizedBox(
+                  width: 72,
+                  height: 72,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
               Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -675,7 +678,8 @@ Widget _roomActionButton({
                     style: TextStyle(color: Colors.white.withOpacity(.65), fontSize: 13),
                   ),
                 ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
