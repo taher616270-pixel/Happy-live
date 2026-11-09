@@ -1910,8 +1910,6 @@ class _RoomPageState extends State<RoomPage> {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              if (isSpeaking)
-                Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: const _VoiceGlowPainter(level: 0.5)))),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 width: micSize,
@@ -2162,21 +2160,38 @@ class _LiveVoiceRingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.shortestSide * 0.48;
-    final pulse = 0.72 + 0.28 * (0.5 + 0.5 *
-        math.sin(phase * 2 * math.pi));
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    // The ring rotates continuously on its own clock. Audio only controls
+    // the opacity of the already-running ring in _micCard.
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(phase * 2 * math.pi);
+    canvas.translate(-center.dx, -center.dy);
 
     final gold = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..color = const Color(0xFFFFD98B).withOpacity(pulse)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-    canvas.drawCircle(center, radius, gold);
+      ..strokeWidth = 3.2
+      ..strokeCap = StrokeCap.round
+      ..shader = const SweepGradient(
+        colors: [
+          Color(0x00FFD98B),
+          Color(0xFFFFD98B),
+          Color(0xFFFFF1C8),
+          Color(0x00FFD98B),
+        ],
+        stops: [0.0, 0.35, 0.58, 1.0],
+      ).createShader(rect)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+    canvas.drawArc(rect, 0, 2 * math.pi, false, gold);
 
+    final innerRect = Rect.fromCircle(center: center, radius: radius - 5);
     final purple = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
-      ..color = const Color(0xFFB98AF0).withOpacity(0.55 + 0.25 * pulse);
-    canvas.drawCircle(center, radius - 5, purple);
+      ..color = const Color(0xFFB98AF0).withOpacity(0.72);
+    canvas.drawArc(innerRect, 0, 2 * math.pi, false, purple);
+    canvas.restore();
   }
 
   @override
