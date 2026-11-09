@@ -3,6 +3,7 @@
 
   let client = null;
   let localAudioTrack = null;
+  let localTrackPublished = false;
   let joining = false;
   let currentVolumeLevels = {};
   let audioUnlockButton = null;
@@ -110,6 +111,7 @@
     if (localAudioTrack) {
       try { localAudioTrack.stop(); localAudioTrack.close(); } catch (_) {}
       localAudioTrack = null;
+      localTrackPublished = false;
     }
     if (client) {
       const oldClient = client;
@@ -206,6 +208,7 @@
           AGC: true
         });
         await nextClient.publish([localAudioTrack]);
+        localTrackPublished = true;
       }
 
       // A participant may already be publishing when this client joins.
@@ -245,15 +248,17 @@
         });
       }
       await localAudioTrack.setEnabled(true);
-      if (!client.localTracks || !client.localTracks.includes(localAudioTrack)) {
+      if (!localTrackPublished) {
         await client.publish([localAudioTrack]);
+        localTrackPublished = true;
       }
       return true;
     }
     if (localAudioTrack) {
       try {
-        if (client.localTracks && client.localTracks.includes(localAudioTrack)) {
+        if (localTrackPublished) {
           await client.unpublish([localAudioTrack]);
+          localTrackPublished = false;
         }
         await localAudioTrack.setEnabled(false);
       } catch (error) {
