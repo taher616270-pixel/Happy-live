@@ -668,18 +668,7 @@ Widget _roomActionButton({
                 offset: number == 5 ? const Offset(5, 0) : Offset.zero,
                 child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: !occupied &&
-                        !isChangingSeat &&
-                        !seatState.isPending &&
-                        (canModerateUsers || !locked)
-                    ? () {
-                        if (canModerateUsers) {
-                          _showEmptySeatActions(context, number);
-                        } else {
-                          onTapSeat(number);
-                        }
-                      }
-                    : null,
+                onTap: null,
                 child: SizedBox(
                   width: 72,
                   height: number == 5 ? 82 : 72,
@@ -694,7 +683,19 @@ Widget _roomActionButton({
                 children: [
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: occupied ? () => _showUserProfile(context, seat!) : null,
+                    onTap: occupied
+                        ? () => _showUserProfile(context, seat!)
+                        : (!isChangingSeat &&
+                                !seatState.isPending &&
+                                (canModerateUsers || !locked)
+                            ? () {
+                                if (canModerateUsers) {
+                                  _showEmptySeatActions(context, number);
+                                } else {
+                                  onTapSeat(number);
+                                }
+                              }
+                            : null),
                     child: _GoldenVoiceWave(
                     isSpeaking: isSpeaking,
                     avatarSize: 54,
