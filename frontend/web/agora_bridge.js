@@ -237,8 +237,8 @@
 
   async function setPublishing(enabled, token) {
     if (!client) throw new Error("Agora room is not connected");
-    if (token) await client.renewToken(token);
     if (enabled) {
+      if (token) await client.renewToken(token);
       if (!localAudioTrack) {
         localAudioTrack = await window.AgoraRTC.createMicrophoneAudioTrack({
           encoderConfig: "speech_standard",
@@ -261,6 +261,7 @@
           localTrackPublished = false;
         }
         await localAudioTrack.setEnabled(false);
+        if (token) await client.renewToken(token);
       } catch (error) {
         console.warn("[HappyLive Agora] unpublish failed", error);
       }
