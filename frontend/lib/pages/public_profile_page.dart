@@ -410,7 +410,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       return String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65));
     }
     if (countryName == 'دولة الجنوب العربي' || countryName == 'الجنوب العربي') {
-      return '🇾🇪';
+      return 'SOUTH_ARABIA';
     }
     for (final country in CountryService().getAll()) {
       final translated = country.getTranslatedName(context) ?? country.name;
@@ -536,7 +536,15 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                   ],
                   if (flag.isNotEmpty) ...[
                     const SizedBox(width: 8),
-                    Text(flag, style: const TextStyle(fontSize: 20)),
+                    if (flag == 'SOUTH_ARABIA')
+                      Image.asset(
+                        'web/assets/south-arabia-v2.png',
+                        width: 27,
+                        height: 19,
+                        fit: BoxFit.cover,
+                      )
+                    else
+                      Text(flag, style: const TextStyle(fontSize: 20)),
                   ],
                 ]),
                 const SizedBox(height: 10),
