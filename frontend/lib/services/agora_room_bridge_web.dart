@@ -1,61 +1,34 @@
+import 'dart:convert';
 import 'dart:js_interop';
 
 @JS('window.happyLiveAgora.join')
-external JSPromise<JSAny?> _agoraJoin(
-  JSString appId,
-  JSString channel,
-  JSString token,
-  JSNumber uid,
-  JSBoolean publish,
-);
-
+external JSPromise<JSAny?> _agoraJoin(JSString appId, JSString channel, JSString token, JSNumber uid, JSBoolean publish);
 @JS('window.happyLiveAgora.leave')
 external JSPromise<JSAny?> _agoraLeave();
-
 @JS('window.happyLiveAgora.setMuted')
 external JSPromise<JSAny?> _agoraSetMuted(JSBoolean muted);
-
 @JS('window.happyLiveAgora.resumeAudio')
 external JSPromise<JSAny?> _agoraResumeAudio();
+@JS('window.happyLiveAgora.getVolumeLevels')
+external JSString _agoraGetVolumeLevels();
 
 class AgoraRoomBridge {
-  static Future<void> join({
-    required String appId,
-    required String channel,
-    required String token,
-    required int uid,
-    required bool publish,
-  }) async {
-    await _agoraJoin(
-      appId.toJS,
-      channel.toJS,
-      token.toJS,
-      uid.toDouble().toJS,
-      publish.toJS,
-    ).toDart;
+  static Future<void> join({required String appId, required String channel, required String token, required int uid, required bool publish}) async {
+    await _agoraJoin(appId.toJS, channel.toJS, token.toJS, uid.toDouble().toJS, publish.toJS).toDart;
   }
-
-  static Future<void> leave() async {
+  static Future<void> leave() async { try { await _agoraLeave().toDart; } catch (_) {} }
+  static Future<void> setMuted(bool muted) async { try { await _agoraSetMuted(muted.toJS).toDart; } catch (_) {} }
+  static Future<Map<int, double>> getVolumeLevels() async {
     try {
-      await _agoraLeave().toDart;
-    } catch (_) {
-      // The room may close before the browser SDK has initialized.
-    }
+      final decoded = jsonDecode(_agoraGetVolumeLevels().toDart);
+      if (decoded is! Map) return <int, double>{};
+      final result = <int, double>{};
+      decoded.forEach((key, value) {
+        final uid = int.tryParse(key.toString());
+        if (uid != null && uid > 0 && value is num) result[uid] = value.toDouble().clamp(0.0, 1.0);
+      });
+      return result;
+    } catch (_) { return <int, double>{}; }
   }
-
-  static Future<void> setMuted(bool muted) async {
-    try {
-      await _agoraSetMuted(muted.toJS).toDart;
-    } catch (_) {
-      // The track may not be published while the user is a listener.
-    }
-  }
-
-  static Future<void> resumeAudio() async {
-    try {
-      await _agoraResumeAudio().toDart;
-    } catch (_) {
-      // The browser may need a user gesture to resume audio.
-    }
-  }
+  static Future<void> resumeAudio() async { try { await _agoraResumeAudio().toDart; } catch (_) {} }
 }
