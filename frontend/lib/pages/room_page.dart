@@ -1204,7 +1204,7 @@ class _RoomPageState extends State<RoomPage> {
                   textDirection: TextDirection.rtl,
                   children: [
                     Transform.translate(
-                      offset: const Offset(0, -3),
+                      offset: const Offset(0, -1),
                       child: _chatAvatar(
                         message.senderAvatar,
                         message.senderName,
@@ -1262,7 +1262,7 @@ class _RoomPageState extends State<RoomPage> {
               Padding(
                 padding: EdgeInsetsDirectional.only(
                   start: hasSender ? 36 : 0,
-                  end: 5,
+                  end: 15,
                 ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
