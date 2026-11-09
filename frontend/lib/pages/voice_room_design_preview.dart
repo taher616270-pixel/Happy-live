@@ -11,6 +11,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.speakerLevels = const <int, double>{},
     required this.onTapSeat,
     required this.isChangingSeat,
+    this.pendingSeatNumbers = const <int>{},
     required this.audienceCount,
     this.audienceUsers = const [],
     this.chatMessagesPanel,
@@ -32,6 +33,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final Map<int, double> speakerLevels;
   final ValueChanged<int> onTapSeat;
   final bool isChangingSeat;
+  final Set<int> pendingSeatNumbers;
   final int audienceCount;
   final List<Map<String, dynamic>> audienceUsers;
   final Widget? chatMessagesPanel;
@@ -561,7 +563,10 @@ Widget _roomActionButton({
                       behavior: HitTestBehavior.opaque,
                       onTap: occupied
                           ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
-                          : (!locked && (kIsWeb || !isChangingSeat)
+                          : (!locked &&
+                                  (kIsWeb
+                                      ? !pendingSeatNumbers.contains(number)
+                                      : !isChangingSeat)
                               ? () => onTapSeat(number)
                               : null),
                       child: const SizedBox(width: 48, height: 48),
