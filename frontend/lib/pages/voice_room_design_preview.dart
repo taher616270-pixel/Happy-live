@@ -225,7 +225,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         children: [
           ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: (MediaQuery.sizeOf(context).width * .60).clamp(175.0, 235.0),
+              maxWidth: (MediaQuery.sizeOf(context).width * .60).clamp(145.0, 235.0),
             ),
             child: IntrinsicWidth(
               child: Container(
