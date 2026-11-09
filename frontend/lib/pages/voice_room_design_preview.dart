@@ -313,7 +313,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         ),
                         Text(
                           'ID: $_id',
-                          style: const TextStyle(color: Colors.white60, fontSize: 11),
+                          style: const TextStyle(color: Colors.white60, fontSize: 9),
                         ),
                       ],
                     ),
