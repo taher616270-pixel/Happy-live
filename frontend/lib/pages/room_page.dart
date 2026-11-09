@@ -2132,7 +2132,7 @@ class _LiveVoiceRingState extends State<_LiveVoiceRing>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1100),
+    duration: const Duration(milliseconds: 1800),
   )..repeat();
 
   @override
@@ -2159,39 +2159,29 @@ class _LiveVoiceRingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.shortestSide * 0.48;
-    final rect = Rect.fromCircle(center: center, radius: radius);
+    final maxRadius = size.shortestSide * 0.48;
+    final minRadius = maxRadius * 0.22;
+    final travel = maxRadius - minRadius;
 
-    // The ring rotates continuously on its own clock. Audio only controls
-    // the opacity of the already-running ring in _micCard.
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(phase * 2 * math.pi);
-    canvas.translate(-center.dx, -center.dy);
+    // Three separated circular waves expand outward from the avatar.
+    // Their animation runs continuously; audio only fades the whole effect in/out.
+    for (var index = 0; index < 3; index++) {
+      final progress = (phase + index / 3) % 1.0;
+      final radius = minRadius + travel * progress;
+      final opacity = 0.88 * (1.0 - progress).clamp(0.0, 1.0);
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.4
+        ..color = const Color(0xFFFFD98B).withOpacity(opacity)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.8);
+      canvas.drawCircle(center, radius, paint);
 
-    final gold = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.2
-      ..strokeCap = StrokeCap.round
-      ..shader = const SweepGradient(
-        colors: [
-          Color(0x00FFD98B),
-          Color(0xFFFFD98B),
-          Color(0xFFFFF1C8),
-          Color(0x00FFD98B),
-        ],
-        stops: [0.0, 0.35, 0.58, 1.0],
-      ).createShader(rect)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
-    canvas.drawArc(rect, 0, 2 * math.pi, false, gold);
-
-    final innerRect = Rect.fromCircle(center: center, radius: radius - 5);
-    final purple = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..color = const Color(0xFFB98AF0).withOpacity(0.72);
-    canvas.drawArc(innerRect, 0, 2 * math.pi, false, purple);
-    canvas.restore();
+      final innerPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0
+        ..color = const Color(0xFFB98AF0).withOpacity(opacity * 0.62);
+      canvas.drawCircle(center, radius - 3.2, innerPaint);
+    }
   }
 
   @override
