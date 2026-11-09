@@ -797,8 +797,7 @@ class _RoomPageState extends State<RoomPage> {
         }
         if (_messageController.text.trim() == text) {
           _messageController.clear();
-        }      } else {        final serverMessage = data is Map
-            ? (data['message'] ?? data['error'] ?? '').toString()
+        }      } else {        final serverMessage = data is Map            ? (data['message'] ?? data['error'] ?? '').toString()
             : '';
         if (mounted) {
           _showMessage(serverMessage.isNotEmpty
@@ -1597,8 +1596,7 @@ class _RoomPageState extends State<RoomPage> {
 
   Widget _miniRoomWindow() {    return Material(
       color: Colors.transparent,      child: InkWell(
-        onTap: _restoreRoom,
-        borderRadius: BorderRadius.circular(20),
+        onTap: _restoreRoom,        borderRadius: BorderRadius.circular(20),
         child: Container(
           width: 156,
           height: 158,
@@ -1945,8 +1943,18 @@ class _RoomPageState extends State<RoomPage> {
                       : Icon(Icons.add_rounded, color: _gold.withOpacity(0.9), size: micSize * 0.46),
                 ),
               ),
-              if (isSpeaking)
-                Positioned(top: -11, left: 0, right: 0, child: Center(child: _LiveVoiceBars())),
+              Positioned(
+                top: -17,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: isSpeaking ? 1 : 0,
+                    duration: const Duration(milliseconds: 120),
+                    child: Center(child: _LiveVoiceBars()),
+                  ),
+                ),
+              ),
               Positioned(
                 bottom: -2,
                 right: -3,
