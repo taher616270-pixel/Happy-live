@@ -1196,7 +1196,7 @@ class _RoomPageState extends State<RoomPage> {
           padding: const EdgeInsets.only(left: 50, bottom: 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (hasSender && message.type != 'announcement')
                 Row(
@@ -1260,7 +1260,7 @@ class _RoomPageState extends State<RoomPage> {
                   ],
                 ),
               Align(
-                alignment: Alignment.centerLeft,
+                alignment: Alignment.centerRight,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     maxWidth: MediaQuery.sizeOf(context).width * 0.78,
