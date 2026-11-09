@@ -32,6 +32,8 @@ class _RoomPageState extends State<RoomPage> {
   static const Duration _roomPreviewCacheTtl = Duration(seconds: 15);
 
   Timer? _refreshTimer;
+  Timer? _volumeTimer;
+  Map<int, double> _speakerLevels = <int, double>{};
   WebSocketChannel? _chatChannel;
   StreamSubscription<dynamic>? _chatSubscription;
   Timer? _chatReconnectTimer;
@@ -128,6 +130,9 @@ class _RoomPageState extends State<RoomPage> {
       unawaited(_refreshSeats());
       unawaited(_sendHeartbeat());
     });
+    _volumeTimer = Timer.periodic(const Duration(milliseconds: 160), (_) {
+      unawaited(_refreshAudioLevels());
+    });
   }
 
   @override
@@ -136,6 +141,7 @@ class _RoomPageState extends State<RoomPage> {
     _miniOverlayEntry?.remove();
     _miniOverlayEntry = null;
     _refreshTimer?.cancel();
+    _volumeTimer?.cancel();
     _chatReconnectTimer?.cancel();
     _chatFallbackTimer?.cancel();
     _chatSubscription?.cancel();
@@ -328,6 +334,29 @@ class _RoomPageState extends State<RoomPage> {
       unawaited(_joinAgora(publish: false));
     } else if (gainedMySeat && !nextSelfMuted && !nextIsBanned) {
       unawaited(_joinAgora(publish: true));
+    }
+  }
+
+  Future<void> _refreshAudioLevels() async {
+    if (!mounted || !_voiceEnabled) return;
+    try {
+      final raw = await AgoraRoomBridge.getVolumeLevels();
+      final next = <int, double>{};
+      raw.forEach((uid, level) {
+        if (level >= 0.055) next[uid] = level.clamp(0.0, 1.0);
+      });
+      var changed = next.length != _speakerLevels.length;
+      if (!changed) {
+        for (final entry in next.entries) {
+          if (((_speakerLevels[entry.key] ?? 0) - entry.value).abs() > 0.06) {
+            changed = true;
+            break;
+          }
+        }
+      }
+      if (changed && mounted) setState(() => _speakerLevels = next);
+    } catch (_) {
+      // Meter updates must never interrupt room audio.
     }
   }
 
@@ -547,8 +576,7 @@ class _RoomPageState extends State<RoomPage> {
       if (decoded is! Map) return;
       final eventType = (decoded['type'] ?? 'message').toString();
       final rawMessage = decoded['message'];
-      if (rawMessage is! Map) return;
-      final item = Map<String, dynamic>.from(rawMessage);
+      if (rawMessage is! Map) return;      final item = Map<String, dynamic>.from(rawMessage);
       final type = eventType == 'system'
           ? 'system'
           : eventType == 'announcement'
@@ -1097,8 +1125,7 @@ class _RoomPageState extends State<RoomPage> {
       onRoomActions: () => setState(() => _showRoomActions = !_showRoomActions),
       onMinimizeRoom: _minimizeRoom,
       onCloseRoom: _closeRoom,
-        ),
-        if (_isLoading)
+        ),        if (_isLoading)
           Positioned.fill(
             child: AbsorbPointer(
               child: ColoredBox(
@@ -1647,8 +1674,7 @@ class _RoomPageState extends State<RoomPage> {
             height: 40,
             child: Icon(icon, color: iconColor, size: 23, textDirection: TextDirection.ltr),
           ),
-        ),
-      ),
+        ),      ),
     );
   }
 
@@ -1857,6 +1883,9 @@ class _RoomPageState extends State<RoomPage> {
     final mine = seat?['isMe'] == true;
     final name = (seat?['name'] ?? '').toString();
     final isLocked = occupied && !mine;
+    final speakerUid = int.tryParse((seat?['userCode'] ?? '').toString());
+    final voiceLevel = speakerUid == null ? 0.0 : (_speakerLevels[speakerUid] ?? 0.0);
+    final isSpeaking = occupied && !isLocked && voiceLevel >= 0.055;
     return InkWell(
       onTap: (!occupied || mine) && !_isChangingSeat ? () => _selectSeat(number) : null,
       borderRadius: BorderRadius.circular(18),
@@ -1866,6 +1895,8 @@ class _RoomPageState extends State<RoomPage> {
           Stack(
             clipBehavior: Clip.none,
             children: [
+              if (isSpeaking)
+                Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _VoiceGlowPainter(level: voiceLevel)))),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 width: micSize,
@@ -1898,6 +1929,8 @@ class _RoomPageState extends State<RoomPage> {
                       : Icon(Icons.add_rounded, color: _gold.withOpacity(0.9), size: micSize * 0.46),
                 ),
               ),
+              if (isSpeaking)
+                Positioned(top: -7, left: 0, right: 0, child: Center(child: _LiveVoiceBars(level: voiceLevel))),
               Positioned(
                 bottom: -2,
                 right: -3,
@@ -2060,6 +2093,66 @@ class _RoomPageState extends State<RoomPage> {
   }
 }
 
+
+class _LiveVoiceBars extends StatelessWidget {
+  const _LiveVoiceBars({required this.level});
+  final double level;
+
+  @override
+  Widget build(BuildContext context) {
+    final strength = level.clamp(0.0, 1.0);
+    const heights = <double>[7, 12, 16, 10, 14, 8, 12];
+    return Container(
+      height: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xEE17121F),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xBBD9A93C), width: 0.8),
+        boxShadow: [BoxShadow(color: const Color(0x66D9A93C).withOpacity(0.25 + strength * 0.45), blurRadius: 7 + strength * 8)],
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: List<Widget>.generate(heights.length, (index) {
+        final h = (heights[index] * (0.35 + strength * 0.65)).clamp(3.0, 17.0);
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 110),
+          curve: Curves.easeOut,
+          width: 2.5, height: h,
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(
+            color: index.isEven ? const Color(0xFFFFD98B) : const Color(0xFFB98AF0),
+            borderRadius: BorderRadius.circular(3),
+          ),
+        );
+      })),
+    );
+  }
+}
+
+class _VoiceGlowPainter extends CustomPainter {
+  const _VoiceGlowPainter({required this.level});
+  final double level;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final strength = level.clamp(0.0, 1.0);
+    final radius = size.shortestSide * 0.49 + 2 + strength * 5;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8 + strength * 1.5
+      ..color = const Color(0xFFE8C477).withOpacity(0.28 + strength * 0.55)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2 + strength * 4);
+    canvas.drawCircle(center, radius, paint);
+    final second = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.1
+      ..color = const Color(0xFFB98AF0).withOpacity(0.22 + strength * 0.38);
+    canvas.drawCircle(center, radius + 4 + strength * 3, second);
+  }
+
+  @override
+  bool shouldRepaint(covariant _VoiceGlowPainter oldDelegate) => (oldDelegate.level - level).abs() > 0.035;
+}
 
 class _RoomMedal extends StatelessWidget {
   const _RoomMedal();
