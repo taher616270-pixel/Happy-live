@@ -36,8 +36,8 @@ class _RoomPageState extends State<RoomPage> {
   Timer? _volumeTimer;
   Map<int, double> _speakerLevels = <int, double>{};
   final Map<int, DateTime> _speakerLastHeardAt = <int, DateTime>{};
-  final Map<int, Timer> _speakerWaveTimers = <int, Timer>{};
-  final Set<int> _visibleSpeakerWaves = <int>{};
+  final Map<int, Timer> _hideTimers = <int, Timer>{};
+  final Set<int> speaking = <int>{};
   WebSocketChannel? _chatChannel;
   StreamSubscription<dynamic>? _chatSubscription;
   Timer? _chatReconnectTimer;
@@ -146,11 +146,11 @@ class _RoomPageState extends State<RoomPage> {
     _miniOverlayEntry = null;
     _refreshTimer?.cancel();
     _volumeTimer?.cancel();
-    for (final timer in _speakerWaveTimers.values) {
+    for (final timer in _hideTimers.values) {
       timer.cancel();
     }
-    _speakerWaveTimers.clear();
-    _visibleSpeakerWaves.clear();
+    _hideTimers.clear();
+    speaking.clear();
     _chatReconnectTimer?.cancel();
     _chatFallbackTimer?.cancel();
     _chatSubscription?.cancel();
@@ -330,11 +330,11 @@ class _RoomPageState extends State<RoomPage> {
       _loadError = null;
     });
     if (!nextVoiceEnabled) {
-      for (final timer in _speakerWaveTimers.values) {
+      for (final timer in _hideTimers.values) {
         timer.cancel();
       }
-      _speakerWaveTimers.clear();
-      _visibleSpeakerWaves.clear();
+      _hideTimers.clear();
+      speaking.clear();
       _agoraDesiredPublish = null;
       _agoraJoinedPublish = null;
       unawaited(AgoraRoomBridge.leave());
@@ -363,18 +363,15 @@ class _RoomPageState extends State<RoomPage> {
           next[uid] = level.clamp(0.0, 1.0).toDouble();
           _speakerLastHeardAt[uid] = now;
 
-          // Any detected sound shows the wave immediately and restarts its
-          // seven-second hide timer. The wave animation itself is independent.
-          final wasVisible = _visibleSpeakerWaves.add(uid);
-          _speakerWaveTimers.remove(uid)?.cancel();
-          _speakerWaveTimers[uid] = Timer(const Duration(seconds: 7), () {
-            _speakerWaveTimers.remove(uid);
-            if (!mounted) return;
-            if (_visibleSpeakerWaves.remove(uid)) {
-              setState(() {});
-            }
+          // Every detected sound keeps the wave active and restarts its
+          // 400ms hide timer, measured from the most recent sound sample.
+          final wasSpeaking = speaking.add(uid);
+          _hideTimers[uid]?.cancel();
+          _hideTimers[uid] = Timer(const Duration(milliseconds: 400), () {
+            _hideTimers.remove(uid);
+            if (mounted) setState(() => speaking.remove(uid));
           });
-          if (wasVisible && mounted) {
+          if (wasSpeaking && mounted) {
             setState(() {});
           }
         }
@@ -1928,7 +1925,7 @@ class _RoomPageState extends State<RoomPage> {
     final isMuted = seat?['isMuted'] == true;
     final speakerUid = int.tryParse((seat?['userCode'] ?? '').toString());
     final voiceLevel = speakerUid == null ? 0.0 : (_speakerLevels[speakerUid] ?? 0.0);
-    final isWaveVisible = occupied && !isMuted && speakerUid != null && _visibleSpeakerWaves.contains(speakerUid);
+    final isWaveVisible = occupied && !isMuted && speakerUid != null && speaking.contains(speakerUid);
     return InkWell(
       onTap: (!occupied || mine) && !_isChangingSeat ? () => _selectSeat(number) : null,
       borderRadius: BorderRadius.circular(18),
@@ -1938,48 +1935,50 @@ class _RoomPageState extends State<RoomPage> {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
+              SizedBox(
                 width: micSize,
                 height: micSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: mine
-                        ? const [Color(0xFFB98AF0), Color(0xFF65408E)]
-                        : occupied
-                            ? const [Color(0xFF67477C), Color(0xFF30213D)]
-                            : const [Color(0x665D7D82), Color(0x553C626A)],
-                  ),
-                  border: Border.all(
-                    color: mine ? _gold : occupied ? const Color(0xFFD9A93C) : const Color(0x665F4775),
-                    width: mine ? 2.2 : 1.5,
-                  ),
-                  boxShadow: mine
-                      ? const [BoxShadow(color: Color(0x559B63D9), blurRadius: 15, spreadRadius: 1)]
-                      : const [],
-                ),
-                child: Center(
-                  child: occupied
-                      ? Text(
-                          name.isEmpty ? '؟' : name.characters.first,
-                          style: TextStyle(color: Colors.white, fontSize: micSize * 0.34, fontWeight: FontWeight.w900),
-                        )
-                      : Icon(Icons.add_rounded, color: _gold.withOpacity(0.9), size: micSize * 0.46),
-                ),
-              ),
-              Positioned(
-                left: -12,
-                top: -12,
-                right: -12,
-                bottom: -12,
-                child: IgnorePointer(
-                  child: AnimatedOpacity(
-                    opacity: isWaveVisible ? 1 : 0,
-                    duration: const Duration(milliseconds: 120),
-                    child: const _LiveVoiceRing(),
+                child: OverflowBox(
+                  alignment: Alignment.center,
+                  minWidth: micSize * 1.7,
+                  maxWidth: micSize * 1.7,
+                  minHeight: micSize * 1.7,
+                  maxHeight: micSize * 1.7,
+                  child: SpeakingWave(
+                    active: isWaveVisible,
+                    size: micSize,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      width: micSize,
+                      height: micSize,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: mine
+                              ? const [Color(0xFFB98AF0), Color(0xFF65408E)]
+                              : occupied
+                                  ? const [Color(0xFF67477C), Color(0xFF30213D)]
+                                  : const [Color(0x665D7D82), Color(0x553C626A)],
+                        ),
+                        border: Border.all(
+                          color: mine ? _gold : occupied ? const Color(0xFFD9A93C) : const Color(0x665F4775),
+                          width: mine ? 2.2 : 1.5,
+                        ),
+                        boxShadow: mine
+                            ? const [BoxShadow(color: Color(0x559B63D9), blurRadius: 15, spreadRadius: 1)]
+                            : const [],
+                      ),
+                      child: Center(
+                        child: occupied
+                            ? Text(
+                                name.isEmpty ? '؟' : name.characters.first,
+                                style: TextStyle(color: Colors.white, fontSize: micSize * 0.34, fontWeight: FontWeight.w900),
+                              )
+                            : Icon(Icons.add_rounded, color: _gold.withOpacity(0.9), size: micSize * 0.46),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -2146,72 +2145,92 @@ class _RoomPageState extends State<RoomPage> {
 }
 
 
-class _LiveVoiceRing extends StatefulWidget {
-  const _LiveVoiceRing();
+class SpeakingWave extends StatefulWidget {
+  final bool active;
+  final double size; // قطر الصورة
+  final Widget child;
+
+  const SpeakingWave({
+    super.key,
+    required this.active,
+    required this.child,
+    this.size = 60,
+  });
 
   @override
-  State<_LiveVoiceRing> createState() => _LiveVoiceRingState();
+  State<SpeakingWave> createState() => _SpeakingWaveState();
 }
 
-class _LiveVoiceRingState extends State<_LiveVoiceRing>
+class _SpeakingWaveState extends State<SpeakingWave>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
+  late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1800),
-  )..repeat();
+    duration: const Duration(milliseconds: 1400),
+  );
+
+  static const gold = Color(0xFFFFD700);
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    if (widget.active) _c.repeat();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) => CustomPaint(
-        painter: _LiveVoiceRingPainter(_controller.value),
-      ),
-    );
-  }
-}
-
-class _LiveVoiceRingPainter extends CustomPainter {
-  const _LiveVoiceRingPainter(this.phase);
-  final double phase;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final maxRadius = size.shortestSide * 0.48;
-    final minRadius = maxRadius * 0.22;
-    final travel = maxRadius - minRadius;
-
-    // Three separated circular waves expand outward from the avatar.
-    // Their animation runs continuously; audio only fades the whole effect in/out.
-    for (var index = 0; index < 3; index++) {
-      final progress = (phase + index / 3) % 1.0;
-      final radius = minRadius + travel * progress;
-      final opacity = 0.88 * (1.0 - progress).clamp(0.0, 1.0);
-      final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.4
-        ..color = const Color(0xFFFFD98B).withOpacity(opacity)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.8);
-      canvas.drawCircle(center, radius, paint);
-
-      final innerPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0
-        ..color = const Color(0xFFB98AF0).withOpacity(opacity * 0.62);
-      canvas.drawCircle(center, radius - 3.2, innerPaint);
+  void didUpdateWidget(covariant SpeakingWave old) {
+    super.didUpdateWidget(old);
+    if (widget.active && !_c.isAnimating) {
+      _c.repeat();
+    } else if (!widget.active && _c.isAnimating) {
+      _c.stop();
     }
   }
 
   @override
-  bool shouldRepaint(covariant _LiveVoiceRingPainter oldDelegate) =>
-      oldDelegate.phase != phase;
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  // حلقة رفيعة: تبدأ قريبة من حافة الصورة وتكبر وتتلاشى
+  Widget _ring(double delay) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, __) {
+        final t = (_c.value + delay) % 1.0;
+        final s = widget.size * (1.12 + t * 0.45);
+        return Opacity(
+          opacity: widget.active ? (1 - t) : 0,
+          child: Container(
+            width: s,
+            height: s,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: gold, width: 1.3),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final box = widget.size * 1.7;
+    return SizedBox(
+      width: box,
+      height: box,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          _ring(0.0),
+          _ring(0.5),
+          widget.child,
+        ],
+      ),
+    );
+  }
 }
 
 class _VoiceGlowPainter extends CustomPainter {
