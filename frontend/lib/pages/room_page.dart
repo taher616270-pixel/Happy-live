@@ -2198,7 +2198,7 @@ class _SpeakingWaveState extends State<SpeakingWave>
       animation: _c,
       builder: (_, __) {
         final t = (_c.value + delay) % 1.0;
-        final s = widget.size * (1.12 + t * 0.45);
+        final s = widget.size * (7.12 + t * 1.45);
         return Opacity(
           opacity: widget.active ? (1 - t) : 0,
           child: Container(
