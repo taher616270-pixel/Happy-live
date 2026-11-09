@@ -347,7 +347,7 @@ class _RoomPageState extends State<RoomPage> {
       // Use a very low fixed detection threshold so quiet speech and brief mic
       // scratches are detected just like loud speech.
       raw.forEach((uid, level) {
-        if (level >= 0.001) {
+        if (level >= 0.0002) {
           next[uid] = level.clamp(0.0, 1.0).toDouble();
           _speakerLastHeardAt[uid] = now;
         }
@@ -356,7 +356,7 @@ class _RoomPageState extends State<RoomPage> {
       // This prevents tiny pauses or a single short sound from making the
       // animation flash or disappear immediately.
       _speakerLastHeardAt.removeWhere(
-        (uid, heardAt) => now.difference(heardAt) > const Duration(milliseconds: 1800),
+        (uid, heardAt) => now.difference(heardAt) > const Duration(milliseconds: 4000),
       );
       for (final entry in _speakerLastHeardAt.entries) {
         if (!next.containsKey(entry.key)) {
@@ -797,8 +797,7 @@ class _RoomPageState extends State<RoomPage> {
         }
         if (_messageController.text.trim() == text) {
           _messageController.clear();
-        }      } else {
-        final serverMessage = data is Map
+        }      } else {        final serverMessage = data is Map
             ? (data['message'] ?? data['error'] ?? '').toString()
             : '';
         if (mounted) {
@@ -1597,8 +1596,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _miniRoomWindow() {    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+      color: Colors.transparent,      child: InkWell(
         onTap: _restoreRoom,
         borderRadius: BorderRadius.circular(20),
         child: Container(
