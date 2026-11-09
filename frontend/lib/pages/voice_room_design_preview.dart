@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:country_picker/country_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:happy_live/models/seat_state.dart';
@@ -1259,6 +1260,35 @@ class UserInfoBottomSheet extends StatelessWidget {
     return fallback;
   }
 
+  Widget _countryFlag(BuildContext context, String countryName) {
+    if (countryName == 'دولة الجنوب العربي' ||
+        countryName == 'الجنوب العربي') {
+      return Image.asset(
+        'web/assets/south-arabia-v2.png',
+        width: 27,
+        height: 19,
+        fit: BoxFit.cover,
+      );
+    }
+    for (final country in CountryService().getAll()) {
+      final translated = country.getTranslatedName(context) ?? country.name;
+      if (translated.trim() == countryName.trim() ||
+          country.name.trim().toLowerCase() == countryName.trim().toLowerCase()) {
+        return Text(country.flagEmoji, style: const TextStyle(fontSize: 19));
+      }
+    }
+    // Backward compatibility for older room snapshots that carried ISO codes.
+    final code = countryName.trim().toUpperCase();
+    if (code.length == 2 &&
+        code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
+      return Text(
+        String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
+        style: const TextStyle(fontSize: 19),
+      );
+    }
+    return const Text('🌐', style: TextStyle(fontSize: 19));
+  }
+
   int _number(List<String> keys) {
     for (final key in keys) {
       final value = user[key];
@@ -1274,7 +1304,10 @@ class UserInfoBottomSheet extends StatelessWidget {
     final name = _value(['name', 'displayName', 'username'], 'مستخدم');
     final id = _value(['userCode', 'gaboId', 'publicId', 'gabo_id'], '—');
     final avatar = _value(['avatarUrl', 'avatar', 'photoUrl']);
-    final country = _value(['country', 'countryCode'], 'SA').toUpperCase();
+    final country = _value(
+      ['countryName', 'country_name', 'country', 'countryCode'],
+      'Saudi Arabia',
+    );
     final gender = _value(['gender'], 'male').toLowerCase();
     final badges = user['badges'] is List ? user['badges'] as List : const [0, 0];
     final titleCount = _number(['titleCount']);
@@ -1322,10 +1355,7 @@ class UserInfoBottomSheet extends StatelessWidget {
                           size: 22,
                         ),
                         const SizedBox(width: 5),
-                        Text(
-                          country == 'SA' ? '🇸🇦' : country,
-                          style: const TextStyle(fontSize: 19),
-                        ),
+                        _countryFlag(context, country),
                       ],
                     ),
                     const SizedBox(height: 8),
