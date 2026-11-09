@@ -9,7 +9,7 @@ const _grey = Color(0xFF8E8CA0);
 const _fieldBg = Color(0xFFF2F4F6);
 
 const List<String> _countryEntries = [
-  'SOUTH_ARABIA|South Arabia|دولة الجنوب العربي',
+  'SOUTH_ARABIA|South Arabia|الجنوب العربي',
   '🇰🇼|Kuwait|الكويت',
   '🇦🇪|United Arab Emirates|الإمارات العربية المتحدة',
   '🇶🇦|Qatar|قطر',
@@ -48,7 +48,7 @@ String countryFlagForProfileName(String name) => _countryFlag(name);
 String _countryArabicName(String name) {
   final value = name.trim();
   if (value == 'دولة الجنوب العربي' || value == 'الجنوب العربي') {
-    return 'دولة الجنوب العربي';
+    return 'الجنوب العربي';
   }
   for (final entry in _countryEntries) {
     final parts = entry.split('|');
