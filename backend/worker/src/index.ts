@@ -1006,7 +1006,7 @@ export default {
           id: user.id, gabo_id: user.gabo_id ?? "", email: user.email,
           name: profile?.display_name ?? user.display_name ?? "", bio: profile?.bio ?? "",
           avatar_url: profile?.avatar_key ?? null, birthday: profile?.birthday ?? "2000-01-01",
-          gender: profile?.gender ?? "male", country_name: profile?.country_name ?? "Saudi Arabia"
+          gender: profile?.gender ?? "male", country_name: profile?.country_name ?? ""
         } }, 200, origin, env);
       } catch {
         return json({ error: "session_check_failed" }, 503, origin, env);
@@ -1025,7 +1025,7 @@ export default {
         const bio = typeof body.bio === "string" ? body.bio.trim() : "";
         const birthday = typeof body.birthday === "string" ? body.birthday.trim() : "2000-01-01";
         const gender = body.gender === "female" ? "female" : body.gender === "male" ? "male" : "";
-        const countryName = typeof body.countryName === "string" ? body.countryName.trim() : "Saudi Arabia";
+        const countryName = typeof body.countryName === "string" ? body.countryName.trim() : "";
         const avatarUrl = body.avatarUrl == null ? null : typeof body.avatarUrl === "string" ? body.avatarUrl.trim() : "";
         if (name.length < 2 || name.length > 30) return json({ error: "invalid_name", message: "الاسم يجب أن يكون بين حرفين و30 حرفًا" }, 400, origin, env);
         if (bio.length > 100) return json({ error: "invalid_bio", message: "النبذة يجب ألا تتجاوز 100 حرف" }, 400, origin, env);
@@ -1602,30 +1602,33 @@ export default {
         const activeSeatIds = activeSeats
           .map((seat) => String(seat.userId ?? ""))
           .filter((id) => id.length > 0);
-        const countryByUserId = new Map<string, string>();
+        const profileByUserId = new Map<string, { display_name: string | null; avatar_key: string | null; country_name: string | null }>();
         if (activeSeatIds.length > 0) {
           const placeholders = activeSeatIds.map(() => "?").join(",");
-          const countryRows = await env.DB.prepare(
-            "SELECT user_id, country_name FROM profiles WHERE user_id IN (" + placeholders + ")"
-          ).bind(...activeSeatIds).all<{ user_id: string; country_name: string | null }>();
-          for (const row of countryRows.results ?? []) {
-            countryByUserId.set(row.user_id, row.country_name ?? "");
+          const profileRows = await env.DB.prepare(
+            "SELECT user_id, display_name, avatar_key, country_name FROM profiles WHERE user_id IN (" + placeholders + ")"
+          ).bind(...activeSeatIds).all<{ user_id: string; display_name: string | null; avatar_key: string | null; country_name: string | null }>();
+          for (const row of profileRows.results ?? []) {
+            profileByUserId.set(row.user_id, row);
           }
         }
-        const seats = activeSeats.map((seat) => ({
-          seatNumber: seat.seatNumber,
-          userId: seat.userId,
-          userCode: seat.userCode ?? "",
-          uid: seat.uid ?? null,
-          isMuted: seat.isMuted === true,
-          isRoomOwner: seat.isRoomOwner === true,
-          isRoomModerator: seat.isRoomModerator === true,
-          name: seat.name || "مستخدم",
-          avatarUrl: seat.avatarUrl ?? "",
-          countryName: countryByUserId.get(String(seat.userId ?? "")) ?? "",
-          joinedAt: null,
-          isMe: seat.userId === user.id
-        }));
+        const seats = activeSeats.map((seat) => {
+          const profile = profileByUserId.get(String(seat.userId ?? ""));
+          return {
+            seatNumber: seat.seatNumber,
+            userId: seat.userId,
+            userCode: seat.userCode ?? "",
+            uid: seat.uid ?? null,
+            isMuted: seat.isMuted === true,
+            isRoomOwner: seat.isRoomOwner === true,
+            isRoomModerator: seat.isRoomModerator === true,
+            name: profile?.display_name?.trim() || seat.name || "مستخدم",
+            avatarUrl: profile?.avatar_key ?? seat.avatarUrl ?? "",
+            countryName: profile?.country_name ?? "",
+            joinedAt: null,
+            isMe: seat.userId === user.id
+          };
+        });
         const mySeat = seats.find((seat) => seat.userId === user.id)?.seatNumber ?? null;
 
         const audienceCutoff = new Date(Date.now() - 45000).toISOString();
