@@ -167,6 +167,7 @@ class _RoomPageState extends State<RoomPage> {
     final seats = rawSeats is List ? rawSeats : const <dynamic>[];
 
     if (type == 'seat_snapshot') {
+      _seatMoveTimers.clear();
       _applyRealtimeSeatSnapshot(
         seats,
         mySeat: event['mySeat'] is num ? (event['mySeat'] as num).toInt() : null,
@@ -279,6 +280,7 @@ class _RoomPageState extends State<RoomPage> {
     _chatChannel?.sink.close();
     unawaited(_seatSocket?.dispose());
     _seatStateStore.dispose();
+    _seatMoveTimers.clear();
     _chatSocketConnected = false;
     if (_chatSessionActive) {
       _chatSessionActive = false;
@@ -380,6 +382,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _applySeatData(Map<String, dynamic> data) {
+    if (!mounted) return;
     final rawSeats = data['seats'];
     final seats = rawSeats is List
         ? rawSeats.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
