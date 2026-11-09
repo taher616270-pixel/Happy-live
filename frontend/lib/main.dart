@@ -1412,7 +1412,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
   String _profileBio = '';
   String _profileBirthDate = '2000-01-01';
   String _profileGender = 'ذكر';
-  String _profileCountry = 'Saudi Arabia';
+  String _profileCountry = '';
   String? _profileAvatarUrl;
   bool _isRefreshingProfile = false;
   String get _name => _profileName;
@@ -1445,7 +1445,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
         _profileBio = (user['bio'] ?? '').toString();
         _profileBirthDate = (user['birthday'] ?? '2000-01-01').toString();
         _profileGender = (user['gender'] ?? 'male') == 'female' ? 'أنثى' : 'ذكر';
-        _profileCountry = (user['country_name'] ?? 'Saudi Arabia').toString();
+        _profileCountry = (user['country_name'] ?? '').toString();
         final avatar = (user['avatar_url'] ?? user['avatar_key'] ?? '').toString().trim();
         _profileAvatarUrl = avatar.isEmpty ? null : avatar;
       });
