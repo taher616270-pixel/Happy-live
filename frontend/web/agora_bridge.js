@@ -190,7 +190,10 @@
 
       // Set the role before joining so the server-issued co-host privileges
       // and the client role are aligned from the start of the session.
-      await nextClient.setClientRole(publish ? "host" : "audience");
+      // Keep the local participant in broadcaster role for the whole room session.
+      // The initial token may be join-only; publishing is enabled after the
+      // room Durable Object confirms a seat and the client renews its token.
+      await nextClient.setClientRole("host");
       await nextClient.join(appId, channel, token, Number(uid));
 
       if (publish) {
@@ -229,6 +232,37 @@
     }
   }
 
+  async function setPublishing(enabled, token) {
+    if (!client) throw new Error("Agora room is not connected");
+    if (token) await client.renewToken(token);
+    if (enabled) {
+      if (!localAudioTrack) {
+        localAudioTrack = await window.AgoraRTC.createMicrophoneAudioTrack({
+          encoderConfig: "speech_standard",
+          AEC: true,
+          ANS: true,
+          AGC: true
+        });
+      }
+      await localAudioTrack.setEnabled(true);
+      if (!client.localTracks || !client.localTracks.includes(localAudioTrack)) {
+        await client.publish([localAudioTrack]);
+      }
+      return true;
+    }
+    if (localAudioTrack) {
+      try {
+        if (client.localTracks && client.localTracks.includes(localAudioTrack)) {
+          await client.unpublish([localAudioTrack]);
+        }
+        await localAudioTrack.setEnabled(false);
+      } catch (error) {
+        console.warn("[HappyLive Agora] unpublish failed", error);
+      }
+    }
+    return true;
+  }
+
   async function setMuted(muted) {
     if (!localAudioTrack) return false;
     try {
@@ -244,6 +278,7 @@
     join: join,
     leave: leaveCurrent,
     setMuted: setMuted,
+    setPublishing: setPublishing,
     getVolumeLevels: function () { return JSON.stringify(currentVolumeLevels); },
     resumeAudio: async function () {
       if (window.AgoraRTC && typeof window.AgoraRTC.resumeAudioContext === "function") {
