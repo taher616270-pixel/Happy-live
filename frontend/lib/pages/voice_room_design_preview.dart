@@ -498,7 +498,8 @@ Widget _roomActionButton({
         final locked = seat?['isLocked'] == true || seat?['locked'] == true;
         final speakerUid = int.tryParse((seat?['userCode'] ?? '').toString());
         final voiceLevel = speakerUid == null ? 0.0 : (speakerLevels[speakerUid] ?? 0.0);
-        final isSpeaking = occupied && !muted && voiceLevel >= 0.02;
+        final isSpeaking = occupied && !muted && voiceLevel >=
+            (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.08);
         final isAndroid = Theme.of(context).platform == TargetPlatform.android;
         final seatOffset = isAndroid
             ? (number <= 4 ? 2.0 : -12.0)
