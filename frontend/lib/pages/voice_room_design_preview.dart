@@ -573,7 +573,7 @@ Widget _roomActionButton({
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Text(
-                    mine ? 'أنت' : (name.isEmpty ? 'مستخدم' : name),
+                    name.isEmpty ? 'مستخدم' : name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w700),
