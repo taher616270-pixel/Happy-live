@@ -1216,10 +1216,12 @@ class _RoomPageState extends State<RoomPage> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => _showChatUserProfile(message),
-                      child: Padding(
+                    Transform.translate(
+                      offset: const Offset(0, -2),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _showChatUserProfile(message),
+                        child: Padding(
                         padding: const EdgeInsetsDirectional.only(
                           end: 2,
                           top: 1,
@@ -1237,6 +1239,7 @@ class _RoomPageState extends State<RoomPage> {
                             
                           ),
                         ),
+                      ),
                       ),
                     ),
                   ],
