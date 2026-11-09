@@ -1362,6 +1362,14 @@ export default {
             await env.DB.prepare("DELETE FROM room_moderators WHERE room_id = ? AND user_id = ?")
               .bind(roomId, targetUserId).run();
           }
+          const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+          await seatHub.fetch(new Request("https://room-seats.internal/set-moderator", {
+            method: "POST",
+            headers: {
+              "x-target-user-id": targetUserId,
+              "x-is-moderator": action === "assign_moderator" ? "true" : "false"
+            }
+          }));
           return json({ ok: true }, 200, origin, env);
         }
         if (!["toggle_mute", "kick", "ban", "lower"].includes(action) || !targetUserId || targetUserId === room.owner_user_id) {
