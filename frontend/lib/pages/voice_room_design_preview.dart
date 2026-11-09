@@ -550,7 +550,7 @@ Widget _roomActionButton({
             ? (number <= 4 ? 2.0 : -12.0)
             : (number <= 4 ? -5.0 : -21.0);
         return Transform.translate(
-          offset: Offset(0, seatOffset + (isAndroid ? 0 : 5) + (number > 4 ? 5 : 0)),
+          offset: Offset(0, seatOffset + (isAndroid ? 0 : 5)),
           child: Transform.translate(
             offset: Offset(0, seatOffset),
             child: Align(
@@ -570,10 +570,13 @@ Widget _roomActionButton({
                             }
                           }
                         : null),
-                child: SizedBox(
-                  width: 72,
-                  height: 72,
-                  child: Column(
+                child: Transform.translate(
+                  offset: number > 4 ? const Offset(0, 5) : Offset.zero,
+                  transformHitTests: false,
+                  child: SizedBox(
+                    width: 72,
+                    height: 72,
+                    child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
               Stack(
@@ -679,6 +682,7 @@ Widget _roomActionButton({
                   ),
                 ),
                     ],
+                  ),
                   ),
                 ),
               ),
