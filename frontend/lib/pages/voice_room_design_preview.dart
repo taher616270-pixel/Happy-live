@@ -514,7 +514,9 @@ Widget _roomActionButton({
         final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
         final muted = seat?['isMuted'] == true;
         final locked = seat?['isLocked'] == true || seat?['locked'] == true;
-        final speakerUid = int.tryParse((seat?['userCode'] ?? '').toString());
+        final speakerUid = seat?['uid'] is num
+            ? (seat!['uid'] as num).toInt()
+            : int.tryParse((seat?['userCode'] ?? '').toString());
         final voiceLevel = speakerUid == null ? 0.0 : (speakerLevels[speakerUid] ?? 0.0);
         final isSpeaking = occupied && !muted && voiceLevel >=
             (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
