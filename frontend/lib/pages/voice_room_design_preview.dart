@@ -699,10 +699,10 @@ Widget _roomActionButton({
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.fromLTRB(
-            14,
-            18,
-            14,
-            MediaQuery.of(sheetContext).padding.bottom + 14,
+            10,
+            10,
+            10,
+            MediaQuery.of(sheetContext).padding.bottom + 8,
           ),
           decoration: const BoxDecoration(
             color: Color(0xFF211936),
@@ -712,10 +712,19 @@ Widget _roomActionButton({
           child: Row(
             children: [
               Expanded(
-                child: _EmptySeatAction(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: _EmptySeatAction(
                   icon: Icons.lock_outline_rounded,
                   label: 'إغلاق المايك',
                   onTap: () {},
+                  ),
                 ),
               ),
               Expanded(
@@ -1233,7 +1242,7 @@ class UserInfoBottomSheet extends StatelessWidget {
                         )),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(child: _ProfileInfoCard(
@@ -1404,14 +1413,14 @@ class _EmptySeatAction extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 58,
-          height: 58,
+          width: 46,
+          height: 46,
           decoration: BoxDecoration(
             color: const Color(0xFF34294D),
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(18),
           ),
           alignment: Alignment.center,
-          child: Icon(icon, color: const Color(0xFFE5DFF0), size: 32),
+          child: Icon(icon, color: const Color(0xFFE5DFF0), size: 26),
         ),
         const SizedBox(height: 12),
         Text(
@@ -1421,7 +1430,7 @@ class _EmptySeatAction extends StatelessWidget {
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Color(0xFFB9AACF),
-            fontSize: 13,
+            fontSize: 11,
             fontWeight: FontWeight.w700,
           ),
         ),
