@@ -598,7 +598,8 @@ export default {
               const details = await env.DB.prepare(
                 "SELECT u.id, u.email, p.display_name, p.gabo_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id IN (" + placeholders + ")"
               ).bind(...ids).all<{ id: string; email: string; display_name: string | null; gabo_id: string | null }>();
-              const detailsById = new Map((details.results ?? []).map((row) => [row.id, row]));
+              const detailsById = new Map<string, { id: string; email: string; display_name: string | null; gabo_id: string | null }>();
+              for (const row of details.results ?? []) detailsById.set(row.id, row);
               roomMembers = activeSeats.map((seat) => {
                 const detail = detailsById.get(String(seat.userId ?? ""));
                 return {
