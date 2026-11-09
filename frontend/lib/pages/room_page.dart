@@ -358,6 +358,8 @@ class _RoomPageState extends State<RoomPage> {
         ? rawSeats.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
         : <Map<String, dynamic>>[];
     final nextMySeat = data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null;
+    final hasPendingWebMove = kIsWeb && _seatStateStore.hasPendingMoves;
+    final effectiveMySeat = hasPendingWebMove ? _seatStateStore.mySeat : nextMySeat;
     final nextAudienceCount = data['audienceCount'] is num ? (data['audienceCount'] as num).toInt() : _audienceCount;
     final rawAudienceUsers = data['audienceUsers'];
     final nextAudienceUsers = rawAudienceUsers is List
@@ -394,12 +396,12 @@ class _RoomPageState extends State<RoomPage> {
     _rememberRoomPreview(seats, nextAudienceUsers, nextAudienceCount, nextOwnerName, nextOwnerId, nextAnnouncement);
     final voiceJustDisabled = _voiceEnabled && !nextVoiceEnabled;
     final voiceJustEnabled = !_voiceEnabled && nextVoiceEnabled;
-    final lostMySeat = _mySeat != null && nextMySeat == null;
-    final gainedMySeat = _mySeat == null && nextMySeat != null;
+    final lostMySeat = _mySeat != null && effectiveMySeat == null;
+    final gainedMySeat = _mySeat == null && effectiveMySeat != null;
     final newlyMuted = !_selfMicMuted && nextSelfMuted;
     final newlyBanned = !_isBannedFromRoom && nextIsBanned;
     final changed = jsonEncode(_seats) != jsonEncode(seats) ||
-        _mySeat != nextMySeat ||
+        _mySeat != effectiveMySeat ||
         _audienceCount != nextAudienceCount ||
         jsonEncode(_audienceUsers) != jsonEncode(nextAudienceUsers) ||
         _ownerName != nextOwnerName ||
@@ -423,7 +425,7 @@ class _RoomPageState extends State<RoomPage> {
     }
     setState(() {
       _seats = seats;
-      _mySeat = nextMySeat;
+      _mySeat = effectiveMySeat;
       _audienceCount = nextAudienceCount;
       _audienceUsers = nextAudienceUsers;
       _ownerName = nextOwnerName;
@@ -454,7 +456,8 @@ class _RoomPageState extends State<RoomPage> {
     } else if (lostMySeat || newlyMuted || newlyBanned) {
       if (newlyMuted) unawaited(AgoraRoomBridge.setMuted(true));
       unawaited(_joinAgora(publish: false));
-    } else if (gainedMySeat && !nextSelfMuted && !nextIsBanned) {
+    } else if ((gainedMySeat || (effectiveMySeat != null && _agoraJoinedPublish == false)) &&
+        !nextSelfMuted && !nextIsBanned) {
       unawaited(_joinAgora(publish: true));
     }
   }
