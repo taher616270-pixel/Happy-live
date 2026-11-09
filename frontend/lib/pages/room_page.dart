@@ -223,10 +223,22 @@ class _RoomPageState extends State<RoomPage> {
     bool updateStore = true,
     bool reconcilePending = false,
   }) {
+    final previousSeatsByUserId = <String, Map<String, dynamic>>{
+      for (final previous in _seats)
+        if ((previous['userId'] ?? '').toString().isNotEmpty)
+          (previous['userId'] ?? '').toString(): previous,
+    };
     final normalized = rawSeats.whereType<Map>().map((item) {
       final seat = Map<String, dynamic>.from(item);
-      seat['isMe'] = (seat['userId'] ?? '').toString().isNotEmpty &&
-          (seat['userId'] ?? '').toString() == _seatStateStore.currentUserId;
+      final userId = (seat['userId'] ?? '').toString();
+      final previous = previousSeatsByUserId[userId];
+      // Keep the latest DB-backed country while realtime seat events update mic state.
+      if ((seat['countryName'] ?? '').toString().isEmpty &&
+          (previous?['countryName'] ?? '').toString().isNotEmpty) {
+        seat['countryName'] = previous!['countryName'];
+      }
+      seat['isMe'] = userId.isNotEmpty &&
+          userId == _seatStateStore.currentUserId;
       return seat;
     }).toList();
     final mine = normalized.where((seat) => seat['isMe'] == true).toList();
