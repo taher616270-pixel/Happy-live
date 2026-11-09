@@ -531,8 +531,8 @@ Widget _roomActionButton({
                         shape: BoxShape.circle,
                         color: Colors.white.withOpacity(.10),
                         border: Border.all(
-                          color: mine ? const Color(0xFFFFD98B) : Colors.white.withOpacity(occupied ? .60 : .18),
-                          width: mine ? 2.2 : occupied ? 2 : 1,
+                          color: mine ? Colors.transparent : Colors.white.withOpacity(occupied ? .60 : .18),
+                          width: mine ? 0 : occupied ? 2 : 1,
                         ),
                         image: avatar.startsWith('http')
                             ? DecorationImage(image: NetworkImage(avatar), fit: BoxFit.cover)
