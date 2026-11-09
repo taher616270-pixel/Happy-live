@@ -291,7 +291,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                     offset: const Offset(0, -2),
                                     child: Text(
                                       'ID: $_id',
-                                      style: const TextStyle(color: Colors.white60, fontSize: 9),
+                                      style: const TextStyle(color: Colors.white60, fontSize: 8),
                                     ),
                                   ),
                                 ],
