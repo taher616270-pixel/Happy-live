@@ -2125,12 +2125,11 @@ class _LiveVoiceBarsState extends State<_LiveVoiceBars>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 850),
+    duration: const Duration(milliseconds: 900),
   )..repeat();
 
-  static const _baseHeights = <double>[
-    20, 32, 43, 28, 39, 25, 48, 31, 42, 24, 36, 28, 44, 30, 40,
-  ];
+  static const int _barCount = 15;
+  static const double _barHeight = 38;
 
   @override
   void dispose() {
@@ -2143,6 +2142,12 @@ class _LiveVoiceBarsState extends State<_LiveVoiceBars>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
+        // Every bar keeps exactly the same height. Only the whole pattern
+        // gently brightens and dims together; microphone volume never changes it.
+        final phase = _controller.value * 2 * 3.141592653589793;
+        final glow = 0.68 + (0.32 * (0.5 + 0.5 * 
+            (phase < 3.141592653589793 ? phase / 3.141592653589793 : 
+            (2 * 3.141592653589793 - phase) / 3.141592653589793)));
         return Container(
           height: 78,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -2156,21 +2161,23 @@ class _LiveVoiceBarsState extends State<_LiveVoiceBars>
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            children: List<Widget>.generate(_baseHeights.length, (index) {
-              final phase = (_controller.value + index * 0.105) % 1.0;
-              final pulse = 1.0 - (phase * 2.0 - 1.0).abs();
-              final height = 12.0 + pulse * 62.0;
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: List<Widget>.generate(_barCount, (index) {
               return Container(
                 width: 7,
-                height: height,
+                height: _barHeight,
                 margin: const EdgeInsets.symmetric(horizontal: 2.2),
                 decoration: BoxDecoration(
-                  color: index % 3 == 1
-                      ? const Color(0xFFFFE7A8)
-                      : const Color(0xFFE8C477),
+                  color: (index % 3 == 1
+                          ? const Color(0xFFFFE7A8)
+                          : const Color(0xFFE8C477))
+                      .withOpacity(glow),
                   borderRadius: BorderRadius.circular(5),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x99E8C477), blurRadius: 7),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0x99E8C477).withOpacity(glow),
+                      blurRadius: 7,
+                    ),
                   ],
                 ),
               );
