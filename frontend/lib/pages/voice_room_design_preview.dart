@@ -1425,7 +1425,7 @@ class _EmptySeatAction extends StatelessWidget {
           alignment: Alignment.center,
           child: Icon(icon, color: const Color(0xFFE5DFF0), size: 26),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Text(
           label,
           maxLines: 1,
