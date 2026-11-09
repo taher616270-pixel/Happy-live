@@ -523,59 +523,67 @@ class _RoomPageState extends State<RoomPage> {
         final targetPublish = _agoraDesiredPublish!;
         _agoraDesiredPublish = null;
 
-        // Do not tear down a healthy Agora session when its role is unchanged.
-        if (_agoraJoinedPublish == targetPublish) continue;
-
-        // On the first room entry there is no previous Agora session to close.
-        // Skip the unnecessary bridge round-trip so the listener can join sooner.
-        if (_agoraJoinedPublish != null) {
-          await AgoraRoomBridge.leave();
-          _agoraJoinedPublish = null;
+        // Join Agora once as broadcaster. Seat changes only renew the token
+        // and toggle the microphone track; the channel is never left/rejoined.
+        if (_agoraJoinedPublish == null) {
+          final response = await http.post(
+            Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/agora-token'),
+            headers: _headers,
+            body: jsonEncode({'publish': false}),
+          ).timeout(const Duration(seconds: 12));
+          final data = jsonDecode(response.body);
+          if (!mounted) return;
+          if (!_voiceEnabled) return;
+          if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
+            if (mounted) {
+              final message = data is Map ? (data['message'] ?? '').toString() : '';
+              _showMessage(message.isNotEmpty ? message : 'تعذر الاتصال بخدمة الصوت');
+            }
+            continue;
+          }
+          await AgoraRoomBridge.join(
+            appId: (data['appId'] ?? '').toString(),
+            channel: (data['channel'] ?? '').toString(),
+            token: (data['token'] ?? '').toString(),
+            uid: (data['uid'] as num).toInt(),
+            publish: false,
+          );
+          if (!mounted) return;
+          _agoraJoinedPublish = false;
         }
 
-        final response = await http.post(
-          Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/agora-token'),
-          headers: _headers,
-          body: jsonEncode({'publish': targetPublish}),
-        ).timeout(const Duration(seconds: 12));
-        final data = jsonDecode(response.body);
-        if (!mounted) return;
-        if (!_voiceEnabled) {
-          await AgoraRoomBridge.leave();
-          _agoraJoinedPublish = null;
-          continue;
-        }
-
-        // A newer seat or mute action arrived while the token request was in flight.
         if (_agoraDesiredPublish != null && _agoraDesiredPublish != targetPublish) {
           continue;
         }
-        if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
-          if (targetPublish && mounted) {
-            final message = data is Map ? (data['message'] ?? '').toString() : '';
-            _showMessage(message.isNotEmpty ? message : 'تعذر تشغيل المايك');
-          }
-          continue;
-        }
+        if (_agoraJoinedPublish == targetPublish) continue;
 
-        final canPublish = data['canPublish'] == true;
-        await AgoraRoomBridge.join(
-          appId: (data['appId'] ?? '').toString(),
-          channel: (data['channel'] ?? '').toString(),
-          token: (data['token'] ?? '').toString(),
-          uid: (data['uid'] as num).toInt(),
-          publish: canPublish,
-        );
-        if (!mounted) return;
-        _agoraJoinedPublish = canPublish;
-        if (_agoraDesiredPublish != null && _agoraDesiredPublish != canPublish) {
-          continue;
+        if (targetPublish) {
+          final response = await http.post(
+            Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/agora-token'),
+            headers: _headers,
+            body: jsonEncode({'publish': true}),
+          ).timeout(const Duration(seconds: 8));
+          final data = jsonDecode(response.body);
+          if (!mounted) return;
+          if (response.statusCode != 200 || data is! Map || data['ok'] != true || data['canPublish'] != true) {
+            if (mounted && _mySeat != null && !_selfMicMuted) _showMessage('تعذر تفعيل المايك، تحقق من صلاحية المقعد');
+            continue;
+          }
+          await AgoraRoomBridge.setPublishing(true, token: (data['token'] ?? '').toString());
+        } else {
+          await AgoraRoomBridge.setPublishing(false);
         }
+        if (!mounted) return;
+        _agoraJoinedPublish = targetPublish;
       }
     } catch (_) {
-      _agoraJoinedPublish = null;
+      if (_agoraJoinedPublish == null) {
+        _agoraJoinedPublish = null;
+      } else {
+        _agoraJoinedPublish = false;
+      }
       if (mounted && _mySeat != null && !_selfMicMuted && !_isBannedFromRoom) {
-        _showMessage('تعذر الاتصال بخدمة الصوت، حاول مرة أخرى');
+        _showMessage('تعذر تحديث المايك دون قطع اتصال الغرفة');
       }
     } finally {
       _agoraSyncInProgress = false;
