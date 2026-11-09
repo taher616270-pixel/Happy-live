@@ -6,6 +6,7 @@ class AgoraRoomBridge {
   static String? _activeAppId;
   static bool _joined = false;
   static bool _muted = false;
+  static int _localUid = 0;
   static final Map<int, double> _volumeLevels = <int, double>{};
   static final Map<int, DateTime> _volumeSeenAt = <int, DateTime>{};
 
@@ -19,20 +20,24 @@ class AgoraRoomBridge {
     final engine = createAgoraRtcEngine();
     _engine = engine;
     _activeAppId = appId;
+    _localUid = uid;
     try {
       await engine.initialize(RtcEngineContext(appId: appId, channelProfile: ChannelProfileType.channelProfileLiveBroadcasting));
       engine.registerEventHandler(RtcEngineEventHandler(
         onAudioVolumeIndication: (connection, speakers, speakerNumber, totalVolume) {
           final now = DateTime.now();
           for (final speaker in speakers) {
-            if (speaker.uid <= 0) continue;
+            // Agora reports the local speaker with uid 0 on some native SDK versions.
+            // Translate it to the authenticated numeric UID used by room seat records.
+            final uid = speaker.uid == 0 ? _localUid : speaker.uid;
+            if (uid <= 0) continue;
             final level = (speaker.volume / 255.0).clamp(0.0, 1.0).toDouble();
             if (level >= 0.035) {
-              _volumeLevels[speaker.uid] = level;
-              _volumeSeenAt[speaker.uid] = now;
+              _volumeLevels[uid] = level;
+              _volumeSeenAt[uid] = now;
             } else {
-              _volumeLevels.remove(speaker.uid);
-              _volumeSeenAt.remove(speaker.uid);
+              _volumeLevels.remove(uid);
+              _volumeSeenAt.remove(uid);
             }
           }
         },
@@ -52,7 +57,7 @@ class AgoraRoomBridge {
       _muted = false;
     } catch (_) {
       try { await engine.release(); } catch (_) {}
-      _engine = null; _activeAppId = null; _joined = false; _volumeLevels.clear();
+      _engine = null; _activeAppId = null; _joined = false; _localUid = 0; _volumeLevels.clear();
       _volumeSeenAt.clear();
       rethrow;
     }
@@ -60,7 +65,7 @@ class AgoraRoomBridge {
 
   static Future<void> leave() async {
     final engine = _engine;
-    _engine = null; _activeAppId = null; _joined = false; _muted = false; _volumeLevels.clear(); _volumeSeenAt.clear();
+    _engine = null; _activeAppId = null; _joined = false; _muted = false; _localUid = 0; _volumeLevels.clear(); _volumeSeenAt.clear();
     if (engine == null) return;
     try { await engine.leaveChannel(); } catch (_) {}
     try { await engine.release(); } catch (_) {}
