@@ -1226,12 +1226,12 @@ class _RoomPageState extends State<RoomPage> {
                           senderLabel,
                           textAlign: TextAlign.right,
                           style: const TextStyle(
-                            color: Color(0xFFFFD66B),
+                            color: Colors.white,
                             fontSize: 11,
                             height: 1.2,
                             fontWeight: FontWeight.w800,
-                            decoration: TextDecoration.underline,
-                            decorationColor: Color(0xFFFFD66B),
+                            decoration: TextDecoration.none,
+                            
                           ),
                         ),
                       ),
