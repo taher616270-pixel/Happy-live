@@ -4,6 +4,7 @@ export interface RoomSeatMember {
   name: string;
   userCode: string;
   avatarUrl: string;
+  countryName: string;
   uid: number | null;
   isMuted: boolean;
   isRoomOwner: boolean;
@@ -23,6 +24,7 @@ interface SocketIdentity {
   name: string;
   userCode: string;
   avatarUrl: string;
+  countryName: string;
   uid: number | null;
   isMuted: boolean;
   isRoomOwner: boolean;
@@ -89,6 +91,7 @@ export class RoomSeatsHub {
         name: request.headers.get("x-user-name") ?? "مستخدم",
         userCode: request.headers.get("x-user-code") ?? "",
         avatarUrl: request.headers.get("x-avatar-url") ?? "",
+        countryName: request.headers.get("x-country-name") ?? "",
         uid: Number(request.headers.get("x-user-code")) || null,
         isMuted: request.headers.get("x-is-muted") === "true",
         isRoomOwner: request.headers.get("x-is-room-owner") === "true",
@@ -197,6 +200,7 @@ export class RoomSeatsHub {
       name: request.headers.get("x-user-name") ?? "مستخدم",
       userCode: request.headers.get("x-user-code") ?? "",
       avatarUrl: request.headers.get("x-avatar-url") ?? "",
+      countryName: request.headers.get("x-country-name") ?? "",
       uid: Number(request.headers.get("x-user-code")) || null,
       isMuted: request.headers.get("x-is-muted") === "true",
       isRoomOwner: request.headers.get("x-is-room-owner") === "true",
@@ -229,6 +233,7 @@ export class RoomSeatsHub {
         current.userCode = identity.userCode;
         current.uid = identity.uid;
         current.avatarUrl = identity.avatarUrl;
+        current.countryName = identity.countryName;
         current.isMuted = identity.isMuted;
         current.isRoomOwner = identity.isRoomOwner;
         current.isRoomModerator = identity.isRoomModerator;
@@ -328,6 +333,7 @@ export class RoomSeatsHub {
         name: identity.name,
         userCode: identity.userCode,
         avatarUrl: identity.avatarUrl,
+        countryName: identity.countryName,
         uid: identity.uid,
         isMuted: identity.isMuted,
         isRoomOwner: identity.isRoomOwner,
