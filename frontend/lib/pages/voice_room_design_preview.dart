@@ -556,22 +556,32 @@ Widget _roomActionButton({
                             ),
                     ),
                   ),
-                  // The tap target is clipped to the actual 48px mic circle.
-                  // Each seat owns its own hit area; ripple and labels never receive taps.
-                  ClipOval(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: occupied
-                          ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
-                          : (!locked &&
-                                  (kIsWeb
-                                      ? !pendingSeatNumbers.contains(number)
-                                      : !isChangingSeat)
-                              ? () => onTapSeat(number)
-                              : null),
-                      child: const SizedBox(width: 48, height: 48),
+                  // Web: each mic accepts taps only inside its circular avatar.
+                  // Android keeps its previous rectangular 48px hit target.
+                  if (kIsWeb)
+                    ClipOval(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: occupied
+                            ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
+                            : (!locked && !pendingSeatNumbers.contains(number)
+                                ? () => onTapSeat(number)
+                                : null),
+                        child: const SizedBox(width: 48, height: 48),
+                      ),
+                    )
+                  else
+                    Positioned.fill(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: occupied
+                            ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
+                            : (!locked && !isChangingSeat
+                                ? () => onTapSeat(number)
+                                : null),
+                        child: const SizedBox.expand(),
+                      ),
                     ),
-                  ),
                   if (muted)
                     Positioned(
                       bottom: -2,
