@@ -82,15 +82,28 @@ class AgoraRoomBridge {
       final permission = await Permission.microphone.request();
       if (!permission.isGranted) throw StateError('Microphone permission was not granted.');
     }
-    if (token.isNotEmpty) await engine.renewToken(token);
-    await engine.updateChannelMediaOptions(
-      ChannelMediaOptions(
-        autoSubscribeAudio: true,
-        publishMicrophoneTrack: enabled,
-        clientRoleType: ClientRoleType.clientRoleBroadcaster,
-      ),
-    );
-    await engine.muteLocalAudioStream(!enabled || _muted);
+    if (enabled) {
+      if (token.isNotEmpty) await engine.renewToken(token);
+      await engine.updateChannelMediaOptions(
+        ChannelMediaOptions(
+          autoSubscribeAudio: true,
+          publishMicrophoneTrack: true,
+          clientRoleType: ClientRoleType.clientRoleBroadcaster,
+        ),
+      );
+      await engine.muteLocalAudioStream(_muted);
+    } else {
+      // Stop uplink first; token renewal must never leave an old microphone live.
+      await engine.updateChannelMediaOptions(
+        ChannelMediaOptions(
+          autoSubscribeAudio: true,
+          publishMicrophoneTrack: false,
+          clientRoleType: ClientRoleType.clientRoleBroadcaster,
+        ),
+      );
+      await engine.muteLocalAudioStream(true);
+      if (token.isNotEmpty) await engine.renewToken(token);
+    }
   }
 
   static Future<void> setMuted(bool muted) async {
