@@ -2126,14 +2126,14 @@ class _LiveVoiceBarsState extends State<_LiveVoiceBars>
       animation: _controller,
       builder: (context, child) {
         return Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+          height: 78,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
           decoration: BoxDecoration(
             color: const Color(0xF217121F),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(color: const Color(0xFFFFD98B), width: 1.5),
             boxShadow: const [
-              BoxShadow(color: Color(0x99D9A93C), blurRadius: 22),
+              BoxShadow(color: Color(0x99D9A93C), blurRadius: 27),
             ],
           ),
           child: Row(
@@ -2141,11 +2141,11 @@ class _LiveVoiceBarsState extends State<_LiveVoiceBars>
             children: List<Widget>.generate(_baseHeights.length, (index) {
               final phase = (_controller.value + index * 0.105) % 1.0;
               final pulse = 1.0 - (phase * 2.0 - 1.0).abs();
-              final height = 10.0 + pulse * 38.0;
+              final height = 12.0 + pulse * 62.0;
               return Container(
-                width: 5,
+                width: 7,
                 height: height,
-                margin: const EdgeInsets.symmetric(horizontal: 1.7),
+                margin: const EdgeInsets.symmetric(horizontal: 2.2),
                 decoration: BoxDecoration(
                   color: index % 3 == 1
                       ? const Color(0xFFFFE7A8)
