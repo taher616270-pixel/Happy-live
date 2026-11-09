@@ -301,33 +301,68 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 width: 44,
                                 height: 30,
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(14),
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Color(0xFFD4AF37),
-                                      Color(0xFFF5E9C6),
-                                    ],
-                                  ),
+                                  color: const Color(0xD93D2E1F),
+                                  borderRadius: BorderRadius.circular(15),
                                   border: Border.all(
-                                    color: const Color(0xFFB8962E),
-                                    width: 1.5,
+                                    color: const Color(0xCCD4B779),
+                                    width: 1.2,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
                                     ),
                                   ],
                                 ),
-                                alignment: Alignment.center,
-                                child: const Icon(
-                                  Icons.add,
-                                  color: Colors.white,
-                                  size: 20,
-                                  weight: 800,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Container(
+                                      width: 14,
+                                      height: 18,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(7),
+                                        gradient: const LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Color(0xFFFFF8E7),
+                                            Color(0xFFE9C97B),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 10,
+                                      height: 10,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 2.7,
+                                            height: 10,
+                                            child: DecoratedBox(
+                                              decoration: BoxDecoration(
+                                                color: Color(0xFFC19A3E),
+                                                borderRadius: BorderRadius.all(Radius.circular(2)),
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: 10,
+                                            height: 3,
+                                            child: DecoratedBox(
+                                              decoration: BoxDecoration(
+                                                color: Color(0xFFC19A3E),
+                                                borderRadius: BorderRadius.all(Radius.circular(2)),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
