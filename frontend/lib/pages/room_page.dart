@@ -574,7 +574,17 @@ class _RoomPageState extends State<RoomPage> {
           }
           await AgoraRoomBridge.setPublishing(true, token: (data['token'] ?? '').toString());
         } else {
-          await AgoraRoomBridge.setPublishing(false);
+          final response = await http.post(
+            Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/agora-token'),
+            headers: _headers,
+            body: jsonEncode({'publish': false}),
+          ).timeout(const Duration(seconds: 8));
+          final data = jsonDecode(response.body);
+          if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+            await AgoraRoomBridge.setPublishing(false, token: (data['token'] ?? '').toString());
+          } else {
+            await AgoraRoomBridge.setPublishing(false);
+          }
         }
         if (!mounted) return;
         _agoraJoinedPublish = targetPublish;
