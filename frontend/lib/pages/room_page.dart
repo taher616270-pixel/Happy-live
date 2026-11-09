@@ -1112,6 +1112,7 @@ class _RoomPageState extends State<RoomPage> {
       chatFocusNode: _roomChatFocusNode,
       onSendChat: _sendRoomMessage,
       seats: _seats,
+      speakerLevels: _speakerLevels,
       onTapSeat: _selectSeat,
       isChangingSeat: _isChangingSeat,
       audienceCount: _audienceCount,
