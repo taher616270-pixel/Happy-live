@@ -1188,20 +1188,50 @@ class _RoomPageState extends State<RoomPage> {
         ? 'مالك الغرفة @ ${message.senderName}'
         : message.senderName;
 
+    final messageBubble = ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 9,
+        ),
+        decoration: BoxDecoration(
+          color: const Color(0x5520182A),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          isSystem && isWelcome
+              ? 'دخل الغرفة'
+              : isSystem && message.type != 'announcement'
+                  ? message.text
+                  : message.type == 'announcement'
+                      ? displayText
+                      : message.text,
+          textAlign: TextAlign.right,
+          softWrap: true,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            height: 1.35,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+
     return Align(
-      alignment: Alignment.centerRight,
+      alignment: AlignmentDirectional.centerEnd,
       child: GestureDetector(
         onTap: message.type == 'announcement' && _isRoomOwner ? _editRoomAnnouncement : null,
         child: Padding(
-          padding: const EdgeInsets.only(left: 50, bottom: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (hasSender && message.type != 'announcement')
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+          padding: const EdgeInsetsDirectional.only(end: 50, bottom: 8),
+          child: hasSender && message.type != 'announcement'
+              ? Row(
+                  mainAxisSize: MainAxisSize.max,
                   textDirection: TextDirection.rtl,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _chatAvatar(
                       message.senderAvatar,
@@ -1210,91 +1240,75 @@ class _RoomPageState extends State<RoomPage> {
                       onTap: () => _showChatUserProfile(message),
                     ),
                     const SizedBox(width: 6),
-                    Transform.translate(
-                      offset: const Offset(0, -2),
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => _showChatUserProfile(message),
-                        child: Padding(
-                        padding: const EdgeInsetsDirectional.only(
-                          end: 2,
-                          top: 1,
-                          bottom: 4,
-                        ),
-                        child: Text(
-                          senderLabel,
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            height: 1.2,
-                            fontWeight: FontWeight.w800,
-                            decoration: TextDecoration.none,
-                            
+                    Flexible(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Transform.translate(
+                            offset: const Offset(0, -2),
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _showChatUserProfile(message),
+                              child: Padding(
+                                padding: const EdgeInsetsDirectional.only(
+                                  end: 2,
+                                  top: 1,
+                                  bottom: 4,
+                                ),
+                                child: Text(
+                                  senderLabel,
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w800,
+                                    decoration: TextDecoration.none,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: messageBubble,
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 )
-              else
-                Row(
+              : Column(
                   mainAxisSize: MainAxisSize.min,
-                  textDirection: TextDirection.rtl,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: const Color(0x5520182A),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(.12)),
-                      ),
-                      child: Icon(
-                        Icons.notifications_active_rounded,
-                        size: 14,
-                        color: Colors.white.withOpacity(0.82),
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      textDirection: TextDirection.rtl,
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: const Color(0x5520182A),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withOpacity(.12)),
+                          ),
+                          child: Icon(
+                            Icons.notifications_active_rounded,
+                            size: 14,
+                            color: Colors.white.withOpacity(0.82),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: messageBubble,
                     ),
                   ],
                 ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.sizeOf(context).width * 0.78,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0x5520182A),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      isSystem && isWelcome
-                          ? 'دخل الغرفة'
-                          : isSystem && message.type != 'announcement'
-                              ? message.text
-                              : message.type == 'announcement'
-                                  ? displayText
-                                  : message.text,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        height: 1.35,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
