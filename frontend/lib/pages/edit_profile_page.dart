@@ -427,6 +427,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+  Future<String?> _pick(List<String> items) => showModalBottomSheet<String>(
+    context: context, backgroundColor: Colors.white, isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (_) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * .6),
+          child: ListView(shrinkWrap: true, children: [
+            for (final item in items)
+              ListTile(title: Text(item), onTap: () => Navigator.pop(context, item)),
+          ]),
+        ),
+      ),
+    ),
+  );
+
   Future<String?> _pickCountry() async {
     return showModalBottomSheet<String>(
       context: context, backgroundColor: Colors.white, isScrollControlled: true,
