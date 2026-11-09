@@ -400,11 +400,12 @@ export default {
             now
           ));
           await env.DB.batch(statements);
-          if (!body.enabled && env.ROOM_SEATS) {
+          if (env.ROOM_SEATS) {
             const activeRooms = await env.DB.prepare("SELECT id FROM rooms WHERE status = 'active'").all<{ id: string }>();
+            const path = body.enabled ? "/enable" : "/clear";
             await Promise.all((activeRooms.results ?? []).map((room) => {
               const stub = env.ROOM_SEATS!.get(env.ROOM_SEATS!.idFromName(room.id));
-              return stub.fetch(new Request("https://room-seats.internal/clear", { method: "POST" }));
+              return stub.fetch(new Request(`https://room-seats.internal${path}`, { method: "POST" }));
             }));
           }
           return json({ ok: true, voiceEnabled: body.enabled }, 200, origin, env);
@@ -1076,6 +1077,7 @@ export default {
         if (!voiceEnabled) return json({ error: "agora_voice_disabled" }, 503, origin, env);
 
         const stub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+        await stub.fetch(new Request("https://room-seats.internal/enable", { method: "POST" }));
         const headers = new Headers({
           "Upgrade": "websocket",
           "Sec-WebSocket-Protocol": "happy-live-seats",
@@ -1495,6 +1497,9 @@ export default {
         if (activeKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
 
         const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+        if (voiceEnabled) {
+          await seatHub.fetch(new Request("https://room-seats.internal/enable", { method: "POST" }));
+        }
         const identityHeaders = new Headers({
           "x-user-id": user.id,
           "x-user-name": user.display_name?.trim() || "مستخدم",
