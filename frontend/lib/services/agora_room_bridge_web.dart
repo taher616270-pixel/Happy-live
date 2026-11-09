@@ -25,7 +25,7 @@ class AgoraRoomBridge {
       final result = <int, double>{};
       decoded.forEach((key, value) {
         final uid = int.tryParse(key.toString());
-        if (uid != null && uid > 0 && value is num) result[uid] = value.toDouble().clamp(0.0, 1.0);
+        if (uid != null && uid > 0 && value is num) result[uid] = value.toDouble().clamp(0.0, 1.0).toDouble();
       });
       return result;
     } catch (_) { return <int, double>{}; }
