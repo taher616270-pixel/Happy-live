@@ -118,6 +118,8 @@ class SeatStateStore extends ChangeNotifier {
   Map<int, SeatState> get seats => Map<int, SeatState>.unmodifiable(_seats);
   int? get mySeat => _mySeat;
   int get latestVersion => _version;
+  bool get hasPendingMoves => _pendingTargetByVersion.isNotEmpty;
+  Set<int> get pendingTargets => Set<int>.unmodifiable(_pendingTargets);
   bool isPending(int seat) => _pendingTargets.contains(seat);
 
   void setCurrentUser({
