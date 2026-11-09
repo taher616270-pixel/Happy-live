@@ -2103,27 +2103,27 @@ class _LiveVoiceBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strength = level.clamp(0.0, 1.0);
-    const heights = <double>[17, 27, 36, 23, 33, 20, 40, 25, 35, 19, 30, 23, 37];
+    const heights = <double>[20, 32, 43, 28, 39, 25, 48, 31, 42, 24, 36, 28, 44, 30, 40];
     return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
       decoration: BoxDecoration(
         color: const Color(0xF217121F),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFFFD98B), width: 1.4),
-        boxShadow: [BoxShadow(color: const Color(0x99D9A93C).withOpacity(0.4 + strength * 0.5), blurRadius: 14 + strength * 10)],
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFFFFD98B), width: 1.5),
+        boxShadow: [BoxShadow(color: const Color(0x99D9A93C).withOpacity(0.42 + strength * 0.5), blurRadius: 16 + strength * 11)],
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: List<Widget>.generate(heights.length, (index) {
-        final h = (heights[index] * (0.35 + strength * 0.65)).clamp(6.0, 42.0);
+        final h = (heights[index] * (0.35 + strength * 0.65)).clamp(7.0, 50.0);
         return AnimatedContainer(
           duration: const Duration(milliseconds: 100),
           curve: Curves.easeOut,
-          width: 4.5, height: h,
-          margin: const EdgeInsets.symmetric(horizontal: 1.5),
+          width: 5, height: h,
+          margin: const EdgeInsets.symmetric(horizontal: 1.7),
           decoration: BoxDecoration(
             color: index % 3 == 1 ? const Color(0xFFFFE7A8) : const Color(0xFFE8C477),
             borderRadius: BorderRadius.circular(5),
-            boxShadow: [BoxShadow(color: const Color(0x99E8C477), blurRadius: 5 + strength * 4)],
+            boxShadow: [BoxShadow(color: const Color(0x99E8C477), blurRadius: 6 + strength * 4)],
           ),
         );
       })),
