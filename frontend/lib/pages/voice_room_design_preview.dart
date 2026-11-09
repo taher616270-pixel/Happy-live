@@ -941,16 +941,19 @@ Widget _roomActionButton({
                           .toString();
                       return Padding(
                         padding: const EdgeInsetsDirectional.only(end: 7),
-                        child: CircleAvatar(
-                          radius: 15,
-                          backgroundColor: Colors.white24,
-                          backgroundImage: avatar.startsWith('http')
-                              ? NetworkImage(avatar)
-                              : null,
-                          child: !avatar.startsWith('http')
-                              ? const Icon(Icons.person,
-                                  color: Colors.white70, size: 18)
-                              : null,
+                        child: GestureDetector(
+                          onTap: () => _showUserProfile(context, user),
+                          child: CircleAvatar(
+                            radius: 15,
+                            backgroundColor: Colors.white24,
+                            backgroundImage: avatar.startsWith('http')
+                                ? NetworkImage(avatar)
+                                : null,
+                            child: !avatar.startsWith('http')
+                                ? const Icon(Icons.person,
+                                    color: Colors.white70, size: 18)
+                                : null,
+                          ),
                         ),
                       );
                     }).toList(),
@@ -1286,7 +1289,7 @@ class UserInfoBottomSheet extends StatelessWidget {
         style: const TextStyle(fontSize: 19),
       );
     }
-    return const Text('🌐', style: TextStyle(fontSize: 19));
+    return const SizedBox.shrink();
   }
 
   int _number(List<String> keys) {
@@ -1306,7 +1309,6 @@ class UserInfoBottomSheet extends StatelessWidget {
     final avatar = _value(['avatarUrl', 'avatar', 'photoUrl']);
     final country = _value(
       ['countryName', 'country_name', 'country', 'countryCode'],
-      'Saudi Arabia',
     );
     final gender = _value(['gender'], 'male').toLowerCase();
     final badges = user['badges'] is List ? user['badges'] as List : const [0, 0];
