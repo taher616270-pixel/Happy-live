@@ -1270,9 +1270,12 @@ class _RoomPageState extends State<RoomPage> {
                               ),
                             ),
                           ),
-                          Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: messageBubble,
+                          Padding(
+                            padding: const EdgeInsetsDirectional.only(top: 2),
+                            child: Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: messageBubble,
+                            ),
                           ),
                         ],
                       ),
@@ -1303,9 +1306,12 @@ class _RoomPageState extends State<RoomPage> {
                         ),
                       ],
                     ),
-                    Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: messageBubble,
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(top: 2),
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: messageBubble,
+                      ),
                     ),
                   ],
                 ),
