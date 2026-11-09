@@ -8,6 +8,229 @@ const _ink = Color(0xFF1E2233);
 const _grey = Color(0xFF8E8CA0);
 const _fieldBg = Color(0xFFF2F4F6);
 
+const List<String> _countryEntries = [
+  '🏳️|دولة الجنوب العربي',
+  '🇦🇫|أفغانستان',
+  '🇦🇱|ألبانيا',
+  '🇩🇿|الجزائر',
+  '🇦🇩|أندورا',
+  '🇦🇴|أنغولا',
+  '🇦🇬|أنتيغوا وباربودا',
+  '🇦🇷|الأرجنتين',
+  '🇦🇲|أرمينيا',
+  '🇦🇺|أستراليا',
+  '🇦🇹|النمسا',
+  '🇦🇿|أذربيجان',
+  '🇧🇸|البهاما',
+  '🇧🇭|البحرين',
+  '🇧🇩|بنغلاديش',
+  '🇧🇧|بربادوس',
+  '🇧🇾|بيلاروس',
+  '🇧🇪|بلجيكا',
+  '🇧🇿|بليز',
+  '🇧🇯|بنين',
+  '🇧🇹|بوتان',
+  '🇧🇴|بوليفيا',
+  '🇧🇦|البوسنة والهرسك',
+  '🇧🇼|بوتسوانا',
+  '🇧🇷|البرازيل',
+  '🇧🇳|بروناي',
+  '🇧🇬|بلغاريا',
+  '🇧🇫|بوركينا فاسو',
+  '🇧🇮|بوروندي',
+  '🇨🇻|الرأس الأخضر',
+  '🇰🇭|كمبوديا',
+  '🇨🇲|الكاميرون',
+  '🇨🇦|كندا',
+  '🇨🇫|جمهورية أفريقيا الوسطى',
+  '🇹🇩|تشاد',
+  '🇨🇱|تشيلي',
+  '🇨🇳|الصين',
+  '🇨🇴|كولومبيا',
+  '🇰🇲|جزر القمر',
+  '🇨🇬|الكونغو',
+  '🇨🇷|كوستاريكا',
+  '🇨🇮|ساحل العاج',
+  '🇭🇷|كرواتيا',
+  '🇨🇺|كوبا',
+  '🇨🇾|قبرص',
+  '🇨🇿|التشيك',
+  '🇰🇵|كوريا الشمالية',
+  '🇨🇩|جمهورية الكونغو الديمقراطية',
+  '🇩🇰|الدنمارك',
+  '🇩🇯|جيبوتي',
+  '🇩🇲|دومينيكا',
+  '🇩🇴|جمهورية الدومينيكان',
+  '🇪🇨|الإكوادور',
+  '🇪🇬|مصر',
+  '🇸🇻|السلفادور',
+  '🇬🇶|غينيا الاستوائية',
+  '🇪🇷|إريتريا',
+  '🇪🇪|إستونيا',
+  '🇸🇿|إسواتيني',
+  '🇪🇹|إثيوبيا',
+  '🇫🇯|فيجي',
+  '🇫🇮|فنلندا',
+  '🇫🇷|فرنسا',
+  '🇬🇦|الغابون',
+  '🇬🇲|غامبيا',
+  '🇬🇪|جورجيا',
+  '🇩🇪|ألمانيا',
+  '🇬🇭|غانا',
+  '🇬🇷|اليونان',
+  '🇬🇩|غرينادا',
+  '🇬🇹|غواتيمالا',
+  '🇬🇳|غينيا',
+  '🇬🇼|غينيا بيساو',
+  '🇬🇾|غيانا',
+  '🇭🇹|هايتي',
+  '🇭🇳|هندوراس',
+  '🇭🇺|المجر',
+  '🇮🇸|آيسلندا',
+  '🇮🇳|الهند',
+  '🇮🇩|إندونيسيا',
+  '🇮🇷|إيران',
+  '🇮🇶|العراق',
+  '🇮🇪|أيرلندا',
+  '🇮🇱|إسرائيل',
+  '🇮🇹|إيطاليا',
+  '🇯🇲|جامايكا',
+  '🇯🇵|اليابان',
+  '🇯🇴|الأردن',
+  '🇰🇿|كازاخستان',
+  '🇰🇪|كينيا',
+  '🇰🇮|كيريباتي',
+  '🇰🇼|الكويت',
+  '🇰🇬|قيرغيزستان',
+  '🇱🇦|لاوس',
+  '🇱🇻|لاتفيا',
+  '🇱🇧|لبنان',
+  '🇱🇸|ليسوتو',
+  '🇱🇷|ليبيريا',
+  '🇱🇾|ليبيا',
+  '🇱🇮|ليختنشتاين',
+  '🇱🇹|ليتوانيا',
+  '🇱🇺|لوكسمبورغ',
+  '🇲🇬|مدغشقر',
+  '🇲🇼|ملاوي',
+  '🇲🇾|ماليزيا',
+  '🇲🇻|المالديف',
+  '🇲🇱|مالي',
+  '🇲🇹|مالطا',
+  '🇲🇭|جزر مارشال',
+  '🇲🇷|موريتانيا',
+  '🇲🇺|موريشيوس',
+  '🇲🇽|المكسيك',
+  '🇫🇲|ميكرونيزيا',
+  '🇲🇩|مولدوفا',
+  '🇲🇨|موناكو',
+  '🇲🇳|منغوليا',
+  '🇲🇪|الجبل الأسود',
+  '🇲🇦|المغرب',
+  '🇲🇿|موزمبيق',
+  '🇲🇲|ميانمار',
+  '🇳🇦|ناميبيا',
+  '🇳🇷|ناورو',
+  '🇳🇵|نيبال',
+  '🇳🇱|هولندا',
+  '🇳🇿|نيوزيلندا',
+  '🇳🇮|نيكاراغوا',
+  '🇳🇪|النيجر',
+  '🇳🇬|نيجيريا',
+  '🇲🇰|مقدونيا الشمالية',
+  '🇳🇴|النرويج',
+  '🇴🇲|عُمان',
+  '🇵🇰|باكستان',
+  '🇵🇼|بالاو',
+  '🇵🇸|فلسطين',
+  '🇵🇦|بنما',
+  '🇵🇬|بابوا غينيا الجديدة',
+  '🇵🇾|باراغواي',
+  '🇵🇪|بيرو',
+  '🇵🇭|الفلبين',
+  '🇵🇱|بولندا',
+  '🇵🇹|البرتغال',
+  '🇶🇦|قطر',
+  '🇰🇷|كوريا الجنوبية',
+  '🇷🇴|رومانيا',
+  '🇷🇺|روسيا',
+  '🇷🇼|رواندا',
+  '🇰🇳|سانت كيتس ونيفيس',
+  '🇱🇨|سانت لوسيا',
+  '🇻🇨|سانت فنسنت والغرينادين',
+  '🇼🇸|ساموا',
+  '🇸🇲|سان مارينو',
+  '🇸🇹|ساو تومي وبرينسيب',
+  '🇸🇦|السعودية',
+  '🇸🇳|السنغال',
+  '🇷🇸|صربيا',
+  '🇸🇨|سيشل',
+  '🇸🇱|سيراليون',
+  '🇸🇬|سنغافورة',
+  '🇸🇰|سلوفاكيا',
+  '🇸🇮|سلوفينيا',
+  '🇸🇧|جزر سليمان',
+  '🇸🇴|الصومال',
+  '🇿🇦|جنوب أفريقيا',
+  '🇸🇸|جنوب السودان',
+  '🇪🇸|إسبانيا',
+  '🇱🇰|سريلانكا',
+  '🇸🇩|السودان',
+  '🇸🇷|سورينام',
+  '🇸🇪|السويد',
+  '🇨🇭|سويسرا',
+  '🇸🇾|سوريا',
+  '🇹🇯|طاجيكستان',
+  '🇹🇿|تنزانيا',
+  '🇹🇭|تايلاند',
+  '🇹🇱|تيمور الشرقية',
+  '🇹🇬|توغو',
+  '🇹🇴|تونغا',
+  '🇹🇹|ترينيداد وتوباغو',
+  '🇹🇳|تونس',
+  '🇹🇷|تركيا',
+  '🇹🇲|تركمانستان',
+  '🇹🇻|توفالو',
+  '🇺🇬|أوغندا',
+  '🇺🇦|أوكرانيا',
+  '🇦🇪|الإمارات العربية المتحدة',
+  '🇬🇧|المملكة المتحدة',
+  '🇺🇸|الولايات المتحدة',
+  '🇺🇾|أوروغواي',
+  '🇺🇿|أوزبكستان',
+  '🇻🇺|فانواتو',
+  '🇻🇦|الفاتيكان',
+  '🇻🇪|فنزويلا',
+  '🇻🇳|فيتنام',
+  '🇾🇪|اليمن',
+  '🇿🇲|زامبيا',
+  '🇿🇼|زيمبابوي',
+];
+
+String _countryFlag(String name) {
+  if (name == 'دولة الجنوب العربي') return 'SOUTH_ARABIA';
+  for (final entry in _countryEntries) {
+    final parts = entry.split('|');
+    if (parts.length == 2 && parts[1] == name) return parts[0];
+  }
+  const legacy = {
+    'Saudi Arabia': '🇸🇦', 'Kuwait': '🇰🇼', 'United Arab Emirates': '🇦🇪',
+    'Qatar': '🇶🇦', 'Bahrain': '🇧🇭', 'Oman': '🇴🇲', 'Iraq': '🇮🇶',
+    'Yemen': '🇾🇪', 'Egypt': '🇪🇬', 'Jordan': '🇯🇴',
+  };
+  return legacy[name] ?? '🌐';
+}
+
+String _countryArabicName(String name) {
+  const legacy = {
+    'Saudi Arabia': 'السعودية', 'Kuwait': 'الكويت',
+    'United Arab Emirates': 'الإمارات العربية المتحدة', 'Qatar': 'قطر',
+    'Bahrain': 'البحرين', 'Oman': 'عُمان', 'Iraq': 'العراق',
+    'Yemen': 'اليمن', 'Egypt': 'مصر', 'Jordan': 'الأردن',
+  };
+  return legacy[name] ?? name;
+}
+
 class EditProfileData {
   final String name, bio, birthDate, gender, country;
   final String? avatarUrl;
@@ -42,10 +265,7 @@ class EditProfilePage extends StatefulWidget {
     this.canChangeGender = true,
     this.canChangeCountry = true,
     this.genders = const ['ذكر', 'أنثى'],
-    this.countries = const [
-      'Saudi Arabia', 'Kuwait', 'United Arab Emirates', 'Qatar',
-      'Bahrain', 'Oman', 'Iraq', 'Yemen', 'Egypt', 'Jordan',
-    ],
+    this.countries = const [],
     this.onAvatarTap,
     this.onBack,
     this.onSave,
@@ -207,24 +427,63 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  Future<String?> _pick(List<String> items) => showModalBottomSheet<String>(
-    context: context, backgroundColor: Colors.white, isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (_) => Directionality(
-      textDirection: TextDirection.rtl,
-      child: SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * .6),
-          child: ListView(shrinkWrap: true, children: [
-            for (final item in items)
-              ListTile(title: Text(item), onTap: () => Navigator.pop(context, item)),
-          ]),
-        ),
+  Future<String?> _pickCountry() async {
+    return showModalBottomSheet<String>(
+      context: context, backgroundColor: Colors.white, isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-    ),
-  );
+      builder: (sheetContext) {
+        String query = '';
+        return StatefulBuilder(builder: (context, setSheetState) {
+          final filtered = _countryEntries.where((entry) {
+            final parts = entry.split('|');
+            return parts.length == 2 && parts[1].contains(query.trim());
+          }).toList();
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: SafeArea(
+              child: SizedBox(
+                height: MediaQuery.of(sheetContext).size.height * .78,
+                child: Column(children: [
+                  const SizedBox(height: 14),
+                  Container(width: 42, height: 4, decoration: BoxDecoration(
+                    color: const Color(0xFFD8D8DE), borderRadius: BorderRadius.circular(8))),
+                  const Padding(padding: EdgeInsets.fromLTRB(18, 16, 18, 12),
+                    child: Align(alignment: Alignment.centerRight, child: Text(
+                      'اختر البلد', style: TextStyle(color: _ink, fontSize: 18, fontWeight: FontWeight.w800)))),
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      onChanged: (value) => setSheetState(() => query = value),
+                      decoration: InputDecoration(
+                        hintText: 'ابحث عن دولة', prefixIcon: const Icon(Icons.search),
+                        filled: true, fillColor: _fieldBg,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    )),
+                  const SizedBox(height: 8),
+                  Expanded(child: ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (_, index) {
+                      final parts = filtered[index].split('|');
+                      final flag = parts[0], name = parts[1];
+                      return ListTile(
+                        leading: flag == '🏳️' ? Image.asset('web/assets/south-arabia-v2.png', width: 32, height: 22, fit: BoxFit.cover)
+                            : SizedBox(width: 32, child: Center(child: Text(flag, style: const TextStyle(fontSize: 24))),),
+                        title: Text(name, style: const TextStyle(fontSize: 15, color: _ink)),
+                        onTap: () => Navigator.pop(sheetContext, name),
+                      );
+                    },
+                  )),
+                ]),
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
 
   Future<void> _confirm() async {
     if (!_canSave) return;
@@ -303,12 +562,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   const SizedBox(height: 26),
                   _label('البلد', note: '(يمكنك تغيير الدولة مرة واحدة فقط)'),
                   _box(chevron: widget.canChangeCountry, onTap: widget.canChangeCountry ? () async {
-                    final value = await _pick(widget.countries);
+                    final value = await _pickCountry();
                     if (value != null) setState(() => _country = value);
                   } : null, child: Directionality(
                     textDirection: TextDirection.ltr,
                     child: Align(alignment: Alignment.centerRight,
-                      child: Text(_country, style: _valueStyle)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        if (_countryFlag(_country) == 'SOUTH_ARABIA')
+                          Image.asset('web/assets/south-arabia-v2.png', width: 24, height: 17, fit: BoxFit.cover)
+                        else Text(_countryFlag(_country), style: const TextStyle(fontSize: 19)),
+                        const SizedBox(width: 8),
+                        Text(_countryArabicName(_country), style: _valueStyle),
+                      ])),
                   )),
                 ]),
               )),
