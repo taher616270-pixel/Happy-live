@@ -1938,7 +1938,7 @@ class _RoomPageState extends State<RoomPage> {
                   minHeight: micSize * 1.7,
                   maxHeight: micSize * 1.7,
                   child: SpeakingWave(
-                    active: isWaveVisible && !mine,
+                    active: isWaveVisible,
                     size: micSize,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 220),
@@ -2161,7 +2161,7 @@ class _SpeakingWaveState extends State<SpeakingWave>
     duration: const Duration(milliseconds: 1400),
   );
 
-  static const gold = Color(0xFFFFD700);
+  static const wavePurple = Color(0xFFD65BEA);
 
   @override
   void initState() {
@@ -2191,15 +2191,18 @@ class _SpeakingWaveState extends State<SpeakingWave>
       animation: _c,
       builder: (_, __) {
         final t = (_c.value + delay) % 1.0;
-        final s = widget.size * (7.12 + t * 1.45);
+        final s = widget.size * (1.18 + t * 0.46);
         return Opacity(
-          opacity: widget.active ? (1 - t) : 0,
+          opacity: widget.active ? (1 - t) * 0.88 : 0,
           child: Container(
             width: s,
             height: s,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: gold, width: 1.3),
+              border: Border.all(color: wavePurple, width: 1.25),
+              boxShadow: const [
+                BoxShadow(color: Color(0x665D1C86), blurRadius: 5, spreadRadius: 0.4),
+              ],
             ),
           ),
         );
@@ -2209,7 +2212,7 @@ class _SpeakingWaveState extends State<SpeakingWave>
 
   @override
   Widget build(BuildContext context) {
-    final box = widget.size * 1.7;
+    final box = widget.size * 1.8;
     return SizedBox(
       width: box,
       height: box,
