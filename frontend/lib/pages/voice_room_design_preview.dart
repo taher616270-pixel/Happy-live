@@ -706,7 +706,7 @@ Widget _roomActionButton({
           ),
           decoration: const BoxDecoration(
             color: Color(0xFF211936),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(42)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
             border: Border(top: BorderSide(color: Color(0xFF493866), width: 1)),
           ),
           child: Row(
@@ -714,41 +714,44 @@ Widget _roomActionButton({
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 5),
-                  child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
                   child: _EmptySeatAction(
-                  icon: Icons.lock_outline_rounded,
-                  label: 'إغلاق المايك',
-                  onTap: () {},
+                    icon: Icons.lock_outline_rounded,
+                    label: 'إغلاق المايك',
+                    onTap: () {},
                   ),
                 ),
               ),
               Expanded(
-                child: _EmptySeatAction(
-                  icon: Icons.mic_off_rounded,
-                  label: 'ميوت',
-                  onTap: () {},
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: _EmptySeatAction(
+                    icon: Icons.mic_off_rounded,
+                    label: 'ميوت',
+                    onTap: () {},
+                  ),
                 ),
               ),
               Expanded(
-                child: _EmptySeatAction(
-                  icon: Icons.business_center_outlined,
-                  label: 'دعوة',
-                  onTap: () {},
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: _EmptySeatAction(
+                    icon: Icons.business_center_outlined,
+                    label: 'دعوة',
+                    onTap: () {},
+                  ),
                 ),
               ),
               Expanded(
-                child: _EmptySeatAction(
-                  icon: Icons.weekend_outlined,
-                  label: 'اطلع المايك',
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    onTapSeat(seatNumber);
-                  },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: _EmptySeatAction(
+                    icon: Icons.weekend_outlined,
+                    label: 'اطلع المايك',
+                    onTap: () {
+                      Navigator.of(sheetContext).pop();
+                      onTapSeat(seatNumber);
+                    },
+                  ),
                 ),
               ),
             ],
