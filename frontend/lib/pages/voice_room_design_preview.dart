@@ -253,15 +253,27 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          _name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.person_add_alt_1_rounded,
+                              color: Colors.white70,
+                              size: 16,
+                            ),
+                          ],
                         ),
                         Text(
                           'ID: $_id',
