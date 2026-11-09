@@ -526,6 +526,7 @@ export default {
         }
         const roomModerationRoute = url.pathname.match(/^\/api\/v1\/admin\/rooms\/([0-9a-f-]{36})\/moderation$/i);
         if (roomModerationRoute && (request.method === "GET" || request.method === "POST")) {
+          if (!env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
           const roomId = roomModerationRoute[1];
           const room = await env.DB.prepare(
             "SELECT id, owner_user_id, name FROM rooms WHERE id = ? LIMIT 1"
@@ -700,10 +701,11 @@ export default {
             statements.push(env.DB.prepare("DELETE FROM room_bans WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId));
             auditAction = "room.user.unban";
           } else if (action === "mute" || action === "unmute") {
-            const seat = await env.DB.prepare(
-              "SELECT user_id FROM room_seats WHERE room_id = ? AND user_id = ? AND expires_at > ? LIMIT 1"
-            ).bind(roomId, targetUserId, now).first();
-            if (!seat) return json({ error: "user_not_on_active_mic_seat" }, 409, origin, env);
+            const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+            const seatSnapshotResponse = await seatHub.fetch(new Request("https://room-seats.internal/snapshot"));
+            const seatSnapshot = await seatSnapshotResponse.json() as { seats?: Array<{ userId: string }> };
+            const isSeated = (seatSnapshot.seats ?? []).some((seat) => seat.userId === targetUserId);
+            if (!isSeated) return json({ error: "user_not_on_active_mic_seat" }, 409, origin, env);
             const muted = action === "mute" ? 1 : 0;
             statements.push(env.DB.prepare(
               "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, ?, ?) " +
@@ -729,6 +731,21 @@ export default {
             now
           ));
           await env.DB.batch(statements);
+          const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+          if (action === "kick" || action === "ban") {
+            await seatHub.fetch(new Request("https://room-seats.internal/remove-user", {
+              method: "POST",
+              headers: { "x-target-user-id": targetUserId }
+            }));
+          } else if (action === "mute" || action === "unmute") {
+            await seatHub.fetch(new Request("https://room-seats.internal/set-muted", {
+              method: "POST",
+              headers: {
+                "x-target-user-id": targetUserId,
+                "x-is-muted": action === "mute" ? "true" : "false"
+              }
+            }));
+          }
           return json({ ok: true, roomId, targetUserId, action, kickedUntil }, 200, origin, env);
         }
 
