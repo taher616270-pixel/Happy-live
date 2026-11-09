@@ -356,7 +356,7 @@ class _RoomPageState extends State<RoomPage> {
       // This prevents tiny pauses or a single short sound from making the
       // animation flash or disappear immediately.
       _speakerLastHeardAt.removeWhere(
-        (uid, heardAt) => now.difference(heardAt) > const Duration(milliseconds: 4000),
+        (uid, heardAt) => now.difference(heardAt) > const Duration(milliseconds: 7000),
       );
       for (final entry in _speakerLastHeardAt.entries) {
         if (!next.containsKey(entry.key)) {
