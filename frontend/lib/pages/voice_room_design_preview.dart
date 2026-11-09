@@ -667,7 +667,9 @@ Widget _roomActionButton({
               child: Transform.translate(
                 offset: number == 5 ? const Offset(5, 0) : Offset.zero,
                 child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
+                // Do not let the full seat rectangle block taps on listener
+                // avatars painted underneath the transparent/empty seat area.
+                behavior: HitTestBehavior.deferToChild,
                 onTap: null,
                 child: SizedBox(
                   width: 72,
