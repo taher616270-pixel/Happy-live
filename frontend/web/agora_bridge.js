@@ -103,7 +103,7 @@
         (volumes || []).forEach(function (item) {
           const uid = Number(item.uid);
           const level = Math.max(0, Math.min(1, Number(item.level || 0) / 100));
-          if (Number.isFinite(uid) && uid > 0 && level >= 0.015) levels[String(uid)] = level;
+          if (Number.isFinite(uid) && uid > 0 && level >= 0.08) levels[String(uid)] = level;
         });
         currentVolumeLevels = levels;
       });
