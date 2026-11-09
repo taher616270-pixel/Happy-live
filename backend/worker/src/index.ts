@@ -1380,9 +1380,9 @@ export default {
 
     // Eight shared microphone seats. A seat is leased for 45 seconds and renewed by
     // authenticated clients, so abandoned seats disappear after disconnects.
-    const seatRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/seats$/);
+    const seatRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/([^/]+)\\/seats$/);
     if (seatRoute && (request.method === "GET" || request.method === "POST")) {
-      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      if (!env.DB || !env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
@@ -1392,23 +1392,27 @@ export default {
           "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, p.display_name AS owner_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; owner_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
-        // These checks are independent after the room is confirmed; run them concurrently.
-        const [voiceEnabled, activeBan, activeKick] = await Promise.all([
+
+        const [voiceEnabled, activeBan, activeKick, profile, myControl, roomModerator] = await Promise.all([
           isAgoraVoiceEnabled(env.DB, env),
-          env.DB.prepare(
-            "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
-          ).bind(roomId, user.id).first<{ user_id: string }>(),
-          env.DB.prepare(
-            "SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
-          ).bind(roomId, user.id, now).first<{ kicked_until: string }>()
+          env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
+          env.DB.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
+          env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null }>(),
+          env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
+          env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
         ]);
         if (activeKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
 
-        // Keep lease cleanup ahead of the seat read so expired seats are never displayed.
-        const cleanup = voiceEnabled
-          ? [env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND expires_at <= ?").bind(roomId, now)]
-          : [env.DB.prepare("DELETE FROM room_seats WHERE room_id = ?").bind(roomId)];
-        await env.DB.batch(cleanup);
+        const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+        const identityHeaders = new Headers({
+          "x-user-id": user.id,
+          "x-user-name": user.display_name?.trim() || "مستخدم",
+          "x-user-code": user.gabo_id ?? "",
+          "x-avatar-url": profile?.avatar_key ?? "",
+          "x-is-muted": myControl?.is_muted === 1 ? "true" : "false",
+          "x-is-room-owner": room.owner_user_id === user.id ? "true" : "false",
+          "x-is-room-moderator": roomModerator ? "true" : "false"
+        });
 
         if (request.method === "POST") {
           let body: Record<string, unknown>;
@@ -1416,87 +1420,84 @@ export default {
           catch { return json({ error: "invalid_json" }, 400, origin, env); }
 
           if (body.heartbeat === true) {
-            if (voiceEnabled) {
-              const heartbeatExpiry = new Date(Date.now() + 45000).toISOString();
-              await env.DB.prepare(
-                "UPDATE room_seats SET updated_at = ?, expires_at = ? WHERE room_id = ? AND user_id = ?"
-              ).bind(now, heartbeatExpiry, roomId, user.id).run();
-            }
+            const heartbeatHeaders = new Headers(identityHeaders);
+            const heartbeat = await seatHub.fetch(new Request("https://room-seats.internal/heartbeat", {
+              method: "POST", headers: heartbeatHeaders
+            }));
             await env.DB.prepare(
               "UPDATE room_chat_visits SET last_seen_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
             ).bind(now, roomId, user.id).run();
-          } else if (body.seatNumber === null) {
-            await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, user.id).run();
+            if (!heartbeat.ok) return json({ error: "seat_heartbeat_failed" }, 503, origin, env);
           } else {
-            if (!voiceEnabled) {
-              return json({ error: "agora_voice_disabled", message: "الميكروفونات متوقفة حاليًا من إدارة التطبيق" }, 503, origin, env);
-            }
+            if (!voiceEnabled) return json({ error: "agora_voice_disabled", message: "الميكروفونات متوقفة حاليًا من إدارة التطبيق" }, 503, origin, env);
             if (activeBan) return json({ error: "room_banned", message: "أنت محظور من استخدام المايك في هذه الغرفة" }, 403, origin, env);
-            const seatNumber = Number(body.seatNumber);
-            if (!Number.isInteger(seatNumber) || seatNumber < 1 || seatNumber > 8) {
+            const to = body.seatNumber === null ? null : Number(body.seatNumber);
+            if (to !== null && (!Number.isInteger(to) || to < 1 || to > 8)) {
               return json({ error: "invalid_seat_number" }, 400, origin, env);
             }
-            const expiresAt = new Date(Date.now() + 45000).toISOString();
-            try {
-              const result = await env.DB.prepare(
-                "INSERT INTO room_seats (room_id, seat_number, user_id, joined_at, updated_at, expires_at) SELECT ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM room_seats WHERE room_id = ? AND seat_number = ? AND user_id <> ?) AND COALESCE((SELECT setting_value FROM platform_settings WHERE setting_key = 'agora_voice_enabled'), 'true') <> 'false' ON CONFLICT(room_id, user_id) DO UPDATE SET seat_number = excluded.seat_number, updated_at = excluded.updated_at, expires_at = excluded.expires_at WHERE NOT EXISTS (SELECT 1 FROM room_seats WHERE room_id = excluded.room_id AND seat_number = excluded.seat_number AND user_id <> excluded.user_id) RETURNING seat_number"
-              ).bind(roomId, seatNumber, user.id, now, now, expiresAt, roomId, seatNumber, user.id).first<{ seat_number: number }>();
-              if (!result) {
-                return json({ error: "seat_occupied", message: "هذا المايك مشغول" }, 409, origin, env);
-              }
-            } catch {
-              // The unique seat constraint is the final guard against simultaneous claims.
-              return json({ error: "seat_occupied", message: "هذا المايك مشغول" }, 409, origin, env);
+            const moveHeaders = new Headers(identityHeaders);
+            moveHeaders.set("content-type", "application/json");
+            const moveResponse = await seatHub.fetch(new Request("https://room-seats.internal/move", {
+              method: "POST",
+              headers: moveHeaders,
+              body: JSON.stringify({ to, version: Number.isSafeInteger(Number(body.version)) && Number(body.version) > 0 ? Number(body.version) : Date.now() })
+            }));
+            const moveData = await moveResponse.json() as Record<string, unknown>;
+            if (!moveResponse.ok || moveData.ok !== true) {
+              return json({
+                error: moveData.code === "seat_occupied" ? "seat_occupied" : "seat_move_failed",
+                message: moveData.code === "seat_occupied" ? "هذا المايك مشغول" : "تعذر تغيير المايك"
+              }, moveResponse.status, origin, env);
             }
           }
         }
 
-        const [seatsResult, roomModerator, myControl] = await Promise.all([
+        if (!voiceEnabled) {
+          await seatHub.fetch(new Request("https://room-seats.internal/clear", { method: "POST" }));
+        }
+        const [snapshotResponse, audience] = await Promise.all([
+          seatHub.fetch(new Request("https://room-seats.internal/snapshot")),
           env.DB.prepare(
-            "SELECT s.seat_number, s.user_id, s.joined_at, p.display_name, p.gabo_id, p.avatar_key, COALESCE(c.is_muted, 0) AS is_muted, (s.user_id = (SELECT owner_user_id FROM rooms WHERE id = s.room_id)) AS is_room_owner, EXISTS(SELECT 1 FROM room_moderators rm WHERE rm.room_id = s.room_id AND rm.user_id = s.user_id) AS is_room_moderator FROM room_seats s LEFT JOIN profiles p ON p.user_id = s.user_id LEFT JOIN room_user_controls c ON c.room_id = s.room_id AND c.user_id = s.user_id WHERE s.room_id = ? AND s.expires_at > ? ORDER BY s.seat_number"
-          ).bind(roomId, new Date().toISOString()).all<{ seat_number: number; user_id: string; joined_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null; is_muted: number; is_room_owner: number; is_room_moderator: number }>(),
-          env.DB.prepare(
-            "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
-          ).bind(roomId, user.id).first<{ user_id: string }>(),
-          env.DB.prepare(
-            "SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1"
-          ).bind(roomId, user.id).first<{ is_muted: number }>()
+            "SELECT COUNT(DISTINCT v.user_id) AS count FROM room_chat_visits v WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ?"
+          ).bind(roomId, new Date(Date.now() - 45000).toISOString()).first<{ count: number }>()
         ]);
-        const seats = (seatsResult.results ?? []).map((seat) => ({
-          seatNumber: seat.seat_number,
-          userId: seat.user_id,
-          userCode: seat.gabo_id ?? "",
-          isMuted: seat.is_muted === 1,
-          isRoomOwner: seat.is_room_owner === 1,
-          isRoomModerator: seat.is_room_moderator === 1,
-          name: seat.display_name?.trim() || "مستخدم",
-          avatarUrl: seat.avatar_key,
-          joinedAt: seat.joined_at,
-          isMe: seat.user_id === user.id
+        const snapshot = await snapshotResponse.json() as { seats?: Array<Record<string, unknown>>; revision?: number };
+        const seats = (snapshot.seats ?? []).map((seat) => ({
+          seatNumber: seat.seatNumber,
+          userId: seat.userId,
+          userCode: seat.userCode ?? "",
+          uid: seat.uid ?? null,
+          isMuted: seat.isMuted === true,
+          isRoomOwner: seat.isRoomOwner === true,
+          isRoomModerator: seat.isRoomModerator === true,
+          name: seat.name || "مستخدم",
+          avatarUrl: seat.avatarUrl ?? "",
+          joinedAt: null,
+          isMe: seat.userId === user.id
         }));
         const mySeat = seats.find((seat) => seat.userId === user.id)?.seatNumber ?? null;
+
         const audienceCutoff = new Date(Date.now() - 45000).toISOString();
         await env.DB.prepare(
           "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND exited_at IS NULL AND last_seen_at < ?"
         ).bind(now, roomId, audienceCutoff).run();
-        const [audience, audienceUsersResult] = await Promise.all([
-          env.DB.prepare(
-            "SELECT COUNT(DISTINCT v.user_id) AS count FROM room_chat_visits v WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? AND NOT EXISTS (SELECT 1 FROM room_seats s WHERE s.room_id = v.room_id AND s.user_id = v.user_id AND s.expires_at > ?)"
-          ).bind(roomId, audienceCutoff, now).first<{ count: number }>(),
-          env.DB.prepare(
-            "SELECT p.user_id, p.display_name, p.avatar_key, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? AND NOT EXISTS (SELECT 1 FROM room_seats s WHERE s.room_id = v.room_id AND s.user_id = v.user_id AND s.expires_at > ?) GROUP BY p.user_id, p.display_name, p.avatar_key ORDER BY last_seen_at DESC LIMIT 100"
-          ).bind(roomId, audienceCutoff, now).all<{ user_id: string; display_name: string | null; avatar_key: string | null; last_seen_at: string }>()
-        ]);
-        const audienceUsers = (audienceUsersResult.results ?? []).map((visitor) => ({
-          userId: visitor.user_id,
-          name: visitor.display_name?.trim() || "مستخدم",
-          avatarUrl: visitor.avatar_key ?? ""
-        }));
+        const audienceUsersResult = await env.DB.prepare(
+          "SELECT p.user_id, p.display_name, p.avatar_key, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? GROUP BY p.user_id, p.display_name, p.avatar_key ORDER BY last_seen_at DESC LIMIT 100"
+        ).bind(roomId, audienceCutoff).all<{ user_id: string; display_name: string | null; avatar_key: string | null; last_seen_at: string }>();
+        const seatedIds = new Set(seats.map((seat) => String(seat.userId)));
+        const audienceUsers = (audienceUsersResult.results ?? [])
+          .filter((visitor) => !seatedIds.has(visitor.user_id))
+          .map((visitor) => ({
+            userId: visitor.user_id,
+            name: visitor.display_name?.trim() || "مستخدم",
+            avatarUrl: visitor.avatar_key ?? ""
+          }));
         return json({
           ok: true,
-          audienceCount: audience?.count ?? 0,
+          audienceCount: Math.max(0, (audience?.count ?? 0) - seatedIds.size),
           audienceUsers,
           voiceEnabled,
+          seatRevision: snapshot.revision ?? 0,
           room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة" },
           me: { id: user.id, name: user.display_name?.trim() || "مستخدم", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
