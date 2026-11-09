@@ -219,9 +219,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Row(
         children: [
-          Expanded(
+          SizedBox(
+            width: 175,
             child: Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(.25),
                 borderRadius: BorderRadius.circular(14),
@@ -232,8 +233,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: SizedBox(
-                      width: 44,
-                      height: 44,
+                      width: 40,
+                      height: 40,
                       child: avatar.startsWith('http')
                           ? Image.network(avatar, fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => const ColoredBox(
