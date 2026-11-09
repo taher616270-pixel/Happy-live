@@ -1150,6 +1150,7 @@ class _RoomPageState extends State<RoomPage> {
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withOpacity(.55),
       isScrollControlled: true,
+      useRootNavigator: true,
       enableDrag: true,
       builder: (sheetContext) => UserInfoBottomSheet(
         user: user,
