@@ -5,11 +5,14 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:happy_live/models/message.dart';
+import 'package:happy_live/models/seat_state.dart';
 import 'package:happy_live/pages/voice_room_design_preview.dart';
 import 'package:happy_live/services/agora_room_bridge.dart';
+import 'package:happy_live/services/room_seat_socket.dart';
 
 class RoomPage extends StatefulWidget {
   const RoomPage({super.key, required this.room, required this.accessToken});
@@ -69,6 +72,8 @@ class _RoomPageState extends State<RoomPage> {
   Route<dynamic>? _roomRoute;
   bool _isChangingSeat = false;
   final Set<int> _pendingSeatNumbers = <int>{};
+  final SeatStateStore _seatStateStore = SeatStateStore();
+  RoomSeatSocket? _seatSocket;
   bool _agoraSyncInProgress = false;
   bool? _agoraDesiredPublish;
   bool? _agoraJoinedPublish;
@@ -130,6 +135,7 @@ class _RoomPageState extends State<RoomPage> {
       if (!mounted) return;
       unawaited(_refreshSeats());
       unawaited(_startRoomChat());
+      if (kIsWeb) unawaited(_connectRoomSeatSocket());
       unawaited(_joinAgora(publish: false));
     });
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -157,6 +163,8 @@ class _RoomPageState extends State<RoomPage> {
     _chatFallbackTimer?.cancel();
     _chatSubscription?.cancel();
     _chatChannel?.sink.close();
+    unawaited(_seatSocket?.dispose());
+    _seatStateStore.dispose();
     _chatSocketConnected = false;
     if (_chatSessionActive) {
       _chatSessionActive = false;
