@@ -15,6 +15,7 @@ interface RoomSeatSnapshot {
   seats: Record<string, RoomSeatMember>;
   versions: Record<string, number>;
   revision: number;
+  voiceEnabled: boolean;
 }
 
 interface SocketIdentity {
@@ -29,7 +30,7 @@ interface SocketIdentity {
   lastVersion: number;
 }
 
-const EMPTY_SNAPSHOT: RoomSeatSnapshot = { seats: {}, versions: {}, revision: 0 };
+const EMPTY_SNAPSHOT: RoomSeatSnapshot = { seats: {}, versions: {}, revision: 0, voiceEnabled: true };
 const SEAT_LEASE_MS = 45_000;
 
 export class RoomSeatsHub {
@@ -56,6 +57,7 @@ export class RoomSeatsHub {
     if (url.pathname === "/clear" && request.method === "POST") {
       await this.enqueue(async () => {
         this.snapshot.seats = {};
+        this.snapshot.voiceEnabled = false;
         this.snapshot.revision++;
         await this.persist();
         await this.scheduleExpiry();
@@ -92,6 +94,15 @@ export class RoomSeatsHub {
         if (result.ok === true) this.broadcast({ type: "seat_updated", ...this.publicSnapshot() });
       });
       return Response.json(result, { status: result.ok === true ? 200 : result.code === "seat_occupied" ? 409 : 409 });
+    }
+
+    if (url.pathname === "/enable" && request.method === "POST") {
+      await this.enqueue(async () => {
+        this.snapshot.voiceEnabled = true;
+        this.snapshot.revision++;
+        await this.persist();
+      });
+      return Response.json({ ok: true, ...this.publicSnapshot() });
     }
 
     if (url.pathname === "/remove-user" && request.method === "POST") {
@@ -260,6 +271,9 @@ export class RoomSeatsHub {
   }
 
   private async applyMove(identity: SocketIdentity, to: number | null, version: number): Promise<Record<string, unknown>> {
+    if (!this.snapshot.voiceEnabled) {
+      return { type: "ack", ok: false, code: "voice_disabled", version, ...this.publicSnapshot() };
+    }
     if (version <= identity.lastVersion) {
       return { type: "ack", ok: false, code: "stale_version", version, ...this.publicSnapshot() };
     }
