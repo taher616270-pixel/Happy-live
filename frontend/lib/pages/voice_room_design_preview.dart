@@ -887,6 +887,7 @@ Widget _roomActionButton({
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withOpacity(.55),
       isScrollControlled: true,
+      useRootNavigator: true,
       enableDrag: true,
       builder: (sheetContext) => UserInfoBottomSheet(
         user: user,
@@ -942,18 +943,23 @@ Widget _roomActionButton({
                           .toString();
                       return Padding(
                         padding: const EdgeInsetsDirectional.only(end: 7),
-                        child: GestureDetector(
-                          onTap: () => _showUserProfile(context, user),
-                          child: CircleAvatar(
-                            radius: 15,
-                            backgroundColor: Colors.white24,
-                            backgroundImage: avatar.startsWith('http')
-                                ? NetworkImage(avatar)
-                                : null,
-                            child: !avatar.startsWith('http')
-                                ? const Icon(Icons.person,
-                                    color: Colors.white70, size: 18)
-                                : null,
+                        child: Material(
+                          color: Colors.transparent,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () => _showUserProfile(context, user),
+                            child: CircleAvatar(
+                              radius: 15,
+                              backgroundColor: Colors.white24,
+                              backgroundImage: avatar.startsWith('http')
+                                  ? NetworkImage(avatar)
+                                  : null,
+                              child: !avatar.startsWith('http')
+                                  ? const Icon(Icons.person,
+                                      color: Colors.white70, size: 18)
+                                  : null,
+                            ),
                           ),
                         ),
                       );
