@@ -562,6 +562,34 @@ export default {
                 "LEFT JOIN profiles p ON p.user_id = u.id WHERE k.room_id = ? AND k.kicked_until > ? ORDER BY k.kicked_until DESC"
               ).bind(roomId, now).all()
             ]);
+            if (!env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
+            const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+            const seatSnapshotResponse = await seatHub.fetch(new Request("https://room-seats.internal/snapshot"));
+            const seatSnapshot = await seatSnapshotResponse.json() as { seats?: Array<Record<string, unknown>> };
+            const activeSeats = seatSnapshot.seats ?? [];
+            const activeSeatIds = new Set(activeSeats.map((seat) => String(seat.userId ?? "")));
+            let roomMembers: unknown[] = [];
+            if (activeSeats.length > 0) {
+              const ids = activeSeats.map((seat) => String(seat.userId ?? ""));
+              const placeholders = ids.map(() => "?").join(",");
+              const details = await env.DB.prepare(
+                "SELECT u.id, u.email, p.display_name, p.gabo_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id IN (" + placeholders + ")"
+              ).bind(...ids).all<{ id: string; email: string; display_name: string | null; gabo_id: string | null }>();
+              const detailsById = new Map((details.results ?? []).map((row) => [row.id, row]));
+              roomMembers = activeSeats.map((seat) => {
+                const detail = detailsById.get(String(seat.userId ?? ""));
+                return {
+                  user_id: seat.userId,
+                  seat_number: seat.seatNumber,
+                  joined_at: seat.joinedAt ?? null,
+                  email: detail?.email ?? "",
+                  display_name: detail?.display_name ?? seat.name ?? "مستخدم",
+                  gabo_id: detail?.gabo_id ?? seat.userCode ?? "",
+                  is_moderator: seat.isRoomModerator === true ? 1 : 0,
+                  is_muted: seat.isMuted === true ? 1 : 0
+                };
+              });
+            }
             let userResults: unknown[] = [];
             if (q.length >= 2) {
               const found = await env.DB.prepare(
@@ -578,12 +606,15 @@ export default {
                 "(u.email LIKE '%' || ? || '%' OR p.display_name LIKE '%' || ? || '%' OR p.gabo_id LIKE '%' || ? || '%') " +
                 "ORDER BY p.display_name COLLATE NOCASE LIMIT 20"
               ).bind(roomId, roomId, roomId, now, roomId, room.owner_user_id, q, q, q).all();
-              userResults = found.results ?? [];
+              userResults = (found.results ?? []).map((entry) => {
+                const row = entry as Record<string, unknown>;
+                return { ...row, is_seated: activeSeatIds.has(String(row.user_id ?? "")) ? 1 : 0 };
+              });
             }
             return json({
               ok: true,
               room: { id: room.id, name: room.name, ownerUserId: room.owner_user_id },
-              members: members.results ?? [],
+              members: roomMembers,
               moderators: moderators.results ?? [],
               bans: bans.results ?? [],
               kicks: kicks.results ?? [],
