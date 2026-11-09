@@ -4,6 +4,7 @@
   let client = null;
   let localAudioTrack = null;
   let joining = false;
+  let currentVolumeLevels = {};
   let audioUnlockButton = null;
   let audioEventsRegistered = false;
   const remoteAudioTracks = new Map();
@@ -72,6 +73,7 @@
 
   async function leaveCurrent() {
     remoteAudioTracks.clear();
+    currentVolumeLevels = {};
     if (localAudioTrack) {
       try { localAudioTrack.stop(); localAudioTrack.close(); } catch (_) {}
       localAudioTrack = null;
@@ -95,6 +97,16 @@
       client = nextClient;
 
       registerAudioEvents();
+      nextClient.enableAudioVolumeIndicator();
+      nextClient.on("volume-indicator", function (volumes) {
+        const levels = {};
+        (volumes || []).forEach(function (item) {
+          const uid = Number(item.uid);
+          const level = Math.max(0, Math.min(1, Number(item.level || 0) / 100));
+          if (Number.isFinite(uid) && uid > 0 && level >= 0.035) levels[String(uid)] = level;
+        });
+        currentVolumeLevels = levels;
+      });
 
       nextClient.on("user-published", async function (user, mediaType) {
         try {
@@ -206,6 +218,7 @@
     join: join,
     leave: leaveCurrent,
     setMuted: setMuted,
+    getVolumeLevels: function () { return JSON.stringify(currentVolumeLevels); },
     resumeAudio: async function () {
       if (window.AgoraRTC && typeof window.AgoraRTC.resumeAudioContext === "function") {
         await window.AgoraRTC.resumeAudioContext();
