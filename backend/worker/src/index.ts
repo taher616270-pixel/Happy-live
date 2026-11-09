@@ -388,6 +388,13 @@ export default {
             now
           ));
           await env.DB.batch(statements);
+          if (!body.enabled && env.ROOM_SEATS) {
+            const activeRooms = await env.DB.prepare("SELECT id FROM rooms WHERE status = 'active'").all<{ id: string }>();
+            await Promise.all((activeRooms.results ?? []).map((room) => {
+              const stub = env.ROOM_SEATS!.get(env.ROOM_SEATS!.idFromName(room.id));
+              return stub.fetch(new Request("https://room-seats.internal/clear", { method: "POST" }));
+            }));
+          }
           return json({ ok: true, voiceEnabled: body.enabled }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/me" && request.method === "GET") {
