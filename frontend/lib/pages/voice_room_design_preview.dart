@@ -262,7 +262,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 15,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
