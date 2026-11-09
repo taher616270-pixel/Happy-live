@@ -570,12 +570,11 @@ Widget _roomActionButton({
                             }
                           }
                         : null),
-                child: Transform.translate(
-                  offset: number > 4 ? const Offset(0, 5) : Offset.zero,
-                  transformHitTests: false,
-                  child: SizedBox(
-                    width: 72,
-                    height: 72,
+                child: SizedBox.square(
+                  dimension: 72,
+                  child: Transform.translate(
+                    offset: number > 4 ? const Offset(0, 5) : Offset.zero,
+                    transformHitTests: false,
                     child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -682,7 +681,7 @@ Widget _roomActionButton({
                   ),
                 ),
                     ],
-                  ),
+                    ),
                   ),
                 ),
               ),
