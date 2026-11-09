@@ -48,13 +48,13 @@ class AgoraRoomBridge {
       ));
       await engine.enableAudio();
       await engine.enableAudioVolumeIndication(interval: 180, smooth: 3, reportVad: true);
-      await engine.setClientRole(role: publish ? ClientRoleType.clientRoleBroadcaster : ClientRoleType.clientRoleAudience);
+      await engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
       await engine.joinChannel(
         token: token, channelId: channel, uid: uid,
         options: ChannelMediaOptions(
           autoSubscribeAudio: true,
           publishMicrophoneTrack: publish,
-          clientRoleType: publish ? ClientRoleType.clientRoleBroadcaster : ClientRoleType.clientRoleAudience,
+          clientRoleType: ClientRoleType.clientRoleBroadcaster,
         ),
       );
       _joined = true;
@@ -73,6 +73,24 @@ class AgoraRoomBridge {
     if (engine == null) return;
     try { await engine.leaveChannel(); } catch (_) {}
     try { await engine.release(); } catch (_) {}
+  }
+
+  static Future<void> setPublishing(bool enabled, {String token = ''}) async {
+    final engine = _engine;
+    if (engine == null || !_joined) return;
+    if (enabled) {
+      final permission = await Permission.microphone.request();
+      if (!permission.isGranted) throw StateError('Microphone permission was not granted.');
+    }
+    if (token.isNotEmpty) await engine.renewToken(token);
+    await engine.updateChannelMediaOptions(
+      ChannelMediaOptions(
+        autoSubscribeAudio: true,
+        publishMicrophoneTrack: enabled,
+        clientRoleType: ClientRoleType.clientRoleBroadcaster,
+      ),
+    );
+    await engine.muteLocalAudioStream(!enabled || _muted);
   }
 
   static Future<void> setMuted(bool muted) async {
