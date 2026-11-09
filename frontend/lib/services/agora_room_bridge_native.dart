@@ -24,7 +24,7 @@ class AgoraRoomBridge {
         onAudioVolumeIndication: (connection, speakers, totalVolume) {
           _volumeLevels.clear();
           for (final speaker in speakers) {
-            final level = (speaker.volume / 255.0).clamp(0.0, 1.0);
+            final level = (speaker.volume / 255.0).clamp(0.0, 1.0).toDouble();
             if (speaker.uid > 0 && level >= 0.035) _volumeLevels[speaker.uid] = level;
           }
         },
