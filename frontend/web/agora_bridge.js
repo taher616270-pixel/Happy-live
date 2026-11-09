@@ -9,6 +9,39 @@
   let audioEventsRegistered = false;
   const remoteAudioTracks = new Map();
 
+  function sampleVolumeLevels() {
+    if (!client) {
+      currentVolumeLevels = {};
+      return;
+    }
+
+    const levels = {};
+    function readTrack(uid, track) {
+      if (!track || typeof track.getVolumeLevel !== "function") return;
+      try {
+        const value = Number(track.getVolumeLevel());
+        if (!Number.isFinite(value)) return;
+        const level = Math.max(0, Math.min(1, value));
+        if (Number(uid) > 0 && level >= 0.02) {
+          levels[String(uid)] = level;
+        }
+      } catch (_) {
+        // A track can be replaced while Agora is updating it.
+      }
+    }
+
+    if (localAudioTrack && client.uid != null) {
+      readTrack(client.uid, localAudioTrack);
+    }
+    remoteAudioTracks.forEach(function (track, uid) {
+      readTrack(uid, track);
+    });
+    currentVolumeLevels = levels;
+  }
+
+  // 10 samples per second; Flutter reads this lightweight snapshot every 160ms.
+  window.setInterval(sampleVolumeLevels, 100);
+
   function removeAudioUnlock() {
     if (!audioUnlockButton) return;
     audioUnlockButton.remove();
@@ -97,16 +130,9 @@
       client = nextClient;
 
       registerAudioEvents();
-      nextClient.enableAudioVolumeIndicator();
-      nextClient.on("volume-indicator", function (volumes) {
-        const levels = {};
-        (volumes || []).forEach(function (item) {
-          const uid = Number(item.uid);
-          const level = Math.max(0, Math.min(1, Number(item.level || 0) / 100));
-          if (Number.isFinite(uid) && uid > 0 && level >= 0.08) levels[String(uid)] = level;
-        });
-        currentVolumeLevels = levels;
-      });
+      // The SDK volume-indicator event is emitted only about every two seconds.
+      // Read each subscribed audio track directly so the room's speaking wave
+      // responds continuously instead of flashing once per indicator event.
 
       nextClient.on("user-published", async function (user, mediaType) {
         try {
