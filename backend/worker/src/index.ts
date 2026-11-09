@@ -1555,7 +1555,7 @@ export default {
             const moveResponse = await seatHub.fetch(new Request("https://room-seats.internal/move", {
               method: "POST",
               headers: moveHeaders,
-              body: JSON.stringify({ to, version: Number.isSafeInteger(Number(body.version)) && Number(body.version) > 0 ? Number(body.version) : Date.now() })
+              body: JSON.stringify({ to, version: Number.isSafeInteger(Number(body.version)) && Number(body.version) > 0 ? Number(body.version) : null })
             }));
             const moveData = await moveResponse.json() as Record<string, unknown>;
             if (!moveResponse.ok || moveData.ok !== true) {
