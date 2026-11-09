@@ -1944,7 +1944,11 @@ class _RoomPageState extends State<RoomPage> {
                       : Icon(Icons.add_rounded, color: _gold.withOpacity(0.9), size: micSize * 0.46),
                 ),
               ),
-              Positioned.fill(
+              Positioned(
+                left: -12,
+                top: -12,
+                right: -12,
+                bottom: -12,
                 child: IgnorePointer(
                   child: AnimatedOpacity(
                     opacity: isSpeaking ? 1 : 0,
