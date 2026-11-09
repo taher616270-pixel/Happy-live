@@ -1333,13 +1333,6 @@ class _RoomPageState extends State<RoomPage> {
             clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
-              if (mine)
-                Container(
-                  width: micSize + 12, height: micSize + 12,
-                  decoration: BoxDecoration(shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0x99FFE0A0), width: 1.4),
-                    boxShadow: const [BoxShadow(color: Color(0x66E8C477), blurRadius: 15, spreadRadius: 1)]),
-                ),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 260),
                 width: micSize, height: micSize,
