@@ -494,7 +494,6 @@ Widget _roomActionButton({
         final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
         final muted = seat?['isMuted'] == true;
         final locked = seat?['isLocked'] == true || seat?['locked'] == true;
-        final isAndroid = Theme.of(context).platform == TargetPlatform.android;
         // Keep the lower row's hit-test area separate from the upper row.
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
