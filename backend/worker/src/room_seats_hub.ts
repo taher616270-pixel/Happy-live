@@ -128,6 +128,22 @@ export class RoomSeatsHub {
       return Response.json({ ok: true, ...this.publicSnapshot() });
     }
 
+    if (url.pathname === "/set-moderator" && request.method === "POST") {
+      const targetUserId = request.headers.get("x-target-user-id") ?? "";
+      const moderator = request.headers.get("x-is-moderator") === "true";
+      if (!targetUserId) return Response.json({ error: "target_required" }, { status: 400 });
+      await this.enqueue(async () => {
+        const member = Object.values(this.snapshot.seats).find((seat) => seat.userId === targetUserId);
+        if (member) {
+          member.isRoomModerator = moderator;
+          this.snapshot.revision++;
+          await this.persist();
+          this.broadcast({ type: "seat_updated", ...this.publicSnapshot() });
+        }
+      });
+      return Response.json({ ok: true, ...this.publicSnapshot() });
+    }
+
     if (url.pathname === "/set-muted" && request.method === "POST") {
       const targetUserId = request.headers.get("x-target-user-id") ?? "";
       const muted = request.headers.get("x-is-muted") === "true";
