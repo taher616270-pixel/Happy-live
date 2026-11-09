@@ -8,6 +8,7 @@ class SeatState {
     this.name = '',
     this.userCode = '',
     this.avatarUrl = '',
+    this.countryName = '',
     this.uid,
     this.isMuted = false,
     this.isLocked = false,
@@ -22,6 +23,7 @@ class SeatState {
   final String name;
   final String userCode;
   final String avatarUrl;
+  final String countryName;
   final int? uid;
   final bool isMuted;
   final bool isLocked;
@@ -42,6 +44,7 @@ class SeatState {
       name: (map['name'] ?? 'مستخدم').toString(),
       userCode: code,
       avatarUrl: (map['avatarUrl'] ?? map['avatar'] ?? '').toString(),
+      countryName: (map['countryName'] ?? map['country_name'] ?? map['country'] ?? '').toString(),
       uid: map['uid'] is num ? (map['uid'] as num).toInt() : int.tryParse(code),
       isMuted: map['isMuted'] == true,
       isLocked: map['isLocked'] == true || map['locked'] == true,
@@ -57,6 +60,7 @@ class SeatState {
     'name': name,
     'userCode': userCode,
     'avatarUrl': avatarUrl,
+    'countryName': countryName,
     'uid': uid,
     'isMuted': isMuted,
     'isLocked': isLocked,
@@ -72,6 +76,7 @@ class SeatState {
     name: name,
     userCode: userCode,
     avatarUrl: avatarUrl,
+    countryName: countryName,
     uid: uid,
     isMuted: isMuted,
     isLocked: isLocked,
@@ -186,6 +191,7 @@ class SeatStateStore extends ChangeNotifier {
       name: mine.name,
       userCode: mine.userCode,
       avatarUrl: mine.avatarUrl,
+      countryName: mine.countryName,
       uid: mine.uid,
       isMuted: mine.isMuted,
       isRoomOwner: mine.isRoomOwner,
