@@ -223,17 +223,25 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             width: (MediaQuery.sizeOf(context).width * .60).clamp(175.0, 235.0),
             child: Container(
               padding: const EdgeInsetsDirectional.only(start: 0, end: 6, top: 4, bottom: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(.20),
-                borderRadius: const BorderRadiusDirectional.only(
-                  topStart: Radius.circular(8),
-                  bottomStart: Radius.circular(8),
-                  topEnd: Radius.circular(22),
-                  bottomEnd: Radius.circular(22),
-                ),
-
-              ),
-              child: Row(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Transform.translate(
+                      offset: const Offset(2, 0),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(.20),
+                          borderRadius: const BorderRadiusDirectional.only(
+                            topStart: Radius.circular(8),
+                            bottomStart: Radius.circular(8),
+                            topEnd: Radius.circular(22),
+                            bottomEnd: Radius.circular(22),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Row(
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
@@ -327,6 +335,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         ),
                       ],
                     ),
+                  ),
                   ),
                 ],
               ),
