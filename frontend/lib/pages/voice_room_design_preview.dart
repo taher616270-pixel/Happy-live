@@ -238,8 +238,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: SizedBox(
-                      width: 40,
-                      height: 40,
+                      width: 38,
+                      height: 38,
                       child: avatar.startsWith('http')
                           ? Image.network(avatar, fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => const ColoredBox(
