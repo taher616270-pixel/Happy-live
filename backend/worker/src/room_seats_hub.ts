@@ -139,6 +139,9 @@ export class RoomSeatsHub {
       const moderator = request.headers.get("x-is-moderator") === "true";
       if (!targetUserId) return Response.json({ error: "target_required" }, { status: 400 });
       await this.enqueue(async () => {
+        for (const identity of this.sockets.values()) {
+          if (identity.userId === targetUserId) identity.isRoomModerator = moderator;
+        }
         const member = Object.values(this.snapshot.seats).find((seat) => seat.userId === targetUserId);
         if (member) {
           member.isRoomModerator = moderator;
@@ -155,6 +158,9 @@ export class RoomSeatsHub {
       const muted = request.headers.get("x-is-muted") === "true";
       if (!targetUserId) return Response.json({ error: "target_required" }, { status: 400 });
       await this.enqueue(async () => {
+        for (const identity of this.sockets.values()) {
+          if (identity.userId === targetUserId) identity.isMuted = muted;
+        }
         const member = Object.values(this.snapshot.seats).find((seat) => seat.userId === targetUserId);
         if (member) {
           member.isMuted = muted;
