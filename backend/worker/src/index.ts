@@ -785,6 +785,10 @@ export default {
             env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, 'room', ?, ?, ?)")
               .bind(crypto.randomUUID(), null, status === "closed" ? "room.close" : "room.reopen", targetId, JSON.stringify({ status, adminUsername: actor.username }), now)
           ]);
+          if (status === "closed" && env.ROOM_SEATS) {
+            const stub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(targetId));
+            await stub.fetch(new Request("https://room-seats.internal/clear", { method: "POST" }));
+          }
           return json({ ok: true, roomId: targetId, status }, 200, origin, env);
         }
         return json({ error: "admin_route_not_found" }, 404, origin, env);
