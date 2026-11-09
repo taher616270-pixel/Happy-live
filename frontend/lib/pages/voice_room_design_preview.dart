@@ -483,7 +483,7 @@ Widget _roomActionButton({
       itemCount: 8,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
-        mainAxisSpacing: Theme.of(context).platform == TargetPlatform.android ? 27 : 41,
+        mainAxisSpacing: 7,
         crossAxisSpacing: 4,
         childAspectRatio: .88,
       ),
@@ -503,7 +503,9 @@ Widget _roomActionButton({
         final seatOffset = isAndroid
             ? (number >= 5 ? -25.0 : -5.0)
             : (number >= 5 ? -34.0 : 0.0);
-        return GestureDetector(
+        return Transform.translate(
+          offset: Offset(0, seatOffset),
+          child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: occupied
               ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
@@ -592,6 +594,7 @@ Widget _roomActionButton({
                   ),
                 ),
             ],
+          ),
           ),
           ),
         );
