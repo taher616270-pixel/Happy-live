@@ -523,12 +523,7 @@ Widget _roomActionButton({
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: occupied
-                    ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
-                    : (!locked && !isChangingSeat ? () => onTapSeat(number) : null),
-                child: Stack(
+              Stack(
                 clipBehavior: Clip.none,
                 children: [
                   _GoldenVoiceWave(
@@ -559,22 +554,36 @@ Widget _roomActionButton({
                             ),
                     ),
                   ),
+                  // The tap target is clipped to the actual 48px mic circle.
+                  // Each seat owns its own hit area; ripple and labels never receive taps.
+                  ClipOval(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: occupied
+                          ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
+                          : (!locked && (kIsWeb || !isChangingSeat)
+                              ? () => onTapSeat(number)
+                              : null),
+                      child: const SizedBox(width: 48, height: 48),
+                    ),
+                  ),
                   if (muted)
                     Positioned(
                       bottom: -2,
                       left: -2,
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                        child: Icon(
-                          muted ? Icons.mic_off_rounded : Icons.mic_rounded,
-                          size: 11,
-                          color: muted ? const Color(0xFFE91E63) : const Color(0xFF319B70),
+                      child: IgnorePointer(
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                          child: Icon(
+                            muted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                            size: 11,
+                            color: muted ? const Color(0xFFE91E63) : const Color(0xFF319B70),
+                          ),
                         ),
                       ),
                     ),
                 ],
-              ),
               ),
               const SizedBox(height: 4),
               if (occupied)
