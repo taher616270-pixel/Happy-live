@@ -4,7 +4,8 @@ The active backend is a TypeScript Cloudflare Worker. It is designed to keep the
 
 ## Components
 - Workers: versioned JSON API.
-- D1: relational SQLite database.
+- D1: relational SQLite database for accounts, moderation, room metadata and background records.
+- Durable Objects: one `RoomSeatsHub` per room for the authoritative eight-seat state and realtime WebSocket moves; `RoomChatHub` remains dedicated to chat.
 - R2: user-uploaded media and gift assets.
 - Pages: Flutter Web and the separate admin frontend.
 
@@ -13,10 +14,13 @@ Free allowances and product limits can change. This architecture is intended to 
 ## Current implementation
 - `GET /api/v1`: API metadata.
 - `GET /api/v1/health`: checks the D1 binding and reports media binding status.
+- Authenticated room seat snapshots and compatibility seat mutations route through `ROOM_SEATS`; WebSocket moves use `GET /api/v1/rooms/{roomId}/seat-stream`.
+- Seat changes are serialized and committed by one Durable Object per room. D1 is not read or written for each WebSocket move.
+- Agora publisher privilege is issued only when the Durable Object confirms that the authenticated user owns a seat; the client renews the token and toggles publication without leaving the channel.
 - CORS allowlist for local development and the initial Pages hostname; additional deployed origins are configured with `ALLOWED_ORIGINS`.
-- Initial D1 migration for accounts, hashed sessions, password-reset OTP records, profiles, admin roles and audit logs.
+- D1 migrations retain account, session, profile, moderation and room metadata records.
 
-No registration, login, OTP delivery, profile mutation, wallet, gifts, or room endpoints are implemented yet. The health route is not an authentication system.
+See [ROOM_SEATS_PROTOCOL.md](./ROOM_SEATS_PROTOCOL.md) for the WebSocket JSON contract and latency test procedure.
 
 ## Cloudflare setup (one-time)
 1. The D1 database `happy-live-db` has already been created in the Cloudflare account in APAC, and the initial schema has been applied and verified. Its database ID is already in `wrangler.toml`.
