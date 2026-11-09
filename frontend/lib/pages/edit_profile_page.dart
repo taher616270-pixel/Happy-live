@@ -218,7 +218,14 @@ String _countryFlag(String name) {
     'Qatar': '🇶🇦', 'Bahrain': '🇧🇭', 'Oman': '🇴🇲', 'Iraq': '🇮🇶',
     'Yemen': '🇾🇪', 'Egypt': '🇪🇬', 'Jordan': '🇯🇴',
   };
-  return legacy[name] ?? '🌐';
+  return legacy[name] ?? '';
+}
+
+String countryFlagForProfileName(String name) {
+  final value = name.trim();
+  if (value.isEmpty) return '';
+  if (value == 'الجنوب العربي') return 'SOUTH_ARABIA';
+  return _countryFlag(value);
 }
 
 String _countryArabicName(String name) {
