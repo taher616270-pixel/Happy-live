@@ -343,7 +343,7 @@ class _RoomPageState extends State<RoomPage> {
       final raw = await AgoraRoomBridge.getVolumeLevels();
       final next = <int, double>{};
       raw.forEach((uid, level) {
-        if (level >= 0.055) next[uid] = level.clamp(0.0, 1.0).toDouble();
+        if (level >= 0.02) next[uid] = level.clamp(0.0, 1.0).toDouble();
       });
       var changed = next.length != _speakerLevels.length;
       if (!changed) {
@@ -1887,7 +1887,7 @@ class _RoomPageState extends State<RoomPage> {
     final isMuted = seat?['isMuted'] == true;
     final speakerUid = int.tryParse((seat?['userCode'] ?? '').toString());
     final voiceLevel = speakerUid == null ? 0.0 : (_speakerLevels[speakerUid] ?? 0.0);
-    final isSpeaking = occupied && !isMuted && voiceLevel >= 0.055;
+    final isSpeaking = occupied && !isMuted && voiceLevel >= 0.02;
     return InkWell(
       onTap: (!occupied || mine) && !_isChangingSeat ? () => _selectSeat(number) : null,
       borderRadius: BorderRadius.circular(18),
