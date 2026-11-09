@@ -247,7 +247,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     child: SizedBox(
                       width: 38,
-                      height: 38,
+                      height: 37,
                       child: avatar.startsWith('http')
                           ? Image.network(avatar, fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => const ColoredBox(
