@@ -1095,6 +1095,7 @@ export default {
           "x-user-name": user.display_name?.trim() || "مستخدم",
           "x-user-code": user.gabo_id ?? "",
           "x-avatar-url": profile?.avatar_key ?? "",
+          "x-country-name": profile?.country_name ?? "",
           "x-is-muted": control?.is_muted === 1 ? "true" : "false",
           "x-is-room-owner": room.owner_user_id === user.id ? "true" : "false",
           "x-is-room-moderator": moderator ? "true" : "false"
@@ -1513,7 +1514,7 @@ export default {
           env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
           env.DB.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
           env.DB.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
-          env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null }>(),
+          env.DB.prepare("SELECT avatar_key, country_name FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null; country_name: string | null }>(),
           env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
           env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
         ]);
@@ -1528,6 +1529,7 @@ export default {
           "x-user-name": user.display_name?.trim() || "مستخدم",
           "x-user-code": user.gabo_id ?? "",
           "x-avatar-url": profile?.avatar_key ?? "",
+          "x-country-name": profile?.country_name ?? "",
           "x-is-muted": myControl?.is_muted === 1 ? "true" : "false",
           "x-is-room-owner": room.owner_user_id === user.id ? "true" : "false",
           "x-is-room-moderator": roomModerator ? "true" : "false"
@@ -1575,6 +1577,7 @@ export default {
                 isRoomModerator: seat.isRoomModerator === true,
                 name: seat.name || "مستخدم",
                 avatarUrl: seat.avatarUrl ?? "",
+                countryName: seat.countryName ?? "",
                 isMe: seat.userId === user.id
               }));
               return json({
