@@ -79,8 +79,8 @@ class RoomSeatSocket {
     }
   }
 
-  void sendMove({required int? from, required int to, required int version}) {
-    send(<String, dynamic>{
+  bool sendMove({required int? from, required int to, required int version}) {
+    return send(<String, dynamic>{
       'type': 'move_seat',
       'from': from,
       'to': to,
@@ -88,15 +88,17 @@ class RoomSeatSocket {
     });
   }
 
-  void send(Map<String, dynamic> message) {
+  bool send(Map<String, dynamic> message) {
     if (!_connected || _channel == null) {
       onEvent(<String, dynamic>{'type': 'socket_unavailable'});
-      return;
+      return false;
     }
     try {
       _channel!.sink.add(jsonEncode(message));
+      return true;
     } catch (_) {
       _handleClosed();
+      return false;
     }
   }
 
