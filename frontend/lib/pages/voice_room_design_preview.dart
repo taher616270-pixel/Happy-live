@@ -269,8 +269,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Container(
-                              width: 72,
-                              height: 48,
+                              width: 56,
+                              height: 38,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(30),
                                 gradient: const LinearGradient(
@@ -297,7 +297,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               child: const Icon(
                                 Icons.add,
                                 color: Colors.white,
-                                size: 32,
+                                size: 25,
                                 weight: 800,
                               ),
                             ),
