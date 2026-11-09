@@ -1072,7 +1072,7 @@ export default {
           env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null }>(),
           env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
           env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
-        
+        ]);
         if (kick || controlKick) return json({ error: "room_kicked" }, 403, origin, env);
         if (ban) return json({ error: "room_banned" }, 403, origin, env);
         if (!voiceEnabled) return json({ error: "agora_voice_disabled" }, 503, origin, env);
@@ -1496,8 +1496,8 @@ export default {
           env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null }>(),
           env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
           env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
-        
-        if (activeKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
+        ]);
+        if (activeKick || controlKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
 
         const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
         if (voiceEnabled) {
