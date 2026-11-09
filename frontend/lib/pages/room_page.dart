@@ -1112,7 +1112,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _chatAvatar(String avatar, String name, {double size = 34, VoidCallback? onTap}) {
-    final hasImage = avatar.startsWith('https://');
+    final hasImage = avatar.startsWith('http://') || avatar.startsWith('https://');
     final avatarWidget = CircleAvatar(
       radius: size / 2,
       backgroundColor: const Color(0xFF46304F),
@@ -1120,13 +1120,18 @@ class _RoomPageState extends State<RoomPage> {
       child: hasImage ? null : Text(name.isEmpty ? '؟' : name.characters.first, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
     );
     if (onTap == null) return avatarWidget;
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
+    return SizedBox(
+      width: size,
+      height: size,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: avatarWidget,
+        child: Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: avatarWidget,
+        ),
       ),
     );
   }
