@@ -874,9 +874,9 @@ class _RoomPageState extends State<RoomPage> {
     return Message(
       id: (item['id'] ?? '').toString(),
       type: resolvedType,
-      senderId: (item['userId'] ?? item['senderId'] ?? '').toString(),
-      senderName: (item['name'] ?? item['senderName'] ?? 'مستخدم').toString(),
-      senderAvatar: (item['senderAvatar'] ?? '').toString(),
+      senderId: (item['userId'] ?? item['senderId'] ?? item['user_id'] ?? item['sender_id'] ?? '').toString(),
+      senderName: (item['name'] ?? item['senderName'] ?? item['displayName'] ?? 'مستخدم').toString(),
+      senderAvatar: (item['senderAvatar'] ?? item['senderAvatarUrl'] ?? item['avatarUrl'] ?? item['avatar'] ?? item['photoUrl'] ?? item['photo_url'] ?? '').toString(),
       text: messageText,
       createdAt: DateTime.tryParse((item['createdAt'] ?? '').toString()) ?? DateTime.now(),
     );
@@ -1132,7 +1132,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _showChatUserProfile(Message message) {
-    if (!mounted || message.senderId.isEmpty) return;
+    if (!mounted) return;
     final matchingSeat = _seats.where((seat) =>
       (seat['userId'] ?? '').toString() == message.senderId).toList();
     final isMe = matchingSeat.any((seat) => seat['isMe'] == true);
@@ -1207,14 +1207,12 @@ class _RoomPageState extends State<RoomPage> {
                 ),
               ),
               const SizedBox(width: 6),
-              if (!isSystem)
+              if (message.senderId.isNotEmpty)
                 _chatAvatar(
                   message.senderAvatar,
                   message.senderName,
                   size: 30,
-                  onTap: message.senderId.isEmpty
-                      ? null
-                      : () => _showChatUserProfile(message),
+                  onTap: () => _showChatUserProfile(message),
                 )
               else
                 Container(
