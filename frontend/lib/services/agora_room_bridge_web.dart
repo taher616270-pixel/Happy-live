@@ -7,6 +7,8 @@ external JSPromise<JSAny?> _agoraJoin(JSString appId, JSString channel, JSString
 external JSPromise<JSAny?> _agoraLeave();
 @JS('window.happyLiveAgora.setMuted')
 external JSPromise<JSAny?> _agoraSetMuted(JSBoolean muted);
+@JS('window.happyLiveAgora.setPublishing')
+external JSPromise<JSAny?> _agoraSetPublishing(JSBoolean enabled, JSString token);
 @JS('window.happyLiveAgora.resumeAudio')
 external JSPromise<JSAny?> _agoraResumeAudio();
 @JS('window.happyLiveAgora.getVolumeLevels')
@@ -18,6 +20,9 @@ class AgoraRoomBridge {
   }
   static Future<void> leave() async { try { await _agoraLeave().toDart; } catch (_) {} }
   static Future<void> setMuted(bool muted) async { try { await _agoraSetMuted(muted.toJS).toDart; } catch (_) {} }
+  static Future<void> setPublishing(bool enabled, {String token = ''}) async {
+    await _agoraSetPublishing(enabled.toJS, token.toJS).toDart;
+  }
   static Future<Map<int, double>> getVolumeLevels() async {
     try {
       final decoded = jsonDecode(_agoraGetVolumeLevels().toDart);
