@@ -74,7 +74,10 @@ export class RoomSeatsHub {
       try { body = await request.json() as Record<string, unknown>; }
       catch { return Response.json({ error: "invalid_json" }, { status: 400 }); }
       const to = body.to === null ? null : Number(body.to);
-      const version = Number(body.version);
+      const requestedVersion = Number(body.version);
+      const version = Number.isSafeInteger(requestedVersion) && requestedVersion > 0
+        ? requestedVersion
+        : Math.max(Date.now() * 1000, (this.snapshot.versions[userId] ?? 0) + 1);
       if ((to !== null && (!Number.isInteger(to) || to < 1 || to > 8)) || !Number.isSafeInteger(version) || version < 1) {
         return Response.json({ error: "invalid_move" }, { status: 400 });
       }
@@ -292,11 +295,13 @@ export class RoomSeatsHub {
     if (!this.snapshot.voiceEnabled) {
       return { type: "ack", ok: false, code: "voice_disabled", version, ...this.publicSnapshot() };
     }
-    if (version <= identity.lastVersion) {
+    const lastVersion = Math.max(identity.lastVersion, this.snapshot.versions[identity.userId] ?? 0);
+    if (version <= lastVersion) {
       return { type: "ack", ok: false, code: "stale_version", version, ...this.publicSnapshot() };
     }
 
     identity.lastVersion = version;
+    this.snapshot.versions[identity.userId] = version;
     const current = Object.values(this.snapshot.seats).find((seat) => seat.userId === identity.userId);
     if (to !== null) {
       const occupant = this.snapshot.seats[String(to)];
