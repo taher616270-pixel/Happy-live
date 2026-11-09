@@ -274,7 +274,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 width: 44,
                                 height: 30,
                                 decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(30),
+                                borderRadius: BorderRadius.circular(14),
                                 gradient: const LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
