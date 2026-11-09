@@ -1162,6 +1162,9 @@ export default {
         const activeKick = await env.DB.prepare(
           "SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
         ).bind(roomId, user.id, new Date().toISOString()).first<{ kicked_until: string }>();
+        const controlKick = await env.DB.prepare(
+          "SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
+        ).bind(roomId, user.id, new Date().toISOString()).first<{ kicked_until: string }>();
         if (activeKick || controlKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
         let body: Record<string, unknown>;
         try { body = await request.json() as Record<string, unknown>; }
