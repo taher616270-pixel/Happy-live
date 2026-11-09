@@ -84,7 +84,10 @@ export class RoomSeatsHub {
         isRoomModerator: request.headers.get("x-is-room-moderator") === "true"
       };
       let result: Record<string, unknown> = {};
-      await this.enqueue(async () => { result = await this.applyMove(identity, to, version); });
+      await this.enqueue(async () => {
+        result = await this.applyMove(identity, to, version);
+        if (result.ok === true) this.broadcast({ type: "seat_updated", ...this.publicSnapshot() });
+      });
       return Response.json(result, { status: result.ok === true ? 200 : result.code === "seat_occupied" ? 409 : 409 });
     }
 
