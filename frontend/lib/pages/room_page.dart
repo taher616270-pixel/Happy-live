@@ -1226,7 +1226,7 @@ class _RoomPageState extends State<RoomPage> {
       child: GestureDetector(
         onTap: message.type == 'announcement' && _isRoomOwner ? _editRoomAnnouncement : null,
         child: Padding(
-          padding: const EdgeInsetsDirectional.only(end: 50, bottom: 8),
+          padding: const EdgeInsetsDirectional.only(end: 50, bottom: 14),
           child: hasSender && message.type != 'announcement'
               ? Row(
                   mainAxisSize: MainAxisSize.max,
