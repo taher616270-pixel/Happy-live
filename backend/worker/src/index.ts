@@ -1311,7 +1311,7 @@ export default {
     // Room moderation: room owners and explicitly assigned room moderators only.
     const moderationRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/moderation$/);
     if (moderationRoute && request.method === "POST") {
-      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      if (!env.DB || !env.ROOM_SEATS) return json({ error: "room_moderation_unavailable" }, 503, origin, env);
       try {
         const actor = await authenticatedUser(request, env.DB);
         if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
@@ -1341,6 +1341,11 @@ export default {
           await env.DB.prepare(
             "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, NULL, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = NULL, updated_at = excluded.updated_at"
           ).bind(roomId, actor.id, nextMuted, new Date().toISOString()).run();
+          const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+          await seatHub.fetch(new Request("https://room-seats.internal/set-muted", {
+            method: "POST",
+            headers: { "x-target-user-id": actor.id, "x-is-muted": nextMuted === 1 ? "true" : "false" }
+          }));
           return json({ ok: true, isMuted: nextMuted === 1 }, 200, origin, env);
         }
         if (!canModerate) return json({ error: "room_moderator_required", message: "هذه الصلاحية لمالك الغرفة ومشرفيها فقط" }, 403, origin, env);
@@ -1372,10 +1377,20 @@ export default {
           await env.DB.prepare(
             "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = CASE WHEN excluded.is_muted = 1 THEN excluded.muted_by ELSE NULL END, updated_at = excluded.updated_at"
           ).bind(roomId, targetUserId, nextMuted, nextMuted === 1 ? actor.id : null, now).run();
+          const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+          await seatHub.fetch(new Request("https://room-seats.internal/set-muted", {
+            method: "POST",
+            headers: { "x-target-user-id": targetUserId, "x-is-muted": nextMuted === 1 ? "true" : "false" }
+          }));
           return json({ ok: true, isMuted: nextMuted === 1 }, 200, origin, env);
         }
         if (action === "kick" || action === "ban" || action === "lower") {
           await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId).run();
+          const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+          await seatHub.fetch(new Request("https://room-seats.internal/remove-user", {
+            method: "POST",
+            headers: { "x-target-user-id": targetUserId }
+          }));
           if (action === "kick") {
             const kickedUntil = new Date(Date.now() + 60000).toISOString();
             await env.DB.prepare(
