@@ -478,6 +478,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       'اختر البلد', style: TextStyle(color: _ink, fontSize: 18, fontWeight: FontWeight.w800)))),
                   Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: TextField(
+                      style: const TextStyle(color: Colors.black),
+                      cursorColor: Colors.black,
                       onChanged: (value) => setSheetState(() => query = value),
                       decoration: InputDecoration(
                         hintText: 'ابحث عن دولة', prefixIcon: const Icon(Icons.search),
