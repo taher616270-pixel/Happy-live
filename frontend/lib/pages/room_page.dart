@@ -1932,7 +1932,7 @@ class _RoomPageState extends State<RoomPage> {
                 ),
               ),
               if (isSpeaking)
-                Positioned(top: -7, left: 0, right: 0, child: Center(child: _LiveVoiceBars(level: voiceLevel))),
+                Positioned(top: -11, left: 0, right: 0, child: Center(child: _LiveVoiceBars(level: voiceLevel))),
               Positioned(
                 bottom: -2,
                 right: -3,
@@ -2103,26 +2103,27 @@ class _LiveVoiceBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strength = level.clamp(0.0, 1.0);
-    const heights = <double>[7, 12, 16, 10, 14, 8, 12];
+    const heights = <double>[13, 20, 27, 17, 24, 15, 29, 18, 25, 14, 21];
     return Container(
-      height: 22,
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xEE17121F),
+        color: const Color(0xF217121F),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xBBD9A93C), width: 0.8),
-        boxShadow: [BoxShadow(color: const Color(0x66D9A93C).withOpacity(0.25 + strength * 0.45), blurRadius: 7 + strength * 8)],
+        border: Border.all(color: const Color(0xFFE8C477), width: 1.1),
+        boxShadow: [BoxShadow(color: const Color(0x99D9A93C).withOpacity(0.35 + strength * 0.5), blurRadius: 11 + strength * 9)],
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: List<Widget>.generate(heights.length, (index) {
-        final h = (heights[index] * (0.35 + strength * 0.65)).clamp(3.0, 17.0);
+        final h = (heights[index] * (0.35 + strength * 0.65)).clamp(5.0, 30.0);
         return AnimatedContainer(
           duration: const Duration(milliseconds: 110),
           curve: Curves.easeOut,
-          width: 2.5, height: h,
-          margin: const EdgeInsets.symmetric(horizontal: 1),
+          width: 3.5, height: h,
+          margin: const EdgeInsets.symmetric(horizontal: 1.5),
           decoration: BoxDecoration(
-            color: index.isEven ? const Color(0xFFFFD98B) : const Color(0xFFB98AF0),
-            borderRadius: BorderRadius.circular(3),
+            color: index % 3 == 1 ? const Color(0xFFFFE7A8) : const Color(0xFFE8C477),
+            borderRadius: BorderRadius.circular(4),
+            boxShadow: [BoxShadow(color: const Color(0x88E8C477), blurRadius: 4 + strength * 3)],
           ),
         );
       })),
