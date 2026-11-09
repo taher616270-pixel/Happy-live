@@ -37,3 +37,29 @@ test("standalone admin page exposes stats and moderator management without fake 
   assert.match(adminPage, /data-page="moderators"/);
   assert.match(adminPage, /VIP والشحن والهدايا/);
 });
+
+test("admin room moderation is scoped to an existing room and uses server-side permissions", () => {
+  assert.match(worker, /"rooms\.moderate"/);
+  const start = worker.indexOf("const roomModerationRoute =");
+  const end = worker.indexOf("const roomStatusRoute =", start);
+  assert.ok(start >= 0 && end > start, "room moderation API route must exist");
+  const route = worker.slice(start, end);
+  assert.match(route, /hasAdminPermission\(actor, "rooms\.read"\)/);
+  assert.match(route, /hasAdminPermission\(actor, "rooms\.moderate"\)/);
+  assert.match(route, /room_seats/);
+  assert.match(route, /room_moderators/);
+  assert.match(route, /room_bans/);
+  assert.match(route, /room_kicks/);
+  assert.match(route, /adminId: actor\.id/);
+  assert.match(route, /adminUsername: actor\.username/);
+  assert.doesNotMatch(route, /body\.(?:role|adminId|actorId)/);
+});
+
+test("admin room moderation UI uses the real protected Worker endpoint", () => {
+  assert.match(adminPage, /data-room-open=/);
+  assert.match(adminPage, /\/admin\/rooms\/.*\/moderation/);
+  assert.match(adminPage, /طرد دقيقة/);
+  assert.match(adminPage, /حظر دائم/);
+  assert.match(adminPage, /مشرفو الغرفة/);
+});
+

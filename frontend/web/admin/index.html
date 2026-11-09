@@ -181,7 +181,71 @@ function users(a){
   };
   draw(a);let timer;$("search").oninput=e=>{clearTimeout(timer);const q=e.target.value.trim();timer=setTimeout(async()=>{try{draw((await api("/admin/users?q="+encodeURIComponent(q)+"&limit=100")).users||[])}catch(err){$("rows").innerHTML='<tr><td colspan="6" class="empty">'+esc(err.message)+'</td></tr>'}},250)};
 }
-function rooms(a){$("content").innerHTML='<div class="section"><div class="section-head"><h2>الغرف ('+a.length+')</h2></div><div class="table-wrap"><table><thead><tr><th>الغرفة</th><th>رقمها</th><th>المالك</th><th>الخصوصية</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>'+ (a.length?a.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.room_code)+'</td><td>'+esc(r.owner_name||"—")+'</td><td>'+(r.visibility==="private"?"خاصة":"عامة")+'</td><td><span class="badge '+(r.status==="active"?"good":"bad")+'">'+(r.status==="active"?"نشطة":"مغلقة")+'</span></td><td><button class="action '+(r.status==="active"?"danger":"")+'" data-room="'+esc(r.id)+'" data-next="'+(r.status==="active"?"closed":"active")+'">'+(r.status==="active"?"إغلاق":"فتح")+'</button></td></tr>').join(""):'<tr><td colspan="6" class="empty">لا توجد غرف</td></tr>')+'</tbody></table></div></div>';document.querySelectorAll("[data-room]").forEach(b=>b.onclick=async()=>{if(!confirm("تأكيد تغيير حالة الغرفة؟"))return;try{await api("/admin/rooms/"+b.dataset.room+"/status",{method:"PATCH",body:JSON.stringify({status:b.dataset.next})});render()}catch(e){alert(e.message)}})}
+function rooms(a){
+  const canManage=admin.role==="owner"||admin.role==="admin";
+  $("content").innerHTML='<div class="section"><div class="section-head"><h2>الغرف ('+a.length+')</h2></div><div class="table-wrap"><table><thead><tr><th>الغرفة</th><th>رقمها</th><th>المالك</th><th>الخصوصية</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>'+
+    (a.length?a.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.room_code)+'</td><td>'+esc(r.owner_name||"—")+'</td><td>'+(r.visibility==="private"?"خاصة":"عامة")+'</td><td><span class="badge '+(r.status==="active"?"good":"bad")+'">'+(r.status==="active"?"نشطة":"مغلقة")+'</span></td><td><div class="room-tools"><button class="action" data-room-open="'+esc(r.id)+'" data-room-name="'+esc(r.name)+'">إدارة الغرفة</button>'+
+    (canManage?'<button class="action '+(r.status==="active"?"danger":"")+'" data-room-status="'+esc(r.id)+'" data-next="'+(r.status==="active"?"closed":"active")+'">'+(r.status==="active"?"إغلاق":"فتح")+'</button>':'<span class="muted">قراءة فقط</span>')+
+    '</div></td></tr>').join(""):'<tr><td colspan="6" class="empty">لا توجد غرف</td></tr>')+
+    '</tbody></table></div></div><div id="roomModeration"></div>';
+  document.querySelectorAll("[data-room-open]").forEach(b=>b.onclick=()=>loadRoomModeration(b.dataset.roomOpen,b.dataset.roomName||"الغرفة"));
+  document.querySelectorAll("[data-room-status]").forEach(b=>b.onclick=async()=>{
+    if(!confirm("تأكيد تغيير حالة الغرفة؟"))return;
+    try{await api("/admin/rooms/"+b.dataset.roomStatus+"/status",{method:"PATCH",body:JSON.stringify({status:b.dataset.next})});render()}
+    catch(e){alert(e.message)}
+  });
+}
+async function loadRoomModeration(roomId,roomName,q=""){
+  const root=$("roomModeration");if(!root)return;
+  root.innerHTML='<div class="section"><div class="loading">جارٍ تحميل إدارة الغرفة…</div></div>';
+  try{
+    const endpoint="/admin/rooms/"+encodeURIComponent(roomId)+"/moderation"+(q?"?q="+encodeURIComponent(q):"");
+    const data=await api(endpoint);
+    const canManage=admin.role==="owner"||admin.role==="admin";
+    const actionButton=(action,user,label,danger=false)=>'<button class="action '+(danger?"danger":"")+'" data-room-action="'+action+'" data-user-id="'+esc(user.user_id)+'">'+label+'</button>';
+    const userActions=user=>{
+      if(!canManage||user.user_id===data.room.ownerUserId)return '<span class="muted">محمي</span>';
+      const isModerator=Number(user.is_moderator)===1;
+      const isBanned=Number(user.is_banned)===1;
+      if(isBanned)return actionButton("unban",user,"رفع الحظر");
+      let html=actionButton(isModerator?"remove_moderator":"assign_moderator",user,isModerator?"إزالة المشرف":"تعيين مشرف");
+      if(!isModerator){
+        if(Number(user.is_seated)===1)html+=actionButton(Number(user.is_muted)===1?"unmute":"mute",user,Number(user.is_muted)===1?"إلغاء الكتم":"كتم");
+        html+=actionButton("kick",user,"طرد دقيقة",true)+actionButton("ban",user,"حظر دائم",true);
+      }
+      return '<div class="room-tools">'+html+'</div>';
+    };
+    const userName=user=>esc(user.display_name||user.email||user.user_id);
+    const memberRows=data.members.length?data.members.map(user=>'<tr><td>'+esc(user.seat_number)+'</td><td>'+userName(user)+'</td><td>'+esc(user.gabo_id||"—")+'</td><td>'+(Number(user.is_muted)===1?'<span class="badge bad">مكتوم</span>':'<span class="badge good">مفتوح</span>')+'</td><td>'+userActions({...user,is_seated:1})+'</td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد مقاعد مايك نشطة حاليًا</td></tr>';
+    const moderatorRows=data.moderators.length?data.moderators.map(user=>'<tr><td>'+userName(user)+'</td><td>'+esc(user.gabo_id||"—")+'</td><td>'+esc(user.created_at||"—")+'</td><td>'+(canManage?actionButton("remove_moderator",user,"إزالة المشرف",true):"—")+'</td></tr>').join(""):'<tr><td colspan="4" class="empty">لا يوجد مشرفون لهذه الغرفة</td></tr>';
+    const banRows=data.bans.length?data.bans.map(user=>'<tr><td>'+userName(user)+'</td><td>'+esc(user.gabo_id||"—")+'</td><td>'+esc(user.created_at||"—")+'</td><td>'+(canManage?actionButton("unban",user,"رفع الحظر"):"—")+'</td></tr>').join(""):'<tr><td colspan="4" class="empty">لا توجد حسابات محظورة من هذه الغرفة</td></tr>';
+    const kickRows=data.kicks.length?data.kicks.map(user=>'<tr><td>'+userName(user)+'</td><td>'+esc(user.gabo_id||"—")+'</td><td>'+esc(user.kicked_until||"—")+'</td></tr>').join(""):'<tr><td colspan="3" class="empty">لا يوجد طرد مؤقت نشط</td></tr>';
+    const searchRows=(data.userResults||[]).length?data.userResults.map(user=>'<tr><td>'+userName(user)+'</td><td>'+esc(user.gabo_id||"—")+'</td><td>'+userActions(user)+'</td></tr>').join(""):'<tr><td colspan="3" class="empty">'+(q.length>=2?"لا توجد نتائج مطابقة":"اكتب حرفين على الأقل للبحث عن مستخدم")+'</td></tr>';
+    root.innerHTML=
+      '<div class="section"><div class="section-head"><h2>إدارة الغرفة: '+esc(data.room.name||roomName)+'</h2><button class="action" id="closeRoomModeration">إغلاق</button></div>'+
+      '<p class="muted">الإدارة تشمل مقاعد المايك النشطة والبحث عن حسابات المنصة. الطرد مؤقت لمدة دقيقة، والحظر يستمر حتى رفعه يدويًا.</p>'+
+      '<div class="notice">قائمة الأعضاء أدناه تعرض أصحاب مقاعد المايك النشطة. استخدم البحث للوصول إلى حساب آخر وإدارة دخوله لهذه الغرفة.</div></div>'+
+      '<div class="section"><h2>مقاعد المايك النشطة ('+data.members.length+')</h2><div class="table-wrap"><table><thead><tr><th>المقعد</th><th>المستخدم</th><th>المعرف</th><th>الصوت</th><th>الإجراءات</th></tr></thead><tbody>'+memberRows+'</tbody></table></div></div>'+
+      '<div class="section"><h2>مشرفو الغرفة ('+data.moderators.length+')</h2><div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>المعرف</th><th>تاريخ التعيين</th><th>الإجراء</th></tr></thead><tbody>'+moderatorRows+'</tbody></table></div></div>'+
+      '<div class="section"><h2>الحظر ('+data.bans.length+')</h2><div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>المعرف</th><th>تاريخ الحظر</th><th>الإجراء</th></tr></thead><tbody>'+banRows+'</tbody></table></div></div>'+
+      '<div class="section"><h2>الطرد المؤقت ('+data.kicks.length+')</h2><div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>المعرف</th><th>ينتهي في</th></tr></thead><tbody>'+kickRows+'</tbody></table></div></div>'+
+      '<div class="section"><h2>البحث عن مستخدم وإدارته</h2><form id="roomUserSearchForm" class="room-tools" style="margin:14px 0"><input class="search" id="roomUserQuery" value="'+esc(q)+'" placeholder="الاسم أو البريد أو معرف Happy Live" style="max-width:360px"><button class="action" type="submit">بحث</button></form><div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>المعرف</th><th>الإجراءات</th></tr></thead><tbody>'+searchRows+'</tbody></table></div></div>';
+    $("closeRoomModeration").onclick=()=>{root.innerHTML=""};
+    $("roomUserSearchForm").onsubmit=e=>{e.preventDefault();loadRoomModeration(roomId,roomName,$("roomUserQuery").value.trim())};
+    document.querySelectorAll("[data-room-action]").forEach(button=>button.onclick=async()=>{
+      const action=button.dataset.roomAction,targetUserId=button.dataset.userId;
+      const labels={assign_moderator:"تعيين مشرف الغرفة",remove_moderator:"إزالة مشرف الغرفة",kick:"طرد المستخدم لمدة دقيقة",ban:"حظر المستخدم من الغرفة",unban:"رفع الحظر",mute:"كتم مايك المستخدم",unmute:"إلغاء كتم المايك"};
+      if(!confirm("تأكيد: "+(labels[action]||"تنفيذ الإجراء")+"؟"))return;
+      const reason=action==="ban"?(window.prompt("سبب الحظر (اختياري)")||"").trim():"";
+      try{
+        await api("/admin/rooms/"+encodeURIComponent(roomId)+"/moderation",{method:"POST",body:JSON.stringify({action,targetUserId,reason})});
+        await loadRoomModeration(roomId,roomName,q);
+      }catch(error){alert(error.message)}
+    });
+    root.scrollIntoView({behavior:"smooth",block:"start"});
+  }catch(error){root.innerHTML='<div class="section"><p class="error">'+esc(error.message)+'</p></div>'}
+}
+
 function audit(a){$("content").innerHTML='<div class="section"><div class="section-head"><h2>آخر الإجراءات ('+a.length+')</h2></div><div class="table-wrap"><table><thead><tr><th>الإجراء</th><th>المدير</th><th>النوع</th><th>المعرف</th><th>التاريخ</th></tr></thead><tbody>'+(a.length?a.map(x=>'<tr><td>'+esc(x.action)+'</td><td>'+esc(x.actor_name||x.actor_email||"—")+'</td><td>'+esc(x.target_type)+'</td><td>'+esc(x.target_id)+'</td><td>'+esc(new Date(x.created_at).toLocaleString("ar"))+'</td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد إجراءات</td></tr>')+'</tbody></table></div></div>'}
 startup();
 </script></body></html>

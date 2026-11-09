@@ -153,10 +153,10 @@ async function checkAuthRateLimit(db: D1Database, ip: string): Promise<boolean> 
 
 
 type AdminRole = "owner" | "admin" | "moderator";
-type AdminPermission = "dashboard.read" | "users.read" | "users.manage" | "users.kick" | "users.roles.manage" | "rooms.read" | "rooms.manage" | "audit.read" | "agora.read" | "agora.manage";
+type AdminPermission = "dashboard.read" | "users.read" | "users.manage" | "users.kick" | "users.roles.manage" | "rooms.read" | "rooms.manage" | "rooms.moderate" | "audit.read" | "agora.read" | "agora.manage";
 type AdminActor = { id: string; username: string; display_name: string; role: AdminRole };
 const ADMIN_ROLE_PERMISSIONS: Record<Exclude<AdminRole, "owner">, ReadonlySet<AdminPermission>> = {
-  admin: new Set<AdminPermission>(["dashboard.read","users.read","users.manage","users.kick","rooms.read","rooms.manage","audit.read","agora.read","agora.manage"]),
+  admin: new Set<AdminPermission>(["dashboard.read","users.read","users.manage","users.kick","rooms.read","rooms.manage","rooms.moderate","audit.read","agora.read","agora.manage"]),
   moderator: new Set<AdminPermission>(["dashboard.read","users.read","rooms.read","audit.read"])
 };
 function hasAdminPermission(actor: AdminActor, permission: AdminPermission): boolean {
@@ -339,7 +339,8 @@ export default {
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/kick$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/role$/i.test(url.pathname) ||
-      /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/status$/i.test(url.pathname)
+      /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
+      /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/moderation$/i.test(url.pathname)
     ) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
@@ -521,6 +522,183 @@ export default {
           ]);
           return json({ ok: true, userId: targetId, revokedSessions: results[0]?.meta?.changes ?? 0 }, 200, origin, env);
         }
+        const roomModerationRoute = url.pathname.match(/^\/api\/v1\/admin\/rooms\/([0-9a-f-]{36})\/moderation$/i);
+        if (roomModerationRoute && (request.method === "GET" || request.method === "POST")) {
+          const roomId = roomModerationRoute[1];
+          const room = await env.DB.prepare(
+            "SELECT id, owner_user_id, name FROM rooms WHERE id = ? LIMIT 1"
+          ).bind(roomId).first<{ id: string; owner_user_id: string; name: string }>();
+          if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+
+          if (request.method === "GET") {
+            if (!hasAdminPermission(actor, "rooms.read")) return json({ error: "permission_denied" }, 403, origin, env);
+            const now = new Date().toISOString();
+            const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
+            const [members, moderators, bans, kicks] = await Promise.all([
+              env.DB.prepare(
+                "SELECT s.user_id, s.seat_number, s.joined_at, u.email, p.display_name, p.gabo_id, " +
+                "CASE WHEN rm.user_id IS NULL THEN 0 ELSE 1 END AS is_moderator, COALESCE(c.is_muted, 0) AS is_muted " +
+                "FROM room_seats s INNER JOIN users u ON u.id = s.user_id " +
+                "LEFT JOIN profiles p ON p.user_id = u.id " +
+                "LEFT JOIN room_moderators rm ON rm.room_id = s.room_id AND rm.user_id = s.user_id " +
+                "LEFT JOIN room_user_controls c ON c.room_id = s.room_id AND c.user_id = s.user_id " +
+                "WHERE s.room_id = ? AND s.expires_at > ? ORDER BY s.seat_number"
+              ).bind(roomId, now).all(),
+              env.DB.prepare(
+                "SELECT rm.user_id, rm.created_at, u.email, p.display_name, p.gabo_id " +
+                "FROM room_moderators rm INNER JOIN users u ON u.id = rm.user_id " +
+                "LEFT JOIN profiles p ON p.user_id = u.id WHERE rm.room_id = ? ORDER BY rm.created_at DESC"
+              ).bind(roomId).all(),
+              env.DB.prepare(
+                "SELECT b.user_id, b.created_at, u.email, p.display_name, p.gabo_id " +
+                "FROM room_bans b INNER JOIN users u ON u.id = b.user_id " +
+                "LEFT JOIN profiles p ON p.user_id = u.id WHERE b.room_id = ? ORDER BY b.created_at DESC"
+              ).bind(roomId).all(),
+              env.DB.prepare(
+                "SELECT k.user_id, k.kicked_until, k.created_at, u.email, p.display_name, p.gabo_id " +
+                "FROM room_kicks k INNER JOIN users u ON u.id = k.user_id " +
+                "LEFT JOIN profiles p ON p.user_id = u.id WHERE k.room_id = ? AND k.kicked_until > ? ORDER BY k.kicked_until DESC"
+              ).bind(roomId, now).all()
+            ]);
+            let userResults: unknown[] = [];
+            if (q.length >= 2) {
+              const found = await env.DB.prepare(
+                "SELECT u.id AS user_id, u.email, p.display_name, p.gabo_id, " +
+                "CASE WHEN rm.user_id IS NULL THEN 0 ELSE 1 END AS is_moderator, " +
+                "CASE WHEN b.user_id IS NULL THEN 0 ELSE 1 END AS is_banned, " +
+                "CASE WHEN s.user_id IS NULL THEN 0 ELSE 1 END AS is_seated, COALESCE(c.is_muted, 0) AS is_muted " +
+                "FROM users u LEFT JOIN profiles p ON p.user_id = u.id " +
+                "LEFT JOIN room_moderators rm ON rm.room_id = ? AND rm.user_id = u.id " +
+                "LEFT JOIN room_bans b ON b.room_id = ? AND b.user_id = u.id " +
+                "LEFT JOIN room_seats s ON s.room_id = ? AND s.user_id = u.id AND s.expires_at > ? " +
+                "LEFT JOIN room_user_controls c ON c.room_id = ? AND c.user_id = u.id " +
+                "WHERE u.status = 'active' AND u.id <> ? AND " +
+                "(u.email LIKE '%' || ? || '%' OR p.display_name LIKE '%' || ? || '%' OR p.gabo_id LIKE '%' || ? || '%') " +
+                "ORDER BY p.display_name COLLATE NOCASE LIMIT 20"
+              ).bind(roomId, roomId, roomId, now, roomId, room.owner_user_id, q, q, q).all();
+              userResults = found.results ?? [];
+            }
+            return json({
+              ok: true,
+              room: { id: room.id, name: room.name, ownerUserId: room.owner_user_id },
+              members: members.results ?? [],
+              moderators: moderators.results ?? [],
+              bans: bans.results ?? [],
+              kicks: kicks.results ?? [],
+              userResults
+            }, 200, origin, env);
+          }
+
+          if (!hasAdminPermission(actor, "rooms.moderate")) return json({ error: "permission_denied" }, 403, origin, env);
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; }
+          catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const action = typeof body.action === "string" ? body.action : "";
+          const targetUserId = typeof body.targetUserId === "string" ? body.targetUserId : "";
+          const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 240) : "";
+          const allowedActions = ["assign_moderator", "remove_moderator", "kick", "ban", "unban", "mute", "unmute"];
+          if (!allowedActions.includes(action) || !/^[0-9a-f-]{36}$/i.test(targetUserId)) {
+            return json({ error: "invalid_room_moderation_action" }, 400, origin, env);
+          }
+          const target = await env.DB.prepare(
+            "SELECT u.id, u.status, ar.role AS admin_role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1"
+          ).bind(targetUserId).first<{ id: string; status: string; admin_role: string | null }>();
+          if (!target) return json({ error: "user_not_found" }, 404, origin, env);
+          if (target.status === "deleted" || (target.status !== "active" && action !== "unban" && action !== "remove_moderator")) {
+            return json({ error: "user_not_active" }, 409, origin, env);
+          }
+          if (targetUserId === room.owner_user_id || target.admin_role === "owner") {
+            return json({ error: "protected_room_owner" }, 403, origin, env);
+          }
+          const currentModerator = await env.DB.prepare(
+            "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
+          ).bind(roomId, targetUserId).first<{ user_id: string }>();
+          if (["kick", "ban", "mute", "unmute"].includes(action) && currentModerator) {
+            return json({ error: "cannot_moderate_room_moderator", message: "أزل صفة مشرف الغرفة أولًا قبل تنفيذ هذا الإجراء" }, 403, origin, env);
+          }
+          const now = new Date().toISOString();
+          const statements: D1PreparedStatement[] = [];
+          let auditAction = "";
+          let kickedUntil: string | null = null;
+
+          if (action === "assign_moderator") {
+            if (currentModerator) return json({ error: "already_room_moderator" }, 409, origin, env);
+            // Legacy room_moderators.assigned_by is constrained to an application-user FK.
+            // The actual administrator identity is recorded in admin_audit_logs below.
+            statements.push(env.DB.prepare(
+              "INSERT INTO room_moderators (room_id, user_id, assigned_by, created_at) VALUES (?, ?, ?, ?)"
+            ).bind(roomId, targetUserId, room.owner_user_id, now));
+            auditAction = "room.moderator.assign";
+          } else if (action === "remove_moderator") {
+            if (!currentModerator) return json({ error: "room_moderator_not_found" }, 404, origin, env);
+            statements.push(env.DB.prepare(
+              "DELETE FROM room_moderators WHERE room_id = ? AND user_id = ?"
+            ).bind(roomId, targetUserId));
+            auditAction = "room.moderator.remove";
+          } else if (action === "kick") {
+            kickedUntil = new Date(Date.now() + 60000).toISOString();
+            statements.push(
+              env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId),
+              env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL").bind(now, roomId, targetUserId),
+              // Legacy room_kicks.kicked_by is constrained to an application-user FK.
+              env.DB.prepare(
+                "INSERT INTO room_kicks (room_id, user_id, kicked_by, kicked_until, created_at) VALUES (?, ?, ?, ?, ?) " +
+                "ON CONFLICT(room_id, user_id) DO UPDATE SET kicked_by = excluded.kicked_by, kicked_until = excluded.kicked_until, created_at = excluded.created_at"
+              ).bind(roomId, targetUserId, room.owner_user_id, kickedUntil, now)
+            );
+            auditAction = "room.user.kick";
+          } else if (action === "ban") {
+            statements.push(
+              env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId),
+              env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL").bind(now, roomId, targetUserId),
+              env.DB.prepare("DELETE FROM room_kicks WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId),
+              // Legacy room_bans.banned_by is constrained to an application-user FK.
+              env.DB.prepare(
+                "INSERT INTO room_bans (room_id, user_id, banned_by, created_at) VALUES (?, ?, ?, ?) " +
+                "ON CONFLICT(room_id, user_id) DO UPDATE SET banned_by = excluded.banned_by, created_at = excluded.created_at"
+              ).bind(roomId, targetUserId, room.owner_user_id, now)
+            );
+            auditAction = "room.user.ban";
+          } else if (action === "unban") {
+            const existingBan = await env.DB.prepare(
+              "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
+            ).bind(roomId, targetUserId).first();
+            if (!existingBan) return json({ error: "room_ban_not_found" }, 404, origin, env);
+            statements.push(env.DB.prepare("DELETE FROM room_bans WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId));
+            auditAction = "room.user.unban";
+          } else if (action === "mute" || action === "unmute") {
+            const seat = await env.DB.prepare(
+              "SELECT user_id FROM room_seats WHERE room_id = ? AND user_id = ? AND expires_at > ? LIMIT 1"
+            ).bind(roomId, targetUserId, now).first();
+            if (!seat) return json({ error: "user_not_on_active_mic_seat" }, 409, origin, env);
+            const muted = action === "mute" ? 1 : 0;
+            statements.push(env.DB.prepare(
+              "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, ?, ?) " +
+              "ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = excluded.muted_by, updated_at = excluded.updated_at"
+            ).bind(roomId, targetUserId, muted, muted ? room.owner_user_id : null, now));
+            auditAction = muted ? "room.user.mute" : "room.user.unmute";
+          }
+
+          statements.push(env.DB.prepare(
+            "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'room_user', ?, ?, ?)"
+          ).bind(
+            crypto.randomUUID(),
+            auditAction,
+            targetUserId,
+            JSON.stringify({
+              roomId,
+              targetUserId,
+              reason,
+              adminId: actor.id,
+              adminUsername: actor.username,
+              durationSeconds: action === "kick" ? 60 : null
+            }),
+            now
+          ));
+          await env.DB.batch(statements);
+          return json({ ok: true, roomId, targetUserId, action, kickedUntil }, 200, origin, env);
+        }
+
         const roomStatusRoute = url.pathname.match(/^\/api\/v1\/admin\/rooms\/([0-9a-f-]{36})\/status$/i);
         if (roomStatusRoute && request.method === "PATCH") {
           if (!hasAdminPermission(actor, "rooms.manage")) return json({ error: "permission_denied" }, 403, origin, env);
