@@ -377,6 +377,17 @@ class _RoomPageState extends State<RoomPage> {
     final nextIsOwner = data['isOwner'] == true;
     final nextIsModerator = data['isModerator'] == true;
     final meData = data['me'];
+    if (meData is Map) {
+      _seatStateStore.setCurrentUser(
+        userId: (meData['id'] ?? '').toString(),
+        name: (meData['name'] ?? 'مستخدم').toString(),
+        userCode: (meData['userCode'] ?? '').toString(),
+        avatarUrl: (meData['avatarUrl'] ?? '').toString(),
+      );
+    }
+    if (!kIsWeb || !_seatStateStore.hasPendingMoves) {
+      _seatStateStore.applySnapshot(seats, mySeat: nextMySeat);
+    }
     final nextSelfMuted = meData is Map && meData['isMuted'] == true;
     final nextIsBanned = meData is Map && meData['isBanned'] == true;
     final nextVoiceEnabled = data['voiceEnabled'] != false;
@@ -1162,6 +1173,50 @@ class _RoomPageState extends State<RoomPage> {
       _showMessage('أنت محظور من استخدام المايك في هذه الغرفة');
       return;
     }
+    if (kIsWeb) {
+      final command = _seatStateStore.beginOptimisticMove(seatNumber);
+      if (command == null) return;
+      final socket = _seatSocket;
+      if (socket != null && socket.isConnected) {
+        socket.sendMove(from: command.from, to: command.to, version: command.version);
+        return;
+      }
+      // The authenticated HTTP endpoint is a short reconnect fallback; it
+      // still commits through the room Durable Object, never through D1.
+      try {
+        final response = await http.post(
+          _seatsUri,
+          headers: _headers,
+          body: jsonEncode({'seatNumber': command.to, 'version': command.version}),
+        ).timeout(const Duration(seconds: 8));
+        final data = jsonDecode(response.body);
+        final accepted = response.statusCode == 200 && data is Map && data['ok'] == true;
+        final rawSeats = data is Map && data['seats'] is List ? data['seats'] as List : const <dynamic>[];
+        final isLatest = _seatStateStore.isLatest(command.version);
+        _seatStateStore.resolveMove(
+          version: command.version,
+          accepted: accepted,
+          serverSeats: rawSeats,
+          serverMySeat: data is Map && data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null,
+        );
+        if (isLatest) {
+          _applyRealtimeSeatSnapshot(
+            rawSeats,
+            mySeat: data is Map && data['mySeat'] is num ? (data['mySeat'] as num).toInt() : null,
+            updateStore: false,
+          );
+        }
+        if (!accepted && mounted) {
+          _showMessage(response.statusCode == 409
+              ? 'هذا المايك مشغول، اختر مايكًا آخر'
+              : 'تعذر تغيير المايك، تمت استعادة الحالة السابقة');
+        }
+      } catch (_) {
+        _seatStateStore.rollbackAfterDisconnect(command.version);
+        _showMessage('تعذر الاتصال بالغرفة، تمت استعادة المقعد السابق');
+      }
+      return;
+    }
     // On web, lock only the seat being tapped. Other mic circles stay
     // independently responsive instead of waiting for this request.
     if (kIsWeb) {
@@ -1263,7 +1318,9 @@ class _RoomPageState extends State<RoomPage> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        VoiceRoomDesignPreview(
+        ChangeNotifierProvider<SeatStateStore>.value(
+          value: _seatStateStore,
+          child: VoiceRoomDesignPreview(
       room: widget.room,
       chatMessagesPanel: _roomMessagesPanel(),
       chatController: _messageController,
@@ -1285,6 +1342,7 @@ class _RoomPageState extends State<RoomPage> {
       onRoomActions: () => setState(() => _showRoomActions = !_showRoomActions),
       onMinimizeRoom: _minimizeRoom,
       onCloseRoom: _closeRoom,
+          ),
         ),        if (_isLoading)
           Positioned.fill(
             child: AbsorbPointer(
