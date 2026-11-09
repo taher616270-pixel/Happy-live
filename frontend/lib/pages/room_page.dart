@@ -67,6 +67,7 @@ class _RoomPageState extends State<RoomPage> {
   OverlayEntry? _miniOverlayEntry;
   Route<dynamic>? _roomRoute;
   bool _isChangingSeat = false;
+  final Set<int> _pendingSeatNumbers = <int>{};
   bool _agoraSyncInProgress = false;
   bool? _agoraDesiredPublish;
   bool? _agoraJoinedPublish;
@@ -1065,12 +1066,24 @@ class _RoomPageState extends State<RoomPage> {
       _showMessage('أنت محظور من استخدام المايك في هذه الغرفة');
       return;
     }
-    if (_isChangingSeat) return;
+    // On web, lock only the seat being tapped. Other mic circles stay
+    // independently responsive instead of waiting for this request.
+    if (kIsWeb) {
+      if (_pendingSeatNumbers.contains(seatNumber)) return;
+    } else if (_isChangingSeat) {
+      return;
+    }
     final current = _seatAt(seatNumber);
     final occupiedByOther = current != null && current['isMe'] != true;
     if (occupiedByOther) return;
 
-    setState(() => _isChangingSeat = true);
+    setState(() {
+      if (kIsWeb) {
+        _pendingSeatNumbers.add(seatNumber);
+      } else {
+        _isChangingSeat = true;
+      }
+    });
     try {
       final target = _mySeat == seatNumber ? null : seatNumber;
       final response = await http.post(
@@ -1094,7 +1107,15 @@ class _RoomPageState extends State<RoomPage> {
     } catch (_) {
       _showMessage('تعذر الاتصال بالخادم، لم يتم تغيير المايك');
     } finally {
-      if (mounted) setState(() => _isChangingSeat = false);
+      if (mounted) {
+        setState(() {
+          if (kIsWeb) {
+            _pendingSeatNumbers.remove(seatNumber);
+          } else {
+            _isChangingSeat = false;
+          }
+        });
+      }
     }
   }
 
@@ -1156,6 +1177,7 @@ class _RoomPageState extends State<RoomPage> {
       speakerLevels: _speakerLevels,
       onTapSeat: _selectSeat,
       isChangingSeat: _isChangingSeat,
+      pendingSeatNumbers: _pendingSeatNumbers,
       audienceCount: _audienceCount,
       audienceUsers: _audienceUsers,
       ownerName: _ownerName,
