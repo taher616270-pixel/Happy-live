@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:happy_live/models/seat_state.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
 
@@ -502,7 +504,10 @@ Widget _roomActionButton({
       ),
       itemBuilder: (context, index) {
         final number = index + 1;
-        final seat = _seatAt(number);
+        return Selector<SeatStateStore, SeatState>(
+          selector: (context, store) => store.seats[number]!,
+          builder: (context, seatState, child) {
+        final seat = seatState.occupied ? seatState.toMap() : null;
         final occupied = seat != null;
         final mine = seat?['isMe'] == true;
         final name = (seat?['name'] ?? '').toString();
@@ -534,7 +539,14 @@ Widget _roomActionButton({
                     avatarSize: 48,
                     rippleStartSize: 54,
                     rippleEndSize: 70,
-                    avatar: Container(
+                    avatar: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 170),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      child: Container(
+                      key: ValueKey<String>(seat?['userId']?.toString().isNotEmpty == true
+                          ? seat!['userId'].toString()
+                          : 'empty-$number'),
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
@@ -555,6 +567,7 @@ Widget _roomActionButton({
                               color: Colors.white.withOpacity(.78),
                               size: 21,
                             ),
+                      ),
                     ),
                   ),
                   // Web: each mic accepts taps only inside its circular avatar.
@@ -565,7 +578,7 @@ Widget _roomActionButton({
                         behavior: HitTestBehavior.opaque,
                         onTap: occupied
                             ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
-                            : (!locked && !pendingSeatNumbers.contains(number)
+                            : (!locked && !seatState.isPending
                                 ? () => onTapSeat(number)
                                 : null),
                         child: const SizedBox(width: 48, height: 48),
@@ -629,6 +642,8 @@ Widget _roomActionButton({
                 ),
             ),
           ),
+        );
+          },
         );
       },
     ),
