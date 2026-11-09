@@ -4,6 +4,7 @@ class AgoraRoomBridge {
   }
   static Future<void> leave() async {}
   static Future<void> setMuted(bool muted) async {}
+  static Future<void> setPublishing(bool enabled, {String token = ''}) async {}
   static Future<Map<int, double>> getVolumeLevels() async => <int, double>{};
   static Future<void> resumeAudio() async {}
 }
