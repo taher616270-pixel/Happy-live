@@ -220,7 +220,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 175,
+            width: (MediaQuery.sizeOf(context).width * .60).clamp(175.0, 235.0),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               decoration: BoxDecoration(
@@ -268,10 +268,38 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 4),
-                            const Icon(
-                              Icons.person_add_alt_1_rounded,
-                              color: Colors.white70,
-                              size: 16,
+                            Container(
+                              width: 72,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(30),
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFFD4AF37),
+                                    Color(0xFFF5E9C6),
+                                  ],
+                                ),
+                                border: Border.all(
+                                  color: const Color(0xFFB8962E),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.add,
+                                color: Colors.white,
+                                size: 32,
+                                weight: 800,
+                              ),
                             ),
                           ],
                         ),
