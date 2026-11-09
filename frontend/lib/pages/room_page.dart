@@ -343,7 +343,7 @@ class _RoomPageState extends State<RoomPage> {
       final raw = await AgoraRoomBridge.getVolumeLevels();
       final next = <int, double>{};
       raw.forEach((uid, level) {
-        if (level >= 0.055) next[uid] = level.clamp(0.0, 1.0);
+        if (level >= 0.055) next[uid] = level.clamp(0.0, 1.0).toDouble();
       });
       var changed = next.length != _speakerLevels.length;
       if (!changed) {
