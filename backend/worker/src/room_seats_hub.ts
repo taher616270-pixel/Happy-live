@@ -26,6 +26,7 @@ interface SocketIdentity {
   isMuted: boolean;
   isRoomOwner: boolean;
   isRoomModerator: boolean;
+  lastVersion: number;
 }
 
 const EMPTY_SNAPSHOT: RoomSeatSnapshot = { seats: {}, versions: {}, revision: 0 };
@@ -81,7 +82,8 @@ export class RoomSeatsHub {
         uid: Number(request.headers.get("x-user-code")) || null,
         isMuted: request.headers.get("x-is-muted") === "true",
         isRoomOwner: request.headers.get("x-is-room-owner") === "true",
-        isRoomModerator: request.headers.get("x-is-room-moderator") === "true"
+        isRoomModerator: request.headers.get("x-is-room-moderator") === "true",
+        lastVersion: 0
       };
       let result: Record<string, unknown> = {};
       await this.enqueue(async () => {
@@ -119,7 +121,8 @@ export class RoomSeatsHub {
       uid: Number(request.headers.get("x-user-code")) || null,
       isMuted: request.headers.get("x-is-muted") === "true",
       isRoomOwner: request.headers.get("x-is-room-owner") === "true",
-      isRoomModerator: request.headers.get("x-is-room-moderator") === "true"
+      isRoomModerator: request.headers.get("x-is-room-moderator") === "true",
+      lastVersion: 0
     };
 
     const pair = new WebSocketPair();
@@ -218,12 +221,11 @@ export class RoomSeatsHub {
   }
 
   private async applyMove(identity: SocketIdentity, to: number | null, version: number): Promise<Record<string, unknown>> {
-    const lastVersion = this.snapshot.versions[identity.userId] ?? 0;
-    if (version <= lastVersion) {
+    if (version <= identity.lastVersion) {
       return { type: "ack", ok: false, code: "stale_version", version, ...this.publicSnapshot() };
     }
 
-    this.snapshot.versions[identity.userId] = version;
+    identity.lastVersion = version;
     const current = Object.values(this.snapshot.seats).find((seat) => seat.userId === identity.userId);
     if (to !== null) {
       const occupant = this.snapshot.seats[String(to)];
