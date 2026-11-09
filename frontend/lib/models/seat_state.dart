@@ -237,6 +237,36 @@ class SeatStateStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  void applyRemoteSnapshotPreservingPending(List<dynamic> rawSeats) {
+    if (!hasPendingMoves) {
+      applySnapshot(rawSeats);
+      return;
+    }
+    final optimisticSeat = _mySeat;
+    final optimisticMine = optimisticSeat == null ? null : _seats[optimisticSeat];
+    final next = <int, SeatState>{
+      for (var number = 1; number <= 8; number++) number: SeatState.empty(number),
+    };
+    for (final raw in rawSeats) {
+      if (raw is! Map) continue;
+      final map = Map<String, dynamic>.from(raw);
+      final number = map['seatNumber'];
+      if (number is! num || number < 1 || number > 8) continue;
+      final seatNumber = number.toInt();
+      final ownerId = (map['userId'] ?? '').toString();
+      if (currentUserId.isNotEmpty && ownerId == currentUserId) continue;
+      next[seatNumber] = SeatState.fromMap(map, isMe: false);
+    }
+    if (optimisticSeat != null && optimisticMine != null) {
+      next[optimisticSeat] = optimisticMine;
+    }
+    _seats
+      ..clear()
+      ..addAll(next);
+    _mySeat = optimisticSeat;
+    notifyListeners();
+  }
+
   void reconcileSnapshot(List<dynamic> rawSeats, {int? mySeat}) {
     _rollbackSnapshots.clear();
     _pendingTargetByVersion.clear();
