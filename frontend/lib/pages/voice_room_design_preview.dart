@@ -495,9 +495,8 @@ Widget _roomActionButton({
         final muted = seat?['isMuted'] == true;
         final locked = seat?['isLocked'] == true || seat?['locked'] == true;
         final isAndroid = Theme.of(context).platform == TargetPlatform.android;
-        return Transform.translate(
-          offset: Offset(0, isAndroid ? (number >= 5 ? -25 : -5) : (number >= 5 ? -34 : 0)),
-          child: GestureDetector(
+        // Keep the lower row's hit-test area separate from the upper row.
+        return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: occupied
               ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
@@ -572,7 +571,7 @@ Widget _roomActionButton({
                 ),
             ],
           ),
-        ));
+        );
       },
     ),
   );
