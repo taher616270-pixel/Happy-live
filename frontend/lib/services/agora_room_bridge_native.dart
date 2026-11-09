@@ -32,7 +32,7 @@ class AgoraRoomBridge {
             final uid = speaker.uid == 0 ? _localUid : speaker.uid;
             if (uid <= 0) continue;
             final level = (speaker.volume / 255.0).clamp(0.0, 1.0).toDouble();
-            if (level >= 0.035) {
+            if (level >= 0.015) {
               _volumeLevels[uid] = level;
               _volumeSeenAt[uid] = now;
             } else {
