@@ -153,7 +153,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             offset: Theme.of(context).platform == TargetPlatform.android
                                 ? Offset.zero
                                 : const Offset(0, -100),
-                            transformHitTests: false,
+                            // Keep hit testing aligned with the chat's visual
+                            // position so sender names and avatars receive taps.
+                            transformHitTests: true,
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 220),
                               curve: Curves.easeOutCubic,
