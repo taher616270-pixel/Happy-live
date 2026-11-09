@@ -1595,7 +1595,21 @@ export default {
           ).bind(roomId, new Date(Date.now() - 45000).toISOString()).first<{ count: number }>()
         ]);
         const snapshot = await snapshotResponse.json() as { seats?: Array<Record<string, unknown>>; revision?: number };
-        const seats = (snapshot.seats ?? []).map((seat) => ({
+        const activeSeats = snapshot.seats ?? [];
+        const activeSeatIds = activeSeats
+          .map((seat) => String(seat.userId ?? ""))
+          .filter((id) => id.length > 0);
+        const countryByUserId = new Map<string, string>();
+        if (activeSeatIds.length > 0) {
+          const placeholders = activeSeatIds.map(() => "?").join(",");
+          const countryRows = await env.DB.prepare(
+            "SELECT user_id, country_name FROM profiles WHERE user_id IN (" + placeholders + ")"
+          ).bind(...activeSeatIds).all<{ user_id: string; country_name: string | null }>();
+          for (const row of countryRows.results ?? []) {
+            countryByUserId.set(row.user_id, row.country_name ?? "");
+          }
+        }
+        const seats = activeSeats.map((seat) => ({
           seatNumber: seat.seatNumber,
           userId: seat.userId,
           userCode: seat.userCode ?? "",
@@ -1605,6 +1619,7 @@ export default {
           isRoomModerator: seat.isRoomModerator === true,
           name: seat.name || "مستخدم",
           avatarUrl: seat.avatarUrl ?? "",
+          countryName: countryByUserId.get(String(seat.userId ?? "")) ?? "",
           joinedAt: null,
           isMe: seat.userId === user.id
         }));
