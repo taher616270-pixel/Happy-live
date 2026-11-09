@@ -36,6 +36,8 @@ class _RoomPageState extends State<RoomPage> {
   Timer? _volumeTimer;
   Map<int, double> _speakerLevels = <int, double>{};
   final Map<int, DateTime> _speakerLastHeardAt = <int, DateTime>{};
+  final Map<int, DateTime> _speakerWaveUntil = <int, DateTime>{};
+  final Set<int> _speakerWaveLatched = <int>{};
   WebSocketChannel? _chatChannel;
   StreamSubscription<dynamic>? _chatSubscription;
   Timer? _chatReconnectTimer;
@@ -344,27 +346,53 @@ class _RoomPageState extends State<RoomPage> {
     try {
       final raw = await AgoraRoomBridge.getVolumeLevels();
       final next = <int, double>{};
+      final activeUids = <int>{};
       final now = DateTime.now();
-      // Use a very low fixed detection threshold so quiet speech and brief mic
-      // scratches are detected just like loud speech.
+      final visibleWavesBefore = _speakerWaveUntil.entries
+          .where((entry) => now.isBefore(entry.value))
+          .map((entry) => entry.key)
+          .toSet();
+
+      // Audio only starts a wave burst. It does not control the animation or
+      // extend its visibility while the same speaking burst continues.
       raw.forEach((uid, level) {
         if (level >= 0.0002) {
+          activeUids.add(uid);
           next[uid] = level.clamp(0.0, 1.0).toDouble();
           _speakerLastHeardAt[uid] = now;
+          if (_speakerWaveLatched.add(uid)) {
+            _speakerWaveUntil[uid] = now.add(const Duration(seconds: 5));
+          }
         }
       });
-      // Keep the speaking indicator visible briefly between meter samples.
-      // This prevents tiny pauses or a single short sound from making the
-      // animation flash or disappear immediately.
+
+      // Re-arm only after a short silence, so a continuous speaker cannot
+      // keep the wave visible indefinitely.
+      _speakerWaveLatched.removeWhere((uid) {
+        final heardAt = _speakerLastHeardAt[uid];
+        return heardAt == null ||
+            now.difference(heardAt) > const Duration(milliseconds: 500);
+      });
+      _speakerWaveUntil.removeWhere((uid, until) => !now.isBefore(until));
+
+      // Preserve the existing speaker-level grace period for other room UI.
       _speakerLastHeardAt.removeWhere(
-        (uid, heardAt) => now.difference(heardAt) > const Duration(milliseconds: 7000),
+        (uid, heardAt) =>
+            now.difference(heardAt) > const Duration(milliseconds: 7000),
       );
       for (final entry in _speakerLastHeardAt.entries) {
         if (!next.containsKey(entry.key)) {
           next[entry.key] = _speakerLevels[entry.key] ?? 0.003;
         }
       }
-      var changed = next.length != _speakerLevels.length;
+
+      final visibleWavesAfter = _speakerWaveUntil.entries
+          .where((entry) => now.isBefore(entry.value))
+          .map((entry) => entry.key)
+          .toSet();
+      var changed = next.length != _speakerLevels.length ||
+          visibleWavesBefore.length != visibleWavesAfter.length ||
+          !visibleWavesBefore.containsAll(visibleWavesAfter);
       if (!changed) {
         for (final entry in next.entries) {
           if (((_speakerLevels[entry.key] ?? 0) - entry.value).abs() > 0.06) {
@@ -1900,7 +1928,7 @@ class _RoomPageState extends State<RoomPage> {
     final isMuted = seat?['isMuted'] == true;
     final speakerUid = int.tryParse((seat?['userCode'] ?? '').toString());
     final voiceLevel = speakerUid == null ? 0.0 : (_speakerLevels[speakerUid] ?? 0.0);
-    final isSpeaking = occupied && !isMuted && speakerUid != null && _speakerLevels.containsKey(speakerUid);
+    final isWaveVisible = occupied && !isMuted && speakerUid != null && _speakerWaveUntil.containsKey(speakerUid) && DateTime.now().isBefore(_speakerWaveUntil[speakerUid]!);
     return InkWell(
       onTap: (!occupied || mine) && !_isChangingSeat ? () => _selectSeat(number) : null,
       borderRadius: BorderRadius.circular(18),
@@ -1949,7 +1977,7 @@ class _RoomPageState extends State<RoomPage> {
                 bottom: -12,
                 child: IgnorePointer(
                   child: AnimatedOpacity(
-                    opacity: isSpeaking ? 1 : 0,
+                    opacity: isWaveVisible ? 1 : 0,
                     duration: const Duration(milliseconds: 120),
                     child: const _LiveVoiceRing(),
                   ),
