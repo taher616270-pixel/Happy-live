@@ -559,7 +559,9 @@ Widget _roomActionButton({
                 behavior: HitTestBehavior.opaque,
                 onTap: occupied
                     ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
-                    : (!locked && !isChangingSeat && !seatState.isPending
+                    : (!isChangingSeat &&
+                            !seatState.isPending &&
+                            (canModerateUsers || !locked)
                         ? () {
                             if (canModerateUsers) {
                               _showEmptySeatActions(context, number);
