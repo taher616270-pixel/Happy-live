@@ -547,7 +547,7 @@ Widget _roomActionButton({
                             ),
                     ),
                   ),
-                  if (muted || occupied)
+                  if (muted)
                     Positioned(
                       bottom: -2,
                       left: -2,
@@ -569,14 +569,14 @@ Widget _roomActionButton({
                   constraints: const BoxConstraints(maxWidth: 78),
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Text(
                     name.isEmpty ? 'مستخدم' : name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w700),
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
                   ),
                 )
               else
