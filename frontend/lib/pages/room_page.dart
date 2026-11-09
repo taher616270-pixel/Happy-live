@@ -1046,26 +1046,46 @@ class _RoomPageState extends State<RoomPage> {
         onTap: message.type == 'announcement' && _isRoomOwner ? _editRoomAnnouncement : null,
         child: Padding(
         padding: const EdgeInsets.only(left: 50, bottom: 8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: const Color(0x5520182A),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
+        child: Row(
             mainAxisSize: MainAxisSize.min,
             textDirection: TextDirection.rtl,
             children: [
               Flexible(
-                child: Text(displayText, textAlign: TextAlign.right,
-                  style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.35, fontWeight: FontWeight.w600)),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: const Color(0x5520182A),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    displayText,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      height: 1.35,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 8),
-              Icon(isSystem ? Icons.notifications_active_rounded : Icons.graphic_eq_rounded,
-                size: 14, color: Colors.white.withOpacity(0.78)),
+              const SizedBox(width: 6),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: const Color(0x5520182A),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(.12)),
+                ),
+                child: Icon(
+                  isSystem ? Icons.notifications_active_rounded : Icons.graphic_eq_rounded,
+                  size: 14,
+                  color: Colors.white.withOpacity(0.82),
+                ),
+              ),
             ],
           ),
-        ),
       ),
       ),
     );
