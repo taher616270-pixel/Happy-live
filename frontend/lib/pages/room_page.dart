@@ -346,7 +346,6 @@ class _RoomPageState extends State<RoomPage> {
     try {
       final raw = await AgoraRoomBridge.getVolumeLevels();
       final next = <int, double>{};
-      final activeUids = <int>{};
       final now = DateTime.now();
       final visibleWavesBefore = _speakerWaveUntil.entries
           .where((entry) => now.isBefore(entry.value))
@@ -357,7 +356,6 @@ class _RoomPageState extends State<RoomPage> {
       // extend its visibility while the same speaking burst continues.
       raw.forEach((uid, level) {
         if (level >= 0.0002) {
-          activeUids.add(uid);
           next[uid] = level.clamp(0.0, 1.0).toDouble();
           _speakerLastHeardAt[uid] = now;
           if (_speakerWaveLatched.add(uid)) {
