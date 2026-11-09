@@ -668,9 +668,7 @@ Widget _roomActionButton({
                 offset: number == 5 ? const Offset(5, 0) : Offset.zero,
                 child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: occupied
-                    ? () => _showUserProfile(context, seat!)
-                    : (!isChangingSeat &&
+                onTap: !occupied && (!isChangingSeat &&
                             !seatState.isPending &&
                             (canModerateUsers || !locked)
                         ? () {
@@ -693,7 +691,10 @@ Widget _roomActionButton({
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  _GoldenVoiceWave(
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: occupied ? () => _showUserProfile(context, seat!) : null,
+                    child: _GoldenVoiceWave(
                     isSpeaking: isSpeaking,
                     avatarSize: 54,
                     rippleStartSize: 60,
@@ -747,6 +748,7 @@ Widget _roomActionButton({
                               size: 21,
                             ),
                       ),
+                    ),
                     ),
                   ),
 
