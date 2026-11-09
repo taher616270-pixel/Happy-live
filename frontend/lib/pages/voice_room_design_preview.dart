@@ -219,9 +219,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Row(
         children: [
-          SizedBox(
-            width: (MediaQuery.sizeOf(context).width * .60).clamp(175.0, 235.0),
-            child: Container(
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: (MediaQuery.sizeOf(context).width * .60).clamp(175.0, 235.0),
+            ),
+            child: IntrinsicWidth(
+              child: Container(
               padding: const EdgeInsetsDirectional.only(start: 0, end: 6, top: 4, bottom: 4),
               child: Stack(
                 children: [
@@ -242,7 +245,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     ),
                   ),
                   Row(
-                children: [
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: SizedBox(
@@ -261,15 +265,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 3),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Expanded(
-                              child: Column(
+                            Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -368,13 +371,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                    ],
                   ),
                 ],
               ),
                 ],
               ),
+            ),
+          ),
             ),
           ),
           const Spacer(),
