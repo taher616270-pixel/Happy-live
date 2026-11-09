@@ -120,6 +120,7 @@ class SeatStateStore extends ChangeNotifier {
   String currentUserName = 'مستخدم';
   String currentUserCode = '';
   String currentAvatarUrl = '';
+  String currentUserCountryName = '';
 
   Map<int, SeatState> get seats => Map<int, SeatState>.unmodifiable(_seats);
   int? get mySeat => _mySeat;
@@ -133,11 +134,13 @@ class SeatStateStore extends ChangeNotifier {
     String name = 'مستخدم',
     String userCode = '',
     String avatarUrl = '',
+    String countryName = '',
   }) {
     currentUserId = userId;
     currentUserName = name;
     currentUserCode = userCode;
     currentAvatarUrl = avatarUrl;
+    currentUserCountryName = countryName;
   }
 
   void applySnapshot(List<dynamic> rawSeats, {int? mySeat}) {
@@ -179,6 +182,7 @@ class SeatStateStore extends ChangeNotifier {
             name: currentUserName,
             userCode: currentUserCode,
             avatarUrl: currentAvatarUrl,
+            countryName: currentUserCountryName,
             uid: int.tryParse(currentUserCode),
             isMe: true,
           )
