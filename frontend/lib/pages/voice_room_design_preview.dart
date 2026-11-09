@@ -252,7 +252,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             ),
                     ),
                   ),
-                  const SizedBox(width: 9),
+                  const SizedBox(width: 3),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
