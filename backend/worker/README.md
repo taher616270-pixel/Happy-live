@@ -37,3 +37,17 @@ Do not deploy while the D1 ID is a placeholder. Never commit API tokens, email-p
 
 ## Local development
 The project uses Wrangler's local D1 emulator. The R2 binding can be emulated locally by Wrangler. Keep real user data out of local fixtures and source control.
+
+
+## Deploying realtime microphone seats
+
+After pulling the latest `main` branch, deploy the Worker from this directory:
+
+```bash
+cd backend/worker
+npm ci
+npm run typecheck
+npm run deploy
+```
+
+Wrangler applies the `v2-room-seats` Durable Object migration and binds `ROOM_SEATS`. Do not test the new Flutter socket against the old Worker version: the deployed Worker must expose `/api/v1/rooms/{roomId}/seat-stream` and the `RoomSeatsHub` class first.
