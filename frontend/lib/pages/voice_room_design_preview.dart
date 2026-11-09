@@ -274,6 +274,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ),
             ),
           ),
+          const Spacer(),
           const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
