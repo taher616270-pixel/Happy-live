@@ -1386,11 +1386,6 @@ export default {
         }
         if (action === "kick" || action === "ban" || action === "lower") {
           await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId).run();
-          const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
-          await seatHub.fetch(new Request("https://room-seats.internal/remove-user", {
-            method: "POST",
-            headers: { "x-target-user-id": targetUserId }
-          }));
           if (action === "kick") {
             const kickedUntil = new Date(Date.now() + 60000).toISOString();
             await env.DB.prepare(
@@ -1407,6 +1402,11 @@ export default {
               "INSERT INTO room_bans (room_id, user_id, banned_by, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET banned_by = excluded.banned_by, created_at = excluded.created_at"
             ).bind(roomId, targetUserId, actor.id, now).run();
           }
+          const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+          await seatHub.fetch(new Request("https://room-seats.internal/remove-user", {
+            method: "POST",
+            headers: { "x-target-user-id": targetUserId }
+          }));
           return json({ ok: true }, 200, origin, env);
         }
         return json({ error: "invalid_moderation_action" }, 400, origin, env);
