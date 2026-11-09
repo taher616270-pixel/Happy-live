@@ -60,7 +60,7 @@ class AgoraRoomBridge {
 
   static Future<void> leave() async {
     final engine = _engine;
-    _engine = null; _activeAppId = null; _joined = false; _muted = false; _volumeLevels.clear();
+    _engine = null; _activeAppId = null; _joined = false; _muted = false; _volumeLevels.clear(); _volumeSeenAt.clear();
     if (engine == null) return;
     try { await engine.leaveChannel(); } catch (_) {}
     try { await engine.release(); } catch (_) {}
@@ -71,7 +71,7 @@ class AgoraRoomBridge {
     if (engine == null || !_joined) return;
     await engine.muteLocalAudioStream(muted);
     _muted = muted;
-    if (muted) _volumeLevels.clear();
+    if (muted) { _volumeLevels.clear(); _volumeSeenAt.clear(); }
   }
 
   static Future<Map<int, double>> getVolumeLevels() async {
