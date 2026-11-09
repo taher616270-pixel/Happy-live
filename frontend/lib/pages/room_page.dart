@@ -34,6 +34,7 @@ class _RoomPageState extends State<RoomPage> {
   Timer? _refreshTimer;
   Timer? _volumeTimer;
   Map<int, double> _speakerLevels = <int, double>{};
+  final Map<int, DateTime> _speakerLastHeardAt = <int, DateTime>{};
   WebSocketChannel? _chatChannel;
   StreamSubscription<dynamic>? _chatSubscription;
   Timer? _chatReconnectTimer;
@@ -342,9 +343,26 @@ class _RoomPageState extends State<RoomPage> {
     try {
       final raw = await AgoraRoomBridge.getVolumeLevels();
       final next = <int, double>{};
+      final now = DateTime.now();
+      // Use a very low fixed detection threshold so quiet speech and brief mic
+      // scratches are detected just like loud speech.
       raw.forEach((uid, level) {
-        if (level >= 0.02) next[uid] = level.clamp(0.0, 1.0).toDouble();
+        if (level >= 0.003) {
+          next[uid] = level.clamp(0.0, 1.0).toDouble();
+          _speakerLastHeardAt[uid] = now;
+        }
       });
+      // Keep the speaking indicator visible briefly between meter samples.
+      // This prevents tiny pauses or a single short sound from making the
+      // animation flash or disappear immediately.
+      _speakerLastHeardAt.removeWhere(
+        (uid, heardAt) => now.difference(heardAt) > const Duration(milliseconds: 800),
+      );
+      for (final entry in _speakerLastHeardAt.entries) {
+        if (!next.containsKey(entry.key)) {
+          next[entry.key] = _speakerLevels[entry.key] ?? 0.003;
+        }
+      }
       var changed = next.length != _speakerLevels.length;
       if (!changed) {
         for (final entry in next.entries) {
@@ -1887,7 +1905,7 @@ class _RoomPageState extends State<RoomPage> {
     final isMuted = seat?['isMuted'] == true;
     final speakerUid = int.tryParse((seat?['userCode'] ?? '').toString());
     final voiceLevel = speakerUid == null ? 0.0 : (_speakerLevels[speakerUid] ?? 0.0);
-    final isSpeaking = occupied && !isMuted && voiceLevel >= 0.02;
+    final isSpeaking = occupied && !isMuted && speakerUid != null && _speakerLevels.containsKey(speakerUid);
     return InkWell(
       onTap: (!occupied || mine) && !_isChangingSeat ? () => _selectSeat(number) : null,
       borderRadius: BorderRadius.circular(18),
@@ -1898,7 +1916,7 @@ class _RoomPageState extends State<RoomPage> {
             clipBehavior: Clip.none,
             children: [
               if (isSpeaking)
-                Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _VoiceGlowPainter(level: voiceLevel)))),
+                Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: const _VoiceGlowPainter(level: 0.5)))),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 width: micSize,
