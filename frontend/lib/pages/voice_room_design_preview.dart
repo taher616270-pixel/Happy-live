@@ -516,33 +516,33 @@ Widget _roomActionButton({
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  if (isSpeaking)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: CustomPaint(painter: _SeatVoiceGlowPainter(voiceLevel)),
+                  _GoldenVoiceWave(
+                    isSpeaking: isSpeaking,
+                    avatarSize: 48,
+                    rippleStartSize: 60,
+                    rippleEndSize: 120,
+                    avatar: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(.10),
+                        border: Border.all(
+                          color: mine ? const Color(0xFFFFD98B) : Colors.white.withOpacity(occupied ? .60 : .18),
+                          width: mine ? 2.2 : occupied ? 2 : 1,
+                        ),
+                        image: avatar.startsWith('http')
+                            ? DecorationImage(image: NetworkImage(avatar), fit: BoxFit.cover)
+                            : null,
                       ),
+                      child: avatar.startsWith('http')
+                          ? null
+                          : Icon(
+                              occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
+                              color: Colors.white.withOpacity(.78),
+                              size: 21,
+                            ),
                     ),
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(.10),
-                      border: Border.all(
-                        color: mine ? const Color(0xFFFFD98B) : Colors.white.withOpacity(occupied ? .60 : .18),
-                        width: mine ? 2.2 : occupied ? 2 : 1,
-                      ),
-                      image: avatar.startsWith('http')
-                          ? DecorationImage(image: NetworkImage(avatar), fit: BoxFit.cover)
-                          : null,
-                    ),
-                    child: avatar.startsWith('http')
-                        ? null
-                        : Icon(
-                            occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
-                            color: Colors.white.withOpacity(.78),
-                            size: 21,
-                          ),
                   ),
                   if (isSpeaking)
                     Positioned(
@@ -1599,4 +1599,165 @@ class _SeatVoiceGlowPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _SeatVoiceGlowPainter oldDelegate) =>
       (oldDelegate.level - level).abs() > .03;
+}
+
+
+/// موجات ذهبية متتابعة حول صورة صاحب المايك عند اكتشاف صوته من Agora.
+class _GoldenVoiceWave extends StatefulWidget {
+  const _GoldenVoiceWave({
+    required this.isSpeaking,
+    required this.avatar,
+    this.avatarSize = 48,
+    this.rippleStartSize = 60,
+    this.rippleEndSize = 120,
+  });
+
+  final bool isSpeaking;
+  final Widget avatar;
+  final double avatarSize;
+  final double rippleStartSize;
+  final double rippleEndSize;
+
+  @override
+  State<_GoldenVoiceWave> createState() => _GoldenVoiceWaveState();
+}
+
+class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
+    with SingleTickerProviderStateMixin {
+  static const int _cycleMs = 2100;
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: _cycleMs),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isSpeaking) _controller.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant _GoldenVoiceWave oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isSpeaking && !oldWidget.isSpeaking) {
+      _controller
+        ..reset()
+        ..repeat();
+    } else if (!widget.isSpeaking && oldWidget.isSpeaking) {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final inset = (widget.rippleEndSize - widget.avatarSize) / 2;
+
+    return SizedBox(
+      width: widget.avatarSize,
+      height: widget.avatarSize,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            left: -inset,
+            top: -inset,
+            width: widget.rippleEndSize,
+            height: widget.rippleEndSize,
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: widget.isSpeaking ? 1 : 0,
+                duration: const Duration(milliseconds: 250),
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) => CustomPaint(
+                    painter: _GoldenVoiceRipplePainter(
+                      progress: _controller.value,
+                      startSize: widget.rippleStartSize,
+                      endSize: widget.rippleEndSize,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          widget.avatar,
+        ],
+      ),
+    );
+  }
+}
+
+class _GoldenVoiceRipplePainter extends CustomPainter {
+  const _GoldenVoiceRipplePainter({
+    required this.progress,
+    required this.startSize,
+    required this.endSize,
+  });
+
+  final double progress;
+  final double startSize;
+  final double endSize;
+
+  static const Color _gold = Color(0xFFD4AF37);
+  static const Color _brightGold = Color(0xFFFFD700);
+  static const int _cycleMs = 2100;
+  static const int _rippleMs = 1500;
+  static const int _staggerMs = 300;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+
+    for (var i = 0; i < 3; i++) {
+      final elapsed = progress * _cycleMs - i * _staggerMs;
+      if (elapsed < 0 || elapsed > _rippleMs) continue;
+
+      final t = (elapsed / _rippleMs).clamp(0.0, 1.0);
+      final eased = Curves.easeOut.transform(t);
+      final diameter = startSize + (endSize - startSize) * eased;
+      final radius = diameter / 2;
+      final opacity = .7 * (1 - eased);
+      if (opacity <= 0) continue;
+
+      final bounds = Rect.fromCircle(center: center, radius: radius);
+      final shader = const LinearGradient(
+        colors: [_gold, _brightGold, _gold],
+      ).createShader(bounds);
+
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4
+          ..shader = shader
+          ..color = Colors.white.withOpacity(opacity)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+      );
+
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..shader = shader
+          ..color = Colors.white.withOpacity(opacity),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GoldenVoiceRipplePainter oldDelegate) =>
+      oldDelegate.progress != progress ||
+      oldDelegate.startSize != startSize ||
+      oldDelegate.endSize != endSize;
 }
