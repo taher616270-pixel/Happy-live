@@ -72,6 +72,7 @@ class _RoomPageState extends State<RoomPage> {
   Route<dynamic>? _roomRoute;
   bool _isChangingSeat = false;
   final Set<int> _pendingSeatNumbers = <int>{};
+  final Map<int, Stopwatch> _seatMoveTimers = <int, Stopwatch>{};
   final SeatStateStore _seatStateStore = SeatStateStore();
   RoomSeatSocket? _seatSocket;
   bool _agoraSyncInProgress = false;
@@ -182,6 +183,10 @@ class _RoomPageState extends State<RoomPage> {
       final version = event['version'];
       if (version is! num) return;
       final moveVersion = version.toInt();
+      final moveTimer = _seatMoveTimers.remove(moveVersion);
+      if (moveTimer != null) {
+        debugPrint('[SeatLatency] server_ack_ms=${(moveTimer.elapsedMicroseconds / 1000).toStringAsFixed(2)} version=$moveVersion');
+      }
       final accepted = event['ok'] == true;
       final isLatest = _seatStateStore.isLatest(moveVersion);
       _seatStateStore.resolveMove(
@@ -1210,8 +1215,13 @@ class _RoomPageState extends State<RoomPage> {
       return;
     }
     {
+      final tapTimer = Stopwatch()..start();
       final command = _seatStateStore.beginOptimisticMove(seatNumber);
       if (command == null) return;
+      _seatMoveTimers[command.version] = tapTimer;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        debugPrint('[SeatLatency] optimistic_avatar_frame_ms=${(tapTimer.elapsedMicroseconds / 1000).toStringAsFixed(2)} version=${command.version}');
+      });
       final socket = _seatSocket;
       if (socket != null && socket.isConnected &&
           socket.sendMove(from: command.from, to: command.to, version: command.version)) {
@@ -1226,6 +1236,10 @@ class _RoomPageState extends State<RoomPage> {
           body: jsonEncode({'seatNumber': command.to, 'version': command.version}),
         ).timeout(const Duration(seconds: 8));
         final data = jsonDecode(response.body);
+        final fallbackTimer = _seatMoveTimers.remove(command.version);
+        if (fallbackTimer != null) {
+          debugPrint('[SeatLatency] http_fallback_ack_ms=${(fallbackTimer.elapsedMicroseconds / 1000).toStringAsFixed(2)} version=${command.version}');
+        }
         final accepted = response.statusCode == 200 && data is Map && data['ok'] == true;
         final rawSeats = data is Map && data['seats'] is List ? data['seats'] as List : const <dynamic>[];
         final isLatest = _seatStateStore.isLatest(command.version);
@@ -1248,6 +1262,7 @@ class _RoomPageState extends State<RoomPage> {
               : 'تعذر تغيير المايك، تمت استعادة الحالة السابقة');
         }
       } catch (_) {
+        _seatMoveTimers.remove(command.version);
         _seatStateStore.rollbackAfterDisconnect(command.version);
         _showMessage('تعذر الاتصال بالغرفة، تمت استعادة المقعد السابق');
       }
