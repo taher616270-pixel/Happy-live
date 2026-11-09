@@ -98,14 +98,39 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 _header(context),
                 _subHeader(context),
                 const SizedBox(height: 10),
-                Transform.translate(
-                  offset: Theme.of(context).platform == TargetPlatform.android
-                      ? const Offset(0, -5)
-                      : Offset.zero,
-                  child: _seats(context),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Keep the original vertical layout and visual offsets.
+                    // The audience strip is painted first so the microphone
+                    // seats remain the top hit-test layer where they overlap.
+                    final isAndroid = Theme.of(context).platform == TargetPlatform.android;
+                    final tileWidth = (constraints.maxWidth - 36) / 4;
+                    final seatsHeight = (tileWidth / .88) * 2 + 7;
+                    return SizedBox(
+                      height: seatsHeight + 43,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned(
+                            top: seatsHeight + 3,
+                            left: 0,
+                            right: 0,
+                            child: _listeners(context),
+                          ),
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            child: Transform.translate(
+                              offset: isAndroid ? const Offset(0, -5) : Offset.zero,
+                              child: _seats(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(height: 3),
-                _listeners(context),
                 Expanded(
                   child: Stack(
                     clipBehavior: Clip.none,
