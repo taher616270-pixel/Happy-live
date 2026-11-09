@@ -214,8 +214,8 @@ class _RoomPageState extends State<RoomPage> {
           (seat['userId'] ?? '').toString() == _seatStateStore.currentUserId;
       return seat;
     }).toList();
-    final nextMySeat = mySeat ??
-        (normalized.where((seat) => seat['isMe'] == true).map((seat) => (seat['seatNumber'] as num).toInt()).firstOrNull);
+    final mine = normalized.where((seat) => seat['isMe'] == true).toList();
+    final nextMySeat = mySeat ?? (mine.isEmpty ? null : (mine.first['seatNumber'] as num).toInt());
     final previousMySeat = _mySeat;
     if (updateStore) _seatStateStore.applySnapshot(normalized, mySeat: nextMySeat);
     if (mounted) {
