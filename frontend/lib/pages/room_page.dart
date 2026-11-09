@@ -1259,37 +1259,43 @@ class _RoomPageState extends State<RoomPage> {
                     ),
                   ],
                 ),
-              Padding(
-                padding: EdgeInsetsDirectional.only(
-                  start: hasSender ? 36 : 0,
-                  end: 15,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0x5520182A),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    isSystem && isWelcome
-                        ? 'دخل الغرفة'
-                        : isSystem && message.type != 'announcement'
-                            ? message.text
-                            : message.type == 'announcement'
-                                ? displayText
-                                : message.text,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      height: 1.35,
-                      fontWeight: FontWeight.w600,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth * 0.78,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0x5520182A),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          isSystem && isWelcome
+                              ? 'دخل الغرفة'
+                              : isSystem && message.type != 'announcement'
+                                  ? message.text
+                                  : message.type == 'announcement'
+                                      ? displayText
+                                      : message.text,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            height: 1.35,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ],
           ),
