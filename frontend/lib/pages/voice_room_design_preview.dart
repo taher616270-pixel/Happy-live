@@ -699,10 +699,10 @@ Widget _roomActionButton({
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.fromLTRB(
-            22,
-            30,
-            22,
-            MediaQuery.of(sheetContext).padding.bottom + 28,
+            14,
+            18,
+            14,
+            MediaQuery.of(sheetContext).padding.bottom + 14,
           ),
           decoration: const BoxDecoration(
             color: Color(0xFF211936),
@@ -885,7 +885,7 @@ Widget _roomActionButton({
                                 padding: const EdgeInsets.symmetric(horizontal: 8),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(.08),
-                                  borderRadius: BorderRadius.circular(28),
+                                  borderRadius: BorderRadius.circular(22),
                                 ),
                                 child: Row(
                                   children: [
@@ -1404,16 +1404,16 @@ class _EmptySeatAction extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 72,
-          height: 72,
+          width: 58,
+          height: 58,
           decoration: BoxDecoration(
             color: const Color(0xFF34294D),
             borderRadius: BorderRadius.circular(28),
           ),
           alignment: Alignment.center,
-          child: Icon(icon, color: const Color(0xFFE5DFF0), size: 39),
+          child: Icon(icon, color: const Color(0xFFE5DFF0), size: 32),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         Text(
           label,
           maxLines: 1,
@@ -1421,7 +1421,7 @@ class _EmptySeatAction extends StatelessWidget {
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Color(0xFFB9AACF),
-            fontSize: 15,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
           ),
         ),
