@@ -754,7 +754,15 @@ export default {
           ));
           await env.DB.batch(statements);
           const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
-          if (action === "kick" || action === "ban") {
+          if (action === "assign_moderator" || action === "remove_moderator") {
+            await seatHub.fetch(new Request("https://room-seats.internal/set-moderator", {
+              method: "POST",
+              headers: {
+                "x-target-user-id": targetUserId,
+                "x-is-moderator": action === "assign_moderator" ? "true" : "false"
+              }
+            }));
+          } else if (action === "kick" || action === "ban") {
             await seatHub.fetch(new Request("https://room-seats.internal/remove-user", {
               method: "POST",
               headers: { "x-target-user-id": targetUserId }
