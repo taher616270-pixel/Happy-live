@@ -555,7 +555,14 @@ Widget _roomActionButton({
             offset: Offset(0, seatOffset),
             child: Align(
               alignment: Alignment.topCenter,
-              child: Column(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: occupied
+                    ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
+                    : (!locked && !isChangingSeat && !seatState.isPending
+                        ? () => onTapSeat(number)
+                        : null),
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
               Stack(
@@ -563,9 +570,9 @@ Widget _roomActionButton({
                 children: [
                   _GoldenVoiceWave(
                     isSpeaking: isSpeaking,
-                    avatarSize: 48,
-                    rippleStartSize: 54,
-                    rippleEndSize: 70,
+                    avatarSize: 54,
+                    rippleStartSize: 60,
+                    rippleEndSize: 76,
                     avatar: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 460),
                       switchInCurve: Curves.easeOutCubic,
@@ -594,8 +601,8 @@ Widget _roomActionButton({
                       key: ValueKey<String>(seat?['userId']?.toString().isNotEmpty == true
                           ? seat!['userId'].toString()
                           : 'empty-$number'),
-                      width: 48,
-                      height: 48,
+                      width: 54,
+                      height: 54,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.white.withOpacity(.10),
@@ -617,32 +624,7 @@ Widget _roomActionButton({
                       ),
                     ),
                   ),
-                  // Web: each mic accepts taps only inside its circular avatar.
-                  // Android keeps its previous rectangular 48px hit target.
-                  if (kIsWeb)
-                    ClipOval(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: occupied
-                            ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
-                            : (!locked && !seatState.isPending
-                                ? () => onTapSeat(number)
-                                : null),
-                        child: const SizedBox(width: 48, height: 48),
-                      ),
-                    )
-                  else
-                    Positioned.fill(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: occupied
-                            ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
-                            : (!locked && !isChangingSeat
-                                ? () => onTapSeat(number)
-                                : null),
-                        child: const SizedBox.expand(),
-                      ),
-                    ),
+
                   if (muted)
                     Positioned(
                       bottom: -2,
@@ -687,6 +669,7 @@ Widget _roomActionButton({
                 ),
                   ],
                 ),
+              ),
             ),
           ),
         );
