@@ -1943,15 +1943,12 @@ class _RoomPageState extends State<RoomPage> {
                       : Icon(Icons.add_rounded, color: _gold.withOpacity(0.9), size: micSize * 0.46),
                 ),
               ),
-              Positioned(
-                top: -17,
-                left: 0,
-                right: 0,
+              Positioned.fill(
                 child: IgnorePointer(
                   child: AnimatedOpacity(
                     opacity: isSpeaking ? 1 : 0,
                     duration: const Duration(milliseconds: 120),
-                    child: Center(child: _LiveVoiceBars()),
+                    child: const _LiveVoiceRing(),
                   ),
                 ),
               ),
@@ -2121,19 +2118,19 @@ class _RoomPageState extends State<RoomPage> {
 class _LiveVoiceBars extends StatefulWidget {
   const _LiveVoiceBars();
 
+  @overrclass _LiveVoiceRing extends StatefulWidget {
+  const _LiveVoiceRing();
+
   @override
-  State<_LiveVoiceBars> createState() => _LiveVoiceBarsState();
+  State<_LiveVoiceRing> createState() => _LiveVoiceRingState();
 }
 
-class _LiveVoiceBarsState extends State<_LiveVoiceBars>
+class _LiveVoiceRingState extends State<_LiveVoiceRing>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 900),
+    duration: const Duration(milliseconds: 1100),
   )..repeat();
-
-  static const int _barCount = 15;
-  static const double _barHeight = 50;
 
   @override
   void dispose() {
@@ -2145,53 +2142,43 @@ class _LiveVoiceBarsState extends State<_LiveVoiceBars>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
-      builder: (context, child) {
-        // Every bar keeps exactly the same height. Only the whole pattern
-        // gently brightens and dims together; microphone volume never changes it.
-        final phase = _controller.value * 2 * 3.141592653589793;
-        final glow = 0.68 + (0.32 * (0.5 + 0.5 * 
-            (phase < 3.141592653589793 ? phase / 3.141592653589793 : 
-            (2 * 3.141592653589793 - phase) / 3.141592653589793)));
-        return Container(
-          height: 90,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xF217121F),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xFFFFD98B), width: 1.5),
-            boxShadow: const [
-              BoxShadow(color: Color(0x99D9A93C), blurRadius: 27),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: List<Widget>.generate(_barCount, (index) {
-              return Container(
-                width: 7,
-                height: _barHeight,
-                margin: const EdgeInsets.symmetric(horizontal: 2.2),
-                decoration: BoxDecoration(
-                  color: (index % 3 == 1
-                          ? const Color(0xFFFFE7A8)
-                          : const Color(0xFFE8C477))
-                      .withOpacity(glow),
-                  borderRadius: BorderRadius.circular(5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0x99E8C477).withOpacity(glow),
-                      blurRadius: 7,
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        );
-      },
+      builder: (context, child) => CustomPaint(
+        painter: _LiveVoiceRingPainter(_controller.value),
+      ),
     );
   }
 }
+
+class _LiveVoiceRingPainter extends CustomPainter {
+  const _LiveVoiceRingPainter(this.phase);
+  final double phase;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide * 0.48;
+    final pulse = 0.72 + 0.28 * (0.5 + 0.5 *
+        math.sin(phase * 2 * math.pi));
+
+    final gold = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..color = const Color(0xFFFFD98B).withOpacity(pulse)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    canvas.drawCircle(center, radius, gold);
+
+    final purple = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..color = const Color(0xFFB98AF0).withOpacity(0.55 + 0.25 * pulse);
+    canvas.drawCircle(center, radius - 5, purple);
+  }
+
+  @override
+  bool shouldRepaint(covariant _LiveVoiceRingPainter oldDelegate) =>
+      oldDelegate.phase != phase;
+}
+
 class _VoiceGlowPainter extends CustomPainter {
   const _VoiceGlowPainter({required this.level});
   final double level;
