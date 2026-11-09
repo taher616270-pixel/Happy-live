@@ -1078,7 +1078,7 @@ export default {
           env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
           env.DB.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
           env.DB.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
-          env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null }>(),
+          env.DB.prepare("SELECT avatar_key, country_name FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null; country_name: string | null }>(),
           env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
           env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
         ]);
@@ -1655,7 +1655,7 @@ export default {
           seatRevision: snapshot.revision ?? 0,
           room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة" },
-          me: { id: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id ?? "", avatarUrl: profile?.avatar_key ?? "", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
+          me: { id: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id ?? "", avatarUrl: profile?.avatar_key ?? "", countryName: profile?.country_name ?? "", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
           isOwner: room.owner_user_id === user.id,
           isModerator: !!roomModerator,
           mySeat,
