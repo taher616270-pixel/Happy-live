@@ -501,8 +501,8 @@ Widget _roomActionButton({
         final isSpeaking = occupied && !muted && voiceLevel >= 0.055;
         final isAndroid = Theme.of(context).platform == TargetPlatform.android;
         final seatOffset = isAndroid
-            ? (number >= 5 ? -12.0 : 8.0)
-            : (number >= 5 ? -21.0 : 13.0);
+            ? (number <= 4 ? 2.0 : -12.0)
+            : (number <= 4 ? 7.0 : -21.0);
         return Transform.translate(
           offset: Offset(0, seatOffset),
           child: GestureDetector(
