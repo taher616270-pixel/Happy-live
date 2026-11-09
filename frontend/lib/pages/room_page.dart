@@ -1883,9 +1883,10 @@ class _RoomPageState extends State<RoomPage> {
     final mine = seat?['isMe'] == true;
     final name = (seat?['name'] ?? '').toString();
     final isLocked = occupied && !mine;
+    final isMuted = seat?['isMuted'] == true;
     final speakerUid = int.tryParse((seat?['userCode'] ?? '').toString());
     final voiceLevel = speakerUid == null ? 0.0 : (_speakerLevels[speakerUid] ?? 0.0);
-    final isSpeaking = occupied && !isLocked && voiceLevel >= 0.055;
+    final isSpeaking = occupied && !isMuted && voiceLevel >= 0.055;
     return InkWell(
       onTap: (!occupied || mine) && !_isChangingSeat ? () => _selectSeat(number) : null,
       borderRadius: BorderRadius.circular(18),
