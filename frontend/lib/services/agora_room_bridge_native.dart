@@ -29,9 +29,13 @@ class AgoraRoomBridge {
           for (final speaker in speakers) {
             // Agora reports the local speaker with uid 0 on some native SDK versions.
             // Translate it to the authenticated numeric UID used by room seat records.
-            final uid = speaker.uid == 0 ? _localUid : speaker.uid;
+            final reportedUid = speaker.uid;
+            if (reportedUid == null) continue;
+            final uid = reportedUid == 0 ? _localUid : reportedUid;
             if (uid <= 0) continue;
-            final level = (speaker.volume / 255.0).clamp(0.0, 1.0).toDouble();
+            final volume = speaker.volume;
+            if (volume == null) continue;
+            final level = (volume / 255.0).clamp(0.0, 1.0).toDouble();
             if (level >= 0.015) {
               _volumeLevels[uid] = level;
               _volumeSeenAt[uid] = now;
