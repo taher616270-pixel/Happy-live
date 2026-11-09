@@ -555,7 +555,9 @@ Widget _roomActionButton({
             offset: Offset(0, seatOffset),
             child: Align(
               alignment: Alignment.topCenter,
-              child: GestureDetector(
+              child: Transform.translate(
+                offset: number == 5 ? const Offset(5, 0) : Offset.zero,
+                child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: occupied
                     ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
@@ -573,7 +575,7 @@ Widget _roomActionButton({
                 child: SizedBox.square(
                   dimension: 72,
                   child: Transform.translate(
-                    offset: number > 4 ? const Offset(0, 5) : Offset.zero,
+                    offset: Offset(number == 5 ? -5 : 0, number > 4 ? 5 : 0),
                     transformHitTests: false,
                     child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -683,6 +685,7 @@ Widget _roomActionButton({
                     ],
                     ),
                   ),
+                ),
                 ),
               ),
             ),
