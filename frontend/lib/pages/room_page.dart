@@ -1111,13 +1111,55 @@ class _RoomPageState extends State<RoomPage> {
     }
   }
 
-  Widget _chatAvatar(String avatar, String name, {double size = 34}) {
+  Widget _chatAvatar(String avatar, String name, {double size = 34, VoidCallback? onTap}) {
     final hasImage = avatar.startsWith('https://');
-    return CircleAvatar(
+    final avatarWidget = CircleAvatar(
       radius: size / 2,
       backgroundColor: const Color(0xFF46304F),
       backgroundImage: hasImage ? NetworkImage(avatar) : null,
       child: hasImage ? null : Text(name.isEmpty ? '؟' : name.characters.first, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+    );
+    if (onTap == null) return avatarWidget;
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: avatarWidget,
+      ),
+    );
+  }
+
+  void _showChatUserProfile(Message message) {
+    if (!mounted || message.senderId.isEmpty) return;
+    final matchingSeat = _seats.where((seat) =>
+      (seat['userId'] ?? '').toString() == message.senderId).toList();
+    final isMe = matchingSeat.any((seat) => seat['isMe'] == true);
+    final user = <String, dynamic>{
+      if (matchingSeat.isNotEmpty) ...matchingSeat.first,
+      'userId': message.senderId,
+      'name': message.senderName,
+      'displayName': message.senderName,
+      'avatarUrl': message.senderAvatar,
+      'avatar': message.senderAvatar,
+      'isMe': isMe,
+    };
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(.55),
+      isScrollControlled: true,
+      enableDrag: true,
+      builder: (sheetContext) => UserInfoBottomSheet(
+        user: user,
+        isMe: isMe,
+        canModerate: !isMe && (_isRoomOwner || _amRoomModerator) &&
+            user['isRoomOwner'] != true && user['isRoomModerator'] != true,
+        selfMicMuted: isMe ? _selfMicMuted : user['isMuted'] == true,
+        onToggleSelfMic: _toggleSelfMic,
+        onModerateUser: _moderateRoomUser,
+      ),
     );
   }
 
@@ -1165,20 +1207,30 @@ class _RoomPageState extends State<RoomPage> {
                 ),
               ),
               const SizedBox(width: 6),
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: const Color(0x5520182A),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(.12)),
+              if (!isSystem)
+                _chatAvatar(
+                  message.senderAvatar,
+                  message.senderName,
+                  size: 30,
+                  onTap: message.senderId.isEmpty
+                      ? null
+                      : () => _showChatUserProfile(message),
+                )
+              else
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: const Color(0x5520182A),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withOpacity(.12)),
+                  ),
+                  child: Icon(
+                    Icons.notifications_active_rounded,
+                    size: 14,
+                    color: Colors.white.withOpacity(0.82),
+                  ),
                 ),
-                child: Icon(
-                  isSystem ? Icons.notifications_active_rounded : Icons.graphic_eq_rounded,
-                  size: 14,
-                  color: Colors.white.withOpacity(0.82),
-                ),
-              ),
             ],
           ),
       ),
