@@ -215,24 +215,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   Widget _header(BuildContext context) {
     final avatar = (room['ownerAvatar'] ?? room['ownerAvatarUrl'] ?? _cover ?? '').toString();
     final trophies = (room['trophies'] ?? room['trophyCount'] ?? 0).toString();
-
-    const nameStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w800);
-    const idStyle = TextStyle(fontSize: 8);
-    final maxCardWidth = (MediaQuery.sizeOf(context).width * .60).clamp(175.0, 300.0);
-    final maxTextWidth = (maxCardWidth - 95).clamp(40.0, 205.0);
-    final namePainter = TextPainter(
-      text: TextSpan(text: _name, style: nameStyle),
-      maxLines: 1,
-      textDirection: TextDirection.rtl,
-    )..layout(maxWidth: maxTextWidth);
-    final idPainter = TextPainter(
-      text: TextSpan(text: 'ID: $_id', style: idStyle),
-      maxLines: 1,
-      textDirection: TextDirection.rtl,
-    )..layout(maxWidth: maxTextWidth);
-    final textAreaWidth = math.max(namePainter.width, idPainter.width)
-        .clamp(40.0, maxTextWidth);
-    final cardWidth = (95.0 + textAreaWidth).clamp(135.0, maxCardWidth);
     return Transform.translate(
       offset: Theme.of(context).platform == TargetPlatform.android
           ? const Offset(0, -17)
@@ -241,9 +223,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Row(
         children: [
-          SizedBox(
-            width: cardWidth,
-            child: Container(
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: (MediaQuery.sizeOf(context).width * .60).clamp(175.0, 235.0),
+            ),
+            child: IntrinsicWidth(
+              child: Container(
               padding: const EdgeInsetsDirectional.only(start: 0, end: 6, top: 4, bottom: 4),
               child: Stack(
                 children: [
@@ -264,129 +249,139 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     ),
                   ),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: SizedBox(
-                          width: 38,
-                          height: 37,
-                          child: avatar.startsWith('http')
-                              ? Image.network(avatar, fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const ColoredBox(
-                                    color: Colors.white12,
-                                    child: Icon(Icons.person, color: Colors.white70),
-                                  ))
-                              : const ColoredBox(
-                                  color: Colors.white12,
-                                  child: Icon(Icons.person, color: Colors.white70),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: SizedBox(
-                          width: textAreaWidth,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: nameStyle,
-                              ),
-                              const SizedBox(height: 3),
-                              Transform.translate(
-                                offset: const Offset(0, -2),
-                                child: Text(
-                                  'ID: $_id',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: Colors.white60, fontSize: 8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Transform.translate(
-                        offset: const Offset(5, 0),
-                        child: Container(
-                          width: 44,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: const Color(0xD93D2E1F),
-                            borderRadius: BorderRadius.circular(15),
-                            border: Border.all(
-                              color: const Color(0xCCD4B779),
-                              width: 1.2,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 38,
+                      height: 37,
+                      child: avatar.startsWith('http')
+                          ? Image.network(avatar, fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const ColoredBox(
+                                color: Colors.white12,
+                                child: Icon(Icons.person, color: Colors.white70),
+                              ))
+                          : const ColoredBox(
+                              color: Colors.white12,
+                              child: Icon(Icons.person, color: Colors.white70),
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Container(
-                                width: 14,
-                                height: 18,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(7),
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Color(0xFFFFF8E7),
-                                      Color(0xFFE9C97B),
-                                    ],
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(height: 3),
+                                  Transform.translate(
+                                    offset: const Offset(0, -2),
+                                    child: Text(
+                                      'ID: $_id',
+                                      style: const TextStyle(color: Colors.white60, fontSize: 8),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(
-                                width: 10,
-                                height: 10,
+                            const SizedBox(width: 4),
+                            Transform.translate(
+                              offset: const Offset(5, 0),
+                              child: Container(
+                                width: 44,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xD93D2E1F),
+                                  borderRadius: BorderRadius.circular(15),
+                                  border: Border.all(
+                                    color: const Color(0xCCD4B779),
+                                    width: 1.2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
                                 child: Stack(
                                   alignment: Alignment.center,
                                   children: [
-                                    SizedBox(
-                                      width: 2.7,
-                                      height: 10,
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          color: Color(0xFFC19A3E),
-                                          borderRadius: BorderRadius.all(Radius.circular(2)),
+                                    Container(
+                                      width: 14,
+                                      height: 18,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(7),
+                                        gradient: const LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Color(0xFFFFF8E7),
+                                            Color(0xFFE9C97B),
+                                          ],
                                         ),
                                       ),
                                     ),
-                                    SizedBox(
+                                    const SizedBox(
                                       width: 10,
-                                      height: 3,
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          color: Color(0xFFC19A3E),
-                                          borderRadius: BorderRadius.all(Radius.circular(2)),
-                                        ),
+                                      height: 10,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 2.7,
+                                            height: 10,
+                                            child: DecoratedBox(
+                                              decoration: BoxDecoration(
+                                                color: Color(0xFFC19A3E),
+                                                borderRadius: BorderRadius.all(Radius.circular(2)),
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: 10,
+                                            height: 3,
+                                            child: DecoratedBox(
+                                              decoration: BoxDecoration(
+                                                color: Color(0xFFC19A3E),
+                                                borderRadius: BorderRadius.all(Radius.circular(2)),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ),
                     ],
                   ),
                 ],
               ),
+                ],
+              ),
             ),
+          ),
           ),
           const Spacer(),
           const SizedBox(width: 10),
