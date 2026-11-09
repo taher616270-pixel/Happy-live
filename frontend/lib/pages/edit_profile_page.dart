@@ -482,7 +482,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       cursorColor: Colors.black,
                       onChanged: (value) => setSheetState(() => query = value),
                       decoration: InputDecoration(
-                        hintText: 'ابحث عن دولة', prefixIcon: const Icon(Icons.search),
+                        hintText: 'ابحث عن دولة',
+                        hintStyle: const TextStyle(color: Colors.black),
+                        prefixIcon: const Icon(Icons.search),
                         filled: true, fillColor: _fieldBg,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                         contentPadding: const EdgeInsets.symmetric(vertical: 10),
