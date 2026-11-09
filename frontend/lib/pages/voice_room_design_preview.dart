@@ -521,8 +521,8 @@ Widget _roomActionButton({
                   _GoldenVoiceWave(
                     isSpeaking: isSpeaking,
                     avatarSize: 48,
-                    rippleStartSize: 60,
-                    rippleEndSize: 120,
+                    rippleStartSize: 54,
+                    rippleEndSize: 100,
                     avatar: Container(
                       width: 48,
                       height: 48,
@@ -546,13 +546,6 @@ Widget _roomActionButton({
                             ),
                     ),
                   ),
-                  if (isSpeaking)
-                    Positioned(
-                      top: -8,
-                      left: 0,
-                      right: 0,
-                      child: Center(child: _SeatVoiceBars(voiceLevel)),
-                    ),
                   if (muted || occupied)
                     Positioned(
                       bottom: -2,
@@ -1648,7 +1641,9 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
         ..reset()
         ..repeat();
     } else if (!widget.isSpeaking && oldWidget.isSpeaking) {
-      _controller.stop();
+      _controller
+        ..stop()
+        ..value = 0;
     }
   }
 
@@ -1677,7 +1672,7 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
             child: IgnorePointer(
               child: AnimatedOpacity(
                 opacity: widget.isSpeaking ? 1 : 0,
-                duration: const Duration(milliseconds: 250),
+                duration: const Duration(milliseconds: 120),
                 child: AnimatedBuilder(
                   animation: _controller,
                   builder: (context, child) => CustomPaint(
