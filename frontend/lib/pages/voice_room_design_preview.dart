@@ -231,7 +231,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   topEnd: Radius.circular(22),
                   bottomEnd: Radius.circular(22),
                 ),
-                border: Border.all(color: Colors.white.withOpacity(.12)),
+
               ),
               child: Row(
                 children: [
