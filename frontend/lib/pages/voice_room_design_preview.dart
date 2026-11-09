@@ -5,6 +5,7 @@ import 'package:country_picker/country_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:happy_live/models/seat_state.dart';
+import 'edit_profile_page.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
 
@@ -1264,8 +1265,8 @@ class UserInfoBottomSheet extends StatelessWidget {
   }
 
   Widget _countryFlag(BuildContext context, String countryName) {
-    if (countryName == 'دولة الجنوب العربي' ||
-        countryName == 'الجنوب العربي') {
+    final savedProfileFlag = countryFlagForProfileName(countryName);
+    if (savedProfileFlag == 'SOUTH_ARABIA') {
       return Image.asset(
         'web/assets/south-arabia-v2.png',
         width: 27,
@@ -1273,6 +1274,10 @@ class UserInfoBottomSheet extends StatelessWidget {
         fit: BoxFit.cover,
       );
     }
+    if (savedProfileFlag.isNotEmpty) {
+      return Text(savedProfileFlag, style: const TextStyle(fontSize: 19));
+    }
+    if (countryName.trim().isEmpty) return const SizedBox.shrink();
     for (final country in CountryService().getAll()) {
       final translated = country.getTranslatedName(context) ?? country.name;
       if (translated.trim() == countryName.trim() ||
