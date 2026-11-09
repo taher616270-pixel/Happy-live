@@ -669,7 +669,7 @@ Widget _roomActionButton({
                 child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: occupied
-                    ? (avatar.startsWith('http') ? () => _showUserProfile(context, seat!) : null)
+                    ? () => _showUserProfile(context, seat!)
                     : (!isChangingSeat &&
                             !seatState.isPending &&
                             (canModerateUsers || !locked)
