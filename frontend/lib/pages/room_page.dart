@@ -1149,19 +1149,26 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _showChatUserProfile(Message message) {
-    if (!mounted) return;
+    if (!mounted || message.senderId.trim().isEmpty) return;
     final matchingSeat = _seats.where((seat) =>
       (seat['userId'] ?? '').toString() == message.senderId).toList();
-    final isMe = matchingSeat.any((seat) => seat['isMe'] == true);
-    final user = <String, dynamic>{
+    final cachedUser = <String, dynamic>{
       if (matchingSeat.isNotEmpty) ...matchingSeat.first,
       'userId': message.senderId,
       'name': message.senderName,
       'displayName': message.senderName,
       'avatarUrl': message.senderAvatar,
       'avatar': message.senderAvatar,
-      'isMe': isMe,
+      'isMe': matchingSeat.any((seat) => seat['isMe'] == true),
     };
+
+    // Resolve the permanent profile by account UUID, not by the active audience
+    // list. A user can leave the room and their old message remains tappable.
+    final profileFuture = http.get(
+      Uri.parse('$_apiBase/users/${Uri.encodeComponent(message.senderId)}/profile'),
+      headers: _headers,
+    ).timeout(const Duration(seconds: 12));
+
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1169,14 +1176,50 @@ class _RoomPageState extends State<RoomPage> {
       isScrollControlled: true,
       useRootNavigator: true,
       enableDrag: true,
-      builder: (sheetContext) => UserInfoBottomSheet(
-        user: user,
-        isMe: isMe,
-        canModerate: !isMe && (_isRoomOwner || _amRoomModerator) &&
-            user['isRoomOwner'] != true && user['isRoomModerator'] != true,
-        selfMicMuted: isMe ? _selfMicMuted : user['isMuted'] == true,
-        onToggleSelfMic: _toggleSelfMic,
-        onModerateUser: _moderateRoomUser,
+      builder: (sheetContext) => FutureBuilder<http.Response>(
+        future: profileFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: CircularProgressIndicator(color: _gold)),
+              ),
+            );
+          }
+          var user = Map<String, dynamic>.from(cachedUser);
+          final response = snapshot.data;
+          if (response != null && response.statusCode == 200) {
+            try {
+              final decoded = jsonDecode(response.body);
+              if (decoded is Map && decoded['ok'] == true && decoded['profile'] is Map) {
+                final profile = Map<String, dynamic>.from(decoded['profile'] as Map);
+                user.addAll(profile);
+                user['userId'] = profile['userId'] ?? message.senderId;
+                user['name'] = profile['name'] ?? message.senderName;
+                user['displayName'] = user['name'];
+                user['userCode'] = profile['userCode'] ?? '';
+                user['avatarUrl'] = profile['avatarUrl'] ?? message.senderAvatar;
+                user['countryName'] = profile['country'] ?? '';
+                user['country_name'] = profile['country'] ?? '';
+                user['isMe'] = profile['isMine'] == true;
+              }
+            } catch (_) {
+              // Keep the message snapshot as a safe fallback if the response is malformed.
+            }
+          }
+          final isMe = user['isMe'] == true;
+          return UserInfoBottomSheet(
+            user: user,
+            isMe: isMe,
+            canModerate: !isMe && (_isRoomOwner || _amRoomModerator) &&
+                user['isRoomOwner'] != true && user['isRoomModerator'] != true,
+            selfMicMuted: isMe ? _selfMicMuted : user['isMuted'] == true,
+            onToggleSelfMic: _toggleSelfMic,
+            onModerateUser: _moderateRoomUser,
+          );
+        },
       ),
     );
   }
