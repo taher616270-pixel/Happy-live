@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'create_room_page.dart';
 import 'room_page.dart';
 import 'voice_rooms_page.dart';
@@ -34,7 +35,39 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   int _currentPage = 0;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
+  bool _myRoomLookupInFlight = false;
+  bool _myRoomRetryScheduled = false;
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
+
+  // The access token is an opaque, account-specific session key. Hash it so
+  // each signed-in account gets its own small local room cache without storing
+  // the token as a preference key.
+  String get _myRoomCacheKey {
+    var hash = 0;
+    for (final unit in widget.accessToken.codeUnits) {
+      hash = ((hash << 5) - hash + unit) & 0x7fffffff;
+    }
+    return 'happy_live_my_room_v1_${hash.toRadixString(16)}';
+  }
+
+  Future<void> _saveMyRoomCache(Map<String, dynamic> room) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_myRoomCacheKey, jsonEncode(room));
+    } catch (_) {
+      // The server remains the source of truth if local storage is unavailable.
+    }
+  }
+
+  void _rememberMyRoom(Map<String, dynamic> room) {
+    if (mounted) {
+      setState(() {
+        _myRoom = Map<String, dynamic>.from(room);
+        _loadingMyRoom = false;
+      });
+    }
+    _saveMyRoomCache(room);
+  }
 
   @override
   void initState() {
@@ -61,30 +94,75 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Future<void> _loadMyRoom() async {
+    if (_myRoomLookupInFlight) return;
+    _myRoomLookupInFlight = true;
+
     try {
+      // Read the last confirmed room first. This keeps the create action hidden
+      // immediately on weak/offline connections after a room was created.
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cached = prefs.getString(_myRoomCacheKey);
+        if (cached != null && cached.isNotEmpty) {
+          final decoded = jsonDecode(cached);
+          if (decoded is Map && decoded['id'] != null && mounted) {
+            setState(() {
+              _myRoom = Map<String, dynamic>.from(decoded);
+              _loadingMyRoom = false;
+            });
+          }
+        }
+      } catch (_) {}
+
       final response = await http.get(
         Uri.parse('$_apiBase/rooms/mine'),
         headers: {'Authorization': 'Bearer ${widget.accessToken}'},
       ).timeout(const Duration(seconds: 12));
-      if (response.statusCode != 200) return;
+      if (response.statusCode != 200) {
+        throw Exception('my_room_lookup_failed');
+      }
+
       final data = jsonDecode(response.body);
-      if (data is Map && data['ok'] == true) {
-        final value = data['room'];
-        if (!mounted) return;
-        setState(() {
-          _myRoom = value is Map ? Map<String, dynamic>.from(value) : null;
-          _loadingMyRoom = false;
-        });
+      if (data is! Map || data['ok'] != true) {
+        throw Exception('my_room_lookup_invalid_response');
+      }
+
+      final value = data['room'];
+      if (value is Map && value['id'] != null) {
+        final room = Map<String, dynamic>.from(value);
+        _rememberMyRoom(room);
+      } else if (_myRoom == null && mounted) {
+        // Only show the create action after the server positively confirms
+        // that this account has never created a room.
+        setState(() => _loadingMyRoom = false);
+      } else if (mounted) {
+        // A cached permanent room must never be forgotten because of a stale
+        // or inconsistent response.
+        setState(() => _loadingMyRoom = false);
       }
     } catch (_) {
-      // The create endpoint is idempotent too, so a temporary lookup failure
-      // cannot create a duplicate room.
+      // If we cannot confirm the account's room state, do not show a create
+      // action that could be mistaken for permission to create another room.
+      if (_myRoom == null && mounted) {
+        setState(() => _loadingMyRoom = true);
+        if (!_myRoomRetryScheduled) {
+          _myRoomRetryScheduled = true;
+          Future<void>.delayed(const Duration(seconds: 5), () {
+            _myRoomRetryScheduled = false;
+            if (mounted) _loadMyRoom();
+          });
+        }
+      }
     } finally {
-      if (mounted && _loadingMyRoom) setState(() => _loadingMyRoom = false);
+      _myRoomLookupInFlight = false;
     }
   }
 
   Future<void> _openMyRoom() async {
+    if (_loadingMyRoom) {
+      await _loadMyRoom();
+      return;
+    }
     final room = _myRoom;
     if (room != null) {
       await Navigator.of(context).push(PageRouteBuilder<void>(
@@ -100,9 +178,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     await Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => CreateRoomPage(
         accessToken: widget.accessToken,
-        onRoomCreated: (createdRoom) {
-          if (mounted) setState(() => _myRoom = createdRoom);
-        },
+        onRoomCreated: _rememberMyRoom,
       ),
     ));
     await _loadMyRoom();
@@ -396,7 +472,7 @@ class MyPartyRoomButton extends StatelessWidget {
         : 'غرفة الحفلة الخاصة بي';
     final subtitle = hasRoom
         ? 'اضغط لفتح غرفتك'
-        : (loading ? 'جارٍ تحميل غرفتك...' : 'دردش مع أي شخص');
+        : (loading ? 'جارٍ التحقق من غرفتك...' : 'دردش مع أي شخص');
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -468,11 +544,19 @@ class MyPartyRoomButton extends StatelessWidget {
                           width: 1.8,
                         ),
                       ),
-                      child: Icon(
-                        hasRoom ? Icons.arrow_forward_ios_rounded : Icons.add,
-                        color: const Color(0xFFD9A93C),
-                        size: hasRoom ? 15 : 21,
-                      ),
+                      child: loading
+                          ? const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFFD9A93C),
+                              ),
+                            )
+                          : Icon(
+                              hasRoom ? Icons.arrow_forward_ios_rounded : Icons.add,
+                              color: const Color(0xFFD9A93C),
+                              size: hasRoom ? 15 : 21,
+                            ),
                     ),
                   ],
                 ),
