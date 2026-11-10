@@ -16,11 +16,13 @@ class RoomInfo {
     required this.level, required this.palaceStatus, required this.membersCount,
     required this.membersMax, required this.members, required this.announcement,
     required this.groupName, required this.groupCount, required this.groupDesc,
+    this.isRoomOwner = false,
   });
   final String name, flag, id, imageUrl, imageBadge, tribeName, tribeOwner, tribeLogoUrl;
   final int likes, level, membersCount, membersMax, groupCount;
   final String palaceStatus, announcement, groupName, groupDesc;
   final List<RoomMember> members;
+  final bool isRoomOwner;
 }
 
 class _RoomInfoColors {
@@ -43,19 +45,21 @@ Future<void> showRoomInfoSheet(
   VoidCallback? onJoin,
   VoidCallback? onFollow,
   VoidCallback? onMembersTap,
+  VoidCallback? onSettings,
+  VoidCallback? onInvite,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _RoomInfoSheet(info: info, onJoin: onJoin, onFollow: onFollow, onMembersTap: onMembersTap),
+    builder: (_) => _RoomInfoSheet(info: info, onJoin: onJoin, onFollow: onFollow, onMembersTap: onMembersTap, onSettings: onSettings, onInvite: onInvite),
   );
 }
 
 class _RoomInfoSheet extends StatelessWidget {
-  const _RoomInfoSheet({required this.info, this.onJoin, this.onFollow, this.onMembersTap});
+  const _RoomInfoSheet({required this.info, this.onJoin, this.onFollow, this.onMembersTap, this.onSettings, this.onInvite});
   final RoomInfo info;
-  final VoidCallback? onJoin, onFollow, onMembersTap;
+  final VoidCallback? onJoin, onFollow, onMembersTap, onSettings, onInvite;
 
   @override
   Widget build(BuildContext context) {
@@ -174,9 +178,15 @@ class _RoomInfoSheet extends StatelessWidget {
               ]),
             )),
             Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 14), child: Row(children: [
-              Expanded(child: _button('متابعة', const Color(0xFF5A2A18), _RoomInfoColors.follow, onFollow)),
-              const SizedBox(width: 14),
-              Expanded(child: _button('انضمام', const Color(0xFF1B5E63), _RoomInfoColors.join, onJoin)),
+              if (info.isRoomOwner) ...[
+                Expanded(child: _button('الإعدادات', const Color(0xFFE9D9B9), const Color(0xFF6B4A24), onSettings, icon: Icons.settings_outlined)),
+                const SizedBox(width: 14),
+                Expanded(child: _button('دعوة', const Color(0xFFE4D8C2), const Color(0xFF6B4A24), onInvite, icon: Icons.person_add_alt_1_rounded)),
+              ] else ...[
+                Expanded(child: _button('متابعة', const Color(0xFF5A2A18), _RoomInfoColors.follow, onFollow)),
+                const SizedBox(width: 14),
+                Expanded(child: _button('انضمام', const Color(0xFF1B5E63), _RoomInfoColors.join, onJoin)),
+              ],
             ])),
           ]),
         ),
@@ -207,12 +217,15 @@ class _RoomInfoSheet extends StatelessWidget {
     ]),
   );
 
-  static Widget _button(String title, Color bg, Color fg, VoidCallback? action) => SizedBox(
+  static Widget _button(String title, Color bg, Color fg, VoidCallback? action, {IconData? icon}) => SizedBox(
     height: 54,
     child: ElevatedButton(
       onPressed: action,
       style: ElevatedButton.styleFrom(backgroundColor: bg, foregroundColor: fg, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
-      child: Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+        if (icon != null) ...[Icon(icon, size: 19), const SizedBox(width: 7)],
+        Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
+      ]),
     ),
   );
 
