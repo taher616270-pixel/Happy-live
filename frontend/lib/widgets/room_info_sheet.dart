@@ -148,8 +148,33 @@ class _RoomInfoSheet extends StatelessWidget {
                   separatorBuilder: (_, __) => const SizedBox(width: 10),
                   itemBuilder: (_, i) {
                     final m = info.members[i];
+                    final avatarUrl = (m.isOwner && info.ownerAvatarUrl.trim().isNotEmpty)
+                        ? info.ownerAvatarUrl.trim()
+                        : m.avatarUrl.trim();
                     return SizedBox(width: 48, child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
-                      CircleAvatar(radius: 22, backgroundColor: _RoomInfoColors.chip, backgroundImage: m.avatarUrl.startsWith('http') ? NetworkImage(m.avatarUrl) : null, child: m.avatarUrl.startsWith('http') ? null : const Icon(Icons.person, color: _RoomInfoColors.muted)),
+                      ClipOval(
+                        child: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: avatarUrl.startsWith('https://')
+                              ? Image.network(
+                                  avatarUrl,
+                                  width: 44,
+                                  height: 44,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: _RoomInfoColors.chip,
+                                    alignment: Alignment.center,
+                                    child: const Icon(Icons.person, color: _RoomInfoColors.muted),
+                                  ),
+                                )
+                              : Container(
+                                  color: _RoomInfoColors.chip,
+                                  alignment: Alignment.center,
+                                  child: const Icon(Icons.person, color: _RoomInfoColors.muted),
+                                ),
+                        ),
+                      ),
                       Positioned(bottom: 4, child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
                         decoration: BoxDecoration(color: m.isOwner ? const Color(0xFFFF4F81) : const Color(0xFFFF9800), borderRadius: BorderRadius.circular(10)),
