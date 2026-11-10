@@ -33,7 +33,7 @@ flutter:
     - assets/images/app_icon.PNG
     - assets/images/app_icon2.png.PNG
     - assets/images/boy_headset.png.png
-    - web/assets/south-arabia-v2.png
+    - web/assets/south-arabia.png
     - web/assets/images/profile_cover/profile_cover.jpg.JPG
     - shorebird.yaml
 
