@@ -62,13 +62,6 @@ Future<void> showRoomInfoSheet(
 }
 
 class _RoomInfoSheet extends StatelessWidget {
-  static const double _avatarSize = 66;
-  static const double _flagSize = 22;
-  static const double _capsuleHeight = 32;
-  static const double _capsuleRadius = 10;
-  static const EdgeInsets _capsulePadding =
-      EdgeInsets.symmetric(horizontal: 8);
-
   const _RoomInfoSheet({required this.info, this.onJoin, this.onFollow, this.onMembersTap, this.onSettings, this.onInvite});
   final RoomInfo info;
   final VoidCallback? onJoin, onFollow, onMembersTap, onSettings, onInvite;
@@ -86,152 +79,57 @@ class _RoomInfoSheet extends StatelessWidget {
             Flexible(child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: _RoomInfoSheet._avatarSize,
-                      height: 70,
-                      child: Stack(
-                        children: [
-                          Transform.translate(
-                            offset: const Offset(2, 8),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: _networkImage(
-                                info.imageUrl,
-                                _RoomInfoSheet._avatarSize,
-                                _RoomInfoSheet._avatarSize,
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFFF3B5C),
-                                    Color(0xFFFF6B3D),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                info.imageBadge,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                Transform.translate(
+                  offset: const Offset(0, 1),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  SizedBox(width: 66, height: 70, child: Stack(children: [
+                    Transform.translate(
+                      offset: const Offset(2, 8),
+                      child: ClipRRect(borderRadius: BorderRadius.circular(10), child: _networkImage(info.imageUrl, 66, 66)),
+                    ),
+                    Positioned(left: 0, right: 0, bottom: 0, child: Container(
+                      alignment: Alignment.center, padding: const EdgeInsets.symmetric(vertical: 2),
+                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF3B5C), Color(0xFFFF6B3D)]), borderRadius: BorderRadius.circular(6)),
+                      child: Text(info.imageBadge, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                    )),
+                  ])),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Transform.translate(
+                      offset: const Offset(0, 7),
+                      child: Row(children: [
+                        _countryFlag(context, info.flag),
+                        const SizedBox(width: 6),
+                        Flexible(child: Transform.translate(offset: const Offset(0, -3), child: Text(info.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)))),
+                      ]),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(spacing: 8, runSpacing: 8, children: [
+                      GestureDetector(
+                        onTap: () async {
+                          await Clipboard.setData(ClipboardData(text: info.id));
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ الـ ID'), duration: Duration(seconds: 1)));
+                        },
+                        child: Transform.translate(
+                          offset: const Offset(7, 9),
+                          child: _chip(Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text('ID:${info.id}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 12)),
+                            const SizedBox(width: 6), Transform.translate(offset: const Offset(2, 0), child: const Icon(Icons.copy_rounded, color: _RoomInfoColors.muted, size: 16)),
+                          ]), padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5)),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  info.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: _RoomInfoColors.text,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 7),
-                              _countryFlag(context, info.flag),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              GestureDetector(
-                                onTap: () async {
-                                  await Clipboard.setData(
-                                    ClipboardData(text: info.id),
-                                  );
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('تم نسخ الـ ID'),
-                                        duration: Duration(seconds: 1),
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: _topInfoCapsule(
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.copy_rounded,
-                                        color: _RoomInfoColors.muted,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'ID:${info.id}',
-                                        style: const TextStyle(
-                                          color: _RoomInfoColors.muted,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              _topInfoCapsule(
-                                color: const Color(0xFF382A32),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.favorite,
-                                      color: Color(0xFFFF7A2F),
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      _format(info.likes),
-                                      style: const TextStyle(
-                                        color: Color(0xFFFF7A2F),
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.error_outline,
-                      color: _RoomInfoColors.muted,
-                      size: 28,
-                    ),
-                  ],
+                      _chip(Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.favorite, color: Color(0xFFFF7A2F), size: 18),
+                        const SizedBox(width: 6),
+                        Text(_format(info.likes), style: const TextStyle(color: Color(0xFFFF7A2F), fontSize: 13)),
+                      ]), color: const Color(0xFF382A32)),
+                    ]),
+                  ])),
+                  Transform.translate(
+                    offset: const Offset(0, 7),
+                    child: const Icon(Icons.error_outline, color: _RoomInfoColors.muted, size: 28),
+                  ),
+                  ]),
                 ),
                 const SizedBox(height: 14),
                 SizedBox(height: 52, child: Row(children: [
@@ -353,45 +251,45 @@ class _RoomInfoSheet extends StatelessWidget {
   Widget _countryFlag(BuildContext context, String countryName) {
     final savedProfileFlag = countryFlagForProfileName(countryName);
     if (savedProfileFlag == 'SOUTH_ARABIA') {
-      return SizedBox.square(
-        dimension: _flagSize,
-        child: SquareCountryFlag('SOUTH_ARABIA', size: _flagSize),
+      return SizedBox(
+        width: 22,
+        height: 22,
+        child: Center(
+          child: SquareCountryFlag('SOUTH_ARABIA', size: 22),
+        ),
       );
     }
-
     if (savedProfileFlag.isNotEmpty) {
-      return SizedBox.square(
-        dimension: _flagSize,
-        child: SquareCountryFlag(savedProfileFlag, size: _flagSize),
+      return SizedBox(
+        width: 22,
+        height: 22,
+        child: Center(child: SquareCountryFlag(savedProfileFlag, size: 22)),
       );
     }
-
     if (countryName.trim().isEmpty) return const SizedBox.shrink();
-
     for (final country in CountryService().getAll()) {
       final translated = country.getTranslatedName(context) ?? country.name;
       if (translated.trim() == countryName.trim() ||
           country.name.trim().toLowerCase() == countryName.trim().toLowerCase()) {
-        return SizedBox.square(
-          dimension: _flagSize,
-          child: SquareCountryFlag(country.flagEmoji, size: _flagSize),
+        return SizedBox(
+          width: 22,
+          height: 22,
+          child: Center(child: SquareCountryFlag(country.flagEmoji, size: 22)),
         );
       }
     }
-
     // Backward compatibility for older room snapshots that carried ISO codes.
     final code = countryName.trim().toUpperCase();
     if (code.length == 2 &&
         code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
-      final flagEmoji = String.fromCharCodes(
-        code.codeUnits.map((unit) => 0x1F1E6 + unit - 65),
-      );
-      return SizedBox.square(
-        dimension: _flagSize,
-        child: SquareCountryFlag(flagEmoji, size: _flagSize),
+      return SizedBox(
+        width: 22,
+        height: 22,
+        child: Center(
+          child: SquareCountryFlag(String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)), size: 22),
+        ),
       );
     }
-
     return const SizedBox.shrink();
   }
 
@@ -401,21 +299,6 @@ class _RoomInfoSheet extends StatelessWidget {
   );
 
   static Widget _imageFallback(double width, double height) => Container(width: width, height: height, color: _RoomInfoColors.chip, alignment: Alignment.center, child: const Icon(Icons.image_outlined, color: _RoomInfoColors.muted));
-
-  static Widget _topInfoCapsule({
-    required Widget child,
-    Color color = _RoomInfoColors.chip,
-  }) =>
-      Container(
-        height: _capsuleHeight,
-        padding: _capsulePadding,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(_capsuleRadius),
-        ),
-        child: child,
-      );
 
   static Widget _chip(Widget child, {Color color = _RoomInfoColors.chip, EdgeInsetsGeometry padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 8)}) => Container(
     padding: padding,
