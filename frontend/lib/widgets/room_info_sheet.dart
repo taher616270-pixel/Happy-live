@@ -90,7 +90,7 @@ class _RoomInfoSheet extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      Flexible(child: Text(info.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700))),
+                      Flexible(child: Transform.translate(offset: const Offset(0, -3), child: Text(info.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)))),
                       const SizedBox(width: 6),
                       Text(info.flag, style: const TextStyle(fontSize: 18)),
                     ]),
