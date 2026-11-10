@@ -578,11 +578,11 @@ class _RoomReportPageState extends State<_RoomReportPage> {
               child: _RoomReportPillButton(
                 text: _isSubmitting ? 'جارٍ الإرسال…' : 'تقدم طلب',
                 background: _canSubmit
-                    ? _RoomReportPalette.teal
-                    : _RoomReportPalette.tealSoft,
+                    ? const Color(0xFFD4AF37)
+                    : const Color(0xFFF5EACB),
                 foreground: _canSubmit
-                    ? Colors.white
-                    : _RoomReportPalette.teal.withOpacity(0.55),
+                    ? Colors.black
+                    : const Color(0xFFB49A5A),
                 onTap: _canSubmit && !_isSubmitting ? _submitReport : null,
               ),
             ),
