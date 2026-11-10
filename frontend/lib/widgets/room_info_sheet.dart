@@ -110,7 +110,7 @@ class _RoomInfoSheet extends StatelessWidget {
                           offset: const Offset(7, 9),
                           child: _chip(Row(mainAxisSize: MainAxisSize.min, children: [
                             Text('ID:${info.id}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 12)),
-                            const SizedBox(width: 6), Transform.translate(offset: const Offset(2, 0), child: const Icon(Icons.copy_rounded, color: _RoomInfoColors.muted, size: 16)),
+                            const SizedBox(width: 6), Transform.translate(offset: const Offset(3.5, 0), child: const Icon(Icons.copy_rounded, color: _RoomInfoColors.muted, size: 16)),
                           ]), padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5)),
                         ),
                       ),
