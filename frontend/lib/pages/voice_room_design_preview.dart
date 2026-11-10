@@ -1486,7 +1486,7 @@ class UserInfoBottomSheet extends StatelessWidget {
     final code = countryCode
         .trim()
         .toUpperCase()
-        .replaceAll(RegExp(r'\\s+'), '');
+        .replaceAll(RegExp(r'\s+'), '');
     if (code.length == 2 &&
         code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
       return Text(
@@ -1499,7 +1499,7 @@ class UserInfoBottomSheet extends StatelessWidget {
     final nameCode = countryName
         .trim()
         .toUpperCase()
-        .replaceAll(RegExp(r'\\s+'), '');
+        .replaceAll(RegExp(r'\s+'), '');
     if (nameCode.length == 2 &&
         nameCode.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
       return Text(
