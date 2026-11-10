@@ -301,9 +301,17 @@ class _RoomInfoSheet extends StatelessWidget {
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF30291F),
                     ),
-                    child: const Text(
-                      'انتهاك صفحة الملف الشخصي للغرفة',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    child: Transform.translate(
+                      offset: const Offset(0, -8),
+                      child: const Text(
+                        'انتهاك صفحة الملف الشخصي للغرفة',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Color(0xFF17120B),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ),
