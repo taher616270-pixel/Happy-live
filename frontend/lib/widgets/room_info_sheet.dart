@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:country_picker/country_picker.dart';
+import '../pages/edit_profile_page.dart';
 
 class RoomMember {
   const RoomMember({required this.avatarUrl, required this.role, this.isOwner = false});
@@ -234,26 +234,35 @@ class _RoomInfoSheet extends StatelessWidget {
     );
   }
 
-  Widget _countryFlag(BuildContext context, String value) {
-    final countryName = value.trim();
-    if (countryName.isEmpty) return const SizedBox.shrink();
-    final normalized = countryName.toLowerCase();
-    if (normalized == 'south_arabia' || normalized == 'south arabia' || normalized == 'الجنوب العربي') {
-      return Image.asset('web/assets/south-arabia-v2.png', width: 27, height: 19, fit: BoxFit.cover);
+  Widget _countryFlag(BuildContext context, String countryName) {
+    final savedProfileFlag = countryFlagForProfileName(countryName);
+    if (savedProfileFlag == 'SOUTH_ARABIA') {
+      return Image.asset(
+        'web/assets/south-arabia-v2.png',
+        width: 27,
+        height: 19,
+        fit: BoxFit.cover,
+      );
     }
+    if (savedProfileFlag.isNotEmpty) {
+      return Text(savedProfileFlag, style: const TextStyle(fontSize: 19));
+    }
+    if (countryName.trim().isEmpty) return const SizedBox.shrink();
     for (final country in CountryService().getAll()) {
       final translated = country.getTranslatedName(context) ?? country.name;
-      if (translated.trim() == countryName || country.name.trim().toLowerCase() == normalized) {
-        return Text(country.flagEmoji, style: const TextStyle(fontSize: 18));
+      if (translated.trim() == countryName.trim() ||
+          country.name.trim().toLowerCase() == countryName.trim().toLowerCase()) {
+        return Text(country.flagEmoji, style: const TextStyle(fontSize: 19));
       }
     }
-    final code = countryName.toUpperCase();
-    if (code.length == 2 && code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
-      return Text(String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)), style: const TextStyle(fontSize: 18));
-    }
-    // إذا كانت القيمة نفسها رمز علم، اعرضها كما هي.
-    if (countryName.runes.any((rune) => rune >= 0x1F1E6 && rune <= 0x1F1FF)) {
-      return Text(countryName, style: const TextStyle(fontSize: 18));
+    // Backward compatibility for older room snapshots that carried ISO codes.
+    final code = countryName.trim().toUpperCase();
+    if (code.length == 2 &&
+        code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
+      return Text(
+        String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
+        style: const TextStyle(fontSize: 19),
+      );
     }
     return const SizedBox.shrink();
   }
