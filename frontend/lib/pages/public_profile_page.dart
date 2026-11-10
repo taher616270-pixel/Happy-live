@@ -438,7 +438,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     // Only use the ISO code after all saved profile names have been checked.
     final countryCode = _firstText(['countryCode', 'country_code']);
-    final code = countryCode.trim().toUpperCase().replaceAll(RegExp(r'\\s+'), '');
+    final code = countryCode.trim().toUpperCase().replaceAll(RegExp(r'\s+'), '');
     if (code.length == 2 &&
         code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
       return String.fromCharCodes(
