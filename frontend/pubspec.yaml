@@ -21,6 +21,7 @@ dependencies:
   provider: ^6.1.2
   agora_rtc_engine: ^6.6.4
   permission_handler: ^13.0.2
+  world_flags: ^2.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
