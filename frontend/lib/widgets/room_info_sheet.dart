@@ -278,7 +278,7 @@ class _RoomInfoSheet extends StatelessWidget {
                   'لماذا تريد التبليغ عن هذه الغرفة؟',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF817665),
+                    color: Colors.black,
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
                   ),
@@ -310,7 +310,7 @@ class _RoomInfoSheet extends StatelessWidget {
                   child: TextButton(
                     onPressed: () => Navigator.of(sheetContext).pop(),
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF625746),
+                      foregroundColor: Colors.black,
                     ),
                     child: const Text(
                       'إلغاء',
@@ -527,7 +527,7 @@ class _RoomReportPageState extends State<_RoomReportPage> {
               ),
               TextSpan(text: title),
             ]),
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.black),
           ),
           if (withSubtitle) ...[
             const SizedBox(height: 6),
@@ -544,13 +544,13 @@ class _RoomReportPageState extends State<_RoomReportPage> {
               ]),
               style: const TextStyle(
                 fontSize: 12,
-                color: _RoomReportPalette.grey,
+                color: Colors.black,
               ),
             ),
             const SizedBox(height: 4),
             const Text(
               'الغلاف والاسم والإعلان والمعلومات ذات الصلة كدليل',
-              style: TextStyle(fontSize: 11, color: Color(0xFFB0B4BC)),
+              style: TextStyle(fontSize: 11, color: Colors.black),
             ),
           ],
         ],
@@ -654,7 +654,7 @@ class _RoomReportOptionRow extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Text(label, style: const TextStyle(fontSize: 14)),
+              child: Text(label, style: const TextStyle(fontSize: 14, color: Colors.black)),
             ),
             AnimatedContainer(
               duration: const Duration(milliseconds: 150),
