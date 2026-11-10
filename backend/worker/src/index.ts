@@ -167,11 +167,11 @@ async function checkAuthRateLimit(db: D1Database, ip: string): Promise<boolean> 
 
 
 type AdminRole = "owner" | "admin" | "moderator";
-type AdminPermission = "dashboard.read" | "users.read" | "users.manage" | "users.kick" | "users.roles.manage" | "rooms.read" | "rooms.manage" | "rooms.moderate" | "audit.read" | "agora.read" | "agora.manage";
+type AdminPermission = "dashboard.read" | "reports.read" | "reports.manage" | "users.read" | "users.manage" | "users.kick" | "users.roles.manage" | "rooms.read" | "rooms.manage" | "rooms.moderate" | "audit.read" | "agora.read" | "agora.manage";
 type AdminActor = { id: string; username: string; display_name: string; role: AdminRole };
 const ADMIN_ROLE_PERMISSIONS: Record<Exclude<AdminRole, "owner">, ReadonlySet<AdminPermission>> = {
-  admin: new Set<AdminPermission>(["dashboard.read","users.read","users.manage","users.kick","rooms.read","rooms.manage","rooms.moderate","audit.read","agora.read","agora.manage"]),
-  moderator: new Set<AdminPermission>(["dashboard.read","users.read","rooms.read","audit.read"])
+  admin: new Set<AdminPermission>(["dashboard.read","reports.read","reports.manage","users.read","users.manage","users.kick","rooms.read","rooms.manage","rooms.moderate","audit.read","agora.read","agora.manage"]),
+  moderator: new Set<AdminPermission>(["dashboard.read","reports.read","reports.manage","users.read","rooms.read","audit.read"])
 };
 function hasAdminPermission(actor: AdminActor, permission: AdminPermission): boolean {
   return actor.role === "owner" || ADMIN_ROLE_PERMISSIONS[actor.role].has(permission);
@@ -337,6 +337,48 @@ export default {
       if (match) await env.DB.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL")
         .bind(new Date().toISOString(), await sha256(match[1])).run();
       return json({ ok: true }, 200, origin, env);
+    }
+
+    if (url.pathname === "/api/v1/admin/reports/rooms" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const admin = await authenticatedAdmin(request, env.DB);
+        if (!admin) return json({ error: "authentication_required" }, 401, origin, env);
+        if (!hasAdminPermission(admin, "reports.read")) return json({ error: "permission_denied" }, 403, origin, env);
+        const status = url.searchParams.get("status") || "pending";
+        if (!["pending", "reviewed", "dismissed", "all"].includes(status)) return json({ error: "invalid_report_status" }, 400, origin, env);
+        const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 50), 1), 100);
+        const rows = await env.DB.prepare(
+          "SELECT r.id, r.room_code, r.room_name, r.targets_json, r.violation, r.status, r.created_at, r.reviewed_at, " +
+          "p.display_name AS reporter_name, p.gabo_id AS reporter_code, a.display_name AS reviewer_name " +
+          "FROM room_profile_reports r LEFT JOIN profiles p ON p.user_id = r.reporter_id LEFT JOIN admin_accounts a ON a.id = r.reviewed_by " +
+          (status === "all" ? "" : "WHERE r.status = ? ") + "ORDER BY r.created_at DESC LIMIT ?"
+        ).bind(...(status === "all" ? [limit] : [status, limit])).all();
+        return json({ ok: true, reports: rows.results ?? [] }, 200, origin, env);
+      } catch (error) {
+        console.error("[admin.room-reports.list] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "room_reports_unavailable" }, 500, origin, env);
+      }
+    }
+
+    const roomReportStatusRoute = url.pathname.match(/^\/api\/v1\/admin\/reports\/rooms\/([0-9a-f-]{36})\/status$/i);
+    if (roomReportStatusRoute && request.method === "PATCH") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const admin = await authenticatedAdmin(request, env.DB);
+        if (!admin) return json({ error: "authentication_required" }, 401, origin, env);
+        if (!hasAdminPermission(admin, "reports.manage")) return json({ error: "permission_denied" }, 403, origin, env);
+        const body = await request.json() as Record<string, unknown>;
+        const status = typeof body.status === "string" ? body.status : "";
+        if (!["reviewed", "dismissed"].includes(status)) return json({ error: "invalid_report_status" }, 400, origin, env);
+        const result = await env.DB.prepare("UPDATE room_profile_reports SET status = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ?")
+          .bind(status, new Date().toISOString(), admin.id, roomReportStatusRoute[1]).run();
+        if ((result.meta?.changes ?? 0) === 0) return json({ error: "report_not_found" }, 404, origin, env);
+        return json({ ok: true, status }, 200, origin, env);
+      } catch (error) {
+        console.error("[admin.room-reports.update] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "room_report_update_failed" }, 500, origin, env);
+      }
     }
 
     // Admin API: authentication uses a separate admin-only session table.
@@ -2139,6 +2181,35 @@ export default {
       }
     }
 
+
+    if (url.pathname === "/api/v1/reports/rooms" && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const body = await request.json() as Record<string, unknown>;
+        const roomCode = typeof body.roomCode === "string" ? body.roomCode.trim().slice(0, 64) : "";
+        const roomName = typeof body.roomName === "string" ? body.roomName.trim().slice(0, 120) : "";
+        const targets = Array.isArray(body.targets) ? body.targets.filter((value): value is string => typeof value === "string").slice(0, 3) : [];
+        const violation = typeof body.violation === "string" ? body.violation.trim().slice(0, 120) : "";
+        const allowedTargets = new Set(["اسم الغرفة", "غلاف الغرفة", "إعلان الغرفة"]);
+        const allowedViolations = new Set(["اهانة", "مضايقة", "إباحية", "إعلانات / توجيه", "احتيال", "هكر", "الخصوصية والأمان", "عنف / مشاهد دموية / إرهاب", "انتهاكات سياسية / دينية", "انتحال الهوية", "اخرى"]);
+        if (!roomCode || !roomName || targets.length === 0 || targets.some((value) => !allowedTargets.has(value)) || !allowedViolations.has(violation)) {
+          return json({ error: "invalid_room_report", message: "بيانات البلاغ غير مكتملة" }, 400, origin, env);
+        }
+        const room = await env.DB.prepare("SELECT room_code, name FROM rooms WHERE room_code = ? OR id = ? LIMIT 1")
+          .bind(roomCode, roomCode).first<{ room_code: string; name: string }>();
+        if (!room) return json({ error: "room_not_found", message: "الغرفة غير موجودة" }, 404, origin, env);
+        const id = crypto.randomUUID();
+        const createdAt = new Date().toISOString();
+        await env.DB.prepare("INSERT INTO room_profile_reports (id, room_code, room_name, reporter_id, targets_json, violation, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)")
+          .bind(id, room.room_code, room.name, user.id, JSON.stringify([...new Set(targets)]), violation, createdAt).run();
+        return json({ ok: true, reportId: id, message: "تم إرسال البلاغ إلى إدارة Happy Live للمراجعة" }, 201, origin, env);
+      } catch (error) {
+        console.error("[room-reports.create] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "room_report_creation_failed", message: "تعذر إرسال البلاغ الآن" }, 500, origin, env);
+      }
+    }
 
     // Return the signed-in user's permanent room, if one has already been created.
     if (url.pathname === "/api/v1/rooms/mine" && request.method === "GET") {
