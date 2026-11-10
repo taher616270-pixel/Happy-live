@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/room_info_sheet.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -212,6 +213,79 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   Widget _pill(Widget child, {EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6)}) =>
     Container(padding: padding, decoration: BoxDecoration(color: Colors.black.withOpacity(.28), borderRadius: BorderRadius.circular(18)), child: child);
 
+  String _roomInfoString(List<String> keys, [String fallback = '']) {
+    for (final key in keys) {
+      final value = room[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty && value != 'null') return value;
+    }
+    return fallback;
+  }
+
+  int _roomInfoInt(List<String> keys, [int fallback = 0]) {
+    for (final key in keys) {
+      final value = room[key];
+      if (value is num) return value.toInt();
+      final parsed = int.tryParse(value?.toString() ?? '');
+      if (parsed != null) return parsed;
+    }
+    return fallback;
+  }
+
+  void _openRoomInfo(BuildContext context) {
+    final image = _roomInfoString(['imageUrl', 'image_url', 'coverUrl', 'cover_url']);
+    final rawMembers = room['members'] ?? room['roomMembers'] ?? room['room_members'];
+    final members = <RoomMember>[];
+    if (rawMembers is List) {
+      for (final item in rawMembers) {
+        if (item is! Map) continue;
+        final member = Map<String, dynamic>.from(item);
+        members.add(RoomMember(
+          avatarUrl: (member['avatarUrl'] ?? member['avatar_url'] ?? member['avatar'] ?? '').toString(),
+          role: (member['role'] ?? member['roleName'] ?? 'عضو').toString(),
+          isOwner: member['isOwner'] == true || member['is_owner'] == true,
+        ));
+      }
+    }
+    if (members.isEmpty) {
+      final ownerAvatar = _roomInfoString(['ownerAvatar', 'ownerAvatarUrl', 'owner_avatar', 'owner_avatar_url']);
+      members.add(RoomMember(avatarUrl: ownerAvatar, role: 'المالك', isOwner: true));
+    }
+
+    final info = RoomInfo(
+      name: _name,
+      flag: _roomInfoString(['flag', 'countryFlag', 'country_flag']),
+      id: _id,
+      imageUrl: image,
+      imageBadge: _roomInfoString(['imageBadge', 'image_badge'], 'غرفة مميزة'),
+      likes: _roomInfoInt(['likes', 'likeCount', 'like_count', 'trophies', 'trophyCount']),
+      tribeName: _roomInfoString(['tribeName', 'tribe_name'], 'بدون قبيلة'),
+      tribeOwner: _roomInfoString(['tribeOwner', 'tribe_owner'], ownerName),
+      tribeLogoUrl: _roomInfoString(['tribe_logo', 'tribeLogo', 'tribeLogoUrl', 'tribe_logo_url']),
+      level: _roomInfoInt(['level', 'roomLevel', 'room_level'], 1),
+      palaceStatus: _roomInfoString(['palaceStatus', 'palace_status'], 'غير مفعّل'),
+      membersCount: _roomInfoInt(['membersCount', 'members_count', 'memberCount'], seats.where((e) => e['userId'] != null).length + audienceCount),
+      membersMax: _roomInfoInt(['membersMax', 'members_max', 'maxMembers'], 100),
+      members: members,
+      announcement: _roomInfoString(['announcement', 'description']),
+      groupName: _roomInfoString(['groupName', 'group_name'], 'مجموعة الغرفة'),
+      groupCount: _roomInfoInt(['groupCount', 'group_count']),
+      groupDesc: _roomInfoString(['groupDesc', 'group_desc', 'groupDescription']),
+    );
+
+    showRoomInfoSheet(
+      context,
+      info,
+      onFollow: () {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ميزة المتابعة قريبًا')));
+      },
+      onJoin: () {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ميزة الانضمام للمجموعة قريبًا')));
+      },
+    );
+  }
+
   Widget _header(BuildContext context) {
     final avatar = (room['ownerAvatar'] ?? room['ownerAvatarUrl'] ?? _cover ?? '').toString();
     final trophies = (room['trophies'] ?? room['trophyCount'] ?? 0).toString();
@@ -252,21 +326,25 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: SizedBox(
-                      width: 38,
-                      height: 37,
-                      child: avatar.startsWith('http')
-                          ? Image.network(avatar, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const ColoredBox(
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _openRoomInfo(context),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(
+                        width: 38,
+                        height: 37,
+                        child: avatar.startsWith('http')
+                            ? Image.network(avatar, fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const ColoredBox(
+                                  color: Colors.white12,
+                                  child: Icon(Icons.person, color: Colors.white70),
+                                ))
+                            : const ColoredBox(
                                 color: Colors.white12,
                                 child: Icon(Icons.person, color: Colors.white70),
-                              ))
-                          : const ColoredBox(
-                              color: Colors.white12,
-                              child: Icon(Icons.person, color: Colors.white70),
-                            ),
+                              ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 3),
@@ -281,22 +359,30 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    _name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
+                                  GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () => _openRoomInfo(context),
+                                    child: Text(
+                                      _name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 3),
                                   Transform.translate(
                                     offset: const Offset(-1, -2),
-                                    child: Text(
-                                      'ID: $_id',
-                                      style: const TextStyle(color: Colors.white60, fontSize: 8),
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () => _openRoomInfo(context),
+                                      child: Text(
+                                        'ID: $_id',
+                                        style: const TextStyle(color: Colors.white60, fontSize: 8),
+                                      ),
                                     ),
                                   ),
                                 ],
