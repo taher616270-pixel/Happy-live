@@ -600,7 +600,7 @@ class _RoomReportPageState extends State<_RoomReportPage> {
         Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/reports/rooms'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
+          'Authorization': 'Bearer ${widget.accessToken}',
         },
         body: jsonEncode({
           'roomCode': widget.roomCode,
@@ -614,8 +614,9 @@ class _RoomReportPageState extends State<_RoomReportPage> {
         throw Exception(data['message'] ?? 'تعذر إرسال البلاغ');
       }
       if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('تم إرسال البلاغ إلى إدارة Happy Live للمراجعة')),
       );
     } catch (error) {
