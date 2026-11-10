@@ -172,7 +172,7 @@ class _RoomInfoSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Transform.translate(
-                  offset: const Offset(0, -10),
+                  offset: const Offset(-4, -9),
                   child: SizedBox(height: 60, child: ListView.separated(
                   scrollDirection: Axis.horizontal, itemCount: info.members.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
@@ -181,11 +181,11 @@ class _RoomInfoSheet extends StatelessWidget {
                     final avatarUrl = (m.isOwner && info.ownerAvatarUrl.trim().isNotEmpty)
                         ? info.ownerAvatarUrl.trim()
                         : m.avatarUrl.trim();
-                    return SizedBox(width: 44, child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
+                    return SizedBox(width: 40, child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
                       ClipOval(
                         child: SizedBox(
-                          width: 38,
-                          height: 38,
+                          width: 34,
+                          height: 34,
                           child: avatarUrl.startsWith('https://')
                               ? Image.network(
                                   avatarUrl,
