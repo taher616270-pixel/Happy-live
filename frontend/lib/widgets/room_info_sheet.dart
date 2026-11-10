@@ -62,7 +62,7 @@ class _RoomInfoSheet extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .78),
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .70),
         decoration: const BoxDecoration(color: _RoomInfoColors.bg, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         child: SafeArea(
           top: false,
