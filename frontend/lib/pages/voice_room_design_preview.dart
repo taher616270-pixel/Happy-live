@@ -244,10 +244,25 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       for (final item in rawMembers) {
         if (item is! Map) continue;
         final member = Map<String, dynamic>.from(item);
+        final memberRole = (member['role'] ?? member['roleName'] ?? member['role_name'] ?? 'عضو').toString();
+        final isOwnerMember = member['isOwner'] == true ||
+            member['is_owner'] == true ||
+            memberRole.toLowerCase() == 'owner' ||
+            memberRole == 'المالك';
+        final memberAvatar = (member['avatarUrl'] ??
+                member['avatar_url'] ??
+                member['avatar'] ??
+                member['photoUrl'] ??
+                member['photo_url'] ??
+                member['profileImage'] ??
+                member['profile_image'] ??
+                (isOwnerMember ? ownerAvatar : null) ??
+                '')
+            .toString();
         members.add(RoomMember(
-          avatarUrl: (member['avatarUrl'] ?? member['avatar_url'] ?? member['avatar'] ?? '').toString(),
-          role: (member['role'] ?? member['roleName'] ?? 'عضو').toString(),
-          isOwner: member['isOwner'] == true || member['is_owner'] == true,
+          avatarUrl: memberAvatar,
+          role: memberRole,
+          isOwner: isOwnerMember,
         ));
       }
     }
