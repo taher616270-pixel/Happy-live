@@ -76,12 +76,13 @@ class SquareCountryFlag extends StatelessWidget {
     // slot. Vector painting stays sharp without downloading raster images.
     return SizedBox.square(
       dimension: size,
-      child: Center(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(3),
-          child: CountryFlag.simplified(
-            country,
-            height: size * 0.72,
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: CountryFlag.simplified(
+          country,
+          height: size,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(3),
           ),
         ),
       ),
