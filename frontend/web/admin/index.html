@@ -38,7 +38,7 @@ td,th{padding:14px 13px;text-align:right;border-bottom:1px solid #30263c;font-si
 @media(max-width:380px){.nav button{padding:8px 9px;font-size:11px}.cards{gap:8px}.card{padding:12px}.card strong{font-size:21px}}
 </style></head><body>
 <div id="loginView" class="login-wrap"><form id="setupForm" class="login hidden"><div class="logo">H</div><h1>إنشاء كلمة مرور المدير</h1><p class="muted">إعداد أول مرة لحساب المالك المستقل</p><label class="field">رمز التهيئة لمرة واحدة<input id="setupToken" type="password" autocomplete="off" required></label><label class="field">كلمة المرور الجديدة<input id="setupPassword" type="password" autocomplete="new-password" minlength="12" required></label><label class="field">تأكيد كلمة المرور<input id="setupConfirmation" type="password" autocomplete="new-password" minlength="12" required></label><button class="primary" id="setupBtn">إنشاء كلمة المرور</button><div id="setupError" class="error"></div><p class="muted" style="font-size:12px">استخدم 12 حرفًا على الأقل. لا تشارك كلمة المرور مع أي شخص.</p></form><form id="loginForm" class="login"><div class="logo">H</div><h1>لوحة إدارة Happy Live</h1><p class="muted">دخول المالك المستقل</p><label class="field">اسم المستخدم<input id="username" type="text" autocomplete="username" required></label><label class="field">كلمة المرور<input id="password" type="password" autocomplete="current-password" required></label><button class="primary" id="loginBtn">تسجيل الدخول</button><div id="loginError" class="error"></div><p class="muted" style="font-size:12px">حساب الإدارة مستقل عن حسابات مستخدمي التطبيق.</p></form></div>
-<div id="appView" class="app hidden"><aside class="side"><div class="brand"><div class="logo">H</div><div><b>HAPPY LIVE</b><small>مركز الإدارة</small></div></div><nav class="nav"><button class="active" data-page="overview">◈　الرئيسية</button><button data-page="stats">▥　الإحصائيات</button><button data-page="users">♙　المستخدمون</button><button data-page="rooms">◉　الغرف الصوتية</button><button data-page="moderators">♙　المشرفون</button><button data-page="audit">▤　سجل الإجراءات</button><button data-page="agora">◉　Agora للصوت</button><button data-page="future">✧　خدمات المنصة</button></nav><div class="side-foot"><button id="logoutBtn" class="logout">تسجيل الخروج</button></div></aside><main class="main"><header class="top"><div><h1 id="pageTitle">نظرة عامة</h1><small id="adminIdentity" class="muted"></small></div><span class="badge good">اتصال آمن</span></header><div id="content"><div class="loading">جارٍ التحميل…</div></div></main></div>
+<div id="appView" class="app hidden"><aside class="side"><div class="brand"><div class="logo">H</div><div><b>HAPPY LIVE</b><small>مركز الإدارة</small></div></div><nav class="nav"><button class="active" data-page="overview">◈　الرئيسية</button><button data-page="stats">▥　الإحصائيات</button><button data-page="users">♙　المستخدمون</button><button data-page="rooms">◉　الغرف الصوتية</button><button data-page="reports">⚑　بلاغات الغرف</button><button data-page="moderators">♙　المشرفون</button><button data-page="audit">▤　سجل الإجراءات</button><button data-page="agora">◉　Agora للصوت</button><button data-page="future">✧　خدمات المنصة</button></nav><div class="side-foot"><button id="logoutBtn" class="logout">تسجيل الخروج</button></div></aside><main class="main"><header class="top"><div><h1 id="pageTitle">نظرة عامة</h1><small id="adminIdentity" class="muted"></small></div><span class="badge good">اتصال آمن</span></header><div id="content"><div class="loading">جارٍ التحميل…</div></div></main></div>
 <script>
 const API="https://happy-live-api.taher616270.workers.dev/api/v1";let token=sessionStorage.getItem("happy_live_admin_token")||"",admin=null,page="overview";
 const $=id=>document.getElementById(id);function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -93,13 +93,14 @@ $("logoutBtn").onclick=async()=>{try{await api("/admin/auth/logout",{method:"POS
 document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x===b));page=b.dataset.page;render()});
 function metric(label,n){return '<div class="card"><span>'+label+'</span><strong>'+Number(n||0).toLocaleString("en-US")+'</strong></div>'}
 async function render(){
-  const names={overview:"نظرة عامة",stats:"إحصائيات المنصة",users:"إدارة المستخدمين",rooms:"إدارة الغرف الصوتية",moderators:"إدارة مشرفي التطبيق",audit:"سجل الإجراءات",agora:"إعدادات Agora الصوتية",future:"خدمات المنصة"};
+  const names={overview:"نظرة عامة",stats:"إحصائيات المنصة",users:"إدارة المستخدمين",rooms:"إدارة الغرف الصوتية",reports:"بلاغات الغرف",moderators:"إدارة مشرفي التطبيق",audit:"سجل الإجراءات",agora:"إعدادات Agora الصوتية",future:"خدمات المنصة"};
   $("pageTitle").textContent=names[page]||"لوحة الإدارة";$("content").innerHTML='<div class="loading">جارٍ تحميل البيانات…</div>';
   try{
     if(page==="overview"){let o=(await api("/admin/overview")).overview;$("content").innerHTML='<div class="cards">'+metric("إجمالي المستخدمين",o.users.total)+metric("المستخدمون النشطون",o.users.active)+metric("إجمالي الغرف",o.rooms.total)+metric("المنشورات المنشورة",o.publishedPosts)+'</div><div class="section"><h2>ملخص النظام</h2><p class="muted">الأرقام مسترجعة مباشرة من قاعدة بيانات Happy Live.</p></div>'}
     else if(page==="stats")statsPage((await api("/admin/stats")).stats);
     else if(page==="users")users((await api("/admin/users")).users||[]);
     else if(page==="rooms")rooms((await api("/admin/rooms")).rooms||[]);
+    else if(page==="reports")await roomReportsPage();
     else if(page==="moderators")await moderatorsPage();
     else if(page==="audit")audit((await api("/admin/audit")).entries||[]);
     else if(page==="agora")await agoraPage();
@@ -107,6 +108,24 @@ async function render(){
   }catch(e){$("content").innerHTML='<div class="section"><p class="error">'+esc(e.message)+'</p><p class="muted">تحقق من صلاحية حسابك الإداري واتصال الخادم.</p></div>'}
 }
 
+async function roomReportsPage(status="pending"){
+  const data=(await api("/admin/reports/rooms?status="+encodeURIComponent(status)+"&limit=100")).reports||[];
+  const labels={pending:"بانتظار المراجعة",reviewed:"تمت المراجعة",dismissed:"مرفوض"};
+  $("content").innerHTML='<div class="section"><div class="section-head"><div><h2>بلاغات صفحات الغرف ('+data.length+')</h2><p class="muted">البلاغات محفوظة في قاعدة بيانات Happy Live وتظهر هنا لمراجعتها من الإدارة.</p></div><div class="room-tools"><select id="reportStatus" class="search" style="max-width:190px"><option value="pending" '+(status==="pending"?"selected":"")+'>بانتظار المراجعة</option><option value="reviewed" '+(status==="reviewed"?"selected":"")+'>تمت المراجعة</option><option value="dismissed" '+(status==="dismissed"?"selected":"")+'>مرفوض</option><option value="all" '+(status==="all"?"selected":"")+'>الكل</option></select><button class="action" id="refreshReports">تحديث</button></div></div><div class="table-wrap"><table><thead><tr><th>الغرفة</th><th>رقم الغرفة</th><th>مقدم البلاغ</th><th>العنصر المبلّغ عنه</th><th>نوع الانتهاك</th><th>التاريخ</th><th>الحالة</th><th>المراجعة</th></tr></thead><tbody>'+
+  (data.length?data.map(r=>{let targets=[];try{targets=JSON.parse(r.targets_json||"[]")}catch(e){}return '<tr><td>'+esc(r.room_name||"—")+'</td><td>'+esc(r.room_code||"—")+'</td><td>'+esc(r.reporter_name||"مستخدم")+'<br><small class="muted">'+esc(r.reporter_code||"—")+'</small></td><td>'+esc(targets.join("، ")||"—")+'</td><td>'+esc(r.violation||"—")+'</td><td>'+esc(new Date(r.created_at).toLocaleString("ar"))+'</td><td><span class="badge '+(r.status==="pending"?"bad":"good")+'">'+esc(labels[r.status]||r.status)+'</span></td><td>'+(r.status==="pending"?'<div class="room-tools"><button class="action" data-room-report="'+esc(r.id)+'" data-status="reviewed">تمت المراجعة</button><button class="action danger" data-room-report="'+esc(r.id)+'" data-status="dismissed">رفض</button></div>':esc(r.reviewer_name||"—"))+'</td></tr>'}).join(""):'<tr><td colspan="8" class="empty">لا توجد بلاغات في هذا القسم</td></tr>')+
+  '</tbody></table></div></div>';
+  $("reportStatus").onchange=e=>roomReportsPage(e.target.value);
+  $("refreshReports").onclick=()=>roomReportsPage(status);
+  document.querySelectorAll("[data-room-report]").forEach(button=>button.onclick=async()=>{
+    const next=button.dataset.status;
+    if(!confirm(next==="reviewed"?"تأكيد تسجيل البلاغ كمُراجع؟":"تأكيد رفض البلاغ؟"))return;
+    button.disabled=true;
+    try{
+      await api("/admin/reports/rooms/"+encodeURIComponent(button.dataset.roomReport)+"/status",{method:"PATCH",body:JSON.stringify({status:next})});
+      await roomReportsPage(status);
+    }catch(error){alert(error.message);button.disabled=false}
+  });
+}
 async function agoraPage(){
   const a=(await api("/admin/agora/status")).agora;
   const configured=a.enabled&&a.certificateConfigured&&!!a.appId;
