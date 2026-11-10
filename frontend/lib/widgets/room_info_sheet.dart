@@ -238,31 +238,51 @@ class _RoomInfoSheet extends StatelessWidget {
   Widget _countryFlag(BuildContext context, String countryName) {
     final savedProfileFlag = countryFlagForProfileName(countryName);
     if (savedProfileFlag == 'SOUTH_ARABIA') {
-      return Image.asset(
-        'web/assets/south-arabia-v2.png',
-        width: 27,
-        height: 19,
-        fit: BoxFit.cover,
+      return SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(
+          child: Image.asset(
+            'web/assets/south-arabia-v2.png',
+            width: 24,
+            height: 24,
+            fit: BoxFit.contain,
+          ),
+        ),
       );
     }
     if (savedProfileFlag.isNotEmpty) {
-      return Text(savedProfileFlag, style: const TextStyle(fontSize: 19));
+      return SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(child: Text(savedProfileFlag, style: const TextStyle(fontSize: 18))),
+      );
     }
     if (countryName.trim().isEmpty) return const SizedBox.shrink();
     for (final country in CountryService().getAll()) {
       final translated = country.getTranslatedName(context) ?? country.name;
       if (translated.trim() == countryName.trim() ||
           country.name.trim().toLowerCase() == countryName.trim().toLowerCase()) {
-        return Text(country.flagEmoji, style: const TextStyle(fontSize: 19));
+        return SizedBox(
+          width: 24,
+          height: 24,
+          child: Center(child: Text(country.flagEmoji, style: const TextStyle(fontSize: 18))),
+        );
       }
     }
     // Backward compatibility for older room snapshots that carried ISO codes.
     final code = countryName.trim().toUpperCase();
     if (code.length == 2 &&
         code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
-      return Text(
-        String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
-        style: const TextStyle(fontSize: 19),
+      return SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(
+          child: Text(
+            String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
+            style: const TextStyle(fontSize: 18),
+          ),
+        ),
       );
     }
     return const SizedBox.shrink();
