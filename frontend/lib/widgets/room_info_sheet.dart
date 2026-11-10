@@ -31,15 +31,15 @@ class RoomInfo {
 }
 
 class _RoomInfoColors {
-  static const bg = Color(0xFFF3E8D2);
-  static const text = Color(0xFF3B3025);
-  static const muted = Color(0xFF857563);
-  static const chip = Color(0xFFE8DCC5);
-  static const gold = Color(0xFFE8A92B);
-  static const goldBg = Color(0xFFE9D9B9);
-  static const levelBg = Color(0xFFEAD8E2);
-  static const level = Color(0xFFC2456E);
-  static const palace = Color(0xFFB8771A);
+  static const bg = Color(0xFF1E2133);
+  static const text = Color(0xFFF3F4FA);
+  static const muted = Color(0xFFB5B9CC);
+  static const chip = Color(0xFF2B3047);
+  static const gold = Color(0xFFF2C66D);
+  static const goldBg = Color(0xFF353044);
+  static const levelBg = Color(0xFF3A2D48);
+  static const level = Color(0xFFFF9BC2);
+  static const palace = Color(0xFFFFD27A);
   static const join = Color(0xFF2EE0D0);
   static const follow = Color(0xFFFF6B2C);
 }
@@ -113,7 +113,7 @@ class _RoomInfoSheet extends StatelessWidget {
                         const Icon(Icons.favorite, color: Color(0xFFFF7A2F), size: 18),
                         const SizedBox(width: 6),
                         Text(_format(info.likes), style: const TextStyle(color: Color(0xFFFF7A2F), fontSize: 13)),
-                      ]), color: const Color(0xFF3A2218)),
+                      ]), color: const Color(0xFF382A32)),
                     ]),
                   ])),
                   const Icon(Icons.error_outline, color: _RoomInfoColors.muted, size: 28),
@@ -221,9 +221,9 @@ class _RoomInfoSheet extends StatelessWidget {
             )),
             Padding(padding: const EdgeInsets.fromLTRB(16, 6, 16, 10), child: Row(children: [
               if (info.isRoomOwner) ...[
-                Expanded(child: _button('الإعدادات', const Color(0xFFE9D9B9), const Color(0xFF6B4A24), onSettings, icon: Icons.settings_outlined)),
+                Expanded(child: _button('الإعدادات', const Color(0xFF353044), const Color(0xFFF2C66D), onSettings, icon: Icons.settings_outlined)),
                 const SizedBox(width: 14),
-                Expanded(child: _button('دعوة', const Color(0xFFE4D8C2), const Color(0xFF6B4A24), onInvite, icon: Icons.person_add_alt_1_rounded)),
+                Expanded(child: _button('دعوة', const Color(0xFF30364A), const Color(0xFFE5E8F5), onInvite, icon: Icons.person_add_alt_1_rounded)),
               ] else ...[
                 Expanded(child: _button('متابعة', const Color(0xFF5A2A18), _RoomInfoColors.follow, onFollow)),
                 const SizedBox(width: 14),
