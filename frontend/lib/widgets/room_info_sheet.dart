@@ -274,13 +274,16 @@ class _RoomInfoSheet extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'لماذا تريد التبليغ عن هذه الغرفة؟',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
+                Transform.translate(
+                  offset: const Offset(0, -8),
+                  child: const Text(
+                    'لماذا تريد التبليغ عن هذه الغرفة؟',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: Color(0xFF8A8A8A),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 22),
