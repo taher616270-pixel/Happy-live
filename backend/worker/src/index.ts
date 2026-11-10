@@ -195,6 +195,42 @@ async function createAdminSession(db: D1Database, adminId: string) {
   return { accessToken, expiresAt };
 }
 
+type AdminAuditEntry = {
+  action: string;
+  targetType: string;
+  targetId: string;
+  details: Record<string, unknown>;
+  createdAt: string;
+};
+
+function adminAuditStatements(
+  db: D1Database,
+  actor: AdminActor,
+  entry: AdminAuditEntry
+): D1PreparedStatement[] {
+  const auditId = crypto.randomUUID();
+  const details = {
+    ...entry.details,
+    adminId: actor.id,
+    adminUsername: actor.username
+  };
+  return [
+    db.prepare(
+      "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?)"
+    ).bind(
+      auditId,
+      entry.action,
+      entry.targetType,
+      entry.targetId,
+      JSON.stringify(details),
+      entry.createdAt
+    ),
+    db.prepare(
+      "INSERT INTO admin_audit_actor_refs (audit_log_id, admin_id) VALUES (?, ?)"
+    ).bind(auditId, actor.id)
+  ];
+}
+
 const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -214,15 +250,9 @@ function allowedOrigins(env: Env): Set<string> {
 }
 
 function isAllowedOrigin(origin: string, env: Env): boolean {
-  if (allowedOrigins(env).has(origin)) return true;
-  try {
-    const parsed = new URL(origin);
-    return parsed.protocol === "https:" &&
-      parsed.origin === origin &&
-      parsed.hostname.endsWith(".happy-live.pages.dev");
-  } catch {
-    return false;
-  }
+  // Only explicitly trusted origins may access the API. Do not trust arbitrary
+  // preview/custom subdomains that happen to share the Pages hostname suffix.
+  return allowedOrigins(env).has(origin);
 }
 
 function json(data: unknown, status = 200, origin?: string, env?: Env): Response {
@@ -391,14 +421,16 @@ export default {
           if (!body.enabled) {
             statements.push(env.DB.prepare("DELETE FROM room_seats"));
           }
-          statements.push(env.DB.prepare(
-            "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'platform', 'agora_voice', ?, ?)"
-          ).bind(
-            crypto.randomUUID(),
-            body.enabled ? "agora.voice.enable" : "agora.voice.disable",
-            JSON.stringify({ enabled: body.enabled, adminUsername: actor.username, adminId: actor.id, effect: body.enabled ? "voice_service_resumed" : "all_microphone_seats_released" }),
-            now
-          ));
+          statements.push(...adminAuditStatements(env.DB, actor, {
+            action: body.enabled ? "agora.voice.enable" : "agora.voice.disable",
+            targetType: "platform",
+            targetId: "agora_voice",
+            details: {
+              enabled: body.enabled,
+              effect: body.enabled ? "voice_service_resumed" : "all_microphone_seats_released"
+            },
+            createdAt: now
+          }));
           await env.DB.batch(statements);
           if (env.ROOM_SEATS) {
             const activeRooms = await env.DB.prepare("SELECT id FROM rooms WHERE status = 'active'").all<{ id: string }>();
@@ -450,8 +482,11 @@ export default {
         if (url.pathname === "/api/v1/admin/audit" && request.method === "GET") {
           if (!hasAdminPermission(actor, "audit.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const result = await env.DB.prepare(
-            "SELECT l.id, l.action, l.target_type, l.target_id, l.details_json, l.created_at, p.display_name AS actor_name, u.email AS actor_email " +
-            "FROM admin_audit_logs l LEFT JOIN users u ON u.id = l.actor_user_id LEFT JOIN profiles p ON p.user_id = l.actor_user_id " +
+            "SELECT l.id, l.action, l.target_type, l.target_id, l.details_json, l.created_at, COALESCE(aa.display_name, aa.username, p.display_name, u.email) AS actor_name, u.email AS actor_email " +
+            "FROM admin_audit_logs l " +
+            "LEFT JOIN admin_audit_actor_refs ar ON ar.audit_log_id = l.id " +
+            "LEFT JOIN admin_accounts aa ON aa.id = ar.admin_id " +
+            "LEFT JOIN users u ON u.id = l.actor_user_id LEFT JOIN profiles p ON p.user_id = l.actor_user_id " +
             "ORDER BY l.created_at DESC LIMIT 100"
           ).all();
           const entries = (result.results ?? []).map((entry) => {
@@ -499,7 +534,13 @@ export default {
           const statements: D1PreparedStatement[] = [];
           if (nextRole) statements.push(env.DB.prepare("INSERT INTO admin_roles (user_id, role, granted_by, granted_at) VALUES (?, ?, NULL, ?) ON CONFLICT(user_id) DO UPDATE SET role = excluded.role, granted_by = NULL, granted_at = excluded.granted_at").bind(targetId, nextRole, now));
           else statements.push(env.DB.prepare("DELETE FROM admin_roles WHERE user_id = ? AND role <> 'owner'").bind(targetId));
-          statements.push(env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'user', ?, ?, ?)").bind(crypto.randomUUID(), action, targetId, JSON.stringify({ role: nextRole, adminUsername: actor.username, adminId: actor.id }), now));
+          statements.push(...adminAuditStatements(env.DB, actor, {
+            action,
+            targetType: "user",
+            targetId,
+            details: { role: nextRole },
+            createdAt: now
+          }));
           await env.DB.batch(statements);
           return json({ ok: true, userId: targetId, role: nextRole }, 200, origin, env);
         }
@@ -523,7 +564,13 @@ export default {
             statements.push(env.DB.prepare("DELETE FROM room_seats WHERE user_id = ?").bind(targetId));
             statements.push(env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE user_id = ? AND exited_at IS NULL").bind(now, targetId));
           }
-          statements.push(env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'user', ?, ?, ?)").bind(crypto.randomUUID(), status === "suspended" ? "user.suspend" : "user.activate", targetId, JSON.stringify({ status, adminUsername: actor.username, adminId: actor.id }), now));
+          statements.push(...adminAuditStatements(env.DB, actor, {
+            action: status === "suspended" ? "user.suspend" : "user.activate",
+            targetType: "user",
+            targetId,
+            details: { status },
+            createdAt: now
+          }));
           await env.DB.batch(statements);
           if (status === "suspended") await removeUserFromAllRoomSeats(env, env.DB, targetId);
           return json({ ok: true, userId: targetId, status }, 200, origin, env);
@@ -537,12 +584,19 @@ export default {
           if (target.status === "deleted") return json({ error: "deleted_user_cannot_be_kicked" }, 409, origin, env);
           if (target.role && actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const now = new Date().toISOString();
-          const results = await env.DB.batch([
+          const statements = [
             env.DB.prepare("UPDATE user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL").bind(now, targetId),
             env.DB.prepare("DELETE FROM room_seats WHERE user_id = ?").bind(targetId),
-            env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE user_id = ? AND exited_at IS NULL").bind(now, targetId),
-            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'user.kick', 'user', ?, ?, ?)").bind(crypto.randomUUID(), targetId, JSON.stringify({ adminUsername: actor.username, adminId: actor.id, effect: "all_sessions_revoked" }), now)
-          ]);
+            env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE user_id = ? AND exited_at IS NULL").bind(now, targetId)
+          ];
+          statements.push(...adminAuditStatements(env.DB, actor, {
+            action: "user.kick",
+            targetType: "user",
+            targetId,
+            details: { effect: "all_sessions_revoked" },
+            createdAt: now
+          }));
+          const results = await env.DB.batch(statements);
           await removeUserFromAllRoomSeats(env, env.DB, targetId);
           return json({ ok: true, userId: targetId, revokedSessions: results[0]?.meta?.changes ?? 0 }, 200, origin, env);
         }
@@ -737,22 +791,18 @@ export default {
             auditAction = muted ? "room.user.mute" : "room.user.unmute";
           }
 
-          statements.push(env.DB.prepare(
-            "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'room_user', ?, ?, ?)"
-          ).bind(
-            crypto.randomUUID(),
-            auditAction,
-            targetUserId,
-            JSON.stringify({
+          statements.push(...adminAuditStatements(env.DB, actor, {
+            action: auditAction,
+            targetType: "room_user",
+            targetId: targetUserId,
+            details: {
               roomId,
               targetUserId,
               reason,
-              adminId: actor.id,
-              adminUsername: actor.username,
               durationSeconds: action === "kick" ? 60 : null
-            }),
-            now
-          ));
+            },
+            createdAt: now
+          }));
           await env.DB.batch(statements);
           const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
           if (action === "assign_moderator" || action === "remove_moderator") {
@@ -792,8 +842,13 @@ export default {
           const now = new Date().toISOString();
           await env.DB.batch([
             env.DB.prepare("UPDATE rooms SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, targetId),
-            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, 'room', ?, ?, ?)")
-              .bind(crypto.randomUUID(), null, status === "closed" ? "room.close" : "room.reopen", targetId, JSON.stringify({ status, adminUsername: actor.username }), now)
+            ...adminAuditStatements(env.DB, actor, {
+              action: status === "closed" ? "room.close" : "room.reopen",
+              targetType: "room",
+              targetId,
+              details: { status },
+              createdAt: now
+            })
           ]);
           if (status === "closed" && env.ROOM_SEATS) {
             const stub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(targetId));
