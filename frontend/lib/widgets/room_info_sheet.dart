@@ -677,9 +677,7 @@ class _RoomReportOptionRow extends StatelessWidget {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: selected
-                    ? selectedColor
-                    : Colors.transparent,
+                color: Colors.white,
                 border: Border.all(
                   color: selected
                       ? selectedColor
@@ -687,7 +685,7 @@ class _RoomReportOptionRow extends StatelessWidget {
                 ),
               ),
               child: selected
-                  ? const Icon(Icons.check, size: 15, color: Colors.white)
+                  ? Icon(Icons.check, size: 15, color: selectedColor)
                   : null,
             ),
           ],
