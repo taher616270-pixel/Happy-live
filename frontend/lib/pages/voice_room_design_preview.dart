@@ -233,11 +233,33 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
   void _openRoomInfo(BuildContext context) {
     final image = _roomInfoString(['imageUrl', 'image_url', 'coverUrl', 'cover_url']);
-    final ownerAvatar = _roomInfoString([
+    final ownerData = room['owner'] is Map
+        ? Map<String, dynamic>.from(room['owner'] as Map)
+        : room['roomOwner'] is Map
+            ? Map<String, dynamic>.from(room['roomOwner'] as Map)
+            : room['room_owner'] is Map
+                ? Map<String, dynamic>.from(room['room_owner'] as Map)
+                : <String, dynamic>{};
+    var ownerAvatar = _roomInfoString([
       'ownerAvatar', 'ownerAvatarUrl', 'owner_avatar', 'owner_avatar_url',
       'ownerPhoto', 'owner_photo', 'avatarUrl', 'avatar_url', 'avatar',
       'photoUrl', 'photo_url', 'profileImage', 'profile_image', 'userAvatar', 'user_avatar',
     ]);
+    if (ownerAvatar.isEmpty) {
+      for (final key in [
+        'avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url',
+        'profileImage', 'profile_image', 'imageUrl', 'image_url',
+      ]) {
+        final value = ownerData[key]?.toString().trim() ?? '';
+        if (value.isNotEmpty && value != 'null') {
+          ownerAvatar = value;
+          break;
+        }
+      }
+    }
+    // Match the room header fallback so the owner still has a visible image
+    // when the room payload does not include a separate profile avatar.
+    if (ownerAvatar.isEmpty) ownerAvatar = _cover ?? '';
     final rawMembers = room['members'] ?? room['roomMembers'] ?? room['room_members'];
     final members = <RoomMember>[];
     if (rawMembers is List) {
