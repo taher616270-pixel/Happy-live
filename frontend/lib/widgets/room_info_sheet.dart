@@ -24,13 +24,13 @@ class RoomInfo {
 }
 
 class _RoomInfoColors {
-  static const bg = Color(0xFF1A1B2E);
-  static const text = Color(0xFFE6E7F0);
-  static const muted = Color(0xFF9A9CB0);
-  static const chip = Color(0xFF262838);
+  static const bg = Color(0xFFF3E8D2);
+  static const text = Color(0xFF3B3025);
+  static const muted = Color(0xFF857563);
+  static const chip = Color(0xFFE8DCC5);
   static const gold = Color(0xFFE8A92B);
-  static const goldBg = Color(0xFF2A2417);
-  static const levelBg = Color(0xFF2B1B2E);
+  static const goldBg = Color(0xFFE9D9B9);
+  static const levelBg = Color(0xFFEAD8E2);
   static const level = Color(0xFFC2456E);
   static const palace = Color(0xFFB8771A);
   static const join = Color(0xFF2EE0D0);
