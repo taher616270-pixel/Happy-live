@@ -564,7 +564,7 @@ class _LoginPageState extends State<LoginPage> {
                                             final matchesSouth = query.isEmpty || 'الجنوب العربي'.contains(query) || '969'.contains(query);
                                             if (!matchesSouth) return const SizedBox.shrink();
                                             return ListTile(
-                                              leading: ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.asset('web/assets/south-arabia-v2.png', width: 31, height: 27, cacheWidth: 124, cacheHeight: 108, fit: BoxFit.cover)),
+                                              leading: SizedBox(width: 32, height: 32, child: Center(child: SizedBox(width: 24, height: 24, child: Image.asset('web/assets/south-arabia-v2.png', width: 24, height: 24, fit: BoxFit.contain)))),
                                               title: const Text('الجنوب العربي', style: TextStyle(color: const Color(0xFF1E2233), fontWeight: FontWeight.w800)),
                                               onTap: () {
                                                 refreshDialog(() {
@@ -581,7 +581,7 @@ class _LoginPageState extends State<LoginPage> {
                                           final country = filteredCountries[index - 1];
                                           final translatedName = country.getTranslatedName(countryContext) ?? country.name;
                                           return ListTile(
-                                            leading: Text(country.flagEmoji, style: const TextStyle(fontSize: 24)),
+                                            leading: SizedBox(width: 32, height: 32, child: Center(child: SizedBox(width: 24, height: 24, child: Center(child: Text(country.flagEmoji, style: const TextStyle(fontSize: 18)))))),
                                             title: Text(translatedName, style: const TextStyle(color: const Color(0xFF1E2233), fontWeight: FontWeight.w700)),
                                             onTap: () {
                                               refreshDialog(() {
@@ -614,9 +614,15 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         child: Row(
                           children: [
-                            _isSouthArabiaPhone
-                                ? ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.asset('web/assets/south-arabia-v2.png', width: 31, height: 27, cacheWidth: 124, cacheHeight: 108, fit: BoxFit.cover))
-                                : Text(_phoneCountryFlag, style: const TextStyle(fontSize: 23)),
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: Center(
+                                child: _isSouthArabiaPhone
+                                    ? Image.asset('web/assets/south-arabia-v2.png', width: 24, height: 24, fit: BoxFit.contain)
+                                    : Text(_phoneCountryFlag, style: const TextStyle(fontSize: 18)),
+                              ),
+                            ),
                             const SizedBox(width: 11),
                             Expanded(child: Text(_phoneCountryName, style: const TextStyle(color: const Color(0xFF1E2233), fontWeight: FontWeight.w700))),
                             const Icon(Icons.keyboard_arrow_down_rounded, color: HappyLiveApp.gold),
