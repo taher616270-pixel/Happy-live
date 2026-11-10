@@ -603,8 +603,8 @@ class _RoomReportPageState extends State<_RoomReportPage> {
           'Authorization': 'Bearer $accessToken',
         },
         body: jsonEncode({
-          'roomCode': roomCode,
-          'roomName': targetName,
+          'roomCode': widget.roomCode,
+          'roomName': widget.targetName,
           'targets': _selectedTargets.toList(),
           'violation': _violation,
         }),
