@@ -92,11 +92,11 @@ class _RoomInfoSheet extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Transform.translate(
-                      offset: const Offset(0, 7),
+                      offset: const Offset(3, 7),
                       child: Row(children: [
                         _countryFlag(context, info.flag),
                         const SizedBox(width: 6),
-                        Flexible(child: Transform.translate(offset: const Offset(0, -3), child: Text(info.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)))),
+                        Flexible(child: Transform.translate(offset: const Offset(0, 0), child: Text(info.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)))),
                       ]),
                     ),
                     const SizedBox(height: 10),
