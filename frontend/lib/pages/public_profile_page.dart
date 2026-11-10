@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:happy_live/widgets/square_country_flag.dart';
+import 'edit_profile_page.dart' show countryFlagForProfileName;
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import 'package:country_picker/country_picker.dart';
@@ -401,23 +402,58 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     return list;
   }
 
-  // يدعم رموز الدول وأسماءها المحفوظة في الملف الشخصي.
+  // Resolve the saved profile country name before any ISO-code fallback.
+  // South Arabia may intentionally use YE as its technical country code.
   String _flagEmoji(BuildContext context) {
-    final countryName = _firstText(['country', 'countryName', 'country_name', 'countryCode']);
-    if (countryName.isEmpty) return '';
-    final code = countryName.toUpperCase();
+    final names = [
+      _firstText(['countryName']),
+      _firstText(['country_name']),
+      _firstText(['country']),
+      _firstText(['countryDisplayName', 'country_display_name']),
+    ].where((value) => value.trim().isNotEmpty).toList();
+
+    // Explicitly prioritize South Arabia across every saved name field.
+    for (final name in names) {
+      if (countryFlagForProfileName(name) == 'SOUTH_ARABIA') {
+        return 'SOUTH_ARABIA';
+      }
+    }
+
+    // Resolve ordinary country names before considering ISO codes.
+    for (final name in names) {
+      if (name.length == 2 &&
+          name.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
+        continue;
+      }
+      final savedFlag = countryFlagForProfileName(name);
+      if (savedFlag.isNotEmpty) return savedFlag;
+      for (final country in CountryService().getAll()) {
+        final translated = country.getTranslatedName(context) ?? country.name;
+        if (translated.trim() == name.trim() ||
+            country.name.trim().toLowerCase() == name.trim().toLowerCase()) {
+          return country.flagEmoji;
+        }
+      }
+    }
+
+    // Only use the ISO code after all saved profile names have been checked.
+    final countryCode = _firstText(['countryCode', 'country_code']);
+    final code = countryCode.trim().toUpperCase().replaceAll(RegExp(r'\\s+'), '');
     if (code.length == 2 &&
         code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
-      return String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65));
+      return String.fromCharCodes(
+        code.codeUnits.map((unit) => 0x1F1E6 + unit - 65),
+      );
     }
-    if (countryName == 'دولة الجنوب العربي' || countryName == 'الجنوب العربي') {
-      return 'SOUTH_ARABIA';
-    }
-    for (final country in CountryService().getAll()) {
-      final translated = country.getTranslatedName(context) ?? country.name;
-      if (translated.trim() == countryName.trim() ||
-          country.name.trim().toLowerCase() == countryName.trim().toLowerCase()) {
-        return country.flagEmoji;
+
+    // Legacy profiles may store the two-letter code in the country field.
+    for (final name in names) {
+      final legacyCode = name.trim().toUpperCase();
+      if (legacyCode.length == 2 &&
+          legacyCode.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
+        return String.fromCharCodes(
+          legacyCode.codeUnits.map((unit) => 0x1F1E6 + unit - 65),
+        );
       }
     }
     return '';
