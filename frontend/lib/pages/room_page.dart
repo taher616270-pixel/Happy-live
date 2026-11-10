@@ -93,6 +93,7 @@ class _RoomPageState extends State<RoomPage> {
   int? _mySeat;
   String _ownerName = 'صاحب الغرفة';
   String _ownerId = '';
+  String _ownerAvatarUrl = '';
   List<Map<String, dynamic>> _seats = [];
   List<Map<String, dynamic>> _audienceUsers = [];
   int _audienceCount = 0;
@@ -510,6 +511,9 @@ class _RoomPageState extends State<RoomPage> {
     final nextOwnerId = owner is Map
         ? (owner['id'] ?? owner['userId'] ?? owner['uid'] ?? '').toString()
         : _ownerId;
+    final nextOwnerAvatarUrl = owner is Map && (owner['avatarUrl'] ?? '').toString().trim().isNotEmpty
+        ? owner['avatarUrl'].toString().trim()
+        : _ownerAvatarUrl;
     final roomData = data['room'];
     final nextAnnouncement = roomData is Map && roomData['announcement'] != null
         ? roomData['announcement'].toString()
@@ -545,6 +549,7 @@ class _RoomPageState extends State<RoomPage> {
         jsonEncode(_audienceUsers) != jsonEncode(nextAudienceUsers) ||
         _ownerName != nextOwnerName ||
         _ownerId != nextOwnerId ||
+        _ownerAvatarUrl != nextOwnerAvatarUrl ||
         _roomAnnouncement != nextAnnouncement ||
         _amRoomOwner != nextIsOwner ||
         _amRoomModerator != nextIsModerator ||
@@ -569,6 +574,7 @@ class _RoomPageState extends State<RoomPage> {
       _audienceUsers = nextAudienceUsers;
       _ownerName = nextOwnerName;
       _ownerId = nextOwnerId;
+      _ownerAvatarUrl = nextOwnerAvatarUrl;
       _roomAnnouncement = nextAnnouncement;
       _amRoomOwner = nextIsOwner;
       _amRoomModerator = nextIsModerator;
@@ -1615,6 +1621,7 @@ class _RoomPageState extends State<RoomPage> {
       audienceCount: _audienceCount,
       audienceUsers: _audienceUsers,
       ownerName: _ownerName,
+      ownerAvatarUrl: _ownerAvatarUrl,
       isCurrentUserRoomOwner: _isRoomOwner,
       canModerateUsers: _isRoomOwner || _amRoomModerator,
       selfMicMuted: _selfMicMuted,
