@@ -581,7 +581,7 @@ class _RoomReportPageState extends State<_RoomReportPage> {
                     ? const Color(0xFFD4AF37)
                     : const Color(0xFFF5EACB),
                 foreground: _canSubmit
-                    ? Colors.black
+                    ? Colors.white
                     : const Color(0xFFB49A5A),
                 onTap: _canSubmit && !_isSubmitting ? _submitReport : null,
               ),
