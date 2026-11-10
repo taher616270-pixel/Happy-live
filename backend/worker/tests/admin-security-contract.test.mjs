@@ -114,7 +114,7 @@ test("all sensitive admin routes use the relational audit helper", () => {
   const end = worker.indexOf('if (url.pathname === "/api/v1/auth/google"', start);
   assert.ok(start >= 0 && end > start, "admin API route block must exist");
   const routes = worker.slice(start, end);
-  assert.equal((routes.match(/adminAuditStatements\(env\.DB, actor/g) || []).length, 6);
+  assert.equal((routes.match(/adminAuditStatements\(env\.DB, actor/g) || []).length, 11);
   for (const action of [
     "agora.voice.enable",
     "agora.voice.disable",
@@ -124,7 +124,35 @@ test("all sensitive admin routes use the relational audit helper", () => {
     "room.user.ban",
     "room.user.kick",
     "room.close",
+    "admin.account.create",
+    "admin.account.role.update",
+    "admin.account.disable",
+    "admin.account.enable",
+    "admin.account.password.rotate",
+    "admin.account.sessions.revoke",
   ]) {
     assert.ok(routes.includes(action), `expected auditable action ${action}`);
   }
+});
+
+
+test("admin account management is owner-only, protects the owner, and revokes sessions", () => {
+  const start = worker.indexOf('if (url.pathname === "/api/v1/admin/accounts" && request.method === "GET")');
+  const end = worker.indexOf('if (url.pathname === "/api/v1/admin/moderators"', start);
+  assert.ok(start >= 0 && end > start, "admin account routes must exist before app moderator routes");
+  const routes = worker.slice(start, end);
+  assert.match(routes, /actor\.role !== "owner"/);
+  assert.match(routes, /admin_account_roles/);
+  assert.match(routes, /hashPassword\(password\)/);
+  assert.match(routes, /owner_account_is_protected/);
+  assert.match(routes, /UPDATE admin_sessions SET revoked_at = \? WHERE admin_id = \? AND revoked_at IS NULL/);
+  assert.match(routes, /adminAuditStatements\(env\.DB, actor/);
+  assert.doesNotMatch(routes, /body\.(?:adminId|actorId|owner)/);
+});
+
+test("admin account UI is separate and calls only the protected Worker API", () => {
+  assert.match(adminUi, /data-page="adminAccounts"/);
+  assert.match(adminUi, /api\(["']\/admin\/accounts/);
+  assert.match(adminUi, /adminPasswordDialog/);
+  assert.match(adminUi, /مديرو لوحة الإدارة/);
 });
