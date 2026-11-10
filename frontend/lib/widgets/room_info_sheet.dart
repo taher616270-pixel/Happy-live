@@ -126,7 +126,10 @@ class _RoomInfoSheet extends StatelessWidget {
                   ])),
                   Transform.translate(
                     offset: const Offset(0, 7),
-                    child: const Icon(Icons.error_outline, color: _RoomInfoColors.muted, size: 28),
+                    child: GestureDetector(
+                      onTap: () => _showRoomReportSheet(context),
+                      child: const Icon(Icons.error_outline, color: _RoomInfoColors.muted, size: 28),
+                    ),
                   ),
                   ]),
                 ),
@@ -242,6 +245,80 @@ class _RoomInfoSheet extends StatelessWidget {
               ],
             ])),
           ]),
+        ),
+      ),
+    );
+  }
+
+  void _showRoomReportSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: false,
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF3E8D2),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'لماذا تريد التبليغ عن هذه الغرفة؟',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF30291F),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE5D5B8),
+                      foregroundColor: const Color(0xFF30291F),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'انتهاك صفحة الملف الشخصي',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 46,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF625746),
+                      side: const BorderSide(color: Color(0xFFBDAE94)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'إلغاء',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
