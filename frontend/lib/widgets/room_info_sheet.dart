@@ -108,7 +108,7 @@ class _RoomInfoSheet extends StatelessWidget {
                   const Icon(Icons.error_outline, color: _RoomInfoColors.muted, size: 28),
                 ]),
                 const SizedBox(height: 20),
-                SizedBox(height: 74, child: Row(children: [
+                SizedBox(height: 60, child: Row(children: [
                   Expanded(flex: 5, child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(color: _RoomInfoColors.goldBg, borderRadius: BorderRadius.circular(15), border: Border.all(color: const Color(0xFF4A3B1A))),
