@@ -51,14 +51,14 @@ class SquareCountryFlag extends StatelessWidget {
           child: OverflowBox(
             minWidth: size + 2,
             maxWidth: size + 2,
-            minHeight: size - 1,
-            maxHeight: size - 1,
+            minHeight: size - 2,
+            maxHeight: size - 2,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: Image.asset(
                 'web/assets/south-arabia.png',
                 width: size + 2,
-                height: size - 1,
+                height: size - 2,
                 fit: BoxFit.fill,
                 filterQuality: FilterQuality.high,
                 errorBuilder: (context, error, stackTrace) =>
