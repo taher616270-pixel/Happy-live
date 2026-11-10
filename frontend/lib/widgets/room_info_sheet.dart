@@ -59,7 +59,6 @@ class _RoomInfoSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = _RoomInfoColors;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Container(
@@ -112,7 +111,7 @@ class _RoomInfoSheet extends StatelessWidget {
                 SizedBox(height: 74, child: Row(children: [
                   Expanded(flex: 5, child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(color: c.goldBg, borderRadius: BorderRadius.circular(15), border: Border.all(color: const Color(0xFF4A3B1A))),
+                    decoration: BoxDecoration(color: _RoomInfoColors.goldBg, borderRadius: BorderRadius.circular(15), border: Border.all(color: const Color(0xFF4A3B1A))),
                     child: Row(children: [
                       _networkImage(info.tribeLogoUrl, 42, 42),
                       const SizedBox(width: 8),
@@ -123,9 +122,9 @@ class _RoomInfoSheet extends StatelessWidget {
                     ]),
                   )),
                   const SizedBox(width: 7),
-                  Expanded(flex: 3, child: _stat('Lv.${info.level}', 'مستوى الغرفة', c.levelBg, c.level)),
+                  Expanded(flex: 3, child: _stat('Lv.${info.level}', 'مستوى الغرفة', _RoomInfoColors.levelBg, _RoomInfoColors.level)),
                   const SizedBox(width: 7),
-                  Expanded(flex: 2, child: _stat('قصر', info.palaceStatus, c.goldBg, c.palace)),
+                  Expanded(flex: 2, child: _stat('قصر', info.palaceStatus, _RoomInfoColors.goldBg, _RoomInfoColors.palace)),
                 ])),
                 const SizedBox(height: 22),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -142,7 +141,7 @@ class _RoomInfoSheet extends StatelessWidget {
                   itemBuilder: (_, i) {
                     final m = info.members[i];
                     return SizedBox(width: 58, child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
-                      CircleAvatar(radius: 28, backgroundColor: c.chip, backgroundImage: m.avatarUrl.startsWith('http') ? NetworkImage(m.avatarUrl) : null, child: m.avatarUrl.startsWith('http') ? null : const Icon(Icons.person, color: c.muted)),
+                      CircleAvatar(radius: 28, backgroundColor: _RoomInfoColors.chip, backgroundImage: m.avatarUrl.startsWith('http') ? NetworkImage(m.avatarUrl) : null, child: m.avatarUrl.startsWith('http') ? null : const Icon(Icons.person, color: _RoomInfoColors.muted)),
                       Positioned(bottom: 4, child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
                         decoration: BoxDecoration(color: m.isOwner ? const Color(0xFFFF4F81) : const Color(0xFFFF9800), borderRadius: BorderRadius.circular(10)),
@@ -159,25 +158,25 @@ class _RoomInfoSheet extends StatelessWidget {
                 const Text('مجموعة الغرفة', style: TextStyle(color: _RoomInfoColors.text, fontSize: 21, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 12),
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  CircleAvatar(radius: 32, backgroundColor: c.chip, backgroundImage: info.imageUrl.startsWith('http') ? NetworkImage(info.imageUrl) : null, child: info.imageUrl.startsWith('http') ? null : const Icon(Icons.groups, color: c.muted)),
+                  CircleAvatar(radius: 32, backgroundColor: _RoomInfoColors.chip, backgroundImage: info.imageUrl.startsWith('http') ? NetworkImage(info.imageUrl) : null, child: info.imageUrl.startsWith('http') ? null : const Icon(Icons.groups, color: _RoomInfoColors.muted)),
                   const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      Flexible(child: Text(info.groupName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: c.text, fontSize: 17, fontWeight: FontWeight.w600))),
+                      Flexible(child: Text(info.groupName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 17, fontWeight: FontWeight.w600))),
                       const SizedBox(width: 8),
-                      _chip(Text('${info.groupCount} عضو', style: const TextStyle(color: c.muted, fontSize: 12))),
+                      _chip(Text('${info.groupCount} عضو', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 12))),
                     ]),
                     const SizedBox(height: 4),
-                    Text(info.groupDesc.isEmpty ? 'لا يوجد وصف للمجموعة' : info.groupDesc, style: const TextStyle(color: c.muted, fontSize: 14, height: 1.4)),
+                    Text(info.groupDesc.isEmpty ? 'لا يوجد وصف للمجموعة' : info.groupDesc, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 14, height: 1.4)),
                   ])),
                 ]),
                 const SizedBox(height: 12),
               ]),
             )),
             Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 14), child: Row(children: [
-              Expanded(child: _button('متابعة', const Color(0xFF5A2A18), c.follow, onFollow)),
+              Expanded(child: _button('متابعة', const Color(0xFF5A2A18), _RoomInfoColors.follow, onFollow)),
               const SizedBox(width: 14),
-              Expanded(child: _button('انضمام', const Color(0xFF1B5E63), c.join, onJoin)),
+              Expanded(child: _button('انضمام', const Color(0xFF1B5E63), _RoomInfoColors.join, onJoin)),
             ])),
           ]),
         ),
