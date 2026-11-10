@@ -571,7 +571,7 @@ export default {
           }
           return json({ ok: true, admin: { id, username, display_name: displayName, role, status: "active" } }, 201, origin, env);
         }
-        const adminAccountRoute = url.pathname.match(/^\\/api\\/v1\\/admin\\/accounts\\/([0-9a-f-]{36})\\/(role|status|password|revoke-sessions)$/i);
+        const adminAccountRoute = url.pathname.match(/^\/api\/v1\/admin\/accounts\/([0-9a-f-]{36})\/(role|status|password|revoke-sessions)$/i);
         if (adminAccountRoute && (request.method === "PATCH" || request.method === "POST")) {
           if (actor.role !== "owner") return json({ error: "permission_denied" }, 403, origin, env);
           const targetId = adminAccountRoute[1];
