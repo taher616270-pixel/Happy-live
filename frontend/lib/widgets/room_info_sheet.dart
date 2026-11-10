@@ -153,7 +153,7 @@ class _RoomInfoSheet extends StatelessWidget {
                 const SizedBox(height: 22),
                 const Text('الإعلان', style: TextStyle(color: _RoomInfoColors.text, fontSize: 21, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 12),
-                Text(info.announcement.isEmpty ? 'لا يوجد إعلان لهذه الغرفة حاليًا' : info.announcement, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 15, height: 1.5)),
+                Text(info.announcement.isEmpty ? 'لا يوجد إعلان لهذه الغرفة حاليًا' : info.announcement, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 13, height: 1.3)),
                 const SizedBox(height: 22),
                 const Text('مجموعة الغرفة', style: TextStyle(color: _RoomInfoColors.text, fontSize: 21, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 12),
