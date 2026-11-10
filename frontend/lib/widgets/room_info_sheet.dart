@@ -76,7 +76,7 @@ class _RoomInfoSheet extends StatelessWidget {
             const SizedBox(height: 10),
             Container(width: 42, height: 4, decoration: BoxDecoration(color: const Color(0xFFB9A98F), borderRadius: BorderRadius.circular(8))),
             Flexible(child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 1, 16, 8),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   SizedBox(width: 66, height: 70, child: Stack(children: [
