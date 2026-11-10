@@ -66,13 +66,15 @@ class _RoomInfoSheet extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .60),
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .88),
         decoration: const BoxDecoration(color: _RoomInfoColors.bg, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         child: SafeArea(
           top: false,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const SizedBox(height: 10),
+            Container(width: 42, height: 4, decoration: BoxDecoration(color: const Color(0xFFB9A98F), borderRadius: BorderRadius.circular(8))),
             Flexible(child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   SizedBox(width: 66, height: 70, child: Stack(children: [
@@ -86,7 +88,7 @@ class _RoomInfoSheet extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      Flexible(child: Text(info.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 20, fontWeight: FontWeight.w600))),
+                      Flexible(child: Text(info.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700))),
                       const SizedBox(width: 6),
                       Text(info.flag, style: const TextStyle(fontSize: 18)),
                     ]),
@@ -98,20 +100,20 @@ class _RoomInfoSheet extends StatelessWidget {
                           if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ الـ ID'), duration: Duration(seconds: 1)));
                         },
                         child: _chip(Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text('ID:${info.id}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 15)),
+                          Text('ID:${info.id}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 12)),
                           const SizedBox(width: 6), const Icon(Icons.copy_rounded, color: _RoomInfoColors.muted, size: 16),
                         ])),
                       ),
                       _chip(Row(mainAxisSize: MainAxisSize.min, children: [
                         const Icon(Icons.favorite, color: Color(0xFFFF7A2F), size: 18),
                         const SizedBox(width: 6),
-                        Text(_format(info.likes), style: const TextStyle(color: Color(0xFFFF7A2F), fontSize: 16)),
+                        Text(_format(info.likes), style: const TextStyle(color: Color(0xFFFF7A2F), fontSize: 13)),
                       ]), color: const Color(0xFF3A2218)),
                     ]),
                   ])),
                   const Icon(Icons.error_outline, color: _RoomInfoColors.muted, size: 28),
                 ]),
-                const SizedBox(height: 20),
+                const SizedBox(height: 14),
                 SizedBox(height: 60, child: Row(children: [
                   Expanded(flex: 5, child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -130,15 +132,15 @@ class _RoomInfoSheet extends StatelessWidget {
                   const SizedBox(width: 7),
                   Expanded(flex: 2, child: _stat('قصر', info.palaceStatus, _RoomInfoColors.goldBg, _RoomInfoColors.palace)),
                 ])),
-                const SizedBox(height: 22),
+                const SizedBox(height: 16),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  const Text('أعضاء', style: TextStyle(color: _RoomInfoColors.text, fontSize: 21, fontWeight: FontWeight.w600)),
+                  const Text('أعضاء', style: TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)),
                   GestureDetector(onTap: onMembersTap, child: Row(children: [
                     Text('${info.membersCount}/${info.membersMax}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 18)),
                     const Icon(Icons.chevron_left, color: _RoomInfoColors.muted),
                   ])),
                 ]),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 SizedBox(height: 66, child: ListView.separated(
                   scrollDirection: Axis.horizontal, itemCount: info.members.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 10),
@@ -154,13 +156,13 @@ class _RoomInfoSheet extends StatelessWidget {
                     ]));
                   },
                 )),
-                const SizedBox(height: 22),
-                const Text('الإعلان', style: TextStyle(color: _RoomInfoColors.text, fontSize: 21, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 12),
+                const SizedBox(height: 15),
+                const Text('الإعلان', style: TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
                 Text(info.announcement.isEmpty ? 'لا يوجد إعلان لهذه الغرفة حاليًا' : info.announcement, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 13, height: 1.3)),
-                const SizedBox(height: 22),
-                const Text('مجموعة الغرفة', style: TextStyle(color: _RoomInfoColors.text, fontSize: 21, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 12),
+                const SizedBox(height: 15),
+                const Text('مجموعة الغرفة', style: TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   CircleAvatar(radius: 32, backgroundColor: _RoomInfoColors.chip, backgroundImage: info.imageUrl.startsWith('http') ? NetworkImage(info.imageUrl) : null, child: info.imageUrl.startsWith('http') ? null : const Icon(Icons.groups, color: _RoomInfoColors.muted)),
                   const SizedBox(width: 12),
@@ -177,7 +179,7 @@ class _RoomInfoSheet extends StatelessWidget {
                 const SizedBox(height: 12),
               ]),
             )),
-            Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 14), child: Row(children: [
+            Padding(padding: const EdgeInsets.fromLTRB(16, 6, 16, 10), child: Row(children: [
               if (info.isRoomOwner) ...[
                 Expanded(child: _button('الإعدادات', const Color(0xFFE9D9B9), const Color(0xFF6B4A24), onSettings, icon: Icons.settings_outlined)),
                 const SizedBox(width: 14),
