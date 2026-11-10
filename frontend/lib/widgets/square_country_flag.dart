@@ -41,28 +41,19 @@ class SquareCountryFlag extends StatelessWidget {
 
     final normalizedFlag = flag.trim();
 
-    // South Arabia is a custom flag, not Yemen (YE).
-    if (normalizedFlag == 'SOUTH_ARABIA') {
+    // South Arabia custom flag, displayed in the same 3:2 ratio.
+    if (normalizedFlag.toUpperCase() == 'SOUTH_ARABIA') {
       return SizedBox.square(
         dimension: size,
         child: Center(
-          // Let the custom flag paint at its requested dimensions instead of
-          // being constrained back to the square slot by Center.
-          child: OverflowBox(
-            minWidth: size + 2,
-            maxWidth: size + 2,
-            minHeight: size - 2,
-            maxHeight: size - 2,
+          child: AspectRatio(
+            aspectRatio: 3 / 2,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(3),
               child: Image.asset(
-                'web/assets/south-arabia.png',
-                width: size + 2,
-                height: size - 2,
-                fit: BoxFit.fill,
+                'web/assets/south-arabia-new.png',
+                fit: BoxFit.cover,
                 filterQuality: FilterQuality.high,
-                errorBuilder: (context, error, stackTrace) =>
-                    SizedBox.square(dimension: size),
               ),
             ),
           ),
