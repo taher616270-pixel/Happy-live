@@ -233,6 +233,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
   void _openRoomInfo(BuildContext context) {
     final image = _roomInfoString(['imageUrl', 'image_url', 'coverUrl', 'cover_url']);
+    final ownerAvatar = _roomInfoString([
+      'ownerAvatar', 'ownerAvatarUrl', 'owner_avatar', 'owner_avatar_url',
+      'ownerPhoto', 'owner_photo', 'avatarUrl', 'avatar_url', 'avatar',
+      'photoUrl', 'photo_url', 'profileImage', 'profile_image', 'userAvatar', 'user_avatar',
+    ]);
     final rawMembers = room['members'] ?? room['roomMembers'] ?? room['room_members'];
     final members = <RoomMember>[];
     if (rawMembers is List) {
@@ -247,7 +252,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       }
     }
     if (members.isEmpty) {
-      final ownerAvatar = _roomInfoString(['ownerAvatar', 'ownerAvatarUrl', 'owner_avatar', 'owner_avatar_url']);
       members.add(RoomMember(avatarUrl: ownerAvatar, role: 'المالك', isOwner: true));
     }
 
@@ -270,6 +274,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       groupName: _roomInfoString(['groupName', 'group_name'], 'مجموعة الغرفة'),
       groupCount: _roomInfoInt(['groupCount', 'group_count']),
       groupDesc: _roomInfoString(['groupDesc', 'group_desc', 'groupDescription']),
+      ownerAvatarUrl: ownerAvatar,
       isRoomOwner: room['isOwner'] == true ||
           room['is_owner'] == true ||
           room['isRoomOwner'] == true ||
