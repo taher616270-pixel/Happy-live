@@ -95,11 +95,14 @@ class _RoomInfoSheet extends StatelessWidget {
                   ])),
                   const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      _countryFlag(context, info.flag),
-                      const SizedBox(width: 6),
-                      Flexible(child: Transform.translate(offset: const Offset(0, -3), child: Text(info.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)))),
-                    ]),
+                    Transform.translate(
+                      offset: const Offset(0, 7),
+                      child: Row(children: [
+                        _countryFlag(context, info.flag),
+                        const SizedBox(width: 6),
+                        Flexible(child: Transform.translate(offset: const Offset(0, -3), child: Text(info.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)))),
+                      ]),
+                    ),
                     const SizedBox(height: 10),
                     Wrap(spacing: 8, runSpacing: 8, children: [
                       GestureDetector(
@@ -122,7 +125,10 @@ class _RoomInfoSheet extends StatelessWidget {
                       ]), color: const Color(0xFF382A32)),
                     ]),
                   ])),
-                  const Icon(Icons.error_outline, color: _RoomInfoColors.muted, size: 28),
+                  Transform.translate(
+                    offset: const Offset(0, 7),
+                    child: const Icon(Icons.error_outline, color: _RoomInfoColors.muted, size: 28),
+                  ),
                   ]),
                 ),
                 const SizedBox(height: 14),
