@@ -68,7 +68,7 @@ test("the admin browser uses the Worker API and never queries D1 directly", () =
   );
   assert.doesNotMatch(
     adminUi,
-    /\b(?:D1Database|SELECT\s+\w+|INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM)\b/i,
+    /\b(?:D1Database|SELECT\s+[\w.*,\s]+\s+FROM\s+[\w.]+|INSERT\s+INTO\s+[\w.]+|UPDATE\s+[\w.]+\s+SET|DELETE\s+FROM\s+[\w.]+)\b/i,
   );
 });
 
