@@ -274,23 +274,18 @@ class _RoomInfoSheet extends StatelessWidget {
                   'لماذا تريد التبليغ عن هذه الغرفة؟',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF30291F),
+                    color: Color(0xFF817665),
                     fontSize: 17,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 22),
                 SizedBox(
                   height: 48,
-                  child: ElevatedButton(
+                  child: TextButton(
                     onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE5D5B8),
+                    style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF30291F),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
                     ),
                     child: const Text(
                       'انتهاك صفحة الملف الشخصي للغرفة',
@@ -298,17 +293,13 @@ class _RoomInfoSheet extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const Divider(height: 1, thickness: 1, color: Color(0xFFBDAE94)),
                 SizedBox(
                   height: 46,
-                  child: OutlinedButton(
+                  child: TextButton(
                     onPressed: () => Navigator.of(sheetContext).pop(),
-                    style: OutlinedButton.styleFrom(
+                    style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF625746),
-                      side: const BorderSide(color: Color(0xFFBDAE94)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
                     ),
                     child: const Text(
                       'إلغاء',
