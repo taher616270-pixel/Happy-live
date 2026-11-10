@@ -135,17 +135,17 @@ class _RoomInfoSheet extends StatelessWidget {
                   ])),
                 ]),
                 const SizedBox(height: 14),
-                SizedBox(height: 80, child: ListView.separated(
+                SizedBox(height: 66, child: ListView.separated(
                   scrollDirection: Axis.horizontal, itemCount: info.members.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 14),
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
                   itemBuilder: (_, i) {
                     final m = info.members[i];
-                    return SizedBox(width: 58, child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
-                      CircleAvatar(radius: 28, backgroundColor: _RoomInfoColors.chip, backgroundImage: m.avatarUrl.startsWith('http') ? NetworkImage(m.avatarUrl) : null, child: m.avatarUrl.startsWith('http') ? null : const Icon(Icons.person, color: _RoomInfoColors.muted)),
+                    return SizedBox(width: 48, child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
+                      CircleAvatar(radius: 22, backgroundColor: _RoomInfoColors.chip, backgroundImage: m.avatarUrl.startsWith('http') ? NetworkImage(m.avatarUrl) : null, child: m.avatarUrl.startsWith('http') ? null : const Icon(Icons.person, color: _RoomInfoColors.muted)),
                       Positioned(bottom: 4, child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
                         decoration: BoxDecoration(color: m.isOwner ? const Color(0xFFFF4F81) : const Color(0xFFFF9800), borderRadius: BorderRadius.circular(10)),
-                        child: Text(m.role, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                        child: Text(m.role, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)), 
                       )),
                     ]));
                   },
