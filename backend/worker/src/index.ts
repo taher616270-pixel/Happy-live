@@ -2290,11 +2290,31 @@ export default {
           crypto.getRandomValues(random);
           roomCode = String(10000000 + (random[0] % 90000000));
           const inserted = await env.DB.prepare(
-            "INSERT INTO rooms (id, room_code, owner_user_id, name, description, image_url, visibility, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?) ON CONFLICT(room_code) DO NOTHING"
+            "INSERT INTO rooms (id, room_code, owner_user_id, name, description, image_url, visibility, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?) ON CONFLICT DO NOTHING"
           ).bind(roomId, roomCode, user.id, name, description, imageUrl || null, isPrivate ? "private" : "public", createdAt, createdAt).run();
           if ((inserted.meta?.changes ?? 0) === 1) {
             roomCreated = true;
             break;
+          }
+
+          // A concurrent request may have created this user's room after the
+          // initial lookup. The unique owner index rejects the second insert;
+          // return the winner's room instead of reporting a room-code failure.
+          const concurrentRoom = await env.DB.prepare(
+            "SELECT id, room_code, owner_user_id, name, description, image_url, visibility, status, created_at FROM rooms WHERE owner_user_id = ? ORDER BY created_at ASC, id ASC LIMIT 1"
+          ).bind(user.id).first<{
+            id: string; room_code: string; owner_user_id: string; name: string;
+            description: string; image_url: string | null; visibility: string;
+            status: string; created_at: string;
+          }>();
+          if (concurrentRoom) {
+            return json({ ok: true, existing: true, room: {
+              id: concurrentRoom.id, roomCode: concurrentRoom.room_code,
+              ownerId: concurrentRoom.owner_user_id, name: concurrentRoom.name,
+              description: concurrentRoom.description, imageUrl: concurrentRoom.image_url,
+              isPrivate: concurrentRoom.visibility === "private", status: concurrentRoom.status,
+              createdAt: concurrentRoom.created_at
+            } }, 200, origin, env);
           }
         }
         if (!roomCreated) {
