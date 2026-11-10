@@ -74,7 +74,7 @@ class _RoomInfoSheet extends StatelessWidget {
           top: false,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Flexible(child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 1, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   SizedBox(width: 66, height: 70, child: Stack(children: [
