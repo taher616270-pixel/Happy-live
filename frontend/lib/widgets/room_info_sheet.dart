@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:country_picker/country_picker.dart';
 
 class RoomMember {
   const RoomMember({required this.avatarUrl, required this.role, this.isOwner = false});
@@ -92,7 +93,7 @@ class _RoomInfoSheet extends StatelessWidget {
                     Row(children: [
                       Flexible(child: Transform.translate(offset: const Offset(0, -3), child: Text(info.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)))),
                       const SizedBox(width: 6),
-                      Text(info.flag, style: const TextStyle(fontSize: 18)),
+                      _countryFlag(context, info.flag),
                     ]),
                     const SizedBox(height: 10),
                     Wrap(spacing: 8, runSpacing: 8, children: [
@@ -231,6 +232,30 @@ class _RoomInfoSheet extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _countryFlag(BuildContext context, String value) {
+    final countryName = value.trim();
+    if (countryName.isEmpty) return const SizedBox.shrink();
+    final normalized = countryName.toLowerCase();
+    if (normalized == 'south_arabia' || normalized == 'south arabia' || normalized == 'الجنوب العربي') {
+      return Image.asset('web/assets/south-arabia-v2.png', width: 27, height: 19, fit: BoxFit.cover);
+    }
+    for (final country in CountryService().getAll()) {
+      final translated = country.getTranslatedName(context) ?? country.name;
+      if (translated.trim() == countryName || country.name.trim().toLowerCase() == normalized) {
+        return Text(country.flagEmoji, style: const TextStyle(fontSize: 18));
+      }
+    }
+    final code = countryName.toUpperCase();
+    if (code.length == 2 && code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
+      return Text(String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)), style: const TextStyle(fontSize: 18));
+    }
+    // إذا كانت القيمة نفسها رمز علم، اعرضها كما هي.
+    if (countryName.runes.any((rune) => rune >= 0x1F1E6 && rune <= 0x1F1FF)) {
+      return Text(countryName, style: const TextStyle(fontSize: 18));
+    }
+    return const SizedBox.shrink();
   }
 
   static Widget _networkImage(String url, double width, double height) => ClipRRect(
