@@ -76,11 +76,9 @@ class _RoomInfoSheet extends StatelessWidget {
             const SizedBox(height: 10),
             Container(width: 42, height: 4, decoration: BoxDecoration(color: const Color(0xFFB9A98F), borderRadius: BorderRadius.circular(8))),
             Flexible(child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Transform.translate(
-                  offset: const Offset(0, -7),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   SizedBox(width: 66, height: 70, child: Stack(children: [
                     ClipRRect(borderRadius: BorderRadius.circular(10), child: _networkImage(info.ownerAvatarUrl.isNotEmpty ? info.ownerAvatarUrl : info.imageUrl, 66, 66)),
                     Positioned(left: 0, right: 0, bottom: 0, child: Container(
@@ -116,8 +114,7 @@ class _RoomInfoSheet extends StatelessWidget {
                     ]),
                   ])),
                   const Icon(Icons.error_outline, color: _RoomInfoColors.muted, size: 28),
-                  ]),
-                ),
+                ]),
                 const SizedBox(height: 14),
                 SizedBox(height: 52, child: Row(children: [
                   Expanded(flex: 5, child: Container(
