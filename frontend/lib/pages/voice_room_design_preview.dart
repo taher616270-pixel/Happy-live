@@ -1449,7 +1449,12 @@ class UserInfoBottomSheet extends StatelessWidget {
     return fallback;
   }
 
-  Widget _countryFlag(BuildContext context, String countryName) {
+  Widget _countryFlag(
+    BuildContext context, {
+    required String countryName,
+    required String countryCode,
+  }) {
+    // South Arabia is always resolved from the saved profile name first.
     final savedProfileFlag = countryFlagForProfileName(countryName);
     if (savedProfileFlag == 'SOUTH_ARABIA') {
       return Image.asset(
@@ -1459,23 +1464,46 @@ class UserInfoBottomSheet extends StatelessWidget {
         fit: BoxFit.cover,
       );
     }
+
+    // Match the saved country name before considering any ISO code.
+    if (countryName.trim().isNotEmpty) {
+      for (final country in CountryService().getAll()) {
+        final translated = country.getTranslatedName(context) ?? country.name;
+        if (translated.trim() == countryName.trim() ||
+            country.name.trim().toLowerCase() ==
+                countryName.trim().toLowerCase()) {
+          return Text(country.flagEmoji, style: const TextStyle(fontSize: 19));
+        }
+      }
+    }
+
+    // Preserve other profile-specific flags after country-name matching.
     if (savedProfileFlag.isNotEmpty) {
       return Text(savedProfileFlag, style: const TextStyle(fontSize: 19));
     }
-    if (countryName.trim().isEmpty) return const SizedBox.shrink();
-    for (final country in CountryService().getAll()) {
-      final translated = country.getTranslatedName(context) ?? country.name;
-      if (translated.trim() == countryName.trim() ||
-          country.name.trim().toLowerCase() == countryName.trim().toLowerCase()) {
-        return Text(country.flagEmoji, style: const TextStyle(fontSize: 19));
-      }
-    }
-    // Backward compatibility for older room snapshots that carried ISO codes.
-    final code = countryName.trim().toUpperCase();
+
+    // countryCode is only a fallback; it cannot override South Arabia above.
+    final code = countryCode
+        .trim()
+        .toUpperCase()
+        .replaceAll(RegExp(r'\s+'), '');
     if (code.length == 2 &&
         code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
       return Text(
         String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
+        style: const TextStyle(fontSize: 19),
+      );
+    }
+
+    // Keep compatibility with older data where the ISO code was stored in countryName.
+    final nameCode = countryName
+        .trim()
+        .toUpperCase()
+        .replaceAll(RegExp(r'\s+'), '');
+    if (nameCode.length == 2 &&
+        nameCode.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
+      return Text(
+        String.fromCharCodes(nameCode.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
         style: const TextStyle(fontSize: 19),
       );
     }
@@ -1498,8 +1526,9 @@ class UserInfoBottomSheet extends StatelessWidget {
     final id = _value(['userCode', 'gaboId', 'publicId', 'gabo_id'], '—');
     final avatar = _value(['avatarUrl', 'avatar', 'photoUrl']);
     final country = _value(
-      ['countryName', 'country_name', 'country', 'countryCode'],
+      ['countryName', 'country_name', 'country'],
     );
+    final countryCode = _value(['countryCode', 'country_code']);
     final gender = _value(['gender'], 'male').toLowerCase();
     final badges = user['badges'] is List ? user['badges'] as List : const [0, 0];
     final titleCount = _number(['titleCount']);
@@ -1547,7 +1576,7 @@ class UserInfoBottomSheet extends StatelessWidget {
                           size: 22,
                         ),
                         const SizedBox(width: 5),
-                        _countryFlag(context, country),
+                        _countryFlag(context, countryName: country, countryCode: countryCode),
                       ],
                     ),
                     const SizedBox(height: 8),
