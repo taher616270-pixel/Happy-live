@@ -325,8 +325,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       final parts = filtered[index].split('|');
                       final flag = parts[0], name = parts[2];
                       return ListTile(
-                        leading: flag == 'SOUTH_ARABIA' ? Image.asset('web/assets/south-arabia-v2.png', width: 32, height: 22, fit: BoxFit.cover)
-                            : SizedBox(width: 32, child: Center(child: Text(flag, style: const TextStyle(fontSize: 24))),),
+                        leading: SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: Center(
+                                child: flag == 'SOUTH_ARABIA'
+                                    ? Image.asset('web/assets/south-arabia-v2.png', width: 24, height: 24, fit: BoxFit.contain)
+                                    : Text(flag, style: const TextStyle(fontSize: 18)),
+                              ),
+                            ),
+                          ),
+                        ),
                         title: Text(name, style: const TextStyle(fontSize: 15, color: _ink)),
                         onTap: () => Navigator.pop(sheetContext, parts[1]),
                       );
@@ -424,9 +437,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     textDirection: TextDirection.rtl,
                     child: Align(alignment: Alignment.centerRight,
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        if (_countryFlag(_country) == 'SOUTH_ARABIA')
-                          Image.asset('web/assets/south-arabia-v2.png', width: 24, height: 17, fit: BoxFit.cover)
-                        else Text(_countryFlag(_country), style: const TextStyle(fontSize: 19)),
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: Center(
+                            child: _countryFlag(_country) == 'SOUTH_ARABIA'
+                                ? Image.asset('web/assets/south-arabia-v2.png', width: 24, height: 24, fit: BoxFit.contain)
+                                : Text(_countryFlag(_country), style: const TextStyle(fontSize: 18)),
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         Text(_countryArabicName(_country), style: _valueStyle),
                       ])),
