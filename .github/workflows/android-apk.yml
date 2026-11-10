@@ -1,13 +1,6 @@
 name: Build Happy Live Android APK
 
 on:
-  push:
-    paths:
-      - ".github/workflows/android-apk.yml"
-      - "frontend/lib/**"
-      - "frontend/assets/**"
-      - "frontend/pubspec.yaml"
-      - "frontend/pubspec.lock"
   workflow_dispatch:
     inputs:
       build_mode:
