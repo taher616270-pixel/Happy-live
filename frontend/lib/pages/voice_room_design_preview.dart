@@ -23,6 +23,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.chatMessagesPanel,
     this.ownerName = 'صاحب الغرفة',
     this.ownerAvatarUrl = '',
+    this.ownerCountryName = '',
     this.isCurrentUserRoomOwner = false,
     this.canModerateUsers = false,
     this.selfMicMuted = false,
@@ -47,6 +48,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final Widget? chatMessagesPanel;
   final String ownerName;
   final String ownerAvatarUrl;
+  final String ownerCountryName;
   final bool isCurrentUserRoomOwner;
   final bool canModerateUsers;
   final bool selfMicMuted;
@@ -312,7 +314,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
     final info = RoomInfo(
       name: _name,
-      flag: _roomInfoString(['flag', 'countryFlag', 'country_flag', 'countryName', 'country_name', 'country', 'countryCode']),
+      flag: ownerCountryName.trim().isNotEmpty
+          ? ownerCountryName.trim()
+          : _roomInfoString(['flag', 'countryFlag', 'country_flag', 'countryName', 'country_name', 'country', 'countryCode']),
       id: _id,
       imageUrl: image,
       imageBadge: _roomInfoString(['imageBadge', 'image_badge'], 'غرفة مميزة'),
