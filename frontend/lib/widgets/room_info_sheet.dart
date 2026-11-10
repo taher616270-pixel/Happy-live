@@ -146,7 +146,9 @@ class _RoomInfoSheet extends StatelessWidget {
                   ]),
                 ),
                 const SizedBox(height: 10),
-                SizedBox(height: 60, child: ListView.separated(
+                Transform.translate(
+                  offset: const Offset(0, -10),
+                  child: SizedBox(height: 60, child: ListView.separated(
                   scrollDirection: Axis.horizontal, itemCount: info.members.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (_, i) {
@@ -186,6 +188,7 @@ class _RoomInfoSheet extends StatelessWidget {
                     ]));
                   },
                 )),
+                ),
                 const SizedBox(height: 15),
                 const Text('الإعلان', style: TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
