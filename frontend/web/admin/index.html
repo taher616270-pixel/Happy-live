@@ -36,9 +36,12 @@ td,th{padding:14px 13px;text-align:right;border-bottom:1px solid #30263c;font-si
 @media(max-width:1050px){.app{grid-template-columns:225px minmax(0,1fr)}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.main{padding:25px 22px}}
 @media(max-width:700px){.app{display:flex;flex-direction:column;height:100dvh;min-height:0;overflow:hidden}.side{height:auto;flex:0 0 auto;position:sticky;top:0;padding:10px 12px 9px;border-left:0;border-bottom:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.2)}.brand{padding:0 4px 9px;margin-bottom:8px;border:0}.brand .logo{width:35px;height:35px;font-size:19px;border-radius:11px}.brand b{font-size:12px}.brand small{font-size:10px}.nav{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}.nav button{flex:0 0 auto;white-space:nowrap;padding:9px 11px;font-size:12px}.side-foot{display:none}.main{flex:1 1 auto;height:auto;min-height:0;overflow-y:auto;padding:19px 13px 28px}.top{margin-bottom:17px;padding-bottom:15px}.top h1{font-size:21px}.cards{gap:10px;margin-bottom:13px}.card{padding:15px;min-height:105px;border-radius:15px}.card strong{font-size:24px;margin-top:9px}.card span{font-size:12px}.section{padding:15px;border-radius:15px}.section-head{align-items:flex-start;flex-direction:column;gap:12px}.search{max-width:none}.login{padding:27px 23px}}
 @media(max-width:380px){.nav button{padding:8px 9px;font-size:11px}.cards{gap:8px}.card{padding:12px}.card strong{font-size:21px}}
+
+.admin-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end}.admin-form .field{margin:0}.field select{padding:14px 15px;border-radius:13px;border:1px solid #3b304b;background:#0f0c16;color:var(--text);width:100%;outline:none}.field select:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(169,130,211,.12)}
+.admin-modal{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:20px}.admin-modal-card{width:min(430px,100%);padding:24px;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 24px 80px rgba(0,0,0,.45)}.admin-modal-card h2{margin:0 0 8px;font-size:19px}.admin-modal-actions{display:flex;gap:9px}.admin-modal-actions button{flex:1}
 </style></head><body>
 <div id="loginView" class="login-wrap"><form id="setupForm" class="login hidden"><div class="logo">H</div><h1>إنشاء كلمة مرور المدير</h1><p class="muted">إعداد أول مرة لحساب المالك المستقل</p><label class="field">رمز التهيئة لمرة واحدة<input id="setupToken" type="password" autocomplete="off" required></label><label class="field">كلمة المرور الجديدة<input id="setupPassword" type="password" autocomplete="new-password" minlength="12" required></label><label class="field">تأكيد كلمة المرور<input id="setupConfirmation" type="password" autocomplete="new-password" minlength="12" required></label><button class="primary" id="setupBtn">إنشاء كلمة المرور</button><div id="setupError" class="error"></div><p class="muted" style="font-size:12px">استخدم 12 حرفًا على الأقل. لا تشارك كلمة المرور مع أي شخص.</p></form><form id="loginForm" class="login"><div class="logo">H</div><h1>لوحة إدارة Happy Live</h1><p class="muted">دخول المالك المستقل</p><label class="field">اسم المستخدم<input id="username" type="text" autocomplete="username" required></label><label class="field">كلمة المرور<input id="password" type="password" autocomplete="current-password" required></label><button class="primary" id="loginBtn">تسجيل الدخول</button><div id="loginError" class="error"></div><p class="muted" style="font-size:12px">حساب الإدارة مستقل عن حسابات مستخدمي التطبيق.</p></form></div>
-<div id="appView" class="app hidden"><aside class="side"><div class="brand"><div class="logo">H</div><div><b>HAPPY LIVE</b><small>مركز الإدارة</small></div></div><nav class="nav"><button class="active" data-page="overview">◈　الرئيسية</button><button data-page="stats">▥　الإحصائيات</button><button data-page="users">♙　المستخدمون</button><button data-page="rooms">◉　الغرف الصوتية</button><button data-page="moderators">♙　المشرفون</button><button data-page="audit">▤　سجل الإجراءات</button><button data-page="agora">◉　Agora للصوت</button><button data-page="future">✧　خدمات المنصة</button></nav><div class="side-foot"><button id="logoutBtn" class="logout">تسجيل الخروج</button></div></aside><main class="main"><header class="top"><div><h1 id="pageTitle">نظرة عامة</h1><small id="adminIdentity" class="muted"></small></div><span class="badge good">اتصال آمن</span></header><div id="content"><div class="loading">جارٍ التحميل…</div></div></main></div>
+<div id="appView" class="app hidden"><aside class="side"><div class="brand"><div class="logo">H</div><div><b>HAPPY LIVE</b><small>مركز الإدارة</small></div></div><nav class="nav"><button class="active" data-page="overview">◈　الرئيسية</button><button data-page="stats">▥　الإحصائيات</button><button data-page="users">♙　المستخدمون</button><button data-page="rooms">◉　الغرف الصوتية</button><button data-page="moderators">♙　المشرفون</button><button data-page="adminAccounts">♙　مديرو اللوحة</button><button data-page="audit">▤　سجل الإجراءات</button><button data-page="agora">◉　Agora للصوت</button><button data-page="future">✧　خدمات المنصة</button></nav><div class="side-foot"><button id="logoutBtn" class="logout">تسجيل الخروج</button></div></aside><main class="main"><header class="top"><div><h1 id="pageTitle">نظرة عامة</h1><small id="adminIdentity" class="muted"></small></div><span class="badge good">اتصال آمن</span></header><div id="content"><div class="loading">جارٍ التحميل…</div></div></main></div>
 <script>
 const API="https://happy-live-api.taher616270.workers.dev/api/v1";let token=sessionStorage.getItem("happy_live_admin_token")||"",admin=null,page="overview";
 const $=id=>document.getElementById(id);function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -84,7 +87,7 @@ function app(){
   $("loginView").classList.add("hidden");$("appView").classList.remove("hidden");
   const roleNames={owner:"مالك",admin:"مدير",moderator:"مشرف للقراءة فقط"};
   $("adminIdentity").textContent=admin.name+" · "+admin.username+" · "+(roleNames[admin.role]||"دور غير معروف");
-  const m=document.querySelector('[data-page="moderators"]');if(m)m.classList.toggle("hidden",admin.role!=="owner");
+  const m=document.querySelector('[data-page="moderators"]');if(m)m.classList.toggle("hidden",admin.role!=="owner");const managers=document.querySelector('[data-page="adminAccounts"]');if(managers)managers.classList.toggle("hidden",admin.role!=="owner");
   const a=document.querySelector('[data-page="agora"]');if(a)a.classList.toggle("hidden",admin.role==="moderator");
 }
 async function verify(){if(!token)return login();try{admin=(await api("/admin/me")).admin;app();await render()}catch(e){token="";sessionStorage.removeItem("happy_live_admin_token");login(e.message)}}
@@ -93,7 +96,7 @@ $("logoutBtn").onclick=async()=>{try{await api("/admin/auth/logout",{method:"POS
 document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x===b));page=b.dataset.page;render()});
 function metric(label,n){return '<div class="card"><span>'+label+'</span><strong>'+Number(n||0).toLocaleString("en-US")+'</strong></div>'}
 async function render(){
-  const names={overview:"نظرة عامة",stats:"إحصائيات المنصة",users:"إدارة المستخدمين",rooms:"إدارة الغرف الصوتية",moderators:"إدارة مشرفي التطبيق",audit:"سجل الإجراءات",agora:"إعدادات Agora الصوتية",future:"خدمات المنصة"};
+  const names={overview:"نظرة عامة",stats:"إحصائيات المنصة",users:"إدارة المستخدمين",rooms:"إدارة الغرف الصوتية",moderators:"إدارة مشرفي التطبيق",adminAccounts:"مديرو لوحة الإدارة",audit:"سجل الإجراءات",agora:"إعدادات Agora الصوتية",future:"خدمات المنصة"};
   $("pageTitle").textContent=names[page]||"لوحة الإدارة";$("content").innerHTML='<div class="loading">جارٍ تحميل البيانات…</div>';
   try{
     if(page==="overview"){let o=(await api("/admin/overview")).overview;$("content").innerHTML='<div class="cards">'+metric("إجمالي المستخدمين",o.users.total)+metric("المستخدمون النشطون",o.users.active)+metric("إجمالي الغرف",o.rooms.total)+metric("المنشورات المنشورة",o.publishedPosts)+'</div><div class="section"><h2>ملخص النظام</h2><p class="muted">الأرقام مسترجعة مباشرة من قاعدة بيانات Happy Live.</p></div>'}
@@ -101,6 +104,7 @@ async function render(){
     else if(page==="users")users((await api("/admin/users")).users||[]);
     else if(page==="rooms")rooms((await api("/admin/rooms")).rooms||[]);
     else if(page==="moderators")await moderatorsPage();
+    else if(page==="adminAccounts")await adminAccountsPage();
     else if(page==="audit")audit((await api("/admin/audit")).entries||[]);
     else if(page==="agora")await agoraPage();
     else $("content").innerHTML='<div class="section"><h2>خدمات غير مفعّلة بعد</h2><p class="notice">VIP والشحن والهدايا والمحفظة لا تملك جداول أو نقاط API حقيقية في الخادم حتى الآن. لن نعرض أرقامًا أو عمليات تجريبية على أنها بيانات فعلية.</p></div>';
@@ -166,6 +170,101 @@ async function moderatorsPage(){
   };
   draw((await api("/admin/users?limit=100")).users||[]);
   let timer;$("moderatorSearch").oninput=e=>{clearTimeout(timer);const q=e.target.value.trim();timer=setTimeout(async()=>{try{draw((await api("/admin/users?q="+encodeURIComponent(q)+"&limit=100")).users||[])}catch(err){$("moderatorCandidates").innerHTML='<tr><td colspan="5" class="empty">'+esc(err.message)+'</td></tr>'}},250)};
+}
+async function adminAccountsPage(){
+  if(admin.role!=="owner"){$("content").innerHTML='<div class="section"><p class="notice">هذه الصفحة متاحة للمالك فقط.</p></div>';return}
+  let admins=(await api("/admin/accounts")).admins||[];
+  $("content").innerHTML=
+    '<div class="section"><div class="section-head"><div><h2>إضافة حساب إداري</h2><p class="muted">إنشاء حساب مستقل للوحة. لا يمكن إنشاء مالك إضافي من هذه الصفحة.</p></div></div>'+
+    '<form id="adminAccountForm" class="admin-form">'+
+    '<label class="field">اسم الدخول<input id="newAdminUsername" autocomplete="off" minlength="3" maxlength="40" pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{2,39}" required></label>'+
+    '<label class="field">الاسم الظاهر<input id="newAdminDisplayName" maxlength="80" required></label>'+
+    '<label class="field">الصلاحية<select id="newAdminRole"><option value="admin">مدير</option><option value="moderator">مشرف قراءة فقط</option></select></label>'+
+    '<label class="field">كلمة المرور<input id="newAdminPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>'+
+    '<label class="field">تأكيد كلمة المرور<input id="newAdminConfirmation" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>'+
+    '<button class="primary" id="adminCreateBtn" type="submit">إنشاء الحساب</button></form><p id="adminCreateError" class="error"></p></div>'+
+    '<div class="section"><div class="section-head"><div><h2>حسابات مديري اللوحة ('+admins.length+')</h2><p class="muted">تعطيل الحساب يلغي كل جلساته. تدوير كلمة المرور يلغي الجلسات السابقة.</p></div><input id="adminAccountSearch" class="search" placeholder="ابحث باسم الدخول أو الاسم الظاهر"></div>'+
+    '<div class="table-wrap"><table><thead><tr><th>اسم الدخول</th><th>الاسم الظاهر</th><th>الصلاحية</th><th>الحالة</th><th>جلسات نشطة</th><th>الإجراءات</th></tr></thead><tbody id="adminAccountRows"></tbody></table></div></div>';
+  const draw=list=>{
+    $("adminAccountRows").innerHTML=list.length?list.map(a=>{
+      const isOwner=a.role==="owner";
+      const roleLabel=isOwner?"مالك":a.role==="admin"?"مدير":"مشرف قراءة فقط";
+      const active=a.status==="active";
+      const nextRole=a.role==="admin"?"moderator":"admin";
+      const roleButton=isOwner?"":'<button class="action" data-admin-role-id="'+esc(a.id)+'" data-next-role="'+nextRole+'">'+(nextRole==="admin"?"ترقية إلى مدير":"تغيير إلى مشرف قراءة فقط")+'</button> ';
+      const statusButton=isOwner?"":'<button class="action '+(active?"danger":"")+'" data-admin-status-id="'+esc(a.id)+'" data-next-status="'+(active?"disabled":"active")+'">'+(active?"تعطيل":"تفعيل")+'</button> ';
+      const otherActions=isOwner?"":'<button class="action" data-admin-password-id="'+esc(a.id)+'" data-admin-username="'+esc(a.username)+'">تغيير كلمة المرور</button> <button class="action" data-admin-revoke-id="'+esc(a.id)+'">إبطال الجلسات</button>';
+      const actions=isOwner?'<span class="badge good">حساب المالك محمي</span>':roleButton+statusButton+otherActions;
+      return '<tr><td>'+esc(a.username)+'</td><td>'+esc(a.display_name||"—")+'</td><td>'+roleLabel+'</td><td><span class="badge '+(active?"good":"bad")+'">'+(active?"نشط":"معطل")+'</span></td><td>'+Number(a.active_sessions||0).toLocaleString("en-US")+'</td><td><div class="room-tools">'+actions+'</div></td></tr>';
+    }).join(""):'<tr><td colspan="6" class="empty">لا توجد حسابات إدارية</td></tr>';
+    document.querySelectorAll("[data-admin-role-id]").forEach(b=>b.onclick=async()=>{
+      const next=b.dataset.nextRole;
+      if(!confirm(next==="admin"?"تأكيد ترقية الحساب إلى مدير؟":"تأكيد تغيير الصلاحية إلى مشرف قراءة فقط؟"))return;
+      b.disabled=true;
+      try{await api("/admin/accounts/"+encodeURIComponent(b.dataset.adminRoleId)+"/role",{method:"PATCH",body:JSON.stringify({role:next})});await adminAccountsPage()}
+      catch(e){alert(e.message);b.disabled=false}
+    });
+    document.querySelectorAll("[data-admin-status-id]").forEach(b=>b.onclick=async()=>{
+      const next=b.dataset.nextStatus;
+      if(!confirm(next==="disabled"?"تعطيل الحساب وإلغاء جميع جلساته؟":"إعادة تفعيل الحساب؟"))return;
+      b.disabled=true;
+      try{await api("/admin/accounts/"+encodeURIComponent(b.dataset.adminStatusId)+"/status",{method:"PATCH",body:JSON.stringify({status:next})});await adminAccountsPage()}
+      catch(e){alert(e.message);b.disabled=false}
+    });
+    document.querySelectorAll("[data-admin-revoke-id]").forEach(b=>b.onclick=async()=>{
+      if(!confirm("إبطال جميع جلسات هذا المدير؟"))return;
+      b.disabled=true;
+      try{await api("/admin/accounts/"+encodeURIComponent(b.dataset.adminRevokeId)+"/revoke-sessions",{method:"POST"});await adminAccountsPage()}
+      catch(e){alert(e.message);b.disabled=false}
+    });
+    document.querySelectorAll("[data-admin-password-id]").forEach(b=>b.onclick=()=>adminPasswordDialog(b.dataset.adminPasswordId,b.dataset.adminUsername));
+  };
+  draw(admins);
+  $("adminAccountSearch").oninput=async e=>{
+    const q=e.target.value.trim();
+    try{admins=(await api("/admin/accounts?q="+encodeURIComponent(q))).admins||[];draw(admins)}
+    catch(err){$("adminAccountRows").innerHTML='<tr><td colspan="6" class="empty">'+esc(err.message)+'</td></tr>'}
+  };
+  $("adminAccountForm").onsubmit=async e=>{
+    e.preventDefault();
+    const button=$("adminCreateBtn");
+    const error=$("adminCreateError");
+    error.textContent="";button.disabled=true;
+    const payload={
+      username:$("newAdminUsername").value.trim(),
+      displayName:$("newAdminDisplayName").value.trim(),
+      role:$("newAdminRole").value,
+      password:$("newAdminPassword").value,
+      confirmation:$("newAdminConfirmation").value
+    };
+    try{
+      await api("/admin/accounts",{method:"POST",body:JSON.stringify(payload)});
+      $("adminAccountForm").reset();
+      await adminAccountsPage();
+    }catch(err){error.textContent=err.message;button.disabled=false}
+  };
+}
+function adminPasswordDialog(id,username){
+  const overlay=document.createElement("div");
+  overlay.className="admin-modal";
+  overlay.innerHTML='<div class="admin-modal-card"><h2>تغيير كلمة المرور</h2><p class="muted">الحساب: '+esc(username)+'</p><form id="adminPasswordForm"><label class="field">كلمة المرور الجديدة<input id="adminPasswordValue" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><label class="field">تأكيد كلمة المرور<input id="adminPasswordConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><p id="adminPasswordError" class="error"></p><div class="admin-modal-actions"><button class="primary" id="adminPasswordSave" type="submit">حفظ وإبطال الجلسات</button><button class="action" type="button" id="adminPasswordCancel">إلغاء</button></div></form></div>';
+  document.body.appendChild(overlay);
+  const close=()=>overlay.remove();
+  $("adminPasswordCancel").onclick=close;
+  overlay.onclick=e=>{if(e.target===overlay)close()};
+  $("adminPasswordForm").onsubmit=async e=>{
+    e.preventDefault();
+    const password=$("adminPasswordValue").value;
+    const confirmation=$("adminPasswordConfirm").value;
+    const error=$("adminPasswordError");
+    if(password.length<12||password.length>128||password!==confirmation){error.textContent="تأكد من تطابق كلمتي المرور وأن تكون 12 حرفًا على الأقل.";return}
+    const button=$("adminPasswordSave");button.disabled=true;error.textContent="";
+    try{
+      await api("/admin/accounts/"+encodeURIComponent(id)+"/password",{method:"POST",body:JSON.stringify({password,confirmation})});
+      close();alert("تم تغيير كلمة المرور وإبطال الجلسات السابقة.");
+      await adminAccountsPage();
+    }catch(err){error.textContent=err.message;button.disabled=false}
+  };
 }
 function users(a){
   $("content").innerHTML='<div class="section"><div class="section-head"><h2>المستخدمون ('+a.length+')</h2><input id="search" class="search" placeholder="ابحث بالاسم أو البريد أو ID"></div><div class="table-wrap"><table><thead><tr><th>الاسم</th><th>البريد</th><th>ID</th><th>الحالة</th><th>الدور</th><th>الإجراءات</th></tr></thead><tbody id="rows"></tbody></table></div><p class="muted">إيقاف الحساب يمنع استخدامه ويلغي جلساته. الطرد ينهي الجلسات الحالية فقط ولا يمنع تسجيل الدخول مجددًا.</p></div>';
