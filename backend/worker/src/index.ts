@@ -1651,14 +1651,15 @@ export default {
           "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND exited_at IS NULL AND last_seen_at < ?"
         ).bind(now, roomId, audienceCutoff).run();
         const audienceUsersResult = await env.DB.prepare(
-          "SELECT p.user_id, p.display_name, p.avatar_key, p.country_name, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? GROUP BY p.user_id, p.display_name, p.avatar_key, p.country_name ORDER BY last_seen_at DESC LIMIT 100"
-        ).bind(roomId, audienceCutoff).all<{ user_id: string; display_name: string | null; avatar_key: string | null; country_name: string | null; last_seen_at: string }>();
+          "SELECT p.user_id, p.display_name, p.gabo_id, p.avatar_key, p.country_name, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? GROUP BY p.user_id, p.display_name, p.gabo_id, p.avatar_key, p.country_name ORDER BY last_seen_at DESC LIMIT 100"
+        ).bind(roomId, audienceCutoff).all<{ user_id: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null; country_name: string | null; last_seen_at: string }>();
         const seatedIds = new Set(seats.map((seat) => String(seat.userId)));
         const audienceUsers = (audienceUsersResult.results ?? [])
           .filter((visitor) => !seatedIds.has(visitor.user_id))
           .map((visitor) => ({
             userId: visitor.user_id,
             name: visitor.display_name?.trim() || "مستخدم",
+            userCode: visitor.gabo_id ?? "",
             avatarUrl: visitor.avatar_key ?? "",
             countryName: visitor.country_name ?? ""
           }));
