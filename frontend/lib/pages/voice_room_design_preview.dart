@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../widgets/square_country_flag.dart';
 import 'package:happy_live/widgets/room_info_sheet.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:flutter/services.dart';
@@ -1461,12 +1462,7 @@ class UserInfoBottomSheet extends StatelessWidget {
         width: 24,
         height: 24,
         child: Center(
-          child: Image.asset(
-            'web/assets/south-arabia-v2.png',
-            width: 24,
-            height: 24,
-            fit: BoxFit.contain,
-          ),
+          child: SquareCountryFlag('SOUTH_ARABIA', size: 24),
         ),
       );
     }
@@ -1481,7 +1477,7 @@ class UserInfoBottomSheet extends StatelessWidget {
           return SizedBox(
             width: 24,
             height: 24,
-            child: Center(child: Text(country.flagEmoji, style: const TextStyle(fontSize: 18))),
+            child: Center(child: SquareCountryFlag(country.flagEmoji, size: 24)),
           );
         }
       }
@@ -1492,7 +1488,7 @@ class UserInfoBottomSheet extends StatelessWidget {
       return SizedBox(
         width: 24,
         height: 24,
-        child: Center(child: Text(savedProfileFlag, style: const TextStyle(fontSize: 18))),
+        child: Center(child: SquareCountryFlag(savedProfileFlag, size: 24)),
       );
     }
 
@@ -1507,10 +1503,7 @@ class UserInfoBottomSheet extends StatelessWidget {
         width: 24,
         height: 24,
         child: Center(
-          child: Text(
-            String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
-            style: const TextStyle(fontSize: 18),
-          ),
+          child: SquareCountryFlag(String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)), size: 24),
         ),
       );
     }
@@ -1526,10 +1519,7 @@ class UserInfoBottomSheet extends StatelessWidget {
         width: 24,
         height: 24,
         child: Center(
-          child: Text(
-            String.fromCharCodes(nameCode.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
-            style: const TextStyle(fontSize: 18),
-          ),
+          child: SquareCountryFlag(String.fromCharCodes(nameCode.codeUnits.map((unit) => 0x1F1E6 + unit - 65)), size: 24),
         ),
       );
     }

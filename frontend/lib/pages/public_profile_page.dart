@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/square_country_flag.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import 'package:country_picker/country_picker.dart';
@@ -541,13 +542,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                       height: 24,
                       child: Center(
                         child: flag == 'SOUTH_ARABIA'
-                            ? Image.asset(
-                                'web/assets/south-arabia-v2.png',
-                                width: 24,
-                                height: 24,
-                                fit: BoxFit.contain,
-                              )
-                            : Text(flag, style: const TextStyle(fontSize: 18)),
+                            ? SquareCountryFlag('SOUTH_ARABIA', size: 24)
+                            : SquareCountryFlag(flag, size: 24),
                       ),
                     ),
                   ],

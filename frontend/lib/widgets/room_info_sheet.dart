@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'square_country_flag.dart';
 import 'package:flutter/services.dart';
 import '../pages/edit_profile_page.dart';
 import 'package:country_picker/country_picker.dart';
@@ -242,12 +243,7 @@ class _RoomInfoSheet extends StatelessWidget {
         width: 24,
         height: 24,
         child: Center(
-          child: Image.asset(
-            'web/assets/south-arabia-v2.png',
-            width: 24,
-            height: 24,
-            fit: BoxFit.contain,
-          ),
+          child: SquareCountryFlag('SOUTH_ARABIA', size: 24),
         ),
       );
     }
@@ -255,7 +251,7 @@ class _RoomInfoSheet extends StatelessWidget {
       return SizedBox(
         width: 24,
         height: 24,
-        child: Center(child: Text(savedProfileFlag, style: const TextStyle(fontSize: 18))),
+        child: Center(child: SquareCountryFlag(savedProfileFlag, size: 24)),
       );
     }
     if (countryName.trim().isEmpty) return const SizedBox.shrink();
@@ -266,7 +262,7 @@ class _RoomInfoSheet extends StatelessWidget {
         return SizedBox(
           width: 24,
           height: 24,
-          child: Center(child: Text(country.flagEmoji, style: const TextStyle(fontSize: 18))),
+          child: Center(child: SquareCountryFlag(country.flagEmoji, size: 24)),
         );
       }
     }
@@ -278,10 +274,7 @@ class _RoomInfoSheet extends StatelessWidget {
         width: 24,
         height: 24,
         child: Center(
-          child: Text(
-            String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
-            style: const TextStyle(fontSize: 18),
-          ),
+          child: SquareCountryFlag(String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)), size: 24),
         ),
       );
     }

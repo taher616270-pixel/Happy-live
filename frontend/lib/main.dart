@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/square_country_flag.dart';
 import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/posts_page.dart';
@@ -564,7 +565,7 @@ class _LoginPageState extends State<LoginPage> {
                                             final matchesSouth = query.isEmpty || 'الجنوب العربي'.contains(query) || '969'.contains(query);
                                             if (!matchesSouth) return const SizedBox.shrink();
                                             return ListTile(
-                                              leading: SizedBox(width: 32, height: 32, child: Center(child: SizedBox(width: 24, height: 24, child: Image.asset('web/assets/south-arabia-v2.png', width: 24, height: 24, fit: BoxFit.contain)))),
+                                              leading: SizedBox(width: 32, height: 32, child: Center(child: SizedBox(width: 24, height: 24, child: SquareCountryFlag('SOUTH_ARABIA', size: 24)))),
                                               title: const Text('الجنوب العربي', style: TextStyle(color: const Color(0xFF1E2233), fontWeight: FontWeight.w800)),
                                               onTap: () {
                                                 refreshDialog(() {
@@ -581,7 +582,7 @@ class _LoginPageState extends State<LoginPage> {
                                           final country = filteredCountries[index - 1];
                                           final translatedName = country.getTranslatedName(countryContext) ?? country.name;
                                           return ListTile(
-                                            leading: SizedBox(width: 32, height: 32, child: Center(child: SizedBox(width: 24, height: 24, child: Center(child: Text(country.flagEmoji, style: const TextStyle(fontSize: 18)))))),
+                                            leading: SizedBox(width: 32, height: 32, child: Center(child: SizedBox(width: 24, height: 24, child: Center(child: SquareCountryFlag(country.flagEmoji, size: 24))))),
                                             title: Text(translatedName, style: const TextStyle(color: const Color(0xFF1E2233), fontWeight: FontWeight.w700)),
                                             onTap: () {
                                               refreshDialog(() {
@@ -619,8 +620,8 @@ class _LoginPageState extends State<LoginPage> {
                               height: 24,
                               child: Center(
                                 child: _isSouthArabiaPhone
-                                    ? Image.asset('web/assets/south-arabia-v2.png', width: 24, height: 24, fit: BoxFit.contain)
-                                    : Text(_phoneCountryFlag, style: const TextStyle(fontSize: 18)),
+                                    ? SquareCountryFlag('SOUTH_ARABIA', size: 24)
+                                    : SquareCountryFlag(_phoneCountryFlag, size: 24),
                               ),
                             ),
                             const SizedBox(width: 11),

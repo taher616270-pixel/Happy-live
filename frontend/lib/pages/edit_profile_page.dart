@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/square_country_flag.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -334,8 +335,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               height: 24,
                               child: Center(
                                 child: flag == 'SOUTH_ARABIA'
-                                    ? Image.asset('web/assets/south-arabia-v2.png', width: 24, height: 24, fit: BoxFit.contain)
-                                    : Text(flag, style: const TextStyle(fontSize: 18)),
+                                    ? SquareCountryFlag('SOUTH_ARABIA', size: 24)
+                                    : SquareCountryFlag(flag, size: 24),
                               ),
                             ),
                           ),
@@ -442,8 +443,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           height: 24,
                           child: Center(
                             child: _countryFlag(_country) == 'SOUTH_ARABIA'
-                                ? Image.asset('web/assets/south-arabia-v2.png', width: 24, height: 24, fit: BoxFit.contain)
-                                : Text(_countryFlag(_country), style: const TextStyle(fontSize: 18)),
+                                ? SquareCountryFlag('SOUTH_ARABIA', size: 24)
+                                : SquareCountryFlag(_countryFlag(_country), size: 24),
                           ),
                         ),
                         const SizedBox(width: 8),
