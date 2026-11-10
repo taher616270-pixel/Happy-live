@@ -312,7 +312,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
     final info = RoomInfo(
       name: _name,
-      flag: _roomInfoString(['flag', 'countryFlag', 'country_flag']),
+      flag: _roomInfoString(['flag', 'countryFlag', 'country_flag', 'countryName', 'country_name', 'country', 'countryCode']),
       id: _id,
       imageUrl: image,
       imageBadge: _roomInfoString(['imageBadge', 'image_badge'], 'غرفة مميزة'),
