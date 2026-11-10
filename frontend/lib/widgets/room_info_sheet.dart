@@ -114,11 +114,14 @@ class _RoomInfoSheet extends StatelessWidget {
                           ]), padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 6), radius: 8),
                         ),
                       ),
-                      _chip(Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.favorite, color: Color(0xFFFF7A2F), size: 18),
-                        const SizedBox(width: 6),
-                        Text(_format(info.likes), style: const TextStyle(color: Color(0xFFFF7A2F), fontSize: 13)),
-                      ]), color: const Color(0xFF382A32)),
+                      Transform.translate(
+                        offset: const Offset(7, 9),
+                        child: _chip(Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.favorite, color: Color(0xFFFF7A2F), size: 16),
+                          const SizedBox(width: 6),
+                          Text(_format(info.likes), style: const TextStyle(color: Color(0xFFFF7A2F), fontSize: 12)),
+                        ]), color: const Color(0xFF382A32), padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 6), radius: 8),
+                      ),
                     ]),
                   ])),
                   Transform.translate(
