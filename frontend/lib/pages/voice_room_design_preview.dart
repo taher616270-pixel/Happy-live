@@ -293,7 +293,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 3),
                                   Transform.translate(
-                                    offset: const Offset(0, -2),
+                                    offset: const Offset(-1, -2),
                                     child: Text(
                                       'ID: $_id',
                                       style: const TextStyle(color: Colors.white60, fontSize: 8),
