@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:world_flags/world_flags.dart';
 
-/// Displays country flags as consistent square images on Android, iOS and Web.
+/// Renders country flags as crisp vector graphics on every supported platform.
 class SquareCountryFlag extends StatelessWidget {
   const SquareCountryFlag(
     this.flag, {
@@ -11,13 +12,12 @@ class SquareCountryFlag extends StatelessWidget {
   final String flag;
   final double size;
 
-  /// Accepts either a two-letter ISO country code (SA) or a flag emoji (🇸🇦).
-  /// Returns an empty string for unsupported values instead of rendering text.
+  /// Accepts an ISO alpha-2 code (for example, "SA") or a flag emoji.
   String _resolveCountryCode(String value) {
     final normalized = value.trim().toUpperCase();
 
     if (RegExp(r'^[A-Z]{2}$').hasMatch(normalized)) {
-      return normalized.toLowerCase();
+      return normalized;
     }
 
     final regionalIndicators = normalized.runes
@@ -28,56 +28,61 @@ class SquareCountryFlag extends StatelessWidget {
       return '';
     }
 
-    final countryCode = String.fromCharCodes(
+    return String.fromCharCodes(
       regionalIndicators.map((rune) => rune - 0x1F1E6 + 0x41),
     );
-
-    return countryCode.toLowerCase();
   }
 
   @override
   Widget build(BuildContext context) {
     if (size <= 0 || flag.trim().isEmpty) {
-      return SizedBox(width: size > 0 ? size : 0, height: size > 0 ? size : 0);
+      return SizedBox.square(dimension: size > 0 ? size : 0);
     }
 
-    // South Arabia has its own local artwork and must never resolve to YE.
-    if (flag.trim() == 'SOUTH_ARABIA') {
+    final normalizedFlag = flag.trim();
+
+    // South Arabia is a custom flag, not Yemen (YE).
+    if (normalizedFlag == 'SOUTH_ARABIA') {
       return SizedBox.square(
         dimension: size,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: Image.asset(
-            'web/assets/south-arabia-v2.png',
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            filterQuality: FilterQuality.high,
-            errorBuilder: (context, error, stackTrace) =>
-                SizedBox.square(dimension: size),
+        child: Center(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Image.asset(
+              'web/assets/south-arabia-v2.png',
+              width: size,
+              height: size,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              errorBuilder: (context, error, stackTrace) =>
+                  SizedBox.square(dimension: size),
+            ),
           ),
         ),
       );
     }
 
-    final countryCode = _resolveCountryCode(flag);
+    final countryCode = _resolveCountryCode(normalizedFlag);
     if (countryCode.isEmpty) {
       return SizedBox.square(dimension: size);
     }
 
+    final country = WorldCountry.maybeFromCodeShort(countryCode);
+    if (country == null) {
+      return SizedBox.square(dimension: size);
+    }
+
+    // Keep the full flag visible at its natural proportions inside a square
+    // slot. Vector painting stays sharp without downloading raster images.
     return SizedBox.square(
       dimension: size,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: Image.network(
-          'https://flagcdn.com/w40/$countryCode.png',
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.high,
-          gaplessPlayback: true,
-          errorBuilder: (context, error, stackTrace) =>
-              SizedBox.square(dimension: size),
+      child: Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: CountryFlag.simplified(
+            country,
+            height: size * 0.72,
+          ),
         ),
       ),
     );
