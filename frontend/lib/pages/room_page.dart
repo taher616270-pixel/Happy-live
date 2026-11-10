@@ -1662,6 +1662,7 @@ class _RoomPageState extends State<RoomPage> {
       chatController: _messageController,
       chatFocusNode: _roomChatFocusNode,
       onSendChat: _sendRoomMessage,
+      accessToken: widget.accessToken,
       seats: _seats,
       speakerLevels: _speakerLevels,
       onTapSeat: _selectSeat,
