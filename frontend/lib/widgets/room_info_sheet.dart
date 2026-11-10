@@ -143,24 +143,24 @@ class _RoomInfoSheet extends StatelessWidget {
                   ])),
                 ]),
                 const SizedBox(height: 10),
-                SizedBox(height: 66, child: ListView.separated(
+                SizedBox(height: 60, child: ListView.separated(
                   scrollDirection: Axis.horizontal, itemCount: info.members.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (_, i) {
                     final m = info.members[i];
                     final avatarUrl = (m.isOwner && info.ownerAvatarUrl.trim().isNotEmpty)
                         ? info.ownerAvatarUrl.trim()
                         : m.avatarUrl.trim();
-                    return SizedBox(width: 48, child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
+                    return SizedBox(width: 44, child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
                       ClipOval(
                         child: SizedBox(
-                          width: 44,
-                          height: 44,
+                          width: 38,
+                          height: 38,
                           child: avatarUrl.startsWith('https://')
                               ? Image.network(
                                   avatarUrl,
-                                  width: 44,
-                                  height: 44,
+                                  width: 38,
+                                  height: 38,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Container(
                                     color: _RoomInfoColors.chip,
@@ -175,10 +175,10 @@ class _RoomInfoSheet extends StatelessWidget {
                                 ),
                         ),
                       ),
-                      Positioned(bottom: 4, child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+                      Positioned(bottom: 5, child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
                         decoration: BoxDecoration(color: m.isOwner ? const Color(0xFFFF4F81) : const Color(0xFFFF9800), borderRadius: BorderRadius.circular(10)),
-                        child: Text(m.role, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)), 
+                        child: Text(m.role, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600)), 
                       )),
                     ]));
                   },
