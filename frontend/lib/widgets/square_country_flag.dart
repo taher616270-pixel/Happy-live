@@ -49,7 +49,7 @@ class SquareCountryFlag extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: Image.asset(
-              'web/assets/south-arabia-v2.png',
+              'web/assets/south-arabia.png',
               width: size,
               height: size,
               fit: BoxFit.contain,
