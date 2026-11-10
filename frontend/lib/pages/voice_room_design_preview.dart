@@ -266,8 +266,22 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         ));
       }
     }
-    if (members.isEmpty) {
-      members.add(RoomMember(avatarUrl: ownerAvatar, role: 'المالك', isOwner: true));
+    // أظهر مالك الغرفة دائماً في صف الأعضاء، حتى لو لم يكن متصلاً أو موجوداً داخل الغرفة.
+    final ownerIndex = members.indexWhere((member) => member.isOwner);
+    if (ownerIndex >= 0) {
+      final currentOwner = members[ownerIndex];
+      if (currentOwner.avatarUrl.trim().isEmpty && ownerAvatar.isNotEmpty) {
+        members[ownerIndex] = RoomMember(
+          avatarUrl: ownerAvatar,
+          role: currentOwner.role,
+          isOwner: true,
+        );
+      }
+    } else {
+      members.insert(
+        0,
+        RoomMember(avatarUrl: ownerAvatar, role: 'المالك', isOwner: true),
+      );
     }
 
     final info = RoomInfo(
