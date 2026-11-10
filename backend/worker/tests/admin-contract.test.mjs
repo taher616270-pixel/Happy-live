@@ -23,7 +23,7 @@ test("sensitive routes have server-side permission checks", () => {
 test("account suspension and kick revoke sessions and are auditable", () => {
   assert.match(worker, /UPDATE user_sessions SET revoked_at = \? WHERE user_id = \? AND revoked_at IS NULL/);
   assert.match(worker, /DELETE FROM room_seats WHERE user_id = \?/);
-  assert.match(worker, /'user\.kick'/);
+  assert.match(worker, /["']user\.kick["']/);
   assert.match(worker, /adminUsername: actor\.username/);
 });
 
@@ -50,8 +50,12 @@ test("admin room moderation is scoped to an existing room and uses server-side p
   assert.match(route, /room_moderators/);
   assert.match(route, /room_bans/);
   assert.match(route, /room_kicks/);
-  assert.match(route, /adminId: actor\.id/);
-  assert.match(route, /adminUsername: actor\.username/);
+  assert.match(route, /adminAuditStatements\(env\.DB, actor/);
+  const auditHelperStart = worker.indexOf("function adminAuditStatements(");
+  const auditHelperEnd = worker.indexOf("const DEFAULT_ALLOWED_ORIGINS", auditHelperStart);
+  const auditHelper = worker.slice(auditHelperStart, auditHelperEnd);
+  assert.match(auditHelper, /adminId: actor\.id/);
+  assert.match(auditHelper, /adminUsername: actor\.username/);
   assert.doesNotMatch(route, /body\.(?:role|adminId|actorId)/);
 });
 
