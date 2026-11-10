@@ -457,7 +457,7 @@ class _RoomReportPageState extends State<_RoomReportPage> {
   ];
 
   final Set<String> _selectedTargets = {};
-  String? _violation;
+  String? _violation = 'اهانة';
   bool _isSubmitting = false;
 
   bool get _canSubmit => _selectedTargets.isNotEmpty && _violation != null;
@@ -512,6 +512,7 @@ class _RoomReportPageState extends State<_RoomReportPage> {
                     _RoomReportOptionRow(
                       label: violation,
                       selected: _violation == violation,
+                      selectedColor: const Color(0xFFD4AF37),
                       onTap: () => setState(() => _violation = violation),
                     ),
                 ],
@@ -645,11 +646,13 @@ class _RoomReportOptionRow extends StatelessWidget {
   const _RoomReportOptionRow({
     required this.label,
     required this.selected,
+    this.selectedColor = _RoomReportPalette.teal,
     required this.onTap,
   });
 
   final String label;
   final bool selected;
+  final Color selectedColor;
   final VoidCallback onTap;
 
   @override
@@ -674,11 +677,11 @@ class _RoomReportOptionRow extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: selected
-                    ? _RoomReportPalette.teal
+                    ? selectedColor
                     : Colors.transparent,
                 border: Border.all(
                   color: selected
-                      ? _RoomReportPalette.teal
+                      ? selectedColor
                       : const Color(0xFFD5D8DE),
                 ),
               ),
