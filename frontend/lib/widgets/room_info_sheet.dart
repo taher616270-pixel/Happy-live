@@ -116,12 +116,12 @@ class _RoomInfoSheet extends StatelessWidget {
                   const Icon(Icons.error_outline, color: _RoomInfoColors.muted, size: 28),
                 ]),
                 const SizedBox(height: 14),
-                SizedBox(height: 60, child: Row(children: [
+                SizedBox(height: 52, child: Row(children: [
                   Expanded(flex: 5, child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(color: _RoomInfoColors.goldBg, borderRadius: BorderRadius.circular(15), border: Border.all(color: const Color(0xFF4A3B1A))),
                     child: Row(children: [
-                      _networkImage(info.tribeLogoUrl, 42, 42),
+                      _networkImage(info.tribeLogoUrl, 34, 34),
                       const SizedBox(width: 8),
                       Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(info.tribeName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.gold, fontSize: 16, fontWeight: FontWeight.bold)),
