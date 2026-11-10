@@ -293,7 +293,7 @@ class _RoomInfoSheet extends StatelessWidget {
                       ),
                     ),
                     child: const Text(
-                      'انتهاك صفحة الملف الشخصي',
+                      'انتهاك صفحة الملف الشخصي للغرفة',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                   ),
