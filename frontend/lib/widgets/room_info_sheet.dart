@@ -107,10 +107,13 @@ class _RoomInfoSheet extends StatelessWidget {
                           await Clipboard.setData(ClipboardData(text: info.id));
                           if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ الـ ID'), duration: Duration(seconds: 1)));
                         },
-                        child: _chip(Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text('ID:${info.id}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 12)),
-                          const SizedBox(width: 6), Transform.translate(offset: const Offset(2, 0), child: const Icon(Icons.copy_rounded, color: _RoomInfoColors.muted, size: 16)),
-                        ]), padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5)),
+                        child: Transform.translate(
+                          offset: const Offset(4, 3),
+                          child: _chip(Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text('ID:${info.id}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 12)),
+                            const SizedBox(width: 6), Transform.translate(offset: const Offset(2, 0), child: const Icon(Icons.copy_rounded, color: _RoomInfoColors.muted, size: 16)),
+                          ]), padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5)),
+                        ),
                       ),
                       _chip(Row(mainAxisSize: MainAxisSize.min, children: [
                         const Icon(Icons.favorite, color: Color(0xFFFF7A2F), size: 18),
