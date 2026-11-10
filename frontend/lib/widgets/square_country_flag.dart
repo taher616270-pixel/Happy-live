@@ -46,16 +46,24 @@ class SquareCountryFlag extends StatelessWidget {
       return SizedBox.square(
         dimension: size,
         child: Center(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Image.asset(
-              'web/assets/south-arabia.png',
-              width: size + 2,
-              height: size - 1,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.high,
-              errorBuilder: (context, error, stackTrace) =>
-                  SizedBox.square(dimension: size),
+          // Let the custom flag paint at its requested dimensions instead of
+          // being constrained back to the square slot by Center.
+          child: OverflowBox(
+            minWidth: size + 2,
+            maxWidth: size + 2,
+            minHeight: size - 1,
+            maxHeight: size - 1,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Image.asset(
+                'web/assets/south-arabia.png',
+                width: size + 2,
+                height: size - 1,
+                fit: BoxFit.fill,
+                filterQuality: FilterQuality.high,
+                errorBuilder: (context, error, stackTrace) =>
+                    SizedBox.square(dimension: size),
+              ),
             ),
           ),
         ),
