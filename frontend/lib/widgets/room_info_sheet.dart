@@ -111,7 +111,7 @@ class _RoomInfoSheet extends StatelessWidget {
                           child: _chip(Row(mainAxisSize: MainAxisSize.min, children: [
                             Text('ID:${info.id}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 12)),
                             const SizedBox(width: 6), Transform.translate(offset: const Offset(3.5, 0), child: const Icon(Icons.copy_rounded, color: _RoomInfoColors.muted, size: 16)),
-                          ]), padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 6)),
+                          ]), padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 6), radius: 8),
                         ),
                       ),
                       _chip(Row(mainAxisSize: MainAxisSize.min, children: [
@@ -296,9 +296,9 @@ class _RoomInfoSheet extends StatelessWidget {
 
   static Widget _imageFallback(double width, double height) => Container(width: width, height: height, color: _RoomInfoColors.chip, alignment: Alignment.center, child: const Icon(Icons.image_outlined, color: _RoomInfoColors.muted));
 
-  static Widget _chip(Widget child, {Color color = _RoomInfoColors.chip, EdgeInsetsGeometry padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 8)}) => Container(
+  static Widget _chip(Widget child, {Color color = _RoomInfoColors.chip, EdgeInsetsGeometry padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 8), double radius = 10}) => Container(
     padding: padding,
-    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
+    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(radius)),
     child: child,
   );
 
