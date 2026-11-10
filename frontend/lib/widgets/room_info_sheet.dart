@@ -205,7 +205,7 @@ class _RoomInfoSheet extends StatelessWidget {
                                 ),
                         ),
                       ),
-                      Positioned(bottom: 5, child: Container(
+                      Positioned(bottom: 10, child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
                         decoration: BoxDecoration(color: m.isOwner ? const Color(0xFFFF4F81) : const Color(0xFFFF9800), borderRadius: BorderRadius.circular(10)),
                         child: Text(m.role, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600)), 
