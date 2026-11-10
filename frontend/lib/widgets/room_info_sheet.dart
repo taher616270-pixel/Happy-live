@@ -500,6 +500,7 @@ class _RoomReportPageState extends State<_RoomReportPage> {
                     _RoomReportOptionRow(
                       label: target,
                       selected: _selectedTargets.contains(target),
+                      selectedColor: const Color(0xFFD4AF37),
                       onTap: () => setState(() {
                         _selectedTargets.contains(target)
                             ? _selectedTargets.remove(target)
