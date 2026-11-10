@@ -7,6 +7,10 @@ const adminUi = await readFile(
   new URL("../../../frontend/web/admin/index.html", import.meta.url),
   "utf8",
 );
+const auditMigration = await readFile(
+  new URL("../migrations/0024_admin_audit_actor_refs.sql", import.meta.url),
+  "utf8",
+);
 
 test("admin sessions and roles are resolved from D1, not from browser input", () => {
   const start = worker.indexOf("async function authenticatedAdmin(");
@@ -73,4 +77,54 @@ test("unsupported VIP, wallet, recharge and gift services are not presented as l
     adminUi,
     /VIP والشحن والهدايا والمحفظة لا تملك جداول أو نقاط API حقيقية/,
   );
+});
+
+
+test("CORS trusts only explicitly configured origins, not arbitrary Pages subdomains", () => {
+  const start = worker.indexOf("function isAllowedOrigin(");
+  const end = worker.indexOf("function json(", start);
+  assert.ok(start >= 0 && end > start, "CORS origin validator must exist");
+  const validator = worker.slice(start, end);
+  assert.match(validator, /return allowedOrigins\(env\)\.has\(origin\);/);
+  assert.doesNotMatch(validator, /endsWith|new URL/);
+  assert.match(worker, /"https:\/\/happy-live\.pages\.dev"/);
+});
+
+test("new admin audit entries have a relational link to the acting admin", () => {
+  assert.match(auditMigration, /CREATE TABLE IF NOT EXISTS admin_audit_actor_refs/);
+  assert.match(auditMigration, /REFERENCES admin_audit_logs\(id\) ON DELETE CASCADE/);
+  assert.match(auditMigration, /REFERENCES admin_accounts\(id\) ON DELETE RESTRICT/);
+  assert.match(auditMigration, /CREATE INDEX IF NOT EXISTS/);
+
+  const helperStart = worker.indexOf("function adminAuditStatements(");
+  const helperEnd = worker.indexOf("const DEFAULT_ALLOWED_ORIGINS", helperStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart, "admin audit helper must exist");
+  const helper = worker.slice(helperStart, helperEnd);
+  assert.match(helper, /INSERT INTO admin_audit_logs/);
+  assert.match(helper, /INSERT INTO admin_audit_actor_refs/);
+  assert.match(helper, /bind\(auditId, actor\.id\)/);
+  assert.match(worker, /LEFT JOIN admin_audit_actor_refs ar ON ar\.audit_log_id = l\.id/);
+  assert.match(worker, /LEFT JOIN admin_accounts aa ON aa\.id = ar\.admin_id/);
+});
+
+test("all sensitive admin routes use the relational audit helper", () => {
+  const start = worker.indexOf(
+    "// Admin API: authentication uses a separate admin-only session table.",
+  );
+  const end = worker.indexOf('if (url.pathname === "/api/v1/auth/google"', start);
+  assert.ok(start >= 0 && end > start, "admin API route block must exist");
+  const routes = worker.slice(start, end);
+  assert.equal((routes.match(/adminAuditStatements\(env\.DB, actor/g) || []).length, 6);
+  for (const action of [
+    "agora.voice.enable",
+    "agora.voice.disable",
+    "user.role.assign",
+    "user.suspend",
+    "user.kick",
+    "room.user.ban",
+    "room.user.kick",
+    "room.close",
+  ]) {
+    assert.ok(routes.includes(action), `expected auditable action ${action}`);
+  }
 });
