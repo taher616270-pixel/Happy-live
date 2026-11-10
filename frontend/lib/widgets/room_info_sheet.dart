@@ -283,7 +283,14 @@ class _RoomInfoSheet extends StatelessWidget {
                 SizedBox(
                   height: 48,
                   child: TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.of(sheetContext).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => _RoomReportPage(targetName: info.name),
+                        ),
+                      );
+                    },
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF30291F),
                     ),
@@ -396,4 +403,279 @@ class _RoomInfoSheet extends StatelessWidget {
   );
 
   static String _format(int value) => value.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},');
+}
+
+
+class _RoomReportPalette {
+  static const teal = Color(0xFF1BBFA8);
+  static const tealSoft = Color(0xFFC9F3EE);
+  static const pink = Color(0xFFE8325F);
+  static const grey = Color(0xFF8A8F99);
+  static const line = Color(0xFFF0F1F4);
+  static const buttonGrey = Color(0xFFEEF0F6);
+}
+
+class _RoomReportPage extends StatefulWidget {
+  const _RoomReportPage({required this.targetName});
+  final String targetName;
+
+  @override
+  State<_RoomReportPage> createState() => _RoomReportPageState();
+}
+
+class _RoomReportPageState extends State<_RoomReportPage> {
+  static const _targets = ['اسم الغرفة', 'غلاف الغرفة', 'إعلان الغرفة'];
+  static const _violations = [
+    'اهانة',
+    'مضايقة',
+    'إباحية',
+    'إعلانات / توجيه',
+    'احتيال',
+    'هكر',
+    'الخصوصية والأمان',
+    'عنف / مشاهد دموية / إرهاب',
+    'انتهاكات سياسية / دينية',
+    'انتحال الهوية',
+    'اخرى',
+  ];
+
+  final Set<String> _selectedTargets = {};
+  String? _violation;
+
+  bool get _canSubmit => _selectedTargets.isNotEmpty && _violation != null;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          centerTitle: true,
+          title: const Text(
+            'إبلاغ',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+            ),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.chevron_right, color: Colors.black, size: 30),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _reportHeader(
+                    'يُرجى تحديد نوع انتهاك صفحة الملف الشخصي المحدد',
+                    withSubtitle: true,
+                  ),
+                  for (final target in _targets)
+                    _RoomReportOptionRow(
+                      label: target,
+                      selected: _selectedTargets.contains(target),
+                      onTap: () => setState(() {
+                        _selectedTargets.contains(target)
+                            ? _selectedTargets.remove(target)
+                            : _selectedTargets.add(target);
+                      }),
+                    ),
+                  Container(height: 8, color: _RoomReportPalette.line),
+                  _reportHeader('يُرجى تحديد الانتهاك'),
+                  for (final violation in _violations)
+                    _RoomReportOptionRow(
+                      label: violation,
+                      selected: _violation == violation,
+                      onTap: () => setState(() => _violation = violation),
+                    ),
+                ],
+              ),
+            ),
+            _reportBottomButtons(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _reportHeader(String title, {bool withSubtitle = false}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text.rich(
+            TextSpan(children: [
+              const TextSpan(
+                text: '*',
+                style: TextStyle(color: _RoomReportPalette.pink),
+              ),
+              TextSpan(text: title),
+            ]),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
+          if (withSubtitle) ...[
+            const SizedBox(height: 6),
+            Text.rich(
+              TextSpan(children: [
+                const TextSpan(text: 'ستقوم بالإبلاغ عن '),
+                TextSpan(
+                  text: "'${widget.targetName}'",
+                  style: const TextStyle(
+                    color: _RoomReportPalette.pink,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ]),
+              style: const TextStyle(
+                fontSize: 12,
+                color: _RoomReportPalette.grey,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'الغلاف والاسم والإعلان والمعلومات ذات الصلة كدليل',
+              style: TextStyle(fontSize: 11, color: Color(0xFFB0B4BC)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _reportBottomButtons() {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: _RoomReportPillButton(
+                text: 'إلغاء',
+                background: _RoomReportPalette.buttonGrey,
+                foreground: const Color(0xFF1C1C1E),
+                onTap: () => Navigator.pop(context),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _RoomReportPillButton(
+                text: 'تقدم طلب',
+                background: _canSubmit
+                    ? _RoomReportPalette.teal
+                    : _RoomReportPalette.tealSoft,
+                foreground: _canSubmit
+                    ? Colors.white
+                    : _RoomReportPalette.teal.withOpacity(0.55),
+                onTap: _canSubmit ? _submitReport : null,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _submitReport() {
+    // TODO: ربط إرسال البلاغ بالسيرفر لاحقًا.
+    // _selectedTargets و _violation يحتويان اختيارات المستخدم.
+    Navigator.pop(context);
+  }
+}
+
+class _RoomReportOptionRow extends StatelessWidget {
+  const _RoomReportOptionRow({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: _RoomReportPalette.line)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(label, style: const TextStyle(fontSize: 14)),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: selected
+                    ? _RoomReportPalette.teal
+                    : Colors.transparent,
+                border: Border.all(
+                  color: selected
+                      ? _RoomReportPalette.teal
+                      : const Color(0xFFD5D8DE),
+                ),
+              ),
+              child: selected
+                  ? const Icon(Icons.check, size: 15, color: Colors.white)
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoomReportPillButton extends StatelessWidget {
+  const _RoomReportPillButton({
+    required this.text,
+    required this.background,
+    required this.foreground,
+    required this.onTap,
+  });
+
+  final String text;
+  final Color background;
+  final Color foreground;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 50,
+      child: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          backgroundColor: background,
+          shape: const StadiumBorder(),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: foreground,
+          ),
+        ),
+      ),
+    );
+  }
 }
