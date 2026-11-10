@@ -1457,11 +1457,17 @@ class UserInfoBottomSheet extends StatelessWidget {
     // South Arabia is always resolved from the saved profile name first.
     final savedProfileFlag = countryFlagForProfileName(countryName);
     if (savedProfileFlag == 'SOUTH_ARABIA') {
-      return Image.asset(
-        'web/assets/south-arabia-v2.png',
-        width: 27,
-        height: 19,
-        fit: BoxFit.cover,
+      return SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(
+          child: Image.asset(
+            'web/assets/south-arabia-v2.png',
+            width: 24,
+            height: 24,
+            fit: BoxFit.contain,
+          ),
+        ),
       );
     }
 
@@ -1472,14 +1478,22 @@ class UserInfoBottomSheet extends StatelessWidget {
         if (translated.trim() == countryName.trim() ||
             country.name.trim().toLowerCase() ==
                 countryName.trim().toLowerCase()) {
-          return Text(country.flagEmoji, style: const TextStyle(fontSize: 19));
+          return SizedBox(
+            width: 24,
+            height: 24,
+            child: Center(child: Text(country.flagEmoji, style: const TextStyle(fontSize: 18))),
+          );
         }
       }
     }
 
     // Preserve other profile-specific flags after country-name matching.
     if (savedProfileFlag.isNotEmpty) {
-      return Text(savedProfileFlag, style: const TextStyle(fontSize: 19));
+      return SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(child: Text(savedProfileFlag, style: const TextStyle(fontSize: 18))),
+      );
     }
 
     // countryCode is only a fallback; it cannot override South Arabia above.
@@ -1489,9 +1503,15 @@ class UserInfoBottomSheet extends StatelessWidget {
         .replaceAll(RegExp(r'\s+'), '');
     if (code.length == 2 &&
         code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
-      return Text(
-        String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
-        style: const TextStyle(fontSize: 19),
+      return SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(
+          child: Text(
+            String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
+            style: const TextStyle(fontSize: 18),
+          ),
+        ),
       );
     }
 
@@ -1502,9 +1522,15 @@ class UserInfoBottomSheet extends StatelessWidget {
         .replaceAll(RegExp(r'\s+'), '');
     if (nameCode.length == 2 &&
         nameCode.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
-      return Text(
-        String.fromCharCodes(nameCode.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
-        style: const TextStyle(fontSize: 19),
+      return SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(
+          child: Text(
+            String.fromCharCodes(nameCode.codeUnits.map((unit) => 0x1F1E6 + unit - 65)),
+            style: const TextStyle(fontSize: 18),
+          ),
+        ),
       );
     }
     return const SizedBox.shrink();
