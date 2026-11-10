@@ -536,15 +536,20 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                   ],
                   if (flag.isNotEmpty) ...[
                     const SizedBox(width: 8),
-                    if (flag == 'SOUTH_ARABIA')
-                      Image.asset(
-                        'web/assets/south-arabia-v2.png',
-                        width: 27,
-                        height: 19,
-                        fit: BoxFit.cover,
-                      )
-                    else
-                      Text(flag, style: const TextStyle(fontSize: 20)),
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Center(
+                        child: flag == 'SOUTH_ARABIA'
+                            ? Image.asset(
+                                'web/assets/south-arabia-v2.png',
+                                width: 24,
+                                height: 24,
+                                fit: BoxFit.contain,
+                              )
+                            : Text(flag, style: const TextStyle(fontSize: 18)),
+                      ),
+                    ),
                   ],
                 ]),
                 const SizedBox(height: 10),
