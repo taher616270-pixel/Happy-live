@@ -17,12 +17,14 @@ class RoomInfo {
     required this.membersMax, required this.members, required this.announcement,
     required this.groupName, required this.groupCount, required this.groupDesc,
     this.isRoomOwner = false,
+    this.ownerAvatarUrl = '',
   });
   final String name, flag, id, imageUrl, imageBadge, tribeName, tribeOwner, tribeLogoUrl;
   final int likes, level, membersCount, membersMax, groupCount;
   final String palaceStatus, announcement, groupName, groupDesc;
   final List<RoomMember> members;
   final bool isRoomOwner;
+  final String ownerAvatarUrl;
 }
 
 class _RoomInfoColors {
@@ -78,7 +80,7 @@ class _RoomInfoSheet extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   SizedBox(width: 66, height: 70, child: Stack(children: [
-                    ClipRRect(borderRadius: BorderRadius.circular(10), child: _networkImage(info.imageUrl, 66, 66)),
+                    ClipRRect(borderRadius: BorderRadius.circular(10), child: _networkImage(info.ownerAvatarUrl.isNotEmpty ? info.ownerAvatarUrl : info.imageUrl, 66, 66)),
                     Positioned(left: 0, right: 0, bottom: 0, child: Container(
                       alignment: Alignment.center, padding: const EdgeInsets.symmetric(vertical: 2),
                       decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF3B5C), Color(0xFFFF6B3D)]), borderRadius: BorderRadius.circular(6)),
