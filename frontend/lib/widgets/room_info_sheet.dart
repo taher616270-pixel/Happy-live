@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'square_country_flag.dart';
 import 'package:flutter/services.dart';
 import '../pages/edit_profile_page.dart';
@@ -52,19 +54,21 @@ Future<void> showRoomInfoSheet(
   VoidCallback? onMembersTap,
   VoidCallback? onSettings,
   VoidCallback? onInvite,
+  String? accessToken,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _RoomInfoSheet(info: info, onJoin: onJoin, onFollow: onFollow, onMembersTap: onMembersTap, onSettings: onSettings, onInvite: onInvite),
+    builder: (_) => _RoomInfoSheet(info: info, onJoin: onJoin, onFollow: onFollow, onMembersTap: onMembersTap, onSettings: onSettings, onInvite: onInvite, accessToken: accessToken ?? ''),
   );
 }
 
 class _RoomInfoSheet extends StatelessWidget {
-  const _RoomInfoSheet({required this.info, this.onJoin, this.onFollow, this.onMembersTap, this.onSettings, this.onInvite});
+  const _RoomInfoSheet({required this.info, this.onJoin, this.onFollow, this.onMembersTap, this.onSettings, this.onInvite, required this.accessToken});
   final RoomInfo info;
   final VoidCallback? onJoin, onFollow, onMembersTap, onSettings, onInvite;
+  final String accessToken;
 
   @override
   Widget build(BuildContext context) {
@@ -287,7 +291,7 @@ class _RoomInfoSheet extends StatelessWidget {
                       Navigator.of(sheetContext).pop();
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => _RoomReportPage(targetName: info.name),
+                          builder: (_) => _RoomReportPage(targetName: info.name, roomCode: info.id, accessToken: accessToken),
                         ),
                       );
                     },
@@ -416,8 +420,10 @@ class _RoomReportPalette {
 }
 
 class _RoomReportPage extends StatefulWidget {
-  const _RoomReportPage({required this.targetName});
+  const _RoomReportPage({required this.targetName, required this.roomCode, required this.accessToken});
   final String targetName;
+  final String roomCode;
+  final String accessToken;
 
   @override
   State<_RoomReportPage> createState() => _RoomReportPageState();
@@ -441,6 +447,7 @@ class _RoomReportPageState extends State<_RoomReportPage> {
 
   final Set<String> _selectedTargets = {};
   String? _violation;
+  bool _isSubmitting = false;
 
   bool get _canSubmit => _selectedTargets.isNotEmpty && _violation != null;
 
@@ -569,14 +576,14 @@ class _RoomReportPageState extends State<_RoomReportPage> {
             const SizedBox(width: 12),
             Expanded(
               child: _RoomReportPillButton(
-                text: 'تقدم طلب',
+                text: _isSubmitting ? 'جارٍ الإرسال…' : 'تقدم طلب',
                 background: _canSubmit
                     ? _RoomReportPalette.teal
                     : _RoomReportPalette.tealSoft,
                 foreground: _canSubmit
                     ? Colors.white
                     : _RoomReportPalette.teal.withOpacity(0.55),
-                onTap: _canSubmit ? _submitReport : null,
+                onTap: _canSubmit && !_isSubmitting ? _submitReport : null,
               ),
             ),
           ],
@@ -585,10 +592,40 @@ class _RoomReportPageState extends State<_RoomReportPage> {
     );
   }
 
-  void _submitReport() {
-    // TODO: ربط إرسال البلاغ بالسيرفر لاحقًا.
-    // _selectedTargets و _violation يحتويان اختيارات المستخدم.
-    Navigator.pop(context);
+  Future<void> _submitReport() async {
+    if (!_canSubmit || _isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    try {
+      final response = await http.post(
+        Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/reports/rooms'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode({
+          'roomCode': roomCode,
+          'roomName': targetName,
+          'targets': _selectedTargets.toList(),
+          'violation': _violation,
+        }),
+      );
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(data['message'] ?? 'تعذر إرسال البلاغ');
+      }
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم إرسال البلاغ إلى إدارة Happy Live للمراجعة')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 }
 
