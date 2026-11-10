@@ -84,7 +84,7 @@ class _RoomInfoSheet extends StatelessWidget {
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   SizedBox(width: 60, height: 64, child: Stack(children: [
                     Transform.translate(
-                      offset: const Offset(2, 2),
+                      offset: const Offset(2, 4),
                       child: ClipRRect(borderRadius: BorderRadius.circular(10), child: _networkImage(info.imageUrl, 60, 60)),
                     ),
                     Positioned(left: 0, right: 0, bottom: 0, child: Container(
