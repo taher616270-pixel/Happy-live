@@ -37,6 +37,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     required this.chatController,
     required this.chatFocusNode,
     required this.onSendChat,
+    required this.accessToken,
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
@@ -62,6 +63,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final TextEditingController chatController;
   final FocusNode chatFocusNode;
   final Future<void> Function() onSendChat;
+  final String accessToken;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -368,6 +370,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('دعوة الأعضاء قريبًا')));
       },
+      accessToken: accessToken,
     );
   }
 
