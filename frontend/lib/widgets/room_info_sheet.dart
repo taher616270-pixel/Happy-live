@@ -108,9 +108,9 @@ class _RoomInfoSheet extends StatelessWidget {
                           if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ الـ ID'), duration: Duration(seconds: 1)));
                         },
                         child: _chip(Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text('ID:${info.id}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 9)),
+                          Text('ID:${info.id}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 12)),
                           const SizedBox(width: 6), const Icon(Icons.copy_rounded, color: _RoomInfoColors.muted, size: 16),
-                        ])),
+                        ]), padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5)),
                       ),
                       _chip(Row(mainAxisSize: MainAxisSize.min, children: [
                         const Icon(Icons.favorite, color: Color(0xFFFF7A2F), size: 18),
@@ -291,8 +291,8 @@ class _RoomInfoSheet extends StatelessWidget {
 
   static Widget _imageFallback(double width, double height) => Container(width: width, height: height, color: _RoomInfoColors.chip, alignment: Alignment.center, child: const Icon(Icons.image_outlined, color: _RoomInfoColors.muted));
 
-  static Widget _chip(Widget child, {Color color = _RoomInfoColors.chip}) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+  static Widget _chip(Widget child, {Color color = _RoomInfoColors.chip, EdgeInsetsGeometry padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 8)}) => Container(
+    padding: padding,
     decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
     child: child,
   );
