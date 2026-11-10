@@ -135,13 +135,16 @@ class _RoomInfoSheet extends StatelessWidget {
                   Expanded(flex: 2, child: _stat('قصر', info.palaceStatus, _RoomInfoColors.goldBg, _RoomInfoColors.palace)),
                 ])),
                 const SizedBox(height: 16),
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  const Text('أعضاء', style: TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)),
-                  GestureDetector(onTap: onMembersTap, child: Row(children: [
-                    Text('${info.membersCount}/${info.membersMax}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 14)),
-                    const Icon(Icons.chevron_right, color: _RoomInfoColors.muted),
-                  ])),
-                ]),
+                Transform.translate(
+                  offset: const Offset(0, -5),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    const Text('أعضاء', style: TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)),
+                    GestureDetector(onTap: onMembersTap, child: Row(children: [
+                      Text('${info.membersCount}/${info.membersMax}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 14)),
+                      const Icon(Icons.chevron_right, color: _RoomInfoColors.muted),
+                    ])),
+                  ]),
+                ),
                 const SizedBox(height: 10),
                 SizedBox(height: 60, child: ListView.separated(
                   scrollDirection: Axis.horizontal, itemCount: info.members.length,
