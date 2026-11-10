@@ -138,8 +138,8 @@ class _RoomInfoSheet extends StatelessWidget {
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   const Text('أعضاء', style: TextStyle(color: _RoomInfoColors.text, fontSize: 18, fontWeight: FontWeight.w700)),
                   GestureDetector(onTap: onMembersTap, child: Row(children: [
-                    Text('${info.membersCount}/${info.membersMax}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 18)),
-                    const Icon(Icons.chevron_left, color: _RoomInfoColors.muted),
+                    Text('${info.membersCount}/${info.membersMax}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 14)),
+                    const Icon(Icons.chevron_right, color: _RoomInfoColors.muted),
                   ])),
                 ]),
                 const SizedBox(height: 10),
