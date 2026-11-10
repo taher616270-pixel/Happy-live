@@ -270,6 +270,18 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       groupName: _roomInfoString(['groupName', 'group_name'], 'مجموعة الغرفة'),
       groupCount: _roomInfoInt(['groupCount', 'group_count']),
       groupDesc: _roomInfoString(['groupDesc', 'group_desc', 'groupDescription']),
+      isRoomOwner: room['isOwner'] == true ||
+          room['is_owner'] == true ||
+          room['isRoomOwner'] == true ||
+          room['is_room_owner'] == true ||
+          room['currentUserRole']?.toString().toLowerCase() == 'owner' ||
+          room['current_user_role']?.toString().toLowerCase() == 'owner' ||
+          room['myRole']?.toString().toLowerCase() == 'owner' ||
+          room['my_role']?.toString().toLowerCase() == 'owner' ||
+          ((room['ownerId'] ?? room['owner_id']) != null &&
+           (room['currentUserId'] ?? room['current_user_id']) != null &&
+           (room['ownerId'] ?? room['owner_id']).toString() ==
+               (room['currentUserId'] ?? room['current_user_id']).toString()),
     );
 
     showRoomInfoSheet(
@@ -282,6 +294,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       onJoin: () {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ميزة الانضمام للمجموعة قريبًا')));
+      },
+      onSettings: () {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('إعدادات الغرفة قريبًا')));
+      },
+      onInvite: () {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('دعوة الأعضاء قريبًا')));
       },
     );
   }
