@@ -50,8 +50,8 @@ class SquareCountryFlag extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: Image.asset(
               'web/assets/south-arabia.png',
-              width: size,
-              height: size,
+              width: size + 2,
+              height: size - 1,
               fit: BoxFit.contain,
               filterQuality: FilterQuality.high,
               errorBuilder: (context, error, stackTrace) =>
