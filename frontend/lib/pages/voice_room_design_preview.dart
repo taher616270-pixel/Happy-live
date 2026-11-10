@@ -22,6 +22,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.audienceUsers = const [],
     this.chatMessagesPanel,
     this.ownerName = 'صاحب الغرفة',
+    this.ownerAvatarUrl = '',
     this.isCurrentUserRoomOwner = false,
     this.canModerateUsers = false,
     this.selfMicMuted = false,
@@ -45,6 +46,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final List<Map<String, dynamic>> audienceUsers;
   final Widget? chatMessagesPanel;
   final String ownerName;
+  final String ownerAvatarUrl;
   final bool isCurrentUserRoomOwner;
   final bool canModerateUsers;
   final bool selfMicMuted;
@@ -242,7 +244,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             : room['room_owner'] is Map
                 ? Map<String, dynamic>.from(room['room_owner'] as Map)
                 : <String, dynamic>{};
-    var ownerAvatar = _roomInfoString([
+    var ownerAvatar = ownerAvatarUrl.trim().isNotEmpty ? ownerAvatarUrl.trim() : _roomInfoString([
       'ownerAvatar', 'ownerAvatarUrl', 'owner_avatar', 'owner_avatar_url',
       'ownerPhoto', 'owner_photo', 'avatarUrl', 'avatar_url', 'avatar',
       'photoUrl', 'photo_url', 'profileImage', 'profile_image', 'userAvatar', 'user_avatar',
