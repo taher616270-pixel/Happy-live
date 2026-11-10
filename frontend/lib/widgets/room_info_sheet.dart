@@ -240,18 +240,18 @@ class _RoomInfoSheet extends StatelessWidget {
     final savedProfileFlag = countryFlagForProfileName(countryName);
     if (savedProfileFlag == 'SOUTH_ARABIA') {
       return SizedBox(
-        width: 24,
-        height: 24,
+        width: 22,
+        height: 22,
         child: Center(
-          child: SquareCountryFlag('SOUTH_ARABIA', size: 24),
+          child: SquareCountryFlag('SOUTH_ARABIA', size: 22),
         ),
       );
     }
     if (savedProfileFlag.isNotEmpty) {
       return SizedBox(
-        width: 24,
-        height: 24,
-        child: Center(child: SquareCountryFlag(savedProfileFlag, size: 24)),
+        width: 22,
+        height: 22,
+        child: Center(child: SquareCountryFlag(savedProfileFlag, size: 22)),
       );
     }
     if (countryName.trim().isEmpty) return const SizedBox.shrink();
@@ -260,9 +260,9 @@ class _RoomInfoSheet extends StatelessWidget {
       if (translated.trim() == countryName.trim() ||
           country.name.trim().toLowerCase() == countryName.trim().toLowerCase()) {
         return SizedBox(
-          width: 24,
-          height: 24,
-          child: Center(child: SquareCountryFlag(country.flagEmoji, size: 24)),
+          width: 22,
+          height: 22,
+          child: Center(child: SquareCountryFlag(country.flagEmoji, size: 22)),
         );
       }
     }
@@ -271,10 +271,10 @@ class _RoomInfoSheet extends StatelessWidget {
     if (code.length == 2 &&
         code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
       return SizedBox(
-        width: 24,
-        height: 24,
+        width: 22,
+        height: 22,
         child: Center(
-          child: SquareCountryFlag(String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)), size: 24),
+          child: SquareCountryFlag(String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)), size: 22),
         ),
       );
     }
