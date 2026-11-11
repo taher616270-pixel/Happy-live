@@ -907,8 +907,8 @@ Widget _roomActionButton({
       itemCount: 8,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
-        mainAxisSpacing: 7,
-        crossAxisSpacing: 4,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 10,
         childAspectRatio: .88,
       ),
       itemBuilder: (context, index) {
