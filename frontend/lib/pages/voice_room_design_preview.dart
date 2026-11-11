@@ -96,7 +96,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         children: [
           Positioned.fill(
             child: Image.asset(
-              '$p',
+              'assets/images/room_background/happy_live_room_bg.png.PNG',
               fit: BoxFit.cover,
               alignment: Alignment.center,
             ),
