@@ -50,10 +50,15 @@ class _RoomInfoColors {
   static const muted = Color(0xFFB5B9CC);
   static const chip = Color(0xFF2B3047);
   static const gold = Color(0xFFF2C66D);
-  static const goldBg = Color(0xFF353044);
-  static const levelBg = Color(0xFF3A2D48);
-  static const level = Color(0xFFFF9BC2);
-  static const palace = Color(0xFFFFD27A);
+  static const goldBg = Color(0xFF2A251F);
+  static const levelBg = Color(0xFF1B2725);
+  static const level = Color(0xFF37A73C);
+  static const palace = Color(0xFFDB8D15);
+  static const tribeBg = Color(0xFF1C2D2A);
+  static const tribeTitle = Color(0xFF39AF61);
+  static const tribeSub = Color(0xFF2E6B45);
+  static const levelSub = Color(0xFF2D6236);
+  static const palaceSub = Color(0xFF9C6A1A);
   static const join = Color(0xFF2EE0D0);
   static const follow = Color(0xFFFF6B2C);
 }
@@ -216,22 +221,30 @@ class _RoomInfoSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 SizedBox(height: 52, child: Row(children: [
-                  Expanded(flex: 5, child: Container(
+                  Expanded(flex: 6, child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(color: _RoomInfoColors.goldBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF4A3B1A))),
+                    decoration: BoxDecoration(color: _RoomInfoColors.tribeBg, borderRadius: BorderRadius.circular(10)),
                     child: Row(children: [
-                      _networkImage(info.tribeLogoUrl, 34, 34),
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(colors: [Color(0xFF4CEB7A), Color(0xFF2FB95A)]),
+                          borderRadius: BorderRadius.all(Radius.circular(9)),
+                        ),
+                        child: _networkImage(info.tribeLogoUrl, 34, 34),
+                      ),
                       const SizedBox(width: 8),
                       Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(info.tribeName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.gold, fontSize: 16, fontWeight: FontWeight.bold)),
-                        Text(info.tribeOwner, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xBFE8A92B), fontSize: 12)),
+                        Text(info.tribeName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.tribeTitle, fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(info.tribeOwner, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.tribeSub, fontSize: 12)),
                       ])),
                     ]),
                   )),
                   const SizedBox(width: 7),
-                  Expanded(flex: 3, child: Transform.translate(offset: const Offset(-5, 0), child: Padding(padding: const EdgeInsets.only(left: 12), child: _stat('Lv.${info.level}', 'مستوى الغرفة', _RoomInfoColors.levelBg, _RoomInfoColors.level)))),
+                  Expanded(flex: 3, child: Transform.translate(offset: const Offset(-5, 0), child: Padding(padding: const EdgeInsets.only(left: 12), child: _stat('Lv.${info.level}', 'مستوى الغرفة', _RoomInfoColors.levelBg, _RoomInfoColors.level, subColor: _RoomInfoColors.levelSub)))),
                   const SizedBox(width: 1),
-                  Expanded(flex: 3, child: GestureDetector(onTap: onUpgrade, child: _stat(selectedLevel.name, 'فعّال', _RoomInfoColors.goldBg, _RoomInfoColors.palace))),
+                  Expanded(flex: 3, child: GestureDetector(onTap: onUpgrade, child: _stat(selectedLevel.name, 'فعّال', _RoomInfoColors.goldBg, _RoomInfoColors.palace, subColor: _RoomInfoColors.palaceSub))),
                 ])),
                 Transform.translate(
                   offset: const Offset(0, 6),
@@ -814,13 +827,13 @@ class _RoomInfoSheet extends StatelessWidget {
     child: child,
   );
 
-  static Widget _stat(String title, String sub, Color bg, Color color) => Container(
+  static Widget _stat(String title, String sub, Color bg, Color color, {Color? subColor}) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8),
     decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
     child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
       FittedBox(fit: BoxFit.scaleDown, child: Text(title, style: TextStyle(color: color, fontSize: 19, fontWeight: FontWeight.bold))),
       const SizedBox(height: 2),
-      FittedBox(fit: BoxFit.scaleDown, child: Text(sub, style: TextStyle(color: color.withOpacity(.75), fontSize: 12))),
+      FittedBox(fit: BoxFit.scaleDown, child: Text(sub, style: TextStyle(color: subColor ?? color.withOpacity(.75), fontSize: 12))),
     ]),
   );
 
