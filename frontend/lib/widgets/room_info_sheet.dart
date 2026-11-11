@@ -241,7 +241,7 @@ class _RoomInfoSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 15),
                 Transform.translate(
-                  offset: const Offset(0, -6),
+                  offset: const Offset(0, -8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
