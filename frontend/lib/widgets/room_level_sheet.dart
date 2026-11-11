@@ -43,7 +43,7 @@ class RoomLevelData {
     this.dailyExpCurrent = '0', this.dailyExpMax = '9.9m',
     this.dailyRatio = 0, this.dailyResetIn, this.tasks = const [],
     this.perkGroups = const [],
-    this.note = 'يمكن لكل مستخدم المساهمة بما يصل إلى 3000000 من نقاط الخبرة يوميا في جميع الغرف',
+    this.note = 'تُحتسب 600 نقطة خبرة للغرفة مقابل كل 5 دقائق متواصلة على المايك. الحد اليومي لمساهمة المستخدم 3,000,000 نقطة في جميع الغرف.',
   });
   final int level, exp, nextLevelExp;
   final String ownerName, ownerId, dailyExpCurrent, dailyExpMax, note;
