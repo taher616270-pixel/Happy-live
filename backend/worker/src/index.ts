@@ -387,6 +387,7 @@ export default {
       url.pathname === "/api/v1/admin/overview" ||
       url.pathname === "/api/v1/admin/stats" ||
       url.pathname === "/api/v1/admin/users" ||
+      url.pathname === "/api/v1/admin/wallets" ||
       url.pathname === "/api/v1/admin/moderators" ||
       url.pathname === "/api/v1/admin/rooms" ||
       url.pathname === "/api/v1/admin/audit" ||
@@ -420,7 +421,7 @@ export default {
             env.DB.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(targetUserId, now),
             env.DB.prepare("UPDATE user_wallets SET balance = balance + ?, updated_at = ? WHERE user_id = ?").bind(amount, now, targetUserId),
             env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, amount, balance_after, transaction_type, reference_id, description, created_at) SELECT ?, user_id, ?, balance, 'admin_credit', ?, 'إضافة رصيد يدوية من الإدارة', ? FROM user_wallets WHERE user_id = ?").bind(transactionId, amount, actor.id, now, targetUserId),
-            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'wallet.credit', 'user', ?, ?, ?)").bind(crypto.randomUUID(), targetUserId, JSON.stringify({ amount, adminId: actor.id, adminUsername: actor.username }), now)
+            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, 'wallet.credit', 'user', ?, ?, ?)").bind(crypto.randomUUID(), actor.id, targetUserId, JSON.stringify({ amount, adminId: actor.id, adminUsername: actor.username }), now)
           ]);
           const wallet = await env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(targetUserId).first<{ balance: number }>();
           return json({ ok: true, userId: targetUserId, credited: amount, balance: wallet?.balance ?? 0 }, 200, origin, env);
@@ -502,6 +503,48 @@ export default {
             "ORDER BY u.created_at DESC LIMIT ?"
           ).bind(q, q, q, q, limit).all();
           return json({ ok: true, users: result.results ?? [] }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/wallets" && request.method === "GET") {
+          if (!hasAdminPermission(actor, "users.read")) return json({ error: "permission_denied" }, 403, origin, env);
+          const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
+          const limit = Math.max(1, Math.min(100, Number(url.searchParams.get("limit") ?? 100) || 100));
+          const [summary, result] = await Promise.all([
+            env.DB.prepare(
+              "SELECT COUNT(*) AS users, COALESCE(SUM(COALESCE(w.balance, 0)), 0) AS totalBalance, " +
+              "SUM(CASE WHEN COALESCE(w.balance, 0) > 0 THEN 1 ELSE 0 END) AS fundedUsers " +
+              "FROM users u LEFT JOIN user_wallets w ON w.user_id = u.id WHERE u.status = 'active'"
+            ).first<{ users: number; totalBalance: number; fundedUsers: number }>(),
+            env.DB.prepare(
+              "SELECT u.id, u.email, p.display_name, p.gabo_id, COALESCE(w.balance, 0) AS balance, w.updated_at " +
+              "FROM users u LEFT JOIN profiles p ON p.user_id = u.id LEFT JOIN user_wallets w ON w.user_id = u.id " +
+              "WHERE u.status = 'active' AND (? = '' OR u.email LIKE '%' || ? || '%' OR p.display_name LIKE '%' || ? || '%' OR p.gabo_id LIKE '%' || ? || '%') " +
+              "ORDER BY balance DESC, u.created_at DESC LIMIT ?"
+            ).bind(q, q, q, q, limit).all()
+          ]);
+          const userId = url.searchParams.get("userId") ?? "";
+          let selectedWallet: Record<string, unknown> | null = null;
+          let transactions: unknown[] = [];
+          if (userId) {
+            selectedWallet = await env.DB.prepare(
+              "SELECT u.id, u.email, p.display_name, p.gabo_id, COALESCE(w.balance, 0) AS balance, w.updated_at " +
+              "FROM users u LEFT JOIN profiles p ON p.user_id = u.id LEFT JOIN user_wallets w ON w.user_id = u.id " +
+              "WHERE u.id = ? AND u.status = 'active' LIMIT 1"
+            ).bind(userId).first<Record<string, unknown>>();
+            if (selectedWallet) {
+              const history = await env.DB.prepare(
+                "SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, reference_id AS referenceId, description, created_at AS createdAt " +
+                "FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 50"
+              ).bind(userId).all();
+              transactions = history.results ?? [];
+            }
+          }
+          return json({
+            ok: true,
+            summary: { users: summary?.users ?? 0, totalBalance: summary?.totalBalance ?? 0, fundedUsers: summary?.fundedUsers ?? 0 },
+            wallets: result.results ?? [],
+            selectedWallet,
+            transactions
+          }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/rooms" && request.method === "GET") {
           if (!hasAdminPermission(actor, "rooms.read")) return json({ error: "permission_denied" }, 403, origin, env);
