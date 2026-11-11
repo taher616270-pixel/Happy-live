@@ -15,6 +15,7 @@ import 'edit_profile_page.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
   static final Set<String> _openingRoomInfo = <String>{};
+  static final Map<String, Future<int>> _roomProgressionLevelFutures = <String, Future<int>>{};
 
   const VoiceRoomDesignPreview({
     super.key,
@@ -321,6 +322,27 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     );
   }
 
+  Future<int> _loadIndependentRoomLevel() {
+    final roomId = _id.trim();
+    if (roomId.isEmpty || accessToken.trim().isEmpty) return Future<int>.value(1);
+    final cacheKey = '$roomId:$accessToken';
+    return _roomProgressionLevelFutures.putIfAbsent(cacheKey, () async {
+      try {
+        final response = await http.get(
+          Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/rooms/${Uri.encodeComponent(roomId)}/progression'),
+          headers: {'Authorization': 'Bearer $accessToken'},
+        ).timeout(const Duration(seconds: 10));
+        if (response.statusCode != 200) return 1;
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map || decoded['progression'] is! Map) return 1;
+        final progression = Map<String, dynamic>.from(decoded['progression'] as Map);
+        return (progression['level'] as num?)?.toInt() ?? 1;
+      } catch (_) {
+        return 1;
+      }
+    });
+  }
+
   Future<void> _openRoomLevelSheet(
     BuildContext context, {
     String? resolvedOwnerName,
@@ -376,6 +398,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       } catch (_) {
         // Keep a safe, zeroed display rather than showing demo progression values.
       }
+    }
+    if (roomId.isNotEmpty && accessToken.trim().isNotEmpty) {
+      _roomProgressionLevelFutures['$roomId:$accessToken'] = Future<int>.value(data.level);
     }
     if (!context.mounted) return;
     await showRoomLevelSheet(context, data);
@@ -1076,6 +1101,7 @@ Widget _roomActionButton({
         child: RoomLevelChip(
           data: _roomLevelData(),
           onTap: () => _openRoomLevelSheet(context),
+          levelFuture: _loadIndependentRoomLevel(),
         ),
       ),
     ),
