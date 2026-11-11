@@ -303,6 +303,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       roomLevelRequiredExpForLevel(level + 1),
     ).clamp(1, 2147483647).toInt();
     final dailyExp = _roomInfoInt(['dailyExperienceExp', 'daily_experience_exp'], 0).clamp(0, 3000000).toInt();
+    final dailyResetSeconds = _roomInfoInt(['dailyResetInSeconds', 'daily_reset_in_seconds'], 0).clamp(0, 86400).toInt();
     return RoomLevelData(
       level: level,
       ownerName: (resolvedOwnerName ?? '').trim().isNotEmpty
@@ -321,7 +322,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       dailyExpCurrent: dailyExp.toString(),
       dailyExpMax: '3.0m',
       dailyRatio: dailyExp / 3000000,
-      dailyResetIn: const Duration(hours: 2, minutes: 48),
+      dailyResetIn: dailyResetSeconds > 0 ? Duration(seconds: dailyResetSeconds) : null,
       tasks: kSampleTasks,
       perkGroups: kSamplePerks,
     );
