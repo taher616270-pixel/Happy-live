@@ -65,21 +65,33 @@ async function awardRoomSeatExperience(
   if ((advanced.meta?.changes ?? 0) !== 1) return;
 
   const dayKey = now.slice(0, 10);
-  await db.prepare(
-    "INSERT OR IGNORE INTO room_exp_daily (user_id, day_key, points) VALUES (?, ?, 0)"
-  ).bind(userId, dayKey).run();
-  const awardId = crypto.randomUUID();
-  await db.batch([
-    db.prepare(
-      "INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) SELECT ?, ?, ?, ?, MIN(600, ? - points), ? FROM room_exp_daily WHERE user_id = ? AND day_key = ? AND points < ?"
-    ).bind(awardId, roomId, userId, dayKey, ROOM_EXP_DAILY_USER_CAP, now, userId, dayKey, ROOM_EXP_DAILY_USER_CAP),
-    db.prepare(
-      "UPDATE room_exp_daily SET points = points + COALESCE((SELECT points FROM room_exp_awards WHERE id = ?), 0) WHERE user_id = ? AND day_key = ?"
-    ).bind(awardId, userId, dayKey),
-    db.prepare(
-      "INSERT INTO room_experience (room_id, total_exp, updated_at) SELECT ?, points, ? FROM room_exp_awards WHERE id = ? ON CONFLICT(room_id) DO UPDATE SET total_exp = room_experience.total_exp + excluded.total_exp, updated_at = excluded.updated_at"
-    ).bind(roomId, now, awardId)
-  ]);
+  try {
+    await db.prepare(
+      "INSERT OR IGNORE INTO room_exp_daily (user_id, day_key, points) VALUES (?, ?, 0)"
+    ).bind(userId, dayKey).run();
+    const awardId = crypto.randomUUID();
+    await db.batch([
+      db.prepare(
+        "INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) SELECT ?, ?, ?, ?, MIN(600, ? - points), ? FROM room_exp_daily WHERE user_id = ? AND day_key = ? AND points < ?"
+      ).bind(awardId, roomId, userId, dayKey, ROOM_EXP_DAILY_USER_CAP, now, userId, dayKey, ROOM_EXP_DAILY_USER_CAP),
+      db.prepare(
+        "UPDATE room_exp_daily SET points = points + COALESCE((SELECT points FROM room_exp_awards WHERE id = ?), 0) WHERE user_id = ? AND day_key = ?"
+      ).bind(awardId, userId, dayKey),
+      db.prepare(
+        "INSERT INTO room_experience (room_id, total_exp, updated_at) SELECT ?, points, ? FROM room_exp_awards WHERE id = ? ON CONFLICT(room_id) DO UPDATE SET total_exp = room_experience.total_exp + excluded.total_exp, updated_at = excluded.updated_at"
+      ).bind(roomId, now, awardId)
+    ]);
+  } catch (error) {
+    // If D1 fails, restore the old timestamp so the user's earned mic time is not lost.
+    try {
+      await db.prepare(
+        "UPDATE room_exp_activity SET last_awarded_at = ? WHERE room_id = ? AND user_id = ? AND last_awarded_at = ?"
+      ).bind(previous.last_awarded_at, roomId, userId, now).run();
+    } catch {
+      // Keep the original D1 error; the next heartbeat can retry if rollback was unavailable.
+    }
+    throw error;
+  }
 }
 
 export class RoomSeatsHub {
