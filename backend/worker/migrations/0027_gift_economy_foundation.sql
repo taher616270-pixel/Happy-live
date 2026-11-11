@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS gift_transactions (
   experience_multiplier INTEGER NOT NULL DEFAULT 1 CHECK (experience_multiplier IN (1, 2)),
   battle_id TEXT,
   idempotency_key TEXT NOT NULL,
+  sender_balance_before INTEGER NOT NULL CHECK (sender_balance_before >= 0),
   status TEXT NOT NULL DEFAULT 'succeeded' CHECK (status IN ('processing', 'succeeded', 'reversed')),
   reversed_at TEXT,
   created_at TEXT NOT NULL,
