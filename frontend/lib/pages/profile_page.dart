@@ -61,6 +61,7 @@ class HappyProfilePage extends StatelessWidget {
     required this.onLogout,
     required this.onSoon,
     required this.onEdit,
+    this.onWallet,
     this.photoUrl,
     this.bio = '',
   });
@@ -72,6 +73,7 @@ class HappyProfilePage extends StatelessWidget {
   final VoidCallback onLogout;
   final ValueChanged<String> onSoon;
   final VoidCallback onEdit;
+  final VoidCallback? onWallet;
   final String? photoUrl;
   final String bio;
 
@@ -86,7 +88,7 @@ class HappyProfilePage extends StatelessWidget {
       onMedals: () => onSoon('الأوسمة'),
       onLevel: () => onSoon('المستوى'),
       onStore: () => onSoon('المتجر'),
-      onWallet: () => onSoon('المحفظة'),
+      onWallet: onWallet ?? () => onSoon('المحفظة'),
       onTasks: () => onSoon('مركز المهام'),
       onSettings: () {
         Navigator.of(context).push(
