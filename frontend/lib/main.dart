@@ -1422,6 +1422,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
   String _profileGender = 'ذكر';
   String _profileCountry = '';
   String? _profileAvatarUrl;
+  int _walletBalance = 0;
   bool _isRefreshingProfile = false;
   String get _name => _profileName;
   String get _initial => _name.characters.first.toUpperCase();
@@ -1429,7 +1430,10 @@ class _SessionHomePageState extends State<SessionHomePage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshProfile());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshProfile();
+      _refreshWalletBalance();
+    });
   }
 
   Future<void> _refreshProfile() async {
@@ -1461,6 +1465,24 @@ class _SessionHomePageState extends State<SessionHomePage> {
       // Keep the cached profile visible if the network is temporarily unavailable.
     } finally {
       _isRefreshingProfile = false;
+    }
+  }
+
+  Future<void> _refreshWalletBalance() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiBase/wallet'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+      ).timeout(const Duration(seconds: 12));
+      if (response.statusCode != 200) return;
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      if (payload['ok'] != true) return;
+      final balance = (payload['balance'] as num?)?.toInt() ?? 0;
+      if (mounted && balance != _walletBalance) {
+        setState(() => _walletBalance = balance);
+      }
+    } catch (_) {
+      // Keep the last known balance when the wallet endpoint is temporarily unavailable.
     }
   }
 
@@ -1512,6 +1534,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
     await Navigator.of(context).push<void>(MaterialPageRoute(
       builder: (_) => WalletPage(apiBase: _apiBase, accessToken: widget.accessToken),
     ));
+    if (mounted) await _refreshWalletBalance();
   }
 
   void _openMySidePanel() {
@@ -1569,6 +1592,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
         onLogout: _logout,
         onSoon: _soon,
         onWallet: _openWallet,
+        balance: _walletBalance,
       ),
     ];
 
