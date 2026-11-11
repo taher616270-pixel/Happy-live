@@ -1681,7 +1681,7 @@ export default {
             "INSERT OR IGNORE INTO gift_transactions " +
             "(id, sender_user_id, recipient_user_id, context_type, room_id, gift_id, quantity, coin_cost, " +
             "app_percent_snapshot, recipient_percent_snapshot, app_coins, recipient_coins, experience_awarded, " +
-            "experience_multiplier, battle_id, idempotency_key, status, created_at) " +
+            "experience_multiplier, battle_id, idempotency_key, sender_balance_before, status, created_at) " +
             "SELECT ?, ?, ?, 'room', r.id, g.id, ?, g.coin_price * ?, s.app_percent, s.recipient_percent, " +
             "CAST((g.coin_price * ? * s.app_percent) / 100 AS INTEGER), " +
             "(g.coin_price * ?) - CAST((g.coin_price * ? * s.app_percent) / 100 AS INTEGER), " +
