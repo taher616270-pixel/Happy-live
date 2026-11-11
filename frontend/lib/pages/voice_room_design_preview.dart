@@ -615,17 +615,20 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
-                                    onTap: () => _openRoomInfo(context),
-                                    child: Text(
-                                      _name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w800,
+                                  Transform.translate(
+                                    offset: const Offset(-1, 0),
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () => _openRoomInfo(context),
+                                      child: Text(
+                                        _name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w800,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -637,7 +640,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                       onTap: () => _openRoomInfo(context),
                                       child: Text(
                                         'ID: $_id',
-                                        style: const TextStyle(color: Colors.white60, fontSize: 8),
+                                        style: const TextStyle(color: Colors.white60, fontSize: 10),
                                       ),
                                     ),
                                   ),
