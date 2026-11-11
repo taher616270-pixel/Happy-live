@@ -7,6 +7,8 @@ const seatHub = await readFile(new URL("../src/room_seats_hub.ts", import.meta.u
 const migration = await readFile(new URL("../migrations/0026_room_experience_progression.sql", import.meta.url), "utf8");
 const roomPage = await readFile(new URL("../../../frontend/lib/pages/room_page.dart", import.meta.url), "utf8");
 const roomPreview = await readFile(new URL("../../../frontend/lib/pages/voice_room_design_preview.dart", import.meta.url), "utf8");
+const roomLevelSheet = await readFile(new URL("../../../frontend/lib/widgets/room_level_sheet.dart", import.meta.url), "utf8");
+const roomSeatSocket = await readFile(new URL("../../../frontend/lib/services/room_seat_socket.dart", import.meta.url), "utf8");
 
 const progressSource = worker.match(/function roomExperienceProgress\(totalExperience: number\) \{[\s\S]*?\n\}/)?.[0];
 assert.ok(progressSource, "room experience progression function must exist");
@@ -38,6 +40,28 @@ test("experience progression continues beyond level 120 with the next band's cos
     exp: 3_300_000,
     nextLevelExp: 82_500_000,
   });
+});
+
+test("Flutter level sheet uses the same target-level cost bands as the Worker", () => {
+  const helperSource = roomLevelSheet.match(/int roomLevelRequiredExpForLevel\(int targetLevel\) \{[\\s\\S]*?\\n\}/)?.[0];
+  assert.ok(helperSource, "Flutter room level cost helper must exist");
+  const requiredExp = new Function(
+    `${helperSource.replace("(int targetLevel)", "(targetLevel)")}; return roomLevelRequiredExpForLevel;`
+  )();
+  for (const targetLevel of [2, 5, 6, 10, 11, 15, 16, 120, 121]) {
+    const expected = (Math.floor((targetLevel - 1) / 5) + 1) * 3_300_000;
+    assert.equal(requiredExp(targetLevel), expected, `wrong cost for target level ${targetLevel}`);
+  }
+  assert.equal(roomExperienceProgress(13_200_000).nextLevelExp, requiredExp(6));
+  assert.equal(roomExperienceProgress(46_200_000).nextLevelExp, requiredExp(11));
+});
+
+test("microphone heartbeat is sent periodically and experience is only credited by server seat presence", () => {
+  assert.match(roomSeatSocket, /Timer\.periodic\(const Duration\(seconds: 15\)/);
+  assert.match(seatHub, /const member = Object\.values\(this\.snapshot\.seats\)\.find\(\(seat\) => seat\.userId === identity\.userId\)/);
+  assert.match(seatHub, /if \(member\) \{[\\s\\S]*?awardRoomSeatExperience\(this\.env\.DB, this\.roomId, identity\.userId/);
+  assert.match(worker, /if \(isOnMic\) \{[\\s\\S]*?awardRoomSeatExperience\(env\.DB, roomId, user\.id, now\)/);
+  assert.match(worker, /Only continuous microphone time counts; audience time resets the 5-minute clock/);
 });
 
 test("only continuous microphone occupancy awards room experience", () => {
