@@ -76,7 +76,7 @@ Future<void> showRoomInfoSheet(
   );
 }
 
-Future<void> _showInactiveRoomGroupSheet(BuildContext context) {
+Future<void> _showInactiveRoomGroupSheet(BuildContext context, RoomInfo info) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -96,16 +96,22 @@ Future<void> _showInactiveRoomGroupSheet(BuildContext context) {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               border: Border.all(color: Colors.white.withOpacity(.10)),
             ),
-            child: const Center(
-              child: Text(
-                'لم تنشط مجموعة الغرفة بعد',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: _RoomInfoColors.text,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 34,
+                  backgroundColor: _RoomInfoColors.chip,
+                  backgroundImage: info.imageUrl.startsWith('http') ? NetworkImage(info.imageUrl) : null,
+                  child: info.imageUrl.startsWith('http') ? null : const Icon(Icons.groups, color: _RoomInfoColors.muted, size: 32),
                 ),
-              ),
+                const SizedBox(height: 12),
+                Text(info.name, textAlign: TextAlign.center, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 17, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 9),
+                const Text('لم تنشط مجموعة الغرفة بعد', textAlign: TextAlign.center, style: TextStyle(color: _RoomInfoColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                Text(info.groupDesc.isEmpty ? 'لا يوجد وصف للمجموعة' : info.groupDesc, textAlign: TextAlign.center, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 13, height: 1.4)),
+              ],
             ),
           ),
         ),
@@ -295,40 +301,41 @@ class _RoomInfoSheet extends StatelessWidget {
                 const SizedBox(height: 15),
                 Transform.translate(
                   offset: const Offset(0, -4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                const Text('مجموعة الغرفة', style: TextStyle(color: _RoomInfoColors.text, fontSize: 13, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  CircleAvatar(radius: 20, backgroundColor: _RoomInfoColors.chip, backgroundImage: info.imageUrl.startsWith('http') ? NetworkImage(info.imageUrl) : null, child: info.imageUrl.startsWith('http') ? null : const Icon(Icons.groups, color: _RoomInfoColors.muted)),
-                  const SizedBox(width: 12),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      Flexible(child: Text(info.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 13, fontWeight: FontWeight.w600))),
-                      const SizedBox(width: 6),
-                      GestureDetector(
-                        onTap: info.groupCount == 0
-                            ? () => _showInactiveRoomGroupSheet(context)
-                            : null,
-                        child: _chip(
-                          Text(
-                            info.groupCount == 0 ? 'لم يتم التنشيط بعد' : '${info.groupCount} عضو',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 9),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          radius: 7,
-                        ),
-                      ),
-                    ]),
-                    const SizedBox(height: 3),
-                    Text(info.groupDesc.isEmpty ? 'لا يوجد وصف للمجموعة' : info.groupDesc, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 11, height: 1.25)),
-                  ])),
-                ]),
-                const SizedBox(height: 12),
-                    ],
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: info.groupCount == 0
+                        ? () => _showInactiveRoomGroupSheet(context, info)
+                        : null,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('مجموعة الغرفة', style: TextStyle(color: _RoomInfoColors.text, fontSize: 13, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          CircleAvatar(radius: 20, backgroundColor: _RoomInfoColors.chip, backgroundImage: info.imageUrl.startsWith('http') ? NetworkImage(info.imageUrl) : null, child: info.imageUrl.startsWith('http') ? null : const Icon(Icons.groups, color: _RoomInfoColors.muted)),
+                          const SizedBox(width: 12),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Row(children: [
+                              Flexible(child: Text(info.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 13, fontWeight: FontWeight.w600))),
+                              const SizedBox(width: 6),
+                              _chip(
+                                Text(
+                                  info.groupCount == 0 ? 'لم يتم التنشيط بعد' : '${info.groupCount} عضو',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 9),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                radius: 7,
+                              ),
+                            ]),
+                            const SizedBox(height: 3),
+                            Text(info.groupDesc.isEmpty ? 'لا يوجد وصف للمجموعة' : info.groupDesc, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 11, height: 1.25)),
+                          ])),
+                        ]),
+                        const SizedBox(height: 12),
+                      ],
+                    ),
                   ),
                 ),
               ]),
