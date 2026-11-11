@@ -1686,7 +1686,7 @@ export default {
             "CAST((g.coin_price * ? * s.app_percent) / 100 AS INTEGER), " +
             "(g.coin_price * ?) - CAST((g.coin_price * ? * s.app_percent) / 100 AS INTEGER), " +
             "MIN(g.coin_price * ? * CASE WHEN b.id IS NULL THEN 1 ELSE 2 END, MAX(0, 3000000 - COALESCE(d.points, 0))), " +
-            "CASE WHEN b.id IS NULL THEN 1 ELSE 2 END, b.id, ?, 'processing', ? " +
+            "CASE WHEN b.id IS NULL THEN 1 ELSE 2 END, b.id, ?, sender_wallet.balance, 'processing', ? " +
             "FROM rooms r JOIN gift_catalog g ON g.id = ? AND g.is_active = 1 " +
             "JOIN gift_revenue_settings s ON s.id = 'current' " +
             "JOIN users recipient ON recipient.id = ? AND recipient.status = 'active' " +
@@ -1706,6 +1706,7 @@ export default {
             "INSERT INTO gift_wallet_ledger (id, gift_transaction_id, user_id, entry_type, amount, balance_after, created_at) " +
             "SELECT ?, t.id, t.sender_user_id, 'sender_debit', -t.coin_cost, w.balance, ? FROM gift_transactions t " +
             "JOIN user_wallets w ON w.user_id = t.sender_user_id WHERE t.id = ? AND t.status = 'processing' " +
+            "AND w.balance = t.sender_balance_before - t.coin_cost " +
             "AND NOT EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
           ).bind(crypto.randomUUID(), now, transactionId),
           env.DB.prepare(
@@ -1779,11 +1780,18 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         await env.DB.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(user.id, new Date().toISOString()).run();
-        const [wallet, transactions] = await Promise.all([
+        const [wallet, transactions, giftEarnings] = await Promise.all([
           env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>(),
-          env.DB.prepare("SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, reference_id AS referenceId, description, created_at AS createdAt FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 30").bind(user.id).all()
+          env.DB.prepare("SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, reference_id AS referenceId, description, created_at AS createdAt FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 30").bind(user.id).all(),
+          env.DB.prepare("SELECT COALESCE(SUM(credited_coins), 0) AS totalGiftCoins, COALESCE(SUM(remaining_tagged_coins), 0) AS remainingTaggedCoins, COALESCE(SUM(remaining_withdrawable_coins), 0) AS futureWithdrawableCoins FROM gift_earning_lots WHERE user_id = ?").bind(user.id).first<Record<string, number>>()
         ]);
-        return json({ ok: true, balance: wallet?.balance ?? 0, transactions: transactions.results ?? [] }, 200, origin, env);
+        return json({
+          ok: true,
+          balance: wallet?.balance ?? 0,
+          transactions: transactions.results ?? [],
+          giftEarnings: giftEarnings ?? { totalGiftCoins: 0, remainingTaggedCoins: 0, futureWithdrawableCoins: 0 },
+          withdrawals: { enabled: false, ready: false }
+        }, 200, origin, env);
       } catch (error) {
         console.error("[wallet.get] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "wallet_unavailable" }, 500, origin, env);
@@ -1815,6 +1823,13 @@ export default {
         const results = await env.DB.batch([
           env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, amount, balance_after, transaction_type, reference_id, description, created_at) SELECT ?, w.user_id, ?, w.balance - ?, 'room_upgrade', ?, ?, ? FROM user_wallets w INNER JOIN rooms r ON r.id = ? LEFT JOIN room_levels rl ON rl.room_id = r.id WHERE w.user_id = ? AND w.balance >= ? AND COALESCE(rl.level, 1) < ? AND r.status <> 'deleted'").bind(transactionId, -price, price, roomId, "ترقية غرفة " + room.name, now, roomId, user.id, price, targetLevel),
           env.DB.prepare("UPDATE user_wallets SET balance = balance - ?, updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade')").bind(price, now, user.id, transactionId),
+          env.DB.prepare(
+            "WITH ordered AS (SELECT id, remaining_tagged_coins, COALESCE(SUM(remaining_tagged_coins) OVER (ORDER BY created_at, id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS prior FROM gift_earning_lots WHERE user_id = ? AND remaining_tagged_coins > 0), " +
+            "consumption AS (SELECT id, MIN(remaining_tagged_coins, MAX(0, ? - prior)) AS used FROM ordered) " +
+            "UPDATE gift_earning_lots SET remaining_tagged_coins = MAX(0, remaining_tagged_coins - (SELECT used FROM consumption WHERE consumption.id = gift_earning_lots.id)), " +
+            "remaining_withdrawable_coins = MAX(0, remaining_withdrawable_coins - (SELECT used FROM consumption WHERE consumption.id = gift_earning_lots.id)) " +
+            "WHERE id IN (SELECT id FROM consumption WHERE used > 0) AND EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade')"
+          ).bind(user.id, price, transactionId),
           env.DB.prepare("INSERT INTO room_levels (room_id, level, updated_at) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade') ON CONFLICT(room_id) DO UPDATE SET level = excluded.level, updated_at = excluded.updated_at WHERE room_levels.level < excluded.level").bind(roomId, targetLevel, now, transactionId)
         ]);
         if ((results[0]?.meta?.changes ?? 0) !== 1 || (results[1]?.meta?.changes ?? 0) !== 1 || (results[2]?.meta?.changes ?? 0) !== 1) {
