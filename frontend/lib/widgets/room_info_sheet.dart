@@ -181,11 +181,11 @@ class _RoomInfoSheet extends StatelessWidget {
                     final avatarUrl = (m.isOwner && info.ownerAvatarUrl.trim().isNotEmpty)
                         ? info.ownerAvatarUrl.trim()
                         : m.avatarUrl.trim();
-                    return SizedBox(width: 40, child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
+                    return SizedBox(width: 44, child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
                       ClipOval(
                         child: SizedBox(
-                          width: 34,
-                          height: 34,
+                          width: 38,
+                          height: 38,
                           child: avatarUrl.startsWith('https://')
                               ? Image.network(
                                   avatarUrl,
@@ -205,7 +205,7 @@ class _RoomInfoSheet extends StatelessWidget {
                                 ),
                         ),
                       ),
-                      Positioned(bottom: 17, child: Container(
+                      Positioned(bottom: 19, child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                         decoration: BoxDecoration(color: m.isOwner ? const Color(0xFFFF4F81) : const Color(0xFFFF9800), borderRadius: BorderRadius.circular(10)),
                         child: Text(m.role, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600)), 
