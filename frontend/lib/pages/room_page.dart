@@ -1663,7 +1663,7 @@ class _RoomPageState extends State<RoomPage> {
         ChangeNotifierProvider<SeatStateStore>.value(
           value: _seatStateStore,
           child: VoiceRoomDesignPreview(
-      room: {...widget.room, 'level': _roomLevel, 'palaceStatus': _roomLevel >= 5 ? 'مفعّل' : 'غير مفعّل'},
+      room: {...widget.room, 'ownerId': _ownerId, 'level': _roomLevel, 'palaceStatus': _roomLevel >= 5 ? 'مفعّل' : 'غير مفعّل'},
       chatMessagesPanel: _roomMessagesPanel(),
       chatController: _messageController,
       chatFocusNode: _roomChatFocusNode,
