@@ -1,6 +1,12 @@
 name: Build Happy Live Android APK
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - ".github/workflows/android-apk.yml"
   workflow_dispatch:
     inputs:
       build_mode:
