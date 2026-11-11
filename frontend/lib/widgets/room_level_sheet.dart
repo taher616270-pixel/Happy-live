@@ -12,6 +12,16 @@ const _track = Color(0xFF3A3842);
 
 /// الخبرة المطلوبة للوصول إلى المستوى المحدد.
 /// كل خمسة مستويات تزيد الخبرة المطلوبة بمقدار 3.3 مليون، بلا حد أقصى.
+List<Color> roomLevelBadgeColors(int level) {
+  if (level >= 120) return const [Color(0xFF167FA8), Color(0xFF49D7F2), Color(0xFFD4FAFF)];
+  if (level >= 105) return const [Color(0xFF171717), Color(0xFF514633), Color(0xFFE0C987)];
+  if (level >= 90) return const [Color(0xFF7D1830), Color(0xFFD63F65), Color(0xFFFFA0B2)];
+  if (level >= 70) return const [Color(0xFF80520B), Color(0xFFD9A62B), Color(0xFFFFE08A)];
+  if (level >= 40) return const [Color(0xFF493080), Color(0xFF8E7CFF), Color(0xFFC9BFFF)];
+  if (level >= 10) return const [Color(0xFF145E83), Color(0xFF29C5D6), Color(0xFFA6F1FF)];
+  return const [Color(0xFF1E6B3A), Color(0xFF3CB35F), Color(0xFF8FD176)];
+}
+
 int roomLevelRequiredExpForLevel(int targetLevel) {
   final safeLevel = targetLevel < 1 ? 1 : targetLevel;
   final group = ((safeLevel - 1) ~/ 5) + 1;
@@ -124,7 +134,7 @@ class RoomLevelChip extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4, right: 9),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(100),
-        gradient: const LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: [Color(0xFF1E6B3A), Color(0xFF3CB35F), Color(0xFF8FD176)]),
+        gradient: LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: roomLevelBadgeColors(data.level)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(.15), blurRadius: 6, offset: const Offset(0, 2))],
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -132,7 +142,7 @@ class RoomLevelChip extends StatelessWidget {
         const SizedBox(width: 5),
         Container(width: 12, height: 12, decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: RadialGradient(colors: [Colors.white.withOpacity(.95), const Color(0xFFB9E8C0), const Color(0xFF7ED490)]),
+          gradient: RadialGradient(colors: [Colors.white.withOpacity(.95), ...roomLevelBadgeColors(data.level).reversed]),
           border: Border.all(color: Colors.white.withOpacity(.6)),
           boxShadow: [BoxShadow(color: Colors.white.withOpacity(.5), blurRadius: 3)],
         )),
@@ -185,7 +195,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
           Expanded(child: _tab == 0 ? _levelUpTab(d) : _perksTab(d)),
         ]),
       )),
-      PositionedDirectional(end: 10, top: 0, child: _LevelRing(level: d.level, size: 88)),
+      PositionedDirectional(end: 10, top: 0, child: _LevelRing(level: d.level, size: 88, colors: roomLevelBadgeColors(d.level))),
     ]));
   }
   Widget _header(RoomLevelData d) => Container(
@@ -266,22 +276,25 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
 }
 
 class _LevelRing extends StatelessWidget {
-  const _LevelRing({required this.level, required this.size});
+  const _LevelRing({required this.level, required this.size, required this.colors});
   final int level;
   final double size;
+  final List<Color> colors;
   @override
-  Widget build(BuildContext context) => SizedBox(width: size, height: size, child: CustomPaint(painter: _RingPainter(), child: Center(child: Container(
+  Widget build(BuildContext context) => SizedBox(width: size, height: size, child: CustomPaint(painter: _RingPainter(colors), child: Center(child: Container(
     width: size * .5, height: size * .5, alignment: Alignment.center,
     decoration: const BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Color(0xFF5BD18A), Color(0xFF1E6B3C)])),
     child: Text('$level', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic)),
   ))));
 }
 class _RingPainter extends CustomPainter {
+  const _RingPainter(this.colors);
+  final List<Color> colors;
   @override
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
     final radius = size.width / 2 - 5;
-    final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 7..shader = const SweepGradient(colors: [Color(0xFF9BE8B4), Color(0xFF2E8B57), Color(0xFF9BE8B4)]).createShader(Rect.fromCircle(center: center, radius: radius));
+    final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 7..shader = SweepGradient(colors: colors).createShader(Rect.fromCircle(center: center, radius: radius));
     canvas.drawArc(Rect.fromCircle(center: center, radius: radius), -math.pi / 2, 2 * math.pi, false, paint);
     canvas.drawCircle(center, radius - 6, Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5..color = Colors.white24);
   }
