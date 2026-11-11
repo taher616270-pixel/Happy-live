@@ -2059,8 +2059,8 @@ class _Notice extends StatelessWidget {
         if (onTap != null) ...[
           const SizedBox(width: 5),
           Container(
-            width: 28,
-            height: 28,
+            width: 18,
+            height: 18,
             decoration: BoxDecoration(color: Colors.black.withOpacity(.35), shape: BoxShape.circle),
             child: const Icon(Icons.edit_rounded, color: Colors.white70, size: 14),
           ),
@@ -2542,8 +2542,8 @@ class HappyLevelBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 36,
-      padding: const EdgeInsets.only(left: 6, right: 16),
+      height: 24,
+      padding: const EdgeInsets.only(left: 4, right: 9),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(100),
         gradient: const LinearGradient(
@@ -2596,7 +2596,7 @@ class HappyLevelBadge extends StatelessWidget {
               child: Text(
                 "H",
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 11,
                   fontWeight: FontWeight.bold,
                   color: Colors.white.withOpacity(0.95),
                   height: 1,
@@ -2604,14 +2604,14 @@ class HappyLevelBadge extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 5),
           Text(
             "Lv. $level",
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 16,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
+              letterSpacing: 0.2,
             ),
           ),
         ],
