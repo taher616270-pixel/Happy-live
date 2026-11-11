@@ -28,7 +28,8 @@ function extractTypedAsyncFunction(source, name) {
     .replaceAll("userId: string", "userId")
     .replaceAll("now: string", "now")
     .replace("): Promise<void> {", ") {")
-    .replaceAll(".first<{ last_awarded_at: string }>()", ".first()");
+    .replaceAll(".first<{ last_awarded_at: string }>()", ".first()")
+    .replaceAll(".first<{ created_at: string }>()", ".first()");
   return new Function(
     "ROOM_EXP_DAILY_USER_CAP",
     "crypto",
@@ -60,7 +61,10 @@ class SqliteD1 {
     this.sqlite = new DatabaseSync(":memory:");
     this.sqlite.exec(`
       PRAGMA foreign_keys = ON;
-      CREATE TABLE users (id TEXT PRIMARY KEY);
+      CREATE TABLE users (
+        id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL DEFAULT '2026-01-01T00:00:00.000Z'
+      );
       CREATE TABLE rooms (id TEXT PRIMARY KEY);
       CREATE TABLE room_experience (
         room_id TEXT PRIMARY KEY REFERENCES rooms(id) ON DELETE CASCADE,
@@ -84,7 +88,7 @@ class SqliteD1 {
         room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         day_key TEXT NOT NULL,
-        points INTEGER NOT NULL CHECK (points > 0 AND points <= 600),
+        points INTEGER NOT NULL CHECK (points > 0 AND points <= 1200),
         created_at TEXT NOT NULL
       );
     `);
@@ -213,6 +217,9 @@ test("daily contribution cap and persistent room experience tables are enforced"
   assert.match(migration, /points <= 3000000/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS room_exp_awards/);
   assert.match(seatHub, /ROOM_EXP_DAILY_USER_CAP = 3_000_000/);
+  assert.match(worker, /nowMs - accountCreatedAt < 15 \* 24 \* 60 \* 60 \* 1000/);
+  assert.match(seatHub, /nowMs - accountCreatedAt < 15 \* 24 \* 60 \* 60 \* 1000/);
+  assert.match(migration, /points <= 1200/);
 });
 
 test("room UI reads server experience separately from paid room tier", () => {
@@ -248,6 +255,31 @@ test("D1-backed award logic grants 600 at five minutes and persists room experie
       assert.equal(db.get("SELECT total_exp FROM room_experience WHERE room_id = 'room-1'").total_exp, 600, implementation.name);
       await implementation.award(db, "room-1", "user-1", at(650_000));
       assert.equal(db.get("SELECT total_exp FROM room_experience WHERE room_id = 'room-1'").total_exp, 1_200, implementation.name);
+    } finally {
+      db.close();
+    }
+  }
+});
+
+test("new accounts receive 1200 XP for five microphone minutes during their first 15 days, then 600", async () => {
+  for (const implementation of experienceImplementations) {
+    const db = new SqliteD1();
+    try {
+      db.exec("INSERT INTO users (id, created_at) VALUES ('new-user', '2026-11-10T10:00:00.000Z'), ('edge-user', '2026-10-28T10:05:00.000Z')");
+      db.exec("INSERT INTO rooms (id) VALUES ('new-room'), ('edge-room')");
+      const start = Date.parse("2026-11-12T10:00:00.000Z");
+      const at = (offset) => new Date(start + offset).toISOString();
+
+      await implementation.reset(db, "new-room", "new-user", at(0));
+      await implementation.award(db, "new-room", "new-user", at(299_999));
+      assert.equal(db.get("SELECT COUNT(*) AS count FROM room_exp_awards").count, 0, implementation.name);
+      await implementation.award(db, "new-room", "new-user", at(300_000));
+      assert.equal(db.get("SELECT points FROM room_exp_awards WHERE user_id = 'new-user'").points, 1200, implementation.name);
+
+      // Exactly 15 days old at the award instant is no longer a new account.
+      await implementation.reset(db, "edge-room", "edge-user", at(0));
+      await implementation.award(db, "edge-room", "edge-user", at(300_000));
+      assert.equal(db.get("SELECT points FROM room_exp_awards WHERE user_id = 'edge-user'").points, 600, implementation.name);
     } finally {
       db.close();
     }
