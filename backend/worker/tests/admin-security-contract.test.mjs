@@ -76,7 +76,9 @@ test("wallet administration uses the server-backed wallet ledger and owner-only 
   assert.match(worker, /url\.pathname === "\/api\/v1\/wallet"/);
   assert.match(worker, /wallet_transactions/);
   assert.match(worker, /actor\.role !== "owner".*إضافة العملات متاحة لمالك التطبيق فقط/s);
+  assert.match(worker, /VALUES \(\?, NULL, 'wallet\.credit', 'user', \?, \?, \?\)/);
   assert.match(adminUi, /async function walletsPage\(/);
+  assert.match(adminUi, /input\.focus\(\);input\.setSelectionRange\(value\.length,value\.length\)/);
   assert.match(adminUi, /\/admin\/users\/.*\/wallet\/credit/);
   assert.doesNotMatch(adminUi, /VIP والشحن والهدايا والمحفظة لا تملك جداول أو نقاط API حقيقية/);
 });
