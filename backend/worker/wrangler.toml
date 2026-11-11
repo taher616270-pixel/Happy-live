@@ -3,6 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2026-11-03"
 workers_dev = true
 
+# Preview deployments intentionally have no production D1, Durable Object, or secret bindings.
+# Add isolated staging resources here before enabling API smoke tests.
+previews = {}
+
 [vars]
 APP_ENV = "production"
 GOOGLE_CLIENT_ID = "999298541545-5i0kn2d1emj2rohuvruj4o8ej49ho9kg.apps.googleusercontent.com"
