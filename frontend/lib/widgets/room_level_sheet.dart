@@ -166,12 +166,16 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     final ratio = d.nextLevelExp == 0 ? 0.0 : (d.exp / d.nextLevelExp).clamp(0.0, 1.0).toDouble();
     String short(int n) => n >= 1000000 ? '${(n / 1000000).toStringAsFixed(1)}m' : n >= 1000 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n';
     return Padding(padding: const EdgeInsets.fromLTRB(14, 4, 14, 6), child: Column(children: [
-      ClipRRect(borderRadius: BorderRadius.circular(3), child: Directionality(textDirection: TextDirection.rtl, child: LinearProgressIndicator(value: ratio, minHeight: 5, color: _green, backgroundColor: _track))),
+      if (d.nextLevelExp > 0)
+        ClipRRect(borderRadius: BorderRadius.circular(3), child: Directionality(textDirection: TextDirection.rtl, child: LinearProgressIndicator(value: ratio, minHeight: 5, color: _green, backgroundColor: _track))),
       const SizedBox(height: 6),
       Row(children: [
-        Text('نقاط خبرة الغرفة: ${short(d.exp)}/${short(d.nextLevelExp)}', style: const TextStyle(color: _muted, fontSize: 11)),
+        Text(d.nextLevelExp > 0
+            ? 'نقاط خبرة الغرفة: ${short(d.exp)}/${short(d.nextLevelExp)}'
+            : 'إجمالي خبرة الغرفة: ${short(d.exp)}',
+          style: const TextStyle(color: _muted, fontSize: 11)),
         const Spacer(),
-        Text('Lv.${d.level + 1}', style: const TextStyle(color: _muted, fontSize: 11)),
+        if (d.nextLevelExp > 0) Text('Lv.${d.level + 1}', style: const TextStyle(color: _muted, fontSize: 11)),
       ]),
     ]));
   }
@@ -180,7 +184,11 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
   ]));
   Widget _tabItem(String title, int index) => GestureDetector(onTap: () => setState(() => _tab = index), child: Text(title, style: TextStyle(fontSize: index == _tab ? 17 : 15, fontWeight: index == _tab ? FontWeight.w800 : FontWeight.w500, color: index == _tab ? Colors.white : _muted)));
   Widget _levelUpTab(RoomLevelData d) => ListView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24), children: [
-    _dailyCard(d), const SizedBox(height: 10),
+    if (d.tasks.isNotEmpty || d.dailyExpMax != '0') ...[_dailyCard(d), const SizedBox(height: 10)],
+    if (d.tasks.isEmpty) const Padding(
+      padding: EdgeInsets.symmetric(vertical: 24),
+      child: Text('سيتم عرض مهام الخبرة بعد تفعيل قواعد احتسابها.', textAlign: TextAlign.center, style: TextStyle(color: _muted, fontSize: 12)),
+    ),
     for (final task in d.tasks) ...[_taskCard(task), const SizedBox(height: 10)],
     const SizedBox(height: 6),
     const Text('ملحوظة:', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
@@ -207,6 +215,10 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
   ]));
   Widget _bar(double ratio) => ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: ratio.clamp(0.0, 1.0).toDouble(), minHeight: 4, color: _green, backgroundColor: _track));
   Widget _perksTab(RoomLevelData d) => ListView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24), children: [
+    if (d.perkGroups.isEmpty) const Padding(
+      padding: EdgeInsets.symmetric(vertical: 32),
+      child: Text('امتيازات الغرفة ستظهر هنا بعد ربط كل امتياز بوظيفته الفعلية.', textAlign: TextAlign.center, style: TextStyle(color: _muted, fontSize: 12)),
+    ),
     for (final group in d.perkGroups) ...[
       Padding(padding: const EdgeInsets.fromLTRB(2, 14, 2, 10), child: Row(children: [
         Text('Lv.${group.level}', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
