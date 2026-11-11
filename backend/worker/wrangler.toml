@@ -1,4 +1,5 @@
 name = "happy-live-api"
+account_id = "50079f6f0f22b1f4dbde9cf5029e3073"
 main = "src/index.ts"
 compatibility_date = "2026-11-03"
 workers_dev = true
