@@ -946,24 +946,7 @@ Widget _roomActionButton({
         offset: Theme.of(context).platform == TargetPlatform.android
             ? const Offset(0, -10)
             : Offset.zero,
-        child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(.30),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('🔥', style: TextStyle(fontSize: 16)),
-            const SizedBox(width: 6),
-            Text(
-              (room['hotRankText'] ?? 'الساعة رقم 100+').toString(),
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-            ),
-          ],
-        ),
-        ),
+        child: HappyLevelBadge(level: (room['level'] ?? 1).toString()),
       ),
     ),
     ),
@@ -2549,4 +2532,90 @@ class _GoldenVoiceRipplePainter extends CustomPainter {
       oldDelegate.progress != progress ||
       oldDelegate.startSize != startSize ||
       oldDelegate.endSize != endSize;
+}
+
+
+class HappyLevelBadge extends StatelessWidget {
+  final String level;
+  const HappyLevelBadge({super.key, this.level = "1"});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.only(left: 6, right: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(100),
+        gradient: const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            Color(0xFF1E6B3A),
+            Color(0xFF3CB35F),
+            Color(0xFF8FD176),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                center: const Alignment(-0.3, -0.3),
+                radius: 0.9,
+                colors: [
+                  Colors.white.withOpacity(0.95),
+                  const Color(0xFFB9E8C0),
+                  const Color(0xFF7ED490).withOpacity(0.8),
+                ],
+              ),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.6),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.5),
+                  blurRadius: 4,
+                  offset: const Offset(-1, -1),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                "H",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white.withOpacity(0.95),
+                  height: 1,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            "Lv. $level",
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
