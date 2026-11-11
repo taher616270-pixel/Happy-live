@@ -76,6 +76,44 @@ Future<void> showRoomInfoSheet(
   );
 }
 
+Future<void> _showInactiveRoomGroupSheet(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: Colors.black.withOpacity(.18),
+    builder: (sheetContext) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: SizedBox(
+        height: MediaQuery.sizeOf(sheetContext).height * .5,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(22, 28, 22, 36),
+            decoration: BoxDecoration(
+              color: _RoomInfoColors.bg.withOpacity(.86),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border.all(color: Colors.white.withOpacity(.10)),
+            ),
+            child: const Center(
+              child: Text(
+                'لم تنشط مجموعة الغرفة بعد',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _RoomInfoColors.text,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _RoomInfoSheet extends StatelessWidget {
   const _RoomInfoSheet({required this.info, this.onJoin, this.onFollow, this.onMembersTap, this.onSettings, this.onInvite, this.onUpgrade, required this.accessToken});
   final RoomInfo info;
@@ -269,15 +307,20 @@ class _RoomInfoSheet extends StatelessWidget {
                     Row(children: [
                       Flexible(child: Text(info.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 13, fontWeight: FontWeight.w600))),
                       const SizedBox(width: 6),
-                      _chip(
-                        Text(
-                          info.groupCount == 0 ? 'لم يتم التنشيط بعد' : '${info.groupCount} عضو',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 9),
+                      GestureDetector(
+                        onTap: info.groupCount == 0
+                            ? () => _showInactiveRoomGroupSheet(context)
+                            : null,
+                        child: _chip(
+                          Text(
+                            info.groupCount == 0 ? 'لم يتم التنشيط بعد' : '${info.groupCount} عضو',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 9),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          radius: 7,
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        radius: 7,
                       ),
                     ]),
                     const SizedBox(height: 3),
