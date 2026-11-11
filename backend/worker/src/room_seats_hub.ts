@@ -65,6 +65,15 @@ async function awardRoomSeatExperience(
   if ((advanced.meta?.changes ?? 0) !== 1) return;
 
   const dayKey = now.slice(0, 10);
+  const nowMs = Date.parse(now);
+  const account = await db.prepare(
+    "SELECT created_at FROM users WHERE id = ? LIMIT 1"
+  ).bind(userId).first<{ created_at: string }>();
+  const accountCreatedAt = Date.parse(account?.created_at ?? "");
+  const isNewAccount = Number.isFinite(accountCreatedAt) &&
+    nowMs >= accountCreatedAt &&
+    nowMs - accountCreatedAt < 15 * 24 * 60 * 60 * 1000;
+  const awardPoints = isNewAccount ? 1200 : 600;
   try {
     await db.prepare(
       "INSERT OR IGNORE INTO room_exp_daily (user_id, day_key, points) VALUES (?, ?, 0)"
@@ -72,8 +81,8 @@ async function awardRoomSeatExperience(
     const awardId = crypto.randomUUID();
     await db.batch([
       db.prepare(
-        "INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) SELECT ?, ?, ?, ?, MIN(600, ? - points), ? FROM room_exp_daily WHERE user_id = ? AND day_key = ? AND points < ?"
-      ).bind(awardId, roomId, userId, dayKey, ROOM_EXP_DAILY_USER_CAP, now, userId, dayKey, ROOM_EXP_DAILY_USER_CAP),
+        "INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) SELECT ?, ?, ?, ?, MIN(?, ? - points), ? FROM room_exp_daily WHERE user_id = ? AND day_key = ? AND points < ?"
+      ).bind(awardId, roomId, userId, dayKey, awardPoints, ROOM_EXP_DAILY_USER_CAP, now, userId, dayKey, ROOM_EXP_DAILY_USER_CAP),
       db.prepare(
         "UPDATE room_exp_daily SET points = points + COALESCE((SELECT points FROM room_exp_awards WHERE id = ?), 0) WHERE user_id = ? AND day_key = ?"
       ).bind(awardId, userId, dayKey),
