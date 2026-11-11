@@ -529,19 +529,20 @@ export default {
         if (url.pathname === "/api/v1/admin/stats" && request.method === "GET") {
           if (!hasAdminPermission(actor, "dashboard.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const since = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
-          const [users, rooms, posts, messages, dailyUsers, dailyMessages] = await Promise.all([
+          const [users, rooms, posts, messages, dailyUsers, dailyMessages, topFollowers] = await Promise.all([
             env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active, SUM(CASE WHEN status = 'suspended' THEN 1 ELSE 0 END) AS suspended FROM users").first<{ total: number; active: number; suspended: number }>(),
             env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM rooms").first<{ total: number; active: number }>(),
             env.DB.prepare("SELECT COUNT(*) AS total FROM posts WHERE status = 'published'").first<{ total: number }>(),
             env.DB.prepare("SELECT COUNT(*) AS total FROM room_messages WHERE created_at >= ?").bind(since).first<{ total: number }>(),
             env.DB.prepare("SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total FROM users WHERE created_at >= ? GROUP BY substr(created_at, 1, 10) ORDER BY day").bind(since).all(),
-            env.DB.prepare("SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total FROM room_messages WHERE created_at >= ? GROUP BY substr(created_at, 1, 10) ORDER BY day").bind(since).all()
+            env.DB.prepare("SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total FROM room_messages WHERE created_at >= ? GROUP BY substr(created_at, 1, 10) ORDER BY day").bind(since).all(),
+            env.DB.prepare("SELECT p.display_name AS name, COUNT(*) AS count FROM user_follows f INNER JOIN profiles p ON p.user_id = f.following_id GROUP BY f.following_id, p.display_name ORDER BY count DESC, p.display_name ASC LIMIT 10").all()
           ]);
           return json({ ok: true, stats: { summary: {
             users: { total: users?.total ?? 0, active: users?.active ?? 0, suspended: users?.suspended ?? 0 },
             rooms: { total: rooms?.total ?? 0, active: rooms?.active ?? 0 },
             publishedPosts: posts?.total ?? 0, roomMessagesLast7Days: messages?.total ?? 0
-          }, daily: { users: dailyUsers.results ?? [], messages: dailyMessages.results ?? [] } } }, 200, origin, env);
+          }, daily: { users: dailyUsers.results ?? [], messages: dailyMessages.results ?? [] }, topFollowers: topFollowers.results ?? [] } }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/moderators" && request.method === "GET") {
           if (!hasAdminPermission(actor, "users.roles.manage")) return json({ error: "permission_denied" }, 403, origin, env);
