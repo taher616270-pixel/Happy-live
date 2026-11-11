@@ -281,7 +281,7 @@ test("D1-backed award logic resets continuous time, caps contributions across ro
       await implementation.reset(db, "room-1", "user-1", at(1_100_000));
       await implementation.award(db, "room-1", "user-1", at(1_400_000));
       assert.equal(db.get("SELECT points FROM room_exp_daily WHERE user_id = 'user-1'").points, 3_000_000, implementation.name);
-      assert.equal(db.get("SELECT COUNT(*) AS count FROM room_exp_awards").count, 3, implementation.name);
+      assert.equal(db.get("SELECT COUNT(*) AS count FROM room_exp_awards").count, 2, implementation.name);
 
       // Two simultaneous heartbeat sources may race, but only one can claim the interval.
       db.exec("INSERT INTO users (id) VALUES ('user-2')");
