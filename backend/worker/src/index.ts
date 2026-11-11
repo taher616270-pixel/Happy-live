@@ -1856,8 +1856,11 @@ export default {
                 seats: failedSeats
               }, moveResponse.status, origin, env);
             }
-            // Start a fresh continuous-mic interval after an explicit seat change.
-            await resetRoomSeatExperienceTimer(env.DB, roomId, user.id, now);
+            // Reset only when the server confirms an actual seat change.
+            // Re-selecting the same seat must not erase accumulated mic time.
+            if (moveData.from !== moveData.mySeat) {
+              await resetRoomSeatExperienceTimer(env.DB, roomId, user.id, now);
+            }
           }
         }
 
