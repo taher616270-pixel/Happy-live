@@ -504,6 +504,7 @@ export default {
           ).bind(q, q, q, q, limit).all();
           return json({ ok: true, users: result.results ?? [] }, 200, origin, env);
         }
+        // Wallet read API is required by the admin wallet screen; keep it in the production route table.
         // Keep the admin wallet endpoint in the deployed Worker route table.
         if (url.pathname === "/api/v1/admin/wallets" && request.method === "GET") {
           if (actor.role !== "owner" && actor.role !== "admin") return json({ error: "permission_denied" }, 403, origin, env);
