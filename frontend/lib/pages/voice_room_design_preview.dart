@@ -297,12 +297,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     // خبرة الغرفة مستقلة تمامًا عن مستوى الترقية المدفوع (الأساسي/المخيم/الشقة...).
     // قيمة الخبرة والمستوى تأتي من D1 عبر استجابة الغرفة، ولا نعرض أرقامًا افتراضية مضللة.
     final exp = _roomInfoInt(['experienceExp', 'experience_exp'], 0);
-    final level = _roomInfoInt(['experienceLevel', 'experience_level'], 1).clamp(1, 2147483647);
+    final level = _roomInfoInt(['experienceLevel', 'experience_level'], 1).clamp(1, 2147483647).toInt();
     final nextExp = _roomInfoInt(
       ['experienceNextLevelExp', 'experience_next_level_exp'],
       roomLevelRequiredExpForLevel(level + 1),
-    ).clamp(1, 2147483647);
-    final dailyExp = _roomInfoInt(['dailyExperienceExp', 'daily_experience_exp'], 0).clamp(0, 3000000);
+    ).clamp(1, 2147483647).toInt();
+    final dailyExp = _roomInfoInt(['dailyExperienceExp', 'daily_experience_exp'], 0).clamp(0, 3000000).toInt();
     return RoomLevelData(
       level: level,
       ownerName: (resolvedOwnerName ?? '').trim().isNotEmpty
