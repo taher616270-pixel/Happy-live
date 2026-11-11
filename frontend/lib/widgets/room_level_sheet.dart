@@ -73,9 +73,10 @@ const kSamplePerks = <LevelPerksGroup>[
 
 /// شارة المستوى في الغرفة؛ تحافظ على شكل الشارة الحالية وتفتح نافذة المستوى.
 class RoomLevelChip extends StatelessWidget {
-  const RoomLevelChip({super.key, required this.data, this.onTap});
+  const RoomLevelChip({super.key, required this.data, this.onTap, this.levelFuture});
   final RoomLevelData data;
   final VoidCallback? onTap;
+  final Future<int>? levelFuture;
   @override
   Widget build(BuildContext context) => GestureDetector(
     behavior: HitTestBehavior.opaque,
@@ -89,7 +90,13 @@ class RoomLevelChip extends StatelessWidget {
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(.15), blurRadius: 6, offset: const Offset(0, 2))],
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text('Lv. ${data.level}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: .2)),
+        if (levelFuture == null)
+          Text('Lv. ${data.level}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: .2))
+        else
+          FutureBuilder<int>(
+            future: levelFuture,
+            builder: (context, snapshot) => Text('Lv. ${snapshot.data ?? data.level}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: .2)),
+          ),
         const SizedBox(width: 5),
         Container(width: 12, height: 12, decoration: BoxDecoration(
           shape: BoxShape.circle,
