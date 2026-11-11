@@ -166,6 +166,7 @@ async function render(){
 }
 
 async function walletsPage(q="",selectedUserId=""){
+  if(admin.role!=="owner"&&admin.role!=="admin"){$("content").innerHTML='<div class="section"><p class="notice">عرض المحافظ وإدارتها متاح للمالك ومدير التطبيق فقط.</p></div>';return}
   const query="/admin/wallets?q="+encodeURIComponent(q)+"&limit=100"+(selectedUserId?"&userId="+encodeURIComponent(selectedUserId):"");
   const data=await api(query),summary=data.summary||{},rows=data.wallets||[],selected=data.selectedWallet;
   const canCredit=admin.role==="owner";
