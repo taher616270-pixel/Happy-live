@@ -616,7 +616,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Transform.translate(
-                                    offset: const Offset(-1, 0),
+                                    offset: const Offset(-2, 1),
                                     child: GestureDetector(
                                       behavior: HitTestBehavior.opaque,
                                       onTap: () => _openRoomInfo(context),
@@ -641,7 +641,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                       child: Transform.translate(
                                         offset: const Offset(1, 0),
                                         child: Text(
-                                          'ID: $_id',
+                                          'ID:$_id',
                                           style: const TextStyle(color: Colors.white60, fontSize: 11),
                                         ),
                                       ),
