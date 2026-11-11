@@ -1311,14 +1311,14 @@ Widget _roomActionButton({
                             customBorder: const CircleBorder(),
                             onTap: () => _showUserProfile(context, user),
                             child: CircleAvatar(
-                              radius: 15,
+                              radius: 11,
                               backgroundColor: Colors.white24,
                               backgroundImage: avatar.startsWith('http')
                                   ? NetworkImage(avatar)
                                   : null,
                               child: !avatar.startsWith('http')
                                   ? const Icon(Icons.person,
-                                      color: Colors.white70, size: 18)
+                                      color: Colors.white70, size: 14)
                                   : null,
                             ),
                           ),
