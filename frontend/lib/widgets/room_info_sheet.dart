@@ -7,10 +7,18 @@ import '../pages/edit_profile_page.dart';
 import 'package:country_picker/country_picker.dart';
 
 class RoomMember {
-  const RoomMember({required this.avatarUrl, required this.role, this.isOwner = false});
+  const RoomMember({
+    required this.avatarUrl,
+    required this.role,
+    this.isOwner = false,
+    this.name = '',
+    this.id = '',
+  });
   final String avatarUrl;
   final String role;
   final bool isOwner;
+  final String name;
+  final String id;
 }
 
 class RoomInfo {
@@ -164,7 +172,7 @@ class _RoomInfoSheet extends StatelessWidget {
                       offset: const Offset(2, -1),
                       child: const Text('أعضاء', style: TextStyle(color: _RoomInfoColors.text, fontSize: 14, fontWeight: FontWeight.w700)),
                     ),
-                    GestureDetector(onTap: onMembersTap, child: Row(children: [
+                    GestureDetector(onTap: () { onMembersTap?.call(); _showRoomMembersSheet(context); }, child: Row(children: [
                       Text('${info.membersCount}/${info.membersMax}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 14)),
                       const Icon(Icons.chevron_right, color: _RoomInfoColors.muted),
                     ])),
@@ -259,6 +267,228 @@ class _RoomInfoSheet extends StatelessWidget {
           ]),
         ),
       ),
+    );
+  }
+
+  void _showRoomMembersSheet(BuildContext context) {
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'إغلاق قائمة الأعضاء',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 260),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        final searchController = TextEditingController();
+        final searchFocus = FocusNode();
+        var searching = false;
+        var query = '';
+        return StatefulBuilder(
+          builder: (panelContext, setPanelState) {
+            final normalizedQuery = query.trim().toLowerCase();
+            final filteredMembers = info.members.where((member) {
+              if (normalizedQuery.isEmpty) return true;
+              return member.name.toLowerCase().contains(normalizedQuery) ||
+                  member.id.toLowerCase().contains(normalizedQuery);
+            }).toList();
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Material(
+                  color: _RoomInfoColors.bg,
+                  child: SizedBox(
+                    width: MediaQuery.sizeOf(panelContext).width * .84,
+                    height: double.infinity,
+                    child: SafeArea(
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: 58,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                const Text(
+                                  'أعضاء',
+                                  style: TextStyle(
+                                    color: _RoomInfoColors.text,
+                                    fontSize: 19,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 12,
+                                  child: IconButton(
+                                    onPressed: () => Navigator.of(dialogContext).pop(),
+                                    icon: const Icon(
+                                      Icons.arrow_forward_rounded,
+                                      color: _RoomInfoColors.text,
+                                      size: 24,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    height: 46,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: TextField(
+                                      controller: searchController,
+                                      focusNode: searchFocus,
+                                      textDirection: TextDirection.rtl,
+                                      style: const TextStyle(
+                                        color: Color(0xFF202020),
+                                        fontSize: 14,
+                                      ),
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        hintText: 'ابحث عن اسم مستخدم أو المعرّف',
+                                        hintStyle: TextStyle(
+                                          color: Color(0xFF8A8A8A),
+                                          fontSize: 13,
+                                        ),
+                                        prefixIcon: Icon(
+                                          Icons.search_rounded,
+                                          color: Color(0xFF777777),
+                                        ),
+                                        contentPadding: EdgeInsets.symmetric(vertical: 13),
+                                      ),
+                                      onTap: () => setPanelState(() => searching = true),
+                                      onChanged: (value) => setPanelState(() {
+                                        searching = true;
+                                        query = value;
+                                      }),
+                                    ),
+                                  ),
+                                ),
+                                if (searching) ...[
+                                  const SizedBox(width: 9),
+                                  TextButton(
+                                    onPressed: () {
+                                      searchController.clear();
+                                      searchFocus.unfocus();
+                                      setPanelState(() {
+                                        query = '';
+                                        searching = false;
+                                      });
+                                    },
+                                    child: const Text(
+                                      'إلغاء',
+                                      style: TextStyle(
+                                        color: _RoomInfoColors.text,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: filteredMembers.isEmpty
+                                ? const Center(
+                                    child: Text(
+                                      'لا توجد نتائج',
+                                      style: TextStyle(color: _RoomInfoColors.muted),
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                                    itemCount: filteredMembers.length,
+                                    separatorBuilder: (_, __) => const Divider(
+                                      color: Color(0x332B3047),
+                                      height: 1,
+                                    ),
+                                    itemBuilder: (_, index) {
+                                      final member = filteredMembers[index];
+                                      final avatar = member.avatarUrl.trim();
+                                      final displayName = member.name.trim().isEmpty
+                                          ? 'مستخدم'
+                                          : member.name.trim();
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 9),
+                                        child: Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 22,
+                                              backgroundColor: _RoomInfoColors.chip,
+                                              backgroundImage: avatar.startsWith('http')
+                                                  ? NetworkImage(avatar)
+                                                  : null,
+                                              child: avatar.startsWith('http')
+                                                  ? null
+                                                  : const Icon(Icons.person, color: _RoomInfoColors.muted),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    displayName,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      color: _RoomInfoColors.text,
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  if (member.id.trim().isNotEmpty)
+                                                    Text(
+                                                      'ID: ${member.id}',
+                                                      style: const TextStyle(
+                                                        color: _RoomInfoColors.muted,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                            Text(
+                                              member.role,
+                                              style: TextStyle(
+                                                color: member.isOwner
+                                                    ? const Color(0xFFFF4F81)
+                                                    : const Color(0xFFFF9800),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(-1, 0),
+            end: Offset.zero,
+          ).animate(curved),
+          child: child,
+        );
+      },
     );
   }
 
