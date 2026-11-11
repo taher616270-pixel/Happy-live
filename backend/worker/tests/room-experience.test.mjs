@@ -11,7 +11,7 @@ const roomPreview = await readFile(new URL("../../../frontend/lib/pages/voice_ro
 const progressSource = worker.match(/function roomExperienceProgress\(totalExperience: number\) \{[\s\S]*?\n\}/)?.[0];
 assert.ok(progressSource, "room experience progression function must exist");
 const roomExperienceProgress = new Function(
-  `${progressSource.replace("(totalExperience: number)", "(totalExperience)")}; return roomExperienceProgress;`
+  `const ROOM_EXP_PER_LEVEL_GROUP = 3_300_000; ${progressSource.replace("(totalExperience: number)", "(totalExperience)")}; return roomExperienceProgress;`
 )();
 
 test("room experience follows the approved five-level bands", () => {
