@@ -38,6 +38,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.onRoomActions,
     this.onMinimizeRoom,
     this.onCloseRoom,
+    this.onUpgradeRoom,
     required this.chatController,
     required this.chatFocusNode,
     required this.onSendChat,
@@ -64,6 +65,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final VoidCallback? onRoomActions;
   final VoidCallback? onMinimizeRoom;
   final VoidCallback? onCloseRoom;
+  final Future<void> Function(String roomId, int level)? onUpgradeRoom;
   final TextEditingController chatController;
   final FocusNode chatFocusNode;
   final Future<void> Function() onSendChat;
@@ -430,45 +432,23 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     : null,
                 currentLevel: (info.level - 1).clamp(0, 4).toInt(),
                 onUpgrade: (levelIndex) async {
+                  final upgrade = onUpgradeRoom;
+                  if (upgrade == null) {
+                    throw Exception('خدمة ترقية الغرفة غير متاحة');
+                  }
                   try {
-                    final response = await http.post(
-                      Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/rooms/${Uri.encodeComponent(roomId)}/upgrade'),
-                      headers: {
-                        'Authorization': 'Bearer $accessToken',
-                        'Content-Type': 'application/json',
-                      },
-                      body: jsonEncode({'level': levelIndex + 1}),
-                    ).timeout(const Duration(seconds: 15));
-                    final data = jsonDecode(response.body);
-                    if (response.statusCode == 200 && data is Map && data['ok'] == true) {
-                      room['level'] = data['level'] ?? levelIndex + 1;
-                      if (!context.mounted) return;
-                      Navigator.of(context).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('تمت ترقية الغرفة إلى ${kLevels[levelIndex].name}')),
-                      );
-                    } else {
-                      final error = data is Map ? (data['error'] ?? '').toString() : '';
-                      final serverMessage = data is Map ? (data['message'] ?? '').toString() : '';
-                      final message = serverMessage.isNotEmpty
-                          ? serverMessage
-                          : error == 'insufficient_funds'
-                              ? 'رصيد العملات غير كافٍ'
-                              : error == 'level_price_unavailable'
-                                  ? 'سعر هذا المستوى لم يُحدد بعد'
-                                  : error == 'room_level_not_higher'
-                                      ? 'الغرفة وصلت إلى هذا المستوى أو أعلى'
-                                      : 'تعذر تنفيذ الترقية، حاول مرة أخرى';
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(message)),
-                        );
-                      }
-                    }
-                  } catch (_) {
+                    await upgrade(roomId, levelIndex + 1);
+                    room['level'] = levelIndex + 1;
+                    if (!context.mounted) return;
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('تمت ترقية الغرفة إلى ${kLevels[levelIndex].name}')),
+                    );
+                  } catch (error) {
                     if (context.mounted) {
+                      final message = error.toString().replaceFirst('Exception: ', '');
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('تعذر الاتصال بالخادم، لم تتم الترقية')),
+                        SnackBar(content: Text(message)),
                       );
                     }
                   }
