@@ -294,10 +294,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         : (ownerValue(['avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url', 'imageUrl', 'image_url']).isNotEmpty
             ? ownerValue(['avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url', 'imageUrl', 'image_url'])
             : ownerAvatarUrl);
-    final exp = _roomInfoInt(['roomExp', 'room_exp', 'exp', 'experience'], 1800000);
-    final nextExp = _roomInfoInt(['nextLevelExp', 'next_level_exp', 'levelNextExp'], 3300000);
     return RoomLevelData(
-      level: _roomInfoInt(['level', 'roomLevel', 'room_level'], 1),
+      // Never read the paid room_levels value here; progression is fetched from
+      // the independent /progression endpoint when the sheet is opened.
+      level: 1,
       ownerName: (resolvedOwnerName ?? '').trim().isNotEmpty
           ? resolvedOwnerName!.trim()
           : (ownerValue(['name', 'displayName', 'display_name', 'username']).isNotEmpty
@@ -309,14 +309,15 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ? ownerValue(['userCode', 'user_code', 'gabo_id', 'publicId', 'public_id'])
               : _roomInfoString(['ownerCode', 'owner_code', 'ownerUserCode', 'owner_user_code'])),
       ownerAvatar: avatarUrl.startsWith('http') ? NetworkImage(avatarUrl) : null,
-      exp: exp,
-      nextLevelExp: nextExp,
-      dailyExpCurrent: _roomInfoString(['dailyExpCurrent', 'daily_exp_current'], '0'),
-      dailyExpMax: _roomInfoString(['dailyExpMax', 'daily_exp_max'], '9.9m'),
-      dailyRatio: double.tryParse(_roomInfoString(['dailyRatio', 'daily_ratio'], '0')) ?? 0,
-      dailyResetIn: const Duration(hours: 2, minutes: 48),
-      tasks: kSampleTasks,
-      perkGroups: kSamplePerks,
+      exp: 0,
+      nextLevelExp: 0,
+      dailyExpCurrent: '0',
+      dailyExpMax: '0',
+      dailyRatio: 0,
+      dailyResetIn: null,
+      tasks: const [],
+      perkGroups: const [],
+      note: 'بيانات المستوى مستقلة عن ترقية الغرفة في مربع فعّال.',
     );
   }
 
