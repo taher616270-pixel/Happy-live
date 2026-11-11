@@ -4,6 +4,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS gift_catalog (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 80),
+  icon_emoji TEXT NOT NULL DEFAULT '🎁',
   asset_key TEXT NOT NULL DEFAULT '',
   coin_price INTEGER NOT NULL CHECK (coin_price > 0),
   is_active INTEGER NOT NULL DEFAULT 0 CHECK (is_active IN (0, 1)),
@@ -154,3 +155,11 @@ CREATE TABLE IF NOT EXISTS gift_withdrawal_settings (
 INSERT OR IGNORE INTO gift_withdrawal_settings
   (id, enabled, agency_integration_ready, minimum_coins, updated_at)
 VALUES ('current', 0, 0, 0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+
+
+-- Initial premium catalogue. Emoji artwork is self-contained; no missing image paths.
+INSERT OR IGNORE INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at)
+VALUES
+('gift-diamond-rose', 'وردة الألماس', '💎', '', 999, 1, 10, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+('gift-golden-palace', 'قصر الذهب', '🏰', '', 4999, 1, 20, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+('gift-royal-yacht', 'يخت الملوك', '🛥️', '', 9999, 1, 30, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
