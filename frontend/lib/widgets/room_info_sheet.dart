@@ -88,12 +88,13 @@ class _RoomInfoSheet extends StatelessWidget {
   int get _membersLimitForLevel {
     for (final perk in kLevels[_selectedLevelIndex].perks) {
       if (perk.title.trim() == 'أعضاء الغرفة') {
-        final match = RegExp(r'\\d+').firstMatch(perk.desc);
+        final match = RegExp(r'\d+').firstMatch(perk.desc);
         return match == null ? info.membersMax : int.parse(match.group(0)!);
       }
     }
     return info.membersMax;
   }
+
   @override
   Widget build(BuildContext context) {
     final selectedLevel = kLevels[_selectedLevelIndex];
