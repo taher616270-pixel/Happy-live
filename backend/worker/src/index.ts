@@ -1275,6 +1275,7 @@ export default {
         const headers = new Headers({
           "Upgrade": "websocket",
           "Sec-WebSocket-Protocol": "happy-live-seats",
+          "x-room-id": roomId,
           "x-user-id": user.id,
           "x-user-name": user.display_name?.trim() || "مستخدم",
           "x-user-code": user.gabo_id ?? "",
