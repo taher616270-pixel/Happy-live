@@ -188,7 +188,7 @@ class _RoomInfoSheet extends StatelessWidget {
                   const SizedBox(height: 16),
                 ],
                 Transform.translate(
-                  offset: const Offset(0, -5),
+                  offset: const Offset(0, -1),
                   child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     Transform.translate(
                       offset: const Offset(2, -1),
@@ -202,7 +202,7 @@ class _RoomInfoSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Transform.translate(
-                  offset: const Offset(-8, -6),
+                  offset: const Offset(-8, -2),
                   child: SizedBox(height: 60, child: ListView.separated(
                   scrollDirection: Axis.horizontal, itemCount: info.members.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
