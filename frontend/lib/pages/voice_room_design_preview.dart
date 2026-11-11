@@ -94,19 +94,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF0E1A3A),
-                  Color(0xFF1B1840),
-                  Color(0xFF4A2346),
-                  Color(0xFF7A3A4A),
-                ],
-                stops: [0, .35, .75, 1],
-              ),
+          Positioned.fill(
+            child: Image.asset(
+              '$p',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
             ),
           ),
           SafeArea(
