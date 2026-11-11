@@ -2,7 +2,22 @@ name = "happy-live-api"
 main = "src/index.ts"
 compatibility_date = "2026-11-03"
 workers_dev = true
-previews = {}
+[previews.vars]
+APP_ENV = "preview"
+
+[[previews.d1_databases]]
+binding = "DB"
+database_name = "happy-live-room-exp-preview-db"
+database_id = "7ade3803-97bf-4f6d-9200-48b3dfb0573c"
+migrations_dir = "migrations"
+
+[[previews.durable_objects.bindings]]
+name = "ROOM_CHAT"
+class_name = "RoomChatHub"
+
+[[previews.durable_objects.bindings]]
+name = "ROOM_SEATS"
+class_name = "RoomSeatsHub"
 
 [vars]
 APP_ENV = "production"
