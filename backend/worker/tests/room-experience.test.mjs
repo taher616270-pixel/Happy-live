@@ -67,6 +67,21 @@ test("microphone heartbeat is sent periodically and experience is only credited 
   assert.match(seatHub, /restore the old timestamp so the user's earned mic time is not lost/);
 });
 
+test("clearing microphones, moderation removal, and expired seats reset continuous XP time", () => {
+  const clearBlock = seatHub.match(/if \(url\.pathname === "\/clear"[\s\S]*?return Response\.json\(\{ ok: true, \.\.\.this\.publicSnapshot\(\) \}\);/)?.[0];
+  assert.ok(clearBlock, "clear endpoint must exist");
+  assert.match(clearBlock, /removedMembers = Object\.values\(this\.snapshot\.seats\)/);
+  assert.match(clearBlock, /resetRoomSeatExperienceTimer\(this\.env\.DB, this\.roomId, member\.userId/);
+
+  const removeBlock = seatHub.match(/if \(url\.pathname === "\/remove-user"[\s\S]*?return Response\.json\(\{ ok: true, \.\.\.this\.publicSnapshot\(\) \}\);/)?.[0];
+  assert.ok(removeBlock, "remove-user endpoint must exist");
+  assert.match(removeBlock, /resetRoomSeatExperienceTimer\(this\.env\.DB, this\.roomId, targetUserId/);
+
+  const expireBlock = seatHub.match(/private async expireSeats\(shouldBroadcast: boolean\)[\s\S]*?private async scheduleExpiry/)?.[0];
+  assert.ok(expireBlock, "seat expiry handler must exist");
+  assert.match(expireBlock, /resetRoomSeatExperienceTimer\(this\.env\.DB, this\.roomId, member\.userId/);
+});
+
 test("only continuous microphone occupancy awards room experience", () => {
   assert.match(seatHub, /message\.type === "seat_heartbeat"/);
   assert.match(seatHub, /awardRoomSeatExperience\(this\.env\.DB, this\.roomId, identity\.userId/);
