@@ -1860,6 +1860,8 @@ export default {
                 seats: failedSeats
               }, moveResponse.status, origin, env);
             }
+            // Start a fresh continuous-mic interval after an explicit seat change.
+            await resetRoomSeatExperienceTimer(env.DB, roomId, user.id, now);
           }
         }
 
