@@ -225,6 +225,11 @@ class _RoomInfoSheet extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(color: _RoomInfoColors.tribeBg, borderRadius: BorderRadius.circular(10)),
                     child: Row(children: [
+                      Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(info.tribeName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.tribeTitle, fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(info.tribeOwner, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.tribeSub, fontSize: 12)),
+                      ])),
+                      const SizedBox(width: 8),
                       Container(
                         width: 34,
                         height: 34,
@@ -234,11 +239,6 @@ class _RoomInfoSheet extends StatelessWidget {
                         ),
                         child: _networkImage(info.tribeLogoUrl, 34, 34),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(info.tribeName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.tribeTitle, fontSize: 16, fontWeight: FontWeight.bold)),
-                        Text(info.tribeOwner, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.tribeSub, fontSize: 12)),
-                      ])),
                     ]),
                   )),
                   const SizedBox(width: 7),
