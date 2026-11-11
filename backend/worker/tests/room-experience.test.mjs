@@ -27,8 +27,8 @@ function extractTypedAsyncFunction(source, name) {
     .replaceAll("roomId: string", "roomId")
     .replaceAll("userId: string", "userId")
     .replaceAll("now: string", "now")
-    .replace(/\\): Promise<void> \\{/, ") {")
-    .replace(/\\.first<\\{[^}]+\\}>\\(\\)/g, ".first()");
+    .replace("): Promise<void> {", ") {")
+    .replaceAll(".first<{ last_awarded_at: string }>()", ".first()");
   return new Function(
     "ROOM_EXP_DAILY_USER_CAP",
     "crypto",
