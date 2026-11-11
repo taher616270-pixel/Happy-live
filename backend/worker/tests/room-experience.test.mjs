@@ -62,6 +62,7 @@ test("microphone heartbeat is sent periodically and experience is only credited 
   assert.match(seatHub, /if \(member\) \{[\s\S]*?awardRoomSeatExperience\(this\.env\.DB, this\.roomId, identity\.userId/);
   assert.match(worker, /if \(isOnMic\) \{[\s\S]*?awardRoomSeatExperience\(env\.DB, roomId, user\.id, now\)/);
   assert.match(worker, /Only continuous microphone time counts; audience time resets the 5-minute clock/);
+  assert.match(worker, /if \(moveData\.from !== moveData\.mySeat\) \{[\s\S]*?resetRoomSeatExperienceTimer/);
 });
 
 test("only continuous microphone occupancy awards room experience", () => {
