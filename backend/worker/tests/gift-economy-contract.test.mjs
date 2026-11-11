@@ -67,3 +67,24 @@ test("gift catalogue has owner-only management and public active listing", () =>
   assert.match(adminPage, /giftCreateForm/);
   assert.match(adminPage, /data-gift-edit/);
 });
+
+test("room gift sending is authenticated, presence-checked, idempotent, and server-awards XP", () => {
+  assert.match(worker, /\/api\/v1\/rooms\/\(\[0-9a-f-\]\{36\}\)\/gifts\/send/);
+  assert.match(worker, /authenticatedUser\(request, env\.DB\)/);
+  assert.match(worker, /last_seen_at >= \?/);
+  assert.match(worker, /UNIQUE\(sender_user_id, idempotency_key\)/);
+  assert.match(worker, /sender_balance_before/);
+  assert.match(worker, /room_exp_gift_awards/);
+  assert.match(worker, /gift_wallet_ledger/);
+});
+
+test("private gifts remain disabled until private conversations are implemented", () => {
+  assert.match(migration, /context_type TEXT NOT NULL DEFAULT 'room' CHECK \(context_type = 'room'\)/);
+  assert.doesNotMatch(worker, /\/api\/v1\/private\/.*gifts/);
+});
+
+test("wallet reports tagged earnings and room-upgrade spending consumes tagged lots FIFO", () => {
+  assert.match(worker, /futureWithdrawableCoins/);
+  assert.match(worker, /remaining_withdrawable_coins = MAX\(0, remaining_withdrawable_coins/);
+  assert.match(worker, /ORDER BY created_at, id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING/);
+});
