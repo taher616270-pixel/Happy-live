@@ -78,25 +78,19 @@ async function awardRoomSeatExperience(
   await db.prepare(
     "INSERT OR IGNORE INTO room_exp_daily (user_id, day_key, points) VALUES (?, ?, 0)"
   ).bind(userId, dayKey).run();
-  const daily = await db.prepare(
-    "SELECT points FROM room_exp_daily WHERE user_id = ? AND day_key = ? LIMIT 1"
-  ).bind(userId, dayKey).first<{ points: number }>();
-  const currentDaily = Math.max(0, Number(daily?.points ?? 0));
-  const award = Math.min(600, Math.max(0, ROOM_EXP_DAILY_USER_CAP - currentDaily));
-  if (award <= 0) return;
 
-  const nextDaily = currentDaily + award;
-  const results = await db.batch([
+  const awardId = crypto.randomUUID();
+  await db.batch([
     db.prepare(
-      "UPDATE room_exp_daily SET points = points + ? WHERE user_id = ? AND day_key = ? AND points = ?"
-    ).bind(award, userId, dayKey, currentDaily),
+      "INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) SELECT ?, ?, ?, ?, MIN(600, ? - points), ? FROM room_exp_daily WHERE user_id = ? AND day_key = ? AND points < ?"
+    ).bind(awardId, roomId, userId, dayKey, ROOM_EXP_DAILY_USER_CAP, now, userId, dayKey, ROOM_EXP_DAILY_USER_CAP),
     db.prepare(
-      "INSERT INTO room_experience (room_id, total_exp, updated_at) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM room_exp_daily WHERE user_id = ? AND day_key = ? AND points = ?) ON CONFLICT(room_id) DO UPDATE SET total_exp = room_experience.total_exp + excluded.total_exp, updated_at = excluded.updated_at"
-    ).bind(roomId, award, now, userId, dayKey, nextDaily)
+      "UPDATE room_exp_daily SET points = points + COALESCE((SELECT points FROM room_exp_awards WHERE id = ?), 0) WHERE user_id = ? AND day_key = ?"
+    ).bind(awardId, userId, dayKey),
+    db.prepare(
+      "INSERT INTO room_experience (room_id, total_exp, updated_at) SELECT ?, points, ? FROM room_exp_awards WHERE id = ? ON CONFLICT(room_id) DO UPDATE SET total_exp = room_experience.total_exp + excluded.total_exp, updated_at = excluded.updated_at"
+    ).bind(roomId, now, awardId)
   ]);
-  if ((results[0]?.meta?.changes ?? 0) !== 1) {
-    console.warn("[rooms.experience] daily cap compare-and-set did not apply", { roomId, userId });
-  }
 }
 
 
