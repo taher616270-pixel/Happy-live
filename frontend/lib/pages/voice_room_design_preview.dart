@@ -2542,7 +2542,7 @@ class HappyLevelBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 24,
+      height: 20,
       padding: const EdgeInsets.only(left: 4, right: 9),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(100),
