@@ -51,6 +51,9 @@ async function resetRoomSeatExperienceTimer(
 async function awardRoomSeatExperience(
   db: D1Database, roomId: string, userId: string, now: string
 ): Promise<void> {
+  await db.prepare(
+    "INSERT OR IGNORE INTO room_exp_activity (room_id, user_id, last_awarded_at) VALUES (?, ?, ?)"
+  ).bind(roomId, userId, now).run();
   const previous = await db.prepare(
     "SELECT last_awarded_at FROM room_exp_activity WHERE room_id = ? AND user_id = ? LIMIT 1"
   ).bind(roomId, userId).first<{ last_awarded_at: string }>();
