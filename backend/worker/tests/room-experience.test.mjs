@@ -43,7 +43,7 @@ test("experience progression continues beyond level 120 with the next band's cos
 });
 
 test("Flutter level sheet uses the same target-level cost bands as the Worker", () => {
-  const helperSource = roomLevelSheet.match(/int roomLevelRequiredExpForLevel\(int targetLevel\) \{[\\s\\S]*?\\n\}/)?.[0];
+  const helperSource = roomLevelSheet.match(/int roomLevelRequiredExpForLevel\(int targetLevel\) \{[\s\S]*?\n\}/)?.[0];
   assert.ok(helperSource, "Flutter room level cost helper must exist");
   const requiredExp = new Function(
     `${helperSource.replace("(int targetLevel)", "(targetLevel)")}; return roomLevelRequiredExpForLevel;`
@@ -59,8 +59,8 @@ test("Flutter level sheet uses the same target-level cost bands as the Worker", 
 test("microphone heartbeat is sent periodically and experience is only credited by server seat presence", () => {
   assert.match(roomSeatSocket, /Timer\.periodic\(const Duration\(seconds: 15\)/);
   assert.match(seatHub, /const member = Object\.values\(this\.snapshot\.seats\)\.find\(\(seat\) => seat\.userId === identity\.userId\)/);
-  assert.match(seatHub, /if \(member\) \{[\\s\\S]*?awardRoomSeatExperience\(this\.env\.DB, this\.roomId, identity\.userId/);
-  assert.match(worker, /if \(isOnMic\) \{[\\s\\S]*?awardRoomSeatExperience\(env\.DB, roomId, user\.id, now\)/);
+  assert.match(seatHub, /if \(member\) \{[\s\S]*?awardRoomSeatExperience\(this\.env\.DB, this\.roomId, identity\.userId/);
+  assert.match(worker, /if \(isOnMic\) \{[\s\S]*?awardRoomSeatExperience\(env\.DB, roomId, user\.id, now\)/);
   assert.match(worker, /Only continuous microphone time counts; audience time resets the 5-minute clock/);
 });
 
