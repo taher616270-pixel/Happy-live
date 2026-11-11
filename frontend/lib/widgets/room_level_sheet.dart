@@ -10,6 +10,14 @@ const _greenDeep = Color(0xFF1E6B3C);
 const _muted = Color(0xFF8A8794);
 const _track = Color(0xFF3A3842);
 
+/// الخبرة المطلوبة للوصول إلى المستوى المحدد.
+/// كل خمسة مستويات تزيد الخبرة المطلوبة بمقدار 3.3 مليون، بلا حد أقصى.
+int roomLevelRequiredExpForLevel(int targetLevel) {
+  final safeLevel = targetLevel < 1 ? 1 : targetLevel;
+  final group = ((safeLevel - 1) ~/ 5) + 1;
+  return group * 3300000;
+}
+
 class ExpTask {
   const ExpTask({required this.title, required this.desc, required this.current, required this.max, required this.icon, this.ratio = 0});
   final String title, desc, current, max;
@@ -69,6 +77,38 @@ const kSamplePerks = <LevelPerksGroup>[
   LevelPerksGroup(15, [LevelPerk('قادرة على فتح مزاد العلاقة في غرفتك', Icons.gavel, iconColor: Color(0xFFFFB84D))]),
   LevelPerksGroup(30, [LevelPerk('خلفية غرفة متحركة حصرية', Icons.wallpaper, iconColor: Color(0xFF7A6CFF))]),
   LevelPerksGroup(40, [LevelPerk('شارة أرجوانية مميزة', Icons.workspace_premium, iconColor: Color(0xFF8E7CFF))]),
+  LevelPerksGroup(50, [
+    LevelPerk('خلفية غرفة متحركة حصرية', Icons.wallpaper, iconColor: Color(0xFF9B6CFF)),
+    LevelPerk('غرفة متعددة الميكروفونات', Icons.apps, subtitle: 'تفعيل وضع خانات ميكروفون إضافية', iconColor: Color(0xFF9B6CFF)),
+    LevelPerk('الدردشة بالفيديو', Icons.videocam, subtitle: 'فتح الكاميرا للمستخدم على المايك', iconColor: Color(0xFF8A2B4A)),
+  ]),
+  LevelPerksGroup(70, [
+    LevelPerk('شارة ذهبية ملحمية', Icons.workspace_premium, iconColor: Color(0xFFD9A62B)),
+    LevelPerk('خلفية غرفة متحركة حصرية', Icons.wallpaper, iconColor: Color(0xFF3DBE6B)),
+  ]),
+  LevelPerksGroup(90, [
+    LevelPerk('شارة حمراء أسطورية', Icons.hexagon, iconColor: Color(0xFFD63FA8)),
+  ]),
+  LevelPerksGroup(100, [
+    LevelPerk('خلفية غرفة شرفية مخصصة', Icons.edit, iconColor: Color(0xFFE01F5A)),
+  ]),
+  LevelPerksGroup(105, [
+    LevelPerk('خلفية غرفة شرفية مخصصة', Icons.edit, iconColor: Color(0xFFE01F5A)),
+    LevelPerk('شارة ذهبية سوداء شرفية', Icons.local_florist, iconColor: Color(0xFFC72A55)),
+    LevelPerk('سمة غرفة مخصصة', Icons.apps, iconColor: Color(0xFFE5701A)),
+  ]),
+  LevelPerksGroup(110, [
+    LevelPerk('خلفية غرفة متحركة حصرية', Icons.wallpaper, iconColor: Color(0xFFB9A66A)),
+  ]),
+  LevelPerksGroup(115, [
+    LevelPerk('الشعار الحصري للمنصة', Icons.notifications_active, iconColor: Color(0xFFD9A62B)),
+    LevelPerk('سمة غرفة مخصصة', Icons.apps, iconColor: Color(0xFFE5701A)),
+  ]),
+  LevelPerksGroup(120, [
+    LevelPerk('استبدال شارة الماس المتقدمة', Icons.auto_awesome, subtitle: 'يُفتح عند المستوى 120', iconColor: Color(0xFFC8661E)),
+    LevelPerk('تخصيص خاص', Icons.edit, subtitle: 'دعم عملاء مخصص', iconColor: Color(0xFFE01F5A)),
+    LevelPerk('شاشة تشغيل مخصصة', Icons.slideshow, subtitle: 'يُفتح عند المستوى 120', iconColor: Color(0xFFD9A62B)),
+  ]),
 ];
 
 /// شارة المستوى في الغرفة؛ تحافظ على شكل الشارة الحالية وتفتح نافذة المستوى.

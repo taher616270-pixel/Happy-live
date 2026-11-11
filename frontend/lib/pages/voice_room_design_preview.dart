@@ -295,9 +295,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             ? ownerValue(['avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url', 'imageUrl', 'image_url'])
             : ownerAvatarUrl);
     final exp = _roomInfoInt(['roomExp', 'room_exp', 'exp', 'experience'], 1800000);
-    final nextExp = _roomInfoInt(['nextLevelExp', 'next_level_exp', 'levelNextExp'], 3300000);
+    final level = _roomInfoInt(['level', 'roomLevel', 'room_level'], 1);
+    // الخبرة داخل المستوى الحالي، والهدف التالي يتحدد من جدول الخمس مستويات.
+    // لا يوجد سقف للمستويات؛ الامتيازات فقط تنتهي عند المستوى 120.
+    final nextExp = roomLevelRequiredExpForLevel(level + 1);
     return RoomLevelData(
-      level: _roomInfoInt(['level', 'roomLevel', 'room_level'], 1),
+      level: level,
       ownerName: (resolvedOwnerName ?? '').trim().isNotEmpty
           ? resolvedOwnerName!.trim()
           : (ownerValue(['name', 'displayName', 'display_name', 'username']).isNotEmpty
