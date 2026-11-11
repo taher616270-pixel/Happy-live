@@ -320,6 +320,66 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     );
   }
 
+  Future<void> _openRoomLevelSheet(
+    BuildContext context, {
+    String? resolvedOwnerName,
+    String? resolvedOwnerId,
+    String? resolvedOwnerAvatarUrl,
+  }) async {
+    final base = _roomLevelData(
+      resolvedOwnerName: resolvedOwnerName,
+      resolvedOwnerId: resolvedOwnerId,
+      resolvedOwnerAvatarUrl: resolvedOwnerAvatarUrl,
+    );
+    var data = RoomLevelData(
+      level: 1,
+      ownerName: base.ownerName,
+      ownerId: base.ownerId,
+      ownerAvatar: base.ownerAvatar,
+      exp: 0,
+      nextLevelExp: 0,
+      dailyExpCurrent: '0',
+      dailyExpMax: '0',
+      dailyRatio: 0,
+      tasks: const [],
+      perkGroups: const [],
+      note: 'يتم تحميل بيانات مستوى الغرفة المستقلة من الخادم.',
+    );
+    final roomId = _id.trim();
+    if (roomId.isNotEmpty && accessToken.trim().isNotEmpty) {
+      try {
+        final response = await http.get(
+          Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/rooms/${Uri.encodeComponent(roomId)}/progression'),
+          headers: {'Authorization': 'Bearer $accessToken'},
+        ).timeout(const Duration(seconds: 10));
+        if (response.statusCode == 200) {
+          final decoded = jsonDecode(response.body);
+          final progression = decoded is Map && decoded['progression'] is Map
+              ? Map<String, dynamic>.from(decoded['progression'] as Map)
+              : <String, dynamic>{};
+          data = RoomLevelData(
+            level: (progression['level'] as num?)?.toInt() ?? 1,
+            ownerName: base.ownerName,
+            ownerId: base.ownerId,
+            ownerAvatar: base.ownerAvatar,
+            exp: (progression['experience'] as num?)?.toInt() ?? 0,
+            nextLevelExp: (progression['nextLevelExp'] as num?)?.toInt() ?? 0,
+            dailyExpCurrent: '0',
+            dailyExpMax: '0',
+            dailyRatio: 0,
+            tasks: const [],
+            perkGroups: const [],
+            note: 'بيانات المستوى مستقلة عن ترقية الغرفة في مربع فعّال.',
+          );
+        }
+      } catch (_) {
+        // Keep a safe, zeroed display rather than showing demo progression values.
+      }
+    }
+    if (!context.mounted) return;
+    await showRoomLevelSheet(context, data);
+  }
+
   Future<void> _openRoomInfo(BuildContext context) async {
     final roomKey = _id.trim().isEmpty ? 'room:${identityHashCode(room)}' : _id.trim();
     if (!_openingRoomInfo.add(roomKey)) return;
@@ -1014,7 +1074,7 @@ Widget _roomActionButton({
         offset: Theme.of(context).platform == TargetPlatform.android
             ? const Offset(0, -10)
             : Offset.zero,
-        child: RoomLevelChip(data: _roomLevelData()),
+        child: RoomLevelChip(\n          data: _roomLevelData(),\n          onTap: () => _openRoomLevelSheet(context),\n        ),
       ),
     ),
     ),
