@@ -64,6 +64,7 @@ class HappyProfilePage extends StatelessWidget {
     this.onWallet,
     this.photoUrl,
     this.bio = '',
+    this.balance = 0,
   });
 
   final String name;
@@ -76,11 +77,13 @@ class HappyProfilePage extends StatelessWidget {
   final VoidCallback? onWallet;
   final String? photoUrl;
   final String bio;
+  final int balance;
 
   @override
   Widget build(BuildContext context) {
     return ProfilePage(
       data: ProfileData(displayName: name, userId: userId, photoUrl: photoUrl),
+      balance: balance,
       onEdit: onEdit,
       onPrestige: () => onSoon('برستيج'),
       onSvip: () => onSoon('SVIP'),
