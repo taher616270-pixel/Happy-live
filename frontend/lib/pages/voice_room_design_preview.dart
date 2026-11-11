@@ -312,6 +312,13 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     }
     // أظهر مالك الغرفة دائماً في صف الأعضاء، حتى لو لم يكن متصلاً أو موجوداً داخل الغرفة.
     final ownerIndex = members.indexWhere((member) => member.isOwner);
+    final resolvedOwnerId = (ownerData['id'] ??
+            ownerData['userId'] ??
+            ownerData['user_id'] ??
+            ownerData['uid'] ??
+            _roomInfoString(['ownerId', 'owner_id', 'ownerUserId', 'owner_user_id']))
+        .toString()
+        .trim();
     final resolvedOwnerName = (ownerData['displayName'] ??
             ownerData['display_name'] ??
             ownerData['username'] ??
@@ -332,7 +339,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           name: currentOwner.name.trim().isEmpty
               ? resolvedOwnerName
               : currentOwner.name,
-          id: currentOwner.id.isEmpty ? ownerId : currentOwner.id,
+          id: currentOwner.id.isEmpty ? resolvedOwnerId : currentOwner.id,
         );
       }
     } else {
@@ -347,7 +354,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   ownerData['userId'] ??
                   ownerData['user_id'] ??
                   ownerData['uid'] ??
-                  ownerId)
+                  resolvedOwnerId)
               .toString(),
         ),
       );
