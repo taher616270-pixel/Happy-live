@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS room_exp_awards (
   room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   day_key TEXT NOT NULL,
-  points INTEGER NOT NULL CHECK (points > 0 AND points <= 600),
+  points INTEGER NOT NULL CHECK (points > 0 AND points <= 1200),
   created_at TEXT NOT NULL
 );
 
