@@ -148,24 +148,46 @@ class _RoomUpgradePageState extends State<RoomUpgradePage> {
           child: SafeArea(
             child: Column(
               children: [
-                _appBar(context),
-                _ownerChip(),
-                SizedBox(height: 230, child: _showcase()),
-                _levelTrack(),
-                const SizedBox(height: 14),
-                const _PerkRibbon('امتياز'),
                 Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.04),
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(22)),
-                    ),
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
-                      itemCount: level.perks.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (_, i) => _PerkCard(level.perks[i]),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _appBar(context),
+                        _ownerChip(),
+                        SizedBox(height: 230, child: _showcase()),
+                        _levelTrack(),
+                        const SizedBox(height: 14),
+                        const _PerkRibbon('امتياز'),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.04),
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(22),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+                            child: Column(
+                              children: [
+                                for (int i = 0; i < level.perks.length; i++) ...[
+                                  if (i > 0) const SizedBox(height: 10),
+                                  _PerkCard(level.perks[i]),
+                                ],
+                                if (canUpgrade) ...[
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'صلاحية دائمة',
+                                    style: TextStyle(
+                                      color: _textSoft,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -336,43 +358,35 @@ class _RoomUpgradePageState extends State<RoomUpgradePage> {
 
   Widget _upgradeBar(RoomLevel level) => Container(
         color: const Color(0xFF14100D),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GestureDetector(
-              onTap: _isUpgrading ? null : _submitUpgrade,
-              child: Container(
-                height: 54,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(27),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFFE6C4), Color(0xFFF4C98F)],
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.monetization_on,
-                        color: Color(0xFFF5B400), size: 20),
-                    const SizedBox(width: 6),
-                    Text(
-                      _isUpgrading ? 'جارٍ تنفيذ الترقية...' : 'رفع مستوى ${level.price}',
-                      style: const TextStyle(
-                        color: Color(0xFF3A2616),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        child: GestureDetector(
+          onTap: _isUpgrading ? null : _submitUpgrade,
+          child: Container(
+            height: 54,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(27),
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFE6C4), Color(0xFFF4C98F)],
               ),
             ),
-            const SizedBox(height: 10),
-            const Text('صلاحية دائمة',
-                style: TextStyle(color: _textSoft, fontSize: 12)),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.monetization_on,
+                    color: Color(0xFFF5B400), size: 20),
+                const SizedBox(width: 6),
+                Text(
+                  _isUpgrading ? 'جارٍ تنفيذ الترقية...' : 'رفع مستوى ${level.price}',
+                  style: const TextStyle(
+                    color: Color(0xFF3A2616),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       );
 }
