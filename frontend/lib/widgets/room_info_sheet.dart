@@ -82,8 +82,21 @@ class _RoomInfoSheet extends StatelessWidget {
   final VoidCallback? onJoin, onFollow, onMembersTap, onSettings, onInvite, onUpgrade;
   final String accessToken;
 
+  int get _selectedLevelIndex =>
+      (info.level - 1).clamp(0, kLevels.length - 1).toInt();
+
+  int get _membersLimitForLevel {
+    final memberPerk = kLevels[_selectedLevelIndex].perks
+        .where((perk) => perk.title.trim() == 'أعضاء الغرفة')
+        .firstOrNull;
+    if (memberPerk == null) return info.membersMax;
+    final match = RegExp(r'\\d+').firstMatch(memberPerk.desc);
+    return match == null ? info.membersMax : int.parse(match.group(0)!);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final selectedLevel = kLevels[_selectedLevelIndex];
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Container(
@@ -166,7 +179,7 @@ class _RoomInfoSheet extends StatelessWidget {
                   const SizedBox(width: 7),
                   Expanded(flex: 3, child: _stat('Lv.${info.level}', 'مستوى الغرفة', _RoomInfoColors.levelBg, _RoomInfoColors.level)),
                   const SizedBox(width: 7),
-                  Expanded(flex: 2, child: GestureDetector(onTap: onUpgrade, child: _stat('قصر', info.palaceStatus, _RoomInfoColors.goldBg, _RoomInfoColors.palace))),
+                  Expanded(flex: 2, child: GestureDetector(onTap: onUpgrade, child: _stat(selectedLevel.name, 'تم الشراء', _RoomInfoColors.goldBg, _RoomInfoColors.palace))),
                 ])),
                 const SizedBox(height: 12),
                 _levelPerksSection(),
@@ -179,7 +192,7 @@ class _RoomInfoSheet extends StatelessWidget {
                       child: const Text('أعضاء', style: TextStyle(color: _RoomInfoColors.text, fontSize: 14, fontWeight: FontWeight.w700)),
                     ),
                     GestureDetector(onTap: () { onMembersTap?.call(); _showRoomMembersSheet(context); }, child: Row(children: [
-                      Text('${info.membersCount}/${info.membersMax}', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 14)),
+                      Text('${info.membersCount}/$_membersLimitForLevel', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 14)),
                       const Icon(Icons.chevron_right, color: _RoomInfoColors.muted),
                     ])),
                   ]),
