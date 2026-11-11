@@ -316,13 +316,21 @@ class _RoomInfoSheet extends StatelessWidget {
                                   ),
                                 ),
                                 Positioned(
-                                  right: 12,
+                                  right: 0,
                                   child: IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 48,
+                                      minHeight: 48,
+                                    ),
                                     onPressed: () => Navigator.of(dialogContext).pop(),
-                                    icon: const Icon(
-                                      Icons.arrow_forward_rounded,
-                                      color: _RoomInfoColors.text,
-                                      size: 24,
+                                    icon: const Directionality(
+                                      textDirection: TextDirection.ltr,
+                                      child: Icon(
+                                        Icons.arrow_forward_rounded,
+                                        color: _RoomInfoColors.text,
+                                        size: 24,
+                                      ),
                                     ),
                                   ),
                                 ),
