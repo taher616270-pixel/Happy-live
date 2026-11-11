@@ -21,7 +21,7 @@ h1{font-size:25px;letter-spacing:-.4px;margin:0 0 8px}.muted{color:var(--muted)}
 .nav button.active,.nav button:hover{background:linear-gradient(90deg,rgba(169,130,211,.15),rgba(232,199,127,.07));color:var(--gold);border-color:rgba(169,130,211,.18)}
 .side-foot{margin-top:auto;padding-top:18px}.logout{width:100%;border:1px solid var(--line);text-align:center}.logout:hover{background:rgba(241,132,145,.09);color:#ffabb4;border-color:rgba(241,132,145,.25)}
 .main{padding:32px clamp(18px,3vw,42px);width:100%;min-width:0;height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#514260 transparent}
-.dashboard-tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 16px;padding:7px;background:#100d17;border:1px solid var(--line);border-radius:12px;width:max-content;max-width:100%}.dashboard-tabs button{border:0;background:transparent;color:var(--muted);padding:6px 11px;border-radius:8px;font-size:12px;line-height:1.3;white-space:nowrap}.dashboard-tabs button.active{background:linear-gradient(100deg,#e7c77f,#b38bd7);color:#21172a;font-weight:800}.dashboard-tabs button:hover:not(.active){background:#282033;color:var(--text)}
+.dashboard-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 13px}.dashboard-head h2{font-size:18px;margin:0 0 4px}.dashboard-head p{font-size:12px;margin:0}.dashboard-actions{display:flex;gap:7px;flex-wrap:wrap}.dashboard-actions .action{font-size:12px;padding:7px 10px}.dashboard-stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:12px 0}.dashboard-stat{min-width:0;display:flex;align-items:center;gap:12px;padding:16px;background:linear-gradient(145deg,rgba(29,24,40,.96),rgba(21,18,30,.96));border:1px solid var(--line);border-radius:16px}.dashboard-stat-icon{width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;background:#282033;border:1px solid var(--line);border-radius:12px;color:var(--gold);font-size:22px}.dashboard-stat-copy{min-width:0;display:grid;gap:4px}.dashboard-stat-copy strong{color:var(--gold);font-size:23px;line-height:1.15}.dashboard-stat-copy span{color:var(--muted);font-size:12px;line-height:1.5}.dashboard-section{margin-top:12px}.dashboard-chart{min-height:175px;display:flex;align-items:flex-end;justify-content:space-around;gap:10px;padding:12px 6px 0}.dashboard-bar-item{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:170px}.dashboard-bar-item b{font-size:11px;color:var(--muted)}.dashboard-bar{width:min(42px,70%);min-height:4px;background:linear-gradient(180deg,var(--gold),var(--purple));border-radius:7px 7px 2px 2px}.dashboard-bar-item span{font-size:11px;color:var(--muted)}.dashboard-avatar{display:inline-grid;place-items:center;width:27px;height:27px;border-radius:50%;background:#282033;color:var(--gold)}.dashboard-count{display:inline-block;padding:4px 10px;border-radius:20px;background:#30263c;color:var(--gold);font-weight:700}@media(max-width:900px){.dashboard-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.dashboard-head{align-items:flex-start;flex-direction:column}.dashboard-stats-grid{gap:8px}.dashboard-stat{padding:12px;gap:8px}.dashboard-stat-icon{width:38px;height:38px;flex-basis:38px}.dashboard-stat-copy strong{font-size:19px}.dashboard-stat-copy span{font-size:11px}}.dashboard-tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 16px;padding:7px;background:#100d17;border:1px solid var(--line);border-radius:12px;width:max-content;max-width:100%}.dashboard-tabs button{border:0;background:transparent;color:var(--muted);padding:6px 11px;border-radius:8px;font-size:12px;line-height:1.3;white-space:nowrap}.dashboard-tabs button.active{background:linear-gradient(100deg,#e7c77f,#b38bd7);color:#21172a;font-weight:800}.dashboard-tabs button:hover:not(.active){background:#282033;color:var(--text)}
 .menu-toggle{display:none}.top,.section-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:24px}.top{padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,.07)}
 .top h1{margin:0;font-size:26px}.top small{display:block;margin-top:7px}.badge{padding:7px 11px;border-radius:30px;background:#30263c;font-size:11px;white-space:nowrap}.good{color:var(--green)}.bad{color:var(--red)}
 .cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:20px}
@@ -97,7 +97,62 @@ async function render(){
   const names={overview:"لوحة التحكم",regions:"المناطق والدول",agencies:"الوكالات",users:"المستخدمين",banners:"البنرات والسبلاش",vip:"لـVIP",cp:"لـCP",events:"الأحداث",levels:"المستويات",rooms:"الغرف واللايف",posts:"المنشورات",gifts:"الهدايا",emojis:"الرموز التعبيرية","room-bom":"روم بوم","room-target":"تارجت الغرفة","lucky-box":"صندوق الحظ","host-level":"مستوى المضيف",withdrawals:"السحب",store:"المتجر",badges:"الشارات",medals:"الأوسمة","invite-code":"رمز الدعوة",support:"الدعم",families:"العائلات",games:"الألعاب",recharge:"الشحن",wallets:"الكوينز والمحافظ",rewards:"المكافآت",reports:"التقارير","chat-groups":"الدردشة والجروبات",moderation:"الإشراف والحظر",notifications:"الإشعارات",moderators:"المستخدمين والأذونات",agora:"الإعدادات",other:"أخرى",audit:"سجل الإجراءات",stats:"الإحصائيات",future:"خدمات المنصة"};
   $("pageTitle").textContent=names[page]||"لوحة الإدارة";$("content").innerHTML='<div class="loading">جارٍ تحميل البيانات…</div>';
   try{
-    if(page==="overview"){let o=(await api("/admin/overview")).overview;$("content").innerHTML='<div class="dashboard-tabs" role="tablist" aria-label="أقسام لوحة التحكم"><button type="button" class="active" role="tab" aria-selected="true" data-dashboard-tab="general">عامة</button><button type="button" role="tab" aria-selected="false" data-dashboard-tab="users">المستخدمين</button><button type="button" role="tab" aria-selected="false" data-dashboard-tab="rooms">الغرف</button><button type="button" role="tab" aria-selected="false" data-dashboard-tab="agencies">الوكالات</button><button type="button" role="tab" aria-selected="false" data-dashboard-tab="bd">BD</button><button type="button" role="tab" aria-selected="false" data-dashboard-tab="games">اللعبة</button></div><div id="dashboardTabContent"><div class="cards">'+metric("إجمالي المستخدمين",o.users.total)+metric("المستخدمون النشطون",o.users.active)+metric("إجمالي الغرف",o.rooms.total)+metric("المنشورات المنشورة",o.publishedPosts)+'</div><div class="section"><h2>ملخص النظام</h2><p class="muted">الأرقام مسترجعة مباشرة من قاعدة بيانات Happy Live.</p></div></div>';document.querySelectorAll("[data-dashboard-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-dashboard-tab]").forEach(x=>{const active=x===b;x.classList.toggle("active",active);x.setAttribute("aria-selected",String(active))});const tab=b.dataset.dashboardTab;const content=$("dashboardTabContent");if(tab==="general"){content.innerHTML='<div class="cards">'+metric("إجمالي المستخدمين",o.users.total)+metric("المستخدمون النشطون",o.users.active)+metric("إجمالي الغرف",o.rooms.total)+metric("المنشورات المنشورة",o.publishedPosts)+'</div><div class="section"><h2>ملخص النظام</h2><p class="muted">الأرقام مسترجعة مباشرة من قاعدة بيانات Happy Live.</p></div>'}else{const labels={users:"المستخدمين",rooms:"الغرف",agencies:"الوكالات",bd:"BD",games:"اللعبة"};content.innerHTML='<div class="section"><h2>'+labels[tab]+'</h2><p class="muted">سيتم تجهيز محتوى هذا التبويب وربطه ببياناته.</p></div>'}}))}
+    if(page==="overview"){
+      const [overviewResponse,statsResponse]=await Promise.all([api("/admin/overview"),api("/admin/stats")]);
+      const o=overviewResponse.overview||{},stats=statsResponse.stats||{},summary=stats.summary||{};
+      let chartMode="users";
+      $("content").innerHTML=
+        '<div class="dashboard-head"><div><h2>الصفحة الرئيسية</h2><p class="muted">إحصائيات عامة من بيانات Happy Live الفعلية</p></div><div class="dashboard-actions"><button class="action" id="dashboardFilter">تصفية الرسم</button><button class="action" id="dashboardRefresh">↻ تحديث</button></div></div>'+
+        '<div class="dashboard-tabs" role="tablist" aria-label="أقسام لوحة التحكم">'+
+        '<button type="button" class="active" role="tab" aria-selected="true" data-dashboard-tab="general">عامة</button>'+
+        '<button type="button" role="tab" aria-selected="false" data-dashboard-tab="users">المستخدمين</button>'+
+        '<button type="button" role="tab" aria-selected="false" data-dashboard-tab="rooms">الغرف</button>'+
+        '<button type="button" role="tab" aria-selected="false" data-dashboard-tab="agencies">الوكالات</button>'+
+        '<button type="button" role="tab" aria-selected="false" data-dashboard-tab="bd">BD</button>'+
+        '<button type="button" role="tab" aria-selected="false" data-dashboard-tab="games">اللعبة</button></div>'+
+        '<div id="dashboardTabContent"></div>';
+      const card=(icon,label,value)=>'<div class="dashboard-stat"><div class="dashboard-stat-icon">'+icon+'</div><div class="dashboard-stat-copy"><strong>'+Number(value||0).toLocaleString("en-US")+'</strong><span>'+label+'</span></div></div>';
+      const chart=()=>{
+        const rows=(chartMode==="users"?(stats.daily?.users||[]):(stats.daily?.messages||[]));
+        const max=Math.max(1,...rows.map(x=>Number(x.total||0)));
+        const title=chartMode==="users"?"التسجيلات اليومية — آخر 7 أيام":"رسائل الغرف اليومية — آخر 7 أيام";
+        const bars=rows.length?rows.map(x=>{
+          const value=Number(x.total||0),height=Math.max(4,Math.round(value/max*132));
+          const label=new Date(x.day+"T00:00:00Z").toLocaleDateString("ar",{weekday:"short",timeZone:"UTC"});
+          return '<div class="dashboard-bar-item"><b>'+value.toLocaleString("en-US")+'</b><div class="dashboard-bar" style="height:'+height+'px"></div><span>'+esc(label)+'</span></div>';
+        }).join(""):'<div class="empty">لا توجد بيانات خلال آخر 7 أيام</div>';
+        return '<div class="section dashboard-section"><div class="section-head"><h2>'+title+'</h2><span class="badge">آخر 7 أيام</span></div><div class="dashboard-chart">'+bars+'</div></div>';
+      };
+      const followers=()=>{
+        const rows=stats.topFollowers||[];
+        return '<div class="section dashboard-section"><div class="section-head"><h2>أعلى متابعين</h2><span class="badge">'+rows.length+' مستخدمين</span></div>'+
+          (rows.length?'<div class="table-wrap"><table><thead><tr><th>#</th><th>المستخدم</th><th>عدد المتابعين</th></tr></thead><tbody>'+rows.map((u,i)=>'<tr><td>'+(i+1)+'</td><td><span class="dashboard-avatar">♙</span> '+esc(u.name||"مستخدم")+'</td><td><span class="dashboard-count">'+Number(u.count||0).toLocaleString("en-US")+'</span></td></tr>').join("")+'</tbody></table></div>':'<div class="empty">لا توجد بيانات متابعين حتى الآن</div>')+'</div>';
+      };
+      const renderTab=tab=>{
+        const root=$("dashboardTabContent");
+        if(tab==="general"){
+          root.innerHTML='<div class="dashboard-stats-grid">'+
+            card("♙","إجمالي المستخدمين",o.users?.total)+
+            card("●","المستخدمون النشطون",o.users?.active)+
+            card("◉","إجمالي الغرف",o.rooms?.total)+
+            card("▤","المنشورات المنشورة",o.publishedPosts)+'</div>'+chart()+followers();
+        }else if(tab==="users"){
+          root.innerHTML='<div class="dashboard-stats-grid">'+card("♙","إجمالي المستخدمين",summary.users?.total)+card("●","الحسابات النشطة",summary.users?.active)+card("⊘","الحسابات المحظورة",summary.users?.suspended)+'</div>'+chart()+followers();
+        }else if(tab==="rooms"){
+          root.innerHTML='<div class="dashboard-stats-grid">'+card("◉","إجمالي الغرف",summary.rooms?.total)+card("●","الغرف النشطة",summary.rooms?.active)+card("▤","رسائل الغرف آخر 7 أيام",summary.roomMessagesLast7Days)+'</div>'+chart();
+        }else{
+          const labels={agencies:"الوكالات",bd:"BD",games:"اللعبة"};
+          root.innerHTML='<div class="section"><h2>'+labels[tab]+'</h2><p class="notice">لا توجد حاليًا نقطة API أو بيانات موثوقة لهذا القسم في الخادم. لم نضع أرقامًا تجريبية بدل البيانات الحقيقية.</p></div>';
+        }
+      };
+      document.querySelectorAll("[data-dashboard-tab]").forEach(button=>button.addEventListener("click",()=>{
+        document.querySelectorAll("[data-dashboard-tab]").forEach(x=>{const active=x===button;x.classList.toggle("active",active);x.setAttribute("aria-selected",String(active))});
+        renderTab(button.dataset.dashboardTab);
+      }));
+      $("dashboardFilter").onclick=()=>{chartMode=chartMode==="users"?"messages":"users";renderTab(document.querySelector("[data-dashboard-tab].active")?.dataset.dashboardTab||"general")};
+      $("dashboardRefresh").onclick=()=>render();
+      renderTab("general");
+    }
     else if(page==="stats")statsPage((await api("/admin/stats")).stats);
     else if(page==="users")users((await api("/admin/users")).users||[]);
     else if(page==="rooms")rooms((await api("/admin/rooms")).rooms||[]);
