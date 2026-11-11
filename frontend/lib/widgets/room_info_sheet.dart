@@ -245,7 +245,10 @@ class _RoomInfoSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('الإعلان', style: TextStyle(color: _RoomInfoColors.text, fontSize: 14, fontWeight: FontWeight.w700)),
+                      Transform.translate(
+                        offset: const Offset(0, -3),
+                        child: const Text('الإعلان', style: TextStyle(color: _RoomInfoColors.text, fontSize: 14, fontWeight: FontWeight.w700)),
+                      ),
                       const SizedBox(height: 8),
                       Text(info.announcement.isEmpty ? 'لا يوجد إعلان لهذه الغرفة حاليًا' : info.announcement, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 13, height: 1.3)),
                     ],
