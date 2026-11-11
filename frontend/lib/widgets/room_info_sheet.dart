@@ -211,7 +211,7 @@ class _RoomInfoSheet extends StatelessWidget {
                         child: SizedBox(
                           width: 38,
                           height: 38,
-                          child: avatarUrl.startsWith('https://')
+                          child: avatarUrl.startsWith('http')
                               ? Image.network(
                                   avatarUrl,
                                   width: 38,
