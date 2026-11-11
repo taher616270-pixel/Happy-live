@@ -589,13 +589,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       await showRoomInfoSheet(
         context,
         info,
-        onLevelTap: () => showRoomLevelSheet(
+        onLevelTap: () => _openRoomLevelSheet(
           context,
-          _roomLevelData(
-            resolvedOwnerName: ownerMember.name,
-            resolvedOwnerId: ownerMember.id,
-            resolvedOwnerAvatarUrl: ownerMember.avatarUrl,
-          ),
+          resolvedOwnerName: ownerMember.name,
+          resolvedOwnerId: ownerMember.id,
+          resolvedOwnerAvatarUrl: ownerMember.avatarUrl,
         ),
         onUpgrade: () {
           Navigator.of(context).pop();
@@ -1074,7 +1072,10 @@ Widget _roomActionButton({
         offset: Theme.of(context).platform == TargetPlatform.android
             ? const Offset(0, -10)
             : Offset.zero,
-        child: RoomLevelChip(\n          data: _roomLevelData(),\n          onTap: () => _openRoomLevelSheet(context),\n        ),
+        child: RoomLevelChip(
+          data: _roomLevelData(),
+          onTap: () => _openRoomLevelSheet(context),
+        ),
       ),
     ),
     ),
