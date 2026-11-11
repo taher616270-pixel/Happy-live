@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS gift_transactions (
   id TEXT PRIMARY KEY,
   sender_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   recipient_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-  context_type TEXT NOT NULL CHECK (context_type IN ('room', 'private')),
+  context_type TEXT NOT NULL DEFAULT 'room' CHECK (context_type = 'room'),
   room_id TEXT REFERENCES rooms(id) ON DELETE RESTRICT,
   gift_id TEXT NOT NULL REFERENCES gift_catalog(id) ON DELETE RESTRICT,
   quantity INTEGER NOT NULL CHECK (quantity BETWEEN 1 AND 1000),
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS gift_transactions (
   reversed_at TEXT,
   created_at TEXT NOT NULL,
   CHECK (app_percent_snapshot + recipient_percent_snapshot = 100),
-  CHECK ((context_type = 'room' AND room_id IS NOT NULL) OR (context_type = 'private' AND room_id IS NULL)),
+  CHECK (room_id IS NOT NULL),
   CHECK (sender_user_id <> recipient_user_id),
   UNIQUE(sender_user_id, idempotency_key)
 );
