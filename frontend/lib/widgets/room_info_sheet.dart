@@ -260,13 +260,13 @@ class _RoomInfoSheet extends StatelessWidget {
                     return SizedBox(width: 44, child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
                       ClipOval(
                         child: SizedBox(
-                          width: 38,
-                          height: 38,
+                          width: 32,
+                          height: 32,
                           child: avatarUrl.startsWith('http')
                               ? Image.network(
                                   avatarUrl,
-                                  width: 38,
-                                  height: 38,
+                                  width: 32,
+                                  height: 32,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Container(
                                     color: _RoomInfoColors.chip,
@@ -281,7 +281,7 @@ class _RoomInfoSheet extends StatelessWidget {
                                 ),
                         ),
                       ),
-                      Positioned(top: 27, child: Container(
+                      Positioned(top: 23, child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0),
                         decoration: BoxDecoration(color: m.isOwner ? const Color(0xFFFF4F81) : const Color(0xFFFF9800), borderRadius: BorderRadius.circular(10)),
                         child: Text(m.role, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w600)), 
