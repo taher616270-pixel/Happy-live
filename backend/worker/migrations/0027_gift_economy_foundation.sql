@@ -74,6 +74,18 @@ CREATE INDEX IF NOT EXISTS idx_gift_transactions_room_created
 CREATE INDEX IF NOT EXISTS idx_gift_transactions_sender_created
   ON gift_transactions(sender_user_id, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS room_exp_gift_awards (
+  id TEXT PRIMARY KEY,
+  gift_transaction_id TEXT NOT NULL UNIQUE REFERENCES gift_transactions(id) ON DELETE RESTRICT,
+  room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day_key TEXT NOT NULL,
+  points INTEGER NOT NULL CHECK (points > 0 AND points <= 3000000),
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_room_exp_gift_awards_user_day
+  ON room_exp_gift_awards(user_id, day_key);
+
 -- Recipient's 70% is credited to the ordinary coin wallet, but remains tagged.
 -- Spending tagged gift coins consumes their future withdrawal eligibility in FIFO order.
 CREATE TABLE IF NOT EXISTS gift_earning_lots (
