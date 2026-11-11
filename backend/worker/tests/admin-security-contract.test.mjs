@@ -19,6 +19,7 @@ const profilePage = await readFile(
   new URL("../../../frontend/lib/pages/profile_page.dart", import.meta.url),
   "utf8",
 );
+const auditMigration = await readFile(new URL("../migrations/0026_admin_audit_actor_refs.sql", import.meta.url), "utf8");
 
 test("admin sessions and roles are resolved from D1, not from browser input", () => {
   const start = worker.indexOf("async function authenticatedAdmin(");
@@ -108,4 +109,47 @@ test("mobile wallet is connected to the authenticated wallet API and profile bal
 
 test("unsupported recharge, VIP and gift services are not presented as live data", () => {
   assert.match(adminUi, /الشحن الإلكتروني عبر بوابة دفع غير مفعّل بعد/);
+});
+
+
+test("admin account management is owner-only, protects the owner, and revokes sessions", () => {
+  const start = worker.indexOf('if (url.pathname === "/api/v1/admin/accounts" && request.method === "GET")');
+  const end = worker.indexOf('if (url.pathname === "/api/v1/admin/moderators"', start);
+  assert.ok(start >= 0 && end > start, "admin account routes must exist");
+  const routes = worker.slice(start, end);
+  assert.match(routes, /actor\.role !== "owner"/);
+  assert.match(routes, /target\.role === "owner"/);
+  assert.match(routes, /hashPassword\(password\)/);
+  assert.match(routes, /UPDATE admin_sessions SET revoked_at = \?/);
+  assert.match(routes, /adminAuditStatements\(env\.DB, actor,/);
+  assert.doesNotMatch(routes, /body\.(?:adminId|actorId|actorRole)/);
+});
+
+test("new manager audit records link to an independent admin account", () => {
+  assert.match(auditMigration, /CREATE TABLE IF NOT EXISTS admin_audit_actor_refs/);
+  assert.match(auditMigration, /REFERENCES admin_audit_logs\(id\) ON DELETE CASCADE/);
+  assert.match(auditMigration, /REFERENCES admin_accounts\(id\) ON DELETE RESTRICT/);
+  const start = worker.indexOf("function adminAuditStatements(");
+  const end = worker.indexOf("const DEFAULT_ALLOWED_ORIGINS", start);
+  assert.ok(start >= 0 && end > start, "relational audit helper must exist");
+  const helper = worker.slice(start, end);
+  assert.match(helper, /INSERT INTO admin_audit_logs/);
+  assert.match(helper, /INSERT INTO admin_audit_actor_refs/);
+  assert.match(worker, /LEFT JOIN admin_audit_actor_refs ar ON ar\.audit_log_id = l\.id/);
+});
+
+test("admin CORS trusts only exact configured origins", () => {
+  const start = worker.indexOf("function isAllowedOrigin(");
+  const end = worker.indexOf("function json(", start);
+  assert.ok(start >= 0 && end > start);
+  const validator = worker.slice(start, end);
+  assert.match(validator, /return allowedOrigins\(env\)\.has\(origin\);/);
+  assert.doesNotMatch(validator, /endsWith|new URL/);
+});
+
+test("admin account UI is owner-only and calls the Worker API", () => {
+  assert.match(adminUi, /data-page="adminAccounts"/);
+  assert.match(adminUi, /admin\.role!==\"owner\"/);
+  assert.match(adminUi, /api\(\"\/admin\/accounts/);
+  assert.match(adminUi, /\/admin\/accounts\/.*\/password/);
 });
