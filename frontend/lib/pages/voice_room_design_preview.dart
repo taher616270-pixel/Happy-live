@@ -294,6 +294,19 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           avatarUrl: memberAvatar,
           role: memberRole,
           isOwner: isOwnerMember,
+          name: (member['displayName'] ??
+                  member['display_name'] ??
+                  member['username'] ??
+                  member['name'] ??
+                  member['nickname'] ??
+                  '')
+              .toString(),
+          id: (member['id'] ??
+                  member['userId'] ??
+                  member['user_id'] ??
+                  member['uid'] ??
+                  '')
+              .toString(),
         ));
       }
     }
@@ -306,12 +319,30 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           avatarUrl: ownerAvatar,
           role: currentOwner.role,
           isOwner: true,
+          name: currentOwner.name,
+          id: currentOwner.id,
         );
       }
     } else {
       members.insert(
         0,
-        RoomMember(avatarUrl: ownerAvatar, role: 'المالك', isOwner: true),
+        RoomMember(
+          avatarUrl: ownerAvatar,
+          role: 'المالك',
+          isOwner: true,
+          name: (ownerData['displayName'] ??
+                  ownerData['display_name'] ??
+                  ownerData['username'] ??
+                  ownerData['name'] ??
+                  '')
+              .toString(),
+          id: (ownerData['id'] ??
+                  ownerData['userId'] ??
+                  ownerData['user_id'] ??
+                  ownerData['uid'] ??
+                  '')
+              .toString(),
+        ),
       );
     }
 
