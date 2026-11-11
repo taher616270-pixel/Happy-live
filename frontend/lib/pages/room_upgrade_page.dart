@@ -254,11 +254,11 @@ class _RoomUpgradePageState extends State<RoomUpgradePage> {
           ),
           PositionedDirectional(
             start: 6,
-            child: _arrow(Icons.chevron_left, () => _go(_index + 1)),
+            child: _arrow(Icons.chevron_left, () => _go(_index - 1)),
           ),
           PositionedDirectional(
             end: 6,
-            child: _arrow(Icons.chevron_right, () => _go(_index - 1)),
+            child: _arrow(Icons.chevron_right, () => _go(_index + 1)),
           ),
         ],
       );
