@@ -428,7 +428,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 ownerAvatar: ownerMember.avatarUrl.startsWith('http')
                     ? NetworkImage(ownerMember.avatarUrl)
                     : null,
-                currentLevel: (info.level - 1).clamp(0, 4),
+                currentLevel: (info.level - 1).clamp(0, 4).toInt(),
                 onUpgrade: (levelIndex) async {
                   try {
                     final response = await http.post(
