@@ -1012,7 +1012,7 @@ Widget _roomActionButton({
                         shape: BoxShape.circle,
                         color: Colors.white.withOpacity(.10),
                         border: Border.all(
-                          color: mine ? Colors.transparent : Colors.white.withOpacity(occupied ? .60 : .18),
+                          color: mine ? Colors.transparent : Colors.white.withOpacity(occupied ? .82 : .32),
                           width: mine ? 0 : occupied ? 2 : 1,
                         ),
                         // Improve separation from the new wallpaper without
@@ -1221,9 +1221,10 @@ Widget _roomActionButton({
     margin: const EdgeInsets.symmetric(horizontal: 12),
     padding: const EdgeInsets.symmetric(horizontal: 12),
     decoration: BoxDecoration(
-      color: Colors.transparent,
+      color: Colors.black.withOpacity(.30),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Colors.white.withOpacity(.10)),
+      border: Border.all(color: Colors.white.withOpacity(.24), width: 1),
+      boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 8, offset: Offset(0, 2))],
     ),
     child: Row(
       children: [
