@@ -289,75 +289,139 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           .toString()
           .trim();
   
-      final rawMembers = room['members'] ?? room['roomMembers'] ?? room['room_members'];
       final members = <RoomMember>[];
-      if (rawMembers is List) {
-        for (final item in rawMembers) {
-          if (item is! Map) continue;
-          final member = Map<String, dynamic>.from(item);
-          final role = (member['role'] ??
-                  member['roleName'] ??
-                  member['role_name'] ??
-                  'عضو')
-              .toString();
-          final isOwner = member['isOwner'] == true ||
-              member['is_owner'] == true ||
-              role.toLowerCase() == 'owner' ||
-              role == 'المالك';
-          final userId = (member['userId'] ??
-                  member['user_id'] ??
-                  member['uid'] ??
-                  member['id'] ??
-                  '')
-              .toString()
-              .trim();
-          members.add(RoomMember(
-            avatarUrl: (member['avatarUrl'] ??
-                    member['avatar_url'] ??
-                    member['avatar'] ??
-                    member['photoUrl'] ??
-                    member['photo_url'] ??
-                    '')
-                .toString(),
-            role: role,
-            isOwner: isOwner,
-            name: (member['name'] ??
-                    member['displayName'] ??
-                    member['display_name'] ??
-                    '')
-                .toString(),
-            id: (member['userCode'] ??
-                    member['user_code'] ??
-                    member['gabo_id'] ??
-                    '')
-                .toString(),
-            userId: userId,
-          ));
+      final memberIndexes = <String, int>{};
+
+      String memberValue(Map<String, dynamic> data, List<String> keys) {
+        for (final key in keys) {
+          final value = data[key]?.toString().trim() ?? '';
+          if (value.isNotEmpty && value != 'null') return value;
+        }
+        return '';
+      }
+
+      void addRoomMember(Map<String, dynamic> data, {String fallbackRole = 'عضو'}) {
+        final profile = data['profile'] is Map
+            ? Map<String, dynamic>.from(data['profile'] as Map)
+            : data;
+        final userId = memberValue(data, [
+          'userId', 'user_id', 'uid', 'accountId', 'account_id', 'id'
+        ]).isNotEmpty
+            ? memberValue(data, [
+                'userId', 'user_id', 'uid', 'accountId', 'account_id', 'id'
+              ])
+            : memberValue(profile, ['userId', 'user_id', 'uid', 'id']);
+        final avatarUrl = memberValue(profile, [
+          'avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url',
+          'profileImage', 'profile_image', 'imageUrl', 'image_url', 'picture'
+        ]);
+        final name = memberValue(profile, [
+          'name', 'displayName', 'display_name', 'username'
+        ]);
+        final publicId = memberValue(profile, [
+          'userCode', 'user_code', 'gabo_id', 'publicId', 'public_id'
+        ]);
+        if (userId.isEmpty && avatarUrl.isEmpty && name.isEmpty) return;
+
+        final role = memberValue(data, [
+          'role', 'roleName', 'role_name'
+        ]).isEmpty ? fallbackRole : memberValue(data, [
+          'role', 'roleName', 'role_name'
+        ]);
+        final isOwner = data['isOwner'] == true ||
+            data['is_owner'] == true ||
+            role.toLowerCase() == 'owner' ||
+            role == 'المالك';
+        final member = RoomMember(
+          avatarUrl: avatarUrl,
+          role: isOwner ? 'المالك' : role,
+          isOwner: isOwner,
+          name: name,
+          id: publicId,
+          userId: userId,
+        );
+        final key = userId.isNotEmpty
+            ? userId
+            : (publicId.isNotEmpty ? 'code:$publicId' : 'name:$name');
+        final existingIndex = memberIndexes[key];
+        if (existingIndex != null) {
+          final existing = members[existingIndex];
+          members[existingIndex] = RoomMember(
+            avatarUrl: existing.avatarUrl.isNotEmpty ? existing.avatarUrl : member.avatarUrl,
+            role: member.isOwner ? member.role : existing.role,
+            isOwner: existing.isOwner || member.isOwner,
+            name: existing.name.isNotEmpty ? existing.name : member.name,
+            id: existing.id.isNotEmpty ? existing.id : member.id,
+            userId: existing.userId.isNotEmpty ? existing.userId : member.userId,
+          );
+        } else {
+          memberIndexes[key] = members.length;
+          members.add(member);
         }
       }
 
-      // افتح نافذة المعلومات مباشرة من بيانات الغرفة المتاحة؛ لا تنتظر
-      // طلبات شبكة ملفات الأعضاء حتى تظهر النافذة.
+      final rawMembers = room['members'] ?? room['roomMembers'] ?? room['room_members'];
+      if (rawMembers is List) {
+        for (final item in rawMembers) {
+          if (item is Map) {
+            addRoomMember(Map<String, dynamic>.from(item));
+          }
+        }
+      }
+
+      // Include currently seated speakers and listeners: their live room
+      // payloads carry avatar URLs even when room.members has only IDs.
+      for (final seat in seats) {
+        final hasUser = seat['userId'] != null ||
+            seat['user_id'] != null ||
+            seat['uid'] != null;
+        if (hasUser) addRoomMember(seat, fallbackRole: 'متحدث');
+      }
+      for (final user in audienceUsers) {
+        addRoomMember(user, fallbackRole: 'مستمع');
+      }
+
       final ownerProfile = ownerData['profile'] is Map
           ? Map<String, dynamic>.from(ownerData['profile'] as Map)
           : ownerData;
-      final ownerIndex = members.indexWhere((member) => member.isOwner);
+      final ownerIndex = members.indexWhere((member) =>
+          member.isOwner ||
+          (resolvedOwnerUserId.isNotEmpty &&
+              member.userId == resolvedOwnerUserId));
       final ownerMember = RoomMember(
         avatarUrl: _profileValue(ownerProfile, [
-          'avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url'
-        ]),
+          'avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url',
+          'profileImage', 'profile_image', 'imageUrl', 'image_url'
+        ]).isNotEmpty
+            ? _profileValue(ownerProfile, [
+                'avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url',
+                'profileImage', 'profile_image', 'imageUrl', 'image_url'
+              ])
+            : ownerAvatarUrl,
         role: 'المالك',
         isOwner: true,
         name: _profileValue(ownerProfile, [
           'name', 'displayName', 'display_name'
-        ]),
+        ]).isNotEmpty
+            ? _profileValue(ownerProfile, ['name', 'displayName', 'display_name'])
+            : ownerName,
         id: _profileValue(ownerProfile, [
           'userCode', 'user_code', 'gabo_id'
         ]),
         userId: resolvedOwnerUserId,
       );
       if (ownerIndex >= 0) {
-        members[ownerIndex] = ownerMember;
+        final existing = members[ownerIndex];
+        members[ownerIndex] = RoomMember(
+          avatarUrl: ownerMember.avatarUrl.isNotEmpty
+              ? ownerMember.avatarUrl
+              : existing.avatarUrl,
+          role: 'المالك',
+          isOwner: true,
+          name: ownerMember.name.isNotEmpty ? ownerMember.name : existing.name,
+          id: ownerMember.id.isNotEmpty ? ownerMember.id : existing.id,
+          userId: ownerMember.userId.isNotEmpty ? ownerMember.userId : existing.userId,
+        );
       } else {
         members.insert(0, ownerMember);
       }
