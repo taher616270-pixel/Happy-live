@@ -2059,8 +2059,8 @@ class _Notice extends StatelessWidget {
         if (onTap != null) ...[
           const SizedBox(width: 5),
           Container(
-            width: 18,
-            height: 18,
+            width: 14,
+            height: 14,
             decoration: BoxDecoration(color: Colors.black.withOpacity(.35), shape: BoxShape.circle),
             child: const Icon(Icons.edit_rounded, color: Colors.white70, size: 14),
           ),
@@ -2596,7 +2596,7 @@ class HappyLevelBadge extends StatelessWidget {
               child: Text(
                 "H",
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 9,
                   fontWeight: FontWeight.bold,
                   color: Colors.white.withOpacity(0.95),
                   height: 1,
