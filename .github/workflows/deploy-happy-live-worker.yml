@@ -29,6 +29,10 @@ jobs:
         working-directory: backend/worker
         run: npm run typecheck
 
+      - name: Run Worker tests before touching production
+        working-directory: backend/worker
+        run: npm test
+
       - name: Apply room announcement migration
         working-directory: backend/worker
         env:
