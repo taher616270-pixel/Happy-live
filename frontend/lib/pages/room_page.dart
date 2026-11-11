@@ -98,6 +98,7 @@ class _RoomPageState extends State<RoomPage> {
   List<Map<String, dynamic>> _seats = [];
   List<Map<String, dynamic>> _audienceUsers = [];
   int _audienceCount = 0;
+  int _roomLevel = 1;
 
   String get _roomId => (widget.room['id'] ?? '').toString();
   String get _roomName => (widget.room['name'] ?? 'غرفة صوتية').toString();
@@ -519,6 +520,9 @@ class _RoomPageState extends State<RoomPage> {
         ? owner['countryName'].toString().trim()
         : _ownerCountryName;
     final roomData = data['room'];
+    final nextRoomLevel = roomData is Map && roomData['level'] is num
+        ? (roomData['level'] as num).toInt().clamp(1, 5)
+        : _roomLevel;
     final nextAnnouncement = roomData is Map && roomData['announcement'] != null
         ? roomData['announcement'].toString()
         : _roomAnnouncement;
@@ -556,6 +560,7 @@ class _RoomPageState extends State<RoomPage> {
         _ownerAvatarUrl != nextOwnerAvatarUrl ||
         _ownerCountryName != nextOwnerCountryName ||
         _roomAnnouncement != nextAnnouncement ||
+        _roomLevel != nextRoomLevel ||
         _amRoomOwner != nextIsOwner ||
         _amRoomModerator != nextIsModerator ||
         _selfMicMuted != nextSelfMuted ||
@@ -582,6 +587,7 @@ class _RoomPageState extends State<RoomPage> {
       _ownerAvatarUrl = nextOwnerAvatarUrl;
       _ownerCountryName = nextOwnerCountryName;
       _roomAnnouncement = nextAnnouncement;
+      _roomLevel = nextRoomLevel;
       _amRoomOwner = nextIsOwner;
       _amRoomModerator = nextIsModerator;
       _selfMicMuted = nextSelfMuted;
