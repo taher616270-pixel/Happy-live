@@ -2367,8 +2367,8 @@ export default {
       }
     }
 
-    // Find one active room by its public eight-digit room code.
-    const roomCodeRoute = url.pathname.match(/^\/api\/v1\/rooms\/by-code\/(\d{8})$/);
+    // New rooms use a seven-digit public room code; accept eight-digit legacy codes too.
+    const roomCodeRoute = url.pathname.match(/^\/api\/v1\/rooms\/by-code\/(\d{7,8})$/);
     if (roomCodeRoute && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
@@ -2489,7 +2489,7 @@ export default {
         for (let attempt = 0; attempt < 12; attempt++) {
           const random = new Uint32Array(1);
           crypto.getRandomValues(random);
-          roomCode = String(10000000 + (random[0] % 90000000));
+          roomCode = String(1000000 + (random[0] % 9000000));
           const inserted = await env.DB.prepare(
             "INSERT INTO rooms (id, room_code, owner_user_id, name, description, image_url, visibility, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?) ON CONFLICT DO NOTHING"
           ).bind(roomId, roomCode, user.id, name, description, imageUrl || null, isPrivate ? "private" : "public", createdAt, createdAt).run();
