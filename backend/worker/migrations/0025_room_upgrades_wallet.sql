@@ -1,8 +1,14 @@
 -- Server-authoritative wallet ledger and persistent room upgrade levels.
 PRAGMA foreign_keys = ON;
 
-ALTER TABLE rooms
-  ADD COLUMN level INTEGER NOT NULL DEFAULT 1 CHECK (level BETWEEN 1 AND 5);
+CREATE TABLE IF NOT EXISTS room_levels (
+  room_id TEXT PRIMARY KEY REFERENCES rooms(id) ON DELETE CASCADE,
+  level INTEGER NOT NULL DEFAULT 1 CHECK (level BETWEEN 1 AND 5),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+INSERT OR IGNORE INTO room_levels (room_id, level, updated_at)
+SELECT id, 1, updated_at FROM rooms;
 
 CREATE TABLE IF NOT EXISTS user_wallets (
   user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
