@@ -43,6 +43,17 @@ function roomExperienceProgress(totalExperience: number) {
   }
 }
 
+async function resetRoomSeatExperienceTimer(
+  db: D1Database,
+  roomId: string,
+  userId: string,
+  now: string
+): Promise<void> {
+  await db.prepare(
+    "INSERT INTO room_exp_activity (room_id, user_id, last_awarded_at) VALUES (?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET last_awarded_at = excluded.last_awarded_at"
+  ).bind(roomId, userId, now).run();
+}
+
 async function awardRoomSeatExperience(
   db: D1Database,
   roomId: string,
@@ -1806,6 +1817,9 @@ export default {
             const isOnMic = (heartbeatSnapshot.seats ?? []).some((seat) => String(seat.userId ?? "") === user.id);
             if (isOnMic) {
               await awardRoomSeatExperience(env.DB, roomId, user.id, now);
+            } else {
+              // Only continuous microphone time counts; audience time resets the 5-minute clock.
+              await resetRoomSeatExperienceTimer(env.DB, roomId, user.id, now);
             }
           } else {
             if (!voiceEnabled) return json({ error: "agora_voice_disabled", message: "الميكروفونات متوقفة حاليًا من إدارة التطبيق" }, 503, origin, env);
