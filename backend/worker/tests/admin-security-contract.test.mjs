@@ -71,9 +71,16 @@ test("the admin browser uses the Worker API and never queries D1 directly", () =
   );
 });
 
-test("unsupported VIP, wallet, recharge and gift services are not presented as live data", () => {
-  assert.match(
-    adminUi,
-    /VIP والشحن والهدايا والمحفظة لا تملك جداول أو نقاط API حقيقية/,
-  );
+test("wallet administration uses the server-backed wallet ledger and owner-only credit route", () => {
+  assert.match(worker, /url\.pathname === "\/api\/v1\/admin\/wallets"/);
+  assert.match(worker, /url\.pathname === "\/api\/v1\/wallet"/);
+  assert.match(worker, /wallet_transactions/);
+  assert.match(worker, /actor\.role !== "owner".*إضافة العملات متاحة لمالك التطبيق فقط/s);
+  assert.match(adminUi, /async function walletsPage\(/);
+  assert.match(adminUi, /\/admin\/users\/.*\/wallet\/credit/);
+  assert.doesNotMatch(adminUi, /VIP والشحن والهدايا والمحفظة لا تملك جداول أو نقاط API حقيقية/);
+});
+
+test("unsupported recharge, VIP and gift services are not presented as live data", () => {
+  assert.match(adminUi, /الشحن الإلكتروني عبر بوابة دفع غير مفعّل بعد/);
 });
