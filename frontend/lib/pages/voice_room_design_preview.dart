@@ -294,11 +294,15 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         : (ownerValue(['avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url', 'imageUrl', 'image_url']).isNotEmpty
             ? ownerValue(['avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url', 'imageUrl', 'image_url'])
             : ownerAvatarUrl);
-    final exp = _roomInfoInt(['roomExp', 'room_exp', 'exp', 'experience'], 1800000);
-    final level = _roomInfoInt(['level', 'roomLevel', 'room_level'], 1);
-    // الخبرة داخل المستوى الحالي، والهدف التالي يتحدد من جدول الخمس مستويات.
-    // لا يوجد سقف للمستويات؛ الامتيازات فقط تنتهي عند المستوى 120.
-    final nextExp = roomLevelRequiredExpForLevel(level + 1);
+    // خبرة الغرفة مستقلة تمامًا عن مستوى الترقية المدفوع (الأساسي/المخيم/الشقة...).
+    // قيمة الخبرة والمستوى تأتي من D1 عبر استجابة الغرفة، ولا نعرض أرقامًا افتراضية مضللة.
+    final exp = _roomInfoInt(['experienceExp', 'experience_exp'], 0);
+    final level = _roomInfoInt(['experienceLevel', 'experience_level'], 1).clamp(1, 2147483647);
+    final nextExp = _roomInfoInt(
+      ['experienceNextLevelExp', 'experience_next_level_exp'],
+      roomLevelRequiredExpForLevel(level + 1),
+    ).clamp(1, 2147483647);
+    final dailyExp = _roomInfoInt(['dailyExperienceExp', 'daily_experience_exp'], 0).clamp(0, 3000000);
     return RoomLevelData(
       level: level,
       ownerName: (resolvedOwnerName ?? '').trim().isNotEmpty
@@ -314,9 +318,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       ownerAvatar: avatarUrl.startsWith('http') ? NetworkImage(avatarUrl) : null,
       exp: exp,
       nextLevelExp: nextExp,
-      dailyExpCurrent: _roomInfoString(['dailyExpCurrent', 'daily_exp_current'], '0'),
-      dailyExpMax: _roomInfoString(['dailyExpMax', 'daily_exp_max'], '9.9m'),
-      dailyRatio: double.tryParse(_roomInfoString(['dailyRatio', 'daily_ratio'], '0')) ?? 0,
+      dailyExpCurrent: dailyExp.toString(),
+      dailyExpMax: '3.0m',
+      dailyRatio: dailyExp / 3000000,
       dailyResetIn: const Duration(hours: 2, minutes: 48),
       tasks: kSampleTasks,
       perkGroups: kSamplePerks,
