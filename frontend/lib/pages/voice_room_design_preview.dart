@@ -407,7 +407,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                  (room['currentUserId'] ?? room['current_user_id']).toString()),
       );
   
-      showRoomInfoSheet(
+      await showRoomInfoSheet(
         context,
         info,
         onFollow: () {
