@@ -14,19 +14,28 @@ const roomExperienceProgress = new Function(
   `const ROOM_EXP_PER_LEVEL_GROUP = 3_300_000; ${progressSource.replace("(totalExperience: number)", "(totalExperience)")}; return roomExperienceProgress;`
 )();
 
-test("room experience follows the approved five-level bands", () => {
+test("room experience follows the cost band of the level being entered", () => {
   assert.deepEqual(roomExperienceProgress(0), { level: 1, exp: 0, nextLevelExp: 3_300_000 });
   assert.deepEqual(roomExperienceProgress(3_299_999), { level: 1, exp: 3_299_999, nextLevelExp: 3_300_000 });
   assert.deepEqual(roomExperienceProgress(3_300_000), { level: 2, exp: 0, nextLevelExp: 3_300_000 });
-  assert.deepEqual(roomExperienceProgress(16_499_999), { level: 5, exp: 3_299_999, nextLevelExp: 3_300_000 });
-  assert.deepEqual(roomExperienceProgress(16_500_000), { level: 6, exp: 0, nextLevelExp: 6_600_000 });
-  assert.deepEqual(roomExperienceProgress(49_500_000), { level: 11, exp: 0, nextLevelExp: 9_900_000 });
+  assert.deepEqual(roomExperienceProgress(13_199_999), { level: 4, exp: 3_299_999, nextLevelExp: 3_300_000 });
+  assert.deepEqual(roomExperienceProgress(13_200_000), { level: 5, exp: 0, nextLevelExp: 6_600_000 });
+  assert.deepEqual(roomExperienceProgress(16_499_999), { level: 5, exp: 3_299_999, nextLevelExp: 6_600_000 });
+  assert.deepEqual(roomExperienceProgress(19_800_000), { level: 6, exp: 0, nextLevelExp: 6_600_000 });
+  assert.deepEqual(roomExperienceProgress(46_200_000), { level: 10, exp: 0, nextLevelExp: 9_900_000 });
+  assert.deepEqual(roomExperienceProgress(56_100_000), { level: 11, exp: 0, nextLevelExp: 9_900_000 });
+  assert.deepEqual(roomExperienceProgress(Number.NaN), { level: 1, exp: 0, nextLevelExp: 3_300_000 });
 });
 
-test("experience progression has no level cap at 120", () => {
-  assert.deepEqual(roomExperienceProgress(4_950_000_000), {
-    level: 121,
+test("experience progression continues beyond level 120 with the next band's cost", () => {
+  assert.deepEqual(roomExperienceProgress(4_946_700_000), {
+    level: 120,
     exp: 0,
+    nextLevelExp: 82_500_000,
+  });
+  assert.deepEqual(roomExperienceProgress(4_950_000_000), {
+    level: 120,
+    exp: 3_300_000,
     nextLevelExp: 82_500_000,
   });
 });
