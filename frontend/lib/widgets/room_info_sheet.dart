@@ -89,32 +89,29 @@ void _showInactiveRoomGroupSheet(BuildContext context, RoomInfo info) {
             child: Directionality(
               textDirection: TextDirection.rtl,
               child: Container(
-                constraints: const BoxConstraints(maxWidth: 300),
-                margin: const EdgeInsets.symmetric(horizontal: 28),
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
                 decoration: BoxDecoration(
                   color: _RoomInfoColors.bg.withOpacity(.94),
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: Colors.white.withOpacity(.12)),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(.24), blurRadius: 24, offset: const Offset(0, 8)),
+                    BoxShadow(color: Colors.black.withOpacity(.24), blurRadius: 22, offset: const Offset(0, 7)),
                   ],
                 ),
-                child: Column(
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircleAvatar(
-                      radius: 34,
-                      backgroundColor: _RoomInfoColors.chip,
-                      backgroundImage: info.imageUrl.startsWith('http') ? NetworkImage(info.imageUrl) : null,
-                      child: info.imageUrl.startsWith('http') ? null : const Icon(Icons.groups, color: _RoomInfoColors.muted, size: 32),
+                    Icon(Icons.groups_rounded, color: _RoomInfoColors.gold, size: 25),
+                    SizedBox(width: 10),
+                    Text(
+                      'لم تنشط مجموعة الغرفة بعد',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _RoomInfoColors.text,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    Text(info.name, textAlign: TextAlign.center, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 17, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 9),
-                    const Text('لم تنشط مجموعة الغرفة بعد', textAlign: TextAlign.center, style: TextStyle(color: _RoomInfoColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
-                    Text(info.groupDesc.isEmpty ? 'لا يوجد وصف للمجموعة' : info.groupDesc, textAlign: TextAlign.center, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 13, height: 1.4)),
                   ],
                 ),
               ),
