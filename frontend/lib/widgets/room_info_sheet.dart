@@ -119,7 +119,7 @@ class _RoomInfoSheet extends StatelessWidget {
                     ),
 
                   ])),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Transform.translate(
                       offset: const Offset(3, 7),
@@ -255,19 +255,19 @@ class _RoomInfoSheet extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 15),
-                const Text('مجموعة الغرفة', style: TextStyle(color: _RoomInfoColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
+                const Text('مجموعة الغرفة', style: TextStyle(color: _RoomInfoColors.text, fontSize: 13, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  CircleAvatar(radius: 25, backgroundColor: _RoomInfoColors.chip, backgroundImage: info.imageUrl.startsWith('http') ? NetworkImage(info.imageUrl) : null, child: info.imageUrl.startsWith('http') ? null : const Icon(Icons.groups, color: _RoomInfoColors.muted)),
+                  CircleAvatar(radius: 20, backgroundColor: _RoomInfoColors.chip, backgroundImage: info.imageUrl.startsWith('http') ? NetworkImage(info.imageUrl) : null, child: info.imageUrl.startsWith('http') ? null : const Icon(Icons.groups, color: _RoomInfoColors.muted)),
                   const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      Flexible(child: Text(info.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 15, fontWeight: FontWeight.w600))),
-                      const SizedBox(width: 8),
-                      _chip(Text('${info.groupCount} عضو', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 11))),
+                      Flexible(child: Text(info.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 13, fontWeight: FontWeight.w600))),
+                      const SizedBox(width: 6),
+                      _chip(Text('${info.groupCount} عضو', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 10))),
                     ]),
-                    const SizedBox(height: 4),
-                    Text(info.groupDesc.isEmpty ? 'لا يوجد وصف للمجموعة' : info.groupDesc, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 12, height: 1.3)),
+                    const SizedBox(height: 3),
+                    Text(info.groupDesc.isEmpty ? 'لا يوجد وصف للمجموعة' : info.groupDesc, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 11, height: 1.25)),
                   ])),
                 ]),
                 const SizedBox(height: 12),
