@@ -152,7 +152,23 @@ class _RoomUpgradePageState extends State<RoomUpgradePage> {
                 _ownerChip(),
                 SizedBox(height: 230, child: _showcase()),
                 _levelTrack(),
-                const Spacer(),
+                const SizedBox(height: 14),
+                const _PerkRibbon('امتياز'),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.04),
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(22)),
+                    ),
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+                      itemCount: level.perks.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (_, i) => _PerkCard(level.perks[i]),
+                    ),
+                  ),
+                ),
                 if (canUpgrade) _upgradeBar(level),
               ],
             ),
