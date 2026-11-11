@@ -86,14 +86,14 @@ class _RoomInfoSheet extends StatelessWidget {
       (info.level - 1).clamp(0, kLevels.length - 1).toInt();
 
   int get _membersLimitForLevel {
-    final memberPerk = kLevels[_selectedLevelIndex].perks
-        .where((perk) => perk.title.trim() == 'أعضاء الغرفة')
-        .firstOrNull;
-    if (memberPerk == null) return info.membersMax;
-    final match = RegExp(r'\\d+').firstMatch(memberPerk.desc);
-    return match == null ? info.membersMax : int.parse(match.group(0)!);
+    for (final perk in kLevels[_selectedLevelIndex].perks) {
+      if (perk.title.trim() == 'أعضاء الغرفة') {
+        final match = RegExp(r'\\d+').firstMatch(perk.desc);
+        return match == null ? info.membersMax : int.parse(match.group(0)!);
+      }
+    }
+    return info.membersMax;
   }
-
   @override
   Widget build(BuildContext context) {
     final selectedLevel = kLevels[_selectedLevelIndex];
