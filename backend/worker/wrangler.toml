@@ -4,6 +4,7 @@ compatibility_date = "2026-11-03"
 workers_dev = true
 [previews.vars]
 APP_ENV = "preview"
+GOOGLE_CLIENT_ID = "999298541545-5i0kn2d1emj2rohuvruj4o8ej49ho9kg.apps.googleusercontent.com"
 
 [[previews.d1_databases]]
 binding = "DB"
