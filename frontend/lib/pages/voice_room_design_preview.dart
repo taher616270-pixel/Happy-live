@@ -336,7 +336,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     final members = roomMembers.map((member) {
       final profile = profiles[member.userId];
       return RoomMember(
-        avatarUrl: _profileValue(profile, ['avatarUrl', 'avatar', 'photo_url', 'avatar_key']),
+        avatarUrl: _profileValue(profile, ['avatarUrl', 'avatar', 'photo_url']),
         role: member.role,
         isOwner: member.isOwner,
         name: _profileValue(profile, ['name', 'displayName', 'display_name']),
@@ -348,7 +348,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     final ownerProfile = profiles[resolvedOwnerUserId];
     final ownerIndex = members.indexWhere((member) => member.isOwner);
     final ownerMember = RoomMember(
-      avatarUrl: _profileValue(ownerProfile, ['avatarUrl', 'avatar', 'photo_url', 'avatar_key']),
+      avatarUrl: _profileValue(ownerProfile, ['avatarUrl', 'avatar', 'photo_url']),
       role: 'المالك',
       isOwner: true,
       name: _profileValue(ownerProfile, ['name', 'displayName', 'display_name']),
