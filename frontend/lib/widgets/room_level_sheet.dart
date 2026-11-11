@@ -162,7 +162,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     ]),
   );
   Widget _progress(RoomLevelData d) {
-    final ratio = d.nextLevelExp == 0 ? 0.0 : (d.exp / d.nextLevelExp).clamp(0.0, 1.0);
+    final ratio = d.nextLevelExp == 0 ? 0.0 : (d.exp / d.nextLevelExp).clamp(0.0, 1.0).toDouble();
     String short(int n) => n >= 1000000 ? '${(n / 1000000).toStringAsFixed(1)}m' : n >= 1000 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n';
     return Padding(padding: const EdgeInsets.fromLTRB(14, 4, 14, 6), child: Column(children: [
       ClipRRect(borderRadius: BorderRadius.circular(3), child: Directionality(textDirection: TextDirection.rtl, child: LinearProgressIndicator(value: ratio, minHeight: 5, color: _green, backgroundColor: _track))),
@@ -204,7 +204,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     ])),
     const SizedBox(width: 12), Icon(t.icon, color: Colors.white70, size: 34),
   ]));
-  Widget _bar(double ratio) => ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: ratio.clamp(0.0, 1.0), minHeight: 4, color: _green, backgroundColor: _track));
+  Widget _bar(double ratio) => ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: ratio.clamp(0.0, 1.0).toDouble(), minHeight: 4, color: _green, backgroundColor: _track));
   Widget _perksTab(RoomLevelData d) => ListView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24), children: [
     for (final group in d.perkGroups) ...[
       Padding(padding: const EdgeInsets.fromLTRB(2, 14, 2, 10), child: Row(children: [
