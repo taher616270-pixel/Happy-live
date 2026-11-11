@@ -269,7 +269,16 @@ class _RoomInfoSheet extends StatelessWidget {
                     Row(children: [
                       Flexible(child: Text(info.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 13, fontWeight: FontWeight.w600))),
                       const SizedBox(width: 6),
-                      _chip(Text('${info.groupCount} عضو', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 10))),
+                      _chip(
+                        Text(
+                          info.groupCount == 0 ? 'لم يتم التنشيط بعد' : '${info.groupCount} عضو',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 9),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        radius: 7,
+                      ),
                     ]),
                     const SizedBox(height: 3),
                     Text(info.groupDesc.isEmpty ? 'لا يوجد وصف للمجموعة' : info.groupDesc, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 11, height: 1.25)),
