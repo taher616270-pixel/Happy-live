@@ -74,7 +74,6 @@ async function awardRoomSeatExperience(
   ).bind(now, roomId, userId, previous.last_awarded_at).run();
   if ((advanced.meta?.changes ?? 0) !== 1) return;
 
-  const dayKey = now.slice(0, 10);
   try {
     await db.prepare(
       "INSERT OR IGNORE INTO room_exp_daily (user_id, day_key, points) VALUES (?, ?, 0)"
