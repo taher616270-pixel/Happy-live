@@ -1,0 +1,250 @@
+import 'dart:async';
+import 'dart:math' as math;
+import 'package:flutter/material.dart';
+
+const _sheetBg = Color(0xFF15131B);
+const _cardBg = Color(0xFF1C1A23);
+const _cardBorder = Color(0xFF2A2733);
+const _green = Color(0xFF6BE675);
+const _greenDeep = Color(0xFF1E6B3C);
+const _muted = Color(0xFF8A8794);
+const _track = Color(0xFF3A3842);
+
+class ExpTask {
+  const ExpTask({required this.title, required this.desc, required this.current, required this.max, required this.icon, this.ratio = 0});
+  final String title, desc, current, max;
+  final IconData icon;
+  final double ratio;
+}
+class LevelPerk {
+  const LevelPerk(this.title, this.icon, {this.subtitle, this.iconColor});
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+  final Color? iconColor;
+}
+class LevelPerksGroup {
+  const LevelPerksGroup(this.level, this.perks);
+  final int level;
+  final List<LevelPerk> perks;
+}
+class RoomLevelData {
+  const RoomLevelData({
+    required this.level, required this.ownerName, required this.ownerId,
+    this.ownerAvatar, required this.exp, required this.nextLevelExp,
+    this.dailyExpCurrent = '0', this.dailyExpMax = '9.9m',
+    this.dailyRatio = 0, this.dailyResetIn, this.tasks = const [],
+    this.perkGroups = const [],
+    this.note = 'يمكن لكل مستخدم المساهمة بما يصل إلى 3000000 من نقاط الخبرة يوميا في جميع الغرف',
+  });
+  final int level, exp, nextLevelExp;
+  final String ownerName, ownerId, dailyExpCurrent, dailyExpMax, note;
+  final ImageProvider? ownerAvatar;
+  final double dailyRatio;
+  final Duration? dailyResetIn;
+  final List<ExpTask> tasks;
+  final List<LevelPerksGroup> perkGroups;
+}
+
+const kSampleTasks = <ExpTask>[
+  ExpTask(title: 'اخذ المقعد', desc: '+600 نقاط خبرة الغرفة/5 دقائق(المستخدمين الجدد: +1200 نقاط خبرة الغرفة/5 دقائق)', current: '0', max: '900.0k', icon: Icons.mic),
+  ExpTask(title: 'ارسل الهدايا في الغرفة', desc: '+1 نقاط خبرة الغرفة / 1 عملة ذهبية (خلال المباراة: +2 نقاط خبرة الغرفة / 1 عملة ذهبية)', current: '0', max: '9.0m', icon: Icons.card_giftcard),
+];
+const kSamplePerks = <LevelPerksGroup>[
+  LevelPerksGroup(1, [
+    LevelPerk('شارة خضراء ابتدائية المستوى', Icons.military_tech, iconColor: Color(0xFF3DBE6B)),
+    LevelPerk('إظهار شارة مستوى الغرفة داخل الغرفة', Icons.home_filled, iconColor: Color(0xFFFFB84D)),
+  ]),
+  LevelPerksGroup(5, [
+    LevelPerk('غلاف غرفة متحرك', Icons.image, subtitle: 'القدرة على تعيين غلاف غرفة متحرك', iconColor: Color(0xFF5CC8FF)),
+    LevelPerk('خصص خليفة الغرفة', Icons.palette, subtitle: 'يمكن تحميل خلفية الغرفة', iconColor: Color(0xFFFFB84D)),
+  ]),
+  LevelPerksGroup(10, [
+    LevelPerk('شارة زرقاء متوسطة المستوى', Icons.diamond, iconColor: Color(0xFF29C5D6)),
+    LevelPerk('تظهر شارة مستوى الغرفة في قائمة الغرف', Icons.badge, iconColor: Color(0xFFFFB84D)),
+    LevelPerk('خلفية غرفة متحركة حصرية', Icons.wallpaper, iconColor: Color(0xFF3DBE6B)),
+    LevelPerk('قادرة على إنشاء قبيلة', Icons.shield, iconColor: Color(0xFF5CC8FF)),
+    LevelPerk('فتح امتياز لاستضافة أحداث الغرفة', Icons.celebration, iconColor: Color(0xFFB07CFF)),
+  ]),
+  LevelPerksGroup(15, [LevelPerk('قادرة على فتح مزاد العلاقة في غرفتك', Icons.gavel, iconColor: Color(0xFFFFB84D))]),
+  LevelPerksGroup(30, [LevelPerk('خلفية غرفة متحركة حصرية', Icons.wallpaper, iconColor: Color(0xFF7A6CFF))]),
+  LevelPerksGroup(40, [LevelPerk('شارة أرجوانية مميزة', Icons.workspace_premium, iconColor: Color(0xFF8E7CFF))]),
+];
+
+/// شارة المستوى في الغرفة؛ تحافظ على شكل الشارة الحالية وتفتح نافذة المستوى.
+class RoomLevelChip extends StatelessWidget {
+  const RoomLevelChip({super.key, required this.data});
+  final RoomLevelData data;
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.opaque,
+    onTap: () => showRoomLevelSheet(context, data),
+    child: Container(
+      height: 20,
+      padding: const EdgeInsets.only(left: 4, right: 9),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(100),
+        gradient: const LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: [Color(0xFF1E6B3A), Color(0xFF3CB35F), Color(0xFF8FD176)]),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.15), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text('Lv. ${data.level}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: .2)),
+        const SizedBox(width: 5),
+        Container(width: 12, height: 12, decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(colors: [Colors.white.withOpacity(.95), const Color(0xFFB9E8C0), const Color(0xFF7ED490)]),
+          border: Border.all(color: Colors.white.withOpacity(.6)),
+          boxShadow: [BoxShadow(color: Colors.white.withOpacity(.5), blurRadius: 3)],
+        )),
+      ]),
+    ),
+  );
+}
+
+Future<void> showRoomLevelSheet(BuildContext context, RoomLevelData data) {
+  return showModalBottomSheet<void>(
+    context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+    barrierColor: Colors.black54,
+    builder: (_) => Directionality(textDirection: TextDirection.rtl, child: _RoomLevelSheet(data: data)),
+  );
+}
+
+class _RoomLevelSheet extends StatefulWidget {
+  const _RoomLevelSheet({required this.data});
+  final RoomLevelData data;
+  @override
+  State<_RoomLevelSheet> createState() => _RoomLevelSheetState();
+}
+class _RoomLevelSheetState extends State<_RoomLevelSheet> {
+  int _tab = 0;
+  Timer? _timer;
+  Duration? _left;
+  @override
+  void initState() {
+    super.initState();
+    _left = widget.data.dailyResetIn;
+    if (_left != null) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        setState(() { final n = _left! - const Duration(seconds: 1); _left = n.isNegative ? Duration.zero : n; });
+      });
+    }
+  }
+  @override
+  void dispose() { _timer?.cancel(); super.dispose(); }
+  String _fmt(Duration d) => '${d.inHours.toString().padLeft(2, '0')}:${(d.inMinutes % 60).toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final d = widget.data;
+    return SizedBox(height: MediaQuery.of(context).size.height * .68 + 44, child: Stack(clipBehavior: Clip.none, children: [
+      Positioned.fill(top: 44, child: Container(
+        decoration: const BoxDecoration(color: _sheetBg, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        child: Column(children: [
+          _header(d), _progress(d), _tabs(),
+          Expanded(child: _tab == 0 ? _levelUpTab(d) : _perksTab(d)),
+        ]),
+      )),
+      PositionedDirectional(end: 10, top: 0, child: _LevelRing(level: d.level, size: 88)),
+    ]));
+  }
+  Widget _header(RoomLevelData d) => Container(
+    height: 74, padding: const EdgeInsets.symmetric(horizontal: 14),
+    decoration: const BoxDecoration(borderRadius: BorderRadius.vertical(top: Radius.circular(24)), gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_greenDeep, _sheetBg])),
+    child: Row(children: [
+      CircleAvatar(radius: 24, backgroundColor: Colors.white12, backgroundImage: d.ownerAvatar),
+      const SizedBox(width: 10),
+      Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(d.ownerName, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 2),
+        Text('ID:${d.ownerId}', style: const TextStyle(color: _muted, fontSize: 12)),
+      ]),
+    ]),
+  );
+  Widget _progress(RoomLevelData d) {
+    final ratio = d.nextLevelExp == 0 ? 0.0 : (d.exp / d.nextLevelExp).clamp(0.0, 1.0);
+    String short(int n) => n >= 1000000 ? '${(n / 1000000).toStringAsFixed(1)}m' : n >= 1000 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n';
+    return Padding(padding: const EdgeInsets.fromLTRB(14, 4, 14, 6), child: Column(children: [
+      ClipRRect(borderRadius: BorderRadius.circular(3), child: Directionality(textDirection: TextDirection.rtl, child: LinearProgressIndicator(value: ratio, minHeight: 5, color: _green, backgroundColor: _track))),
+      const SizedBox(height: 6),
+      Row(children: [
+        Text('نقاط خبرة الغرفة: ${short(d.exp)}/${short(d.nextLevelExp)}', style: const TextStyle(color: _muted, fontSize: 11)),
+        const Spacer(),
+        Text('Lv.${d.level + 1}', style: const TextStyle(color: _muted, fontSize: 11)),
+      ]),
+    ]));
+  }
+  Widget _tabs() => Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 10), child: Row(children: [
+    _tabItem('رفع المستوى', 0), const SizedBox(width: 18), _tabItem('الامتيازات', 1),
+  ]));
+  Widget _tabItem(String title, int index) => GestureDetector(onTap: () => setState(() => _tab = index), child: Text(title, style: TextStyle(fontSize: index == _tab ? 17 : 15, fontWeight: index == _tab ? FontWeight.w800 : FontWeight.w500, color: index == _tab ? Colors.white : _muted)));
+  Widget _levelUpTab(RoomLevelData d) => ListView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24), children: [
+    _dailyCard(d), const SizedBox(height: 10),
+    for (final task in d.tasks) ...[_taskCard(task), const SizedBox(height: 10)],
+    const SizedBox(height: 6),
+    const Text('ملحوظة:', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+    const SizedBox(height: 8),
+    Text(d.note, style: const TextStyle(color: _muted, fontSize: 12, height: 1.5)),
+  ]);
+  Widget _dailyCard(RoomLevelData d) => Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFF16201C), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF22362C))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Row(children: [
+      const Text('نقاط خبرة الغرفة اليوم:', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+      const Spacer(),
+      if (_left != null) ...[Text(_fmt(_left!), style: const TextStyle(color: _muted, fontSize: 12)), const SizedBox(width: 4), const Icon(Icons.schedule, color: _muted, size: 14)],
+    ]),
+    const SizedBox(height: 10), _bar(d.dailyRatio), const SizedBox(height: 6),
+    Text('${d.dailyExpCurrent}/${d.dailyExpMax}', style: const TextStyle(color: _muted, fontSize: 11)),
+  ]));
+  Widget _taskCard(ExpTask t) => Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: _cardBorder)), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(t.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 6), Text(t.desc, style: const TextStyle(color: _muted, fontSize: 11, height: 1.5)),
+      const SizedBox(height: 10), _bar(t.ratio), const SizedBox(height: 6),
+      Text('${t.current}/${t.max}', style: const TextStyle(color: _muted, fontSize: 11)),
+    ])),
+    const SizedBox(width: 12), Icon(t.icon, color: Colors.white70, size: 34),
+  ]));
+  Widget _bar(double ratio) => ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: ratio.clamp(0.0, 1.0), minHeight: 4, color: _green, backgroundColor: _track));
+  Widget _perksTab(RoomLevelData d) => ListView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24), children: [
+    for (final group in d.perkGroups) ...[
+      Padding(padding: const EdgeInsets.fromLTRB(2, 14, 2, 10), child: Row(children: [
+        Text('Lv.${group.level}', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+        const SizedBox(width: 6),
+        if (group.level > d.level) const Icon(Icons.lock, color: _muted, size: 14) else const Icon(Icons.check_box, color: Colors.white, size: 16),
+      ])),
+      for (final perk in group.perks) ...[_perkCard(perk), const SizedBox(height: 8)],
+    ],
+  ]);
+  Widget _perkCard(LevelPerk p) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(14)), child: Row(children: [
+    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(p.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+      if (p.subtitle != null) ...[const SizedBox(height: 4), Text(p.subtitle!, style: const TextStyle(color: _muted, fontSize: 11))],
+    ])),
+    const SizedBox(width: 12),
+    Container(width: 44, height: 44, decoration: BoxDecoration(color: (p.iconColor ?? _green).withOpacity(.15), borderRadius: BorderRadius.circular(12)), child: Icon(p.icon, color: p.iconColor ?? _green, size: 26)),
+  ]));
+}
+
+class _LevelRing extends StatelessWidget {
+  const _LevelRing({required this.level, required this.size});
+  final int level;
+  final double size;
+  @override
+  Widget build(BuildContext context) => SizedBox(width: size, height: size, child: CustomPaint(painter: _RingPainter(), child: Center(child: Container(
+    width: size * .5, height: size * .5, alignment: Alignment.center,
+    decoration: const BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Color(0xFF5BD18A), Color(0xFF1E6B3C)])),
+    child: Text('$level', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic)),
+  ))));
+}
+class _RingPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.width / 2 - 5;
+    final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 7..shader = const SweepGradient(colors: [Color(0xFF9BE8B4), Color(0xFF2E8B57), Color(0xFF9BE8B4)]).createShader(Rect.fromCircle(center: center, radius: radius));
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), -math.pi / 2, 2 * math.pi, false, paint);
+    canvas.drawCircle(center, radius - 6, Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5..color = Colors.white24);
+  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
