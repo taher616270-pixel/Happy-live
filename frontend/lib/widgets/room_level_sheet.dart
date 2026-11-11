@@ -48,16 +48,16 @@ class LevelPerksGroup {
 }
 class RoomLevelData {
   const RoomLevelData({
-    required this.level, required this.ownerName, required this.ownerId,
-    this.ownerAvatar, required this.exp, required this.nextLevelExp,
+    required this.level, required this.roomName, required this.roomId,
+    this.roomAvatar, required this.exp, required this.nextLevelExp,
     this.dailyExpCurrent = '0', this.dailyExpMax = '9.9m',
     this.dailyRatio = 0, this.dailyResetIn, this.tasks = const [],
     this.perkGroups = const [],
     this.note = 'تُحتسب 600 نقطة خبرة كل 5 دقائق متواصلة على المايك، وترتفع إلى 1200 نقطة للحسابات خلال أول 15 يومًا من التسجيل. الحد اليومي لمساهمة المستخدم 3,000,000 نقطة في جميع الغرف.',
   });
   final int level, exp, nextLevelExp;
-  final String ownerName, ownerId, dailyExpCurrent, dailyExpMax, note;
-  final ImageProvider? ownerAvatar;
+  final String roomName, roomId, dailyExpCurrent, dailyExpMax, note;
+  final ImageProvider? roomAvatar;
   final double dailyRatio;
   final Duration? dailyResetIn;
   final List<ExpTask> tasks;
@@ -202,12 +202,12 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     height: 74, padding: const EdgeInsets.symmetric(horizontal: 14),
     decoration: const BoxDecoration(borderRadius: BorderRadius.vertical(top: Radius.circular(24)), gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_greenDeep, _sheetBg])),
     child: Row(children: [
-      CircleAvatar(radius: 24, backgroundColor: Colors.white12, backgroundImage: d.ownerAvatar),
+      CircleAvatar(radius: 24, backgroundColor: Colors.white12, backgroundImage: d.roomAvatar),
       const SizedBox(width: 10),
       Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(d.ownerName, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+        Text(d.roomName, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
         const SizedBox(height: 2),
-        Text('ID:${d.ownerId}', style: const TextStyle(color: _muted, fontSize: 12)),
+        Text('ID:${d.roomId}', style: const TextStyle(color: _muted, fontSize: 12)),
       ]),
     ]),
   );
