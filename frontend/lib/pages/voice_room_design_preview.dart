@@ -12,6 +12,7 @@ import 'package:happy_live/models/seat_state.dart';
 import 'edit_profile_page.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
+  static final Set<String> _openingRoomInfo = <String>{};
 
   const VoiceRoomDesignPreview({
     super.key,
@@ -271,159 +272,166 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   }
 
   Future<void> _openRoomInfo(BuildContext context) async {
-    final image = _roomInfoString(['imageUrl', 'image_url', 'coverUrl', 'cover_url']);
-    final ownerData = room['owner'] is Map
-        ? Map<String, dynamic>.from(room['owner'] as Map)
-        : room['roomOwner'] is Map
-            ? Map<String, dynamic>.from(room['roomOwner'] as Map)
-            : room['room_owner'] is Map
-                ? Map<String, dynamic>.from(room['room_owner'] as Map)
-                : <String, dynamic>{};
-
-    // Room data supplies only account identifiers and room roles.
-    // Names, avatars and public IDs always come from the app's user profile API.
-    final resolvedOwnerUserId = (ownerData['id'] ??
-            ownerData['userId'] ??
-            ownerData['user_id'] ??
-            ownerData['uid'] ??
-            _roomInfoString(['ownerId', 'owner_id', 'ownerUserId', 'owner_user_id']))
-        .toString()
-        .trim();
-
-    final rawMembers = room['members'] ?? room['roomMembers'] ?? room['room_members'];
-    final roomMembers = <RoomMember>[];
-    if (rawMembers is List) {
-      for (final item in rawMembers) {
-        if (item is! Map) continue;
-        final member = Map<String, dynamic>.from(item);
-        final role = (member['role'] ??
-                member['roleName'] ??
-                member['role_name'] ??
-                'عضو')
-            .toString();
-        final isOwner = member['isOwner'] == true ||
-            member['is_owner'] == true ||
-            role.toLowerCase() == 'owner' ||
-            role == 'المالك';
-        final userId = (member['userId'] ??
-                member['user_id'] ??
-                member['uid'] ??
-                member['id'] ??
-                '')
-            .toString()
-            .trim();
-        roomMembers.add(RoomMember(
-          avatarUrl: '',
-          role: role,
-          isOwner: isOwner,
-          name: '',
-          id: '',
-          userId: userId,
-        ));
+    final roomKey = _id.trim().isEmpty ? 'room:${identityHashCode(room)}' : _id.trim();
+    if (!_openingRoomInfo.add(roomKey)) return;
+    try {
+      final image = _roomInfoString(['imageUrl', 'image_url', 'coverUrl', 'cover_url']);
+      final ownerData = room['owner'] is Map
+          ? Map<String, dynamic>.from(room['owner'] as Map)
+          : room['roomOwner'] is Map
+              ? Map<String, dynamic>.from(room['roomOwner'] as Map)
+              : room['room_owner'] is Map
+                  ? Map<String, dynamic>.from(room['room_owner'] as Map)
+                  : <String, dynamic>{};
+  
+      // Room data supplies only account identifiers and room roles.
+      // Names, avatars and public IDs always come from the app's user profile API.
+      final resolvedOwnerUserId = (ownerData['id'] ??
+              ownerData['userId'] ??
+              ownerData['user_id'] ??
+              ownerData['uid'] ??
+              _roomInfoString(['ownerId', 'owner_id', 'ownerUserId', 'owner_user_id']))
+          .toString()
+          .trim();
+  
+      final rawMembers = room['members'] ?? room['roomMembers'] ?? room['room_members'];
+      final roomMembers = <RoomMember>[];
+      if (rawMembers is List) {
+        for (final item in rawMembers) {
+          if (item is! Map) continue;
+          final member = Map<String, dynamic>.from(item);
+          final role = (member['role'] ??
+                  member['roleName'] ??
+                  member['role_name'] ??
+                  'عضو')
+              .toString();
+          final isOwner = member['isOwner'] == true ||
+              member['is_owner'] == true ||
+              role.toLowerCase() == 'owner' ||
+              role == 'المالك';
+          final userId = (member['userId'] ??
+                  member['user_id'] ??
+                  member['uid'] ??
+                  member['id'] ??
+                  '')
+              .toString()
+              .trim();
+          roomMembers.add(RoomMember(
+            avatarUrl: '',
+            role: role,
+            isOwner: isOwner,
+            name: '',
+            id: '',
+            userId: userId,
+          ));
+        }
       }
-    }
-
-    final userIds = <String>{
-      ...roomMembers.map((member) => member.userId).where((id) => id.isNotEmpty),
-      if (resolvedOwnerUserId.isNotEmpty) resolvedOwnerUserId,
-    };
-    final profiles = <String, Map<String, dynamic>>{};
-    await Future.wait(userIds.map((userId) async {
-      final profile = await _loadAccountProfile(userId);
-      if (profile != null) profiles[userId] = profile;
-    }));
-
-    final members = roomMembers.map((member) {
-      final profile = profiles[member.userId];
-      return RoomMember(
-        avatarUrl: _profileValue(profile, ['avatarUrl', 'avatar', 'photo_url']),
-        role: member.role,
-        isOwner: member.isOwner,
-        name: _profileValue(profile, ['name', 'displayName', 'display_name']),
-        id: _profileValue(profile, ['userCode', 'user_code', 'gabo_id']),
-        userId: member.userId,
+  
+      final userIds = <String>{
+        ...roomMembers.map((member) => member.userId).where((id) => id.isNotEmpty),
+        if (resolvedOwnerUserId.isNotEmpty) resolvedOwnerUserId,
+      };
+      final profiles = <String, Map<String, dynamic>>{};
+      await Future.wait(userIds.map((userId) async {
+        final profile = await _loadAccountProfile(userId);
+        if (profile != null) profiles[userId] = profile;
+      }));
+  
+      final members = roomMembers.map((member) {
+        final profile = profiles[member.userId];
+        return RoomMember(
+          avatarUrl: _profileValue(profile, ['avatarUrl', 'avatar', 'photo_url']),
+          role: member.role,
+          isOwner: member.isOwner,
+          name: _profileValue(profile, ['name', 'displayName', 'display_name']),
+          id: _profileValue(profile, ['userCode', 'user_code', 'gabo_id']),
+          userId: member.userId,
+        );
+      }).toList();
+  
+      final ownerProfile = profiles[resolvedOwnerUserId];
+      final ownerIndex = members.indexWhere((member) => member.isOwner);
+      final ownerMember = RoomMember(
+        avatarUrl: _profileValue(ownerProfile, ['avatarUrl', 'avatar', 'photo_url']),
+        role: 'المالك',
+        isOwner: true,
+        name: _profileValue(ownerProfile, ['name', 'displayName', 'display_name']),
+        id: _profileValue(ownerProfile, ['userCode', 'user_code', 'gabo_id']),
+        userId: resolvedOwnerUserId,
       );
-    }).toList();
-
-    final ownerProfile = profiles[resolvedOwnerUserId];
-    final ownerIndex = members.indexWhere((member) => member.isOwner);
-    final ownerMember = RoomMember(
-      avatarUrl: _profileValue(ownerProfile, ['avatarUrl', 'avatar', 'photo_url']),
-      role: 'المالك',
-      isOwner: true,
-      name: _profileValue(ownerProfile, ['name', 'displayName', 'display_name']),
-      id: _profileValue(ownerProfile, ['userCode', 'user_code', 'gabo_id']),
-      userId: resolvedOwnerUserId,
-    );
-    if (ownerIndex >= 0) {
-      members[ownerIndex] = ownerMember;
-    } else {
-      members.insert(0, ownerMember);
+      if (ownerIndex >= 0) {
+        members[ownerIndex] = ownerMember;
+      } else {
+        members.insert(0, ownerMember);
+      }
+  
+      final ownerCountryName = _profileValue(
+        ownerProfile,
+        ['countryName', 'country_name', 'country', 'countryDisplayName', 'country_display_name'],
+      );
+      if (!context.mounted) return;
+  
+      final info = RoomInfo(
+        name: _name,
+        flag: ownerCountryName,
+        id: _id,
+        imageUrl: image,
+        imageBadge: _roomInfoString(['imageBadge', 'image_badge'], 'غرفة مميزة'),
+        likes: _roomInfoInt(['likes', 'likeCount', 'like_count', 'trophies', 'trophyCount']),
+        tribeName: _roomInfoString(['tribeName', 'tribe_name'], 'بدون قبيلة'),
+        tribeOwner: _roomInfoString(['tribeOwner', 'tribe_owner']),
+        tribeLogoUrl: _roomInfoString(['tribe_logo', 'tribeLogo', 'tribeLogoUrl', 'tribe_logo_url']),
+        level: _roomInfoInt(['level', 'roomLevel', 'room_level'], 1),
+        palaceStatus: _roomInfoString(['palaceStatus', 'palace_status'], 'غير مفعّل'),
+        membersCount: _roomInfoInt(['membersCount', 'members_count', 'memberCount'], 0) > members.length
+            ? _roomInfoInt(['membersCount', 'members_count', 'memberCount'], 0)
+            : members.length,
+        membersMax: _roomInfoInt(['membersMax', 'members_max', 'maxMembers'], 100),
+        members: members,
+        announcement: _roomInfoString(['announcement', 'description']),
+        groupName: _roomInfoString(['groupName', 'group_name'], 'مجموعة الغرفة'),
+        groupCount: _roomInfoInt(['groupCount', 'group_count']),
+        groupDesc: _roomInfoString(['groupDesc', 'group_desc', 'groupDescription']),
+        ownerAvatarUrl: ownerMember.avatarUrl,
+        isRoomOwner: isCurrentUserRoomOwner || room['isOwner'] == true ||
+            room['is_owner'] == true ||
+            room['isRoomOwner'] == true ||
+            room['is_room_owner'] == true ||
+            room['currentUserRole']?.toString().toLowerCase() == 'owner' ||
+            room['current_user_role']?.toString().toLowerCase() == 'owner' ||
+            room['myRole']?.toString().toLowerCase() == 'owner' ||
+            room['my_role']?.toString().toLowerCase() == 'owner' ||
+            ((room['ownerId'] ?? room['owner_id']) != null &&
+             (room['currentUserId'] ?? room['current_user_id']) != null &&
+             (room['ownerId'] ?? room['owner_id']).toString() ==
+                 (room['currentUserId'] ?? room['current_user_id']).toString()),
+      );
+  
+      showRoomInfoSheet(
+        context,
+        info,
+        onFollow: () {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ميزة المتابعة قريبًا')));
+        },
+        onJoin: () {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ميزة الانضمام للمجموعة قريبًا')));
+        },
+        onSettings: () {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('إعدادات الغرفة قريبًا')));
+        },
+        onInvite: () {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('دعوة الأعضاء قريبًا')));
+        },
+        accessToken: accessToken,
+      );
     }
-
-    final ownerCountryName = _profileValue(
-      ownerProfile,
-      ['countryName', 'country_name', 'country', 'countryDisplayName', 'country_display_name'],
-    );
-    if (!context.mounted) return;
-
-    final info = RoomInfo(
-      name: _name,
-      flag: ownerCountryName,
-      id: _id,
-      imageUrl: image,
-      imageBadge: _roomInfoString(['imageBadge', 'image_badge'], 'غرفة مميزة'),
-      likes: _roomInfoInt(['likes', 'likeCount', 'like_count', 'trophies', 'trophyCount']),
-      tribeName: _roomInfoString(['tribeName', 'tribe_name'], 'بدون قبيلة'),
-      tribeOwner: _roomInfoString(['tribeOwner', 'tribe_owner']),
-      tribeLogoUrl: _roomInfoString(['tribe_logo', 'tribeLogo', 'tribeLogoUrl', 'tribe_logo_url']),
-      level: _roomInfoInt(['level', 'roomLevel', 'room_level'], 1),
-      palaceStatus: _roomInfoString(['palaceStatus', 'palace_status'], 'غير مفعّل'),
-      membersCount: _roomInfoInt(['membersCount', 'members_count', 'memberCount'], 0) > members.length
-          ? _roomInfoInt(['membersCount', 'members_count', 'memberCount'], 0)
-          : members.length,
-      membersMax: _roomInfoInt(['membersMax', 'members_max', 'maxMembers'], 100),
-      members: members,
-      announcement: _roomInfoString(['announcement', 'description']),
-      groupName: _roomInfoString(['groupName', 'group_name'], 'مجموعة الغرفة'),
-      groupCount: _roomInfoInt(['groupCount', 'group_count']),
-      groupDesc: _roomInfoString(['groupDesc', 'group_desc', 'groupDescription']),
-      ownerAvatarUrl: ownerMember.avatarUrl,
-      isRoomOwner: isCurrentUserRoomOwner || room['isOwner'] == true ||
-          room['is_owner'] == true ||
-          room['isRoomOwner'] == true ||
-          room['is_room_owner'] == true ||
-          room['currentUserRole']?.toString().toLowerCase() == 'owner' ||
-          room['current_user_role']?.toString().toLowerCase() == 'owner' ||
-          room['myRole']?.toString().toLowerCase() == 'owner' ||
-          room['my_role']?.toString().toLowerCase() == 'owner' ||
-          ((room['ownerId'] ?? room['owner_id']) != null &&
-           (room['currentUserId'] ?? room['current_user_id']) != null &&
-           (room['ownerId'] ?? room['owner_id']).toString() ==
-               (room['currentUserId'] ?? room['current_user_id']).toString()),
-    );
-
-    showRoomInfoSheet(
-      context,
-      info,
-      onFollow: () {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ميزة المتابعة قريبًا')));
-      },
-      onJoin: () {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ميزة الانضمام للمجموعة قريبًا')));
-      },
-      onSettings: () {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('إعدادات الغرفة قريبًا')));
-      },
-      onInvite: () {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('دعوة الأعضاء قريبًا')));
-      },
-      accessToken: accessToken,
-    );
+    } finally {
+      _openingRoomInfo.remove(roomKey);
+    }
   }
 
   Widget _header(BuildContext context) {
