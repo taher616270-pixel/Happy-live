@@ -46,7 +46,7 @@ test("Flutter level sheet uses the same target-level cost bands as the Worker", 
   const helperSource = roomLevelSheet.match(/int roomLevelRequiredExpForLevel\(int targetLevel\) \{[\s\S]*?\n\}/)?.[0];
   assert.ok(helperSource, "Flutter room level cost helper must exist");
   const requiredExp = new Function(
-    `${helperSource.replace("(int targetLevel)", "(targetLevel)")}; return roomLevelRequiredExpForLevel;`
+    `${helperSource.replace("int roomLevelRequiredExpForLevel", "function roomLevelRequiredExpForLevel").replace("(int targetLevel)", "(targetLevel)")}; return roomLevelRequiredExpForLevel;`
   )();
   for (const targetLevel of [2, 5, 6, 10, 11, 15, 16, 120, 121]) {
     const expected = (Math.floor((targetLevel - 1) / 5) + 1) * 3_300_000;
