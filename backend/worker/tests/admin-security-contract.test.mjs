@@ -62,8 +62,11 @@ test("the admin browser uses the Worker API and never queries D1 directly", () =
     adminUi,
     /["']Authorization["']\s*:\s*["']Bearer ["']\s*\+\s*token/,
   );
+  // Ignore native HTML <select> elements; the SQL guard is intended to
+  // detect database statements in the browser code, not form controls.
+  const adminUiWithoutSelectTags = adminUi.replace(/<select\b[^>]*>/gi, " ");
   assert.doesNotMatch(
-    adminUi,
+    adminUiWithoutSelectTags,
     /\b(?:D1Database|SELECT\s+\w+|INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM)\b/i,
   );
 });
