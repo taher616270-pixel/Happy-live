@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -76,48 +77,57 @@ Future<void> showRoomInfoSheet(
   );
 }
 
-Future<void> _showInactiveRoomGroupSheet(BuildContext context, RoomInfo info) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withOpacity(.18),
-    builder: (sheetContext) => Directionality(
-      textDirection: TextDirection.rtl,
-      child: SizedBox(
-        height: MediaQuery.sizeOf(sheetContext).height * .5,
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(22, 28, 22, 36),
-            decoration: BoxDecoration(
-              color: _RoomInfoColors.bg.withOpacity(.86),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              border: Border.all(color: Colors.white.withOpacity(.10)),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircleAvatar(
-                  radius: 34,
-                  backgroundColor: _RoomInfoColors.chip,
-                  backgroundImage: info.imageUrl.startsWith('http') ? NetworkImage(info.imageUrl) : null,
-                  child: info.imageUrl.startsWith('http') ? null : const Icon(Icons.groups, color: _RoomInfoColors.muted, size: 32),
+void _showInactiveRoomGroupSheet(BuildContext context, RoomInfo info) {
+  final overlay = Overlay.of(context, rootOverlay: true);
+  late final OverlayEntry entry;
+  entry = OverlayEntry(
+    builder: (overlayContext) => Positioned.fill(
+      child: IgnorePointer(
+        child: Material(
+          color: Colors.transparent,
+          child: Center(
+            child: Directionality(
+              textDirection: TextDirection.rtl,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 28),
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+                decoration: BoxDecoration(
+                  color: _RoomInfoColors.bg.withOpacity(.94),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: Colors.white.withOpacity(.12)),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(.24), blurRadius: 24, offset: const Offset(0, 8)),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                Text(info.name, textAlign: TextAlign.center, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 17, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 9),
-                const Text('لم تنشط مجموعة الغرفة بعد', textAlign: TextAlign.center, style: TextStyle(color: _RoomInfoColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                Text(info.groupDesc.isEmpty ? 'لا يوجد وصف للمجموعة' : info.groupDesc, textAlign: TextAlign.center, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 13, height: 1.4)),
-              ],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 34,
+                      backgroundColor: _RoomInfoColors.chip,
+                      backgroundImage: info.imageUrl.startsWith('http') ? NetworkImage(info.imageUrl) : null,
+                      child: info.imageUrl.startsWith('http') ? null : const Icon(Icons.groups, color: _RoomInfoColors.muted, size: 32),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(info.name, textAlign: TextAlign.center, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 17, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 9),
+                    const Text('لم تنشط مجموعة الغرفة بعد', textAlign: TextAlign.center, style: TextStyle(color: _RoomInfoColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    Text(info.groupDesc.isEmpty ? 'لا يوجد وصف للمجموعة' : info.groupDesc, textAlign: TextAlign.center, style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 13, height: 1.4)),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
       ),
     ),
   );
+  overlay.insert(entry);
+  Future<void>.delayed(const Duration(seconds: 3), () {
+    if (entry.mounted) entry.remove();
+  });
 }
 
 class _RoomInfoSheet extends StatelessWidget {
