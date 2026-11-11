@@ -638,9 +638,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                     child: GestureDetector(
                                       behavior: HitTestBehavior.opaque,
                                       onTap: () => _openRoomInfo(context),
-                                      child: Text(
-                                        'ID: $_id',
-                                        style: const TextStyle(color: Colors.white60, fontSize: 10),
+                                      child: Transform.translate(
+                                        offset: const Offset(1, 0),
+                                        child: Text(
+                                          'ID: $_id',
+                                          style: const TextStyle(color: Colors.white60, fontSize: 11),
+                                        ),
                                       ),
                                     ),
                                   ),
