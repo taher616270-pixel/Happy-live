@@ -99,6 +99,10 @@ class _RoomPageState extends State<RoomPage> {
   List<Map<String, dynamic>> _audienceUsers = [];
   int _audienceCount = 0;
   int _roomLevel = 1;
+  int _roomExperienceLevel = 1;
+  int _roomExperienceExp = 0;
+  int _roomExperienceNextLevelExp = 3300000;
+  int _roomDailyExperienceExp = 0;
 
   String get _roomId => (widget.room['id'] ?? '').toString();
   String get _roomName => (widget.room['name'] ?? 'غرفة صوتية').toString();
@@ -523,6 +527,18 @@ class _RoomPageState extends State<RoomPage> {
     final nextRoomLevel = roomData is Map && roomData['level'] is num
         ? (roomData['level'] as num).toInt().clamp(1, 5).toInt()
         : _roomLevel;
+    final nextExperienceLevel = roomData is Map && roomData['experienceLevel'] is num
+        ? (roomData['experienceLevel'] as num).toInt().clamp(1, 2147483647).toInt()
+        : _roomExperienceLevel;
+    final nextExperienceExp = roomData is Map && roomData['experienceExp'] is num
+        ? (roomData['experienceExp'] as num).toInt().clamp(0, 2147483647).toInt()
+        : _roomExperienceExp;
+    final nextExperienceTarget = roomData is Map && roomData['experienceNextLevelExp'] is num
+        ? (roomData['experienceNextLevelExp'] as num).toInt().clamp(1, 2147483647).toInt()
+        : _roomExperienceNextLevelExp;
+    final nextDailyExperience = roomData is Map && roomData['dailyExperienceExp'] is num
+        ? (roomData['dailyExperienceExp'] as num).toInt().clamp(0, 3000000).toInt()
+        : _roomDailyExperienceExp;
     final nextAnnouncement = roomData is Map && roomData['announcement'] != null
         ? roomData['announcement'].toString()
         : _roomAnnouncement;
@@ -561,6 +577,10 @@ class _RoomPageState extends State<RoomPage> {
         _ownerCountryName != nextOwnerCountryName ||
         _roomAnnouncement != nextAnnouncement ||
         _roomLevel != nextRoomLevel ||
+        _roomExperienceLevel != nextExperienceLevel ||
+        _roomExperienceExp != nextExperienceExp ||
+        _roomExperienceNextLevelExp != nextExperienceTarget ||
+        _roomDailyExperienceExp != nextDailyExperience ||
         _amRoomOwner != nextIsOwner ||
         _amRoomModerator != nextIsModerator ||
         _selfMicMuted != nextSelfMuted ||
@@ -588,6 +608,10 @@ class _RoomPageState extends State<RoomPage> {
       _ownerCountryName = nextOwnerCountryName;
       _roomAnnouncement = nextAnnouncement;
       _roomLevel = nextRoomLevel;
+      _roomExperienceLevel = nextExperienceLevel;
+      _roomExperienceExp = nextExperienceExp;
+      _roomExperienceNextLevelExp = nextExperienceTarget;
+      _roomDailyExperienceExp = nextDailyExperience;
       _amRoomOwner = nextIsOwner;
       _amRoomModerator = nextIsModerator;
       _selfMicMuted = nextSelfMuted;
@@ -1700,7 +1724,7 @@ class _RoomPageState extends State<RoomPage> {
         ChangeNotifierProvider<SeatStateStore>.value(
           value: _seatStateStore,
           child: VoiceRoomDesignPreview(
-      room: {...widget.room, 'ownerId': _ownerId, 'level': _roomLevel, 'palaceStatus': _roomLevel >= 5 ? 'مفعّل' : 'غير مفعّل'},
+      room: {...widget.room, 'ownerId': _ownerId, 'level': _roomLevel, 'experienceLevel': _roomExperienceLevel, 'experienceExp': _roomExperienceExp, 'experienceNextLevelExp': _roomExperienceNextLevelExp, 'dailyExperienceExp': _roomDailyExperienceExp, 'palaceStatus': _roomLevel >= 5 ? 'مفعّل' : 'غير مفعّل'},
       chatMessagesPanel: _roomMessagesPanel(),
       chatController: _messageController,
       chatFocusNode: _roomChatFocusNode,
