@@ -2566,9 +2566,19 @@ class HappyLevelBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Text(
+            "Lv. $level",
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(width: 5),
           Container(
-            width: 28,
-            height: 28,
+            width: 12,
+            height: 12,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
@@ -2596,22 +2606,12 @@ class HappyLevelBadge extends StatelessWidget {
               child: Text(
                 "H",
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: 8,
                   fontWeight: FontWeight.bold,
                   color: Colors.white.withOpacity(0.95),
                   height: 1,
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            "Lv. $level",
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.2,
             ),
           ),
         ],
