@@ -182,9 +182,11 @@ class _RoomInfoSheet extends StatelessWidget {
                   const SizedBox(width: 7),
                   Expanded(flex: 2, child: GestureDetector(onTap: onUpgrade, child: _stat(selectedLevel.name, 'تم الشراء', _RoomInfoColors.goldBg, _RoomInfoColors.palace))),
                 ])),
-                const SizedBox(height: 12),
-                _levelPerksSection(),
-                const SizedBox(height: 16),
+                if (info.level > 1) ...[
+                  const SizedBox(height: 12),
+                  _levelPerksSection(),
+                  const SizedBox(height: 16),
+                ],
                 Transform.translate(
                   offset: const Offset(0, -5),
                   child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
