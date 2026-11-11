@@ -15,6 +15,7 @@ import 'edit_profile_page.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
   static final Set<String> _openingRoomInfo = <String>{};
+  static final Map<String, Future<int>> _roomProgressionLevelFutures = <String, Future<int>>{};
 
   const VoiceRoomDesignPreview({
     super.key,
@@ -294,10 +295,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         : (ownerValue(['avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url', 'imageUrl', 'image_url']).isNotEmpty
             ? ownerValue(['avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url', 'imageUrl', 'image_url'])
             : ownerAvatarUrl);
-    final exp = _roomInfoInt(['roomExp', 'room_exp', 'exp', 'experience'], 1800000);
-    final nextExp = _roomInfoInt(['nextLevelExp', 'next_level_exp', 'levelNextExp'], 3300000);
     return RoomLevelData(
-      level: _roomInfoInt(['level', 'roomLevel', 'room_level'], 1),
+      // Never read the paid room_levels value here; progression is fetched from
+      // the independent /progression endpoint when the sheet is opened.
+      level: 1,
       ownerName: (resolvedOwnerName ?? '').trim().isNotEmpty
           ? resolvedOwnerName!.trim()
           : (ownerValue(['name', 'displayName', 'display_name', 'username']).isNotEmpty
@@ -309,15 +310,100 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ? ownerValue(['userCode', 'user_code', 'gabo_id', 'publicId', 'public_id'])
               : _roomInfoString(['ownerCode', 'owner_code', 'ownerUserCode', 'owner_user_code'])),
       ownerAvatar: avatarUrl.startsWith('http') ? NetworkImage(avatarUrl) : null,
-      exp: exp,
-      nextLevelExp: nextExp,
-      dailyExpCurrent: _roomInfoString(['dailyExpCurrent', 'daily_exp_current'], '0'),
-      dailyExpMax: _roomInfoString(['dailyExpMax', 'daily_exp_max'], '9.9m'),
-      dailyRatio: double.tryParse(_roomInfoString(['dailyRatio', 'daily_ratio'], '0')) ?? 0,
-      dailyResetIn: const Duration(hours: 2, minutes: 48),
-      tasks: kSampleTasks,
-      perkGroups: kSamplePerks,
+      exp: 0,
+      nextLevelExp: 0,
+      dailyExpCurrent: '0',
+      dailyExpMax: '0',
+      dailyRatio: 0,
+      dailyResetIn: null,
+      tasks: const [],
+      perkGroups: const [],
+      note: 'بيانات المستوى مستقلة عن ترقية الغرفة في مربع فعّال.',
     );
+  }
+
+  Future<int> _loadIndependentRoomLevel() {
+    final roomId = _id.trim();
+    if (roomId.isEmpty || accessToken.trim().isEmpty) return Future<int>.value(1);
+    final cacheKey = '$roomId:$accessToken';
+    return _roomProgressionLevelFutures.putIfAbsent(cacheKey, () async {
+      try {
+        final response = await http.get(
+          Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/rooms/${Uri.encodeComponent(roomId)}/progression'),
+          headers: {'Authorization': 'Bearer $accessToken'},
+        ).timeout(const Duration(seconds: 10));
+        if (response.statusCode != 200) return 1;
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map || decoded['progression'] is! Map) return 1;
+        final progression = Map<String, dynamic>.from(decoded['progression'] as Map);
+        return (progression['level'] as num?)?.toInt() ?? 1;
+      } catch (_) {
+        return 1;
+      }
+    });
+  }
+
+  Future<void> _openRoomLevelSheet(
+    BuildContext context, {
+    String? resolvedOwnerName,
+    String? resolvedOwnerId,
+    String? resolvedOwnerAvatarUrl,
+  }) async {
+    final base = _roomLevelData(
+      resolvedOwnerName: resolvedOwnerName,
+      resolvedOwnerId: resolvedOwnerId,
+      resolvedOwnerAvatarUrl: resolvedOwnerAvatarUrl,
+    );
+    var data = RoomLevelData(
+      level: 1,
+      ownerName: base.ownerName,
+      ownerId: base.ownerId,
+      ownerAvatar: base.ownerAvatar,
+      exp: 0,
+      nextLevelExp: 0,
+      dailyExpCurrent: '0',
+      dailyExpMax: '0',
+      dailyRatio: 0,
+      tasks: const [],
+      perkGroups: const [],
+      note: 'يتم تحميل بيانات مستوى الغرفة المستقلة من الخادم.',
+    );
+    final roomId = _id.trim();
+    if (roomId.isNotEmpty && accessToken.trim().isNotEmpty) {
+      try {
+        final response = await http.get(
+          Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/rooms/${Uri.encodeComponent(roomId)}/progression'),
+          headers: {'Authorization': 'Bearer $accessToken'},
+        ).timeout(const Duration(seconds: 10));
+        if (response.statusCode == 200) {
+          final decoded = jsonDecode(response.body);
+          final progression = decoded is Map && decoded['progression'] is Map
+              ? Map<String, dynamic>.from(decoded['progression'] as Map)
+              : <String, dynamic>{};
+          data = RoomLevelData(
+            level: (progression['level'] as num?)?.toInt() ?? 1,
+            ownerName: base.ownerName,
+            ownerId: base.ownerId,
+            ownerAvatar: base.ownerAvatar,
+            exp: (progression['experience'] as num?)?.toInt() ?? 0,
+            nextLevelExp: (progression['nextLevelExp'] as num?)?.toInt() ?? 0,
+            dailyExpCurrent: '0',
+            dailyExpMax: '0',
+            dailyRatio: 0,
+            tasks: const [],
+            perkGroups: const [],
+            note: 'بيانات المستوى مستقلة عن ترقية الغرفة في مربع فعّال.',
+          );
+        }
+      } catch (_) {
+        // Keep a safe, zeroed display rather than showing demo progression values.
+      }
+    }
+    if (roomId.isNotEmpty && accessToken.trim().isNotEmpty) {
+      _roomProgressionLevelFutures['$roomId:$accessToken'] = Future<int>.value(data.level);
+    }
+    if (!context.mounted) return;
+    await showRoomLevelSheet(context, data);
   }
 
   Future<void> _openRoomInfo(BuildContext context) async {
@@ -529,13 +615,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       await showRoomInfoSheet(
         context,
         info,
-        onLevelTap: () => showRoomLevelSheet(
+        onLevelTap: () => _openRoomLevelSheet(
           context,
-          _roomLevelData(
-            resolvedOwnerName: ownerMember.name,
-            resolvedOwnerId: ownerMember.id,
-            resolvedOwnerAvatarUrl: ownerMember.avatarUrl,
-          ),
+          resolvedOwnerName: ownerMember.name,
+          resolvedOwnerId: ownerMember.id,
+          resolvedOwnerAvatarUrl: ownerMember.avatarUrl,
         ),
         onUpgrade: () {
           Navigator.of(context).pop();
@@ -1014,7 +1098,11 @@ Widget _roomActionButton({
         offset: Theme.of(context).platform == TargetPlatform.android
             ? const Offset(0, -10)
             : Offset.zero,
-        child: RoomLevelChip(data: _roomLevelData()),
+        child: RoomLevelChip(
+          data: _roomLevelData(),
+          onTap: () => _openRoomLevelSheet(context),
+          levelFuture: _loadIndependentRoomLevel(),
+        ),
       ),
     ),
     ),

@@ -398,6 +398,7 @@ export default {
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/role$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/wallet\/credit$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
+      /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/progression$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/moderation$/i.test(url.pathname)
     ) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
@@ -548,11 +549,42 @@ export default {
             transactions
           }, 200, origin, env);
         }
+        const roomProgressionAdminRoute = url.pathname.match(/^\/api\/v1\/admin\/rooms\/([0-9a-f-]{36})\/progression$/i);
+        if (roomProgressionAdminRoute && request.method === "PATCH") {
+          if (!hasAdminPermission(actor, "rooms.manage")) return json({ error: "permission_denied" }, 403, origin, env);
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; }
+          catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const level = Number(body.level);
+          const experience = body.experience === undefined ? null : Number(body.experience);
+          if (!Number.isInteger(level) || level < 1 || level > 1000 ||
+              (experience !== null && (!Number.isSafeInteger(experience) || experience < 0 || experience > 2000000000))) {
+            return json({ error: "invalid_room_progression", message: "المستوى أو الخبرة غير صالحين" }, 400, origin, env);
+          }
+          const roomId = roomProgressionAdminRoute[1];
+          const room = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? AND status <> 'deleted' LIMIT 1")
+            .bind(roomId).first<{ id: string }>();
+          if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+          const now = new Date().toISOString();
+          const eventId = crypto.randomUUID();
+          const details = JSON.stringify({ level, experience, adminId: actor.id, adminUsername: actor.username });
+          await env.DB.batch([
+            env.DB.prepare("INSERT INTO room_progression (room_id, level, experience, updated_at) VALUES (?, ?, COALESCE(?, 0), ?) ON CONFLICT(room_id) DO UPDATE SET level = excluded.level, experience = CASE WHEN ? IS NULL THEN room_progression.experience ELSE excluded.experience END, updated_at = excluded.updated_at")
+              .bind(roomId, level, experience, now, experience),
+            env.DB.prepare("INSERT INTO room_progression_events (id, room_id, event_type, experience_delta, source_ref, details_json, created_at) VALUES (?, ?, 'admin_adjustment', 0, ?, ?, ?)")
+              .bind(eventId, roomId, "admin:" + eventId, details, now),
+            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'room.progression.update', 'room', ?, ?, ?)")
+              .bind(crypto.randomUUID(), roomId, details, now)
+          ]);
+          const progression = await env.DB.prepare("SELECT level, experience, updated_at FROM room_progression WHERE room_id = ? LIMIT 1")
+            .bind(roomId).first<{ level: number; experience: number; updated_at: string }>();
+          return json({ ok: true, progression }, 200, origin, env);
+        }
         if (url.pathname === "/api/v1/admin/rooms" && request.method === "GET") {
           if (!hasAdminPermission(actor, "rooms.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const result = await env.DB.prepare(
-            "SELECT r.id, r.room_code, r.name, r.status, r.visibility, r.created_at, u.id AS owner_id, p.display_name AS owner_name " +
-            "FROM rooms r INNER JOIN users u ON u.id = r.owner_user_id LEFT JOIN profiles p ON p.user_id = u.id " +
+            "SELECT r.id, r.room_code, r.name, r.status, r.visibility, r.created_at, u.id AS owner_id, p.display_name AS owner_name, COALESCE(rp.level, 1) AS progression_level, COALESCE(rp.experience, 0) AS progression_experience " +
+            "FROM rooms r INNER JOIN users u ON u.id = r.owner_user_id LEFT JOIN profiles p ON p.user_id = u.id LEFT JOIN room_progression rp ON rp.room_id = r.id " +
             "ORDER BY r.created_at DESC LIMIT 100"
           ).all();
           return json({ ok: true, rooms: result.results ?? [] }, 200, origin, env);
@@ -1462,6 +1494,33 @@ export default {
       } catch (error) {
         console.error("[wallet.get] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "wallet_unavailable" }, 500, origin, env);
+      }
+    }
+
+    // Independent room progression read API. It never reads or mutates paid room_levels.
+    const roomProgressionRoute = url.pathname.match(/^\/api\/v1\/rooms\/([0-9a-f-]{36})\/progression$/i);
+    if (roomProgressionRoute && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = roomProgressionRoute[1];
+        const room = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? AND status <> 'deleted' LIMIT 1")
+          .bind(roomId).first<{ id: string }>();
+        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        await env.DB.prepare("INSERT OR IGNORE INTO room_progression (room_id, level, experience, updated_at) VALUES (?, 1, 0, ?)")
+          .bind(roomId, new Date().toISOString()).run();
+        const progression = await env.DB.prepare("SELECT level, experience, updated_at FROM room_progression WHERE room_id = ? LIMIT 1")
+          .bind(roomId).first<{ level: number; experience: number; updated_at: string }>();
+        return json({ ok: true, progression: {
+          level: progression?.level ?? 1,
+          experience: progression?.experience ?? 0,
+          nextLevelExp: 0,
+          updatedAt: progression?.updated_at ?? null
+        } }, 200, origin, env);
+      } catch (error) {
+        console.error("[rooms.progression.get] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "room_progression_unavailable" }, 500, origin, env);
       }
     }
 
