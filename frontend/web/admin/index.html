@@ -181,7 +181,7 @@ async function walletsPage(q="",selectedUserId=""){
     '</tbody></table></div></div>'+
     (selected?'<div class="section"><div class="section-head"><div><h2>سجل محفظة '+esc(selected.display_name||"المستخدم")+'</h2><p class="muted">ID: '+esc(selected.gabo_id||"—")+' · الرصيد الحالي: '+fmt(selected.balance)+' عملة</p></div><button class="action" id="walletHistoryClose">إغلاق السجل</button></div><div class="table-wrap"><table><thead><tr><th>البيان</th><th>قيمة الحركة</th><th>الرصيد بعدها</th><th>التاريخ</th></tr></thead><tbody>'+history+'</tbody></table></div></div>':"");
   let timer;
-  $("walletSearch").oninput=e=>{clearTimeout(timer);const value=e.target.value.trim();timer=setTimeout(()=>walletsPage(value,selectedUserId),250)};
+  $("walletSearch").oninput=e=>{clearTimeout(timer);const value=e.target.value.trim();timer=setTimeout(async()=>{await walletsPage(value,selectedUserId);const input=$("walletSearch");if(input){input.focus();input.setSelectionRange(value.length,value.length)}},350)};
   document.querySelectorAll("[data-wallet-history]").forEach(b=>b.onclick=()=>walletsPage(q,b.dataset.walletHistory));
   document.querySelectorAll("[data-wallet-credit]").forEach(b=>b.onclick=async()=>{
     const raw=window.prompt("كم عدد العملات التي تريد إضافتها؟");
