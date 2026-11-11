@@ -1259,8 +1259,10 @@ class _RoomPageState extends State<RoomPage> {
           vertical: 9,
         ),
         decoration: BoxDecoration(
-          color: const Color(0x5520182A),
+          color: const Color(0xAA20182A),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(.20), width: .8),
+          boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 8, offset: Offset(0, 2))],
         ),
         child: Text(
           isSystem && isWelcome
@@ -1442,7 +1444,12 @@ class _RoomPageState extends State<RoomPage> {
     return Container(
       margin: const EdgeInsets.fromLTRB(4, 0, 4, 8),
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-      decoration: BoxDecoration(color: Colors.transparent, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.transparent)),
+      decoration: BoxDecoration(
+        color: const Color(0x8820182A),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(.20), width: .8),
+        boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 7, offset: Offset(0, 2))],
+      ),
       child: Row(
         textDirection: TextDirection.rtl,
         children: [
