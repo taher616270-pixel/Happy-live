@@ -59,11 +59,6 @@ async function awardRoomSeatExperience(
   ).bind(roomId, userId).first<{ last_awarded_at: string }>();
   if (!previous?.last_awarded_at || Date.parse(now) - Date.parse(previous.last_awarded_at) < 300_000) return;
 
-  const advanced = await db.prepare(
-    "UPDATE room_exp_activity SET last_awarded_at = ? WHERE room_id = ? AND user_id = ? AND last_awarded_at = ?"
-  ).bind(now, roomId, userId, previous.last_awarded_at).run();
-  if ((advanced.meta?.changes ?? 0) !== 1) return;
-
   const dayKey = now.slice(0, 10);
   const nowMs = Date.parse(now);
   const account = await db.prepare(
@@ -74,6 +69,12 @@ async function awardRoomSeatExperience(
     nowMs >= accountCreatedAt &&
     nowMs - accountCreatedAt < 15 * 24 * 60 * 60 * 1000;
   const awardPoints = isNewAccount ? 1200 : 600;
+  const advanced = await db.prepare(
+    "UPDATE room_exp_activity SET last_awarded_at = ? WHERE room_id = ? AND user_id = ? AND last_awarded_at = ?"
+  ).bind(now, roomId, userId, previous.last_awarded_at).run();
+  if ((advanced.meta?.changes ?? 0) !== 1) return;
+
+  const dayKey = now.slice(0, 10);
   try {
     await db.prepare(
       "INSERT OR IGNORE INTO room_exp_daily (user_id, day_key, points) VALUES (?, ?, 0)"
