@@ -30,14 +30,14 @@ class RoomInfo {
     required this.name, required this.flag, required this.id,
     required this.imageUrl, required this.imageBadge, required this.likes,
     required this.tribeName, required this.tribeOwner, required this.tribeLogoUrl,
-    required this.level, required this.palaceStatus, required this.membersCount,
+    required this.level, this.experienceLevel = 1, required this.palaceStatus, required this.membersCount,
     required this.membersMax, required this.members, required this.announcement,
     required this.groupName, required this.groupCount, required this.groupDesc,
     this.isRoomOwner = false,
     this.ownerAvatarUrl = '',
   });
   final String name, flag, id, imageUrl, imageBadge, tribeName, tribeOwner, tribeLogoUrl;
-  final int likes, level, membersCount, membersMax, groupCount;
+  final int likes, level, experienceLevel, membersCount, membersMax, groupCount;
   final String palaceStatus, announcement, groupName, groupDesc;
   final List<RoomMember> members;
   final bool isRoomOwner;
@@ -243,7 +243,7 @@ class _RoomInfoSheet extends StatelessWidget {
                     ]),
                   )),
                   const SizedBox(width: 7),
-                  Expanded(flex: 3, child: GestureDetector(onTap: onLevelTap, behavior: HitTestBehavior.opaque, child: Transform.translate(offset: const Offset(-5, 0), child: Padding(padding: const EdgeInsets.only(left: 12), child: _stat('Lv.${info.level}', 'مستوى الغرفة', _RoomInfoColors.levelBg, _RoomInfoColors.level, subColor: _RoomInfoColors.levelSub))))),
+                  Expanded(flex: 3, child: GestureDetector(onTap: onLevelTap, behavior: HitTestBehavior.opaque, child: Transform.translate(offset: const Offset(-5, 0), child: Padding(padding: const EdgeInsets.only(left: 12), child: _stat('Lv.${info.experienceLevel}', 'مستوى الغرفة', _RoomInfoColors.levelBg, _RoomInfoColors.level, subColor: _RoomInfoColors.levelSub))))),
                   const SizedBox(width: 1),
                   Expanded(flex: 3, child: GestureDetector(onTap: onUpgrade, child: _stat(selectedLevel.name, 'فعّال', _RoomInfoColors.goldBg, _RoomInfoColors.palace, subColor: _RoomInfoColors.palaceSub))),
                 ])),
