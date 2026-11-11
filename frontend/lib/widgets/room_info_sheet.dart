@@ -751,7 +751,7 @@ class _RoomInfoSheet extends StatelessWidget {
   );
 
   static Widget _button(String title, Color bg, Color fg, VoidCallback? action, {IconData? icon}) => SizedBox(
-    height: 54,
+    height: 46,
     child: ElevatedButton(
       onPressed: action,
       style: ElevatedButton.styleFrom(backgroundColor: bg, foregroundColor: fg, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
