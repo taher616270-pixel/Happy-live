@@ -505,7 +505,7 @@ export default {
           return json({ ok: true, users: result.results ?? [] }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/wallets" && request.method === "GET") {
-          if (!hasAdminPermission(actor, "users.read")) return json({ error: "permission_denied" }, 403, origin, env);
+          if (actor.role !== "owner" && actor.role !== "admin") return json({ error: "permission_denied" }, 403, origin, env);
           const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
           const limit = Math.max(1, Math.min(100, Number(url.searchParams.get("limit") ?? 100) || 100));
           const [summary, result] = await Promise.all([
