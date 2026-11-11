@@ -12,7 +12,7 @@ const progressSource = worker.match(/function roomExperienceProgress\(totalExper
 assert.ok(progressSource, "room experience progression function must exist");
 const roomExperienceProgress = new Function(
   `${progressSource.replace("(totalExperience: number)", "(totalExperience)")}; return roomExperienceProgress;`
-)() as (totalExperience: number) => { level: number; exp: number; nextLevelExp: number };
+)();
 
 test("room experience follows the approved five-level bands", () => {
   assert.deepEqual(roomExperienceProgress(0), { level: 1, exp: 0, nextLevelExp: 3_300_000 });
