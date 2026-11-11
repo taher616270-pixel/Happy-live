@@ -5,6 +5,7 @@ import 'square_country_flag.dart';
 import 'package:flutter/services.dart';
 import '../pages/edit_profile_page.dart';
 import 'package:country_picker/country_picker.dart';
+import '../pages/room_upgrade_page.dart' show kLevels;
 
 class RoomMember {
   const RoomMember({
@@ -167,6 +168,8 @@ class _RoomInfoSheet extends StatelessWidget {
                   const SizedBox(width: 7),
                   Expanded(flex: 2, child: GestureDetector(onTap: onUpgrade, child: _stat('قصر', info.palaceStatus, _RoomInfoColors.goldBg, _RoomInfoColors.palace))),
                 ])),
+                const SizedBox(height: 12),
+                _levelPerksSection(),
                 const SizedBox(height: 16),
                 Transform.translate(
                   offset: const Offset(0, -5),
@@ -270,6 +273,85 @@ class _RoomInfoSheet extends StatelessWidget {
           ]),
         ),
       ),
+    );
+  }
+
+  Widget _levelPerksSection() {
+    final levelIndex = (info.level - 1).clamp(0, kLevels.length - 1).toInt();
+    final level = kLevels[levelIndex];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.workspace_premium_rounded,
+                color: _RoomInfoColors.palace, size: 18),
+            const SizedBox(width: 7),
+            Text(
+              'مميزات مستوى ${level.name}',
+              style: const TextStyle(
+                color: _RoomInfoColors.text,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 9),
+        if (level.perks.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _RoomInfoColors.chip,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'مميزات هذا المستوى لم تُحدد بعد',
+              style: TextStyle(color: _RoomInfoColors.muted, fontSize: 12),
+            ),
+          )
+        else
+          ...level.perks.map((perk) => Container(
+                margin: const EdgeInsets.only(bottom: 7),
+                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+                decoration: BoxDecoration(
+                  color: _RoomInfoColors.chip.withOpacity(.72),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(perk.icon, color: _RoomInfoColors.palace, size: 19),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            perk.title,
+                            style: const TextStyle(
+                              color: _RoomInfoColors.text,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            perk.desc,
+                            style: const TextStyle(
+                              color: _RoomInfoColors.muted,
+                              fontSize: 11,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+      ],
     );
   }
 
