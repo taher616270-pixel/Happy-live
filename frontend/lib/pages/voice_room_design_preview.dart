@@ -312,15 +312,27 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     }
     // أظهر مالك الغرفة دائماً في صف الأعضاء، حتى لو لم يكن متصلاً أو موجوداً داخل الغرفة.
     final ownerIndex = members.indexWhere((member) => member.isOwner);
+    final resolvedOwnerName = (ownerData['displayName'] ??
+            ownerData['display_name'] ??
+            ownerData['username'] ??
+            ownerData['name'] ??
+            ownerName)
+        .toString()
+        .trim();
     if (ownerIndex >= 0) {
       final currentOwner = members[ownerIndex];
-      if (currentOwner.avatarUrl.trim().isEmpty && ownerAvatar.isNotEmpty) {
+      if (currentOwner.avatarUrl.trim().isEmpty ||
+          currentOwner.name.trim().isEmpty) {
         members[ownerIndex] = RoomMember(
-          avatarUrl: ownerAvatar,
+          avatarUrl: currentOwner.avatarUrl.trim().isEmpty
+              ? ownerAvatar
+              : currentOwner.avatarUrl,
           role: currentOwner.role,
           isOwner: true,
-          name: currentOwner.name,
-          id: currentOwner.id,
+          name: currentOwner.name.trim().isEmpty
+              ? resolvedOwnerName
+              : currentOwner.name,
+          id: currentOwner.id.isEmpty ? ownerId : currentOwner.id,
         );
       }
     } else {
@@ -330,17 +342,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           avatarUrl: ownerAvatar,
           role: 'المالك',
           isOwner: true,
-          name: (ownerData['displayName'] ??
-                  ownerData['display_name'] ??
-                  ownerData['username'] ??
-                  ownerData['name'] ??
-                  '')
-              .toString(),
+          name: resolvedOwnerName,
           id: (ownerData['id'] ??
                   ownerData['userId'] ??
                   ownerData['user_id'] ??
                   ownerData['uid'] ??
-                  '')
+                  ownerId)
               .toString(),
         ),
       );
