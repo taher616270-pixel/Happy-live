@@ -509,6 +509,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         tribeOwner: _roomInfoString(['tribeOwner', 'tribe_owner']),
         tribeLogoUrl: _roomInfoString(['tribe_logo', 'tribeLogo', 'tribeLogoUrl', 'tribe_logo_url']),
         level: _roomInfoInt(['level', 'roomLevel', 'room_level'], 1),
+        experienceLevel: _roomInfoInt(['experienceLevel', 'experience_level'], 1),
         palaceStatus: _roomInfoString(['palaceStatus', 'palace_status'], 'غير مفعّل'),
         membersCount: _roomInfoInt(['membersCount', 'members_count', 'memberCount'], 0) > members.length
             ? _roomInfoInt(['membersCount', 'members_count', 'memberCount'], 0)
