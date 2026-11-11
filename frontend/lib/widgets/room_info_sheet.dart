@@ -229,8 +229,8 @@ class _RoomInfoSheet extends StatelessWidget {
                     ]),
                   )),
                   const SizedBox(width: 7),
-                  Expanded(flex: 3, child: Padding(padding: const EdgeInsets.only(left: 12), child: _stat('Lv.${info.level}', 'مستوى الغرفة', _RoomInfoColors.levelBg, _RoomInfoColors.level))),
-                  const SizedBox(width: 7),
+                  Expanded(flex: 3, child: Transform.translate(offset: const Offset(-5, 0), child: Padding(padding: const EdgeInsets.only(left: 12), child: _stat('Lv.${info.level}', 'مستوى الغرفة', _RoomInfoColors.levelBg, _RoomInfoColors.level)))),
+                  const SizedBox(width: 1),
                   Expanded(flex: 3, child: GestureDetector(onTap: onUpgrade, child: _stat(selectedLevel.name, 'فعّال', _RoomInfoColors.goldBg, _RoomInfoColors.palace))),
                 ])),
                 Transform.translate(
