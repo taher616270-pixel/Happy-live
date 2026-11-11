@@ -123,6 +123,17 @@ export class RoomSeatsHub {
 
     if (url.pathname === "/clear" && request.method === "POST") {
       await this.enqueue(async () => {
+        // Clearing/disabling microphones ends every active continuous-time session.
+        const removedMembers = Object.values(this.snapshot.seats);
+        if (this.roomId) {
+          for (const member of removedMembers) {
+            try {
+              await resetRoomSeatExperienceTimer(this.env.DB, this.roomId, member.userId, new Date().toISOString());
+            } catch (error) {
+              console.error("[room-seats.experience] clear timer reset failed", error instanceof Error ? error.message : "UnknownError");
+            }
+          }
+        }
         this.snapshot.seats = {};
         this.snapshot.voiceEnabled = false;
         this.snapshot.revision++;
@@ -182,6 +193,14 @@ export class RoomSeatsHub {
       await this.enqueue(async () => {
         const current = Object.values(this.snapshot.seats).find((seat) => seat.userId === targetUserId);
         if (current) {
+          // Moderation removal ends the member's continuous microphone session.
+          if (this.roomId) {
+            try {
+              await resetRoomSeatExperienceTimer(this.env.DB, this.roomId, targetUserId, new Date().toISOString());
+            } catch (error) {
+              console.error("[room-seats.experience] removal timer reset failed", error instanceof Error ? error.message : "UnknownError");
+            }
+          }
           delete this.snapshot.seats[String(current.seatNumber)];
           this.snapshot.revision++;
           await this.persist();
@@ -430,6 +449,14 @@ export class RoomSeatsHub {
     let changed = false;
     for (const [number, member] of Object.entries(this.snapshot.seats)) {
       if (member.expiresAt <= now) {
+        // An expired seat is no longer continuous microphone occupancy.
+        if (this.roomId) {
+          try {
+            await resetRoomSeatExperienceTimer(this.env.DB, this.roomId, member.userId, new Date(now).toISOString());
+          } catch (error) {
+            console.error("[room-seats.experience] expiry timer reset failed", error instanceof Error ? error.message : "UnknownError");
+          }
+        }
         delete this.snapshot.seats[number];
         changed = true;
       }
