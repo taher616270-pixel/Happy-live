@@ -1378,6 +1378,67 @@ export default {
       }
     }
 
+    // Authenticated wallet balance and immutable transaction history.
+    if (url.pathname === "/api/v1/wallet" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        await env.DB.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(user.id, new Date().toISOString()).run();
+        const [wallet, transactions] = await Promise.all([
+          env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>(),
+          env.DB.prepare("SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, reference_id AS referenceId, description, created_at AS createdAt FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 30").bind(user.id).all()
+        ]);
+        return json({ ok: true, balance: wallet?.balance ?? 0, transactions: transactions.results ?? [] }, 200, origin, env);
+      } catch (error) {
+        console.error("[wallet.get] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "wallet_unavailable" }, 500, origin, env);
+      }
+    }
+
+    // Server-authoritative room upgrade; the authenticated purchaser pays, even for another user's room.
+    const roomUpgradeRoute = url.pathname.match(new RegExp("^/api/v1/rooms/([0-9a-f-]{36})/upgrade$", "i"));
+    if (roomUpgradeRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; }
+        catch { return json({ error: "invalid_json" }, 400, origin, env); }
+        const targetLevel = Number(body.level);
+        if (!Number.isInteger(targetLevel) || targetLevel < 2 || targetLevel > 5) return json({ error: "invalid_room_level", message: "المستوى المطلوب غير صالح" }, 400, origin, env);
+        const prices: Record<number, number> = { 2: 30000, 3: 60000, 4: 300000 };
+        const price = prices[targetLevel];
+        if (!price) return json({ error: "level_price_unavailable", message: "سعر مستوى القصر لم يُحدد بعد" }, 409, origin, env);
+        const roomId = roomUpgradeRoute[1];
+        const room = await env.DB.prepare("SELECT id, name, level FROM rooms WHERE id = ? AND status <> 'deleted' LIMIT 1").bind(roomId).first<{ id: string; name: string; level: number }>();
+        if (!room) return json({ error: "room_not_found", message: "الغرفة غير موجودة" }, 404, origin, env);
+        if (targetLevel <= room.level) return json({ error: "room_level_not_higher", message: "الغرفة وصلت إلى هذا المستوى أو أعلى" }, 409, origin, env);
+        const now = new Date().toISOString();
+        const transactionId = crypto.randomUUID();
+        await env.DB.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(user.id, now).run();
+        const results = await env.DB.batch([
+          env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, amount, balance_after, transaction_type, reference_id, description, created_at) SELECT ?, w.user_id, ?, w.balance - ?, 'room_upgrade', ?, ?, ? FROM user_wallets w INNER JOIN rooms r ON r.id = ? WHERE w.user_id = ? AND w.balance >= ? AND r.level < ? AND r.status <> 'deleted'").bind(transactionId, -price, price, roomId, "ترقية غرفة " + room.name, now, roomId, user.id, price, targetLevel),
+          env.DB.prepare("UPDATE user_wallets SET balance = balance - ?, updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade')").bind(price, now, user.id, transactionId),
+          env.DB.prepare("UPDATE rooms SET level = ?, updated_at = ? WHERE id = ? AND level < ? AND EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade')").bind(targetLevel, now, roomId, targetLevel, transactionId)
+        ]);
+        if ((results[0]?.meta?.changes ?? 0) !== 1 || (results[2]?.meta?.changes ?? 0) !== 1) {
+          const [latestRoom, wallet] = await Promise.all([
+            env.DB.prepare("SELECT level FROM rooms WHERE id = ? AND status <> 'deleted' LIMIT 1").bind(roomId).first<{ level: number }>(),
+            env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>()
+          ]);
+          if (!latestRoom) return json({ error: "room_not_found", message: "الغرفة غير موجودة" }, 404, origin, env);
+          if (latestRoom.level >= targetLevel) return json({ error: "room_level_not_higher", message: "الغرفة وصلت إلى هذا المستوى أو أعلى", level: latestRoom.level }, 409, origin, env);
+          return json({ error: "insufficient_funds", message: "رصيد العملات غير كافٍ", balance: wallet?.balance ?? 0, required: price }, 402, origin, env);
+        }
+        const wallet = await env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>();
+        return json({ ok: true, roomId, level: targetLevel, price, balance: wallet?.balance ?? 0 }, 200, origin, env);
+      } catch (error) {
+        console.error("[rooms.upgrade] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "room_upgrade_failed", message: "تعذر تنفيذ ترقية الغرفة" }, 500, origin, env);
+      }
+    }
     // Room moderation: room owners and explicitly assigned room moderators only.
     const moderationRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/moderation$/);
     if (moderationRoute && request.method === "POST") {
