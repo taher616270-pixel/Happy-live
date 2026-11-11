@@ -484,7 +484,7 @@ export default {
       url.pathname === "/api/v1/admin/wallets" ||
       url.pathname === "/api/v1/admin/gifts/settings" ||
       url.pathname === "/api/v1/admin/gifts/catalog" ||
-      /^\\/api\\/v1\\/admin\\/gifts\\/catalog\\/[a-z0-9-]{1,80}$/i.test(url.pathname) ||
+      /^\/api\/v1\/admin\/gifts\/catalog\/[a-z0-9-]{1,80}$/i.test(url.pathname) ||
       url.pathname === "/api/v1/admin/moderators" ||
       url.pathname === "/api/v1/admin/rooms" ||
       url.pathname === "/api/v1/admin/audit" ||
@@ -540,9 +540,9 @@ export default {
           if ((results[0]?.meta?.changes ?? 0) !== 1) return json({ error: "gift_settings_conflict", message: "تم تعديل النسب بالتزامن. حدّث الصفحة وحاول مجددًا." }, 409, origin, env);
           return json({ ok: true, settings: { appPercent, recipientPercent, updatedAt: now } }, 200, origin, env);
         }
-        if (url.pathname === "/api/v1/admin/gifts/catalog" || /^\\/api\\/v1\\/admin\\/gifts\\/catalog\\/[a-z0-9-]{1,80}$/i.test(url.pathname)) {
+        if (url.pathname === "/api/v1/admin/gifts/catalog" || /^\/api\/v1\/admin\/gifts\/catalog\/[a-z0-9-]{1,80}$/i.test(url.pathname)) {
           if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
-          const itemRoute = url.pathname.match(/^\\/api\\/v1\\/admin\\/gifts\\/catalog\\/([a-z0-9-]{1,80})$/i);
+          const itemRoute = url.pathname.match(/^\/api\/v1\/admin\/gifts\/catalog\/([a-z0-9-]{1,80})$/i);
           if (request.method === "GET" && !itemRoute) {
             const rows = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt FROM gift_catalog ORDER BY sort_order ASC, created_at ASC").all();
             return json({ ok: true, gifts: rows.results ?? [] }, 200, origin, env);
