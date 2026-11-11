@@ -63,14 +63,6 @@ async function awardRoomSeatExperience(
 ): Promise<void> {
   const nowMs = Date.parse(now);
   const dayKey = now.slice(0, 10);
-  const account = await db.prepare(
-    "SELECT created_at FROM users WHERE id = ? LIMIT 1"
-  ).bind(userId).first<{ created_at: string }>();
-  const accountCreatedAt = Date.parse(account?.created_at ?? "");
-  const isNewAccount = Number.isFinite(accountCreatedAt) &&
-    nowMs >= accountCreatedAt &&
-    nowMs - accountCreatedAt < 15 * 24 * 60 * 60 * 1000;
-  const awardPoints = isNewAccount ? 1200 : 600;
   await db.prepare(
     "INSERT OR IGNORE INTO room_exp_activity (room_id, user_id, last_awarded_at) VALUES (?, ?, ?)"
   ).bind(roomId, userId, now).run();
@@ -79,6 +71,15 @@ async function awardRoomSeatExperience(
   ).bind(roomId, userId).first<{ last_awarded_at: string }>();
   if (!activity?.last_awarded_at || nowMs - Date.parse(activity.last_awarded_at) < 300_000) return;
 
+  const dayKey = now.slice(0, 10);
+  const account = await db.prepare(
+    "SELECT created_at FROM users WHERE id = ? LIMIT 1"
+  ).bind(userId).first<{ created_at: string }>();
+  const accountCreatedAt = Date.parse(account?.created_at ?? "");
+  const isNewAccount = Number.isFinite(accountCreatedAt) &&
+    nowMs >= accountCreatedAt &&
+    nowMs - accountCreatedAt < 15 * 24 * 60 * 60 * 1000;
+  const awardPoints = isNewAccount ? 1200 : 600;
   const advanced = await db.prepare(
     "UPDATE room_exp_activity SET last_awarded_at = ? WHERE room_id = ? AND user_id = ? AND last_awarded_at = ?"
   ).bind(now, roomId, userId, activity.last_awarded_at).run();
