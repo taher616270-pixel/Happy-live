@@ -290,7 +290,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           .trim();
   
       final rawMembers = room['members'] ?? room['roomMembers'] ?? room['room_members'];
-      final roomMembers = <RoomMember>[];
+      final members = <RoomMember>[];
       if (rawMembers is List) {
         for (final item in rawMembers) {
           if (item is! Map) continue;
@@ -311,47 +311,49 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   '')
               .toString()
               .trim();
-          roomMembers.add(RoomMember(
-            avatarUrl: '',
+          members.add(RoomMember(
+            avatarUrl: (member['avatarUrl'] ??
+                    member['avatar_url'] ??
+                    member['avatar'] ??
+                    member['photoUrl'] ??
+                    member['photo_url'] ??
+                    '')
+                .toString(),
             role: role,
             isOwner: isOwner,
-            name: '',
-            id: '',
+            name: (member['name'] ??
+                    member['displayName'] ??
+                    member['display_name'] ??
+                    '')
+                .toString(),
+            id: (member['userCode'] ??
+                    member['user_code'] ??
+                    member['gabo_id'] ??
+                    '')
+                .toString(),
             userId: userId,
           ));
         }
       }
-  
-      final userIds = <String>{
-        ...roomMembers.map((member) => member.userId).where((id) => id.isNotEmpty),
-        if (resolvedOwnerUserId.isNotEmpty) resolvedOwnerUserId,
-      };
-      final profiles = <String, Map<String, dynamic>>{};
-      await Future.wait(userIds.map((userId) async {
-        final profile = await _loadAccountProfile(userId);
-        if (profile != null) profiles[userId] = profile;
-      }));
-  
-      final members = roomMembers.map((member) {
-        final profile = profiles[member.userId];
-        return RoomMember(
-          avatarUrl: _profileValue(profile, ['avatarUrl', 'avatar', 'photo_url']),
-          role: member.role,
-          isOwner: member.isOwner,
-          name: _profileValue(profile, ['name', 'displayName', 'display_name']),
-          id: _profileValue(profile, ['userCode', 'user_code', 'gabo_id']),
-          userId: member.userId,
-        );
-      }).toList();
-  
-      final ownerProfile = profiles[resolvedOwnerUserId];
+
+      // افتح نافذة المعلومات مباشرة من بيانات الغرفة المتاحة؛ لا تنتظر
+      // طلبات شبكة ملفات الأعضاء حتى تظهر النافذة.
+      final ownerProfile = ownerData['profile'] is Map
+          ? Map<String, dynamic>.from(ownerData['profile'] as Map)
+          : ownerData;
       final ownerIndex = members.indexWhere((member) => member.isOwner);
       final ownerMember = RoomMember(
-        avatarUrl: _profileValue(ownerProfile, ['avatarUrl', 'avatar', 'photo_url']),
+        avatarUrl: _profileValue(ownerProfile, [
+          'avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url'
+        ]),
         role: 'المالك',
         isOwner: true,
-        name: _profileValue(ownerProfile, ['name', 'displayName', 'display_name']),
-        id: _profileValue(ownerProfile, ['userCode', 'user_code', 'gabo_id']),
+        name: _profileValue(ownerProfile, [
+          'name', 'displayName', 'display_name'
+        ]),
+        id: _profileValue(ownerProfile, [
+          'userCode', 'user_code', 'gabo_id'
+        ]),
         userId: resolvedOwnerUserId,
       );
       if (ownerIndex >= 0) {
@@ -359,11 +361,15 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       } else {
         members.insert(0, ownerMember);
       }
-  
+
       final ownerCountryName = _profileValue(
         ownerProfile,
         ['countryName', 'country_name', 'country', 'countryDisplayName', 'country_display_name'],
-      );
+      ).isNotEmpty
+          ? _profileValue(ownerProfile, [
+              'countryName', 'country_name', 'country', 'countryDisplayName', 'country_display_name'
+            ])
+          : _roomInfoString(['ownerCountryName', 'owner_country_name']);
       if (!context.mounted) return;
   
       final info = RoomInfo(
