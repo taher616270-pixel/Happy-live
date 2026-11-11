@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../widgets/square_country_flag.dart';
 import 'package:happy_live/widgets/room_info_sheet.dart';
+import 'package:happy_live/widgets/room_level_sheet.dart';
 import 'room_upgrade_page.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:flutter/services.dart';
@@ -266,6 +267,59 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     return '';
   }
 
+  RoomLevelData _roomLevelData({
+    String? resolvedOwnerName,
+    String? resolvedOwnerId,
+    String? resolvedOwnerAvatarUrl,
+  }) {
+    final ownerData = room['owner'] is Map
+        ? Map<String, dynamic>.from(room['owner'] as Map)
+        : room['roomOwner'] is Map
+            ? Map<String, dynamic>.from(room['roomOwner'] as Map)
+            : room['room_owner'] is Map
+                ? Map<String, dynamic>.from(room['room_owner'] as Map)
+                : <String, dynamic>{};
+    final ownerProfile = ownerData['profile'] is Map
+        ? Map<String, dynamic>.from(ownerData['profile'] as Map)
+        : ownerData;
+    String ownerValue(List<String> keys) {
+      for (final key in keys) {
+        final value = ownerProfile[key]?.toString().trim() ?? '';
+        if (value.isNotEmpty && value != 'null') return value;
+      }
+      return '';
+    }
+    final avatarUrl = (resolvedOwnerAvatarUrl ?? '').trim().isNotEmpty
+        ? resolvedOwnerAvatarUrl!.trim()
+        : (ownerValue(['avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url', 'imageUrl', 'image_url']).isNotEmpty
+            ? ownerValue(['avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url', 'imageUrl', 'image_url'])
+            : ownerAvatarUrl);
+    final exp = _roomInfoInt(['roomExp', 'room_exp', 'exp', 'experience'], 1800000);
+    final nextExp = _roomInfoInt(['nextLevelExp', 'next_level_exp', 'levelNextExp'], 3300000);
+    return RoomLevelData(
+      level: _roomInfoInt(['level', 'roomLevel', 'room_level'], 1),
+      ownerName: (resolvedOwnerName ?? '').trim().isNotEmpty
+          ? resolvedOwnerName!.trim()
+          : (ownerValue(['name', 'displayName', 'display_name', 'username']).isNotEmpty
+              ? ownerValue(['name', 'displayName', 'display_name', 'username'])
+              : ownerName),
+      ownerId: (resolvedOwnerId ?? '').trim().isNotEmpty
+          ? resolvedOwnerId!.trim()
+          : (ownerValue(['userCode', 'user_code', 'gabo_id', 'publicId', 'public_id']).isNotEmpty
+              ? ownerValue(['userCode', 'user_code', 'gabo_id', 'publicId', 'public_id'])
+              : _roomInfoString(['ownerCode', 'owner_code', 'ownerUserCode', 'owner_user_code'])),
+      ownerAvatar: avatarUrl.startsWith('http') ? NetworkImage(avatarUrl) : null,
+      exp: exp,
+      nextLevelExp: nextExp,
+      dailyExpCurrent: _roomInfoString(['dailyExpCurrent', 'daily_exp_current'], '0'),
+      dailyExpMax: _roomInfoString(['dailyExpMax', 'daily_exp_max'], '9.9m'),
+      dailyRatio: double.tryParse(_roomInfoString(['dailyRatio', 'daily_ratio'], '0')) ?? 0,
+      dailyResetIn: const Duration(hours: 2, minutes: 48),
+      tasks: kSampleTasks,
+      perkGroups: kSamplePerks,
+    );
+  }
+
   Future<void> _openRoomInfo(BuildContext context) async {
     final roomKey = _id.trim().isEmpty ? 'room:${identityHashCode(room)}' : _id.trim();
     if (!_openingRoomInfo.add(roomKey)) return;
@@ -475,6 +529,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       await showRoomInfoSheet(
         context,
         info,
+        onLevelTap: () => showRoomLevelSheet(
+          context,
+          _roomLevelData(
+            resolvedOwnerName: ownerMember.name,
+            resolvedOwnerId: ownerMember.id,
+            resolvedOwnerAvatarUrl: ownerMember.avatarUrl,
+          ),
+        ),
         onUpgrade: () {
           Navigator.of(context).pop();
           final roomId = (room['id'] ?? '').toString().trim();
@@ -952,7 +1014,7 @@ Widget _roomActionButton({
         offset: Theme.of(context).platform == TargetPlatform.android
             ? const Offset(0, -10)
             : Offset.zero,
-        child: HappyLevelBadge(level: (room['level'] ?? 1).toString()),
+        child: RoomLevelChip(data: _roomLevelData()),
       ),
     ),
     ),
