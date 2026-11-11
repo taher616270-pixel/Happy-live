@@ -421,7 +421,7 @@ export default {
             env.DB.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(targetUserId, now),
             env.DB.prepare("UPDATE user_wallets SET balance = balance + ?, updated_at = ? WHERE user_id = ?").bind(amount, now, targetUserId),
             env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, amount, balance_after, transaction_type, reference_id, description, created_at) SELECT ?, user_id, ?, balance, 'admin_credit', ?, 'إضافة رصيد يدوية من الإدارة', ? FROM user_wallets WHERE user_id = ?").bind(transactionId, amount, actor.id, now, targetUserId),
-            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, 'wallet.credit', 'user', ?, ?, ?)").bind(crypto.randomUUID(), actor.id, targetUserId, JSON.stringify({ amount, adminId: actor.id, adminUsername: actor.username }), now)
+            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'wallet.credit', 'user', ?, ?, ?)").bind(crypto.randomUUID(), targetUserId, JSON.stringify({ amount, adminId: actor.id, adminUsername: actor.username }), now)
           ]);
           const wallet = await env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(targetUserId).first<{ balance: number }>();
           return json({ ok: true, userId: targetUserId, credited: amount, balance: wallet?.balance ?? 0 }, 200, origin, env);
