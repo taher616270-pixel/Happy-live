@@ -26,20 +26,21 @@ const ROOM_EXP_DAILY_USER_CAP = 3_000_000;
 
 function roomExperienceProgress(totalExperience: number) {
   let level = 1;
-  let remaining = Math.max(0, Math.floor(totalExperience));
-  let group = 1;
+  let remaining = Number.isFinite(totalExperience)
+    ? Math.max(0, Math.floor(totalExperience))
+    : 0;
+
+  // The cost is determined by the level being entered:
+  // levels 2-5 cost 3.3m each, 6-10 cost 6.6m each, etc.
   while (true) {
-    const perLevel = group * ROOM_EXP_PER_LEVEL_GROUP;
-    const levelsInGroup = Math.min(5, Math.floor(remaining / perLevel));
-    if (levelsInGroup === 5) {
-      remaining -= 5 * perLevel;
-      level += 5;
-      group += 1;
-      continue;
+    const nextLevel = level + 1;
+    const group = Math.floor((nextLevel - 1) / 5) + 1;
+    const nextLevelExp = group * ROOM_EXP_PER_LEVEL_GROUP;
+    if (remaining < nextLevelExp) {
+      return { level, exp: remaining, nextLevelExp };
     }
-    level += levelsInGroup;
-    remaining -= levelsInGroup * perLevel;
-    return { level, exp: remaining, nextLevelExp: perLevel };
+    remaining -= nextLevelExp;
+    level = nextLevel;
   }
 }
 
