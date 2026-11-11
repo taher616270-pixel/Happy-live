@@ -483,6 +483,8 @@ export default {
       url.pathname === "/api/v1/admin/users" ||
       url.pathname === "/api/v1/admin/wallets" ||
       url.pathname === "/api/v1/admin/gifts/settings" ||
+      url.pathname === "/api/v1/admin/gifts/catalog" ||
+      /^\\/api\\/v1\\/admin\\/gifts\\/catalog\\/[a-z0-9-]{1,80}$/i.test(url.pathname) ||
       url.pathname === "/api/v1/admin/moderators" ||
       url.pathname === "/api/v1/admin/rooms" ||
       url.pathname === "/api/v1/admin/audit" ||
@@ -537,6 +539,50 @@ export default {
           ]);
           if ((results[0]?.meta?.changes ?? 0) !== 1) return json({ error: "gift_settings_conflict", message: "تم تعديل النسب بالتزامن. حدّث الصفحة وحاول مجددًا." }, 409, origin, env);
           return json({ ok: true, settings: { appPercent, recipientPercent, updatedAt: now } }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/gifts/catalog" || /^\\/api\\/v1\\/admin\\/gifts\\/catalog\\/[a-z0-9-]{1,80}$/i.test(url.pathname)) {
+          if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
+          const itemRoute = url.pathname.match(/^\\/api\\/v1\\/admin\\/gifts\\/catalog\\/([a-z0-9-]{1,80})$/i);
+          if (request.method === "GET" && !itemRoute) {
+            const rows = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt FROM gift_catalog ORDER BY sort_order ASC, created_at ASC").all();
+            return json({ ok: true, gifts: rows.results ?? [] }, 200, origin, env);
+          }
+          if (request.method === "POST" && !itemRoute) {
+            let body: Record<string, unknown>;
+            try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+            const name = typeof body.name === "string" ? body.name.trim() : "";
+            const iconEmoji = typeof body.iconEmoji === "string" ? body.iconEmoji.trim() : "🎁";
+            const coinPrice = Number(body.coinPrice);
+            const sortOrder = Number(body.sortOrder ?? 0);
+            const isActive = body.isActive === false ? 0 : 1;
+            if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000) return json({ error: "invalid_gift", message: "تحقق من اسم الهدية ورمزها وسعرها وترتيبها." }, 400, origin, env);
+            const id = crypto.randomUUID(), now = new Date().toISOString();
+            await env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?)")
+              .bind(id, name, iconEmoji, coinPrice, isActive, sortOrder, now, now).run();
+            return json({ ok: true, gift: { id, name, iconEmoji, coinPrice, isActive: Boolean(isActive), sortOrder, createdAt: now, updatedAt: now } }, 201, origin, env);
+          }
+          if (request.method === "PATCH" && itemRoute) {
+            let body: Record<string, unknown>;
+            try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+            const current = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder FROM gift_catalog WHERE id = ?").bind(itemRoute[1]).first<Record<string, unknown>>();
+            if (!current) return json({ error: "gift_not_found" }, 404, origin, env);
+            const name = body.name === undefined ? String(current.name) : (typeof body.name === "string" ? body.name.trim() : "");
+            const iconEmoji = body.iconEmoji === undefined ? String(current.iconEmoji) : (typeof body.iconEmoji === "string" ? body.iconEmoji.trim() : "");
+            const coinPrice = body.coinPrice === undefined ? Number(current.coinPrice) : Number(body.coinPrice);
+            const sortOrder = body.sortOrder === undefined ? Number(current.sortOrder) : Number(body.sortOrder);
+            const isActive = body.isActive === undefined ? Number(current.isActive) : (body.isActive === true ? 1 : body.isActive === false ? 0 : -1);
+            if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || ![0, 1].includes(isActive)) return json({ error: "invalid_gift", message: "تحقق من بيانات الهدية." }, 400, origin, env);
+            const now = new Date().toISOString();
+            await env.DB.prepare("UPDATE gift_catalog SET name = ?, icon_emoji = ?, coin_price = ?, is_active = ?, sort_order = ?, updated_at = ? WHERE id = ?")
+              .bind(name, iconEmoji, coinPrice, isActive, sortOrder, now, itemRoute[1]).run();
+            return json({ ok: true, gift: { id: itemRoute[1], name, iconEmoji, coinPrice, isActive: Boolean(isActive), sortOrder, updatedAt: now } }, 200, origin, env);
+          }
+          if (request.method === "DELETE" && itemRoute) {
+            const result = await env.DB.prepare("UPDATE gift_catalog SET is_active = 0, updated_at = ? WHERE id = ?").bind(new Date().toISOString(), itemRoute[1]).run();
+            if ((result.meta?.changes ?? 0) === 0) return json({ error: "gift_not_found" }, 404, origin, env);
+            return json({ ok: true, deactivated: true }, 200, origin, env);
+          }
+          return json({ error: "method_not_allowed" }, 405, origin, env);
         }
         const adminWalletCreditRoute = url.pathname.match(new RegExp("^/api/v1/admin/users/([0-9a-f-]{36})/wallet/credit$", "i"));
         if (adminWalletCreditRoute && request.method === "POST") {
@@ -1583,6 +1629,17 @@ export default {
     }
 
     // Authenticated wallet balance and immutable transaction history.
+    if (url.pathname === "/api/v1/gifts/catalog" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const rows = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, coin_price AS coinPrice, sort_order AS sortOrder FROM gift_catalog WHERE is_active = 1 ORDER BY sort_order ASC, created_at ASC").all();
+        return json({ ok: true, gifts: rows.results ?? [] }, 200, origin, env);
+      } catch (error) {
+        console.error("[gifts.catalog] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "gift_catalog_unavailable" }, 500, origin, env);
+      }
+    }
+
     if (url.pathname === "/api/v1/wallet" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
