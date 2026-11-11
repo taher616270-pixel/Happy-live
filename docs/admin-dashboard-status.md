@@ -83,6 +83,10 @@
 - تم تشديد CORS ليقبل النطاقات المحددة صراحةً فقط؛ أي نطاق معاينة إضافي يحتاج إدراجه في `ALLOWED_ORIGINS` على Worker.
 - فحص مخطط D1 الإنتاجي قراءةً فقط أكد وجود جداول المحافظ وسجل حركاتها، وعدم وجود جداول VIP أو الهدايا أو الشحن الإلكتروني. لم تُنشأ بيانات مالية تجريبية.
 - Laravel ما زال هيكلًا تاريخيًا: `backend/routes/api.php` لا يحتوي عقود إدارة تشغيلية؛ الخلفية الفعلية هي Worker.
-- هذا الفرع لم يُنشر للإنتاج. Pages الحالي نشر commit `d21f477` بنجاح، وآخر Worker version مرصود يستقبل 100% من الحركة. GitHub Actions لآخر فحص Flutter أظهر فشلًا قبل وجود خطوات منفذة؛ لم تُؤكد بعد نتائج `npm run typecheck` أو `npm test` لهذا التغيير، ولذلك لا يجوز الدمج قبل نجاح الفحوص.
+- هذا الفرع لم يُنشر للإنتاج. Pages الحالي على `main` نشر commit `d21f477` بنجاح، وآخر Worker production version مرصود يستقبل 100% من الحركة.
+- Cloudflare Pages Preview للفرع نجح للـ commit `12c38d6` (deployment `911b6e89`). كما نفّذ Cloudflare Workers Build الأمر `npm run typecheck && npm test`: فحص TypeScript نجح، والاختبارات `18/18` نجحت، ثم نُشر Worker Preview بنجاح (build `ca374aea-fe69-4c7a-9f07-ba97c3f06baf`). رابط المعاينة `https://security-admin-accounts-mainline-20261111-happy-live-api.taher616270.workers.dev` لا يملك D1 أو أسرار أو Durable Objects إنتاجية عمدًا؛ لذلك هو فحص حزم/اختبارات وليس اختبار تكامل مع قاعدة الإنتاج.
+- GitHub Actions ما زال يعرض فشلًا قبل تسجيل أي خطوة تنفيذية في وظيفتي `Worker checks` و`Validate Happy Live Admin Console`. لم تُتجاوز الفحوص ولم يُدمج الفرع؛ يلزم حل تشغيل Actions أو اعتماد نتيجة Cloudflare Build بديلًا صراحةً قبل الدمج.
 
 - Cloudflare Worker Preview: أضيف `previews = {}` إلى `backend/worker/wrangler.toml` لتفعيل بناء الفروع. إعداد المعاينة فارغ عمدًا ولا يرث D1 أو Durable Objects أو الأسرار الإنتاجية؛ لذلك يتحقق من حزم Worker فقط، ولا يُستخدم لاختبار API حتى تجهيز موارد staging منفصلة.
+
+- لتشغيل المعاينات بشكل صحيح، ضُبط trigger الخاص بهذا الفرع فقط على `root_directory=/backend/worker` و`build_command=npm run typecheck && npm test`؛ لم تتغير إعدادات نشر الإنتاج.
