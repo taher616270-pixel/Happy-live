@@ -395,6 +395,7 @@ export default {
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/kick$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/role$/i.test(url.pathname) ||
+      /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/wallet\/credit$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/moderation$/i.test(url.pathname)
     ) {
@@ -402,6 +403,28 @@ export default {
       try {
         const actor = await authenticatedAdmin(request, env.DB);
         if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
+        const adminWalletCreditRoute = url.pathname.match(new RegExp("^/api/v1/admin/users/([0-9a-f-]{36})/wallet/credit$", "i"));
+        if (adminWalletCreditRoute && request.method === "POST") {
+          if (actor.role !== "owner") return json({ error: "owner_permission_required", message: "إضافة العملات متاحة لمالك التطبيق فقط" }, 403, origin, env);
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; }
+          catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const amount = Number(body.amount);
+          if (!Number.isSafeInteger(amount) || amount < 1 || amount > 1000000000) return json({ error: "invalid_credit_amount" }, 400, origin, env);
+          const targetUserId = adminWalletCreditRoute[1];
+          const target = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1").bind(targetUserId).first<{ id: string }>();
+          if (!target) return json({ error: "user_not_found" }, 404, origin, env);
+          const now = new Date().toISOString();
+          const transactionId = crypto.randomUUID();
+          await env.DB.batch([
+            env.DB.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(targetUserId, now),
+            env.DB.prepare("UPDATE user_wallets SET balance = balance + ?, updated_at = ? WHERE user_id = ?").bind(amount, now, targetUserId),
+            env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, amount, balance_after, transaction_type, reference_id, description, created_at) SELECT ?, user_id, ?, balance, 'admin_credit', ?, 'إضافة رصيد يدوية من الإدارة', ? FROM user_wallets WHERE user_id = ?").bind(transactionId, amount, actor.id, now, targetUserId),
+            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'wallet.credit', 'user', ?, ?, ?)").bind(crypto.randomUUID(), targetUserId, JSON.stringify({ amount, adminId: actor.id, adminUsername: actor.username }), now)
+          ]);
+          const wallet = await env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(targetUserId).first<{ balance: number }>();
+          return json({ ok: true, userId: targetUserId, credited: amount, balance: wallet?.balance ?? 0 }, 200, origin, env);
+        }
 
         if (url.pathname === "/api/v1/admin/agora/status" && request.method === "GET") {
           if (!hasAdminPermission(actor, "agora.read")) return json({ error: "permission_denied" }, 403, origin, env);
