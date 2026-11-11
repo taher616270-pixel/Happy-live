@@ -1461,6 +1461,36 @@ class _RoomPageState extends State<RoomPage> {
     );
   }
 
+  Future<void> upgradeRoom(String roomId, int level) async {
+    final normalizedRoomId = roomId.trim();
+    if (normalizedRoomId.isEmpty) throw Exception('تعذر تحديد رقم الغرفة');
+    if (level < 2 || level > 5) throw Exception('المستوى المطلوب غير صالح');
+    final response = await http.post(
+      Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(normalizedRoomId)}/upgrade'),
+      headers: _headers,
+      body: jsonEncode({'level': level}),
+    ).timeout(const Duration(seconds: 15));
+    final dynamic data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+      if (mounted && normalizedRoomId == _roomId) {
+        setState(() => _roomLevel = (data['level'] as num?)?.toInt() ?? level);
+      }
+      return;
+    }
+    final error = data is Map ? (data['error'] ?? '').toString() : '';
+    final serverMessage = data is Map ? (data['message'] ?? '').toString() : '';
+    final message = serverMessage.isNotEmpty
+        ? serverMessage
+        : error == 'insufficient_funds'
+            ? 'رصيد العملات غير كافٍ'
+            : error == 'level_price_unavailable'
+                ? 'سعر هذا المستوى لم يُحدد بعد'
+                : error == 'room_level_not_higher'
+                    ? 'الغرفة وصلت إلى هذا المستوى أو أعلى'
+                    : 'تعذر تنفيذ الترقية، حاول مرة أخرى';
+    throw Exception(message);
+  }
+
   Future<void> _editRoomAnnouncement() async {
     if (!_isRoomOwner) {
       _showMessage('تعديل الإعلان متاح لمالك الغرفة فقط');
@@ -1688,6 +1718,7 @@ class _RoomPageState extends State<RoomPage> {
       onRoomActions: () => setState(() => _showRoomActions = !_showRoomActions),
       onMinimizeRoom: _minimizeRoom,
       onCloseRoom: _closeRoom,
+      onUpgradeRoom: upgradeRoom,
           ),
         ),        if (_isLoading)
           Positioned.fill(
