@@ -4,6 +4,7 @@ import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/posts_page.dart';
 import 'pages/edit_profile_page.dart';
+import 'pages/wallet_page.dart';
 import 'package:flutter/services.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
@@ -1507,6 +1508,12 @@ class _SessionHomePageState extends State<SessionHomePage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$feature قيد التجهيز وستتوفر قريباً'), behavior: SnackBarBehavior.floating));
   }
 
+  Future<void> _openWallet() async {
+    await Navigator.of(context).push<void>(MaterialPageRoute(
+      builder: (_) => WalletPage(apiBase: _apiBase, accessToken: widget.accessToken),
+    ));
+  }
+
   void _openMySidePanel() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const _HappyMySpacePage()),
@@ -1561,6 +1568,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
         onEdit: _openEditProfile,
         onLogout: _logout,
         onSoon: _soon,
+        onWallet: _openWallet,
       ),
     ];
 
