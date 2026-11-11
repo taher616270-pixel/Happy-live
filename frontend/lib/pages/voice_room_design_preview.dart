@@ -475,7 +475,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         },
         accessToken: accessToken,
       );
-    }
     } finally {
       _openingRoomInfo.remove(roomKey);
     }
