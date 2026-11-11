@@ -521,7 +521,7 @@ class _RoomPageState extends State<RoomPage> {
         : _ownerCountryName;
     final roomData = data['room'];
     final nextRoomLevel = roomData is Map && roomData['level'] is num
-        ? (roomData['level'] as num).toInt().clamp(1, 5)
+        ? (roomData['level'] as num).toInt().clamp(1, 5).toInt()
         : _roomLevel;
     final nextAnnouncement = roomData is Map && roomData['announcement'] != null
         ? roomData['announcement'].toString()
