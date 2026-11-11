@@ -34,7 +34,7 @@ test("gift earnings are tagged and future withdrawal eligibility cannot exceed u
 test("room battle multiplier is stored server-side and no private-gift room XP is configured", () => {
   assert.match(migration, /CREATE TABLE IF NOT EXISTS room_battles/);
   assert.match(migration, /experience_multiplier INTEGER NOT NULL DEFAULT 1 CHECK \(experience_multiplier IN \(1, 2\)\)/);
-  assert.match(migration, /context_type TEXT NOT NULL CHECK \(context_type IN \('room', 'private'\)\)/);
+  assert.match(migration, /context_type TEXT NOT NULL DEFAULT 'room' CHECK \(context_type = 'room'\)/);
 });
 
 test("admin gift split endpoint validates the sum and limits edits to the owner", () => {
