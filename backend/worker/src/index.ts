@@ -527,9 +527,15 @@ export default {
           if (!current) return json({ error: "gift_settings_not_initialized" }, 503, origin, env);
           const now = new Date().toISOString();
           const auditId = crypto.randomUUID();
-          const update = await env.DB.prepare("UPDATE gift_revenue_settings SET app_percent = ?, recipient_percent = ?, updated_by_admin_id = ?, updated_at = ? WHERE id = 'current' AND app_percent = ? AND recipient_percent = ?").bind(appPercent, recipientPercent, actor.id, now, current.app_percent, current.recipient_percent).run();
-          if ((update.meta?.changes ?? 0) !== 1) return json({ error: "gift_settings_conflict", message: "تم تعديل النسب بالتزامن. حدّث الصفحة وحاول مجددًا." }, 409, origin, env);
-          await env.DB.prepare("INSERT INTO gift_revenue_settings_audit (id, admin_id, old_app_percent, old_recipient_percent, new_app_percent, new_recipient_percent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(auditId, actor.id, current.app_percent, current.recipient_percent, appPercent, recipientPercent, now).run();
+          const results = await env.DB.batch([
+            env.DB.prepare("UPDATE gift_revenue_settings SET app_percent = ?, recipient_percent = ?, updated_by_admin_id = ?, updated_at = ? WHERE id = 'current' AND app_percent = ? AND recipient_percent = ?")
+              .bind(appPercent, recipientPercent, actor.id, now, current.app_percent, current.recipient_percent),
+            env.DB.prepare(
+              "INSERT INTO gift_revenue_settings_audit (id, admin_id, old_app_percent, old_recipient_percent, new_app_percent, new_recipient_percent, created_at) " +
+              "SELECT ?, ?, ?, ?, ?, ?, ? FROM gift_revenue_settings WHERE id = 'current' AND app_percent = ? AND recipient_percent = ? AND updated_by_admin_id = ? AND updated_at = ?"
+            ).bind(auditId, actor.id, current.app_percent, current.recipient_percent, appPercent, recipientPercent, now, appPercent, recipientPercent, actor.id, now)
+          ]);
+          if ((results[0]?.meta?.changes ?? 0) !== 1) return json({ error: "gift_settings_conflict", message: "تم تعديل النسب بالتزامن. حدّث الصفحة وحاول مجددًا." }, 409, origin, env);
           return json({ ok: true, settings: { appPercent, recipientPercent, updatedAt: now } }, 200, origin, env);
         }
         const adminWalletCreditRoute = url.pathname.match(new RegExp("^/api/v1/admin/users/([0-9a-f-]{36})/wallet/credit$", "i"));
