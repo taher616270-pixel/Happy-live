@@ -360,7 +360,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       tribeLogoUrl: _roomInfoString(['tribe_logo', 'tribeLogo', 'tribeLogoUrl', 'tribe_logo_url']),
       level: _roomInfoInt(['level', 'roomLevel', 'room_level'], 1),
       palaceStatus: _roomInfoString(['palaceStatus', 'palace_status'], 'غير مفعّل'),
-      membersCount: _roomInfoInt(['membersCount', 'members_count', 'memberCount'], seats.where((e) => e['userId'] != null).length + audienceCount),
+      membersCount: _roomInfoInt(['membersCount', 'members_count', 'memberCount'], 0),
       membersMax: _roomInfoInt(['membersMax', 'members_max', 'maxMembers'], 100),
       members: members,
       announcement: _roomInfoString(['announcement', 'description']),
