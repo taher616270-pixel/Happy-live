@@ -504,6 +504,7 @@ export default {
           ).bind(q, q, q, q, limit).all();
           return json({ ok: true, users: result.results ?? [] }, 200, origin, env);
         }
+        // Keep the admin wallet endpoint in the deployed Worker route table.
         if (url.pathname === "/api/v1/admin/wallets" && request.method === "GET") {
           if (actor.role !== "owner" && actor.role !== "admin") return json({ error: "permission_denied" }, 403, origin, env);
           const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
