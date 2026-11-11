@@ -482,6 +482,7 @@ export default {
       url.pathname === "/api/v1/admin/stats" ||
       url.pathname === "/api/v1/admin/users" ||
       url.pathname === "/api/v1/admin/wallets" ||
+      url.pathname === "/api/v1/admin/gifts/settings" ||
       url.pathname === "/api/v1/admin/moderators" ||
       url.pathname === "/api/v1/admin/rooms" ||
       url.pathname === "/api/v1/admin/audit" ||
@@ -498,6 +499,39 @@ export default {
       try {
         const actor = await authenticatedAdmin(request, env.DB);
         if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
+        if (url.pathname === "/api/v1/admin/gifts/settings" && (request.method === "GET" || request.method === "PATCH")) {
+          if (actor.role !== "owner" && actor.role !== "admin") return json({ error: "permission_denied" }, 403, origin, env);
+          if (request.method === "PATCH" && actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
+          if (request.method === "GET") {
+            const [settings, withdrawal, totals] = await Promise.all([
+              env.DB.prepare("SELECT app_percent AS appPercent, recipient_percent AS recipientPercent, updated_at AS updatedAt FROM gift_revenue_settings WHERE id = 'current'").first<Record<string, unknown>>(),
+              env.DB.prepare("SELECT enabled, agency_integration_ready AS agencyIntegrationReady, minimum_coins AS minimumCoins FROM gift_withdrawal_settings WHERE id = 'current'").first<Record<string, unknown>>(),
+              env.DB.prepare("SELECT COUNT(*) AS giftCount, COALESCE(SUM(coin_cost), 0) AS totalGiftCoins, COALESCE(SUM(app_coins), 0) AS appCoins, COALESCE(SUM(recipient_coins), 0) AS recipientCoins FROM gift_transactions WHERE status = 'succeeded'").first<Record<string, unknown>>()
+            ]);
+            return json({
+              ok: true,
+              settings: settings ?? { appPercent: 30, recipientPercent: 70 },
+              withdrawals: { ...(withdrawal ?? {}), enabled: false, agencyIntegrationReady: false, ready: false },
+              totals: totals ?? { giftCount: 0, totalGiftCoins: 0, appCoins: 0, recipientCoins: 0 }
+            }, 200, origin, env);
+          }
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; }
+          catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const appPercent = Number(body.appPercent);
+          const recipientPercent = Number(body.recipientPercent);
+          if (!Number.isInteger(appPercent) || !Number.isInteger(recipientPercent) || appPercent < 0 || appPercent > 100 || recipientPercent < 0 || recipientPercent > 100 || appPercent + recipientPercent !== 100) {
+            return json({ error: "invalid_revenue_split", message: "يجب أن تكون النسب أعدادًا صحيحة ومجموعها 100%" }, 400, origin, env);
+          }
+          const current = await env.DB.prepare("SELECT app_percent, recipient_percent FROM gift_revenue_settings WHERE id = 'current'").first<{ app_percent: number; recipient_percent: number }>();
+          if (!current) return json({ error: "gift_settings_not_initialized" }, 503, origin, env);
+          const now = new Date().toISOString();
+          const auditId = crypto.randomUUID();
+          const update = await env.DB.prepare("UPDATE gift_revenue_settings SET app_percent = ?, recipient_percent = ?, updated_by_admin_id = ?, updated_at = ? WHERE id = 'current' AND app_percent = ? AND recipient_percent = ?").bind(appPercent, recipientPercent, actor.id, now, current.app_percent, current.recipient_percent).run();
+          if ((update.meta?.changes ?? 0) !== 1) return json({ error: "gift_settings_conflict", message: "تم تعديل النسب بالتزامن. حدّث الصفحة وحاول مجددًا." }, 409, origin, env);
+          await env.DB.prepare("INSERT INTO gift_revenue_settings_audit (id, admin_id, old_app_percent, old_recipient_percent, new_app_percent, new_recipient_percent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(auditId, actor.id, current.app_percent, current.recipient_percent, appPercent, recipientPercent, now).run();
+          return json({ ok: true, settings: { appPercent, recipientPercent, updatedAt: now } }, 200, origin, env);
+        }
         const adminWalletCreditRoute = url.pathname.match(new RegExp("^/api/v1/admin/users/([0-9a-f-]{36})/wallet/credit$", "i"));
         if (adminWalletCreditRoute && request.method === "POST") {
           if (actor.role !== "owner") return json({ error: "owner_permission_required", message: "إضافة العملات متاحة لمالك التطبيق فقط" }, 403, origin, env);
