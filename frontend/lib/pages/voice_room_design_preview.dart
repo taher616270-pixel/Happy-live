@@ -964,7 +964,7 @@ Widget _roomActionButton({
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
         mainAxisSpacing: 12,
-        crossAxisSpacing: 10,
+        crossAxisSpacing: 12,
         childAspectRatio: .88,
       ),
       itemBuilder: (context, index) {
@@ -992,7 +992,7 @@ Widget _roomActionButton({
         return Transform.translate(
           offset: Offset(0, seatOffset + (isAndroid ? 0 : 5)),
           child: Transform.translate(
-            offset: Offset(0, seatOffset),
+            offset: Offset(0, seatOffset + (number <= 4 ? 1 : 3)),
             child: Align(
               alignment: Alignment.topCenter,
               child: Transform.translate(
@@ -1066,9 +1066,9 @@ Widget _roomActionButton({
                       height: 54,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(.10),
+                        color: Colors.white.withOpacity(.14),
                         border: Border.all(
-                          color: mine ? Colors.transparent : Colors.white.withOpacity(occupied ? .82 : .32),
+                          color: mine ? Colors.transparent : Colors.white.withOpacity(occupied ? .82 : .48),
                           width: mine ? 0 : occupied ? 2 : 1,
                         ),
                         // Improve separation from the new wallpaper without
@@ -1089,8 +1089,8 @@ Widget _roomActionButton({
                           ? null
                           : Icon(
                               occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
-                              color: Colors.white.withOpacity(.78),
-                              size: 21,
+                              color: Colors.white.withOpacity(.92),
+                              size: 23,
                             ),
                       ),
                     ),
