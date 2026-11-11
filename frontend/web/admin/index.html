@@ -293,16 +293,24 @@ function users(a){
 }
 function rooms(a){
   const canManage=admin.role==="owner"||admin.role==="admin";
-  $("content").innerHTML='<div class="section"><div class="section-head"><h2>الغرف ('+a.length+')</h2></div><div class="table-wrap"><table><thead><tr><th>الغرفة</th><th>رقمها</th><th>المالك</th><th>الخصوصية</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>'+
-    (a.length?a.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.room_code)+'</td><td>'+esc(r.owner_name||"—")+'</td><td>'+(r.visibility==="private"?"خاصة":"عامة")+'</td><td><span class="badge '+(r.status==="active"?"good":"bad")+'">'+(r.status==="active"?"نشطة":"مغلقة")+'</span></td><td><div class="room-tools"><button class="action" data-room-open="'+esc(r.id)+'" data-room-name="'+esc(r.name)+'">إدارة الغرفة</button>'+
+  $("content").innerHTML='<div class="section"><div class="section-head"><h2>الغرف ('+a.length+')</h2><span class="muted">مستوى التقدم مستقل عن ترقية «فعّال»</span></div><div class="table-wrap"><table><thead><tr><th>الغرفة</th><th>رقمها</th><th>المالك</th><th>مستوى الغرفة</th><th>الخصوصية</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>'+
+    (a.length?a.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.room_code)+'</td><td>'+esc(r.owner_name||"—")+'</td><td><div class="room-tools"><strong>Lv.'+Number(r.progression_level||1)+'</strong><span class="muted">XP '+Number(r.progression_experience||0).toLocaleString("en-US")+'</span>'+(canManage?'<button class="action" data-progression-adjust="'+esc(r.id)+'" data-level="'+Number(r.progression_level||1)+'" data-delta="-1" title="خفض المستوى">−</button><button class="action" data-progression-adjust="'+esc(r.id)+'" data-level="'+Number(r.progression_level||1)+'" data-delta="1" title="رفع المستوى">+</button>':'')+'</div></td><td>'+(r.visibility==="private"?"خاصة":"عامة")+'</td><td><span class="badge '+(r.status==="active"?"good":"bad")+'">'+(r.status==="active"?"نشطة":"مغلقة")+'</span></td><td><div class="room-tools"><button class="action" data-room-open="'+esc(r.id)+'" data-room-name="'+esc(r.name)+'">إدارة الغرفة</button>'+
     (canManage?'<button class="action '+(r.status==="active"?"danger":"")+'" data-room-status="'+esc(r.id)+'" data-next="'+(r.status==="active"?"closed":"active")+'">'+(r.status==="active"?"إغلاق":"فتح")+'</button>':'<span class="muted">قراءة فقط</span>')+
-    '</div></td></tr>').join(""):'<tr><td colspan="6" class="empty">لا توجد غرف</td></tr>')+
+    '</div></td></tr>').join(""):'<tr><td colspan="7" class="empty">لا توجد غرف</td></tr>')+
     '</tbody></table></div></div><div id="roomModeration"></div>';
   document.querySelectorAll("[data-room-open]").forEach(b=>b.onclick=()=>loadRoomModeration(b.dataset.roomOpen,b.dataset.roomName||"الغرفة"));
   document.querySelectorAll("[data-room-status]").forEach(b=>b.onclick=async()=>{
     if(!confirm("تأكيد تغيير حالة الغرفة؟"))return;
     try{await api("/admin/rooms/"+b.dataset.roomStatus+"/status",{method:"PATCH",body:JSON.stringify({status:b.dataset.next})});render()}
     catch(e){alert(e.message)}
+  });
+  document.querySelectorAll("[data-progression-adjust]").forEach(b=>b.onclick=async()=>{
+    const next=Number(b.dataset.level)+Number(b.dataset.delta);
+    if(next<1||next>1000)return;
+    if(!confirm((b.dataset.delta==="1"?"رفع":"خفض")+" مستوى الغرفة إلى Lv."+next+"؟"))return;
+    b.disabled=true;
+    try{await api("/admin/rooms/"+encodeURIComponent(b.dataset.progressionAdjust)+"/progression",{method:"PATCH",body:JSON.stringify({level:next})});await render()}
+    catch(e){alert(e.message);b.disabled=false}
   });
 }
 async function loadRoomModeration(roomId,roomName,q=""){
