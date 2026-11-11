@@ -155,15 +155,48 @@ async function render(){
     }
     else if(page==="stats")statsPage((await api("/admin/stats")).stats);
     else if(page==="users")users((await api("/admin/users")).users||[]);
+    else if(page==="wallets")await walletsPage();
     else if(page==="rooms")rooms((await api("/admin/rooms")).rooms||[]);
     else if(page==="reports")await roomReportsPage();
     else if(page==="moderators")await moderatorsPage();
     else if(page==="audit")audit((await api("/admin/audit")).entries||[]);
     else if(page==="agora")await agoraPage();
-    else $("content").innerHTML='<div class="section"><h2>خدمات غير مفعّلة بعد</h2><p class="notice">VIP والشحن والهدايا والمحفظة لا تملك جداول أو نقاط API حقيقية في الخادم حتى الآن. لن نعرض أرقامًا أو عمليات تجريبية على أنها بيانات فعلية.</p></div>';
+    else $("content").innerHTML='<div class="section"><h2>خدمات غير مفعّلة بعد</h2><p class="notice">VIP والشحن والهدايا ما زالت تحتاج خدماتها الخاصة. المحفظة مرتبطة الآن برصيد العملات وسجل الحركات الفعلي.</p></div>';
   }catch(e){$("content").innerHTML='<div class="section"><p class="error">'+esc(e.message)+'</p><p class="muted">تحقق من صلاحية حسابك الإداري واتصال الخادم.</p></div>'}
 }
 
+async function walletsPage(q="",selectedUserId=""){
+  const query="/admin/wallets?q="+encodeURIComponent(q)+"&limit=100"+(selectedUserId?"&userId="+encodeURIComponent(selectedUserId):"");
+  const data=await api(query),summary=data.summary||{},rows=data.wallets||[],selected=data.selectedWallet;
+  const canCredit=admin.role==="owner";
+  const fmt=n=>Number(n||0).toLocaleString("en-US");
+  const history=(data.transactions||[]).map(t=>'<tr><td>'+esc(t.description||t.type||"حركة رصيد")+'</td><td><span class="badge '+(Number(t.amount)>=0?"good":"bad")+'">'+(Number(t.amount)>=0?"+":"")+fmt(t.amount)+'</span></td><td>'+fmt(t.balanceAfter)+'</td><td>'+esc(new Date(t.createdAt).toLocaleString("ar"))+'</td></tr>').join("")||'<tr><td colspan="4" class="empty">لا توجد حركات مسجلة لهذا المستخدم</td></tr>';
+  $("content").innerHTML=
+    '<div class="cards">'+metric("عدد الحسابات النشطة",summary.users)+metric("إجمالي العملات في المحافظ",summary.totalBalance)+metric("حسابات لديها رصيد",summary.fundedUsers)+'</div>'+
+    '<div class="section"><div class="section-head"><div><h2>الكوينز والمحافظ</h2><p class="muted">أرصدة العملات وسجل الحركات محفوظة في قاعدة بيانات المنصة.</p></div><input id="walletSearch" class="search" value="'+esc(q)+'" placeholder="ابحث بالاسم أو البريد أو ID"></div>'+
+    '<div class="notice">'+(canCredit?"إضافة العملات اليدوية متاحة للمالك فقط، وتسجل كل عملية في سجل الإدارة.":"عرض فقط: إضافة العملات متاحة لمالك التطبيق فقط.")+' الشحن الإلكتروني عبر بوابة دفع غير مفعّل بعد.</div>'+
+    '<div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>Happy ID</th><th>البريد</th><th>الرصيد</th><th>آخر تحديث</th><th>الإجراءات</th></tr></thead><tbody>'+
+    (rows.length?rows.map(u=>'<tr><td>'+esc(u.display_name||"مستخدم")+'</td><td>'+esc(u.gabo_id||"—")+'</td><td>'+esc(u.email||"—")+'</td><td><strong>'+fmt(u.balance)+'</strong></td><td>'+esc(u.updated_at?new Date(u.updated_at).toLocaleString("ar"):"—")+'</td><td><div class="room-tools"><button class="action" data-wallet-history="'+esc(u.id)+'">السجل</button>'+(canCredit?'<button class="action" data-wallet-credit="'+esc(u.id)+'">إضافة عملات</button>':"")+'</div></td></tr>').join(""):'<tr><td colspan="6" class="empty">لا توجد حسابات مطابقة</td></tr>')+
+    '</tbody></table></div></div>'+
+    (selected?'<div class="section"><div class="section-head"><div><h2>سجل محفظة '+esc(selected.display_name||"المستخدم")+'</h2><p class="muted">ID: '+esc(selected.gabo_id||"—")+' · الرصيد الحالي: '+fmt(selected.balance)+' عملة</p></div><button class="action" id="walletHistoryClose">إغلاق السجل</button></div><div class="table-wrap"><table><thead><tr><th>البيان</th><th>قيمة الحركة</th><th>الرصيد بعدها</th><th>التاريخ</th></tr></thead><tbody>'+history+'</tbody></table></div></div>':"");
+  let timer;
+  $("walletSearch").oninput=e=>{clearTimeout(timer);const value=e.target.value.trim();timer=setTimeout(()=>walletsPage(value,selectedUserId),250)};
+  document.querySelectorAll("[data-wallet-history]").forEach(b=>b.onclick=()=>walletsPage(q,b.dataset.walletHistory));
+  document.querySelectorAll("[data-wallet-credit]").forEach(b=>b.onclick=async()=>{
+    const raw=window.prompt("كم عدد العملات التي تريد إضافتها؟");
+    if(raw===null)return;
+    const amount=Number(raw.trim());
+    if(!Number.isSafeInteger(amount)||amount<1||amount>1000000000){alert("أدخل عدد عملات صحيحًا أكبر من صفر.");return}
+    if(!confirm("تأكيد إضافة "+fmt(amount)+" عملة إلى محفظة هذا المستخدم؟"))return;
+    b.disabled=true;
+    try{
+      const result=await api("/admin/users/"+b.dataset.walletCredit+"/wallet/credit",{method:"POST",body:JSON.stringify({amount})});
+      alert("تمت إضافة "+fmt(result.credited)+" عملة. الرصيد الجديد: "+fmt(result.balance));
+      await walletsPage(q,selectedUserId);
+    }catch(error){alert(error.message);b.disabled=false}
+  });
+  $("walletHistoryClose")?.addEventListener("click",()=>walletsPage(q));
+}
 async function roomReportsPage(status="pending"){
   const data=(await api("/admin/reports/rooms?status="+encodeURIComponent(status)+"&limit=100")).reports||[];
   const labels={pending:"بانتظار المراجعة",reviewed:"تمت المراجعة",dismissed:"مرفوض"};
