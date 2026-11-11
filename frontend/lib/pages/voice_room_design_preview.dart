@@ -1270,7 +1270,7 @@ Widget _roomActionButton({
         ? const Offset(0, -112)
         : const Offset(0, -65),
     child: Container(
-    height: 40,
+    height: 34,
     margin: const EdgeInsets.symmetric(horizontal: 12),
     padding: const EdgeInsets.symmetric(horizontal: 12),
     decoration: BoxDecoration(
