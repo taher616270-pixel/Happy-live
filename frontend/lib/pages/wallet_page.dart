@@ -120,7 +120,7 @@ class _WalletPageState extends State<WalletPage> {
                     end: Alignment.bottomLeft,
                     colors: [Color(0xFF34253D), Color(0xFF17131F), Color(0xFF100E17)],
                   ),
-                  border: Border.all(color: _gold.withValues(alpha: .55)),
+                  border: Border.all(color: _gold.withOpacity(.55)),
                   boxShadow: const [BoxShadow(color: Color(0x332D1B3D), blurRadius: 22, offset: Offset(0, 8))],
                 ),
                 child: Column(
@@ -167,7 +167,7 @@ class _WalletPageState extends State<WalletPage> {
               if (_error != null)
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.redAccent.withValues(alpha: .4))),
+                  decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.redAccent.withOpacity(.4))),
                   child: Column(children: [
                     Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 12)),
                     const SizedBox(height: 8),
@@ -199,7 +199,7 @@ class _WalletPageState extends State<WalletPage> {
                     child: Row(children: [
                       Container(
                         width: 40, height: 40,
-                        decoration: BoxDecoration(color: _gold.withValues(alpha: .12), borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(color: _gold.withOpacity(.12), borderRadius: BorderRadius.circular(12)),
                         child: Icon(positive ? Icons.south_west_rounded : Icons.north_east_rounded, color: _gold, size: 20),
                       ),
                       const SizedBox(width: 11),
