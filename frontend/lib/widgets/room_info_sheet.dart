@@ -72,13 +72,14 @@ Future<void> showRoomInfoSheet(
   VoidCallback? onSettings,
   VoidCallback? onInvite,
   VoidCallback? onUpgrade,
+  VoidCallback? onLevelTap,
   String? accessToken,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _RoomInfoSheet(info: info, onJoin: onJoin, onFollow: onFollow, onMembersTap: onMembersTap, onSettings: onSettings, onInvite: onInvite, onUpgrade: onUpgrade, accessToken: accessToken ?? ''),
+    builder: (_) => _RoomInfoSheet(info: info, onJoin: onJoin, onFollow: onFollow, onMembersTap: onMembersTap, onSettings: onSettings, onInvite: onInvite, onUpgrade: onUpgrade, onLevelTap: onLevelTap, accessToken: accessToken ?? ''),
   );
 }
 
@@ -133,9 +134,9 @@ void _showInactiveRoomGroupSheet(BuildContext context, RoomInfo info) {
 }
 
 class _RoomInfoSheet extends StatelessWidget {
-  const _RoomInfoSheet({required this.info, this.onJoin, this.onFollow, this.onMembersTap, this.onSettings, this.onInvite, this.onUpgrade, required this.accessToken});
+  const _RoomInfoSheet({required this.info, this.onJoin, this.onFollow, this.onMembersTap, this.onSettings, this.onInvite, this.onUpgrade, this.onLevelTap, required this.accessToken});
   final RoomInfo info;
-  final VoidCallback? onJoin, onFollow, onMembersTap, onSettings, onInvite, onUpgrade;
+  final VoidCallback? onJoin, onFollow, onMembersTap, onSettings, onInvite, onUpgrade, onLevelTap;
   final String accessToken;
 
   int get _selectedLevelIndex =>
@@ -242,7 +243,7 @@ class _RoomInfoSheet extends StatelessWidget {
                     ]),
                   )),
                   const SizedBox(width: 7),
-                  Expanded(flex: 3, child: Transform.translate(offset: const Offset(-5, 0), child: Padding(padding: const EdgeInsets.only(left: 12), child: _stat('Lv.${info.level}', 'مستوى الغرفة', _RoomInfoColors.levelBg, _RoomInfoColors.level, subColor: _RoomInfoColors.levelSub)))),
+                  Expanded(flex: 3, child: GestureDetector(onTap: onLevelTap, behavior: HitTestBehavior.opaque, child: Transform.translate(offset: const Offset(-5, 0), child: Padding(padding: const EdgeInsets.only(left: 12), child: _stat('Lv.${info.level}', 'مستوى الغرفة', _RoomInfoColors.levelBg, _RoomInfoColors.level, subColor: _RoomInfoColors.levelSub))))),
                   const SizedBox(width: 1),
                   Expanded(flex: 3, child: GestureDetector(onTap: onUpgrade, child: _stat(selectedLevel.name, 'فعّال', _RoomInfoColors.goldBg, _RoomInfoColors.palace, subColor: _RoomInfoColors.palaceSub))),
                 ])),
