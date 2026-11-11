@@ -71,7 +71,6 @@ async function awardRoomSeatExperience(
   ).bind(roomId, userId).first<{ last_awarded_at: string }>();
   if (!activity?.last_awarded_at || nowMs - Date.parse(activity.last_awarded_at) < 300_000) return;
 
-  const dayKey = now.slice(0, 10);
   const account = await db.prepare(
     "SELECT created_at FROM users WHERE id = ? LIMIT 1"
   ).bind(userId).first<{ created_at: string }>();
