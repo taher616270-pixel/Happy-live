@@ -1435,7 +1435,7 @@ export default {
         const price = prices[targetLevel];
         if (!price) return json({ error: "level_price_unavailable", message: "سعر مستوى القصر لم يُحدد بعد" }, 409, origin, env);
         const roomId = roomUpgradeRoute[1];
-        const room = await env.DB.prepare("SELECT id, name, level FROM rooms WHERE id = ? AND status <> 'deleted' LIMIT 1").bind(roomId).first<{ id: string; name: string; level: number }>();
+        const room = await env.DB.prepare("SELECT r.id, r.name, COALESCE(rl.level, 1) AS level FROM rooms r LEFT JOIN room_levels rl ON rl.room_id = r.id WHERE r.id = ? AND r.status <> 'deleted' LIMIT 1").bind(roomId).first<{ id: string; name: string; level: number }>();
         if (!room) return json({ error: "room_not_found", message: "الغرفة غير موجودة" }, 404, origin, env);
         if (targetLevel <= room.level) return json({ error: "room_level_not_higher", message: "الغرفة وصلت إلى هذا المستوى أو أعلى" }, 409, origin, env);
         const now = new Date().toISOString();
@@ -1444,11 +1444,11 @@ export default {
         const results = await env.DB.batch([
           env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, amount, balance_after, transaction_type, reference_id, description, created_at) SELECT ?, w.user_id, ?, w.balance - ?, 'room_upgrade', ?, ?, ? FROM user_wallets w INNER JOIN rooms r ON r.id = ? WHERE w.user_id = ? AND w.balance >= ? AND r.level < ? AND r.status <> 'deleted'").bind(transactionId, -price, price, roomId, "ترقية غرفة " + room.name, now, roomId, user.id, price, targetLevel),
           env.DB.prepare("UPDATE user_wallets SET balance = balance - ?, updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade')").bind(price, now, user.id, transactionId),
-          env.DB.prepare("UPDATE rooms SET level = ?, updated_at = ? WHERE id = ? AND level < ? AND EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade')").bind(targetLevel, now, roomId, targetLevel, transactionId)
+          env.DB.prepare("INSERT INTO room_levels (room_id, level, updated_at) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade') ON CONFLICT(room_id) DO UPDATE SET level = excluded.level, updated_at = excluded.updated_at WHERE room_levels.level < excluded.level").bind(roomId, targetLevel, now, transactionId)
         ]);
-        if ((results[0]?.meta?.changes ?? 0) !== 1 || (results[2]?.meta?.changes ?? 0) !== 1) {
+        if ((results[0]?.meta?.changes ?? 0) !== 1 || (results[1]?.meta?.changes ?? 0) !== 1 || (results[2]?.meta?.changes ?? 0) !== 1) {
           const [latestRoom, wallet] = await Promise.all([
-            env.DB.prepare("SELECT level FROM rooms WHERE id = ? AND status <> 'deleted' LIMIT 1").bind(roomId).first<{ level: number }>(),
+            env.DB.prepare("SELECT COALESCE(rl.level, 1) AS level FROM rooms r LEFT JOIN room_levels rl ON rl.room_id = r.id WHERE r.id = ? AND r.status <> 'deleted' LIMIT 1").bind(roomId).first<{ level: number }>(),
             env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>()
           ]);
           if (!latestRoom) return json({ error: "room_not_found", message: "الغرفة غير موجودة" }, 404, origin, env);
@@ -1643,7 +1643,7 @@ export default {
         const roomId = decodeURIComponent(seatRoute[1]);
         const now = new Date().toISOString();
         const room = await env.DB.prepare(
-          "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, r.level, p.display_name AS owner_name, p.avatar_key AS owner_avatar_url, p.country_name AS owner_country_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
+          "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, COALESCE(rl.level, 1) AS level, p.display_name AS owner_name, p.avatar_key AS owner_avatar_url, p.country_name AS owner_country_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN room_levels rl ON rl.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; level: number; owner_name: string | null; owner_avatar_url: string | null; owner_country_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
 
