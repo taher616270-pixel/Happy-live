@@ -255,6 +255,11 @@ class _RoomInfoSheet extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 15),
+                Transform.translate(
+                  offset: const Offset(0, -4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                 const Text('مجموعة الغرفة', style: TextStyle(color: _RoomInfoColors.text, fontSize: 13, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -271,6 +276,9 @@ class _RoomInfoSheet extends StatelessWidget {
                   ])),
                 ]),
                 const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
               ]),
             )),
             Padding(padding: const EdgeInsets.fromLTRB(16, 6, 16, 10), child: Row(children: [
