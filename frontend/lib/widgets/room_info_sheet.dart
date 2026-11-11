@@ -262,7 +262,7 @@ class _RoomInfoSheet extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      Flexible(child: Text(info.groupName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 15, fontWeight: FontWeight.w600))),
+                      Flexible(child: Text(info.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _RoomInfoColors.text, fontSize: 15, fontWeight: FontWeight.w600))),
                       const SizedBox(width: 8),
                       _chip(Text('${info.groupCount} عضو', style: const TextStyle(color: _RoomInfoColors.muted, fontSize: 11))),
                     ]),
