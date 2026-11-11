@@ -192,7 +192,7 @@ class _RoomUpgradePageState extends State<RoomUpgradePage> {
               ),
             ),
             PositionedDirectional(
-              start: 4,
+              start: 24,
               child: IconButton(
                 icon: const Icon(Icons.chevron_right, color: _gold, size: 30),
                 onPressed: () => Navigator.pop(context),
