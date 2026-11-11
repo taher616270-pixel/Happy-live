@@ -49,3 +49,21 @@ test("admin console exposes the real gift revenue settings endpoint", () => {
   assert.match(adminPage, /\/admin\/gifts\/settings/);
   assert.match(adminPage, /حفظ نسب الأرباح/);
 });
+
+ 
+test("gift catalogue migration seeds three premium priced gifts", () => {
+  assert.match(migration, /'وردة الألماس', '💎', '', 999, 1/);
+  assert.match(migration, /'قصر الذهب', '🏰', '', 4999, 1/);
+  assert.match(migration, /'يخت الملوك', '🛥️', '', 9999, 1/);
+  assert.match(migration, /icon_emoji TEXT NOT NULL/);
+});
+
+test("gift catalogue has owner-only management and public active listing", () => {
+  assert.match(worker, /\/api\/v1\/admin\/gifts\/catalog/);
+  assert.match(worker, /actor\.role !== "owner"/);
+  assert.match(worker, /INSERT INTO gift_catalog/);
+  assert.match(worker, /UPDATE gift_catalog SET name/);
+  assert.match(worker, /\/api\/v1\/gifts\/catalog/);
+  assert.match(adminPage, /giftCreateForm/);
+  assert.match(adminPage, /data-gift-edit/);
+});
