@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:math' as math;
+import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../widgets/square_country_flag.dart';
@@ -240,7 +242,35 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     return fallback;
   }
 
-  void _openRoomInfo(BuildContext context) {
+  Future<Map<String, dynamic>?> _loadAccountProfile(String userId) async {
+    final id = userId.trim();
+    if (id.isEmpty || accessToken.trim().isEmpty) return null;
+    try {
+      final response = await http.get(
+        Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/users/${Uri.encodeComponent(id)}/profile'),
+        headers: {'Authorization': 'Bearer $accessToken'},
+      ).timeout(const Duration(seconds: 12));
+      if (response.statusCode != 200) return null;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map || decoded['ok'] != true || decoded['profile'] is! Map) {
+        return null;
+      }
+      return Map<String, dynamic>.from(decoded['profile'] as Map);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _profileValue(Map<String, dynamic>? profile, List<String> keys) {
+    if (profile == null) return '';
+    for (final key in keys) {
+      final value = profile[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty && value != 'null') return value;
+    }
+    return '';
+  }
+
+  Future<void> _openRoomInfo(BuildContext context) async {
     final image = _roomInfoString(['imageUrl', 'image_url', 'coverUrl', 'cover_url']);
     final ownerData = room['owner'] is Map
         ? Map<String, dynamic>.from(room['owner'] as Map)
@@ -249,128 +279,103 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             : room['room_owner'] is Map
                 ? Map<String, dynamic>.from(room['room_owner'] as Map)
                 : <String, dynamic>{};
-    var ownerAvatar = ownerAvatarUrl.trim().isNotEmpty ? ownerAvatarUrl.trim() : _roomInfoString([
-      'ownerAvatar', 'ownerAvatarUrl', 'owner_avatar', 'owner_avatar_url',
-      'ownerPhoto', 'owner_photo', 'avatarUrl', 'avatar_url', 'avatar',
-      'photoUrl', 'photo_url', 'profileImage', 'profile_image', 'userAvatar', 'user_avatar',
-    ]);
-    if (ownerAvatar.isEmpty) {
-      for (final key in [
-        'avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url',
-        'profileImage', 'profile_image', 'imageUrl', 'image_url',
-      ]) {
-        final value = ownerData[key]?.toString().trim() ?? '';
-        if (value.isNotEmpty && value != 'null') {
-          ownerAvatar = value;
-          break;
-        }
-      }
-    }
-    // Match the room header fallback so the owner still has a visible image
-    // when the room payload does not include a separate profile avatar.
-    if (ownerAvatar.isEmpty) ownerAvatar = _cover ?? '';
-    final rawMembers = room['members'] ?? room['roomMembers'] ?? room['room_members'];
-    final members = <RoomMember>[];
-    if (rawMembers is List) {
-      for (final item in rawMembers) {
-        if (item is! Map) continue;
-        final member = Map<String, dynamic>.from(item);
-        final memberRole = (member['role'] ?? member['roleName'] ?? member['role_name'] ?? 'عضو').toString();
-        final isOwnerMember = member['isOwner'] == true ||
-            member['is_owner'] == true ||
-            memberRole.toLowerCase() == 'owner' ||
-            memberRole == 'المالك';
-        final memberAvatar = (member['avatarUrl'] ??
-                member['avatar_url'] ??
-                member['avatar'] ??
-                member['photoUrl'] ??
-                member['photo_url'] ??
-                member['profileImage'] ??
-                member['profile_image'] ??
-                (isOwnerMember ? ownerAvatar : null) ??
-                '')
-            .toString();
-        members.add(RoomMember(
-          avatarUrl: memberAvatar,
-          role: memberRole,
-          isOwner: isOwnerMember,
-          name: (member['displayName'] ??
-                  member['display_name'] ??
-                  member['username'] ??
-                  member['name'] ??
-                  member['nickname'] ??
-                  '')
-              .toString(),
-          id: (member['id'] ??
-                  member['userId'] ??
-                  member['user_id'] ??
-                  member['uid'] ??
-                  '')
-              .toString(),
-        ));
-      }
-    }
-    // أظهر مالك الغرفة دائماً في صف الأعضاء، حتى لو لم يكن متصلاً أو موجوداً داخل الغرفة.
-    final ownerIndex = members.indexWhere((member) => member.isOwner);
-    final resolvedOwnerId = (ownerData['id'] ??
+
+    // Room data supplies only account identifiers and room roles.
+    // Names, avatars and public IDs always come from the app's user profile API.
+    final resolvedOwnerUserId = (ownerData['id'] ??
             ownerData['userId'] ??
             ownerData['user_id'] ??
             ownerData['uid'] ??
             _roomInfoString(['ownerId', 'owner_id', 'ownerUserId', 'owner_user_id']))
         .toString()
         .trim();
-    final resolvedOwnerName = (ownerData['displayName'] ??
-            ownerData['display_name'] ??
-            ownerData['username'] ??
-            ownerData['name'] ??
-            ownerName)
-        .toString()
-        .trim();
-    if (ownerIndex >= 0) {
-      final currentOwner = members[ownerIndex];
-      if (currentOwner.avatarUrl.trim().isEmpty ||
-          currentOwner.name.trim().isEmpty) {
-        members[ownerIndex] = RoomMember(
-          avatarUrl: currentOwner.avatarUrl.trim().isEmpty
-              ? ownerAvatar
-              : currentOwner.avatarUrl,
-          role: currentOwner.role,
-          isOwner: true,
-          name: currentOwner.name.trim().isEmpty
-              ? resolvedOwnerName
-              : currentOwner.name,
-          id: currentOwner.id.isEmpty ? resolvedOwnerId : currentOwner.id,
-        );
+
+    final rawMembers = room['members'] ?? room['roomMembers'] ?? room['room_members'];
+    final roomMembers = <RoomMember>[];
+    if (rawMembers is List) {
+      for (final item in rawMembers) {
+        if (item is! Map) continue;
+        final member = Map<String, dynamic>.from(item);
+        final role = (member['role'] ??
+                member['roleName'] ??
+                member['role_name'] ??
+                'عضو')
+            .toString();
+        final isOwner = member['isOwner'] == true ||
+            member['is_owner'] == true ||
+            role.toLowerCase() == 'owner' ||
+            role == 'المالك';
+        final userId = (member['userId'] ??
+                member['user_id'] ??
+                member['uid'] ??
+                member['id'] ??
+                '')
+            .toString()
+            .trim();
+        roomMembers.add(RoomMember(
+          avatarUrl: '',
+          role: role,
+          isOwner: isOwner,
+          name: '',
+          id: '',
+          userId: userId,
+        ));
       }
-    } else {
-      members.insert(
-        0,
-        RoomMember(
-          avatarUrl: ownerAvatar,
-          role: 'المالك',
-          isOwner: true,
-          name: resolvedOwnerName,
-          id: (ownerData['id'] ??
-                  ownerData['userId'] ??
-                  ownerData['user_id'] ??
-                  ownerData['uid'] ??
-                  resolvedOwnerId)
-              .toString(),
-        ),
-      );
     }
+
+    final userIds = <String>{
+      ...roomMembers.map((member) => member.userId).where((id) => id.isNotEmpty),
+      if (resolvedOwnerUserId.isNotEmpty) resolvedOwnerUserId,
+    };
+    final profiles = <String, Map<String, dynamic>>{};
+    await Future.wait(userIds.map((userId) async {
+      final profile = await _loadAccountProfile(userId);
+      if (profile != null) profiles[userId] = profile;
+    }));
+
+    final members = roomMembers.map((member) {
+      final profile = profiles[member.userId];
+      return RoomMember(
+        avatarUrl: _profileValue(profile, ['avatarUrl', 'avatar', 'photo_url', 'avatar_key']),
+        role: member.role,
+        isOwner: member.isOwner,
+        name: _profileValue(profile, ['name', 'displayName', 'display_name']),
+        id: _profileValue(profile, ['userCode', 'user_code', 'gabo_id']),
+        userId: member.userId,
+      );
+    }).toList();
+
+    final ownerProfile = profiles[resolvedOwnerUserId];
+    final ownerIndex = members.indexWhere((member) => member.isOwner);
+    final ownerMember = RoomMember(
+      avatarUrl: _profileValue(ownerProfile, ['avatarUrl', 'avatar', 'photo_url', 'avatar_key']),
+      role: 'المالك',
+      isOwner: true,
+      name: _profileValue(ownerProfile, ['name', 'displayName', 'display_name']),
+      id: _profileValue(ownerProfile, ['userCode', 'user_code', 'gabo_id']),
+      userId: resolvedOwnerUserId,
+    );
+    if (ownerIndex >= 0) {
+      members[ownerIndex] = ownerMember;
+    } else {
+      members.insert(0, ownerMember);
+    }
+
+    final ownerCountryName = _profileValue(
+      ownerProfile,
+      ['countryName', 'country_name', 'country', 'countryDisplayName', 'country_display_name'],
+    );
+    if (!context.mounted) return;
 
     final info = RoomInfo(
       name: _name,
-      flag: ownerCountryName.trim().isNotEmpty
-          ? ownerCountryName.trim()
-          : _roomInfoString(['flag', 'countryFlag', 'country_flag', 'countryName', 'country_name', 'country', 'countryCode']),
+      flag: ownerCountryName,
       id: _id,
       imageUrl: image,
       imageBadge: _roomInfoString(['imageBadge', 'image_badge'], 'غرفة مميزة'),
       likes: _roomInfoInt(['likes', 'likeCount', 'like_count', 'trophies', 'trophyCount']),
       tribeName: _roomInfoString(['tribeName', 'tribe_name'], 'بدون قبيلة'),
-      tribeOwner: _roomInfoString(['tribeOwner', 'tribe_owner'], ownerName),
+      tribeOwner: _roomInfoString(['tribeOwner', 'tribe_owner']),
       tribeLogoUrl: _roomInfoString(['tribe_logo', 'tribeLogo', 'tribeLogoUrl', 'tribe_logo_url']),
       level: _roomInfoInt(['level', 'roomLevel', 'room_level'], 1),
       palaceStatus: _roomInfoString(['palaceStatus', 'palace_status'], 'غير مفعّل'),
@@ -383,7 +388,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       groupName: _roomInfoString(['groupName', 'group_name'], 'مجموعة الغرفة'),
       groupCount: _roomInfoInt(['groupCount', 'group_count']),
       groupDesc: _roomInfoString(['groupDesc', 'group_desc', 'groupDescription']),
-      ownerAvatarUrl: ownerAvatar,
+      ownerAvatarUrl: ownerMember.avatarUrl,
       isRoomOwner: isCurrentUserRoomOwner || room['isOwner'] == true ||
           room['is_owner'] == true ||
           room['isRoomOwner'] == true ||
