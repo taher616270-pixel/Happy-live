@@ -218,7 +218,7 @@ class _RoomInfoSheet extends StatelessWidget {
                 SizedBox(height: 52, child: Row(children: [
                   Expanded(flex: 5, child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(color: _RoomInfoColors.goldBg, borderRadius: BorderRadius.circular(15), border: Border.all(color: const Color(0xFF4A3B1A))),
+                    decoration: BoxDecoration(color: _RoomInfoColors.goldBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF4A3B1A))),
                     child: Row(children: [
                       _networkImage(info.tribeLogoUrl, 34, 34),
                       const SizedBox(width: 8),
@@ -816,7 +816,7 @@ class _RoomInfoSheet extends StatelessWidget {
 
   static Widget _stat(String title, String sub, Color bg, Color color) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8),
-    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(15)),
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
     child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
       FittedBox(fit: BoxFit.scaleDown, child: Text(title, style: TextStyle(color: color, fontSize: 19, fontWeight: FontWeight.bold))),
       const SizedBox(height: 2),
