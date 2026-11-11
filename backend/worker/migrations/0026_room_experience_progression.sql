@@ -23,3 +23,15 @@ CREATE TABLE IF NOT EXISTS room_exp_daily (
 
 CREATE INDEX IF NOT EXISTS idx_room_exp_daily_day
   ON room_exp_daily(day_key, user_id);
+
+CREATE TABLE IF NOT EXISTS room_exp_awards (
+  id TEXT PRIMARY KEY,
+  room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day_key TEXT NOT NULL,
+  points INTEGER NOT NULL CHECK (points > 0 AND points <= 600),
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_room_exp_awards_user_day
+  ON room_exp_awards(user_id, day_key);
