@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../widgets/square_country_flag.dart';
 import 'package:happy_live/widgets/room_info_sheet.dart';
+import 'room_upgrade_page.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -410,6 +411,72 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       await showRoomInfoSheet(
         context,
         info,
+        onUpgrade: () {
+          Navigator.of(context).pop();
+          final roomId = (room['id'] ?? '').toString().trim();
+          if (roomId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('تعذر تحديد رقم الغرفة للترقية')),
+            );
+            return;
+          }
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => RoomUpgradePage(
+                ownerName: ownerMember.name,
+                ownerId: ownerMember.id,
+                ownerAvatar: ownerMember.avatarUrl.startsWith('http')
+                    ? NetworkImage(ownerMember.avatarUrl)
+                    : null,
+                currentLevel: (info.level - 1).clamp(0, 4),
+                onUpgrade: (levelIndex) async {
+                  try {
+                    final response = await http.post(
+                      Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/rooms/${Uri.encodeComponent(roomId)}/upgrade'),
+                      headers: {
+                        'Authorization': 'Bearer $accessToken',
+                        'Content-Type': 'application/json',
+                      },
+                      body: jsonEncode({'level': levelIndex + 1}),
+                    ).timeout(const Duration(seconds: 15));
+                    final data = jsonDecode(response.body);
+                    if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+                      room['level'] = data['level'] ?? levelIndex + 1;
+                      if (!context.mounted) return;
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('تمت ترقية الغرفة إلى ${kLevels[levelIndex].name}')),
+                      );
+                    } else {
+                      final error = data is Map ? (data['error'] ?? '').toString() : '';
+                      final serverMessage = data is Map ? (data['message'] ?? '').toString() : '';
+                      final message = serverMessage.isNotEmpty
+                          ? serverMessage
+                          : error == 'insufficient_funds'
+                              ? 'رصيد العملات غير كافٍ'
+                              : error == 'level_price_unavailable'
+                                  ? 'سعر هذا المستوى لم يُحدد بعد'
+                                  : error == 'room_level_not_higher'
+                                      ? 'الغرفة وصلت إلى هذا المستوى أو أعلى'
+                                      : 'تعذر تنفيذ الترقية، حاول مرة أخرى';
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(message)),
+                        );
+                      }
+                    }
+                  } catch (_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('تعذر الاتصال بالخادم، لم تتم الترقية')),
+                      );
+                    }
+                  }
+                },
+              ),
+            ),
+          );
+        },
         onFollow: () {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ميزة المتابعة قريبًا')));
