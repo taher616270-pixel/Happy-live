@@ -7,6 +7,18 @@ const adminUi = await readFile(
   new URL("../../../frontend/web/admin/index.html", import.meta.url),
   "utf8",
 );
+const appMain = await readFile(
+  new URL("../../../frontend/lib/main.dart", import.meta.url),
+  "utf8",
+);
+const walletPage = await readFile(
+  new URL("../../../frontend/lib/pages/wallet_page.dart", import.meta.url),
+  "utf8",
+);
+const profilePage = await readFile(
+  new URL("../../../frontend/lib/pages/profile_page.dart", import.meta.url),
+  "utf8",
+);
 
 test("admin sessions and roles are resolved from D1, not from browser input", () => {
   const start = worker.indexOf("async function authenticatedAdmin(");
@@ -81,6 +93,17 @@ test("wallet administration uses the server-backed wallet ledger and owner-only 
   assert.match(adminUi, /input\.focus\(\);input\.setSelectionRange\(value\.length,value\.length\)/);
   assert.match(adminUi, /\/admin\/users\/.*\/wallet\/credit/);
   assert.doesNotMatch(adminUi, /VIP والشحن والهدايا والمحفظة لا تملك جداول أو نقاط API حقيقية/);
+});
+
+test("mobile wallet is connected to the authenticated wallet API and profile balance", () => {
+  assert.match(appMain, /import 'pages\/wallet_page\.dart';/);
+  assert.match(appMain, /WalletPage\(apiBase: _apiBase, accessToken: widget\.accessToken\)/);
+  assert.match(appMain, /onWallet: _openWallet/);
+  assert.match(appMain, /balance: _walletBalance/);
+  assert.match(profilePage, /balance: balance/);
+  assert.match(walletPage, /Uri\.parse\('\$\{widget\.apiBase\}\/wallet'\)/);
+  assert.match(walletPage, /Authorization': 'Bearer \$\{widget\.accessToken\}'/);
+  assert.match(walletPage, /item\['balanceAfter'\]/);
 });
 
 test("unsupported recharge, VIP and gift services are not presented as live data", () => {
