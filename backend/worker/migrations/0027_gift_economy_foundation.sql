@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS gift_transactions (
   sender_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   recipient_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   context_type TEXT NOT NULL DEFAULT 'room' CHECK (context_type = 'room'),
-  room_id TEXT REFERENCES rooms(id) ON DELETE RESTRICT,
+  room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE RESTRICT,
   gift_id TEXT NOT NULL REFERENCES gift_catalog(id) ON DELETE RESTRICT,
   quantity INTEGER NOT NULL CHECK (quantity BETWEEN 1 AND 1000),
   coin_cost INTEGER NOT NULL CHECK (coin_cost > 0),
