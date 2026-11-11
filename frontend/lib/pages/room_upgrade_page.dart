@@ -90,7 +90,7 @@ class RoomUpgradePage extends StatefulWidget {
 }
 
 class _RoomUpgradePageState extends State<RoomUpgradePage> {
-  late int _index = widget.currentLevel.clamp(0, kLevels.length - 1);
+  late int _index = widget.currentLevel.clamp(0, kLevels.length - 1).toInt();
   late final PageController _pageController = PageController(initialPage: _index);
   bool _isUpgrading = false;
 
@@ -101,7 +101,7 @@ class _RoomUpgradePageState extends State<RoomUpgradePage> {
   }
 
   void _go(int i) => _pageController.animateToPage(
-        i.clamp(0, kLevels.length - 1),
+        i.clamp(0, kLevels.length - 1).toInt(),
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
       );
