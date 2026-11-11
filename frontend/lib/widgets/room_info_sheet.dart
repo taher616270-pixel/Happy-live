@@ -297,7 +297,7 @@ class _RoomInfoSheet extends StatelessWidget {
                 child: Material(
                   color: _RoomInfoColors.bg,
                   child: SizedBox(
-                    width: MediaQuery.sizeOf(panelContext).width * .84,
+                    width: MediaQuery.sizeOf(panelContext).width * .5,
                     height: double.infinity,
                     child: SafeArea(
                       child: Column(
