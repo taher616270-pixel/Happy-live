@@ -1015,6 +1015,16 @@ Widget _roomActionButton({
                           color: mine ? Colors.transparent : Colors.white.withOpacity(occupied ? .60 : .18),
                           width: mine ? 0 : occupied ? 2 : 1,
                         ),
+                        // Improve separation from the new wallpaper without
+                        // changing the seats' original transparency.
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x99000000),
+                            blurRadius: 9,
+                            spreadRadius: 1,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                         image: avatar.startsWith('http')
                             ? DecorationImage(image: NetworkImage(avatar), fit: BoxFit.cover)
                             : null,
@@ -1062,7 +1072,14 @@ Widget _roomActionButton({
                     name.isEmpty ? 'مستخدم' : name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      shadows: [
+                        Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 1)),
+                      ],
+                    ),
                   ),
                 )
               else
@@ -1070,7 +1087,13 @@ Widget _roomActionButton({
                   offset: const Offset(0, 2),
                   child: Text(
                     locked ? 'مقفل' : '$number',
-                    style: TextStyle(color: Colors.white.withOpacity(.65), fontSize: 13),
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(.65),
+                      fontSize: 13,
+                      shadows: const [
+                        Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 1)),
+                      ],
+                    ),
                   ),
                 ),
                     ],
