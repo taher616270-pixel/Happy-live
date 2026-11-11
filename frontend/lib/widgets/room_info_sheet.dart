@@ -13,12 +13,14 @@ class RoomMember {
     this.isOwner = false,
     this.name = '',
     this.id = '',
+    this.userId = '',
   });
   final String avatarUrl;
   final String role;
   final bool isOwner;
   final String name;
   final String id;
+  final String userId;
 }
 
 class RoomInfo {
