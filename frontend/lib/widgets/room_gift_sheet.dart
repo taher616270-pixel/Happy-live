@@ -317,16 +317,20 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
                         child: GiftComboButton(
                           key: ValueKey('gift-combo-$_comboNonce'),
                           onResend: (quantity) async {
-                            final updatedBalance = await widget.onSend(
-                              _comboGift!,
-                              quantity,
-                              _comboRecipientId!,
-                            );
-                            if (mounted) {
-                              setState(() {
-                                _balance = updatedBalance;
-                                _comboCount += quantity;
-                              });
+                            try {
+                              final updatedBalance = await widget.onSend(
+                                _comboGift!,
+                                quantity,
+                                _comboRecipientId!,
+                              );
+                              if (mounted) {
+                                setState(() {
+                                  _balance = updatedBalance;
+                                  _comboCount += quantity;
+                                });
+                              }
+                            } catch (error) {
+                              _showMessage(error.toString().replaceFirst('Exception: ', ''));
                             }
                           },
                           onExpired: () {
