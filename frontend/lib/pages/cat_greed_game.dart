@@ -88,7 +88,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
     if(!mounted)return;
     setState(()=>_hit=-1);
     _spinning=false;
-    _message(s['special']=='salad'?'النتيجة: السلطة 🥗':s['special']=='pizza'?'النتيجة: البيتزا 🍕':'النتيجة: الرمز ${target+1}');
+    _message(s['special']=='salad'?'النتيجة: السلطة 🥗':s['special']=='pizza'?'النتيجة: البيتزا 🍕':'النتيجة: الرمز ${activeTargets.last+1}');
   }
 
   Future<void> _bet(int slot) async {
@@ -96,7 +96,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
     if(s==null||s['enabled']!=true){_message('اللعبة متوقفة حالياً');return;}
     if(s['phase']!='betting'){_message('انتهى وقت الرهان');return;}
     if(_busy||(s['balance'] as num? ?? 0)<_chip){_message('الرصيد غير كافٍ أو يوجد طلب جارٍ');return;}
-    final signature='undefined:$slot:$_chip';
+    final signature='${s['roundId']}:$slot:$_chip';
     if(_pendingBetSignature!=signature){
       final random=math.Random.secure();
       final bytes=List<int>.generate(16,(_)=>random.nextInt(256));
