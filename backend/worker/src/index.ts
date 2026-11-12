@@ -1864,7 +1864,6 @@ export default {
         }
         if (recipientUserId === user.id) return json({ error: "cannot_gift_self" }, 400, origin, env);
         const now = new Date().toISOString();
-        const presenceCutoff = new Date(Date.now() - 90_000).toISOString();
         const existing = await env.DB.prepare(
           "SELECT id, status, coin_cost AS coinCost, experience_awarded AS experienceAwarded, recipient_coins AS recipientCoins " +
           "FROM gift_transactions WHERE sender_user_id = ? AND idempotency_key = ? LIMIT 1"
@@ -1893,14 +1892,14 @@ export default {
             "LEFT JOIN profiles sender_profile ON sender_profile.user_id = ? " +
             "JOIN gift_revenue_settings s ON s.id = 'current' " +
             "JOIN users recipient ON recipient.id = ? AND recipient.status = 'active' " +
-            "JOIN room_chat_visits v ON v.room_id = r.id AND v.user_id = recipient.id AND v.exited_at IS NULL AND v.last_seen_at >= ? " +
             "JOIN user_wallets sender_wallet ON sender_wallet.user_id = ? AND sender_wallet.balance >= g.coin_price * ? " +
             "LEFT JOIN room_exp_daily d ON d.user_id = ? AND d.day_key = ? " +
             "LEFT JOIN room_battles b ON b.room_id = r.id AND b.status = 'active' " +
             "WHERE r.id = ? AND r.status = 'active' AND r.owner_user_id IS NOT NULL AND ? <> recipient.id " +
+            "AND EXISTS (SELECT 1 FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = recipient.id) " +
             "AND (g.category <> 'country' OR g.country_code = CASE WHEN UPPER(TRIM(COALESCE(sender_profile.country_name, ''))) IN ('SOUTH_ARABIA', 'SOUTH ARABIA', 'الجنوب العربي') THEN 'SOUTH_ARABIA' ELSE UPPER(TRIM(COALESCE(sender_profile.country_code, ''))) END)"
           ).bind(transactionId, user.id, recipientUserId, quantity, quantity, quantity, quantity, quantity, quantity,
-            idempotencyKey, now, giftId, now, now, user.id, recipientUserId, presenceCutoff, user.id, quantity, user.id, now.slice(0, 10), roomId, user.id),
+            idempotencyKey, now, giftId, now, now, user.id, recipientUserId, user.id, quantity, user.id, now.slice(0, 10), roomId, user.id),
           env.DB.prepare(
             "UPDATE user_wallets SET balance = balance - (SELECT coin_cost FROM gift_transactions WHERE id = ? AND status = 'processing'), " +
             "updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM gift_transactions WHERE id = ? AND status = 'processing') " +
@@ -1976,9 +1975,9 @@ export default {
           if (!gift) return json({ error: "gift_not_available" }, 404, origin, env);
           const room = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active'").bind(roomId).first<{ id: string }>();
           if (!room) return json({ error: "room_not_found" }, 404, origin, env);
-          const present = await env.DB.prepare("SELECT id FROM room_chat_visits WHERE room_id = ? AND user_id = ? AND exited_at IS NULL AND last_seen_at >= ? LIMIT 1")
-            .bind(roomId, recipientUserId, presenceCutoff).first<{ id: string }>();
-          if (!present) return json({ error: "recipient_not_in_room" }, 409, origin, env);
+          const wasRoomParticipant = await env.DB.prepare("SELECT id FROM room_chat_visits WHERE room_id = ? AND user_id = ? LIMIT 1")
+            .bind(roomId, recipientUserId).first<{ id: string }>();
+          if (!wasRoomParticipant) return json({ error: "recipient_not_room_member" }, 409, origin, env);
           const needed = gift.coin_price * quantity;
           if ((wallet?.balance ?? 0) < needed) return json({ error: "insufficient_balance", balance: wallet?.balance ?? 0, required: needed }, 409, origin, env);
           return json({ error: "gift_not_processed" }, 409, origin, env);

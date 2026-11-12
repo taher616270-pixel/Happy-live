@@ -73,14 +73,24 @@ test("gift catalogue has owner-only management and public active listing", () =>
   assert.match(adminPage, /data-gift-edit/);
 });
 
-test("room gift sending is authenticated, presence-checked, idempotent, and server-awards XP", () => {
+test("room gifts accept former room participants but reject unrelated users", () => {
   assert.ok(worker.includes(String.raw`const roomGiftSendRoute = url.pathname.match(/^\/api\/v1\/rooms\/([0-9a-f-]{36})\/gifts\/send$/i);`));
   assert.match(worker, /authenticatedUser\(request, env\.DB\)/);
-  assert.match(worker, /last_seen_at >= \?/);
+  assert.match(worker, /EXISTS \(SELECT 1 FROM room_chat_visits v WHERE v\.room_id = r\.id AND v\.user_id = recipient\.id\)/);
+  assert.match(worker, /recipient_not_room_member/);
+  assert.doesNotMatch(worker, /JOIN room_chat_visits v ON v\.room_id = r\.id AND v\.user_id = recipient\.id AND v\.exited_at IS NULL/);
   assert.match(migration, /UNIQUE\(sender_user_id, idempotency_key\)/);
   assert.match(worker, /sender_balance_before/);
   assert.match(worker, /room_exp_gift_awards/);
   assert.match(worker, /gift_wallet_ledger/);
+});
+
+test("gift picker supports avatar recipients, all-recipient selection, and a preselected message recipient", () => {
+  assert.match(giftSheet, /initialRecipientId/);
+  assert.match(giftSheet, /_recipientIds/);
+  assert.match(giftSheet, /Text\('الجميع'/);
+  assert.match(giftSheet, /recipientIds\.length/);
+  assert.match(roomPage, /_openRoomGiftPicker\(\{Map<String, dynamic>\? targetRecipient\}\)/);
 });
 
 test("private gifts remain disabled until private conversations are implemented", () => {

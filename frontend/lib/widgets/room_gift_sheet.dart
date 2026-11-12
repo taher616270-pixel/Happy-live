@@ -15,6 +15,7 @@ Future<void> showRoomGiftSheet(
   required int balance,
   required String avatarUrl,
   required List<Map<String, dynamic>> recipients,
+  String initialRecipientId = '',
   required GiftCatalogLoader loadGifts,
   required RoomGiftSender onSend,
   required CustomGiftRequester onRequestCustomGift,
@@ -29,6 +30,7 @@ Future<void> showRoomGiftSheet(
       balance: balance,
       avatarUrl: avatarUrl,
       recipients: recipients,
+      initialRecipientId: initialRecipientId,
       loadGifts: loadGifts,
       onSend: onSend,
       onRequestCustomGift: onRequestCustomGift,
@@ -42,6 +44,7 @@ class _RoomGiftSheet extends StatefulWidget {
     required this.balance,
     required this.avatarUrl,
     required this.recipients,
+    required this.initialRecipientId,
     required this.loadGifts,
     required this.onSend,
     required this.onRequestCustomGift,
@@ -51,6 +54,7 @@ class _RoomGiftSheet extends StatefulWidget {
   final int balance;
   final String avatarUrl;
   final List<Map<String, dynamic>> recipients;
+  final String initialRecipientId;
   final GiftCatalogLoader loadGifts;
   final RoomGiftSender onSend;
   final CustomGiftRequester onRequestCustomGift;
@@ -76,7 +80,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   late Future<List<Map<String, dynamic>>> _giftsFuture;
   late int _balance;
   String _tab = 'trending';
-  String _recipientId = '';
+  final Set<String> _recipientIds = <String>{};
   Map<String, dynamic>? _selectedGift;
   int _quantity = 1;
   bool _sending = false;
@@ -95,8 +99,11 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     super.initState();
     _balance = widget.balance;
     _giftsFuture = widget.loadGifts(_tab);
-    if (widget.recipients.length == 1) {
-      _recipientId = (widget.recipients.first['userId'] ?? '').toString();
+    final initialId = widget.initialRecipientId.trim();
+    if (initialId.isNotEmpty && widget.recipients.any((r) => (r['userId'] ?? '').toString() == initialId)) {
+      _recipientIds.add(initialId);
+    } else if (widget.recipients.length == 1) {
+      _recipientIds.add((widget.recipients.first['userId'] ?? '').toString());
     }
   }
 
@@ -126,28 +133,32 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
 
   Future<void> _sendGift() async {
     final gift = _selectedGift;
+    final recipientIds = _recipientIds.toList();
     if (gift == null || _sending) return;
-    if (_recipientId.isEmpty) {
-      _showMessage('فشل تسليم الهدية، يجب عليك اختيار مستلم الهدية');
+    if (recipientIds.isEmpty) {
+      _showMessage('اختر مستلم الهدية أولًا');
       return;
     }
     final price = (gift['coinPrice'] as num?)?.toInt() ?? 0;
-    if (price < 1 || price * _quantity > _balance) {
-      _showMessage('رصيدك من العملات غير كافٍ');
+    if (price < 1 || price * _quantity * recipientIds.length > _balance) {
+      _showMessage('رصيدك من العملات غير كافٍ لإرسال الهدايا المحددة');
       return;
     }
     setState(() => _sending = true);
+    var sent = 0;
     try {
-      final newBalance = await widget.onSend(gift, _quantity, _recipientId);
+      for (final recipientId in recipientIds) {
+        _balance = await widget.onSend(gift, _quantity, recipientId);
+        sent++;
+        if (mounted) setState(() {});
+      }
       if (mounted) {
-        setState(() {
-          _balance = newBalance;
-          _selectedGift = null;
-        });
-        _showMessage('تم إرسال الهدية بنجاح');
+        setState(() => _selectedGift = null);
+        _showMessage(recipientIds.length == 1 ? 'تم إرسال الهدية بنجاح' : 'تم إرسال الهدية إلى $sent مستلمين');
       }
     } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+      final detail = error.toString().replaceFirst('Exception: ', '');
+      _showMessage(sent > 0 ? 'تم الإرسال إلى $sent مستلمين، وتعذر إكمال الباقي: $detail' : detail);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -293,42 +304,90 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   }
 
   Widget _topRow() {
-    final selected = widget.recipients.where((r) => r['userId'] == _recipientId).toList();
-    final recipientName = selected.isEmpty ? 'اختر المستلم' : (selected.first['name'] ?? 'مستخدم').toString();
     final avatar = widget.avatarUrl;
+    final allRecipientIds = widget.recipients
+        .where((r) => r['isMe'] != true)
+        .map((r) => (r['userId'] ?? '').toString())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final allSelected = allRecipientIds.isNotEmpty && _recipientIds.containsAll(allRecipientIds);
+    Widget avatarFor(String url, String name, {bool selected = false, VoidCallback? onTap}) {
+      final hasImage = url.startsWith('https://') || url.startsWith('http://');
+      final child = CircleAvatar(
+        radius: 16,
+        backgroundColor: const Color(0xFF302B36),
+        backgroundImage: hasImage ? NetworkImage(url) : null,
+        child: hasImage ? null : Text(name.isEmpty ? '؟' : name.characters.first,
+            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+      );
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: selected ? _gold : Colors.transparent, width: 2),
+          ),
+          child: child,
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: const Color(0xFF302B36),
-            backgroundImage: avatar.startsWith('https://') ? NetworkImage(avatar) : null,
-            child: avatar.startsWith('https://') ? null : const Icon(Icons.person, color: _muted, size: 18),
-          ),
-          const Spacer(),
-          if (widget.recipients.isEmpty)
-            const Text('لا يوجد أعضاء حاليًا', style: TextStyle(color: _muted, fontSize: 12))
-          else
-            PopupMenuButton<String>(
-              color: const Color(0xFF211D27),
-              onSelected: (value) => setState(() => _recipientId = value),
-              itemBuilder: (_) => widget.recipients.map((recipient) {
-                final id = (recipient['userId'] ?? '').toString();
-                return PopupMenuItem<String>(
-                  value: id,
-                  child: Text((recipient['name'] ?? 'مستخدم').toString(), style: const TextStyle(color: Colors.white)),
-                );
-              }).toList(),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: const Color(0x22FFFFFF), borderRadius: BorderRadius.circular(18)),
-                child: Row(children: [
-                  Text(recipientName, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                  const Icon(Icons.keyboard_arrow_down, color: _muted, size: 18),
-                ]),
+          avatarFor(avatar, 'أنا'),
+          const SizedBox(width: 9),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: widget.recipients.map((recipient) {
+                  final id = (recipient['userId'] ?? '').toString();
+                  if (id.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 7),
+                    child: avatarFor(
+                      (recipient['avatarUrl'] ?? recipient['avatar'] ?? '').toString(),
+                      (recipient['name'] ?? 'مستخدم').toString(),
+                      selected: _recipientIds.contains(id),
+                      onTap: () => setState(() {
+                        if (_recipientIds.contains(id)) {
+                          _recipientIds.remove(id);
+                        } else {
+                          _recipientIds.add(id);
+                        }
+                      }),
+                    ),
+                  );
+                }).toList(),
               ),
             ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: allRecipientIds.isEmpty ? null : () => setState(() {
+              if (allSelected) {
+                _recipientIds.removeAll(allRecipientIds);
+              } else {
+                _recipientIds.addAll(allRecipientIds);
+              }
+            }),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+              decoration: BoxDecoration(
+                color: allSelected ? _gold.withOpacity(.22) : const Color(0x22FFFFFF),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: allSelected ? _gold : Colors.white24),
+              ),
+              child: Text('الجميع', style: TextStyle(
+                color: allSelected ? _gold : Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              )),
+            ),
+          ),
         ],
       ),
     );
