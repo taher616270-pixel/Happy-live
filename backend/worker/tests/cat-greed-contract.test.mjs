@@ -5,6 +5,8 @@ import { readFile } from "node:fs/promises";
 const migration = await readFile(new URL("../migrations/0034_cat_greed_wheel.sql", import.meta.url), "utf8");
 const ledgerMigration = await readFile(new URL("../migrations/0035_cat_greed_ledger.sql", import.meta.url), "utf8");
 const protectionMigration = await readFile(new URL("../migrations/0036_cat_greed_bet_protection.sql", import.meta.url), "utf8");
+const roundGuardMigration = await readFile(new URL("../migrations/0037_cat_greed_round_guard.sql", import.meta.url), "utf8");
+const previewRoundGuardMigration = await readFile(new URL("../migrations-cat-greed-preview/0037_cat_greed_round_guard.sql", import.meta.url), "utf8");
 const previewWheelMigration = await readFile(new URL("../migrations-cat-greed-preview/0034_cat_greed_wheel.sql", import.meta.url), "utf8");
 const previewLedgerMigration = await readFile(new URL("../migrations-cat-greed-preview/0035_cat_greed_ledger.sql", import.meta.url), "utf8");
 const previewProtectionMigration = await readFile(new URL("../migrations-cat-greed-preview/0036_cat_greed_bet_protection.sql", import.meta.url), "utf8");
@@ -192,6 +194,7 @@ test("Preview-only migration copies stay byte-identical to the canonical Cat Gre
   assert.equal(previewWheelMigration, migration);
   assert.equal(previewLedgerMigration, ledgerMigration);
   assert.equal(previewProtectionMigration, protectionMigration);
+  assert.equal(previewRoundGuardMigration, roundGuardMigration);
 });
 
 test("Cat Greed Preview deployment is manual, confirmed, and cannot target production", () => {
@@ -227,8 +230,8 @@ test("both admin entry points warn before enabling cash-value wagering", () => {
 });
 
 test("D1 independently rejects unsupported chips and bets on closed rounds", () => {
-  assert.match(protectionMigration, /CREATE TRIGGER IF NOT EXISTS cat_greed_bet_guard_insert/);
-  assert.match(protectionMigration, /NEW\.amount NOT IN \(10, 500, 6000, 30000, 100000\)/);
-  assert.match(protectionMigration, /phase='betting' AND julianday\(closes_at\)>julianday\('now'\)/);
-  assert.match(protectionMigration, /invalid_or_closed_cat_greed_bet/);
+  assert.match(roundGuardMigration, /CREATE TRIGGER IF NOT EXISTS cat_greed_bet_guard_insert/);
+  assert.match(roundGuardMigration, /NEW\.amount NOT IN \(10, 500, 6000, 30000, 100000\)/);
+  assert.match(roundGuardMigration, /phase='betting' AND julianday\(closes_at\)>julianday\('now'\)/);
+  assert.match(roundGuardMigration, /invalid_or_closed_cat_greed_bet/);
 });
