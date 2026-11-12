@@ -137,26 +137,3 @@ test("admin audit relation links sensitive manager actions to the authenticated 
   assert.ok(adminUi.includes('admin.role!=="owner"'));
   assert.ok(adminUi.includes('api("/admin/accounts'));
 });
-
-  const start = worker.indexOf('if (url.pathname === "/api/v1/admin/accounts" && request.method === "GET")');
-  const end = worker.indexOf('if (url.pathname === "/api/v1/admin/moderators"', start);
-  assert.ok(start >= 0 && end > start, "admin account routes must exist");
-  const routes = worker.slice(start, end);
-  assert.match(routes, /actor\\.role !== "owner"/);
-  assert.match(routes, /target\\.role === "owner"/);
-  assert.match(routes, /hashPassword\\(password\\)/);
-  assert.match(routes, /UPDATE admin_sessions SET revoked_at = \\?/);
-  assert.match(routes, /adminAuditStatements\\(env\\.DB, actor,/);
-  assert.doesNotMatch(routes, /body\\.(?:adminId|actorId|actorRole)/);
-});
-
-test("admin audit relation links sensitive manager actions to the authenticated admin", () => {
-  assert.match(auditMigration, /CREATE TABLE IF NOT EXISTS admin_audit_actor_refs/);
-  assert.match(auditMigration, /REFERENCES admin_audit_logs\\(id\\) ON DELETE CASCADE/);
-  assert.match(auditMigration, /REFERENCES admin_accounts\\(id\\) ON DELETE RESTRICT/);
-  assert.match(worker, /function adminAuditStatements\\(/);
-  assert.match(worker, /INSERT INTO admin_audit_actor_refs/);
-  assert.match(adminUi, /data-page="adminAccounts"/);
-  assert.match(adminUi, /admin\\.role!==\\"owner\\"/);
-  assert.match(adminUi, /api\\(\\"\\/admin\\/accounts/);
-});
