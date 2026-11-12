@@ -66,6 +66,9 @@ test("Cat Greed bet requests are idempotent and rate-limited per authenticated p
   assert.match(protectionMigration, /CREATE TABLE IF NOT EXISTS cat_greed_bet_requests/);
   assert.match(protectionMigration, /idempotency_key TEXT PRIMARY KEY/);
   assert.match(protectionMigration, /CREATE TABLE IF NOT EXISTS cat_greed_bet_rate_limits/);
+  assert.match(protectionMigration, /CREATE TABLE IF NOT EXISTS cat_greed_state_rate_limits/);
+  assert.match(worker, /STATE_RATE_MAX_REQUESTS = 90/);
+  assert.match(worker, /BET_RATE_MAX_REQUESTS = 10/);
   assert.match(protectionMigration, /cat_greed_round_result_consistency_update/);
   assert.match(protectionMigration, /idx_cat_greed_payout_transaction/);
   assert.match(worker, /idempotencyKey/);
