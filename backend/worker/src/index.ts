@@ -1726,22 +1726,27 @@ export default {
         const mediaFileId = typeof body.mediaFileId === "string" ? body.mediaFileId.trim() : "";
         const mediaDurationMs = Number(body.mediaDurationMs);
         if (requestedName.length < 2 || requestedName.length > 80 || description.length > 500) return json({ error: "invalid_custom_gift_request", message: "اكتب اسم الهدية ووصفًا لا يتجاوز 500 حرف." }, 400, origin, env);
+        const hasMedia = Boolean(mediaUrl || mediaType || mediaFileId || body.mediaDurationMs !== undefined);
         let parsedMediaUrl: URL | null = null;
-        try { parsedMediaUrl = new URL(mediaUrl); } catch { parsedMediaUrl = null; }
-        if (!parsedMediaUrl || parsedMediaUrl.protocol !== "https:" || parsedMediaUrl.hostname !== "ik.imagekit.io" ||
-            !["gif", "svga"].includes(mediaType) || !mediaFileId || !Number.isInteger(mediaDurationMs) ||
-            mediaDurationMs < 1 || mediaDurationMs > 5000) {
-          return json({ error: "invalid_custom_gift_media", message: "يُسمح بملفات GIF أو SVGA فقط، وبمدة لا تتجاوز 5 ثوانٍ، عبر ImageKit." }, 400, origin, env);
-        }
-        if (mediaType === "gif" && !/\.gif(?:$|[?#])/i.test(parsedMediaUrl.pathname + parsedMediaUrl.search)) {
-          return json({ error: "invalid_custom_gift_media_type" }, 400, origin, env);
+        if (hasMedia) {
+          try { parsedMediaUrl = new URL(mediaUrl); } catch { parsedMediaUrl = null; }
+          if (!parsedMediaUrl || parsedMediaUrl.protocol !== "https:" || parsedMediaUrl.hostname !== "ik.imagekit.io" ||
+              !["gif", "svga"].includes(mediaType) || !mediaFileId || !Number.isInteger(mediaDurationMs) ||
+              mediaDurationMs < 1 || mediaDurationMs > 5000) {
+            return json({ error: "invalid_custom_gift_media", message: "يُسمح بملفات GIF أو SVGA فقط، وبمدة لا تتجاوز 5 ثوانٍ، عبر ImageKit." }, 400, origin, env);
+          }
+          const mediaPath = parsedMediaUrl.pathname + parsedMediaUrl.search;
+          if ((mediaType === "gif" && !/\.gif(?:$|[?#])/i.test(mediaPath)) ||
+              (mediaType === "svga" && !/\.svga(?:$|[?#])/i.test(mediaPath))) {
+            return json({ error: "invalid_custom_gift_media_type" }, 400, origin, env);
+          }
         }
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const recent = await env.DB.prepare("SELECT COUNT(*) AS count FROM gift_custom_requests WHERE user_id = ? AND created_at >= ?").bind(user.id, since).first<{ count: number }>();
         if (Number(recent?.count ?? 0) >= 5) return json({ error: "custom_gift_request_limit" }, 429, origin, env);
         const id = crypto.randomUUID(), now = new Date().toISOString();
         await env.DB.prepare("INSERT INTO gift_custom_requests (id, user_id, requested_name, description, media_url, media_type, media_duration_ms, media_file_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)")
-          .bind(id, user.id, requestedName, description, mediaUrl, mediaType, mediaDurationMs, mediaFileId, now).run();
+          .bind(id, user.id, requestedName, description, hasMedia ? mediaUrl : null, hasMedia ? mediaType : null, hasMedia ? mediaDurationMs : null, hasMedia ? mediaFileId : null, now).run();
         return json({ ok: true, request: { id, requestedName, description, mediaUrl, mediaType, mediaDurationMs, mediaFileId, status: "pending", createdAt: now } }, 201, origin, env);
       } catch (error) {
         console.error("[gifts.custom-request] failed", error instanceof Error ? error.message : "UnknownError");
