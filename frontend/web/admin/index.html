@@ -191,7 +191,7 @@ async function giftsPage(){
     '<p class="muted">يجب أن يكون مجموع النسبتين 100%. آخر تحديث: '+esc(settings.updatedAt?new Date(settings.updatedAt).toLocaleString("ar"):"لم يتم التعديل") +'</p>'+
     (canEdit?'<button class="primary" id="saveGiftSplit">حفظ نسب الأرباح</button>':'<p class="notice">التعديل متاح لمالك التطبيق فقط.</p>')+
     '<div id="giftSettingsMessage" class="muted" style="margin-top:12px"></div></div>'+
-    '<div class="section"><div class="section-head"><div><h2>البونر العام للهدايا</h2><p class="muted">يظهر لجميع مستخدمي التطبيق داخل الغرف وخارجها عند وصول قيمة الهدية الواحدة إلى الحد المحدد.</p></div><span class="badge '+(bannerSettings.enabled?'good':'warn')+'">'+(bannerSettings.enabled?'مفعّل':'متوقف')+'</span></div>'+
+    '<div class="section"><div class="section-head"><div><h2>البونر العام للهدايا</h2><p class="muted">يظهر لجميع مستخدمي التطبيق داخل الغرف وخارجها عند وصول إجمالي قيمة عملية إرسال الهدية إلى الحد المحدد.</p></div><span class="badge '+(bannerSettings.enabled?'good':'warn')+'">'+(bannerSettings.enabled?'مفعّل':'متوقف')+'</span></div>'+
     '<label style="display:flex;align-items:center;gap:10px;margin:12px 0"><input id="giftBannerEnabled" type="checkbox" '+(bannerSettings.enabled?'checked ':'')+(canEdit?'':'disabled')+'> تفعيل البونر العام</label>'+
     '<label style="display:grid;gap:7px;max-width:360px">الحد الأدنى لقيمة الهدية بالكوينز<input id="giftBannerMinimum" class="search" type="number" min="0" max="1000000000" step="1" value="'+Number(bannerSettings.minimumCoins||0)+'" '+(canEdit?'':'disabled')+'></label>'+
     '<p class="muted">يُحسب الحد على إجمالي قيمة عملية الإرسال (سعر الهدية × الكمية). اجعل القيمة 0 لإيقاف ظهور البونر.</p>'+
