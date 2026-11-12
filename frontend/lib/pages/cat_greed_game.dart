@@ -33,6 +33,7 @@ enum RoundPhase { betting, result }
 
 class RoundState {
   final String roundId;
+  final int dailyRoundNumber;
   final int secondsLeft, balance, myPayout;
   final bool enabled;
   final List<WheelSlot> symbols;
@@ -44,6 +45,7 @@ class RoundState {
 
   const RoundState({
     required this.roundId,
+    this.dailyRoundNumber = 1,
     required this.secondsLeft,
     this.enabled = true,
     this.symbols = kSlots,
@@ -67,6 +69,7 @@ class RoundState {
     final rawHistory = (j['history'] as List?) ?? const [];
     return RoundState(
       roundId: (j['roundId'] ?? '').toString(),
+      dailyRoundNumber: (j['dailyRoundNumber'] as num? ?? 1).toInt(),
       secondsLeft: (j['secondsLeft'] as num? ?? 0).toInt(),
       phase: j['phase'] == 'result' ? RoundPhase.result : RoundPhase.betting,
       pools: ((j['pools'] as List?) ?? List.filled(8, 0)).map((e) => (e as num).toInt()).toList(),
@@ -399,7 +402,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   );
 
   Widget _topBar(RoundState s) => Row(children: [
-    _pill(Text('جولة ${s.roundId}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
+    _pill(Text('الجولة ${s.dailyRoundNumber}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
     const SizedBox(width: 6),
     IconButton(onPressed: _showRules, icon: const Icon(Icons.help_outline, color: Colors.white)),
     const Spacer(),
