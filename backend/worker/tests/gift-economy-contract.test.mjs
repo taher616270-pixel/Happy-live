@@ -69,10 +69,10 @@ test("gift catalogue has owner-only management and public active listing", () =>
 });
 
 test("room gift sending is authenticated, presence-checked, idempotent, and server-awards XP", () => {
-  assert.match(worker, /\/api\/v1\/rooms\/\(\[0-9a-f-\]\{36\}\)\/gifts\/send/);
+  assert.ok(worker.includes(String.raw`const roomGiftSendRoute = url.pathname.match(/^\/api\/v1\/rooms\/([0-9a-f-]{36})\/gifts\/send$/i);`));
   assert.match(worker, /authenticatedUser\(request, env\.DB\)/);
   assert.match(worker, /last_seen_at >= \?/);
-  assert.match(worker, /UNIQUE\(sender_user_id, idempotency_key\)/);
+  assert.match(migration, /UNIQUE\(sender_user_id, idempotency_key\)/);
   assert.match(worker, /sender_balance_before/);
   assert.match(worker, /room_exp_gift_awards/);
   assert.match(worker, /gift_wallet_ledger/);
@@ -90,7 +90,7 @@ test("wallet reports tagged earnings and room-upgrade spending consumes tagged l
 });
 
 test("battle multiplier can only be enabled through owner/moderator server-side battle state", () => {
-  assert.match(worker, /\/api\/v1\/rooms\/\(\[0-9a-f-\]\{36\}\)\/battle/);
+  assert.ok(worker.includes(String.raw`const roomBattleRoute = url.pathname.match(/^\/api\/v1\/rooms\/([0-9a-f-]{36})\/battle$/i);`));
   assert.match(worker, /room_moderators WHERE room_id = \? AND user_id = \?/);
   assert.match(worker, /INSERT INTO room_battles/);
   assert.match(worker, /UPDATE room_battles SET status = 'finished'/);
