@@ -373,7 +373,7 @@ export async function handleCatGreedRequest(
       return json({ok:true,symbols:saved,odds:calculateOdds(snapshot),maxExpectedReturnBp:maxExpectedReturnBp(snapshot)},200,origin,env);
     }
     if (adminRounds) {
-      const rounds=await db.prepare("SELECT id,phase,starts_at,closes_at,result_slot,special,seed_commitment,CASE WHEN phase='result' THEN server_seed ELSE NULL END AS revealed_seed,settled_at FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 100").all();
+      const rounds=await db.prepare("SELECT id,phase,starts_at,closes_at,result_slot,special,seed_commitment,CASE WHEN phase='result' THEN server_seed ELSE NULL END AS revealed_seed,CASE WHEN phase='result' THEN config_snapshot ELSE NULL END AS config_snapshot,settled_at FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 100").all();
       return json({rounds:rounds.results??[]},200,origin,env);
     }
     return null;
