@@ -242,8 +242,18 @@ export async function handleCatGreedRequest(
             db.prepare("INSERT INTO cat_greed_bets (id,round_id,user_id,slot,amount,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cat_greed_ledger WHERE id=?)")
               .bind(betId,roundId,user.id,slot,amount,now,betId)
           ]);
-          const placed = await db.prepare("SELECT id FROM cat_greed_bets WHERE id=? AND round_id=? AND user_id=?")
+          let placed = await db.prepare("SELECT id FROM cat_greed_bets WHERE id=? AND round_id=? AND user_id=?")
             .bind(betId,roundId,user.id).first();
+          if (!placed) {
+            // A concurrent retry may have inserted the same idempotency key first.
+            const concurrent = await db.prepare("SELECT round_id,slot,amount,bet_id FROM cat_greed_bet_requests WHERE idempotency_key=? AND user_id=?")
+              .bind(idempotencyKey,user.id).first<{round_id:string;slot:number;amount:number;bet_id:string}>();
+            if (concurrent && concurrent.round_id===roundId && concurrent.slot===slot && concurrent.amount===amount) {
+              placed = await db.prepare("SELECT id FROM cat_greed_bets WHERE id=? AND round_id=? AND user_id=?")
+                .bind(concurrent.bet_id,roundId,user.id).first();
+              if (placed) { betReceipt={id:concurrent.bet_id,roundId,slot,amount}; duplicateBet=true; }
+            }
+          }
           if (!placed) {
             const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id=?").bind(user.id).first<{balance:number}>();
             const latestTotal = await db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(roundId,user.id).first<{total:number}>();
@@ -321,7 +331,8 @@ export async function handleCatGreedRequest(
       const now=isoNow();
       await db.prepare("UPDATE cat_greed_settings SET enabled=?,betting_seconds=?,result_seconds=?,salad_weight_bp=?,pizza_weight_bp=?,updated_by_admin_id=?,updated_at=? WHERE id='current'").bind(next.enabled,next.betting,next.result,next.salad,next.pizza,admin.id,now).run();
       await db.prepare("INSERT INTO cat_greed_admin_audit (id,admin_id,action,details_json,created_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(),admin.id,"settings_update",JSON.stringify(next),now).run();
-      return json({ok:true,settings:await getSettings(db)},200,origin,env);
+      const saved=await getSettings(db), snapshot=makeSnapshot(saved,await getSymbols(db));
+      return json({ok:true,settings:saved,odds:calculateOdds(snapshot),maxExpectedReturnBp:maxExpectedReturnBp(snapshot)},200,origin,env);
     }
     if (adminSymbols) {
       if (request.method==="GET") {
@@ -351,7 +362,8 @@ export async function handleCatGreedRequest(
       if(settings.enabled===1&&exposure>10000) return json({error:"payout_exposure_too_high",maxExpectedReturnBp:exposure,odds:calculateOdds(proposedSnapshot)},409,origin,env);
       await db.batch(statements);
       await db.prepare("INSERT INTO cat_greed_admin_audit (id,admin_id,action,details_json,created_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(),admin.id,"symbols_update",JSON.stringify({symbols:proposed.map(({slot,emoji,label,multiplier,is_vegetable,weight,image_url})=>({slot,emoji,label,multiplier,isVegetable:!!is_vegetable,weight,imageUrl:image_url}))}),now).run();
-      return json({ok:true,symbols:await getSymbols(db)},200,origin,env);
+      const saved=await getSymbols(db), currentSettings=await getSettings(db), snapshot=makeSnapshot(currentSettings,saved);
+      return json({ok:true,symbols:saved,odds:calculateOdds(snapshot),maxExpectedReturnBp:maxExpectedReturnBp(snapshot)},200,origin,env);
     }
     if (adminRounds) {
       const rounds=await db.prepare("SELECT id,phase,starts_at,closes_at,result_slot,special,seed_commitment,CASE WHEN phase='result' THEN server_seed ELSE NULL END AS revealed_seed,settled_at FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 100").all();
