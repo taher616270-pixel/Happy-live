@@ -561,7 +561,7 @@ export default {
             const countryCode = typeof body.countryCode === "string" && body.countryCode.trim() ? body.countryCode.trim().toUpperCase() : null;
             const startsAt = typeof body.startsAt === "string" && body.startsAt ? body.startsAt : null;
             const endsAt = typeof body.endsAt === "string" && body.endsAt ? body.endsAt : null;
-            if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,8}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من اسم الهدية ورمزها وسعرها وتصنيفها والدولة وفترة العرض." }, 400, origin, env);
+            if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من اسم الهدية ورمزها وسعرها وتصنيفها والدولة وفترة العرض." }, 400, origin, env);
             const id = crypto.randomUUID(), now = new Date().toISOString();
             await env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at, category, country_code, starts_at, ends_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?)")
               .bind(id, name, iconEmoji, coinPrice, isActive, sortOrder, now, now, category, countryCode, startsAt, endsAt).run();
@@ -1686,8 +1686,11 @@ export default {
         if (tab === "country") {
           const user = await authenticatedUser(request, env.DB);
           if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-          const profile = await env.DB.prepare("SELECT country_code FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ country_code: string | null }>();
-          countryCode = profile?.country_code?.trim().toUpperCase() ?? null;
+          const profile = await env.DB.prepare("SELECT country_code, country_name FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ country_code: string | null; country_name: string | null }>();
+          const countryName = (profile?.country_name ?? "").trim().toUpperCase();
+          countryCode = ["SOUTH_ARABIA", "SOUTH ARABIA", "الجنوب العربي"].includes(countryName)
+            ? "SOUTH_ARABIA"
+            : profile?.country_code?.trim().toUpperCase() ?? null;
           if (!countryCode) return json({ ok: true, gifts: [], countryCode: null }, 200, origin, env);
         }
         const now = new Date().toISOString();
