@@ -1,6 +1,12 @@
 name: Deploy Cat Greed Worker Preview
 
 on:
+  push:
+    branches:
+      - feat/cat-greed-wheel-foundation
+    paths:
+      - "backend/worker/**"
+      - ".github/workflows/deploy-cat-greed-preview.yml"
   workflow_dispatch:
     inputs:
       confirm_preview_only:
@@ -18,7 +24,7 @@ concurrency:
 
 jobs:
   preview:
-    if: ${{ inputs.confirm_preview_only == true }}
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/feat/cat-greed-wheel-foundation') || (github.event_name == 'workflow_dispatch' && inputs.confirm_preview_only == true) }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     defaults:
