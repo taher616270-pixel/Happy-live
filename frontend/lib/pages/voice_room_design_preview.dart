@@ -1535,6 +1535,85 @@ Widget _roomActionButton({
     ).whenComplete(() => chatFocusNode.unfocus());
   }
 
+  void _openGamesSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black54,
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: DefaultTabController(
+          length: 2,
+          child: Container(
+            height: MediaQuery.of(sheetContext).size.height * .72,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF5EEDC),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFB8AA8D),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'الألعاب',
+                          style: TextStyle(
+                            color: Color(0xFF211B16),
+                            fontSize: 19,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        icon: const Icon(Icons.close, color: Color(0xFF514735)),
+                        splashRadius: 20,
+                      ),
+                    ],
+                  ),
+                ),
+                const TabBar(
+                  labelColor: Color(0xFF6B5120),
+                  unselectedLabelColor: Color(0xFF817966),
+                  indicatorColor: Color(0xFFD4AF37),
+                  indicatorWeight: 3,
+                  tabs: [
+                    Tab(text: 'ألعاب طرف ثالث'),
+                    Tab(text: 'ألعاب مخصصة'),
+                  ],
+                ),
+                const Expanded(
+                  child: TabBarView(
+                    children: [
+                      _GamesTabPlaceholder(
+                        message: 'ستظهر ألعاب الطرف الثالث هنا',
+                      ),
+                      _GamesTabPlaceholder(
+                        message: 'ستظهر الألعاب المخصصة هنا',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _bottomBar(BuildContext context) {
     return SizedBox(
       width: double.infinity,
@@ -1584,7 +1663,14 @@ Widget _roomActionButton({
               ],
             ),
             const Spacer(),
-            const Icon(Icons.sports_esports_outlined, color: Colors.white, size: 30),
+            InkWell(
+              onTap: () => _openGamesSheet(context),
+              borderRadius: BorderRadius.circular(24),
+              child: const Padding(
+                padding: EdgeInsets.all(3),
+                child: Icon(Icons.sports_esports_outlined, color: Colors.white, size: 30),
+              ),
+            ),
             const SizedBox(width: 13),
             InkWell(
               onTap: onOpenGifts,
@@ -2676,4 +2762,32 @@ class HappyLevelBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+class _GamesTabPlaceholder extends StatelessWidget {
+  const _GamesTabPlaceholder({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(
+          Icons.sports_esports_outlined,
+          size: 42,
+          color: Color(0xFFB49A58),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          message,
+          style: const TextStyle(
+            color: Color(0xFF756B58),
+            fontSize: 14,
+          ),
+        ),
+      ],
+    ),
+  );
 }
