@@ -144,7 +144,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
       decoration:BoxDecoration(shape:BoxShape.circle,color:_hit==i?const Color(0xFFFFE68A):const Color(0xFFFFF3C4),border:Border.all(color:const Color(0xFFB67A39),width:3),boxShadow:_hit==i?[const BoxShadow(color:Color(0xFFFFD700),blurRadius:18,spreadRadius:3)]:null),
       child:Stack(alignment:Alignment.center,children:[
         Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-          Text(symbol['emoji']?.toString()??'🐱',style:TextStyle(fontSize:d*.35)),
+          symbol['imageUrl']!=null&&symbol['imageUrl'].toString().startsWith('https://')?Image.network(symbol['imageUrl'].toString(),width:d*.42,height:d*.42,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Text(symbol['emoji']?.toString()??'🐱',style:TextStyle(fontSize:d*.35))):Text(symbol['emoji']?.toString()??'🐱',style:TextStyle(fontSize:d*.35)),
           Text('${symbol['multiplier']??1}x',style:TextStyle(color:const Color(0xFF5A3A00),fontSize:d*.15,fontWeight:FontWeight.w900)),
           Text(_fmt(pools.isNotEmpty?pools[i]:0),style:TextStyle(color:const Color(0xFF5A3A00),fontSize:d*.12)),
           if(bets.isNotEmpty&&(bets[i] as num)>0)Text('رهانك ${_fmt(bets[i])}',style:TextStyle(color:const Color(0xFF7A22FF),fontSize:d*.09)),
