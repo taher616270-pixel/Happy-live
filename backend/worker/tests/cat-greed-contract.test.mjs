@@ -205,7 +205,9 @@ test("Cat Greed Preview deployment is manual, confirmed, and cannot target produ
 test("admin write endpoints reject oversized and non-JSON request bodies", () => {
   assert.match(worker, /async function readBoundedJson\(request: Request, maxBytes: number\)/);
   assert.match(worker, /content_type_not_supported/);
-  assert.match(worker, /new TextEncoder\(\)\.encode\(raw\)\.byteLength > maxBytes/);
+  assert.match(worker, /request\.body\?\.getReader\(\)/);
+  assert.match(worker, /total > maxBytes/);
+  assert.match(worker, /await reader\.cancel\(\)/);
   assert.match(worker, /readBoundedJson\(request,2048\)/);
   assert.match(worker, /readBoundedJson\(request,16384\)/);
   assert.doesNotMatch(worker, /request\.json\(\)/);
