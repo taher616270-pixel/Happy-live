@@ -204,7 +204,7 @@ export async function handleCatGreedRequest(
       if (publicBet) {
         const contentType=request.headers.get("Content-Type")??"";
         const declaredLength=Number(request.headers.get("Content-Length")??0);
-        if(!contentType.toLowerCase().includes("application/json")) return wheelError("content_type_not_supported",415,json,origin,env);
+        if(contentType.split(";")[0].trim().toLowerCase()!=="application/json") return wheelError("content_type_not_supported",415,json,origin,env);
         if(Number.isFinite(declaredLength)&&declaredLength>2048) return wheelError("request_too_large",413,json,origin,env);
         const rawBody = await request.text();
         if (new TextEncoder().encode(rawBody).byteLength > 2048) return wheelError("request_too_large",413,json,origin,env);
