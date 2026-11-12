@@ -14,6 +14,8 @@ import 'package:happy_live/models/seat_state.dart';
 import 'package:happy_live/pages/voice_room_design_preview.dart';
 import 'package:happy_live/services/agora_room_bridge.dart';
 import 'package:happy_live/services/room_seat_socket.dart';
+import 'package:happy_live/pages/wallet_page.dart';
+import 'package:happy_live/widgets/room_gift_sheet.dart';
 
 class RoomPage extends StatefulWidget {
   const RoomPage({super.key, required this.room, required this.accessToken});
@@ -1703,46 +1705,25 @@ class _RoomPageState extends State<RoomPage> {
     }
 
     try {
-      // The gift catalogue is a public read-only endpoint. Do not send the
-      // room Authorization/Content-Type headers here: on Flutter Web they
-      // trigger a CORS preflight for a GET that does not need authentication.
-      final response = await http.get(
-        Uri.parse('$_apiBase/gifts/catalog'),
-        headers: const {'Accept': 'application/json'},
-      ).timeout(const Duration(seconds: 12));
-      final data = jsonDecode(response.body);
-      if (response.statusCode != 200 || data is! Map || data['gifts'] is! List) {
-        debugPrint('[gifts.catalog] HTTP ${response.statusCode}: ${response.body}');
-        final error = data is Map ? (data['error'] ?? data['message'])?.toString() : null;
-        _showMessage(error == null || error.isEmpty
-            ? 'تعذر تحميل قائمة الهدايا (${response.statusCode})'
-            : 'تعذر تحميل قائمة الهدايا: $error');
-        return;
-      }
-      final gifts = (data['gifts'] as List)
-          .whereType<Map>()
-          .map((item) => Map<String, dynamic>.from(item))
-          .toList();
       final walletResponse = await http.get(
         Uri.parse('$_apiBase/wallet'),
         headers: _headers,
       ).timeout(const Duration(seconds: 8));
-      var walletBalance = 0;
-      if (walletResponse.statusCode == 200) {
-        final walletData = jsonDecode(walletResponse.body);
-        if (walletData is Map && walletData['balance'] is num) {
-          walletBalance = (walletData['balance'] as num).toInt();
-        }
-      }
-      if (gifts.isEmpty) {
-        _showMessage('لا توجد هدايا متاحة حاليًا');
+      final walletData = walletResponse.statusCode == 200
+          ? jsonDecode(walletResponse.body)
+          : null;
+      if (walletResponse.statusCode != 200 ||
+          walletData is! Map ||
+          walletData['balance'] is! num) {
+        _showMessage('تعذر تحميل رصيد المحفظة');
         return;
       }
+      final walletBalance = (walletData['balance'] as num).toInt();
 
       final participants = <String, Map<String, dynamic>>{};
       for (final user in [..._seats, ..._audienceUsers]) {
         final id = (user['userId'] ?? user['id'] ?? '').toString().trim();
-        if (id.isEmpty || id == _seatStateStore.currentUserId) continue;
+        if (id.isEmpty) continue;
         participants[id] = <String, dynamic>{
           ...user,
           'userId': id,
@@ -1750,187 +1731,117 @@ class _RoomPageState extends State<RoomPage> {
           'avatarUrl': (user['avatarUrl'] ?? user['avatar'] ?? '').toString(),
         };
       }
+      // Keep the signed-in user selectable too: the API rejects self-gifting
+      // with the dedicated "cannot_gift_self" response shown in the sheet.
+      final currentUserId = _seatStateStore.currentUserId.trim();
+      if (currentUserId.isNotEmpty) {
+        final selfSeats = _seats.where((user) => user['isMe'] == true).toList();
+        final selfSeat = selfSeats.isEmpty ? null : selfSeats.first;
+        participants.putIfAbsent(currentUserId, () => <String, dynamic>{
+          'userId': currentUserId,
+          'name': (selfSeat?['name'] ?? (_ownerId == currentUserId ? _ownerName : 'أنا')).toString(),
+          'avatarUrl': (selfSeat?['avatarUrl'] ?? _seatStateStore.currentAvatarUrl).toString(),
+          'isMe': true,
+        });
+      }
       final recipients = participants.values.toList()
         ..sort((a, b) => (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString()));
-      if (recipients.isEmpty) {
-        _showMessage('لا يوجد أعضاء حاليًا لإرسال هدية لهم');
-        return;
-      }
 
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: const Color(0xFF17131F),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-        ),
-        builder: (sheetContext) {
-          Map<String, dynamic>? selectedRecipient;
-          bool sending = false;
-          return StatefulBuilder(
-            builder: (context, setSheetState) {
-              Future<void> sendGift(Map<String, dynamic> gift) async {
-                if (selectedRecipient == null || sending) return;
-                setSheetState(() => sending = true);
-                try {
-                  final idempotencyKey =
-                      'roomgift:${DateTime.now().microsecondsSinceEpoch}:${gift['id']}';
-                  final sendResponse = await http.post(
-                    Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/gifts/send'),
-                    headers: _headers,
-                    body: jsonEncode({
-                      'recipientUserId': selectedRecipient!['userId'],
-                      'giftId': gift['id'],
-                      'quantity': 1,
-                      'idempotencyKey': idempotencyKey,
-                    }),
-                  ).timeout(const Duration(seconds: 12));
-                  final result = jsonDecode(sendResponse.body);
-                  if (sendResponse.statusCode == 200 &&
-                      result is Map && result['ok'] == true) {
-                    if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-                    _showMessage('تم إرسال ${gift['name']} بنجاح');
-                    await _refreshSeats();
-                  } else {
-                    final error = result is Map ? result['error']?.toString() : null;
-                    final message = switch (error) {
-                      'insufficient_balance' => 'رصيدك من العملات غير كافٍ',
-                      'recipient_not_present' || 'recipient_not_in_room' => 'المستلم لم يعد موجودًا في الغرفة',
-                      'cannot_gift_self' => 'لا يمكنك إرسال هدية لنفسك',
-                      'gift_not_available' => 'هذه الهدية غير متاحة حاليًا',
-                      'room_not_found' => 'الغرفة لم تعد نشطة',
-                      _ => 'تعذر إرسال الهدية. تحقق من اتصال الخادم وتحديثاته.',
-                    };
-                    _showMessage(message);
-                  }
-                } catch (_) {
-                  _showMessage('تعذر الاتصال بخدمة إرسال الهدايا');
-                } finally {
-                  if (sheetContext.mounted) setSheetState(() => sending = false);
-                }
-              }
-
-              return SafeArea(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16,
-                    16 + MediaQuery.of(context).viewInsets.bottom),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 42, height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.white30,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      const Text('إرسال هدية في الغرفة',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Color(0xFFE8C477), fontSize: 18, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 6),
-                      Text('رصيدك: $walletBalance عملة',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                      const SizedBox(height: 14),
-                      if (selectedRecipient == null) ...[
-                        const Text('اختر العضو الذي تريد إرسال الهدية إليه',
-                          style: TextStyle(color: Colors.white70, fontSize: 13)),
-                        const SizedBox(height: 8),
-                        Flexible(
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            itemCount: recipients.length,
-                            separatorBuilder: (_, __) => const Divider(color: Colors.white12, height: 1),
-                            itemBuilder: (_, index) {
-                              final user = recipients[index];
-                              final avatar = (user['avatarUrl'] ?? '').toString();
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundImage: avatar.startsWith('https://') ? NetworkImage(avatar) : null,
-                                  child: !avatar.startsWith('https://')
-                                      ? const Icon(Icons.person, color: Colors.white70) : null,
-                                ),
-                                title: Text(user['name'].toString(),
-                                  style: const TextStyle(color: Colors.white)),
-                                subtitle: Text('ID: ${user['userCode'] ?? user['id'] ?? user['userId']}',
-                                  style: const TextStyle(color: Colors.white54, fontSize: 11)),
-                                onTap: () => setSheetState(() => selectedRecipient = user),
-                              );
-                            },
-                          ),
-                        ),
-                      ] else ...[
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: sending ? null : () => setSheetState(() => selectedRecipient = null),
-                              icon: const Icon(Icons.arrow_back, color: Colors.white),
-                            ),
-                            Expanded(
-                              child: Text('إهداء إلى ${selectedRecipient!['name']}',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: gifts.length,
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10,
-                            childAspectRatio: .82,
-                          ),
-                          itemBuilder: (_, index) {
-                            final gift = gifts[index];
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(14),
-                              onTap: sending ? null : () => sendGift(gift),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF282131),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: const Color(0x66E8C477)),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text((gift['iconEmoji'] ?? '🎁').toString(),
-                                      style: const TextStyle(fontSize: 32)),
-                                    const SizedBox(height: 7),
-                                    Text(gift['name'].toString(),
-                                      textAlign: TextAlign.center, maxLines: 2,
-                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
-                                    const SizedBox(height: 5),
-                                    Text('${gift['coinPrice']} عملة',
-                                      style: const TextStyle(color: Color(0xFFE8C477), fontSize: 11)),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        if (sending)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 12),
-                            child: Center(child: CircularProgressIndicator(color: Color(0xFFE8C477))),
-                          ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            },
+      await showRoomGiftSheet(
+        context,
+        balance: walletBalance,
+        avatarUrl: _seatStateStore.currentAvatarUrl,
+        recipients: recipients,
+        loadGifts: (category) async {
+          final uri = Uri.parse('$_apiBase/gifts/catalog').replace(
+            queryParameters: {'tab': category},
+          );
+          final response = await http.get(
+            uri,
+            headers: category == 'country'
+                ? _headers
+                : const {'Accept': 'application/json'},
+          ).timeout(const Duration(seconds: 12));
+          final data = jsonDecode(response.body);
+          if (response.statusCode != 200 || data is! Map || data['gifts'] is! List) {
+            final error = data is Map ? (data['message'] ?? data['error'])?.toString() : null;
+            throw Exception(error == null || error.isEmpty
+                ? 'تعذر تحميل هدايا هذا التصنيف'
+                : error);
+          }
+          return (data['gifts'] as List)
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList();
+        },
+        onSend: (gift, quantity, recipientId) async {
+          final idempotencyKey =
+              'roomgift:${DateTime.now().microsecondsSinceEpoch}:${gift['id']}';
+          final response = await http.post(
+            Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/gifts/send'),
+            headers: _headers,
+            body: jsonEncode({
+              'recipientUserId': recipientId,
+              'giftId': gift['id'],
+              'quantity': quantity,
+              'idempotencyKey': idempotencyKey,
+            }),
+          ).timeout(const Duration(seconds: 12));
+          final result = jsonDecode(response.body);
+          if ((response.statusCode != 200 && response.statusCode != 201) ||
+              result is! Map ||
+              result['ok'] != true) {
+            final error = result is Map ? result['error']?.toString() : null;
+            throw Exception(switch (error) {
+              'insufficient_balance' => 'رصيدك من العملات غير كافٍ',
+              'recipient_not_present' || 'recipient_not_in_room' => 'المستلم لم يعد موجودًا في الغرفة',
+              'cannot_gift_self' => 'لا يمكنك إرسال هدية لنفسك',
+              'gift_not_available' => 'هذه الهدية غير متاحة حاليًا',
+              'room_not_found' => 'الغرفة لم تعد نشطة',
+              _ => 'تعذر إرسال الهدية، حاول مرة أخرى',
+            });
+          }
+          final refreshedWallet = await http.get(
+            Uri.parse('$_apiBase/wallet'),
+            headers: _headers,
+          ).timeout(const Duration(seconds: 8));
+          final refreshedData = jsonDecode(refreshedWallet.body);
+          if (refreshedWallet.statusCode != 200 ||
+              refreshedData is! Map ||
+              refreshedData['balance'] is! num) {
+            throw Exception('تم الإرسال، لكن تعذر تحديث الرصيد');
+          }
+          await _refreshSeats();
+          return (refreshedData['balance'] as num).toInt();
+        },
+        onRequestCustomGift: (name, description) async {
+          final response = await http.post(
+            Uri.parse('$_apiBase/gifts/custom-requests'),
+            headers: _headers,
+            body: jsonEncode({
+              'requestedName': name,
+              'description': description,
+            }),
+          ).timeout(const Duration(seconds: 12));
+          final data = jsonDecode(response.body);
+          if (response.statusCode != 201 || data is! Map || data['ok'] != true) {
+            final error = data is Map ? data['message'] ?? data['error'] : null;
+            throw Exception(error?.toString() ?? 'تعذر إرسال اقتراح الهدية');
+          }
+        },
+        onRecharge: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => WalletPage(
+                apiBase: _apiBase,
+                accessToken: widget.accessToken,
+              ),
+            ),
           );
         },
       );
-    } catch (_) {
-      _showMessage('تعذر تحميل الهدايا من الخادم');
+    } catch (error) {
+      _showMessage('تعذر فتح نافذة الهدايا: ${error.toString().replaceFirst('Exception: ', '')}');
     }
   }
 

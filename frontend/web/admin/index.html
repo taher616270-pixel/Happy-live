@@ -178,30 +178,43 @@ async function giftsPage(){
     (canEdit?'<button class="primary" id="saveGiftSplit">حفظ نسب الأرباح</button>':'<p class="notice">التعديل متاح لمالك التطبيق فقط.</p>')+
     '<div id="giftSettingsMessage" class="muted" style="margin-top:12px"></div></div>'+
     '<div class="section"><div class="section-head"><div><h2>السحب عبر الوكالات</h2><p class="muted">البنية مهيأة لربط أرباح الهدايا بالوكالات مستقبلًا.</p></div><span class="badge warn">غير مفعّل</span></div><p class="notice">طلبات السحب والتحويل النقدي مغلقة حاليًا. لن تُقبل طلبات سحب حتى تفعيل الوكالات واعتماد التحويل والحد الأدنى وإجراءات التحقق.</p><div class="cards">'+metric("السحب مفعّل",withdrawals.enabled?"نعم":"لا")+metric("ربط الوكالات",withdrawals.agencyIntegrationReady?"جاهز":"بانتظار التفعيل")+'</div></div>'+
-    '<div class="section"><div class="section-head"><div><h2>كتالوج الهدايا</h2><p class="muted">إضافة الهدايا وتعديل أسعارها بالعملات. التعطيل لا يحذف سجل الهدية.</p></div></div>' +
+    '<div class="section"><div class="section-head"><div><h2>كتالوج الهدايا</h2><p class="muted">إضافة الهدايا وتعديل أسعارها وربط ملفات SVGA وAPNG وWEBP عبر رابط HTTPS مباشر.</p></div></div>' +
     '<form id="giftCreateForm" class="room-tools" style="align-items:end;margin:16px 0">' +
     '<label style="display:grid;gap:6px">اسم الهدية<input id="newGiftName" class="search" maxlength="80" required placeholder="اسم الهدية"></label>' +
-    '<label style="display:grid;gap:6px">الرمز<input id="newGiftEmoji" class="search" maxlength="16" value="🎁" required></label>' +
+    '<label style="display:grid;gap:6px">الرمز الاحتياطي<input id="newGiftEmoji" class="search" maxlength="16" value="🎁" required></label>' +
+    '<label style="display:grid;gap:6px">نوع الوسائط<select id="newGiftMediaType" class="search"><option value="emoji">رمز تعبيري</option><option value="svga">SVGA</option><option value="apng">APNG</option><option value="webp">WEBP</option></select></label>' +
+    '<label style="display:grid;gap:6px">رابط ملف الهدية (HTTPS)<input id="newGiftMediaUrl" class="search" type="url" maxlength="2048" placeholder="https://..."></label>' +
     '<label style="display:grid;gap:6px">السعر بالعملات<input id="newGiftPrice" class="search" type="number" min="1" step="1" required placeholder="999"></label>' +
+    '<label style="display:grid;gap:6px">التصنيف<select id="newGiftCategory" class="search"><option value="trending">رائج</option><option value="event">حدث</option><option value="country">الدولة</option><option value="lucky">حظ</option><option value="custom">مخصص</option></select></label>' +
+    '<label style="display:grid;gap:6px">الدولة<select id="newGiftCountry" class="search"><option value="">اختر الدولة</option><option value="KW">الكويت</option><option value="AE">الإمارات</option><option value="QA">قطر</option><option value="MA">المغرب</option><option value="EG">مصر</option><option value="SY">سوريا</option><option value="TR">تركيا</option><option value="DZ">الجزائر</option><option value="BH">البحرين</option><option value="IQ">العراق</option><option value="JO">الأردن</option><option value="LB">لبنان</option><option value="OM">عُمان</option><option value="PK">باكستان</option><option value="PS">فلسطين</option><option value="SD">السودان</option><option value="SOUTH_ARABIA">الجنوب العربي</option><option value="YE">اليمن</option><option value="SA">السعودية</option></select></label>' +
+    '<label style="display:grid;gap:6px">بداية العرض<input id="newGiftStarts" class="search" type="datetime-local"></label>' +
+    '<label style="display:grid;gap:6px">نهاية العرض<input id="newGiftEnds" class="search" type="datetime-local"></label>' +
     '<label style="display:grid;gap:6px">الترتيب<input id="newGiftOrder" class="search" type="number" min="0" value="100"></label>' +
     '<button class="action" type="submit">＋ إضافة هدية</button></form><div id="giftCatalogMessage" class="muted"></div>' +
-    '<div class="table-wrap"><table><thead><tr><th>الهدية</th><th>السعر</th><th>الترتيب</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody id="giftCatalogRows"><tr><td colspan="5" class="loading">جارٍ تحميل الكتالوج…</td></tr></tbody></table></div></div>';
+    '<div class="table-wrap"><table><thead><tr><th>الهدية</th><th>السعر</th><th>التصنيف</th><th>الدولة</th><th>فترة العرض</th><th>الترتيب</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody id="giftCatalogRows"><tr><td colspan="8" class="loading">جارٍ تحميل الكتالوج…</td></tr></tbody></table></div></div>' +
+    '<div class="section"><div class="section-head"><div><h2>طلبات الهدايا المخصصة</h2><p class="muted">راجع طلبات المستخدمين، وعند الموافقة تُنشأ الهدية تلقائيًا في تصنيف «مخصص».</p></div></div><div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>اسم الهدية المقترح</th><th>الوصف</th><th>الحالة</th><th>تاريخ الطلب</th><th>الإجراء</th></tr></thead><tbody id="giftCustomRequestRows"><tr><td colspan="6" class="loading">جارٍ تحميل الطلبات…</td></tr></tbody></table></div><div id="giftCustomRequestMessage" class="muted"></div></div>';
+  if(!canEdit){$("giftCustomRequestRows").innerHTML='<tr><td colspan="6" class="empty">مراجعة الطلبات متاحة لمالك التطبيق فقط.</td></tr>'}
   if(canEdit){
     const catalogMessage=$("giftCatalogMessage");
     const loadCatalog=async()=>{
       const result=await api("/admin/gifts/catalog");
       const rows=result.gifts||[];
-      $("giftCatalogRows").innerHTML=rows.length?rows.map(g=>'<tr><td><span style="font-size:24px;margin-left:8px">'+esc(g.iconEmoji||"🎁")+'</span><strong>'+esc(g.name)+'</strong></td><td>'+Number(g.coinPrice).toLocaleString("en-US")+' عملة</td><td>'+Number(g.sortOrder||0)+'</td><td>'+(Number(g.isActive)===1||g.isActive===true?'<span class="badge good">نشطة</span>':'<span class="badge bad">متوقفة</span>')+'</td><td><div class="room-tools"><button class="action" data-gift-edit="'+esc(g.id)+'">تعديل</button><button class="action" data-gift-toggle="'+esc(g.id)+'" data-active="'+(Number(g.isActive)===1||g.isActive===true?"1":"0")+'">'+(Number(g.isActive)===1||g.isActive===true?"تعطيل":"تفعيل")+'</button></div></td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد هدايا في الكتالوج.</td></tr>';
+      $("giftCatalogRows").innerHTML=rows.length?rows.map(g=>'<tr><td><span style="font-size:24px;margin-left:8px">'+esc(g.iconEmoji||"🎁")+'</span><strong>'+esc(g.name)+'</strong><div class="muted">'+esc(g.mediaType||"emoji")+'</div></td><td>'+Number(g.coinPrice).toLocaleString("en-US")+' عملة</td><td>'+esc(({event:"حدث",trending:"رائج",country:"الدولة",lucky:"حظ",custom:"مخصص"})[g.category]||g.category||"رائج")+'</td><td>'+esc(g.countryCode||"—")+'</td><td>'+esc([g.startsAt||"",g.endsAt||""].filter(Boolean).join(" ← ")||"دائم")+'</td><td>'+Number(g.sortOrder||0)+'</td><td>'+(Number(g.isActive)===1||g.isActive===true?'<span class="badge good">نشطة</span>':'<span class="badge bad">متوقفة</span>')+'</td><td><div class="room-tools"><button class="action" data-gift-edit="'+esc(g.id)+'">تعديل</button><button class="action" data-gift-toggle="'+esc(g.id)+'" data-active="'+(Number(g.isActive)===1||g.isActive===true?"1":"0")+'">'+(Number(g.isActive)===1||g.isActive===true?"تعطيل":"تفعيل")+'</button></div></td></tr>').join(""):'<tr><td colspan="8" class="empty">لا توجد هدايا في الكتالوج.</td></tr>';
       document.querySelectorAll("[data-gift-edit]").forEach(button=>button.onclick=async()=>{
         const gift=rows.find(x=>x.id===button.dataset.giftEdit);if(!gift)return;
         const name=window.prompt("اسم الهدية",gift.name);if(name===null)return;
-        const iconEmoji=window.prompt("رمز الهدية",gift.iconEmoji||"🎁");if(iconEmoji===null)return;
+        const iconEmoji=window.prompt("الرمز الاحتياطي",gift.iconEmoji||"🎁");if(iconEmoji===null)return;
+        const mediaType=window.prompt("نوع الوسائط: emoji أو svga أو apng أو webp",gift.mediaType||"emoji");if(mediaType===null)return;
+        const mediaUrl=window.prompt("رابط ملف الوسائط HTTPS (اتركه فارغًا للرمز التعبيري)",gift.mediaUrl||"");if(mediaUrl===null)return;
         const raw=window.prompt("السعر بالعملات",String(gift.coinPrice));if(raw===null)return;
         const coinPrice=Number(raw);
         const orderRaw=window.prompt("ترتيب العرض",String(gift.sortOrder||0));if(orderRaw===null)return;
-        const sortOrder=Number(orderRaw);
-        if(!name.trim()||!iconEmoji.trim()||!Number.isSafeInteger(coinPrice)||coinPrice<1||!Number.isSafeInteger(sortOrder)||sortOrder<0){alert("بيانات الهدية غير صحيحة.");return}
-        try{await api("/admin/gifts/catalog/"+encodeURIComponent(gift.id),{method:"PATCH",body:JSON.stringify({name:name.trim(),iconEmoji:iconEmoji.trim(),coinPrice,sortOrder})});catalogMessage.textContent="تم تحديث الهدية.";await loadCatalog()}catch(error){alert(error.message)}
+        const sortOrder=Number(orderRaw),category=window.prompt("التصنيف: event أو trending أو country أو lucky أو custom",gift.category||"trending");if(category===null)return;
+        const countryCode=window.prompt("رمز الدولة (اتركه فارغًا لغير تصنيف الدولة)",gift.countryCode||"");if(countryCode===null)return;
+        const startsAt=window.prompt("بداية العرض ISO (اختياري)",gift.startsAt||"");if(startsAt===null)return;
+        const endsAt=window.prompt("نهاية العرض ISO (اختياري)",gift.endsAt||"");if(endsAt===null)return;
+        if(!name.trim()||!iconEmoji.trim()||!Number.isSafeInteger(coinPrice)||coinPrice<1||!Number.isSafeInteger(sortOrder)||sortOrder<0||!["event","trending","country","lucky","custom"].includes(category)||!["emoji","svga","apng","webp"].includes(mediaType)||((mediaType==="emoji")!==(!mediaUrl.trim()))||(mediaUrl.trim()&&!/^https:\/\//i.test(mediaUrl.trim()))){alert("تحقق من بيانات الهدية ورابط الوسائط ونوع الملف.");return}
+        try{await api("/admin/gifts/catalog/"+encodeURIComponent(gift.id),{method:"PATCH",body:JSON.stringify({name:name.trim(),iconEmoji,mediaType,mediaUrl:mediaUrl.trim()||null,coinPrice,sortOrder,category,countryCode,startsAt,endsAt})});catalogMessage.textContent="تم تحديث الهدية.";await loadCatalog()}catch(error){alert(error.message)}
       });
       document.querySelectorAll("[data-gift-toggle]").forEach(button=>button.onclick=async()=>{
         const active=button.dataset.active==="1";
@@ -210,14 +223,29 @@ async function giftsPage(){
     };
     $("giftCreateForm").onsubmit=async event=>{
       event.preventDefault();
-      const name=$("newGiftName").value.trim(),iconEmoji=$("newGiftEmoji").value.trim(),coinPrice=Number($("newGiftPrice").value),sortOrder=Number($("newGiftOrder").value);
-      if(!name||!iconEmoji||!Number.isSafeInteger(coinPrice)||coinPrice<1||!Number.isSafeInteger(sortOrder)||sortOrder<0){catalogMessage.textContent="تحقق من الاسم والرمز والسعر والترتيب.";return}
+      const name=$("newGiftName").value.trim(),iconEmoji=$("newGiftEmoji").value.trim(),mediaType=$("newGiftMediaType").value,mediaUrl=$("newGiftMediaUrl").value.trim(),coinPrice=Number($("newGiftPrice").value),sortOrder=Number($("newGiftOrder").value),category=$("newGiftCategory").value,countryCode=$("newGiftCountry").value.trim().toUpperCase(),startsValue=$("newGiftStarts").value,endsValue=$("newGiftEnds").value,startsAt=startsValue?new Date(startsValue).toISOString():null,endsAt=endsValue?new Date(endsValue).toISOString():null;
+      if(!name||!iconEmoji||!Number.isSafeInteger(coinPrice)||coinPrice<1||!Number.isSafeInteger(sortOrder)||sortOrder<0||(mediaType==="emoji"&&mediaUrl)||(mediaType!=="emoji"&&!mediaUrl)||(mediaUrl&&!/^https:\/\//i.test(mediaUrl))||(category==="country"&&!countryCode)||(startsAt&&endsAt&&new Date(endsAt)<=new Date(startsAt))){catalogMessage.textContent="تحقق من الاسم والرمز والسعر والتصنيف والدولة وفترة العرض.";return}
       const submit=event.submitter;submit.disabled=true;catalogMessage.textContent="جارٍ إضافة الهدية…";
-      try{await api("/admin/gifts/catalog",{method:"POST",body:JSON.stringify({name,iconEmoji,coinPrice,sortOrder,isActive:true})});$("giftCreateForm").reset();$("newGiftEmoji").value="🎁";$("newGiftOrder").value="100";catalogMessage.textContent="تمت إضافة الهدية وتفعيلها.";await loadCatalog()}
+      try{await api("/admin/gifts/catalog",{method:"POST",body:JSON.stringify({name,iconEmoji,mediaType,mediaUrl:mediaUrl||null,coinPrice,sortOrder,isActive:true,category,countryCode:countryCode||null,startsAt,endsAt})});$("giftCreateForm").reset();$("newGiftEmoji").value="🎁";$("newGiftMediaType").value="emoji";$("newGiftMediaUrl").value="";$("newGiftOrder").value="100";catalogMessage.textContent="تمت إضافة الهدية وتفعيلها.";await loadCatalog()}
       catch(error){catalogMessage.textContent=error.message||"تعذرت إضافة الهدية."}
       finally{submit.disabled=false}
     };
     await loadCatalog();
+    const loadCustomRequests=async()=>{
+      const result=await api("/admin/gifts/custom-requests"),rows=result.requests||[];
+      $("giftCustomRequestRows").innerHTML=rows.length?rows.map(r=>'<tr><td>'+esc(r.displayName||"مستخدم")+'<br><small>'+esc(r.gaboId||"")+'</small></td><td><strong>'+esc(r.requestedName)+'</strong></td><td>'+esc(r.description||"—")+'</td><td>'+esc(({pending:"بانتظار المراجعة",approved:"تم الاعتماد",rejected:"مرفوض"})[r.status]||r.status)+'</td><td>'+esc(new Date(r.createdAt).toLocaleString("ar"))+'</td><td>'+(r.status==="pending"?'<button class="action" data-custom-approve="'+esc(r.id)+'">اعتماد وإنشاء</button> <button class="action" data-custom-reject="'+esc(r.id)+'">رفض</button>':'—')+'</td></tr>').join(""):'<tr><td colspan="6" class="empty">لا توجد طلبات هدايا مخصصة.</td></tr>';
+      document.querySelectorAll("[data-custom-approve]").forEach(button=>button.onclick=async()=>{
+        const iconEmoji=window.prompt("رمز الهدية","🎁");if(iconEmoji===null)return;
+        const coinPrice=Number(window.prompt("سعر الهدية بالعملات","999"));if(!Number.isSafeInteger(coinPrice)||coinPrice<1){alert("السعر غير صحيح.");return}
+        const adminNote=window.prompt("ملاحظة للمستخدم (اختياري)","")||"";
+        try{await api("/admin/gifts/custom-requests/"+encodeURIComponent(button.dataset.customApprove),{method:"PATCH",body:JSON.stringify({status:"approved",iconEmoji,coinPrice,adminNote})});$("giftCustomRequestMessage").textContent="تم اعتماد الطلب وإنشاء الهدية في تصنيف مخصص.";await loadCustomRequests();await loadCatalog()}catch(error){alert(error.message)}
+      });
+      document.querySelectorAll("[data-custom-reject]").forEach(button=>button.onclick=async()=>{
+        const adminNote=window.prompt("سبب الرفض (اختياري)","")||"";
+        try{await api("/admin/gifts/custom-requests/"+encodeURIComponent(button.dataset.customReject),{method:"PATCH",body:JSON.stringify({status:"rejected",adminNote})});await loadCustomRequests()}catch(error){alert(error.message)}
+      });
+    };
+    await loadCustomRequests();
     $("saveGiftSplit").onclick=async()=>{
       const appPercent=Number($("giftAppPercent").value),recipientPercent=Number($("giftRecipientPercent").value),message=$("giftSettingsMessage");
       if(!Number.isInteger(appPercent)||!Number.isInteger(recipientPercent)||appPercent+recipientPercent!==100){message.textContent="يجب أن تكون النسب أعدادًا صحيحة ومجموعها 100%.";return}

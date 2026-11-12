@@ -484,6 +484,8 @@ export default {
       url.pathname === "/api/v1/admin/wallets" ||
       url.pathname === "/api/v1/admin/gifts/settings" ||
       url.pathname === "/api/v1/admin/gifts/catalog" ||
+      url.pathname === "/api/v1/admin/gifts/custom-requests" ||
+      /^\/api\/v1\/admin\/gifts\/custom-requests\/[0-9a-f-]{36}$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/gifts\/catalog\/[a-z0-9-]{1,80}$/i.test(url.pathname) ||
       url.pathname === "/api/v1/admin/moderators" ||
       url.pathname === "/api/v1/admin/rooms" ||
@@ -544,7 +546,7 @@ export default {
           if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const itemRoute = url.pathname.match(/^\/api\/v1\/admin\/gifts\/catalog\/([a-z0-9-]{1,80})$/i);
           if (request.method === "GET" && !itemRoute) {
-            const rows = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt FROM gift_catalog ORDER BY sort_order ASC, created_at ASC").all();
+            const rows = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt, created_at AS createdAt, updated_at AS updatedAt FROM gift_catalog ORDER BY category ASC, sort_order ASC, created_at ASC").all();
             return json({ ok: true, gifts: rows.results ?? [] }, 200, origin, env);
           }
           if (request.method === "POST" && !itemRoute) {
@@ -555,32 +557,84 @@ export default {
             const coinPrice = Number(body.coinPrice);
             const sortOrder = Number(body.sortOrder ?? 0);
             const isActive = body.isActive === false ? 0 : 1;
-            if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000) return json({ error: "invalid_gift", message: "تحقق من اسم الهدية ورمزها وسعرها وترتيبها." }, 400, origin, env);
+            const category = typeof body.category === "string" ? body.category : "trending";
+            const countryCode = typeof body.countryCode === "string" && body.countryCode.trim() ? body.countryCode.trim().toUpperCase() : null;
+            const startsAt = typeof body.startsAt === "string" && body.startsAt ? body.startsAt : null;
+            const endsAt = typeof body.endsAt === "string" && body.endsAt ? body.endsAt : null;
+            const mediaUrl = typeof body.mediaUrl === "string" && body.mediaUrl.trim() ? body.mediaUrl.trim() : null;
+            const mediaType = mediaUrl ? String(body.mediaType ?? "").toLowerCase() : "emoji";
+            if ((mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) || !["emoji", "svga", "apng", "webp"].includes(mediaType) || (mediaUrl && mediaType === "emoji") || (!mediaUrl && mediaType !== "emoji")) return json({ error: "invalid_gift_media", message: "رابط الوسائط يجب أن يكون HTTPS ونوعه SVGA أو APNG أو WEBP." }, 400, origin, env);
+            if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من اسم الهدية ورمزها وسعرها وتصنيفها والدولة وفترة العرض." }, 400, origin, env);
             const id = crypto.randomUUID(), now = new Date().toISOString();
-            await env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?)")
-              .bind(id, name, iconEmoji, coinPrice, isActive, sortOrder, now, now).run();
-            return json({ ok: true, gift: { id, name, iconEmoji, coinPrice, isActive: Boolean(isActive), sortOrder, createdAt: now, updatedAt: now } }, 201, origin, env);
+            await env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, media_url, media_type, coin_price, is_active, sort_order, created_at, updated_at, category, country_code, starts_at, ends_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+              .bind(id, name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive, sortOrder, now, now, category, countryCode, startsAt, endsAt).run();
+            return json({ ok: true, gift: { id, name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, createdAt: now, updatedAt: now } }, 201, origin, env);
           }
           if (request.method === "PATCH" && itemRoute) {
             let body: Record<string, unknown>;
             try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
-            const current = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder FROM gift_catalog WHERE id = ?").bind(itemRoute[1]).first<Record<string, unknown>>();
+            const current = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt FROM gift_catalog WHERE id = ?").bind(itemRoute[1]).first<Record<string, unknown>>();
             if (!current) return json({ error: "gift_not_found" }, 404, origin, env);
             const name = body.name === undefined ? String(current.name) : (typeof body.name === "string" ? body.name.trim() : "");
             const iconEmoji = body.iconEmoji === undefined ? String(current.iconEmoji) : (typeof body.iconEmoji === "string" ? body.iconEmoji.trim() : "");
             const coinPrice = body.coinPrice === undefined ? Number(current.coinPrice) : Number(body.coinPrice);
             const sortOrder = body.sortOrder === undefined ? Number(current.sortOrder) : Number(body.sortOrder);
             const isActive = body.isActive === undefined ? Number(current.isActive) : (body.isActive === true ? 1 : body.isActive === false ? 0 : -1);
-            if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || ![0, 1].includes(isActive)) return json({ error: "invalid_gift", message: "تحقق من بيانات الهدية." }, 400, origin, env);
+            const category = body.category === undefined ? String(current.category ?? "trending") : (typeof body.category === "string" ? body.category : "");
+            const countryCode = body.countryCode === undefined ? (current.countryCode ? String(current.countryCode) : null) : (typeof body.countryCode === "string" && body.countryCode.trim() ? body.countryCode.trim().toUpperCase() : null);
+            const startsAt = body.startsAt === undefined ? (current.startsAt ? String(current.startsAt) : null) : (typeof body.startsAt === "string" && body.startsAt ? body.startsAt : null);
+            const endsAt = body.endsAt === undefined ? (current.endsAt ? String(current.endsAt) : null) : (typeof body.endsAt === "string" && body.endsAt ? body.endsAt : null);
+            const mediaUrl = body.mediaUrl === undefined ? (current.mediaUrl ? String(current.mediaUrl) : null) : (typeof body.mediaUrl === "string" && body.mediaUrl.trim() ? body.mediaUrl.trim() : null);
+            const mediaType = body.mediaType === undefined ? String(current.mediaType ?? (mediaUrl ? "webp" : "emoji")) : String(body.mediaType).toLowerCase();
+            if ((mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) || !["emoji", "svga", "apng", "webp"].includes(mediaType) || (mediaUrl && mediaType === "emoji") || (!mediaUrl && mediaType !== "emoji")) return json({ error: "invalid_gift_media", message: "رابط الوسائط يجب أن يكون HTTPS ونوعه SVGA أو APNG أو WEBP." }, 400, origin, env);
+            if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || ![0, 1].includes(isActive) || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من بيانات الهدية." }, 400, origin, env);
             const now = new Date().toISOString();
-            await env.DB.prepare("UPDATE gift_catalog SET name = ?, icon_emoji = ?, coin_price = ?, is_active = ?, sort_order = ?, updated_at = ? WHERE id = ?")
-              .bind(name, iconEmoji, coinPrice, isActive, sortOrder, now, itemRoute[1]).run();
-            return json({ ok: true, gift: { id: itemRoute[1], name, iconEmoji, coinPrice, isActive: Boolean(isActive), sortOrder, updatedAt: now } }, 200, origin, env);
+            await env.DB.prepare("UPDATE gift_catalog SET name = ?, icon_emoji = ?, media_url = ?, media_type = ?, coin_price = ?, is_active = ?, sort_order = ?, category = ?, country_code = ?, starts_at = ?, ends_at = ?, updated_at = ? WHERE id = ?")
+              .bind(name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive, sortOrder, category, countryCode, startsAt, endsAt, now, itemRoute[1]).run();
+            return json({ ok: true, gift: { id: itemRoute[1], name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, updatedAt: now } }, 200, origin, env);
           }
           if (request.method === "DELETE" && itemRoute) {
             const result = await env.DB.prepare("UPDATE gift_catalog SET is_active = 0, updated_at = ? WHERE id = ?").bind(new Date().toISOString(), itemRoute[1]).run();
             if ((result.meta?.changes ?? 0) === 0) return json({ error: "gift_not_found" }, 404, origin, env);
             return json({ ok: true, deactivated: true }, 200, origin, env);
+          }
+          return json({ error: "method_not_allowed" }, 405, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/gifts/custom-requests" || /^\/api\/v1\/admin\/gifts\/custom-requests\/[0-9a-f-]{36}$/i.test(url.pathname)) {
+          if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
+          const requestRoute = url.pathname.match(/^\/api\/v1\/admin\/gifts\/custom-requests\/([0-9a-f-]{36})$/i);
+          if (request.method === "GET" && !requestRoute) {
+            const rows = await env.DB.prepare("SELECT r.id, r.requested_name AS requestedName, r.description, r.status, r.admin_note AS adminNote, r.created_at AS createdAt, p.display_name AS displayName, p.gabo_id AS gaboId FROM gift_custom_requests r LEFT JOIN profiles p ON p.user_id = r.user_id ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, r.created_at DESC LIMIT 200").all();
+            return json({ ok: true, requests: rows.results ?? [] }, 200, origin, env);
+          }
+          if (request.method === "PATCH" && requestRoute) {
+            let body: Record<string, unknown>;
+            try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+            const status = body.status;
+            const adminNote = typeof body.adminNote === "string" ? body.adminNote.trim() : "";
+            if (!["approved", "rejected"].includes(String(status)) || adminNote.length > 500) return json({ error: "invalid_request_review" }, 400, origin, env);
+            const pending = await env.DB.prepare("SELECT id, requested_name AS requestedName FROM gift_custom_requests WHERE id = ? AND status = 'pending'").bind(requestRoute[1]).first<{ id: string; requestedName: string }>();
+            if (!pending) return json({ error: "request_not_pending" }, 409, origin, env);
+            const now = new Date().toISOString();
+            if (status === "rejected") {
+              const result = await env.DB.prepare("UPDATE gift_custom_requests SET status = 'rejected', admin_note = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
+                .bind(adminNote, actor.id, now, requestRoute[1]).run();
+              if ((result.meta?.changes ?? 0) !== 1) return json({ error: "request_not_pending" }, 409, origin, env);
+              return json({ ok: true, status: "rejected" }, 200, origin, env);
+            }
+            const iconEmoji = typeof body.iconEmoji === "string" && body.iconEmoji.trim() ? body.iconEmoji.trim() : "🎁";
+            const coinPrice = Number(body.coinPrice);
+            const sortOrder = Number(body.sortOrder ?? 500);
+            if (iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000) return json({ error: "invalid_approved_gift" }, 400, origin, env);
+            const giftId = crypto.randomUUID();
+            const results = await env.DB.batch([
+              env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at, category) SELECT ?, requested_name, ?, '', ?, 1, ?, ?, ?, 'custom' FROM gift_custom_requests WHERE id = ? AND status = 'pending'")
+                .bind(giftId, iconEmoji, coinPrice, sortOrder, now, now, requestRoute[1]),
+              env.DB.prepare("UPDATE gift_custom_requests SET status = 'approved', admin_note = ?, approved_gift_id = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
+                .bind(adminNote, giftId, actor.id, now, requestRoute[1])
+            ]);
+            if ((results[1]?.meta?.changes ?? 0) !== 1) return json({ error: "request_not_pending" }, 409, origin, env);
+            return json({ ok: true, status: "approved", giftId }, 200, origin, env);
           }
           return json({ error: "method_not_allowed" }, 405, origin, env);
         }
@@ -1632,11 +1686,52 @@ export default {
     if (url.pathname === "/api/v1/gifts/catalog" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
-        const rows = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, coin_price AS coinPrice, sort_order AS sortOrder FROM gift_catalog WHERE is_active = 1 ORDER BY sort_order ASC, created_at ASC").all();
-        return json({ ok: true, gifts: rows.results ?? [] }, 200, origin, env);
+        const tab = url.searchParams.get("tab");
+        if (tab && !["event", "trending", "country", "lucky", "custom"].includes(tab)) return json({ error: "invalid_gift_category" }, 400, origin, env);
+        let countryCode: string | null = null;
+        if (tab === "country") {
+          const user = await authenticatedUser(request, env.DB);
+          if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+          const profile = await env.DB.prepare("SELECT country_code, country_name FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ country_code: string | null; country_name: string | null }>();
+          const countryName = (profile?.country_name ?? "").trim().toUpperCase();
+          countryCode = ["SOUTH_ARABIA", "SOUTH ARABIA", "الجنوب العربي"].includes(countryName)
+            ? "SOUTH_ARABIA"
+            : profile?.country_code?.trim().toUpperCase() ?? null;
+          if (!countryCode) return json({ ok: true, gifts: [], countryCode: null }, 200, origin, env);
+        }
+        const now = new Date().toISOString();
+        const rows = await env.DB.prepare(
+          "SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, coin_price AS coinPrice, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt " +
+          "FROM gift_catalog WHERE is_active = 1 AND (starts_at IS NULL OR starts_at <= ?) AND (ends_at IS NULL OR ends_at >= ?) " +
+          "AND (? IS NULL OR category = ?) AND (category <> 'country' OR country_code = ?) ORDER BY sort_order ASC, created_at ASC"
+        ).bind(now, now, tab, tab, countryCode).all();
+        return json({ ok: true, gifts: rows.results ?? [], countryCode }, 200, origin, env);
       } catch (error) {
         console.error("[gifts.catalog] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "gift_catalog_unavailable" }, 500, origin, env);
+      }
+    }
+
+    if (url.pathname === "/api/v1/gifts/custom-requests" && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+        const requestedName = typeof body.requestedName === "string" ? body.requestedName.trim() : "";
+        const description = typeof body.description === "string" ? body.description.trim() : "";
+        if (requestedName.length < 2 || requestedName.length > 80 || description.length > 500) return json({ error: "invalid_custom_gift_request", message: "اكتب اسم الهدية ووصفًا لا يتجاوز 500 حرف." }, 400, origin, env);
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const recent = await env.DB.prepare("SELECT COUNT(*) AS count FROM gift_custom_requests WHERE user_id = ? AND created_at >= ?").bind(user.id, since).first<{ count: number }>();
+        if (Number(recent?.count ?? 0) >= 5) return json({ error: "custom_gift_request_limit" }, 429, origin, env);
+        const id = crypto.randomUUID(), now = new Date().toISOString();
+        await env.DB.prepare("INSERT INTO gift_custom_requests (id, user_id, requested_name, description, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)")
+          .bind(id, user.id, requestedName, description, now).run();
+        return json({ ok: true, request: { id, requestedName, description, status: "pending", createdAt: now } }, 201, origin, env);
+      } catch (error) {
+        console.error("[gifts.custom-request] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "custom_gift_request_failed" }, 500, origin, env);
       }
     }
 
@@ -1734,15 +1829,18 @@ export default {
             "MIN(g.coin_price * ? * CASE WHEN b.id IS NULL THEN 1 ELSE 2 END, MAX(0, 3000000 - COALESCE(d.points, 0))), " +
             "CASE WHEN b.id IS NULL THEN 1 ELSE 2 END, b.id, ?, sender_wallet.balance, 'processing', ? " +
             "FROM rooms r JOIN gift_catalog g ON g.id = ? AND g.is_active = 1 " +
+            "AND (g.starts_at IS NULL OR g.starts_at <= ?) AND (g.ends_at IS NULL OR g.ends_at >= ?) " +
+            "LEFT JOIN profiles sender_profile ON sender_profile.user_id = ? " +
             "JOIN gift_revenue_settings s ON s.id = 'current' " +
             "JOIN users recipient ON recipient.id = ? AND recipient.status = 'active' " +
             "JOIN room_chat_visits v ON v.room_id = r.id AND v.user_id = recipient.id AND v.exited_at IS NULL AND v.last_seen_at >= ? " +
             "JOIN user_wallets sender_wallet ON sender_wallet.user_id = ? AND sender_wallet.balance >= g.coin_price * ? " +
             "LEFT JOIN room_exp_daily d ON d.user_id = ? AND d.day_key = ? " +
             "LEFT JOIN room_battles b ON b.room_id = r.id AND b.status = 'active' " +
-            "WHERE r.id = ? AND r.status = 'active' AND r.owner_user_id IS NOT NULL AND ? <> recipient.id"
+            "WHERE r.id = ? AND r.status = 'active' AND r.owner_user_id IS NOT NULL AND ? <> recipient.id " +
+            "AND (g.category <> 'country' OR g.country_code = CASE WHEN UPPER(TRIM(COALESCE(sender_profile.country_name, ''))) IN ('SOUTH_ARABIA', 'SOUTH ARABIA', 'الجنوب العربي') THEN 'SOUTH_ARABIA' ELSE UPPER(TRIM(COALESCE(sender_profile.country_code, ''))) END)"
           ).bind(transactionId, user.id, recipientUserId, quantity, quantity, quantity, quantity, quantity, quantity,
-            idempotencyKey, now, giftId, recipientUserId, presenceCutoff, user.id, quantity, user.id, now.slice(0, 10), roomId, user.id),
+            idempotencyKey, now, giftId, now, now, user.id, recipientUserId, presenceCutoff, user.id, quantity, user.id, now.slice(0, 10), roomId, user.id),
           env.DB.prepare(
             "UPDATE user_wallets SET balance = balance - (SELECT coin_cost FROM gift_transactions WHERE id = ? AND status = 'processing'), " +
             "updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM gift_transactions WHERE id = ? AND status = 'processing') " +
@@ -1810,7 +1908,11 @@ export default {
         ).bind(user.id, idempotencyKey).first<Record<string, unknown>>();
         if (!transaction) {
           const wallet = await env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>();
-          const gift = await env.DB.prepare("SELECT coin_price FROM gift_catalog WHERE id = ? AND is_active = 1").bind(giftId).first<{ coin_price: number }>();
+          const gift = await env.DB.prepare(
+            "SELECT g.coin_price FROM gift_catalog g LEFT JOIN profiles p ON p.user_id = ? " +
+            "WHERE g.id = ? AND g.is_active = 1 AND (g.starts_at IS NULL OR g.starts_at <= ?) AND (g.ends_at IS NULL OR g.ends_at >= ?) " +
+            "AND (g.category <> 'country' OR g.country_code = CASE WHEN UPPER(TRIM(COALESCE(p.country_name, ''))) IN ('SOUTH_ARABIA', 'SOUTH ARABIA', 'الجنوب العربي') THEN 'SOUTH_ARABIA' ELSE UPPER(TRIM(COALESCE(p.country_code, ''))) END)"
+          ).bind(user.id, giftId, now, now).first<{ coin_price: number }>();
           if (!gift) return json({ error: "gift_not_available" }, 404, origin, env);
           const room = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active'").bind(roomId).first<{ id: string }>();
           if (!room) return json({ error: "room_not_found" }, 404, origin, env);

@@ -22,6 +22,8 @@ dependencies:
   agora_rtc_engine: ^6.6.4
   permission_handler: ^13.0.2
   world_flags: ^2.1.0
+  gif_view: ^1.0.3
+  flutter_svga: ^0.0.14
 dev_dependencies:
   flutter_test:
     sdk: flutter

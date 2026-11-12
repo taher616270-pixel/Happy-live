@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const migration = await readFile(new URL("../migrations/0027_gift_economy_foundation.sql", import.meta.url), "utf8");
+const categoriesMigration = await readFile(new URL("../migrations/0028_gift_categories_events_custom.sql", import.meta.url), "utf8");
 const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const adminPage = await readFile(new URL("../../../frontend/web/admin/index.html", import.meta.url), "utf8");
 
@@ -95,4 +96,37 @@ test("battle multiplier can only be enabled through owner/moderator server-side 
   assert.match(worker, /INSERT INTO room_battles/);
   assert.match(worker, /UPDATE room_battles SET status = 'finished'/);
   assert.match(worker, /CASE WHEN b\.id IS NULL THEN 1 ELSE 2 END/);
+});
+
+test("gift categories support weekly event windows and country-specific gifts", () => {
+  assert.match(categoriesMigration, /category TEXT NOT NULL DEFAULT 'trending'/);
+  assert.match(categoriesMigration, /'event', 'trending', 'country', 'lucky', 'custom'/);
+  assert.match(categoriesMigration, /country_code TEXT/);
+  assert.match(categoriesMigration, /starts_at TEXT/);
+  assert.match(categoriesMigration, /ends_at TEXT/);
+  assert.match(worker, /url\.searchParams\.get\("tab"\)/);
+  assert.match(worker, /starts_at IS NULL OR starts_at <=/);
+  assert.match(worker, /country_name/);
+  assert.match(adminPage, /newGiftStarts/);
+  assert.match(adminPage, /newGiftEnds/);
+  assert.match(adminPage, /SOUTH_ARABIA/);
+});
+
+test("custom gift requests are authenticated, rate limited, and owner-reviewed", () => {
+  assert.match(categoriesMigration, /CREATE TABLE IF NOT EXISTS gift_custom_requests/);
+  assert.match(categoriesMigration, /status TEXT NOT NULL DEFAULT 'pending'/);
+  assert.match(worker, /\/api\/v1\/gifts\/custom-requests/);
+  assert.match(worker, /custom_gift_request_limit/);
+  assert.match(worker, /owner_permission_required/);
+  assert.match(worker, /INSERT INTO gift_catalog .*'custom'/);
+  assert.match(adminPage, /giftCustomRequestRows/);
+  assert.match(adminPage, /اعتماد وإنشاء/);
+});
+
+test("room gift sends enforce event windows and sender country eligibility", () => {
+  assert.match(worker, /g\.starts_at IS NULL OR g\.starts_at <=/);
+  assert.match(worker, /g\.ends_at IS NULL OR g\.ends_at >=/);
+  assert.match(worker, /sender_profile\.country_name/);
+  assert.match(worker, /g\.category <> 'country' OR g\.country_code = CASE/);
+  assert.match(worker, /THEN 'SOUTH_ARABIA'/);
 });
