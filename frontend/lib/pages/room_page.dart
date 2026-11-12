@@ -725,7 +725,7 @@ class _RoomPageState extends State<RoomPage> {
             Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/agora-token'),
             headers: _headers,
             body: jsonEncode({'publish': false}),
-          ).timeout(const Duration(seconds: 12));
+          ).timeout(const Duration(seconds: 25));
           final data = jsonDecode(response.body);
           if (!mounted) return;
           if (!_voiceEnabled) return;
