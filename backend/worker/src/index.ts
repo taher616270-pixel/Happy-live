@@ -643,7 +643,7 @@ export default {
             if (iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000) return json({ error: "invalid_approved_gift" }, 400, origin, env);
             const giftId = crypto.randomUUID();
             const results = await env.DB.batch([
-              env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at, category, media_url, media_type) " +
+              env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at, category, media_url, media_type, sound_url) " +
                 "SELECT ?, requested_name, ?, '', ?, 1, ?, ?, ?, 'custom', media_url, " +
                 "CASE WHEN media_type = 'gif' THEN 'apng' WHEN media_type = 'svga' THEN 'svga' ELSE 'emoji' END, sound_url " +
                 "FROM gift_custom_requests WHERE id = ? AND status = 'pending'")
