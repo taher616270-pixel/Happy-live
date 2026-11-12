@@ -1699,7 +1699,8 @@ export default {
         const pending = await env.DB.prepare("SELECT id FROM gift_custom_requests WHERE user_id = ? AND status = 'pending' LIMIT 1").bind(user.id).first<{id:string}>();
         if (pending) return json({ error: "custom_gift_request_pending", message: "لديك طلب هدية قيد المراجعة بالفعل." }, 409, origin, env);
         const id = crypto.randomUUID(), now = new Date().toISOString();
-        await env.DB.prepare("INSERT INTO gift_custom_requests (id, user_id, requested_name, details, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'pending', ?, ?)").bind(id, user.id, requestedName, details, now, now).run();
+        const inserted = await env.DB.prepare("INSERT OR IGNORE INTO gift_custom_requests (id, user_id, requested_name, details, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'pending', ?, ?)").bind(id, user.id, requestedName, details, now, now).run();
+        if ((inserted.meta?.changes ?? 0) !== 1) return json({ error: "custom_gift_request_pending", message: "لديك طلب هدية قيد المراجعة بالفعل." }, 409, origin, env);
         return json({ ok: true, request: { id, requestedName, details, status: "pending", createdAt: now } }, 201, origin, env);
       } catch (error) {
         console.error("[gifts.custom.request] failed", error instanceof Error ? error.message : "UnknownError");
