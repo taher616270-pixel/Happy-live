@@ -289,6 +289,42 @@ async function createAdminSession(db: D1Database, adminId: string) {
   return { accessToken, expiresAt };
 }
 
+type AdminAuditEntry = {
+  action: string;
+  targetType: string;
+  targetId: string;
+  details: Record<string, unknown>;
+  createdAt: string;
+};
+
+function adminAuditStatements(
+  db: D1Database,
+  actor: AdminActor,
+  entry: AdminAuditEntry
+): D1PreparedStatement[] {
+  const auditId = crypto.randomUUID();
+  const details = {
+    ...entry.details,
+    adminId: actor.id,
+    adminUsername: actor.username
+  };
+  return [
+    db.prepare(
+      "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?)"
+    ).bind(
+      auditId,
+      entry.action,
+      entry.targetType,
+      entry.targetId,
+      JSON.stringify(details),
+      entry.createdAt
+    ),
+    db.prepare(
+      "INSERT INTO admin_audit_actor_refs (audit_log_id, admin_id) VALUES (?, ?)"
+    ).bind(auditId, actor.id)
+  ];
+}
+
 const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -308,15 +344,9 @@ function allowedOrigins(env: Env): Set<string> {
 }
 
 function isAllowedOrigin(origin: string, env: Env): boolean {
-  if (allowedOrigins(env).has(origin)) return true;
-  try {
-    const parsed = new URL(origin);
-    return parsed.protocol === "https:" &&
-      parsed.origin === origin &&
-      parsed.hostname.endsWith(".happy-live.pages.dev");
-  } catch {
-    return false;
-  }
+  // Only explicitly trusted origins may access the API. Do not trust arbitrary
+  // preview/custom subdomains that happen to share the Pages hostname suffix.
+  return allowedOrigins(env).has(origin);
 }
 
 function json(data: unknown, status = 200, origin?: string, env?: Env): Response {
@@ -490,12 +520,14 @@ export default {
       url.pathname === "/api/v1/admin/moderators" ||
       url.pathname === "/api/v1/admin/rooms" ||
       url.pathname === "/api/v1/admin/audit" ||
+      url.pathname === "/api/v1/admin/accounts" ||
       url.pathname === "/api/v1/admin/agora/status" ||
       url.pathname === "/api/v1/admin/agora/voice" ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/kick$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/role$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/wallet\/credit$/i.test(url.pathname) ||
+      /^\/api\/v1\/admin\/accounts\/[0-9a-f-]{36}\/(role|status|password|revoke-sessions)$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/moderation$/i.test(url.pathname)
     ) {
@@ -794,8 +826,11 @@ export default {
         if (url.pathname === "/api/v1/admin/audit" && request.method === "GET") {
           if (!hasAdminPermission(actor, "audit.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const result = await env.DB.prepare(
-            "SELECT l.id, l.action, l.target_type, l.target_id, l.details_json, l.created_at, p.display_name AS actor_name, u.email AS actor_email " +
-            "FROM admin_audit_logs l LEFT JOIN users u ON u.id = l.actor_user_id LEFT JOIN profiles p ON p.user_id = l.actor_user_id " +
+            "SELECT l.id, l.action, l.target_type, l.target_id, l.details_json, l.created_at, COALESCE(aa.display_name, aa.username, p.display_name, u.email) AS actor_name, u.email AS actor_email " +
+            "FROM admin_audit_logs l " +
+            "LEFT JOIN admin_audit_actor_refs ar ON ar.audit_log_id = l.id " +
+            "LEFT JOIN admin_accounts aa ON aa.id = ar.admin_id " +
+            "LEFT JOIN users u ON u.id = l.actor_user_id LEFT JOIN profiles p ON p.user_id = l.actor_user_id " +
             "ORDER BY l.created_at DESC LIMIT 100"
           ).all();
           const entries = (result.results ?? []).map((entry) => {
@@ -822,6 +857,160 @@ export default {
             rooms: { total: rooms?.total ?? 0, active: rooms?.active ?? 0 },
             publishedPosts: posts?.total ?? 0, roomMessagesLast7Days: messages?.total ?? 0
           }, daily: { users: dailyUsers.results ?? [], messages: dailyMessages.results ?? [] }, topFollowers: topFollowers.results ?? [] } }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/accounts" && request.method === "GET") {
+          if (actor.role !== "owner") return json({ error: "permission_denied" }, 403, origin, env);
+          const query = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
+          const like = `%${query}%`;
+          const now = new Date().toISOString();
+          const result = await env.DB.prepare(
+            "SELECT a.id, a.username, a.display_name, a.status, a.created_at, r.role, COUNT(s.id) AS active_sessions " +
+            "FROM admin_accounts a " +
+            "LEFT JOIN admin_account_roles r ON r.admin_id = a.id " +
+            "LEFT JOIN admin_sessions s ON s.admin_id = a.id AND s.revoked_at IS NULL AND s.expires_at > ? " +
+            "WHERE (? = '' OR a.username LIKE ? OR a.display_name LIKE ?) " +
+            "GROUP BY a.id, a.username, a.display_name, a.status, a.created_at, r.role " +
+            "ORDER BY CASE WHEN r.role = 'owner' THEN 0 ELSE 1 END, a.created_at ASC LIMIT 200"
+          ).bind(now, query, like, like).all();
+          return json({ ok: true, admins: result.results ?? [] }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/accounts" && request.method === "POST") {
+          if (actor.role !== "owner") return json({ error: "permission_denied" }, 403, origin, env);
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
+          const displayName = typeof body.displayName === "string" ? body.displayName.trim() : "";
+          const role = body.role === "admin" || body.role === "moderator" ? body.role : null;
+          const password = typeof body.password === "string" ? body.password : "";
+          const confirmation = typeof body.confirmation === "string" ? body.confirmation : "";
+          if (!/^[a-z0-9][a-z0-9._-]{2,39}$/.test(username)) return json({ error: "invalid_admin_username" }, 400, origin, env);
+          if (!displayName || displayName.length > 80) return json({ error: "invalid_admin_display_name" }, 400, origin, env);
+          if (!role) return json({ error: "invalid_admin_role" }, 400, origin, env);
+          if (password.length < 12 || password.length > 128 || password !== confirmation) return json({ error: "invalid_password" }, 400, origin, env);
+          const existing = await env.DB.prepare("SELECT id FROM admin_accounts WHERE username = ? COLLATE NOCASE LIMIT 1")
+            .bind(username).first<{ id: string }>();
+          if (existing) return json({ error: "admin_username_unavailable" }, 409, origin, env);
+          const id = crypto.randomUUID();
+          const now = new Date().toISOString();
+          const passwordHash = await hashPassword(password);
+          try {
+            await env.DB.batch([
+              env.DB.prepare("INSERT INTO admin_accounts (id, username, display_name, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', ?, ?)")
+                .bind(id, username, displayName, passwordHash, now, now),
+              env.DB.prepare("INSERT INTO admin_account_roles (admin_id, role) VALUES (?, ?)")
+                .bind(id, role),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "admin.account.create",
+                targetType: "admin_account",
+                targetId: id,
+                details: { username, role },
+                createdAt: now
+              })
+            ]);
+          } catch (error) {
+            if (error instanceof Error && /UNIQUE constraint failed/i.test(error.message)) {
+              return json({ error: "admin_username_unavailable" }, 409, origin, env);
+            }
+            console.error("[admin.accounts.create] failed", error instanceof Error ? error.message : "UnknownError");
+            return json({ error: "admin_account_create_failed" }, 503, origin, env);
+          }
+          return json({ ok: true, admin: { id, username, display_name: displayName, role, status: "active" } }, 201, origin, env);
+        }
+        const adminAccountRoute = url.pathname.match(/^\/api\/v1\/admin\/accounts\/([0-9a-f-]{36})\/(role|status|password|revoke-sessions)$/i);
+        if (adminAccountRoute && (request.method === "PATCH" || request.method === "POST")) {
+          if (actor.role !== "owner") return json({ error: "permission_denied" }, 403, origin, env);
+          const targetId = adminAccountRoute[1];
+          const action = adminAccountRoute[2];
+          const target = await env.DB.prepare(
+            "SELECT a.id, a.username, a.status, r.role FROM admin_accounts a LEFT JOIN admin_account_roles r ON r.admin_id = a.id WHERE a.id = ? LIMIT 1"
+          ).bind(targetId).first<{ id: string; username: string; status: string; role: string | null }>();
+          if (!target) return json({ error: "admin_account_not_found" }, 404, origin, env);
+          if (target.role === "owner" || target.username.toLowerCase() === "owner") {
+            return json({ error: "owner_account_is_protected" }, 403, origin, env);
+          }
+
+          if (action === "role" && request.method === "PATCH") {
+            let body: Record<string, unknown>;
+            try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+            const nextRole = body.role === "admin" || body.role === "moderator" ? body.role : null;
+            if (!nextRole) return json({ error: "invalid_admin_role" }, 400, origin, env);
+            if (target.role === nextRole) return json({ ok: true, id: targetId, role: nextRole }, 200, origin, env);
+            const now = new Date().toISOString();
+            await env.DB.batch([
+              env.DB.prepare("INSERT INTO admin_account_roles (admin_id, role) VALUES (?, ?) ON CONFLICT(admin_id) DO UPDATE SET role = excluded.role")
+                .bind(targetId, nextRole),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "admin.account.role.update",
+                targetType: "admin_account",
+                targetId,
+                details: { role: nextRole },
+                createdAt: now
+              })
+            ]);
+            return json({ ok: true, id: targetId, role: nextRole }, 200, origin, env);
+          }
+
+          if (action === "status" && request.method === "PATCH") {
+            let body: Record<string, unknown>;
+            try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+            const nextStatus = body.status === "active" || body.status === "disabled" ? body.status : null;
+            if (!nextStatus) return json({ error: "invalid_admin_status" }, 400, origin, env);
+            if (target.id === actor.id && nextStatus === "disabled") return json({ error: "cannot_disable_current_admin" }, 409, origin, env);
+            if (target.status === nextStatus) return json({ ok: true, id: targetId, status: nextStatus }, 200, origin, env);
+            const now = new Date().toISOString();
+            const statements: D1PreparedStatement[] = [
+              env.DB.prepare("UPDATE admin_accounts SET status = ?, updated_at = ? WHERE id = ?").bind(nextStatus, now, targetId)
+            ];
+            if (nextStatus === "disabled") {
+              statements.push(env.DB.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL").bind(now, targetId));
+            }
+            statements.push(...adminAuditStatements(env.DB, actor, {
+              action: nextStatus === "disabled" ? "admin.account.disable" : "admin.account.enable",
+              targetType: "admin_account",
+              targetId,
+              details: { status: nextStatus, sessionsRevoked: nextStatus === "disabled" },
+              createdAt: now
+            }));
+            await env.DB.batch(statements);
+            return json({ ok: true, id: targetId, status: nextStatus }, 200, origin, env);
+          }
+
+          if (action === "password" && request.method === "POST") {
+            let body: Record<string, unknown>;
+            try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+            const password = typeof body.password === "string" ? body.password : "";
+            const confirmation = typeof body.confirmation === "string" ? body.confirmation : "";
+            if (password.length < 12 || password.length > 128 || password !== confirmation) return json({ error: "invalid_password" }, 400, origin, env);
+            const now = new Date().toISOString();
+            const passwordHash = await hashPassword(password);
+            await env.DB.batch([
+              env.DB.prepare("UPDATE admin_accounts SET password_hash = ?, updated_at = ? WHERE id = ?").bind(passwordHash, now, targetId),
+              env.DB.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL").bind(now, targetId),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "admin.account.password.rotate",
+                targetType: "admin_account",
+                targetId,
+                details: { passwordRotated: true, sessionsRevoked: true },
+                createdAt: now
+              })
+            ]);
+            return json({ ok: true, id: targetId, sessionsRevoked: true }, 200, origin, env);
+          }
+
+          if (action === "revoke-sessions" && request.method === "POST") {
+            const now = new Date().toISOString();
+            const results = await env.DB.batch([
+              env.DB.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL").bind(now, targetId),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "admin.account.sessions.revoke",
+                targetType: "admin_account",
+                targetId,
+                details: { scope: "all_sessions" },
+                createdAt: now
+              })
+            ]);
+            return json({ ok: true, id: targetId, revokedSessions: results[0]?.meta?.changes ?? 0 }, 200, origin, env);
+          }
         }
         if (url.pathname === "/api/v1/admin/moderators" && request.method === "GET") {
           if (!hasAdminPermission(actor, "users.roles.manage")) return json({ error: "permission_denied" }, 403, origin, env);
