@@ -155,4 +155,6 @@ test("Preview migrations are explicitly isolated from the production D1 database
   assert.match(wranglerConfig, /database_name = "happy-live-db"/);
   assert.match(packageJson.scripts["db:preview"], /wrangler\.preview-migrations\.toml/);
   assert.match(packageJson.scripts["db:preview"], /PREVIEW_DB/);
+  assert.match(packageJson.scripts["preview:deploy"], /wrangler preview --name cat-greed/);
+  assert.match(packageJson.scripts["preview:secrets:list"], /preview secret list --name cat-greed/);
 });
