@@ -17,7 +17,7 @@
 - `backend/worker/migrations/0034_cat_greed_wheel.sql`: الجداول والإعدادات والرموز والجولات.
 - `backend/worker/migrations/0035_cat_greed_ledger.sql`: دفتر حركات اللعبة.
 - `backend/worker/migrations/0036_cat_greed_bet_protection.sql`: مفاتيح منع تكرار الرهان وحدود الطلبات والقيم الافتراضية الأكثر أماناً.
-- توجد نسخ قديمة مكررة من migration 0034 و0035 داخل `migrations-cat-greed-preview/`، لكنها غير مرتبطة بأي Wrangler config أو script؛ المسار المعتمد الوحيد للتطبيق هو `migrations/` مع ملف Preview المخصص. لم أحذف النسخ حتى لا أزيل ملفات سابقة دون موافقة.
+- توجد نسخ مكررة من migrations 0034–0036 داخل `migrations-cat-greed-preview/`، لكنها غير مرتبطة بأي Wrangler config أو script؛ المسار المعتمد الوحيد للتطبيق هو `migrations/` مع ملف Preview المخصص. لم أحذف النسخ حتى لا أزيل ملفات سابقة دون موافقة. لم أحذف النسخ حتى لا أزيل ملفات سابقة دون موافقة.
 - `frontend/lib/pages/cat_greed_game.dart`: واجهة Flutter داخل الغرفة.
 - `frontend/web/cat-greed/`: الموقع المستقل للعبة.
 - `frontend/web/cat-greed-admin/`: لوحة اللعبة المستقلة.
