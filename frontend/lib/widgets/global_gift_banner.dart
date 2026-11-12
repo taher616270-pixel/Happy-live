@@ -228,6 +228,7 @@ class _GiftComboButtonState extends State<GiftComboButton> {
   int _remainingMs = 3000;
   bool _sending = false;
   bool _expired = false;
+  int _sentCount = 1;
 
   @override
   void initState() {
@@ -253,6 +254,7 @@ class _GiftComboButtonState extends State<GiftComboButton> {
     });
     try {
       await widget.onResend(1);
+      if (mounted) setState(() => _sentCount++);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -286,7 +288,7 @@ class _GiftComboButtonState extends State<GiftComboButton> {
               children: [
                 const Icon(Icons.replay_rounded, color: Color(0xFFFFD76A), size: 17),
                 const SizedBox(width: 7),
-                Text(_sending ? 'جارٍ التكرار…' : 'إرسال مرة أخرى',
+                Text(_sending ? 'جارٍ التكرار…' : 'إرسال مرة أخرى ×$_sentCount',
                     style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
                 const SizedBox(width: 9),
                 Text('${(_remainingMs / 1000).ceil()}',
