@@ -162,6 +162,8 @@ test("Preview migrations are explicitly isolated from the production D1 database
   assert.match(previewMigrationConfig, /database_name = "happy-live-room-exp-preview-db"/);
   assert.match(previewMigrationConfig, /database_id = "7ade3803-97bf-4f6d-9200-48b3dfb0573c"/);
   assert.match(previewMigrationConfig, /binding = "PREVIEW_DB"/);
+  assert.match(previewMigrationConfig, /migrations_dir = "migrations-cat-greed-preview"/);
+  assert.doesNotMatch(previewMigrationConfig, /migrations_dir = "migrations"/);
   assert.match(wranglerConfig, /database_name = "happy-live-room-exp-preview-db"/);
   assert.match(wranglerConfig, /database_name = "happy-live-db"/);
   assert.match(packageJson.scripts["db:preview"], /wrangler\.preview-migrations\.toml/);
