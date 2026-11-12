@@ -30,7 +30,7 @@ jobs:
 
       - name: Install Worker dependencies
         working-directory: backend/worker
-        run: npm ci
+        run: npm install --no-audit --no-fund --no-package-lock
 
       - name: Type-check Worker
         working-directory: backend/worker
