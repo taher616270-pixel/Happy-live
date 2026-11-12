@@ -7,11 +7,13 @@ const categoriesMigration = await readFile(new URL("../migrations/0028_gift_cate
 const customGiftMediaMigration = await readFile(new URL("../migrations/0030_custom_gift_media.sql", import.meta.url), "utf8");
 const giftSoundMigration = await readFile(new URL("../migrations/0031_gift_sound.sql", import.meta.url), "utf8");
 const customGiftSoundMigration = await readFile(new URL("../migrations/0032_custom_gift_request_sound.sql", import.meta.url), "utf8");
+const globalGiftBannerMigration = await readFile(new URL("../migrations/0033_global_gift_banner.sql", import.meta.url), "utf8");
 const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const adminPage = await readFile(new URL("../../../frontend/web/admin/index.html", import.meta.url), "utf8");
 const giftSheet = await readFile(new URL("../../../frontend/lib/widgets/room_gift_sheet.dart", import.meta.url), "utf8");
 const roomPage = await readFile(new URL("../../../frontend/lib/pages/room_page.dart", import.meta.url), "utf8");
 const roomSeatsHub = await readFile(new URL("../src/room_seats_hub.ts", import.meta.url), "utf8");
+const globalGiftHub = await readFile(new URL("../src/global_gift_hub.ts", import.meta.url), "utf8");
 
 test("gift revenue split defaults to 30/70 and is constrained to 100 percent", () => {
   assert.match(migration, /DEFAULT 30/);
@@ -136,7 +138,7 @@ test("custom gift requests are authenticated, rate limited, and owner-reviewed",
   assert.match(worker, /owner_permission_required/);
   assert.match(worker, /INSERT INTO gift_catalog[\s\S]*'custom'/);
   assert.match(worker, /category, media_url, media_type/);
-  assert.match(worker, /CASE WHEN media_type = 'gif' THEN 'apng'/);
+  assert.match(worker, /CASE WHEN media_type = 'gif' THEN 'gif'/);
   assert.match(adminPage, /giftCustomRequestRows/);
   assert.match(adminPage, /اعتماد وإنشاء/);
 });
@@ -208,4 +210,26 @@ test("animated gifts carry a separate optional audio asset to every room member"
   assert.match(worker, /sound_file_id/);
   assert.match(worker, /soundExtensionMatches/);
   assert.match(customGiftSoundMigration, /ALTER TABLE gift_custom_requests ADD COLUMN sound_url TEXT/);
+});
+
+
+test("global gift banners are authenticated, threshold-controlled, and delivered app-wide", () => {
+  assert.match(globalGiftBannerMigration, /CREATE TABLE IF NOT EXISTS gift_banner_settings/);
+  assert.match(globalGiftBannerMigration, /minimum_coins INTEGER NOT NULL DEFAULT 0/);
+  assert.match(worker, /\/api\/v1\/gifts\/global-stream/);
+  assert.match(worker, /authenticatedUser\(new Request\(request, \{ headers: authHeaders \}\), env\.DB\)/);
+  assert.match(worker, /giftCoins >= Number\(bannerSettings\.minimumCoins\)/);
+  assert.match(worker, /type: "global_gift_banner"/);
+  assert.match(worker, /GLOBAL_GIFTS/);
+  assert.match(globalGiftHub, /url\.pathname === "\/connect"/);
+  assert.match(globalGiftHub, /url\.pathname === "\/broadcast"/);
+  assert.match(adminPage, /giftBannerMinimum/);
+  assert.match(adminPage, /saveGiftBanner/);
+  assert.match(adminPage, /\/admin\/gifts\/banner-settings/);
+});
+
+test("global banner overlay and combo resend use the existing authenticated gift sender", () => {
+  assert.match(giftSheet, /GiftComboButton/);
+  assert.match(giftSheet, /widget\.onSend\(\s*_comboGift!/);
+  assert.match(roomPage, /rooms\/\$\{Uri\.encodeComponent\(_roomId\)\}\/gifts\/send/);
 });
