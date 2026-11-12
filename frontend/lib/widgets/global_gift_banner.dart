@@ -108,7 +108,7 @@ class _GiftBannerHostState extends State<GiftBannerHost> {
               child: _current == null
                   ? const SizedBox.shrink()
                   : Padding(
-                      padding: const EdgeInsets.only(top: 10, left: 12, right: 12),
+                      padding: const EdgeInsets.only(top: 110, left: 12, right: 12),
                       child: _GiftBannerCard(data: _current!),
                     ),
             ),
