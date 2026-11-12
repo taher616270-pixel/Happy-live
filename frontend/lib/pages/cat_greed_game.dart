@@ -52,7 +52,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
     try {
       final next=await _request('/games/cat-greed/state');
       if(!mounted)return;
-      if(next['enabled']!=true){setState(()=>_error='اللعبة غير متاحة حالياً');return;}
+      if(next['enabled']!=true&&next['roundId']==null){setState(()=>_error='اللعبة غير متاحة حالياً');return;}
       final round='${next['roundId']}';
       setState(()=>_state=next);
       if(next['phase']=='result' && round!=_animatedRound){_animatedRound=round;await _spin(next);}
@@ -85,7 +85,8 @@ class _CatGreedGameState extends State<CatGreedGame> {
 
   Future<void> _bet(int slot) async {
     final s=_state;
-    if(s==null||s['phase']!='betting'){_message('انتهى وقت الرهان');return;}
+    if(s==null||s['enabled']!=true){_message('اللعبة متوقفة حالياً');return;}
+    if(s['phase']!='betting'){_message('انتهى وقت الرهان');return;}
     if(_busy||(s['balance'] as num? ?? 0)<_chip){_message('الرصيد غير كافٍ أو يوجد طلب جارٍ');return;}
     final signature='undefined:$slot:$_chip';
     if(_pendingBetSignature!=signature){
@@ -144,7 +145,8 @@ class _CatGreedGameState extends State<CatGreedGame> {
                 const Spacer(),Text('🪙 ${_fmt(s['balance'])}',style:const TextStyle(color:Colors.white,fontWeight:FontWeight.bold)),
                 IconButton(onPressed:()=>Navigator.of(context).maybePop(),icon:const Icon(Icons.close,color:Colors.white)),
               ])),
-              Text('جولة ${s['roundId']} · ${s['phase']=='betting'?'استقبال الرهانات':'النتيجة'} · ${s['secondsLeft']} ث',style:const TextStyle(color:Colors.white70,fontWeight:FontWeight.bold)),
+              Text('جولة ${s['roundId']} · ${s['enabled']!=true?'اللعبة متوقفة':s['phase']=='betting'?'استقبال الرهانات':'النتيجة'} · ${s['secondsLeft']} ث',style:const TextStyle(color:Colors.white70,fontWeight:FontWeight.bold)),
+              if(s['enabled']!=true)const Padding(padding:EdgeInsets.all(4),child:Text('لا تُقبل رهانات جديدة؛ ستُعرض نتيجة الجولة الحالية وتُصرف جوائزها تلقائياً.',style:TextStyle(color:Color(0xFFFFD978),fontSize:11))),
               if(s['specialOdds'] is Map)Padding(padding:const EdgeInsets.symmetric(vertical:3),child:Text('السلطة ${(((s['specialOdds'] as Map)['saladWeightBp'] as num? ?? 0)/100).toStringAsFixed(2)}% · البيتزا ${(((s['specialOdds'] as Map)['pizzaWeightBp'] as num? ?? 0)/100).toStringAsFixed(2)}%',style:const TextStyle(color:Color(0xFFD4AF37),fontSize:10))),
               if(s['seedCommitment']!=null)Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:4),child:Text('بصمة نزاهة الجولة: ${s['seedCommitment'].toString().substring(0,s['seedCommitment'].toString().length<24?s['seedCommitment'].toString().length:24)}…',style:const TextStyle(color:Color(0xFFD4AF37),fontSize:10))),
               Expanded(child:LayoutBuilder(builder:(context,c){
@@ -182,7 +184,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
     final currentOdds=i<odds.length?Map<String,dynamic>.from(odds[i] as Map):<String,dynamic>{};
     final poolValues=pools.map((e)=>(e as num).toDouble()).toList();
     final hot=poolValues.isNotEmpty&&poolValues[i]==poolValues.reduce((a,b)=>a>b?a:b);
-    return GestureDetector(onTap:()=>_bet(i),child:AnimatedContainer(duration:const Duration(milliseconds:120),
+    return GestureDetector(onTap:s['enabled']==true?()=>_bet(i):null,child:AnimatedContainer(duration:const Duration(milliseconds:120),
       transform:Matrix4.identity()..scale(_hit==i?1.1:1.0),
       decoration:BoxDecoration(shape:BoxShape.circle,color:_hit==i?const Color(0xFFFFE68A):const Color(0xFFFFF3C4),border:Border.all(color:const Color(0xFFB67A39),width:3),boxShadow:_hit==i?[const BoxShadow(color:Color(0xFFFFD700),blurRadius:18,spreadRadius:3)]:null),
       child:Stack(alignment:Alignment.center,children:[
