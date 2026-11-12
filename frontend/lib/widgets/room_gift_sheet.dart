@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svga/flutter_svga.dart';
+import 'package:gif_view/gif_view.dart';
 
 typedef GiftCatalogLoader = Future<List<Map<String, dynamic>>> Function(String category);
 typedef RoomGiftSender = Future<int> Function(Map<String, dynamic> gift, int quantity, String recipientId);
@@ -290,6 +292,37 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     );
   }
 
+  Widget _giftMedia(Map<String, dynamic> gift) {
+    final url = (gift['mediaUrl'] ?? '').toString().trim();
+    final type = (gift['mediaType'] ?? 'emoji').toString().toLowerCase();
+    if (url.isEmpty || type == 'emoji') {
+      return Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 34));
+    }
+    if (type == 'svga') {
+      return SVGAEasyPlayer(resUrl: url, fit: BoxFit.contain);
+    }
+    if (type == 'apng') {
+      return GifView.network(
+        url,
+        width: 58,
+        height: 58,
+        fit: BoxFit.contain,
+        frameRate: 24,
+        errorBuilder: (context, error, tryAgain) => const Icon(Icons.broken_image_outlined, color: _muted, size: 28),
+      );
+    }
+    if (type == 'webp') {
+      return Image.network(
+        url,
+        width: 58,
+        height: 58,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: _muted, size: 28),
+      );
+    }
+    return Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 34));
+  }
+
   Widget _giftGrid() {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _giftsFuture,
@@ -321,7 +354,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
                   border: Border.all(color: selected ? _gold : Colors.transparent, width: 1.2),
                 ),
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 34)),
+                  SizedBox(width: 58, height: 58, child: Center(child: _giftMedia(gift))),
                   const SizedBox(height: 4),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 3),
