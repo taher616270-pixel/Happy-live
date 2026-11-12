@@ -61,6 +61,19 @@ CREATE INDEX IF NOT EXISTS idx_cat_greed_admin_audit_created
 CREATE UNIQUE INDEX IF NOT EXISTS idx_cat_greed_payout_transaction
   ON cat_greed_payouts(transaction_id) WHERE transaction_id IS NOT NULL;
 
+-- Defense in depth: even a missed application-level validation cannot insert
+-- an unsupported chip or a bet into a closed/non-betting round.
+CREATE TRIGGER IF NOT EXISTS cat_greed_bet_guard_insert
+BEFORE INSERT ON cat_greed_bets
+WHEN NEW.amount NOT IN (10, 500, 6000, 30000, 100000)
+  OR NOT EXISTS (
+    SELECT 1 FROM cat_greed_rounds
+    WHERE id=NEW.round_id AND phase='betting' AND julianday(closes_at)>julianday('now')
+  )
+BEGIN
+  SELECT RAISE(ABORT, 'invalid_or_closed_cat_greed_bet');
+END;
+
 -- Defense in depth: a settled normal round must have one slot; a special
 -- round must have no slot. A betting round must not expose a result.
 CREATE TRIGGER IF NOT EXISTS cat_greed_round_result_consistency_insert
