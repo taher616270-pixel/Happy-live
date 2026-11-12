@@ -106,9 +106,10 @@
 1. مراجعة PR وجميع التغييرات ومقارنة الملفات مع `main`.
 2. تشغيل `npm test` و`npm run typecheck` من `backend/worker`.
 3. تشغيل Flutter analyze/build للويب.
-4. تجهيز Worker Preview باستخدام Wrangler 4.135.0 أو أحدث عبر `wrangler preview` وربطه بقاعدة `happy-live-room-exp-preview-db` المعزولة، ثم تطبيق migrations 0034–0036 على قاعدة Preview فقط. لا تستخدم اسم قاعدة الإنتاج في هذا الاختبار.
-5. تجهيز حسابات اختبار مستقلة في Preview، وضبط أسرار ImageKit اللازمة للمعاينة عبر Cloudflare Secrets؛ لا تنسخ كلمات مرور أو أسرار الإنتاج ولا تحفظها في Git.
-6. ربط Pages Preview بعنوان Worker Preview المعزول ثم اختبار اللعبة ولوحات الإدارة. تبقى واجهات Preview معطلة حتى يتم هذا الربط صراحةً.
+4. من `backend/worker` نفّذ `npm run db:preview:list` لمراجعة المعلّق، ثم `npm run db:preview` لتطبيق migrations على `happy-live-room-exp-preview-db` فقط. ملف `wrangler.preview-migrations.toml` مخصص لهذه القاعدة؛ لا تستخدم `db:remote` لأنه يستهدف D1 الإنتاج.
+5. بعد نجاح migrations، أنشئ Worker Preview باسم `cat-greed` باستخدام `npx wrangler preview --name cat-greed` (Wrangler 4.135.0 أو أحدث). احتفظ بعنوان Preview الذي يرجعه الأمر.
+6. اضبط أسرار ImageKit المطلوبة على Preview عبر `wrangler preview secret put`؛ لا تنسخ كلمات مرور أو أسرار الإنتاج ولا تحفظها في Git. أنشئ حسابات اختبار منفصلة داخل قاعدة Preview.
+7. اربط Pages Preview بعنوان Worker Preview المعزول بعد التحقق منه. حالياً واجهات Pages Preview معطلة عمداً حتى يتم هذا الربط صراحةً.
 7. اختبار عدة لاعبين: الرصيد، طلبات مكررة، طلبات متزامنة، انتهاء الوقت، حدود الرهان، لاعب موقوف، صلاحيات الإدارة، وصرف الجائزة مرة واحدة.
 8. التحقق من بصمة ونتيجة جولات فعلية في Preview، وتجربة صور ImageKit وCSP في المتصفح.
 9. لا تطبق migrations على D1 الإنتاج ولا تنشر Worker/Pages ولا تفعّل اللعبة إلا بعد مراجعة نتائج الاختبار والموافقة على الإطلاق.
