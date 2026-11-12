@@ -1,4 +1,6 @@
-const PRODUCTION_API="https://happy-live-api.taher616270.workers.dev/api/v1",API=location.hostname==="happy-live.pages.dev"?PRODUCTION_API:"",chips=[10,500,6000,30000,100000];let token=sessionStorage.getItem("cat_greed_token")||"",state=null,chip=500,poll=null,animRound="",refreshing=false,betBusy=false,pendingKey="",pendingSignature="",proofRound="";
+const PRODUCTION_API="https://happy-live-api.taher616270.workers.dev/api/v1";
+function resolveApi(){if(location.hostname==="happy-live.pages.dev")return PRODUCTION_API;try{const u=new URL(new URLSearchParams(location.search).get("catGreedApi")||"");if(u.protocol==="https:"&&u.port===""&&u.username===""&&u.password===""&&u.hostname!=="happy-live-api.taher616270.workers.dev"&&/^[a-z0-9-]*happy-live-api[a-z0-9-]*\.taher616270\.workers\.dev$/i.test(u.hostname))return u.origin+"/api/v1"}catch{}return ""}
+const API=resolveApi(),chips=[10,500,6000,30000,100000];let token=sessionStorage.getItem("cat_greed_token")||"",state=null,chip=500,poll=null,animRound="",refreshing=false,betBusy=false,pendingKey="",pendingSignature="",proofRound="";
 const $=id=>document.getElementById(id),headers=()=>({"Content-Type":"application/json","Authorization":"Bearer "+token});
 const esc=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function safeImage(v){try{const u=new URL(String(v));return u.protocol==="https:"&&(u.hostname==="ik.imagekit.io"||u.hostname.endsWith(".imagekit.io"))?u.href:""}catch{return ""}}
