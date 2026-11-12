@@ -112,7 +112,7 @@ test("new migration defaults keep the maximum expected return below the activati
   const weights = [192,1988,648,1988,372,1988,972,1988];
   const total = weights.reduce((a,b)=>a+b,0);
   const maximum = Math.max(...weights.map((weight,index) =>
-    Math.round((9940 * weight / total) + 30) * multipliers[index]
+    Math.ceil((9940 * weight / total + 30) * multipliers[index])
   ));
   assert.ok(maximum <= 10000, "default theoretical return must stay at or below 100%");
 });
