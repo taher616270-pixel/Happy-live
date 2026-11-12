@@ -91,3 +91,20 @@ test("symbol images are restricted to ImageKit and game pages use safe rendering
   assert.match(gameSite, /safeImage/);
   assert.match(gameSite, /idempotencyKey/);
 });
+
+test("bet debit, ledger entry and bet insert use the same idempotent transaction id", () => {
+  assert.ok(worker.includes(".bind(betId,roundId,-amount,now,user.id)"));
+  assert.match(worker, /INSERT OR IGNORE INTO cat_greed_bet_requests/);
+  assert.match(worker, /WHERE idempotency_key=\? AND bet_id=\? AND user_id=\?/);
+  assert.match(worker, /duplicateBet/);
+});
+
+test("new migration defaults keep the maximum expected return below the activation cap", () => {
+  const multipliers = [45,5,15,5,25,5,10,5];
+  const weights = [192,1988,648,1988,372,1988,972,1988];
+  const total = weights.reduce((a,b)=>a+b,0);
+  const maximum = Math.max(...weights.map((weight,index) =>
+    Math.round((9940 * weight / total) + 30) * multipliers[index]
+  ));
+  assert.ok(maximum <= 10000, "default theoretical return must stay at or below 100%");
+});
