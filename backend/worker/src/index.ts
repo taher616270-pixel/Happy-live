@@ -307,6 +307,17 @@ function allowedOrigins(env: Env): Set<string> {
   return new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
 }
 
+function isValidGiftSoundUrl(value: string | null): boolean {
+  if (value === null) return true;
+  if (value.length > 2048) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" && /\.(mp3|m4a|ogg|wav)$/i.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
 function isAllowedOrigin(origin: string, env: Env): boolean {
   if (allowedOrigins(env).has(origin)) return true;
   try {
@@ -564,7 +575,7 @@ export default {
             const mediaUrl = typeof body.mediaUrl === "string" && body.mediaUrl.trim() ? body.mediaUrl.trim() : null;
             const mediaType = mediaUrl ? String(body.mediaType ?? "").toLowerCase() : "emoji";
             const soundUrl = typeof body.soundUrl === "string" && body.soundUrl.trim() ? body.soundUrl.trim() : null;
-            if (soundUrl && (soundUrl.length > 2048 || !/^https:\/\//i.test(soundUrl) || !/\.(mp3|m4a|ogg|wav)(?:$|[?#])/i.test(new URL(soundUrl).pathname + new URL(soundUrl).search))) return json({ error: "invalid_gift_sound", message: "ملف الصوت يجب أن يكون MP3 أو M4A أو OGG أو WAV برابط HTTPS." }, 400, origin, env);
+            if (!isValidGiftSoundUrl(soundUrl)) return json({ error: "invalid_gift_sound", message: "ملف الصوت يجب أن يكون MP3 أو M4A أو OGG أو WAV برابط HTTPS." }, 400, origin, env);
             if ((mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) || !["emoji", "svga", "apng", "webp"].includes(mediaType) || (mediaUrl && mediaType === "emoji") || (!mediaUrl && mediaType !== "emoji")) return json({ error: "invalid_gift_media", message: "رابط الوسائط يجب أن يكون HTTPS ونوعه SVGA أو APNG أو WEBP." }, 400, origin, env);
             if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من اسم الهدية ورمزها وسعرها وتصنيفها والدولة وفترة العرض." }, 400, origin, env);
             const id = crypto.randomUUID(), now = new Date().toISOString();
@@ -589,7 +600,7 @@ export default {
             const mediaUrl = body.mediaUrl === undefined ? (current.mediaUrl ? String(current.mediaUrl) : null) : (typeof body.mediaUrl === "string" && body.mediaUrl.trim() ? body.mediaUrl.trim() : null);
             const mediaType = body.mediaType === undefined ? String(current.mediaType ?? (mediaUrl ? "webp" : "emoji")) : String(body.mediaType).toLowerCase();
             const soundUrl = body.soundUrl === undefined ? (current.soundUrl ? String(current.soundUrl) : null) : (typeof body.soundUrl === "string" && body.soundUrl.trim() ? body.soundUrl.trim() : null);
-            if (soundUrl && (soundUrl.length > 2048 || !/^https:\/\//i.test(soundUrl) || !/\.(mp3|m4a|ogg|wav)(?:$|[?#])/i.test(new URL(soundUrl).pathname + new URL(soundUrl).search))) return json({ error: "invalid_gift_sound", message: "ملف الصوت يجب أن يكون MP3 أو M4A أو OGG أو WAV برابط HTTPS." }, 400, origin, env);
+            if (!isValidGiftSoundUrl(soundUrl)) return json({ error: "invalid_gift_sound", message: "ملف الصوت يجب أن يكون MP3 أو M4A أو OGG أو WAV برابط HTTPS." }, 400, origin, env);
             if ((mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) || !["emoji", "svga", "apng", "webp"].includes(mediaType) || (mediaUrl && mediaType === "emoji") || (!mediaUrl && mediaType !== "emoji")) return json({ error: "invalid_gift_media", message: "رابط الوسائط يجب أن يكون HTTPS ونوعه SVGA أو APNG أو WEBP." }, 400, origin, env);
             if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || ![0, 1].includes(isActive) || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من بيانات الهدية." }, 400, origin, env);
             const now = new Date().toISOString();
