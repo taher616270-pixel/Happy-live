@@ -1814,13 +1814,54 @@ class _RoomPageState extends State<RoomPage> {
           await _refreshSeats();
           return (refreshedData['balance'] as num).toInt();
         },
-        onRequestCustomGift: (name, description) async {
+        onRequestCustomGift: (name, description, bytes, fileName, mediaType, durationMs) async {
+          final authResponse = await http.get(
+            Uri.parse('$_apiBase/imagekit/auth'),
+            headers: _headers,
+          ).timeout(const Duration(seconds: 10));
+          final authData = jsonDecode(authResponse.body);
+          if (authResponse.statusCode != 200 || authData is! Map ||
+              authData['token'] == null || authData['signature'] == null ||
+              authData['expire'] == null || authData['publicKey'] == null) {
+            throw Exception('تعذر تجهيز الرفع إلى ImageKit');
+          }
+
+          final uploadRequest = http.MultipartRequest(
+            'POST',
+            Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
+          );
+          uploadRequest.fields.addAll({
+            'fileName': fileName,
+            'publicKey': authData['publicKey'].toString(),
+            'token': authData['token'].toString(),
+            'expire': authData['expire'].toString(),
+            'signature': authData['signature'].toString(),
+            'folder': '/happy-live/custom-gifts',
+            'useUniqueFileName': 'true',
+          });
+          uploadRequest.files.add(http.MultipartFile.fromBytes(
+            'file',
+            bytes,
+            filename: fileName,
+          ));
+          final uploadStream = await uploadRequest.send().timeout(const Duration(seconds: 60));
+          final uploadResponse = await http.Response.fromStream(uploadStream);
+          final uploadData = jsonDecode(uploadResponse.body);
+          if (uploadResponse.statusCode != 200 || uploadData is! Map ||
+              uploadData['url'] == null || uploadData['fileId'] == null) {
+            throw Exception('فشل رفع الملف إلى ImageKit');
+          }
+
           final response = await http.post(
             Uri.parse('$_apiBase/gifts/custom-requests'),
             headers: _headers,
             body: jsonEncode({
               'requestedName': name,
               'description': description,
+              'mediaUrl': uploadData['url'],
+              'mediaFileId': uploadData['fileId'],
+              'mediaType': mediaType,
+              'mediaDurationMs': durationMs,
             }),
           ).timeout(const Duration(seconds: 12));
           final data = jsonDecode(response.body);

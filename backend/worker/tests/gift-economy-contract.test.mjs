@@ -4,8 +4,11 @@ import { readFile } from "node:fs/promises";
 
 const migration = await readFile(new URL("../migrations/0027_gift_economy_foundation.sql", import.meta.url), "utf8");
 const categoriesMigration = await readFile(new URL("../migrations/0028_gift_categories_events_custom.sql", import.meta.url), "utf8");
+const customGiftMediaMigration = await readFile(new URL("../migrations/0030_custom_gift_media.sql", import.meta.url), "utf8");
 const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const adminPage = await readFile(new URL("../../../frontend/web/admin/index.html", import.meta.url), "utf8");
+const giftSheet = await readFile(new URL("../../../frontend/lib/widgets/room_gift_sheet.dart", import.meta.url), "utf8");
+const roomPage = await readFile(new URL("../../../frontend/lib/pages/room_page.dart", import.meta.url), "utf8");
 
 test("gift revenue split defaults to 30/70 and is constrained to 100 percent", () => {
   assert.match(migration, /DEFAULT 30/);
@@ -129,4 +132,26 @@ test("room gift sends enforce event windows and sender country eligibility", () 
   assert.match(worker, /sender_profile\.country_name/);
   assert.match(worker, /g\.category <> 'country' OR g\.country_code = CASE/);
   assert.match(worker, /THEN 'SOUTH_ARABIA'/);
+});
+
+test("custom gift animation uploads use ImageKit and are limited to GIF/SVGA under five seconds", () => {
+  assert.match(customGiftMediaMigration, /media_url TEXT/);
+  assert.match(customGiftMediaMigration, /media_type IS NULL OR media_type IN \('gif', 'svga'\)/);
+  assert.match(customGiftMediaMigration, /media_duration_ms BETWEEN 1 AND 5000/);
+  assert.match(worker, /\/api\/v1\/imagekit\/auth/);
+  assert.match(worker, /IMAGEKIT_PRIVATE_KEY/);
+  assert.match(worker, /ik\.imagekit\.io/);
+  assert.match(worker, /mediaDurationMs > 5000/);
+  assert.match(worker, /media_file_id/);
+  assert.match(adminPage, /mediaUrl/);
+  assert.match(adminPage, /عرض SVGA/);
+});
+
+test("custom gift creation UI uploads only selected GIF or SVGA files and sends the request for review", () => {
+  assert.match(giftSheet, /allowedExtensions: const \['gif', 'svga'\]/);
+  assert.match(giftSheet, /durationMs > 5000/);
+  assert.match(giftSheet, /_customHome\(\)/);
+  assert.match(roomPage, /upload\.imagekit\.io\/api\/v1\/files\/upload/);
+  assert.match(roomPage, /mediaFileId/);
+  assert.match(roomPage, /mediaDurationMs/);
 });
