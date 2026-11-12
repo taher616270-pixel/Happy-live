@@ -310,7 +310,7 @@ export async function handleCatGreedRequest(
       const enabled=hasEnabled?(body.enabled===false?0:body.enabled===true?1:null):null;
       const hasLimit=body.maxBetPerRound!=null;
       const limit=hasLimit?Number(body.maxBetPerRound):null;
-      if ((hasEnabled&&enabled===null)||(hasLimit&&(!Number.isSafeInteger(limit)||limit!<10||limit!>100000000))||(enabled===null&&limit===null)) return wheelError("invalid_player_control",400,json,origin,env);
+      if ((hasEnabled&&enabled===null)||(hasLimit&&(!Number.isSafeInteger(limit)||Number(limit)<10||Number(limit)>100000000))||(enabled===null&&limit===null)) return wheelError("invalid_player_control",400,json,origin,env);
       const userId=playerControl[1],now=isoNow();
       await db.prepare("INSERT INTO cat_greed_player_controls (user_id,enabled,max_bet_per_round,updated_by_admin_id,updated_at) VALUES (?,?,? ,?,?) ON CONFLICT(user_id) DO UPDATE SET enabled=COALESCE(?,enabled),max_bet_per_round=COALESCE(?,max_bet_per_round),updated_by_admin_id=excluded.updated_by_admin_id,updated_at=excluded.updated_at")
         .bind(userId,enabled??1,limit??1000000,admin.id,now,enabled,limit).run();
