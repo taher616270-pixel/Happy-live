@@ -117,8 +117,8 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   Future<void> _sendGift() async {
     final gift = _selectedGift;
     if (gift == null || _sending) return;
-    if (widget.recipients.isEmpty || _recipientId.isEmpty) {
-      _showMessage('لا يوجد أعضاء حاليًا لإرسال هدية لهم');
+    if (_recipientId.isEmpty) {
+      _showMessage('فشل تسليم الهدية، يجب عليك اختيار مستلم الهدية');
       return;
     }
     final price = (gift['coinPrice'] as num?)?.toInt() ?? 0;
@@ -194,14 +194,22 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
               ),
               if (_message != null)
                 Positioned(
-                  left: 12,
-                  right: 12,
+                  left: 0,
+                  right: 0,
                   bottom: 72,
                   child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(color: const Color(0xEE25212B), borderRadius: BorderRadius.circular(18)),
-                      child: Text(_message!, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * .52),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                        decoration: BoxDecoration(
+                          color: const Color(0xF02A2530),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0x55E8C477)),
+                          boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 14, offset: Offset(0, 4))],
+                        ),
+                        child: Text(_message!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.4)),
+                      ),
                     ),
                   ),
                 ),
@@ -411,7 +419,6 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   }
 
   Widget _bottomBar() {
-    final hasRecipient = widget.recipients.isNotEmpty && _recipientId.isNotEmpty;
     final selectedPrice = (_selectedGift?['coinPrice'] as num?)?.toInt() ?? 0;
     final total = selectedPrice * _quantity;
     return Padding(
@@ -442,12 +449,12 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
               ),
             ),
             GestureDetector(
-              onTap: _sending || !hasRecipient || _selectedGift == null || total > _balance ? null : _sendGift,
+              onTap: _sending || _selectedGift == null || total > _balance ? null : _sendGift,
               child: Container(
                 width: 92,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: !hasRecipient || _selectedGift == null || total > _balance ? const Color(0xFF514A57) : const Color(0xFF8A2BFF),
+                  color: _selectedGift == null || total > _balance ? const Color(0xFF514A57) : const Color(0xFF8A2BFF),
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: _sending ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(total > 0 ? 'إرسال · $total' : 'إرسال', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
