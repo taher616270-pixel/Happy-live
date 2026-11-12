@@ -53,7 +53,7 @@ class RoomLevelData {
     this.dailyExpCurrent = '0', this.dailyExpMax = '9.9m',
     this.dailyRatio = 0, this.dailyResetIn, this.tasks = const [],
     this.perkGroups = const [],
-    this.note = 'تُحتسب 600 نقطة خبرة كل 5 دقائق متواصلة على المايك، وترتفع إلى 1200 نقطة للحسابات خلال أول 15 يومًا من التسجيل. الحد اليومي لمساهمة المستخدم 3,000,000 نقطة في جميع الغرف.',
+    this.note = 'تُحتسب 600 نقطة خبرة كل 5 دقائق متواصلة على المايك، وترتفع إلى 1200 نقطة للحسابات خلال أول 15 يومًا من التسجيل. وتُحتسب نقطة خبرة لكل عملة ذهبية في الهدية، ونقطتان لكل عملة أثناء المباراة. الحد اليومي لمساهمة المستخدم 3,000,000 نقطة في جميع الغرف.',
   });
   final int level, exp, nextLevelExp;
   final String roomName, roomId, dailyExpCurrent, dailyExpMax, note;
@@ -66,7 +66,7 @@ class RoomLevelData {
 
 const kSampleTasks = <ExpTask>[
   ExpTask(title: 'اخذ المقعد', desc: '+600 نقطة، أو +1200 للحسابات خلال أول 15 يومًا، مقابل كل 5 دقائق متواصلة على المايك', current: 'تُحتسب تلقائيًا', max: '600 / 1200 كل 5 دقائق', icon: Icons.mic),
-  ExpTask(title: 'ارسل الهدايا في الغرفة', desc: 'سيتم احتساب خبرة الهدايا بعد ربط خدمة إرسال الهدايا بالخادم', current: 'قريبًا', max: 'غير مفعّل', icon: Icons.card_giftcard),
+  ExpTask(title: 'ارسل الهدايا في الغرفة', desc: '+1 نقطة خبرة لكل عملة ذهبية، وتصبح +2 نقاط لكل عملة أثناء المباراة', current: 'تُحتسب تلقائيًا', max: '1 / 2 نقطة لكل عملة', icon: Icons.card_giftcard),
 ];
 const kSamplePerks = <LevelPerksGroup>[
   LevelPerksGroup(1, [
