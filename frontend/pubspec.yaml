@@ -25,6 +25,7 @@ dependencies:
   world_flags: ^2.1.0
   gif_view: ^1.0.3
   flutter_svga: ^0.0.14
+  audioplayers: ^6.5.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
