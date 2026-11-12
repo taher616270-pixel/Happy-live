@@ -202,8 +202,12 @@ export async function handleCatGreedRequest(
       let betReceipt: { id: string; roundId: string; slot: number; amount: number } | null = null;
       let duplicateBet = false;
       if (publicBet) {
+        const contentType=request.headers.get("Content-Type")??"";
+        const declaredLength=Number(request.headers.get("Content-Length")??0);
+        if(!contentType.toLowerCase().includes("application/json")) return wheelError("content_type_not_supported",415,json,origin,env);
+        if(Number.isFinite(declaredLength)&&declaredLength>2048) return wheelError("request_too_large",413,json,origin,env);
         const rawBody = await request.text();
-        if (rawBody.length > 2048) return wheelError("request_too_large",413,json,origin,env);
+        if (new TextEncoder().encode(rawBody).byteLength > 2048) return wheelError("request_too_large",413,json,origin,env);
         let body: any;
         try { body = JSON.parse(rawBody); } catch { return wheelError("invalid_json",400,json,origin,env); }
         if (!body || typeof body !== "object" || Array.isArray(body)) return wheelError("invalid_bet",400,json,origin,env);
