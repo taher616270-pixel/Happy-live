@@ -40,6 +40,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.onMinimizeRoom,
     this.onCloseRoom,
     this.onUpgradeRoom,
+    this.onOpenGifts,
     required this.chatController,
     required this.chatFocusNode,
     required this.onSendChat,
@@ -67,6 +68,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final VoidCallback? onMinimizeRoom;
   final VoidCallback? onCloseRoom;
   final Future<void> Function(String roomId, int level)? onUpgradeRoom;
+  final VoidCallback? onOpenGifts;
   final TextEditingController chatController;
   final FocusNode chatFocusNode;
   final Future<void> Function() onSendChat;
@@ -1584,7 +1586,14 @@ Widget _roomActionButton({
             const Spacer(),
             const Icon(Icons.sports_esports_outlined, color: Colors.white, size: 30),
             const SizedBox(width: 13),
-            const Icon(Icons.card_giftcard, color: Color(0xFFFFA726), size: 32),
+            InkWell(
+              onTap: onOpenGifts,
+              borderRadius: BorderRadius.circular(24),
+              child: const Padding(
+                padding: EdgeInsets.all(3),
+                child: Icon(Icons.card_giftcard, color: Color(0xFFFFA726), size: 32),
+              ),
+            ),
             const SizedBox(width: 13),
             const Icon(Icons.apps, color: Colors.white, size: 30),
           ],
