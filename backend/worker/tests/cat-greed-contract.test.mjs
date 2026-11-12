@@ -16,9 +16,10 @@ const gameScript = await readFile(new URL("../../../frontend/web/cat-greed/app.j
 const pageHeaders = await readFile(new URL("../../../frontend/web/_headers", import.meta.url), "utf8");
 
 test("Cat Greed stores rounds, bets, payouts, symbols and player limits separately", () => {
-  for (const table of ["cat_greed_settings","cat_greed_symbols","cat_greed_rounds","cat_greed_bets","cat_greed_payouts","cat_greed_player_controls","cat_greed_admin_audit","cat_greed_ledger"]) {
+  for (const table of ["cat_greed_settings","cat_greed_symbols","cat_greed_rounds","cat_greed_bets","cat_greed_payouts","cat_greed_player_controls","cat_greed_admin_audit"]) {
     assert.match(migration, new RegExp("CREATE TABLE IF NOT EXISTS " + table));
   }
+  assert.match(ledgerMigration, /CREATE TABLE IF NOT EXISTS cat_greed_ledger/);
   assert.match(migration, /idx_cat_greed_one_betting_round/);
 });
 
