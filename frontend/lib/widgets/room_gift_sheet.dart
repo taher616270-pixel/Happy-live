@@ -87,6 +87,8 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   bool _sending = false;
   Map<String, dynamic>? _comboGift;
   String? _comboRecipientId;
+  int _comboCount = 1;
+  int _comboNonce = 0;
   bool _requesting = false;
   String? _message;
   final _customName = TextEditingController();
@@ -162,6 +164,8 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
           _selectedGift = null;
           _comboGift = recipientIds.length == 1 ? Map<String, dynamic>.from(gift) : null;
           _comboRecipientId = recipientIds.length == 1 ? recipientIds.first : null;
+          _comboCount = 1;
+          _comboNonce++;
         });
         _showMessage(recipientIds.length == 1 ? 'تم إرسال الهدية بنجاح' : 'تم إرسال الهدية إلى $sent مستلمين');
       }
@@ -302,22 +306,37 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
                   if (_comboGift != null && _comboRecipientId != null)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                      child: GiftComboButton(
-                        onResend: (quantity) async {
-                          final updatedBalance = await widget.onSend(
-                            _comboGift!,
-                            quantity,
-                            _comboRecipientId!,
-                          );
-                          if (mounted) setState(() => _balance = updatedBalance);
-                        },
-                        onExpired: () {
-                          if (!mounted) return;
-                          setState(() {
-                            _comboGift = null;
-                            _comboRecipientId = null;
-                          });
-                        },
+                      child: GiftComboBanner(
+                        senderName: 'أنت',
+                        receiverName: (widget.recipients.firstWhere(
+                          (item) => (item['userId'] ?? '').toString() == _comboRecipientId,
+                          orElse: () => const <String, dynamic>{'name': 'المستلم'},
+                        )['name'] ?? 'المستلم').toString(),
+                        giftImage: (_comboGift!['mediaUrl'] ?? _comboGift!['iconEmoji'] ?? '🎁').toString(),
+                        count: _comboCount,
+                        child: GiftComboButton(
+                          key: ValueKey('gift-combo-$_comboNonce'),
+                          onResend: (quantity) async {
+                            final updatedBalance = await widget.onSend(
+                              _comboGift!,
+                              quantity,
+                              _comboRecipientId!,
+                            );
+                            if (mounted) {
+                              setState(() {
+                                _balance = updatedBalance;
+                                _comboCount += quantity;
+                              });
+                            }
+                          },
+                          onExpired: () {
+                            if (!mounted) return;
+                            setState(() {
+                              _comboGift = null;
+                              _comboRecipientId = null;
+                            });
+                          },
+                        ),
                       ),
                     ),
                   if (_tab != 'vip') _bottomBar(),
