@@ -192,7 +192,7 @@ test("every sensitive admin audit write records a relational actor reference", (
 test("migration backfills legacy admin actor ids from valid audit JSON", () => {
   assert.match(auditMigration, /json_valid\(l\.details_json\) = 1/);
   assert.match(auditMigration, /json_extract\(l\.details_json, '\$\.adminId'\)/);
-  assert.match(auditMigration, /EXISTS \([\s\S]*FROM admin_accounts a[\s\S]*a\.id = json_extract/);
+  assert.match(auditMigration, /EXISTS \([\s\S]*FROM admin_accounts a[\s\S]*a\.id = CASE WHEN json_valid/);
 });
 
 
