@@ -153,3 +153,31 @@ test("admin account UI is owner-only and uses the authenticated Worker API", () 
   assert.match(adminUi, /api\(\"\/admin\/accounts/);
   assert.match(adminUi, /\/admin\/accounts\/.*\/password/);
 });
+
+
+test("every sensitive admin audit write records a relational actor reference", () => {
+  const start = worker.indexOf("// Admin API: authentication uses a separate admin-only session table.");
+  const end = worker.indexOf('if (url.pathname === "/api/v1/auth/google"', start);
+  assert.ok(start >= 0 && end > start, "admin API block must exist");
+  const adminRoutes = worker.slice(start, end);
+  assert.doesNotMatch(adminRoutes, /INSERT INTO admin_audit_logs/);
+  assert.match(adminRoutes, /adminAuditStatements\(env\.DB, actor,/);
+  for (const action of [
+    "wallet.credit",
+    "agora.voice.enable",
+    "agora.voice.disable",
+    "user.kick",
+    "user.suspend",
+    "user.activate",
+    "room.close",
+    "room.reopen",
+    "room.user.mute",
+    "room.user.unmute"
+  ]) assert.ok(adminRoutes.includes(action), `expected audited action ${action}`);
+});
+
+test("migration backfills legacy admin actor ids from valid audit JSON", () => {
+  assert.match(auditMigration, /json_valid\(l\.details_json\) = 1/);
+  assert.match(auditMigration, /json_extract\(l\.details_json, '\$\.adminId'\)/);
+  assert.match(auditMigration, /EXISTS \([\s\S]*FROM admin_accounts a[\s\S]*a\.id = json_extract/);
+});
