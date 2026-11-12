@@ -184,14 +184,19 @@ async function giftsPage(){
     '<label style="display:grid;gap:6px">الرمز<input id="newGiftEmoji" class="search" maxlength="16" value="🎁" required></label>' +
     '<label style="display:grid;gap:6px">السعر بالعملات<input id="newGiftPrice" class="search" type="number" min="1" step="1" required placeholder="999"></label>' +
     '<label style="display:grid;gap:6px">الترتيب<input id="newGiftOrder" class="search" type="number" min="0" value="100"></label>' +
+    '<label style="display:grid;gap:6px">التصنيف<select id="newGiftCategory" class="search"><option value="trending">رائج</option><option value="event">حدث</option><option value="country">الدولة</option><option value="lucky">حظ</option></select></label>' +
+    '<label style="display:grid;gap:6px">الدولة (لهدايا الدولة)<input id="newGiftCountry" class="search" maxlength="80" placeholder="مثل: Kuwait"></label>' +
+    '<label style="display:grid;gap:6px">بداية الحدث<input id="newGiftStartsAt" class="search" type="datetime-local"></label>' +
+    '<label style="display:grid;gap:6px">نهاية الحدث<input id="newGiftEndsAt" class="search" type="datetime-local"></label>' +
     '<button class="action" type="submit">＋ إضافة هدية</button></form><div id="giftCatalogMessage" class="muted"></div>' +
-    '<div class="table-wrap"><table><thead><tr><th>الهدية</th><th>السعر</th><th>الترتيب</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody id="giftCatalogRows"><tr><td colspan="5" class="loading">جارٍ تحميل الكتالوج…</td></tr></tbody></table></div></div>';
+    '<div class="table-wrap"><table><thead><tr><th>الهدية</th><th>التصنيف</th><th>الدولة/المدة</th><th>السعر</th><th>الترتيب</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody id="giftCatalogRows"><tr><td colspan="7" class="loading">جارٍ تحميل الكتالوج…</td></tr></tbody></table></div></div>' +
+    '<div class="section"><div class="section-head"><div><h2>طلبات الهدايا المخصصة</h2><p class="muted">اعتمد الطلب لتحويل الاسم المقترح إلى هدية فعلية في تبويب مخصص.</p></div></div><div class="table-wrap"><table><thead><tr><th>اسم الهدية</th><th>صاحب الطلب</th><th>التفاصيل</th><th>التاريخ</th><th>الإجراء</th></tr></thead><tbody id="customGiftRequestRows"><tr><td colspan="5" class="loading">جارٍ تحميل الطلبات…</td></tr></tbody></table></div></div>';
   if(canEdit){
     const catalogMessage=$("giftCatalogMessage");
     const loadCatalog=async()=>{
       const result=await api("/admin/gifts/catalog");
       const rows=result.gifts||[];
-      $("giftCatalogRows").innerHTML=rows.length?rows.map(g=>'<tr><td><span style="font-size:24px;margin-left:8px">'+esc(g.iconEmoji||"🎁")+'</span><strong>'+esc(g.name)+'</strong></td><td>'+Number(g.coinPrice).toLocaleString("en-US")+' عملة</td><td>'+Number(g.sortOrder||0)+'</td><td>'+(Number(g.isActive)===1||g.isActive===true?'<span class="badge good">نشطة</span>':'<span class="badge bad">متوقفة</span>')+'</td><td><div class="room-tools"><button class="action" data-gift-edit="'+esc(g.id)+'">تعديل</button><button class="action" data-gift-toggle="'+esc(g.id)+'" data-active="'+(Number(g.isActive)===1||g.isActive===true?"1":"0")+'">'+(Number(g.isActive)===1||g.isActive===true?"تعطيل":"تفعيل")+'</button></div></td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد هدايا في الكتالوج.</td></tr>';
+      $("giftCatalogRows").innerHTML=rows.length?rows.map(g=>'<tr><td><span style="font-size:24px;margin-left:8px">'+esc(g.iconEmoji||"🎁")+'</span><strong>'+esc(g.name)+'</strong></td><td>'+esc(({trending:"رائج",event:"حدث",country:"الدولة",lucky:"حظ",custom:"مخصص"})[g.category]||"رائج")+'</td><td>'+esc(g.countryName||((g.startsAt||g.endsAt)?((g.startsAt||"")+" — "+(g.endsAt||"")):"—"))+'</td><td>'+Number(g.coinPrice).toLocaleString("en-US")+' عملة</td><td>'+Number(g.sortOrder||0)+'</td><td>'+(Number(g.isActive)===1||g.isActive===true?'<span class="badge good">نشطة</span>':'<span class="badge bad">متوقفة</span>')+'</td><td><div class="room-tools"><button class="action" data-gift-edit="'+esc(g.id)+'">تعديل</button><button class="action" data-gift-toggle="'+esc(g.id)+'" data-active="'+(Number(g.isActive)===1||g.isActive===true?"1":"0")+'">'+(Number(g.isActive)===1||g.isActive===true?"تعطيل":"تفعيل")+'</button></div></td></tr>').join(""):'<tr><td colspan="7" class="empty">لا توجد هدايا في الكتالوج.</td></tr>';
       document.querySelectorAll("[data-gift-edit]").forEach(button=>button.onclick=async()=>{
         const gift=rows.find(x=>x.id===button.dataset.giftEdit);if(!gift)return;
         const name=window.prompt("اسم الهدية",gift.name);if(name===null)return;
@@ -200,8 +205,12 @@ async function giftsPage(){
         const coinPrice=Number(raw);
         const orderRaw=window.prompt("ترتيب العرض",String(gift.sortOrder||0));if(orderRaw===null)return;
         const sortOrder=Number(orderRaw);
+        const category=window.prompt("التصنيف: trending / event / country / lucky / custom",gift.category||"trending");if(category===null)return;
+        const countryName=window.prompt("اسم الدولة (لهدايا الدولة فقط)",gift.countryName||"");if(countryName===null)return;
+        const startsAt=window.prompt("بداية الحدث بصيغة ISO (لهدايا الحدث)",gift.startsAt||"");if(startsAt===null)return;
+        const endsAt=window.prompt("نهاية الحدث بصيغة ISO (لهدايا الحدث)",gift.endsAt||"");if(endsAt===null)return;
         if(!name.trim()||!iconEmoji.trim()||!Number.isSafeInteger(coinPrice)||coinPrice<1||!Number.isSafeInteger(sortOrder)||sortOrder<0){alert("بيانات الهدية غير صحيحة.");return}
-        try{await api("/admin/gifts/catalog/"+encodeURIComponent(gift.id),{method:"PATCH",body:JSON.stringify({name:name.trim(),iconEmoji:iconEmoji.trim(),coinPrice,sortOrder})});catalogMessage.textContent="تم تحديث الهدية.";await loadCatalog()}catch(error){alert(error.message)}
+        try{await api("/admin/gifts/catalog/"+encodeURIComponent(gift.id),{method:"PATCH",body:JSON.stringify({name:name.trim(),iconEmoji:iconEmoji.trim(),coinPrice,sortOrder,category,countryName,startsAt,endsAt})});catalogMessage.textContent="تم تحديث الهدية.";await loadCatalog()}catch(error){alert(error.message)}
       });
       document.querySelectorAll("[data-gift-toggle]").forEach(button=>button.onclick=async()=>{
         const active=button.dataset.active==="1";
@@ -210,14 +219,29 @@ async function giftsPage(){
     };
     $("giftCreateForm").onsubmit=async event=>{
       event.preventDefault();
-      const name=$("newGiftName").value.trim(),iconEmoji=$("newGiftEmoji").value.trim(),coinPrice=Number($("newGiftPrice").value),sortOrder=Number($("newGiftOrder").value);
+      const name=$("newGiftName").value.trim(),iconEmoji=$("newGiftEmoji").value.trim(),coinPrice=Number($("newGiftPrice").value),sortOrder=Number($("newGiftOrder").value),category=$("newGiftCategory").value,countryName=$("newGiftCountry").value.trim(),startsAt=$("newGiftStartsAt").value?new Date($("newGiftStartsAt").value).toISOString():"",endsAt=$("newGiftEndsAt").value?new Date($("newGiftEndsAt").value).toISOString():"";
       if(!name||!iconEmoji||!Number.isSafeInteger(coinPrice)||coinPrice<1||!Number.isSafeInteger(sortOrder)||sortOrder<0){catalogMessage.textContent="تحقق من الاسم والرمز والسعر والترتيب.";return}
       const submit=event.submitter;submit.disabled=true;catalogMessage.textContent="جارٍ إضافة الهدية…";
-      try{await api("/admin/gifts/catalog",{method:"POST",body:JSON.stringify({name,iconEmoji,coinPrice,sortOrder,isActive:true})});$("giftCreateForm").reset();$("newGiftEmoji").value="🎁";$("newGiftOrder").value="100";catalogMessage.textContent="تمت إضافة الهدية وتفعيلها.";await loadCatalog()}
+      try{await api("/admin/gifts/catalog",{method:"POST",body:JSON.stringify({name,iconEmoji,coinPrice,sortOrder,isActive:true,category,countryName,startsAt,endsAt})});$("giftCreateForm").reset();$("newGiftEmoji").value="🎁";$("newGiftOrder").value="100";catalogMessage.textContent="تمت إضافة الهدية وتفعيلها.";await loadCatalog()}
       catch(error){catalogMessage.textContent=error.message||"تعذرت إضافة الهدية."}
       finally{submit.disabled=false}
     };
     await loadCatalog();
+    const loadCustomRequests=async()=>{
+      const result=await api("/admin/gifts/custom-requests?status=pending");
+      const requests=result.requests||[];
+      $("customGiftRequestRows").innerHTML=requests.length?requests.map(r=>'<tr><td>'+esc(r.requestedName)+'</td><td>'+esc(r.userName||"مستخدم")+' · '+esc(r.userCode||"—")+'</td><td>'+esc(r.details||"—")+'</td><td>'+esc(new Date(r.createdAt).toLocaleString("ar"))+'</td><td><div class="room-tools"><button class="action" data-custom-approve="'+esc(r.id)+'">اعتماد</button><button class="action" data-custom-reject="'+esc(r.id)+'">رفض</button></div></td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد طلبات معلقة.</td></tr>';
+      document.querySelectorAll("[data-custom-approve]").forEach(button=>button.onclick=async()=>{
+        const price=Number(window.prompt("سعر الهدية بالعملات","999"));if(!Number.isSafeInteger(price)||price<1)return;
+        const emoji=window.prompt("رمز الهدية","🎁");if(emoji===null)return;
+        try{await api("/admin/gifts/custom-requests/"+encodeURIComponent(button.dataset.customApprove),{method:"PATCH",body:JSON.stringify({status:"approved",coinPrice:price,iconEmoji:emoji})});await loadCustomRequests();await loadCatalog()}catch(error){alert(error.message)}
+      });
+      document.querySelectorAll("[data-custom-reject]").forEach(button=>button.onclick=async()=>{
+        const reviewNote=window.prompt("سبب الرفض (اختياري)","");if(reviewNote===null)return;
+        try{await api("/admin/gifts/custom-requests/"+encodeURIComponent(button.dataset.customReject),{method:"PATCH",body:JSON.stringify({status:"rejected",reviewNote})});await loadCustomRequests()}catch(error){alert(error.message)}
+      });
+    };
+    await loadCustomRequests();
     $("saveGiftSplit").onclick=async()=>{
       const appPercent=Number($("giftAppPercent").value),recipientPercent=Number($("giftRecipientPercent").value),message=$("giftSettingsMessage");
       if(!Number.isInteger(appPercent)||!Number.isInteger(recipientPercent)||appPercent+recipientPercent!==100){message.textContent="يجب أن تكون النسب أعدادًا صحيحة ومجموعها 100%.";return}
