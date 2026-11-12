@@ -604,7 +604,7 @@ export default {
           if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const requestRoute = url.pathname.match(/^\/api\/v1\/admin\/gifts\/custom-requests\/([0-9a-f-]{36})$/i);
           if (request.method === "GET" && !requestRoute) {
-            const rows = await env.DB.prepare("SELECT r.id, r.requested_name AS requestedName, r.description, r.status, r.admin_note AS adminNote, r.created_at AS createdAt, p.display_name AS displayName, p.gabo_id AS gaboId FROM gift_custom_requests r LEFT JOIN profiles p ON p.user_id = r.user_id ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, r.created_at DESC LIMIT 200").all();
+            const rows = await env.DB.prepare("SELECT r.id, r.requested_name AS requestedName, r.description, r.media_url AS mediaUrl, r.media_type AS mediaType, r.media_duration_ms AS mediaDurationMs, r.media_file_id AS mediaFileId, r.status, r.admin_note AS adminNote, r.created_at AS createdAt, p.display_name AS displayName, p.gabo_id AS gaboId FROM gift_custom_requests r LEFT JOIN profiles p ON p.user_id = r.user_id ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, r.created_at DESC LIMIT 200").all();
             return json({ ok: true, requests: rows.results ?? [] }, 200, origin, env);
           }
           if (request.method === "PATCH" && requestRoute) {
@@ -1721,14 +1721,28 @@ export default {
         try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
         const requestedName = typeof body.requestedName === "string" ? body.requestedName.trim() : "";
         const description = typeof body.description === "string" ? body.description.trim() : "";
+        const mediaUrl = typeof body.mediaUrl === "string" ? body.mediaUrl.trim() : "";
+        const mediaType = typeof body.mediaType === "string" ? body.mediaType.trim().toLowerCase() : "";
+        const mediaFileId = typeof body.mediaFileId === "string" ? body.mediaFileId.trim() : "";
+        const mediaDurationMs = Number(body.mediaDurationMs);
         if (requestedName.length < 2 || requestedName.length > 80 || description.length > 500) return json({ error: "invalid_custom_gift_request", message: "اكتب اسم الهدية ووصفًا لا يتجاوز 500 حرف." }, 400, origin, env);
+        let parsedMediaUrl: URL | null = null;
+        try { parsedMediaUrl = new URL(mediaUrl); } catch { parsedMediaUrl = null; }
+        if (!parsedMediaUrl || parsedMediaUrl.protocol !== "https:" || parsedMediaUrl.hostname !== "ik.imagekit.io" ||
+            !["gif", "svga"].includes(mediaType) || !mediaFileId || !Number.isInteger(mediaDurationMs) ||
+            mediaDurationMs < 1 || mediaDurationMs > 5000) {
+          return json({ error: "invalid_custom_gift_media", message: "يُسمح بملفات GIF أو SVGA فقط، وبمدة لا تتجاوز 5 ثوانٍ، عبر ImageKit." }, 400, origin, env);
+        }
+        if (mediaType === "gif" && !/\\.gif(?:$|[?#])/i.test(parsedMediaUrl.pathname + parsedMediaUrl.search)) {
+          return json({ error: "invalid_custom_gift_media_type" }, 400, origin, env);
+        }
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const recent = await env.DB.prepare("SELECT COUNT(*) AS count FROM gift_custom_requests WHERE user_id = ? AND created_at >= ?").bind(user.id, since).first<{ count: number }>();
         if (Number(recent?.count ?? 0) >= 5) return json({ error: "custom_gift_request_limit" }, 429, origin, env);
         const id = crypto.randomUUID(), now = new Date().toISOString();
-        await env.DB.prepare("INSERT INTO gift_custom_requests (id, user_id, requested_name, description, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)")
-          .bind(id, user.id, requestedName, description, now).run();
-        return json({ ok: true, request: { id, requestedName, description, status: "pending", createdAt: now } }, 201, origin, env);
+        await env.DB.prepare("INSERT INTO gift_custom_requests (id, user_id, requested_name, description, media_url, media_type, media_duration_ms, media_file_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)")
+          .bind(id, user.id, requestedName, description, mediaUrl, mediaType, mediaDurationMs, mediaFileId, now).run();
+        return json({ ok: true, request: { id, requestedName, description, mediaUrl, mediaType, mediaDurationMs, mediaFileId, status: "pending", createdAt: now } }, 201, origin, env);
       } catch (error) {
         console.error("[gifts.custom-request] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "custom_gift_request_failed" }, 500, origin, env);
