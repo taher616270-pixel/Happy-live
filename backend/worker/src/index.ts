@@ -485,7 +485,7 @@ export default {
       }
     }
 
-    const roomReportStatusRoute = url.pathname.match(/^\\/api\\/v1\\/admin\\/reports\\/rooms\\/([0-9a-f-]{36})\\/status$/i);
+    const roomReportStatusRoute = url.pathname.match(/^\/api\/v1\/admin\/reports\/rooms\/([0-9a-f-]{36})\/status$/i);
     if (roomReportStatusRoute && request.method === "PATCH") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
