@@ -1703,13 +1703,20 @@ class _RoomPageState extends State<RoomPage> {
     }
 
     try {
+      // The gift catalogue is a public read-only endpoint. Do not send the
+      // room Authorization/Content-Type headers here: on Flutter Web they
+      // trigger a CORS preflight for a GET that does not need authentication.
       final response = await http.get(
         Uri.parse('$_apiBase/gifts/catalog'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 8));
+        headers: const {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 12));
       final data = jsonDecode(response.body);
       if (response.statusCode != 200 || data is! Map || data['gifts'] is! List) {
-        _showMessage('تعذر تحميل قائمة الهدايا');
+        debugPrint('[gifts.catalog] HTTP ${response.statusCode}: ${response.body}');
+        final error = data is Map ? (data['error'] ?? data['message'])?.toString() : null;
+        _showMessage(error == null || error.isEmpty
+            ? 'تعذر تحميل قائمة الهدايا (${response.statusCode})'
+            : 'تعذر تحميل قائمة الهدايا: $error');
         return;
       }
       final gifts = (data['gifts'] as List)
