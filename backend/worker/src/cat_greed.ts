@@ -176,6 +176,17 @@ async function currentRound(db: D1Database, allowCreate = true): Promise<any> {
 function wheelError(message: string, status: number, json: CatGreedJson, origin?: string, env?: unknown) {
   return json({error:message},status,origin,env);
 }
+
+async function readBoundedJson(request: Request, maxBytes: number): Promise<{ok:true;value:any}|{ok:false;status:number;error:string}> {
+  const contentType = (request.headers.get("Content-Type") ?? "").split(";")[0].trim().toLowerCase();
+  if (contentType !== "application/json") return {ok:false,status:415,error:"content_type_not_supported"};
+  const declaredLength = Number(request.headers.get("Content-Length") ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return {ok:false,status:413,error:"request_too_large"};
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength > maxBytes) return {ok:false,status:413,error:"request_too_large"};
+  try { return {ok:true,value:JSON.parse(raw)}; }
+  catch { return {ok:false,status:400,error:"invalid_json"}; }
+}
 export async function handleCatGreedRequest(
   request: Request, env: CatGreedEnv, origin: string | undefined,
   authenticateUser: (request:Request,db:D1Database)=>Promise<CatGreedUser|null>,
@@ -319,7 +330,9 @@ export async function handleCatGreedRequest(
     }
     if (playerControl && request.method==="PATCH") {
       if (admin.role!=="owner" && admin.role!=="admin") return wheelError("permission_denied",403,json,origin,env);
-      let body:any; try { body=await request.json(); } catch { return wheelError("invalid_json",400,json,origin,env); }
+      const parsed = await readBoundedJson(request,2048);
+      if (!parsed.ok) return wheelError(parsed.error,parsed.status,json,origin,env);
+      const body = parsed.value;
       if(!body||typeof body!=="object"||Array.isArray(body)) return wheelError("invalid_player_control",400,json,origin,env);
       const hasEnabled=Object.prototype.hasOwnProperty.call(body,"enabled");
       const enabled=hasEnabled?(body.enabled===false?0:body.enabled===true?1:null):null;
@@ -340,7 +353,9 @@ export async function handleCatGreedRequest(
       }
       if (request.method!=="PATCH") return wheelError("method_not_allowed",405,json,origin,env);
       if (admin.role!=="owner") return wheelError("owner_permission_required",403,json,origin,env);
-      let body:any; try { body=await request.json(); } catch { return wheelError("invalid_json",400,json,origin,env); }
+      const parsed = await readBoundedJson(request,2048);
+      if (!parsed.ok) return wheelError(parsed.error,parsed.status,json,origin,env);
+      const body = parsed.value;
       const current=await getSettings(db);
       if (!body || typeof body!=="object" || Array.isArray(body)) return wheelError("invalid_settings",400,json,origin,env);
       const next={enabled:body.enabled==null?current.enabled:body.enabled===true?1:body.enabled===false?0:-1,betting:Number(body.bettingSeconds??current.betting_seconds),result:Number(body.resultSeconds??current.result_seconds),salad:Number(body.saladWeightBp??current.salad_weight_bp),pizza:Number(body.pizzaWeightBp??current.pizza_weight_bp)};
@@ -361,8 +376,10 @@ export async function handleCatGreedRequest(
       }
       if (request.method!=="PATCH") return wheelError("method_not_allowed",405,json,origin,env);
       if (admin.role!=="owner") return wheelError("owner_permission_required",403,json,origin,env);
-      let body:any; try { body=await request.json(); } catch { return wheelError("invalid_json",400,json,origin,env); }
-      if (!body || typeof body!=="object" || !Array.isArray(body.symbols)||body.symbols.length!==8) return wheelError("invalid_symbols",400,json,origin,env);
+      const parsed = await readBoundedJson(request,16384);
+      if (!parsed.ok) return wheelError(parsed.error,parsed.status,json,origin,env);
+      const body = parsed.value;
+      if (!body || typeof body!=="object" || Array.isArray(body) || !Array.isArray(body.symbols)||body.symbols.length!==8) return wheelError("invalid_symbols",400,json,origin,env);
       const now=isoNow(), statements:D1PreparedStatement[]=[], seenSlots=new Set<number>();
       let totalWeight=0;
       const proposed: CatGreedSymbol[]=[];
