@@ -182,9 +182,24 @@ async function readBoundedJson(request: Request, maxBytes: number): Promise<{ok:
   if (contentType !== "application/json") return {ok:false,status:415,error:"content_type_not_supported"};
   const declaredLength = Number(request.headers.get("Content-Length") ?? 0);
   if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return {ok:false,status:413,error:"request_too_large"};
-  const raw = await request.text();
-  if (new TextEncoder().encode(raw).byteLength > maxBytes) return {ok:false,status:413,error:"request_too_large"};
-  try { return {ok:true,value:JSON.parse(raw)}; }
+  const reader = request.body?.getReader();
+  if (!reader) return {ok:false,status:400,error:"invalid_json"};
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const part = await reader.read();
+    if (part.done) break;
+    total += part.value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return {ok:false,status:413,error:"request_too_large"};
+    }
+    chunks.push(part.value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk,offset); offset += chunk.byteLength; }
+  try { return {ok:true,value:JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes))}; }
   catch { return {ok:false,status:400,error:"invalid_json"}; }
 }
 export async function handleCatGreedRequest(
@@ -221,14 +236,9 @@ export async function handleCatGreedRequest(
       let betReceipt: { id: string; roundId: string; slot: number; amount: number } | null = null;
       let duplicateBet = false;
       if (publicBet) {
-        const contentType=request.headers.get("Content-Type")??"";
-        const declaredLength=Number(request.headers.get("Content-Length")??0);
-        if(contentType.split(";")[0].trim().toLowerCase()!=="application/json") return wheelError("content_type_not_supported",415,json,origin,env);
-        if(Number.isFinite(declaredLength)&&declaredLength>2048) return wheelError("request_too_large",413,json,origin,env);
-        const rawBody = await request.text();
-        if (new TextEncoder().encode(rawBody).byteLength > 2048) return wheelError("request_too_large",413,json,origin,env);
-        let body: any;
-        try { body = JSON.parse(rawBody); } catch { return wheelError("invalid_json",400,json,origin,env); }
+        const parsed = await readBoundedJson(request,2048);
+        if (!parsed.ok) return wheelError(parsed.error,parsed.status,json,origin,env);
+        const body = parsed.value;
         if (!body || typeof body !== "object" || Array.isArray(body)) return wheelError("invalid_bet",400,json,origin,env);
         const slot = Number(body.slot), amount = Number(body.amount), roundId = String(body.roundId ?? "");
         const idempotencyKey = String(body.idempotencyKey ?? "");
