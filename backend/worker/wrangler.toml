@@ -24,6 +24,10 @@ class_name = "RoomChatHub"
 name = "ROOM_SEATS"
 class_name = "RoomSeatsHub"
 
+[[previews.durable_objects.bindings]]
+name = "GLOBAL_GIFTS"
+class_name = "GlobalGiftHub"
+
 [vars]
 APP_ENV = "production"
 GOOGLE_CLIENT_ID = "999298541545-5i0kn2d1emj2rohuvruj4o8ej49ho9kg.apps.googleusercontent.com"
@@ -42,6 +46,10 @@ class_name = "RoomChatHub"
 name = "ROOM_SEATS"
 class_name = "RoomSeatsHub"
 
+[[durable_objects.bindings]]
+name = "GLOBAL_GIFTS"
+class_name = "GlobalGiftHub"
+
 [[migrations]]
 tag = "v1-room-chat"
 new_sqlite_classes = ["RoomChatHub"]
@@ -49,3 +57,7 @@ new_sqlite_classes = ["RoomChatHub"]
 [[migrations]]
 tag = "v2-room-seats"
 new_sqlite_classes = ["RoomSeatsHub"]
+
+[[migrations]]
+tag = "v3-global-gift-hub"
+new_sqlite_classes = ["GlobalGiftHub"]
