@@ -109,7 +109,7 @@
 4. من `backend/worker` نفّذ `npm run db:preview:list` لمراجعة المعلّق، ثم `npm run db:preview` لتطبيق migrations على `happy-live-room-exp-preview-db` فقط. ملف `wrangler.preview-migrations.toml` مخصص لهذه القاعدة؛ لا تستخدم `db:remote` لأنه يستهدف D1 الإنتاج.
 5. بعد نجاح migrations، أنشئ Worker Preview باسم `cat-greed` باستخدام `npx wrangler preview --name cat-greed` (Wrangler 4.135.0 أو أحدث). احتفظ بعنوان Preview الذي يرجعه الأمر.
 6. اضبط أسرار ImageKit المطلوبة على Preview عبر `wrangler preview secret put`؛ لا تنسخ كلمات مرور أو أسرار الإنتاج ولا تحفظها في Git. أنشئ حسابات اختبار منفصلة داخل قاعدة Preview.
-7. اربط Pages Preview بعنوان Worker Preview المعزول بعد التحقق منه. حالياً واجهات Pages Preview معطلة عمداً حتى يتم هذا الربط صراحةً.
+7. افتح صفحات Preview مع معامل `?catGreedApi=https://<preview-worker-host>` بعد التأكد من أن المضيف هو Worker Preview الخاص بـ Happy Live؛ الواجهة ترفض عنوان الإنتاج على صفحات Preview.
 7. اختبار عدة لاعبين: الرصيد، طلبات مكررة، طلبات متزامنة، انتهاء الوقت، حدود الرهان، لاعب موقوف، صلاحيات الإدارة، وصرف الجائزة مرة واحدة.
 8. التحقق من بصمة ونتيجة جولات فعلية في Preview، وتجربة صور ImageKit وCSP في المتصفح.
 9. لا تطبق migrations على D1 الإنتاج ولا تنشر Worker/Pages ولا تفعّل اللعبة إلا بعد مراجعة نتائج الاختبار والموافقة على الإطلاق.
