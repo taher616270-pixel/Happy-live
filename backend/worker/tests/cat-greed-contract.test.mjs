@@ -109,6 +109,9 @@ test("symbol images are restricted to ImageKit and game pages use safe rendering
   assert.match(gameScript, /idempotencyKey/);
   assert.match(gameScript, /فشل التحقق من نتيجة الجولة/);
   assert.match(gameAdminScript, /verifyRoundRow/);
+  assert.match(gameAdminScript, /fmt\(r\.wagered\)/);
+  assert.match(gameAdminScript, /fmt\(r\.players\)/);
+  assert.match(worker, /COALESCE\(b\.wagered,0\) AS wagered/);
   assert.match(worker, /THEN config_snapshot ELSE NULL END AS config_snapshot/);
 });
 
