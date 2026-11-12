@@ -91,8 +91,8 @@ async function payRound(db: D1Database, round: any): Promise<void> {
     statements.push(
       db.prepare("INSERT OR IGNORE INTO cat_greed_payouts (round_id,user_id,amount,created_at,transaction_id) VALUES (?,?,?,?,?)").bind(round.id,userId,amount,now,transactionId),
       db.prepare("UPDATE user_wallets SET balance=balance+?, updated_at=? WHERE user_id=? AND EXISTS (SELECT 1 FROM cat_greed_payouts WHERE round_id=? AND user_id=? AND paid_at IS NULL)").bind(amount,now,userId,round.id,userId),
-      db.prepare("INSERT INTO wallet_transactions (id,user_id,amount,balance_after,transaction_type,reference_id,description,created_at) SELECT ?,user_id,?,balance,'cat_greed_payout',?,'جائزة قط الجشع',? FROM user_wallets WHERE user_id=? AND changes()=1").bind(transactionId,amount,round.id,now,userId),
-      db.prepare("UPDATE cat_greed_payouts SET paid_at=?, transaction_id=? WHERE round_id=? AND user_id=? AND paid_at IS NULL AND EXISTS (SELECT 1 FROM wallet_transactions WHERE id=?)").bind(now,transactionId,round.id,userId,transactionId)
+      db.prepare("INSERT INTO cat_greed_ledger (id,user_id,round_id,amount,balance_after,transaction_type,description,created_at) SELECT ?,user_id,?,?,balance,'payout','جائزة قط الجشع',? FROM user_wallets WHERE user_id=? AND changes()=1").bind(transactionId,round.id,amount,now,userId),
+      db.prepare("UPDATE cat_greed_payouts SET paid_at=?, transaction_id=? WHERE round_id=? AND user_id=? AND paid_at IS NULL AND EXISTS (SELECT 1 FROM cat_greed_ledger WHERE id=?)").bind(now,transactionId,round.id,userId,transactionId)
     );
   }
   if (statements.length) await db.batch(statements);
@@ -162,8 +162,8 @@ export async function handleCatGreedRequest(
         const now=isoNow(), transactionId=crypto.randomUUID(), betId=crypto.randomUUID();
         await db.batch([
           db.prepare("UPDATE user_wallets SET balance=balance-?,updated_at=? WHERE user_id=? AND balance>=? AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?)").bind(amount,now,user.id,amount,roundId,now),
-          db.prepare("INSERT INTO wallet_transactions (id,user_id,amount,balance_after,transaction_type,reference_id,description,created_at) SELECT ?,user_id,?,balance,'cat_greed_bet',?,'رهان قط الجشع',? FROM user_wallets WHERE user_id=? AND changes()=1").bind(transactionId,-amount,roundId,now,user.id),
-          db.prepare("INSERT INTO cat_greed_bets (id,round_id,user_id,slot,amount,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM wallet_transactions WHERE id=?)").bind(betId,roundId,user.id,slot,amount,now,transactionId)
+          db.prepare("INSERT INTO cat_greed_ledger (id,user_id,round_id,amount,balance_after,transaction_type,description,created_at) SELECT ?,user_id,?,?,balance,'bet','رهان قط الجشع',? FROM user_wallets WHERE user_id=? AND changes()=1").bind(transactionId,roundId,-amount,now,user.id),
+          db.prepare("INSERT INTO cat_greed_bets (id,round_id,user_id,slot,amount,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cat_greed_ledger WHERE id=?)").bind(betId,roundId,user.id,slot,amount,now,transactionId)
         ]);
         const placed = await db.prepare("SELECT id FROM cat_greed_bets WHERE id=?").bind(betId).first();
         if (!placed) {
