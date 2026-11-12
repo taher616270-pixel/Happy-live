@@ -1780,9 +1780,32 @@ export default {
           const imageKitFile = await imageKitFileResponse.json() as Record<string, unknown>;
           const uploadedName = typeof imageKitFile.name === "string" ? imageKitFile.name : "";
           const uploadedUrl = typeof imageKitFile.url === "string" ? imageKitFile.url : "";
+          const uploadedPath = typeof imageKitFile.filePath === "string" ? imageKitFile.filePath : "";
           const expectedExtension = mediaType === "gif" ? /\.gif$/i : /\.svga$/i;
-          if (uploadedUrl !== mediaUrl || !expectedExtension.test(uploadedName) ||
-              Number(imageKitFile.size) < 1 || Number(imageKitFile.size) > 10 * 1024 * 1024) {
+          let uploadedUrlMatches = false;
+          try {
+            const verifiedUrl = new URL(uploadedUrl);
+            const submittedUrl = new URL(mediaUrl);
+            const verifiedPath = decodeURIComponent(verifiedUrl.pathname).replace(/\/+$/, "");
+            const submittedPath = decodeURIComponent(submittedUrl.pathname).replace(/\/+$/, "");
+            uploadedUrlMatches = verifiedUrl.protocol === "https:" && verifiedUrl.hostname === "ik.imagekit.io" &&
+              submittedUrl.protocol === "https:" && submittedUrl.hostname === "ik.imagekit.io" &&
+              verifiedPath === submittedPath;
+          } catch {
+            uploadedUrlMatches = false;
+          }
+          const extensionMatches = [uploadedName, uploadedPath, uploadedUrl].some(value => {
+            if (!value) return false;
+            try {
+              const path = value.startsWith("https://") ? new URL(value).pathname : value.split(/[?#]/, 1)[0];
+              return expectedExtension.test(path);
+            } catch {
+              return false;
+            }
+          });
+          const uploadedSize = Number(imageKitFile.size);
+          if (imageKitFile.fileId !== mediaFileId || !uploadedUrlMatches || !extensionMatches ||
+              !Number.isFinite(uploadedSize) || uploadedSize < 1 || uploadedSize > 10 * 1024 * 1024) {
             return json({ error: "imagekit_file_validation_failed" }, 400, origin, env);
           }
         }

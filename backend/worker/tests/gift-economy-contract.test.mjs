@@ -161,6 +161,9 @@ test("custom gift animation uploads use ImageKit and are limited to GIF/SVGA und
   assert.match(worker, /lookupDelaysMs = \[400, 700, 1000, 1300, 1600, 2000, 2500\]/);
   assert.match(worker, /api\.imagekit\.io\/v1\/files\/.*\/details/);
   assert.match(worker, /imagekit_credentials_invalid/);
+  assert.match(worker, /imageKitFile\.fileId !== mediaFileId/);
+  assert.match(worker, /decodeURIComponent\(verifiedUrl\.pathname\)/);
+  assert.match(worker, /uploadedPath/);
   assert.match(worker, /providerStatus/);
   assert.match(adminPage, /mediaUrl/);
   assert.match(adminPage, /عرض SVGA/);
