@@ -72,7 +72,7 @@ test("room gift sending is authenticated, presence-checked, idempotent, and serv
   assert.ok(worker.includes(String.raw`const roomGiftSendRoute = url.pathname.match(/^\/api\/v1\/rooms\/([0-9a-f-]{36})\/gifts\/send$/i);`));
   assert.match(worker, /authenticatedUser\(request, env\.DB\)/);
   assert.match(worker, /last_seen_at >= \?/);
-  assert.match(worker, /UNIQUE\(sender_user_id, idempotency_key\)/);
+  assert.match(migration, /UNIQUE\(sender_user_id, idempotency_key\)/);
   assert.match(worker, /sender_balance_before/);
   assert.match(worker, /room_exp_gift_awards/);
   assert.match(worker, /gift_wallet_ledger/);
