@@ -73,8 +73,8 @@ test("payout settlement claims a unique payout before crediting the wallet", () 
 });
 
 test("round commitments bind the seed to the round id and immutable config", () => {
-  assert.ok(worker.includes('digestHex(seed + "|" + id + "|" + configSnapshot)'));
-  assert.ok(worker.includes('round.server_seed + "|" + round.id + "|" + round.config_snapshot'));
+  assert.ok(worker.includes('digestHex("commit|" + seed + "|" + id + "|" + configSnapshot)'));
+  assert.ok(worker.includes('digestHex("outcome|" + round.server_seed + "|" + round.id + "|" + round.config_snapshot)'));
 });
 
 test("unsafe payout exposure cannot be enabled and all players share published odds", () => {
