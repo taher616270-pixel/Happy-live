@@ -310,7 +310,7 @@ export async function handleCatGreedRequest(
     if (mainOverview) {
       const [settings,symbols,rounds,players,totals] = await Promise.all([
         getSettings(db),getSymbols(db),
-        db.prepare("SELECT id,phase,starts_at,closes_at,result_slot,special,seed_commitment,settled_at FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 20").all(),
+        db.prepare("SELECT r.id,r.phase,r.starts_at,r.closes_at,r.result_slot,r.special,r.seed_commitment,r.settled_at,COALESCE(b.wagered,0) AS wagered,COALESCE(b.players,0) AS players FROM cat_greed_rounds r LEFT JOIN (SELECT round_id,SUM(amount) AS wagered,COUNT(DISTINCT user_id) AS players FROM cat_greed_bets GROUP BY round_id) b ON b.round_id=r.id ORDER BY r.created_at DESC LIMIT 20").all(),
         db.prepare("SELECT u.id,p.display_name AS name,p.gabo_id AS userCode,COALESCE(c.enabled,1) AS enabled,COALESCE(c.max_bet_per_round,1000000) AS maxBetPerRound,COALESCE(b.rounds,0) AS rounds,COALESCE(b.wagered,0) AS wagered,COALESCE(b.wins,0) AS wins,COALESCE(b.losses,0) AS losses,COALESCE(b.paid,0) AS paid FROM users u LEFT JOIN profiles p ON p.user_id=u.id LEFT JOIN cat_greed_player_controls c ON c.user_id=u.id LEFT JOIN (SELECT user_id,COUNT(*) AS rounds,SUM(wagered) AS wagered,SUM(CASE WHEN payout>0 THEN 1 ELSE 0 END) AS wins,SUM(CASE WHEN payout=0 THEN 1 ELSE 0 END) AS losses,SUM(payout) AS paid FROM (SELECT b.user_id,b.round_id,SUM(b.amount) AS wagered,COALESCE(p.amount,0) AS payout FROM cat_greed_bets b LEFT JOIN cat_greed_payouts p ON p.user_id=b.user_id AND p.round_id=b.round_id AND p.paid_at IS NOT NULL GROUP BY b.user_id,b.round_id) GROUP BY user_id) b ON b.user_id=u.id WHERE b.user_id IS NOT NULL ORDER BY wagered DESC LIMIT 50").all(),
         db.prepare("SELECT (SELECT COUNT(*) FROM cat_greed_rounds) AS rounds,COALESCE((SELECT SUM(amount) FROM cat_greed_bets),0) AS wagered,COALESCE((SELECT SUM(amount) FROM cat_greed_payouts WHERE paid_at IS NOT NULL),0) AS paid,COALESCE((SELECT SUM(amount) FROM cat_greed_bets),0)-COALESCE((SELECT SUM(amount) FROM cat_greed_payouts WHERE paid_at IS NOT NULL),0) AS net,(SELECT COUNT(DISTINCT user_id) FROM cat_greed_bets) AS players").first()
       ]);
@@ -386,7 +386,7 @@ export async function handleCatGreedRequest(
       return json({ok:true,symbols:saved,odds:calculateOdds(snapshot),maxExpectedReturnBp:maxExpectedReturnBp(snapshot)},200,origin,env);
     }
     if (adminRounds) {
-      const rounds=await db.prepare("SELECT id,phase,starts_at,closes_at,result_slot,special,seed_commitment,CASE WHEN phase='result' THEN server_seed ELSE NULL END AS revealed_seed,CASE WHEN phase='result' THEN config_snapshot ELSE NULL END AS config_snapshot,settled_at FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 100").all();
+      const rounds=await db.prepare("SELECT r.id,r.phase,r.starts_at,r.closes_at,r.result_slot,r.special,r.seed_commitment,CASE WHEN r.phase='result' THEN r.server_seed ELSE NULL END AS revealed_seed,CASE WHEN r.phase='result' THEN r.config_snapshot ELSE NULL END AS config_snapshot,r.settled_at,COALESCE(b.wagered,0) AS wagered,COALESCE(b.players,0) AS players FROM cat_greed_rounds r LEFT JOIN (SELECT round_id,SUM(amount) AS wagered,COUNT(DISTINCT user_id) AS players FROM cat_greed_bets GROUP BY round_id) b ON b.round_id=r.id ORDER BY r.created_at DESC LIMIT 100").all();
       return json({rounds:rounds.results??[]},200,origin,env);
     }
     return null;
