@@ -94,6 +94,16 @@ class _CatGreedGameState extends State<CatGreedGame> {
     return '$n';
   }
 
+  String _centerLabel(Map<String,dynamic> s){
+    if(s['phase']!='result')return '${s['secondsLeft']}s';
+    if(s['special']=='salad')return '🥗';
+    if(s['special']=='pizza')return '🍕';
+    final symbols=(s['symbols'] as List?)??const [];
+    final index=s['resultSlot'] as int? ?? -1;
+    if(index>=0&&index<symbols.length)return (symbols[index] as Map)['emoji']?.toString()??'🎡';
+    return '🎡';
+  }
+
   @override Widget build(BuildContext context){
     final s=_state;
     return Directionality(textDirection:TextDirection.rtl,child:Material(color:const Color(0xFF101019),
@@ -116,7 +126,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
                 final d=c.maxWidth<c.maxHeight?c.maxWidth:c.maxHeight;
                 return Center(child:SizedBox(width:d,height:d,child:Stack(children:[
                   for(var i=0;i<8;i++)Positioned(left:d/2+d*.34*math.sin(i*math.pi/4)-d*.135,top:d/2-d*.34*math.cos(i*math.pi/4)-d*.135,width:d*.27,height:d*.27,child:_slot(i,s,d*.27)),
-                  Center(child:Container(width:d*.25,height:d*.25,decoration:BoxDecoration(shape:BoxShape.circle,color:const Color(0xFF8A4B2A),border:Border.all(color:const Color(0xFFD4AF37),width:4)),child:Center(child:Text('${s['secondsLeft']}s',style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900,fontSize:22))))),
+                  Center(child:Container(width:d*.25,height:d*.25,decoration:BoxDecoration(shape:BoxShape.circle,color:const Color(0xFF8A4B2A),border:Border.all(color:const Color(0xFFD4AF37),width:4)),child:Center(child:Text(_centerLabel(s),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900,fontSize:22))))),
                 ])));
               })),
               if(s['special']=='salad'||s['special']=='pizza')Text(s['special']=='salad'?'🥗 السلطة':'🍕 البيتزا',style:const TextStyle(color:Color(0xFFFFD978),fontSize:24,fontWeight:FontWeight.w900)),
