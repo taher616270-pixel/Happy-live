@@ -159,7 +159,7 @@ test("custom gift animation uploads use ImageKit and are limited to GIF/SVGA und
   assert.match(roomSeatsHub, /url\.pathname === "\/gift"/);
   assert.match(roomPage, /_roomGiftFullscreenOverlay/);
   assert.match(worker, /attempt < 3/);
-  assert.match(worker, /api\\.imagekit\\.io\\/v1\\/files\\/.*\\/details/);
+  assert.match(worker, /api\.imagekit\.io\/v1\/files\/.*\/details/);
   assert.match(worker, /imagekit_credentials_invalid/);
   assert.match(worker, /providerStatus/);
   assert.match(adminPage, /mediaUrl/);
