@@ -119,6 +119,8 @@ async function chooseOutcome(round: any): Promise<{slot:number|null;special:stri
 async function payRound(db: D1Database, round: any): Promise<void> {
   const config = JSON.parse(round.config_snapshot) as CatGreedSnapshot;
   const bets = await db.prepare("SELECT user_id, slot, SUM(amount) AS amount FROM cat_greed_bets WHERE round_id=? GROUP BY user_id, slot").bind(round.id).all<{user_id:string;slot:number;amount:number}>();
+  const alreadyPaid = await db.prepare("SELECT user_id FROM cat_greed_payouts WHERE round_id=? AND paid_at IS NOT NULL").bind(round.id).all<{user_id:string}>();
+  const paidUsers = new Set((alreadyPaid.results ?? []).map(row => row.user_id));
   const totals = new Map<string, number>();
   for (const bet of bets.results ?? []) {
     const symbol = config.symbols.find(s => s.slot === bet.slot);
@@ -130,7 +132,7 @@ async function payRound(db: D1Database, round: any): Promise<void> {
   // Each user's payout is claimed with a fresh transaction id before the wallet
   // changes. Concurrent state requests can therefore never credit the same round twice.
   for (const [userId, amount] of totals) {
-    if (!Number.isSafeInteger(amount) || amount <= 0) continue;
+    if (paidUsers.has(userId) || !Number.isSafeInteger(amount) || amount <= 0) continue;
     const now = isoNow();
     const transactionId = crypto.randomUUID();
     await db.batch([
