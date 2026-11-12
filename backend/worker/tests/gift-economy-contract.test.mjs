@@ -88,3 +88,11 @@ test("wallet reports tagged earnings and room-upgrade spending consumes tagged l
   assert.match(worker, /remaining_withdrawable_coins = MAX\(0, remaining_withdrawable_coins/);
   assert.match(worker, /ORDER BY created_at, id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING/);
 });
+
+test("battle multiplier can only be enabled through owner/moderator server-side battle state", () => {
+  assert.match(worker, /\/api\/v1\/rooms\/\(\[0-9a-f-\]\{36\}\)\/battle/);
+  assert.match(worker, /room_moderators WHERE room_id = \? AND user_id = \?/);
+  assert.match(worker, /INSERT INTO room_battles/);
+  assert.match(worker, /UPDATE room_battles SET status = 'finished'/);
+  assert.match(worker, /CASE WHEN b\.id IS NULL THEN 1 ELSE 2 END/);
+});
