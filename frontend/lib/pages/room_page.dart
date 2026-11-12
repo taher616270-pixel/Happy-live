@@ -17,6 +17,7 @@ import 'package:happy_live/services/room_seat_socket.dart';
 import 'package:happy_live/pages/wallet_page.dart';
 import 'package:happy_live/widgets/room_gift_sheet.dart';
 import 'package:flutter_svga/flutter_svga.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class RoomPage extends StatefulWidget {
   const RoomPage({super.key, required this.room, required this.accessToken});
@@ -104,6 +105,7 @@ class _RoomPageState extends State<RoomPage> {
   Map<String, dynamic>? _activeRoomGift;
   Timer? _roomGiftOverlayTimer;
   int _roomGiftOverlayNonce = 0;
+  final AudioPlayer _giftAudioPlayer = AudioPlayer();
   int _roomLevel = 1;
   int _roomExperienceLevel = 1;
   int _roomExperienceExp = 0;
@@ -373,6 +375,7 @@ class _RoomPageState extends State<RoomPage> {
     _miniOverlayEntry?.remove();
     _miniOverlayEntry = null;
     _roomGiftOverlayTimer?.cancel();
+    unawaited(_giftAudioPlayer.dispose());
     _refreshTimer?.cancel();
     _volumeTimer?.cancel();
     for (final timer in _hideTimers.values) {
@@ -1712,6 +1715,7 @@ class _RoomPageState extends State<RoomPage> {
     final durationValue = gift['mediaDurationMs'];
     final durationMs = durationValue is num ? durationValue.toInt().clamp(1800, 5000) : 4000;
     _roomGiftOverlayTimer?.cancel();
+    unawaited(_playGiftSound(gift));
     setState(() {
       _activeRoomGift = gift;
       _roomGiftOverlayNonce++;
@@ -1719,7 +1723,22 @@ class _RoomPageState extends State<RoomPage> {
     _roomGiftOverlayTimer = Timer(Duration(milliseconds: durationMs), () {
       if (!mounted) return;
       setState(() => _activeRoomGift = null);
+      unawaited(_giftAudioPlayer.stop());
     });
+  }
+
+  Future<void> _playGiftSound(Map<String, dynamic> gift) async {
+    final soundUrl = (gift['soundUrl'] ?? '').toString().trim();
+    if (!soundUrl.startsWith('https://')) {
+      await _giftAudioPlayer.stop();
+      return;
+    }
+    try {
+      await _giftAudioPlayer.stop();
+      await _giftAudioPlayer.play(UrlSource(soundUrl));
+    } catch (error) {
+      debugPrint('[GiftSound] playback failed: $error');
+    }
   }
 
   Widget _roomGiftFullscreenOverlay() {
