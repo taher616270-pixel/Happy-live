@@ -123,6 +123,34 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler d1 execute happy-live-db --remote --file migrations/0033_global_gift_banner.sql --config wrangler.toml
 
+      - name: Apply Cat Greed wheel schema migration
+        working-directory: backend/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 execute happy-live-db --remote --file migrations/0034_cat_greed_wheel.sql --config wrangler.toml
+
+      - name: Apply Cat Greed ledger migration
+        working-directory: backend/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 execute happy-live-db --remote --file migrations/0035_cat_greed_ledger.sql --config wrangler.toml
+
+      - name: Apply Cat Greed bet protection migration
+        working-directory: backend/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 execute happy-live-db --remote --file migrations/0036_cat_greed_bet_protection.sql --config wrangler.toml
+
+      - name: Apply Cat Greed round guard migration
+        working-directory: backend/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 execute happy-live-db --remote --file migrations/0037_cat_greed_round_guard.sql --config wrangler.toml
+
       - name: Deploy Worker with Wrangler
         working-directory: backend/worker
         env:

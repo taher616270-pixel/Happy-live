@@ -1,4 +1,5 @@
 import { RtcTokenBuilder } from "agora-token";
+import { handleCatGreedRequest } from "./cat_greed";
 export { RoomSeatsHub } from "./room_seats_hub";
 export { GlobalGiftHub } from "./global_gift_hub";
 import type { GlobalGiftHub } from "./global_gift_hub";
@@ -383,6 +384,8 @@ export default {
       return new Response(null, { status: 204, headers });
     }
 
+    const catGreedResponse = await handleCatGreedRequest(request, env, origin, authenticatedUser, authenticatedAdmin, json);
+    if (catGreedResponse) return catGreedResponse;
 
     if (url.pathname === "/api/v1/admin/auth/setup-status" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
@@ -2240,7 +2243,7 @@ export default {
         await env.DB.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(user.id, new Date().toISOString()).run();
         const [wallet, transactions, giftEarnings] = await Promise.all([
           env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>(),
-          env.DB.prepare("SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, reference_id AS referenceId, description, created_at AS createdAt FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 30").bind(user.id).all(),
+          env.DB.prepare("SELECT * FROM (SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, reference_id AS referenceId, description, created_at AS createdAt FROM wallet_transactions WHERE user_id = ? UNION ALL SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, round_id AS referenceId, description, created_at AS createdAt FROM cat_greed_ledger WHERE user_id = ?) ORDER BY createdAt DESC LIMIT 30").bind(user.id, user.id).all(),
           env.DB.prepare("SELECT COALESCE(SUM(credited_coins), 0) AS totalGiftCoins, COALESCE(SUM(remaining_tagged_coins), 0) AS remainingTaggedCoins, COALESCE(SUM(remaining_withdrawable_coins), 0) AS futureWithdrawableCoins FROM gift_earning_lots WHERE user_id = ?").bind(user.id).first<Record<string, number>>()
         ]);
         return json({

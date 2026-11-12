@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:happy_live/models/seat_state.dart';
 import 'edit_profile_page.dart';
+import 'cat_greed_game.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
   static final Set<String> _openingRoomInfo = <String>{};
@@ -1594,15 +1595,13 @@ Widget _roomActionButton({
                     Tab(text: 'ألعاب مخصصة'),
                   ],
                 ),
-                const Expanded(
+                Expanded(
                   child: TabBarView(
                     children: [
                       _GamesTabPlaceholder(
                         message: 'ستظهر ألعاب الطرف الثالث هنا',
                       ),
-                      _GamesTabPlaceholder(
-                        message: 'ستظهر الألعاب المخصصة هنا',
-                      ),
+                      _CatGreedLaunchTile(accessToken: accessToken),
                     ],
                   ),
                 ),
@@ -2788,6 +2787,39 @@ class _GamesTabPlaceholder extends StatelessWidget {
           ),
         ),
       ],
+    ),
+  );
+}
+
+
+class _CatGreedLaunchTile extends StatelessWidget {
+  const _CatGreedLaunchTile({required this.accessToken});
+  final String accessToken;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => showCatGreedGame(context, accessToken: accessToken),
+      child: Container(
+        width: 220,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF8E8),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFD4AF37), width: 2),
+          boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 14, offset: Offset(0, 5))],
+        ),
+        child: const Column(mainAxisSize: MainAxisSize.min, children: [
+          Text('🐱', style: TextStyle(fontSize: 48)),
+          SizedBox(height: 8),
+          Text('قط الجشع', style: TextStyle(color: Color(0xFF4A3512), fontSize: 19, fontWeight: FontWeight.w900)),
+          SizedBox(height: 5),
+          Text('عجلة الرهانات · 8 رموز', style: TextStyle(color: Color(0xFF756B58), fontSize: 12)),
+          SizedBox(height: 10),
+          Text('اضغط للعب', style: TextStyle(color: Color(0xFF8B681C), fontWeight: FontWeight.bold)),
+        ]),
+      ),
     ),
   );
 }

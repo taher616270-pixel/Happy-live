@@ -3,6 +3,7 @@ account_id = "50079f6f0f22b1f4dbde9cf5029e3073"
 main = "src/index.ts"
 compatibility_date = "2026-11-03"
 workers_dev = true
+preview_urls = true
 
 [previews]
 
@@ -14,7 +15,7 @@ GOOGLE_CLIENT_ID = "999298541545-5i0kn2d1emj2rohuvruj4o8ej49ho9kg.apps.googleuse
 binding = "DB"
 database_name = "happy-live-room-exp-preview-db"
 database_id = "7ade3803-97bf-4f6d-9200-48b3dfb0573c"
-migrations_dir = "migrations"
+migrations_dir = "migrations-cat-greed-preview"
 
 [[previews.durable_objects.bindings]]
 name = "ROOM_CHAT"

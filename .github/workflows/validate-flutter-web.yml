@@ -8,6 +8,12 @@ on:
     paths:
       - "frontend/**"
       - ".github/workflows/validate-flutter-web.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - ".github/workflows/validate-flutter-web.yml"
 
 jobs:
   build-web:
