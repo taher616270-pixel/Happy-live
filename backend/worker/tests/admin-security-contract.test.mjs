@@ -221,7 +221,7 @@ test("admin audit migration is idempotent and ignores malformed or unknown legac
     db.exec("INSERT INTO admin_audit_logs (id, details_json) VALUES ('valid', '{\"adminId\":\"owner\"}'), ('malformed', 'not-json'), ('unknown', '{\"adminId\":\"missing\"}')");
     db.exec(auditMigration);
     db.exec(auditMigration);
-    const rows = db.prepare("SELECT audit_log_id, admin_id FROM admin_audit_actor_refs ORDER BY audit_log_id").all();
+    const rows = db.prepare("SELECT audit_log_id, admin_id FROM admin_audit_actor_refs ORDER BY audit_log_id").all().map((row) => ({ audit_log_id: row.audit_log_id, admin_id: row.admin_id }));
     assert.deepEqual(rows, [{ audit_log_id: "valid", admin_id: "owner" }]);
     assert.throws(() => db.prepare("DELETE FROM admin_accounts WHERE id = ?").run("owner"), /FOREIGN KEY constraint failed/);
     db.prepare("DELETE FROM admin_audit_logs WHERE id = ?").run("valid");
@@ -240,4 +240,15 @@ test("manual worker-only deployment checks the audit migration before deploying"
   assert.match(guard, /admin_audit_actor_refs/);
   assert.match(guard, /grep -q/);
   assert.match(guard, /exit 1/);
+});
+
+test("room report moderation decisions are audited with the authenticated admin", () => {
+  const start = worker.indexOf("const roomReportStatusRoute =");
+  const end = worker.indexOf("// Admin API: authentication uses a separate admin-only session table.", start);
+  assert.ok(start >= 0 && end > start, "room report status route must exist");
+  const route = worker.slice(start, end);
+  assert.match(route, /adminAuditStatements\(env\.DB, admin,/);
+  assert.match(route, /report\.room\.review/);
+  assert.match(route, /report\.room\.dismiss/);
+  assert.match(route, /previousStatus: report\.status/);
 });
