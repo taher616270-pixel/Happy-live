@@ -233,3 +233,17 @@ test("global banner overlay and combo resend use the existing authenticated gift
   assert.match(giftSheet, /widget\.onSend\(\s*_comboGift!/);
   assert.match(roomPage, /rooms\/\$\{Uri\.encodeComponent\(_roomId\)\}\/gifts\/send/);
 });
+
+test("global gift WebSockets hibernate and fan out across independent shards", () => {
+  assert.match(globalGiftHub, /this\.ctx\.acceptWebSocket\(server\)/);
+  assert.match(globalGiftHub, /this\.ctx\.getWebSockets\(\)/);
+  assert.doesNotMatch(globalGiftHub, /server\.accept\(\)/);
+  assert.match(worker, /GLOBAL_GIFT_SHARD_COUNT = 16/);
+  assert.match(worker, /application-global-\$\{shard\}/);
+  assert.match(worker, /hub\.broadcast\(bannerPayload\)/);
+});
+
+test("gift combo count reflects the original quantity sent", () => {
+  assert.match(giftSheet, /final sentQuantity = _quantity/);
+  assert.match(giftSheet, /_comboCount = sentQuantity/);
+});

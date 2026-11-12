@@ -1,11 +1,23 @@
 import { RtcTokenBuilder } from "agora-token";
 export { RoomSeatsHub } from "./room_seats_hub";
 export { GlobalGiftHub } from "./global_gift_hub";
+import type { GlobalGiftHub } from "./global_gift_hub";
+const GLOBAL_GIFT_SHARD_COUNT = 16;
+
+function globalGiftShardForUser(userId: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < userId.length; index++) {
+    hash ^= userId.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % GLOBAL_GIFT_SHARD_COUNT;
+}
+
 export interface Env {
   DB?: D1Database;
   ROOM_CHAT?: DurableObjectNamespace;
   ROOM_SEATS?: DurableObjectNamespace;
-  GLOBAL_GIFTS?: DurableObjectNamespace;
+  GLOBAL_GIFTS?: DurableObjectNamespace<GlobalGiftHub>;
   APP_ENV?: string;
   ALLOWED_ORIGINS?: string;
   IMAGEKIT_PUBLIC_KEY?: string;
@@ -1457,7 +1469,8 @@ export default {
         authHeaders.set("Authorization", `Bearer ${streamToken}`);
         const user = await authenticatedUser(new Request(request, { headers: authHeaders }), env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        const stub = env.GLOBAL_GIFTS.get(env.GLOBAL_GIFTS.idFromName("application-global"));
+        const shard = globalGiftShardForUser(user.id);
+        const stub = env.GLOBAL_GIFTS.get(env.GLOBAL_GIFTS.idFromName(`application-global-${shard}`));
         return await stub.fetch(new Request("https://global-gifts.internal/connect", {
           method: "GET",
           headers: new Headers({
@@ -2184,25 +2197,28 @@ export default {
           if (env.GLOBAL_GIFTS && bannerSettings?.enabled === 1 &&
               Number.isSafeInteger(giftCoins) && giftCoins >= Number(bannerSettings.minimumCoins) &&
               Number(bannerSettings.minimumCoins) > 0 && gift) {
-            const globalHub = env.GLOBAL_GIFTS.get(env.GLOBAL_GIFTS.idFromName("application-global"));
-            await globalHub.fetch(new Request("https://global-gifts.internal/broadcast", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                type: "global_gift_banner",
-                transactionId: transaction.id,
-                senderName: gift.senderName,
-                receiverName: gift.recipientName,
-                giftImage: gift.mediaUrl || gift.iconEmoji,
-                senderAvatar: gift.senderAvatar,
-                receiverAvatar: gift.recipientAvatar,
-                message: `${gift.senderName} أرسل هدية إلى ${gift.recipientName}`,
-                level: 0,
-                style: giftCoins >= Number(bannerSettings.minimumCoins) * 10 ? "blue" : "green",
-                coinCost: giftCoins,
-                quantity: Number(transaction.quantity ?? quantity),
-                createdAt: new Date().toISOString()
-              })
+            const bannerPayload = {
+              type: "global_gift_banner",
+              transactionId: transaction.id,
+              senderName: gift.senderName,
+              receiverName: gift.recipientName,
+              giftImage: gift.mediaUrl || gift.iconEmoji,
+              senderAvatar: gift.senderAvatar,
+              receiverAvatar: gift.recipientAvatar,
+              message: `${gift.senderName} أرسل هدية إلى ${gift.recipientName}`,
+              level: 0,
+              style: giftCoins >= Number(bannerSettings.minimumCoins) * 10 ? "blue" : "green",
+              coinCost: giftCoins,
+              quantity: Number(transaction.quantity ?? quantity),
+              createdAt: new Date().toISOString()
+            };
+            // Fan out across independent shards instead of concentrating every
+            // connected app user on one globally serialized Durable Object.
+            await Promise.all(Array.from({ length: GLOBAL_GIFT_SHARD_COUNT }, (_, shard) => {
+              const hub = env.GLOBAL_GIFTS!.get(
+                env.GLOBAL_GIFTS!.idFromName(`application-global-${shard}`)
+              );
+              return hub.broadcast(bannerPayload);
             }));
           }
         } catch (globalBroadcastError) {

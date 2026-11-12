@@ -87,7 +87,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   bool _sending = false;
   Map<String, dynamic>? _comboGift;
   String? _comboRecipientId;
-  int _comboCount = 1;
+  int _comboCount = sentQuantity;
   int _comboNonce = 0;
   bool _requesting = false;
   String? _message;
@@ -141,13 +141,14 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   Future<void> _sendGift() async {
     final gift = _selectedGift;
     final recipientIds = _recipientIds.toList();
+    final sentQuantity = _quantity;
     if (gift == null || _sending) return;
     if (recipientIds.isEmpty) {
       _showMessage('اختر مستلم الهدية أولًا');
       return;
     }
     final price = (gift['coinPrice'] as num?)?.toInt() ?? 0;
-    if (price < 1 || price * _quantity * recipientIds.length > _balance) {
+    if (price < 1 || price * sentQuantity * recipientIds.length > _balance) {
       _showMessage('رصيدك من العملات غير كافٍ لإرسال الهدايا المحددة');
       return;
     }
@@ -155,7 +156,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     var sent = 0;
     try {
       for (final recipientId in recipientIds) {
-        _balance = await widget.onSend(gift, _quantity, recipientId);
+        _balance = await widget.onSend(gift, sentQuantity, recipientId);
         sent++;
         if (mounted) setState(() {});
       }
