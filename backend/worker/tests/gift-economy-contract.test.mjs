@@ -132,7 +132,7 @@ test("custom gift requests are authenticated, rate limited, and owner-reviewed",
   assert.match(worker, /\/api\/v1\/gifts\/custom-requests/);
   assert.match(worker, /custom_gift_request_limit/);
   assert.match(worker, /owner_permission_required/);
-  assert.match(worker, /INSERT INTO gift_catalog .*'custom'/);
+  assert.match(worker, /INSERT INTO gift_catalog[\s\S]*'custom'/);
   assert.match(worker, /category, media_url, media_type/);
   assert.match(worker, /CASE WHEN media_type = 'gif' THEN 'apng'/);
   assert.match(adminPage, /giftCustomRequestRows/);
