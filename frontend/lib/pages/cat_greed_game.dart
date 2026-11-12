@@ -154,7 +154,7 @@ class MockFoodWheelApi implements FoodWheelApi {
     final el = _elapsed;
     final betting = el < _betSecs;
     return RoundState(
-      roundId: _round,
+      roundId: '$_round',
       secondsLeft: betting ? _betSecs - el : _betSecs + _resSecs - el,
       phase: betting ? RoundPhase.betting : RoundPhase.result,
       pools: List.of(_pools),
