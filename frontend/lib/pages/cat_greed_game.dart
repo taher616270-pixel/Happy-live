@@ -37,14 +37,32 @@ class _CatGreedGameState extends State<CatGreedGame> {
 
   Map<String, String> get _headers => {'Content-Type':'application/json','Authorization':'Bearer ${widget.accessToken}'};
 
+  static const _previewWheelApi =
+      'https://cat-greed-happy-live-api.taher616270.workers.dev/api/v1';
+
   String get _apiBase {
-    if (!kIsWeb || Uri.base.host == 'happy-live.pages.dev') return _wheelApi;
+    if (!kIsWeb) return _wheelApi;
+
+    final pageHost = Uri.base.host.toLowerCase();
+    if (pageHost == 'happy-live.pages.dev') return _wheelApi;
+
+    // Cloudflare Pages preview hosts are isolated from the production origin.
+    // Route them to the dedicated Cat Greed Preview Worker by default so a
+    // plain Preview link is playable without manually adding a query string.
+    if (pageHost.endsWith('.happy-live.pages.dev')) return _previewWheelApi;
+
+    // Allow an explicit non-production Worker URL for other approved preview
+    // hosts, but never allow the production API through this override.
     final raw = Uri.base.queryParameters['catGreedApi'] ?? '';
     final uri = Uri.tryParse(raw);
-    final host = uri?.host ?? '';
-    final valid = uri != null && uri.scheme == 'https' && uri.port == 443 &&
-      uri.userInfo.isEmpty && host != 'happy-live-api.taher616270.workers.dev' &&
-      host.contains('happy-live-api') && host.endsWith('.taher616270.workers.dev');
+    final host = uri?.host.toLowerCase() ?? '';
+    final valid = uri != null &&
+        uri.scheme == 'https' &&
+        uri.port == 443 &&
+        uri.userInfo.isEmpty &&
+        host != 'happy-live-api.taher616270.workers.dev' &&
+        host.contains('happy-live-api') &&
+        host.endsWith('.taher616270.workers.dev');
     return valid ? uri.origin + '/api/v1' : '';
   }
 
