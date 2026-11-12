@@ -47,7 +47,7 @@ async function api(path,opt){opt=opt||{};let r=await fetch(API+path,{method:opt.
 async function uploadGiftSound(file){
   if(!file)return null;
   const ext=(file.name.split(".").pop()||"").toLowerCase();
-  if(!["mp3","m4a","ogg","wav"].includes(ext)||file.size>5*1024*1024)throw Error("الصوت يجب أن يكون MP3 أو M4A أو OGG أو WAV وبحجم لا يتجاوز 5MB.");
+  if(!ext!=="mp3"||file.size>5*1024*1024)throw Error("اختر ملف MP3 فقط، وبحجم لا يتجاوز 5MB.");
   const authResponse=await fetch(API+"/imagekit/auth",{headers:{Authorization:"Bearer "+token}});
   const auth=await authResponse.json();if(!authResponse.ok||!auth.token||!auth.signature||!auth.expire||!auth.publicKey)throw Error(auth.message||auth.error||"تعذر تجهيز رفع الصوت.");
   const form=new FormData();form.append("file",file);form.append("fileName",file.name);form.append("publicKey",auth.publicKey);form.append("token",auth.token);form.append("expire",String(auth.expire));form.append("signature",auth.signature);form.append("folder","/happy-live/gift-sounds");form.append("useUniqueFileName","true");
@@ -56,7 +56,7 @@ async function uploadGiftSound(file){
   return result.url;
 }
 function chooseGiftSoundFile(){
-  return new Promise(resolve=>{const input=document.createElement("input");input.type="file";input.accept=".mp3,.m4a,.ogg,.wav,audio/*";input.onchange=()=>resolve(input.files&&input.files[0]||null);input.click()});
+  return new Promise(resolve=>{const input=document.createElement("input");input.type="file";input.accept=".mp3,audio/mpeg";input.onchange=()=>resolve(input.files&&input.files[0]||null);input.click()});
 }
 function login(msg){$("loginView").classList.remove("hidden");$("appView").classList.add("hidden");$("loginError").textContent=msg||""}
 
@@ -198,7 +198,7 @@ async function giftsPage(){
     '<label style="display:grid;gap:6px">الرمز الاحتياطي<input id="newGiftEmoji" class="search" maxlength="16" value="🎁" required></label>' +
     '<label style="display:grid;gap:6px">نوع الوسائط<select id="newGiftMediaType" class="search"><option value="emoji">رمز تعبيري</option><option value="svga">SVGA</option><option value="apng">APNG</option><option value="webp">WEBP</option></select></label>' +
     '<label style="display:grid;gap:6px">رابط ملف الهدية (HTTPS)<input id="newGiftMediaUrl" class="search" type="url" maxlength="2048" placeholder="https://..."></label>' +
-    '<label style="display:grid;gap:6px">صوت الهدية (اختياري · MP3/M4A/OGG/WAV)<input id="newGiftSoundFile" class="search" type="file" accept=".mp3,.m4a,.ogg,.wav,audio/*"></label>' +
+    '<label style="display:grid;gap:6px">ملف صوت الهدية MP3 (اختياري)<input id="newGiftSoundFile" class="search" type="file" accept=".mp3,audio/mpeg"></label>' +
     '<label style="display:grid;gap:6px">السعر بالعملات<input id="newGiftPrice" class="search" type="number" min="1" step="1" required placeholder="999"></label>' +
     '<label style="display:grid;gap:6px">التصنيف<select id="newGiftCategory" class="search"><option value="trending">رائج</option><option value="event">حدث</option><option value="country">الدولة</option><option value="lucky">حظ</option><option value="custom">مخصص</option></select></label>' +
     '<label style="display:grid;gap:6px">الدولة<select id="newGiftCountry" class="search"><option value="">اختر الدولة</option><option value="KW">الكويت</option><option value="AE">الإمارات</option><option value="QA">قطر</option><option value="MA">المغرب</option><option value="EG">مصر</option><option value="SY">سوريا</option><option value="TR">تركيا</option><option value="DZ">الجزائر</option><option value="BH">البحرين</option><option value="IQ">العراق</option><option value="JO">الأردن</option><option value="LB">لبنان</option><option value="OM">عُمان</option><option value="PK">باكستان</option><option value="PS">فلسطين</option><option value="SD">السودان</option><option value="SOUTH_ARABIA">الجنوب العربي</option><option value="YE">اليمن</option><option value="SA">السعودية</option></select></label>' +
