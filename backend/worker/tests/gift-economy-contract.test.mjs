@@ -174,3 +174,19 @@ test("custom gift creation UI uploads only selected GIF or SVGA files and sends 
   assert.match(roomPage, /mediaFileId/);
   assert.match(roomPage, /mediaDurationMs/);
 });
+
+
+test("admin gift transaction history is read-only, searchable, and permission protected", () => {
+  const start = worker.indexOf('if (url.pathname === "/api/v1/admin/gifts/transactions" && request.method === "GET")');
+  const end = worker.indexOf('if (url.pathname === "/api/v1/admin/gifts/settings"', start);
+  assert.ok(start >= 0 && end > start, "admin gift transaction route must exist");
+  const route = worker.slice(start, end);
+  assert.match(route, /hasAdminPermission\\(actor, "gifts\\.read"\\)/);
+  assert.match(route, /FROM gift_transactions gt/);
+  assert.match(route, /LEFT JOIN profiles sp/);
+  assert.match(route, /LEFT JOIN profiles rp/);
+  assert.match(route, /ORDER BY gt\\.created_at DESC LIMIT \\?/);
+  assert.doesNotMatch(route, /INSERT INTO|UPDATE \\w+ SET|DELETE FROM/);
+  assert.match(adminPage, /giftTransactionRows/);
+  assert.match(adminPage, /\\/admin\\/gifts\\/transactions/);
+});
