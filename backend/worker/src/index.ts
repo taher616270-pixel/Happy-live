@@ -633,8 +633,8 @@ export default {
             if (!iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0) return json({ error: "invalid_custom_gift" }, 400, origin, env);
             const giftId = crypto.randomUUID();
             const result = await env.DB.batch([
-              env.DB.prepare("UPDATE gift_custom_requests SET status = 'approved', reviewed_by_admin_id = ?, review_note = ?, linked_gift_id = ?, updated_at = ? WHERE id = ? AND status = 'pending'").bind(actor.id, reviewNote, giftId, now, req.id),
-              env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, category, created_at, updated_at) SELECT ?, requested_name, ?, '', ?, 1, ?, 'custom', ?, ? FROM gift_custom_requests WHERE id = ? AND status = 'approved' AND linked_gift_id = ?").bind(giftId, iconEmoji, coinPrice, sortOrder, now, now, req.id, giftId)
+              env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, category, created_at, updated_at) SELECT ?, requested_name, ?, '', ?, 1, ?, 'custom', ?, ? FROM gift_custom_requests WHERE id = ? AND status = 'pending'").bind(giftId, iconEmoji, coinPrice, sortOrder, now, now, req.id),
+              env.DB.prepare("UPDATE gift_custom_requests SET status = 'approved', reviewed_by_admin_id = ?, review_note = ?, linked_gift_id = ?, updated_at = ? WHERE id = ? AND status = 'pending'").bind(actor.id, reviewNote, giftId, now, req.id)
             ]);
             if ((result[0]?.meta?.changes ?? 0) !== 1 || (result[1]?.meta?.changes ?? 0) !== 1) return json({ error: "custom_gift_approval_conflict" }, 409, origin, env);
             return json({ ok: true, status: "approved", giftId }, 201, origin, env);
