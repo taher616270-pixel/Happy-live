@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 const migration = await readFile(new URL("../migrations/0027_gift_economy_foundation.sql", import.meta.url), "utf8");
 const categoriesMigration = await readFile(new URL("../migrations/0028_gift_categories_events_custom.sql", import.meta.url), "utf8");
 const customGiftMediaMigration = await readFile(new URL("../migrations/0030_custom_gift_media.sql", import.meta.url), "utf8");
+const giftSoundMigration = await readFile(new URL("../migrations/0031_gift_sound.sql", import.meta.url), "utf8");
 const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const adminPage = await readFile(new URL("../../../frontend/web/admin/index.html", import.meta.url), "utf8");
 const giftSheet = await readFile(new URL("../../../frontend/lib/widgets/room_gift_sheet.dart", import.meta.url), "utf8");
@@ -182,4 +183,16 @@ test("custom gift creation UI uploads only selected GIF or SVGA files and sends 
   assert.match(roomPage, /upload\.imagekit\.io\/api\/v1\/files\/upload/);
   assert.match(roomPage, /mediaFileId/);
   assert.match(roomPage, /mediaDurationMs/);
+});
+
+
+test("animated gifts carry a separate optional audio asset to every room member", () => {
+  assert.match(giftSoundMigration, /ALTER TABLE gift_catalog ADD COLUMN sound_url TEXT/);
+  assert.match(worker, /sound_url AS soundUrl/);
+  assert.match(worker, /soundUrl: gift\.soundUrl/);
+  assert.match(worker, /isOwnerAdmin/);
+  assert.match(adminPage, /uploadGiftSound\(file\)/);
+  assert.match(adminPage, /newGiftSoundFile/);
+  assert.match(roomPage, /AudioPlayer/);
+  assert.match(roomPage, /UrlSource\(soundUrl\)/);
 });
