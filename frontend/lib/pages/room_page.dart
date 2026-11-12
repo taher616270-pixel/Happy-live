@@ -1979,14 +1979,33 @@ class _RoomPageState extends State<RoomPage> {
           String? soundUrl;
           String? soundFileId;
           if (soundBytes != null && soundFileName != null) {
-            if (!soundFileName.toLowerCase().endsWith('.mp3') || soundBytes.isEmpty || soundBytes.length > 5 * 1024 * 1024) throw Exception('اختر ملف MP3 لا يتجاوز 5 ميجابايت');
-            final soundRequest = http.MultipartRequest('POST', Uri.parse('https://upload.imagekit.io/api/v1/files/upload'));
+            if (!soundFileName.toLowerCase().endsWith('.mp3') || soundBytes.isEmpty || soundBytes.length > 5 * 1024 * 1024) {
+              throw Exception('اختر ملف MP3 لا يتجاوز 5 ميجابايت');
+            }
+
+            // ImageKit upload tokens are single-use. Request a fresh signature for
+            // the second file instead of reusing the token consumed by the animation.
+            final soundAuthResponse = await http.get(
+              Uri.parse('$_apiBase/imagekit/auth'),
+              headers: _headers,
+            ).timeout(const Duration(seconds: 10));
+            final soundAuthData = jsonDecode(soundAuthResponse.body);
+            if (soundAuthResponse.statusCode != 200 || soundAuthData is! Map ||
+                soundAuthData['token'] == null || soundAuthData['signature'] == null ||
+                soundAuthData['expire'] == null || soundAuthData['publicKey'] == null) {
+              throw Exception('تعذر تجهيز اعتماد مستقل لصوت الهدية (' + soundAuthResponse.statusCode.toString() + ')');
+            }
+
+            final soundRequest = http.MultipartRequest(
+              'POST',
+              Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
+            );
             soundRequest.fields.addAll({
               'fileName': soundFileName,
-              'publicKey': authData['publicKey'].toString(),
-              'token': authData['token'].toString(),
-              'expire': authData['expire'].toString(),
-              'signature': authData['signature'].toString(),
+              'publicKey': soundAuthData['publicKey'].toString(),
+              'token': soundAuthData['token'].toString(),
+              'expire': soundAuthData['expire'].toString(),
+              'signature': soundAuthData['signature'].toString(),
               'folder': '/happy-live/custom-gift-sounds',
               'useUniqueFileName': 'true',
             });
@@ -1994,7 +2013,13 @@ class _RoomPageState extends State<RoomPage> {
             final soundStream = await soundRequest.send().timeout(const Duration(seconds: 60));
             final soundResponse = await http.Response.fromStream(soundStream);
             final soundData = jsonDecode(soundResponse.body);
-            if (soundResponse.statusCode != 200 || soundData is! Map || soundData['url'] == null || soundData['fileId'] == null) throw Exception('فشل رفع صوت الهدية إلى ImageKit');
+            if (soundResponse.statusCode != 200 || soundData is! Map ||
+                soundData['url'] == null || soundData['fileId'] == null) {
+              final providerMessage = soundData is Map
+                  ? (soundData['message'] ?? soundData['help'] ?? soundData['error'] ?? 'رد غير معروف من ImageKit')
+                  : 'استجابة غير صالحة من ImageKit';
+              throw Exception('فشل رفع صوت الهدية إلى ImageKit (' + soundResponse.statusCode.toString() + '): ' + providerMessage.toString());
+            }
             soundUrl = soundData['url'].toString();
             soundFileId = soundData['fileId'].toString();
           }
