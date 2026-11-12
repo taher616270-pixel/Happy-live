@@ -1,10 +1,14 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svga/flutter_svga.dart';
 import 'package:gif_view/gif_view.dart';
 
 typedef GiftCatalogLoader = Future<List<Map<String, dynamic>>> Function(String category);
 typedef RoomGiftSender = Future<int> Function(Map<String, dynamic> gift, int quantity, String recipientId);
-typedef CustomGiftRequester = Future<void> Function(String name, String description);
+typedef CustomGiftRequester = Future<void> Function(String name, String description, Uint8List bytes, String fileName, String mediaType, int durationMs);
 
 Future<void> showRoomGiftSheet(
   BuildContext context, {
@@ -80,6 +84,11 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   String? _message;
   final _customName = TextEditingController();
   final _customDescription = TextEditingController();
+  bool _customCreating = false;
+  Uint8List? _customMediaBytes;
+  String? _customMediaName;
+  String? _customMediaType;
+  int? _customMediaDurationMs;
 
   @override
   void initState() {
@@ -102,7 +111,8 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     setState(() {
       _tab = tab;
       _selectedGift = null;
-      if (tab != 'vip') _giftsFuture = widget.loadGifts(tab);
+      _customCreating = false;
+      if (tab != 'vip' && tab != 'custom') _giftsFuture = widget.loadGifts(tab);
     });
   }
 
@@ -143,20 +153,82 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     }
   }
 
+  Future<void> _pickCustomMedia() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['gif', 'svga'],
+        withData: true,
+        allowMultiple: false,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      final bytes = file.bytes;
+      final extension = (file.extension ?? file.name.split('.').last).toLowerCase();
+      if (bytes == null || bytes.isEmpty) throw Exception('تعذر قراءة الملف المحدد');
+      if (bytes.length > 10 * 1024 * 1024) throw Exception('الحد الأقصى لحجم الملف 10 ميجابايت');
+      if (extension != 'gif' && extension != 'svga') throw Exception('اختر ملف GIF أو SVGA فقط');
+
+      int durationMs;
+      if (extension == 'gif') {
+        final codec = await ui.instantiateImageCodec(bytes);
+        try {
+          if (codec.frameCount < 2) throw Exception('ملف GIF يجب أن يحتوي على حركة');
+          var total = 0;
+          for (var i = 0; i < codec.frameCount; i++) {
+            final frame = await codec.getNextFrame();
+            total += frame.duration.inMilliseconds;
+            frame.image.dispose();
+            if (total > 5000) break;
+          }
+          durationMs = total;
+        } finally {
+          codec.dispose();
+        }
+      } else {
+        final movie = await SVGAParser.shared.decodeFromBuffer(bytes);
+        final fps = movie.params.fps;
+        final frames = movie.params.frames;
+        movie.releaseMemory();
+        if (fps <= 0 || frames <= 0) throw Exception('ملف SVGA غير صالح أو لا يحتوي على مدة واضحة');
+        durationMs = ((frames * 1000) / fps).ceil();
+      }
+      if (durationMs < 1 || durationMs > 5000) throw Exception('مدة الحركة تتجاوز 5 ثوانٍ');
+      if (!mounted) return;
+      setState(() {
+        _customMediaBytes = bytes;
+        _customMediaName = file.name;
+        _customMediaType = extension;
+        _customMediaDurationMs = durationMs;
+      });
+    } catch (error) {
+      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
   Future<void> _submitCustomRequest() async {
     final name = _customName.text.trim();
     final description = _customDescription.text.trim();
-    if (name.length < 2) {
-      _showMessage('اكتب اسم الهدية المقترحة');
-      return;
-    }
+    final bytes = _customMediaBytes;
+    final fileName = _customMediaName;
+    final mediaType = _customMediaType;
+    final durationMs = _customMediaDurationMs;
+    if (name.length < 2) { _showMessage('اكتب اسم الهدية المقترحة'); return; }
+    if (bytes == null || fileName == null || mediaType == null || durationMs == null) { _showMessage('اختر ملف GIF أو SVGA أولًا'); return; }
     if (_requesting) return;
     setState(() => _requesting = true);
     try {
-      await widget.onRequestCustomGift(name, description);
+      await widget.onRequestCustomGift(name, description, bytes, fileName, mediaType, durationMs);
       _customName.clear();
       _customDescription.clear();
-      _showMessage('تم إرسال اقتراحك للإدارة للمراجعة');
+      setState(() {
+        _customMediaBytes = null;
+        _customMediaName = null;
+        _customMediaType = null;
+        _customMediaDurationMs = null;
+        _customCreating = false;
+      });
+      _showMessage('تم رفع الهدية وإرسالها للإدارة للمراجعة');
     } catch (error) {
       _showMessage(error.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -186,10 +258,10 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
                   if (_tab == 'vip')
                     const Expanded(child: Center(child: Text('قريبًا', style: TextStyle(color: _muted, fontSize: 15))))
                   else if (_tab == 'custom')
-                    Expanded(child: Column(children: [_customRequestForm(), Expanded(child: _giftGrid())]))
+                    Expanded(child: _customCreating ? _customRequestForm() : _customHome())
                   else
                     Expanded(child: _giftGrid()),
-                  if (_tab != 'vip') _bottomBar(),
+                  if (_tab != 'vip' && _tab != 'custom') _bottomBar(),
                 ],
               ),
               if (_message != null)
@@ -383,38 +455,62 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     );
   }
 
-  Widget _customRequestForm() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
-      child: Container(
-        padding: const EdgeInsets.all(9),
-        decoration: BoxDecoration(color: const Color(0xFF1B1721), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0x22E8C477))),
-        child: Column(children: [
-          const Align(alignment: Alignment.centerRight, child: Text('اقترح هدية تحمل اسمك', style: TextStyle(color: _gold, fontSize: 12, fontWeight: FontWeight.bold))),
-          const SizedBox(height: 6),
-          TextField(
-            controller: _customName,
-            maxLength: 80,
-            style: const TextStyle(color: Colors.white, fontSize: 12),
-            decoration: const InputDecoration(isDense: true, counterText: '', hintText: 'اسم الهدية المقترحة', hintStyle: TextStyle(color: _muted, fontSize: 11), filled: true, fillColor: Color(0xFF100D15), border: OutlineInputBorder(borderSide: BorderSide.none)),
-          ),
-          const SizedBox(height: 5),
-          TextField(
-            controller: _customDescription,
-            maxLength: 500,
-            maxLines: 2,
-            style: const TextStyle(color: Colors.white, fontSize: 11),
-            decoration: const InputDecoration(isDense: true, counterText: '', hintText: 'وصف مختصر للهدية (اختياري)', hintStyle: TextStyle(color: _muted, fontSize: 11), filled: true, fillColor: Color(0xFF100D15), border: OutlineInputBorder(borderSide: BorderSide.none)),
-          ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: _requesting ? null : _submitCustomRequest,
-              child: _requesting ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2, color: _gold)) : const Text('إرسال الاقتراح للإدارة', style: TextStyle(color: _gold, fontSize: 11)),
-            ),
-          ),
-        ]),
+  Widget _customHome() {
+    return Center(
+      child: InkWell(
+        onTap: () => setState(() => _customCreating = true),
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          width: 150,
+          height: 142,
+          decoration: BoxDecoration(color: const Color(0xFF1B1721), borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0x66E8C477))),
+          child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(Icons.add_circle_outline, color: _gold, size: 42),
+            SizedBox(height: 10),
+            Text('إنشاء', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+            SizedBox(height: 4),
+            Text('اقترح هديتك الخاصة', style: TextStyle(color: _muted, fontSize: 10)),
+          ]),
+        ),
       ),
+    );
+  }
+
+  Widget _customRequestForm() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Align(alignment: Alignment.centerRight, child: TextButton.icon(
+          onPressed: _requesting ? null : () => setState(() => _customCreating = false),
+          icon: const Icon(Icons.arrow_forward, color: _gold, size: 18),
+          label: const Text('رجوع', style: TextStyle(color: _gold, fontSize: 12)),
+        )),
+        const Text('إنشاء هدية مخصصة', style: TextStyle(color: _gold, fontSize: 15, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        TextField(controller: _customName, maxLength: 80, style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: const InputDecoration(isDense: true, counterText: '', hintText: 'اسم الهدية', hintStyle: TextStyle(color: _muted, fontSize: 12), filled: true, fillColor: Color(0xFF100D15), border: OutlineInputBorder(borderSide: BorderSide.none))),
+        const SizedBox(height: 8),
+        TextField(controller: _customDescription, maxLength: 500, maxLines: 2, style: const TextStyle(color: Colors.white, fontSize: 12),
+          decoration: const InputDecoration(isDense: true, counterText: '', hintText: 'وصف مختصر (اختياري)', hintStyle: TextStyle(color: _muted, fontSize: 11), filled: true, fillColor: Color(0xFF100D15), border: OutlineInputBorder(borderSide: BorderSide.none))),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(onPressed: _requesting ? null : _pickCustomMedia, icon: const Icon(Icons.upload_file, color: _gold),
+          label: Text(_customMediaName == null ? 'اختيار ملف GIF أو SVGA' : 'تغيير الملف', style: const TextStyle(color: _gold)),
+          style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0x66E8C477)))),
+        if (_customMediaName != null) ...[
+          const SizedBox(height: 8),
+          Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFF211D27), borderRadius: BorderRadius.circular(10)),
+            child: Row(children: [
+              const Icon(Icons.movie_creation_outlined, color: _gold, size: 22),
+              const SizedBox(width: 8),
+              Expanded(child: Text(_customMediaName! + '\n' + (_customMediaType ?? '').toUpperCase() + ' · ' + (_customMediaDurationMs ?? 0).toString() + ' ms', style: const TextStyle(color: Colors.white, fontSize: 11))),
+              IconButton(onPressed: _requesting ? null : () => setState(() { _customMediaBytes = null; _customMediaName = null; _customMediaType = null; _customMediaDurationMs = null; }), icon: const Icon(Icons.close, color: _muted, size: 18)),
+            ])),
+        ],
+        const Padding(padding: EdgeInsets.only(top: 8), child: Text('المسموح GIF أو SVGA فقط · مدة الحركة حتى 5 ثوانٍ · الحد الأقصى للحجم 10MB', textAlign: TextAlign.center, style: TextStyle(color: _muted, fontSize: 10))),
+        const SizedBox(height: 12),
+        FilledButton(onPressed: _requesting ? null : _submitCustomRequest, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF8A2BFF), foregroundColor: Colors.white),
+          child: _requesting ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('رفع وإرسال للإدارة')),
+      ]),
     );
   }
 
