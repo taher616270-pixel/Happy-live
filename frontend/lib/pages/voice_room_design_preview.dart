@@ -1595,7 +1595,7 @@ Widget _roomActionButton({
                     Tab(text: 'ألعاب مخصصة'),
                   ],
                 ),
-                const Expanded(
+                Expanded(
                   child: TabBarView(
                     children: [
                       _GamesTabPlaceholder(
