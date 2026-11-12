@@ -181,12 +181,14 @@ test("admin gift transaction history is read-only, searchable, and permission pr
   const end = worker.indexOf('if (url.pathname === "/api/v1/admin/gifts/settings"', start);
   assert.ok(start >= 0 && end > start, "admin gift transaction route must exist");
   const route = worker.slice(start, end);
-  assert.match(route, /hasAdminPermission\\(actor, "gifts\\.read"\\)/);
+  assert.match(route, /hasAdminPermission\(actor, "gifts\.read"\)/);
   assert.match(route, /FROM gift_transactions gt/);
   assert.match(route, /LEFT JOIN profiles sp/);
   assert.match(route, /LEFT JOIN profiles rp/);
-  assert.match(route, /ORDER BY gt\\.created_at DESC LIMIT \\?/);
-  assert.doesNotMatch(route, /INSERT INTO|UPDATE \\w+ SET|DELETE FROM/);
-  assert.match(adminPage, /giftTransactionRows/);
-  assert.match(adminPage, /\\/admin\\/gifts\\/transactions/);
+  assert.match(route, /ORDER BY gt\.created_at DESC LIMIT \?/);
+  assert.doesNotMatch(route, /INSERT INTO|UPDATE \w+ SET|DELETE FROM/);
+  assert.ok(adminPage.includes("giftTransactionRows"));
+  assert.ok(adminPage.includes("/admin/gifts/transactions?limit=100&q="));
+});
+
 });
