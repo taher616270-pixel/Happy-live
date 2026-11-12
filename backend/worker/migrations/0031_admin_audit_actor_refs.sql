@@ -10,3 +10,15 @@ CREATE TABLE IF NOT EXISTS admin_audit_actor_refs (
 
 CREATE INDEX IF NOT EXISTS idx_admin_audit_actor_refs_admin_created
   ON admin_audit_actor_refs(admin_id, created_at DESC);
+
+-- Backfill legacy admin audit rows whose actor identity was stored in details_json.
+-- Invalid JSON and unknown account ids are ignored without blocking deployment.
+INSERT OR IGNORE INTO admin_audit_actor_refs (audit_log_id, admin_id)
+SELECT l.id, json_extract(l.details_json, '$.adminId')
+FROM admin_audit_logs l
+WHERE json_valid(l.details_json) = 1
+  AND json_extract(l.details_json, '$.adminId') IS NOT NULL
+  AND EXISTS (
+    SELECT 1 FROM admin_accounts a
+    WHERE a.id = json_extract(l.details_json, '$.adminId')
+  );
