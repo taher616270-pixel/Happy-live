@@ -1742,10 +1742,37 @@ export default {
           }
           // Confirm that the submitted URL and file ID belong to a real ImageKit upload.
           if (!env.IMAGEKIT_PRIVATE_KEY?.trim()) return json({ error: "imagekit_not_configured" }, 503, origin, env);
-          const imageKitFileResponse = await fetch("https://api.imagekit.io/v1/files/" + encodeURIComponent(mediaFileId), {
-            headers: { Authorization: "Basic " + btoa(env.IMAGEKIT_PRIVATE_KEY + ":") }
-          });
-          if (!imageKitFileResponse.ok) return json({ error: "imagekit_file_not_found" }, 400, origin, env);
+          // ImageKit can briefly take time to expose a freshly uploaded file through
+          // its management API. Retry transient 404/5xx responses before rejecting it.
+          let imageKitFileResponse: Response | null = null;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            imageKitFileResponse = await fetch("https://api.imagekit.io/v1/files/" + encodeURIComponent(mediaFileId), {
+              headers: { Authorization: "Basic " + btoa(env.IMAGEKIT_PRIVATE_KEY.trim() + ":") }
+            });
+            if (imageKitFileResponse.ok || (imageKitFileResponse.status !== 404 && imageKitFileResponse.status < 500)) break;
+            if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+          }
+          if (!imageKitFileResponse?.ok) {
+            const providerStatus = imageKitFileResponse?.status ?? 0;
+            let providerMessage = "";
+            try {
+              const providerBody = await imageKitFileResponse!.json() as Record<string, unknown>;
+              providerMessage = String(providerBody.message ?? providerBody.help ?? providerBody.error ?? "").slice(0, 240);
+            } catch {
+              try { providerMessage = (await imageKitFileResponse!.text()).slice(0, 240); } catch { /* no provider body */ }
+            }
+            const credentialsRejected = providerStatus === 401 || providerStatus === 403;
+            return json({
+              error: credentialsRejected ? "imagekit_credentials_invalid" : providerStatus === 404 ? "imagekit_file_not_found" : "imagekit_file_lookup_failed",
+              message: credentialsRejected
+                ? "مفاتيح ImageKit في الخادم لا تملك صلاحية التحقق من الملف. تأكد من تطابق المفتاحين العام والخاص."
+                : providerStatus === 404
+                  ? "تم رفع الملف، لكن ImageKit لم يعثر على معرّفه بعد إعادة المحاولة. تحقق من أن الرفع والتحقق يستخدمان حساب ImageKit نفسه."
+                  : "تعذر التحقق من الملف لدى ImageKit. حاول مرة أخرى.",
+              providerStatus,
+              providerMessage
+            }, 400, origin, env);
+          }
           const imageKitFile = await imageKitFileResponse.json() as Record<string, unknown>;
           const uploadedName = typeof imageKitFile.name === "string" ? imageKitFile.name : "";
           const uploadedUrl = typeof imageKitFile.url === "string" ? imageKitFile.url : "";
