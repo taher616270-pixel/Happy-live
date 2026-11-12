@@ -83,7 +83,11 @@ class _CatGreedGameState extends State<CatGreedGame> {
     final signature='undefined:$slot:$_chip';
     if(_pendingBetSignature!=signature){
       final random=math.Random.secure();
-      _pendingBetKey=List.generate(16,(_)=>random.nextInt(256).toRadixString(16).padLeft(2,'0')).join();
+      final bytes=List<int>.generate(16,(_)=>random.nextInt(256));
+      bytes[6]=(bytes[6]&0x0f)|0x40;
+      bytes[8]=(bytes[8]&0x3f)|0x80;
+      final hex=bytes.map((value)=>value.toRadixString(16).padLeft(2,'0')).join();
+      _pendingBetKey='${hex.substring(0,8)}-${hex.substring(8,12)}-${hex.substring(12,16)}-${hex.substring(16,20)}-${hex.substring(20,32)}';
       _pendingBetSignature=signature;
     }
     setState(()=>_busy=true);
@@ -178,7 +182,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
           _safeImage(symbol['imageUrl'])?Image.network(symbol['imageUrl'].toString(),width:d*.42,height:d*.42,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Text(symbol['emoji']?.toString()??'🐱',style:TextStyle(fontSize:d*.35))):Text(symbol['emoji']?.toString()??'🐱',style:TextStyle(fontSize:d*.35)),
           Text('${symbol['multiplier']??1}x',style:TextStyle(color:const Color(0xFF5A3A00),fontSize:d*.15,fontWeight:FontWeight.w900)),
           Text(_fmt(pools.isNotEmpty?pools[i]:0),style:TextStyle(color:const Color(0xFF5A3A00),fontSize:d*.12)),
-          Text('ظهور ${((currentOdds['appearanceProbabilityBp'] as num? ?? 0)/100).toStringAsFixed(1)}%',style:TextStyle(color:const Color(0xFF5A3A00),fontSize:d*.085)),
+          Text('ظهور ${((currentOdds['appearanceProbabilityBp'] as num? ?? 0)/100).toStringAsFixed(1)}% · فوز ${((currentOdds['winProbabilityBp'] as num? ?? 0)/100).toStringAsFixed(1)}%',style:TextStyle(color:const Color(0xFF5A3A00),fontSize:d*.075)),
           Text('عائد نظري ${((currentOdds['expectedReturnBp'] as num? ?? 0)/100).toStringAsFixed(1)}%',style:TextStyle(color:const Color(0xFF5A3A00),fontSize:d*.085)),
           if(bets.isNotEmpty&&(bets[i] as num)>0)Text('رهانك ${_fmt(bets[i])}',style:TextStyle(color:const Color(0xFF7A22FF),fontSize:d*.09)),
         ]),
