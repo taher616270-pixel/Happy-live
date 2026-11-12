@@ -190,5 +190,3 @@ test("admin gift transaction history is read-only, searchable, and permission pr
   assert.ok(adminPage.includes("giftTransactionRows"));
   assert.ok(adminPage.includes("/admin/gifts/transactions?limit=100&q="));
 });
-
-});
