@@ -62,7 +62,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
       if(!mounted)return;
       if(next['enabled']!=true&&next['roundId']==null){setState(()=>_error='اللعبة غير متاحة حالياً');return;}
       final round='${next['roundId']}';
-      setState(()=>_state=next);
+      setState((){_state=next;_error=null;});
       if(next['phase']=='result' && round!=_animatedRound){_animatedRound=round;await _spin(next);}
     } catch(e) { if(mounted)setState(()=>_error=e.toString().replaceFirst('Exception: ','')); }
     finally { _refreshing=false; }
