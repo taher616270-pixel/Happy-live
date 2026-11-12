@@ -113,7 +113,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
               ])),
               Text('جولة ${s['roundId']} · ${s['phase']=='betting'?'استقبال الرهانات':'النتيجة'} · ${s['secondsLeft']} ث',style:const TextStyle(color:Colors.white70,fontWeight:FontWeight.bold)),
               Expanded(child:LayoutBuilder(builder:(context,c){
-                final d=math.min(c.maxWidth,c.maxHeight);
+                final d=c.maxWidth<c.maxHeight?c.maxWidth:c.maxHeight;
                 return Center(child:SizedBox(width:d,height:d,child:Stack(children:[
                   for(var i=0;i<8;i++)Positioned(left:d/2+d*.34*math.sin(i*math.pi/4)-d*.135,top:d/2-d*.34*math.cos(i*math.pi/4)-d*.135,width:d*.27,height:d*.27,child:_slot(i,s,d*.27)),
                   Center(child:Container(width:d*.25,height:d*.25,decoration:BoxDecoration(shape:BoxShape.circle,color:const Color(0xFF8A4B2A),border:Border.all(color:const Color(0xFFD4AF37),width:4)),child:Center(child:Text('${s['secondsLeft']}s',style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900,fontSize:22))))),
@@ -138,7 +138,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
     final symbol=i<symbols.length?Map<String,dynamic>.from(symbols[i] as Map):<String,dynamic>{};
     final pools=(s['pools'] as List?)??const [],bets=(s['myBets'] as List?)??const [];
     final poolValues=pools.map((e)=>(e as num).toDouble()).toList();
-    final hot=poolValues.isNotEmpty&&poolValues[i]==poolValues.reduce(math.max);
+    final hot=poolValues.isNotEmpty&&poolValues[i]==poolValues.reduce((a,b)=>a>b?a:b);
     return GestureDetector(onTap:()=>_bet(i),child:AnimatedContainer(duration:const Duration(milliseconds:120),
       transform:Matrix4.identity()..scale(_hit==i?1.1:1.0),
       decoration:BoxDecoration(shape:BoxShape.circle,color:_hit==i?const Color(0xFFFFE68A):const Color(0xFFFFF3C4),border:Border.all(color:const Color(0xFFB67A39),width:3),boxShadow:_hit==i?[const BoxShadow(color:Color(0xFFFFD700),blurRadius:18,spreadRadius:3)]:null),
