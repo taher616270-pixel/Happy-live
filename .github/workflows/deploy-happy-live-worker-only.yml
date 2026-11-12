@@ -40,6 +40,20 @@ jobs:
         working-directory: backend/worker
         run: npm test
 
+      - name: Verify required admin audit migration is already applied
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: backend/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          result="$(npx wrangler d1 execute happy-live-db --remote --command "SELECT name FROM sqlite_master WHERE type='table' AND name='admin_audit_actor_refs';" --json --config wrangler.toml)"
+          printf '%s\n' "$result"
+          if ! printf '%s\n' "$result" | grep -q 'admin_audit_actor_refs'; then
+            echo "::error::Apply migrations/0031_admin_audit_actor_refs.sql before deploying this Worker."
+            exit 1
+          fi
+
       - name: Deploy Worker only (do not run D1 migrations)
         if: github.event_name == 'workflow_dispatch'
         working-directory: backend/worker

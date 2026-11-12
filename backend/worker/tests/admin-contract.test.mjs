@@ -23,7 +23,7 @@ test("sensitive routes have server-side permission checks", () => {
 test("account suspension and kick revoke sessions and are auditable", () => {
   assert.match(worker, /UPDATE user_sessions SET revoked_at = \? WHERE user_id = \? AND revoked_at IS NULL/);
   assert.match(worker, /DELETE FROM room_seats WHERE user_id = \?/);
-  assert.match(worker, /'user\.kick'/);
+  assert.match(worker, /["']user\.kick["']/);
   assert.match(worker, /adminUsername: actor\.username/);
 });
 
@@ -32,10 +32,12 @@ test("console roles are constrained and primary owner is seeded", () => {
   assert.match(migration, /SELECT id, 'owner' FROM admin_accounts/);
 });
 
-test("standalone admin page exposes stats and moderator management without fake economy data", () => {
+test("standalone admin page exposes real gifts while keeping VIP and recharge disabled", () => {
   assert.match(adminPage, /data-page="overview"/);
   assert.match(adminPage, /data-page="moderators"/);
-  assert.match(adminPage, /VIP والشحن والهدايا/);
+  assert.match(adminPage, /data-page="gifts"/);
+  assert.match(adminPage, /الشحن الإلكتروني غير مفعّلة بعد/);
+  assert.match(worker, /\/api\/v1\/admin\/gifts\/catalog/);
 });
 
 test("admin room moderation is scoped to an existing room and uses server-side permissions", () => {
@@ -50,8 +52,11 @@ test("admin room moderation is scoped to an existing room and uses server-side p
   assert.match(route, /room_moderators/);
   assert.match(route, /room_bans/);
   assert.match(route, /room_kicks/);
-  assert.match(route, /adminId: actor\.id/);
-  assert.match(route, /adminUsername: actor\.username/);
+  const auditStart = worker.indexOf("function adminAuditStatements(");
+  const auditEnd = worker.indexOf("const DEFAULT_ALLOWED_ORIGINS", auditStart);
+  const auditHelper = worker.slice(auditStart, auditEnd);
+  assert.match(auditHelper, /adminId: actor\.id/);
+  assert.match(auditHelper, /adminUsername: actor\.username/);
   assert.doesNotMatch(route, /body\.(?:role|adminId|actorId)/);
 });
 

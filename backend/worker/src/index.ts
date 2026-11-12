@@ -289,6 +289,42 @@ async function createAdminSession(db: D1Database, adminId: string) {
   return { accessToken, expiresAt };
 }
 
+type AdminAuditEntry = {
+  action: string;
+  targetType: string;
+  targetId: string;
+  details: Record<string, unknown>;
+  createdAt: string;
+};
+
+function adminAuditStatements(
+  db: D1Database,
+  actor: AdminActor,
+  entry: AdminAuditEntry
+): D1PreparedStatement[] {
+  const auditId = crypto.randomUUID();
+  const details = {
+    ...entry.details,
+    adminId: actor.id,
+    adminUsername: actor.username
+  };
+  return [
+    db.prepare(
+      "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?)"
+    ).bind(
+      auditId,
+      entry.action,
+      entry.targetType,
+      entry.targetId,
+      JSON.stringify(details),
+      entry.createdAt
+    ),
+    db.prepare(
+      "INSERT INTO admin_audit_actor_refs (audit_log_id, admin_id) VALUES (?, ?)"
+    ).bind(auditId, actor.id)
+  ];
+}
+
 const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -308,15 +344,9 @@ function allowedOrigins(env: Env): Set<string> {
 }
 
 function isAllowedOrigin(origin: string, env: Env): boolean {
-  if (allowedOrigins(env).has(origin)) return true;
-  try {
-    const parsed = new URL(origin);
-    return parsed.protocol === "https:" &&
-      parsed.origin === origin &&
-      parsed.hostname.endsWith(".happy-live.pages.dev");
-  } catch {
-    return false;
-  }
+  // Only explicitly trusted origins may access the API. Do not trust arbitrary
+  // preview/custom subdomains that happen to share the Pages hostname suffix.
+  return allowedOrigins(env).has(origin);
 }
 
 function json(data: unknown, status = 200, origin?: string, env?: Env): Response {
@@ -465,9 +495,22 @@ export default {
         const body = await request.json() as Record<string, unknown>;
         const status = typeof body.status === "string" ? body.status : "";
         if (!["reviewed", "dismissed"].includes(status)) return json({ error: "invalid_report_status" }, 400, origin, env);
-        const result = await env.DB.prepare("UPDATE room_profile_reports SET status = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ?")
-          .bind(status, new Date().toISOString(), admin.id, roomReportStatusRoute[1]).run();
-        if ((result.meta?.changes ?? 0) === 0) return json({ error: "report_not_found" }, 404, origin, env);
+        const report = await env.DB.prepare("SELECT id, status FROM room_profile_reports WHERE id = ? LIMIT 1")
+          .bind(roomReportStatusRoute[1]).first<{ id: string; status: string }>();
+        if (!report) return json({ error: "report_not_found" }, 404, origin, env);
+        const now = new Date().toISOString();
+        const results = await env.DB.batch([
+          env.DB.prepare("UPDATE room_profile_reports SET status = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ?")
+            .bind(status, now, admin.id, report.id),
+          ...adminAuditStatements(env.DB, admin, {
+            action: status === "reviewed" ? "report.room.review" : "report.room.dismiss",
+            targetType: "room_profile_report",
+            targetId: report.id,
+            details: { status, previousStatus: report.status },
+            createdAt: now
+          })
+        ]);
+        if ((results[0]?.meta?.changes ?? 0) === 0) return json({ error: "report_update_conflict" }, 409, origin, env);
         return json({ ok: true, status }, 200, origin, env);
       } catch (error) {
         console.error("[admin.room-reports.update] failed", error instanceof Error ? error.message : "UnknownError");
@@ -490,12 +533,14 @@ export default {
       url.pathname === "/api/v1/admin/moderators" ||
       url.pathname === "/api/v1/admin/rooms" ||
       url.pathname === "/api/v1/admin/audit" ||
+      url.pathname === "/api/v1/admin/accounts" ||
       url.pathname === "/api/v1/admin/agora/status" ||
       url.pathname === "/api/v1/admin/agora/voice" ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/kick$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/role$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/wallet\/credit$/i.test(url.pathname) ||
+      /^\/api\/v1\/admin\/accounts\/[0-9a-f-]{36}\/(role|status|password|revoke-sessions)$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/moderation$/i.test(url.pathname)
     ) {
@@ -566,8 +611,17 @@ export default {
             if ((mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) || !["emoji", "svga", "apng", "webp"].includes(mediaType) || (mediaUrl && mediaType === "emoji") || (!mediaUrl && mediaType !== "emoji")) return json({ error: "invalid_gift_media", message: "رابط الوسائط يجب أن يكون HTTPS ونوعه SVGA أو APNG أو WEBP." }, 400, origin, env);
             if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من اسم الهدية ورمزها وسعرها وتصنيفها والدولة وفترة العرض." }, 400, origin, env);
             const id = crypto.randomUUID(), now = new Date().toISOString();
-            await env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, media_url, media_type, coin_price, is_active, sort_order, created_at, updated_at, category, country_code, starts_at, ends_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-              .bind(id, name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive, sortOrder, now, now, category, countryCode, startsAt, endsAt).run();
+            await env.DB.batch([
+              env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, media_url, media_type, coin_price, is_active, sort_order, created_at, updated_at, category, country_code, starts_at, ends_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                .bind(id, name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive, sortOrder, now, now, category, countryCode, startsAt, endsAt),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "gift.catalog.create",
+                targetType: "gift",
+                targetId: id,
+                details: { name, coinPrice, category, countryCode, isActive: Boolean(isActive), mediaType },
+                createdAt: now
+              })
+            ]);
             return json({ ok: true, gift: { id, name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, createdAt: now, updatedAt: now } }, 201, origin, env);
           }
           if (request.method === "PATCH" && itemRoute) {
@@ -589,13 +643,34 @@ export default {
             if ((mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) || !["emoji", "svga", "apng", "webp"].includes(mediaType) || (mediaUrl && mediaType === "emoji") || (!mediaUrl && mediaType !== "emoji")) return json({ error: "invalid_gift_media", message: "رابط الوسائط يجب أن يكون HTTPS ونوعه SVGA أو APNG أو WEBP." }, 400, origin, env);
             if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || ![0, 1].includes(isActive) || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من بيانات الهدية." }, 400, origin, env);
             const now = new Date().toISOString();
-            await env.DB.prepare("UPDATE gift_catalog SET name = ?, icon_emoji = ?, media_url = ?, media_type = ?, coin_price = ?, is_active = ?, sort_order = ?, category = ?, country_code = ?, starts_at = ?, ends_at = ?, updated_at = ? WHERE id = ?")
-              .bind(name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive, sortOrder, category, countryCode, startsAt, endsAt, now, itemRoute[1]).run();
+            await env.DB.batch([
+              env.DB.prepare("UPDATE gift_catalog SET name = ?, icon_emoji = ?, media_url = ?, media_type = ?, coin_price = ?, is_active = ?, sort_order = ?, category = ?, country_code = ?, starts_at = ?, ends_at = ?, updated_at = ? WHERE id = ?")
+                .bind(name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive, sortOrder, category, countryCode, startsAt, endsAt, now, itemRoute[1]),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "gift.catalog.update",
+                targetType: "gift",
+                targetId: itemRoute[1],
+                details: { name, coinPrice, category, countryCode, isActive: Boolean(isActive), mediaType },
+                createdAt: now
+              })
+            ]);
             return json({ ok: true, gift: { id: itemRoute[1], name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, updatedAt: now } }, 200, origin, env);
           }
           if (request.method === "DELETE" && itemRoute) {
-            const result = await env.DB.prepare("UPDATE gift_catalog SET is_active = 0, updated_at = ? WHERE id = ?").bind(new Date().toISOString(), itemRoute[1]).run();
-            if ((result.meta?.changes ?? 0) === 0) return json({ error: "gift_not_found" }, 404, origin, env);
+            const existingGift = await env.DB.prepare("SELECT id FROM gift_catalog WHERE id = ? LIMIT 1").bind(itemRoute[1]).first<{ id: string }>();
+            if (!existingGift) return json({ error: "gift_not_found" }, 404, origin, env);
+            const now = new Date().toISOString();
+            const results = await env.DB.batch([
+              env.DB.prepare("UPDATE gift_catalog SET is_active = 0, updated_at = ? WHERE id = ?").bind(now, itemRoute[1]),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "gift.catalog.deactivate",
+                targetType: "gift",
+                targetId: itemRoute[1],
+                details: { isActive: false },
+                createdAt: now
+              })
+            ]);
+            if ((results[0]?.meta?.changes ?? 0) === 0) return json({ error: "gift_not_found" }, 404, origin, env);
             return json({ ok: true, deactivated: true }, 200, origin, env);
           }
           return json({ error: "method_not_allowed" }, 405, origin, env);
@@ -617,9 +692,18 @@ export default {
             if (!pending) return json({ error: "request_not_pending" }, 409, origin, env);
             const now = new Date().toISOString();
             if (status === "rejected") {
-              const result = await env.DB.prepare("UPDATE gift_custom_requests SET status = 'rejected', admin_note = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
-                .bind(adminNote, actor.id, now, requestRoute[1]).run();
-              if ((result.meta?.changes ?? 0) !== 1) return json({ error: "request_not_pending" }, 409, origin, env);
+              const results = await env.DB.batch([
+                env.DB.prepare("UPDATE gift_custom_requests SET status = 'rejected', admin_note = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
+                  .bind(adminNote, actor.id, now, requestRoute[1]),
+                ...adminAuditStatements(env.DB, actor, {
+                  action: "gift.custom_request.reject",
+                  targetType: "gift_custom_request",
+                  targetId: requestRoute[1],
+                  details: { status: "rejected" },
+                  createdAt: now
+                })
+              ]);
+              if ((results[0]?.meta?.changes ?? 0) !== 1) return json({ error: "request_not_pending" }, 409, origin, env);
               return json({ ok: true, status: "rejected" }, 200, origin, env);
             }
             const iconEmoji = typeof body.iconEmoji === "string" && body.iconEmoji.trim() ? body.iconEmoji.trim() : "🎁";
@@ -631,7 +715,14 @@ export default {
               env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at, category) SELECT ?, requested_name, ?, '', ?, 1, ?, ?, ?, 'custom' FROM gift_custom_requests WHERE id = ? AND status = 'pending'")
                 .bind(giftId, iconEmoji, coinPrice, sortOrder, now, now, requestRoute[1]),
               env.DB.prepare("UPDATE gift_custom_requests SET status = 'approved', admin_note = ?, approved_gift_id = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
-                .bind(adminNote, giftId, actor.id, now, requestRoute[1])
+                .bind(adminNote, giftId, actor.id, now, requestRoute[1]),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "gift.custom_request.approve",
+                targetType: "gift_custom_request",
+                targetId: requestRoute[1],
+                details: { status: "approved", giftId, coinPrice },
+                createdAt: now
+              })
             ]);
             if ((results[1]?.meta?.changes ?? 0) !== 1) return json({ error: "request_not_pending" }, 409, origin, env);
             return json({ ok: true, status: "approved", giftId }, 200, origin, env);
@@ -655,7 +746,13 @@ export default {
             env.DB.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(targetUserId, now),
             env.DB.prepare("UPDATE user_wallets SET balance = balance + ?, updated_at = ? WHERE user_id = ?").bind(amount, now, targetUserId),
             env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, amount, balance_after, transaction_type, reference_id, description, created_at) SELECT ?, user_id, ?, balance, 'admin_credit', ?, 'إضافة رصيد يدوية من الإدارة', ? FROM user_wallets WHERE user_id = ?").bind(transactionId, amount, actor.id, now, targetUserId),
-            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'wallet.credit', 'user', ?, ?, ?)").bind(crypto.randomUUID(), targetUserId, JSON.stringify({ amount, adminId: actor.id, adminUsername: actor.username }), now)
+            ...adminAuditStatements(env.DB, actor, {
+              action: "wallet.credit",
+              targetType: "user",
+              targetId: targetUserId,
+              details: { amount },
+              createdAt: now
+            })
           ]);
           const wallet = await env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(targetUserId).first<{ balance: number }>();
           return json({ ok: true, userId: targetUserId, credited: amount, balance: wallet?.balance ?? 0 }, 200, origin, env);
@@ -691,14 +788,13 @@ export default {
           if (!body.enabled) {
             statements.push(env.DB.prepare("DELETE FROM room_seats"));
           }
-          statements.push(env.DB.prepare(
-            "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'platform', 'agora_voice', ?, ?)"
-          ).bind(
-            crypto.randomUUID(),
-            body.enabled ? "agora.voice.enable" : "agora.voice.disable",
-            JSON.stringify({ enabled: body.enabled, adminUsername: actor.username, adminId: actor.id, effect: body.enabled ? "voice_service_resumed" : "all_microphone_seats_released" }),
-            now
-          ));
+          statements.push(...adminAuditStatements(env.DB, actor, {
+            action: body.enabled ? "agora.voice.enable" : "agora.voice.disable",
+            targetType: "platform",
+            targetId: "agora_voice",
+            details: { enabled: body.enabled, effect: body.enabled ? "voice_service_resumed" : "all_microphone_seats_released" },
+            createdAt: now
+          }));
           await env.DB.batch(statements);
           if (env.ROOM_SEATS) {
             const activeRooms = await env.DB.prepare("SELECT id FROM rooms WHERE status = 'active'").all<{ id: string }>();
@@ -794,8 +890,11 @@ export default {
         if (url.pathname === "/api/v1/admin/audit" && request.method === "GET") {
           if (!hasAdminPermission(actor, "audit.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const result = await env.DB.prepare(
-            "SELECT l.id, l.action, l.target_type, l.target_id, l.details_json, l.created_at, p.display_name AS actor_name, u.email AS actor_email " +
-            "FROM admin_audit_logs l LEFT JOIN users u ON u.id = l.actor_user_id LEFT JOIN profiles p ON p.user_id = l.actor_user_id " +
+            "SELECT l.id, l.action, l.target_type, l.target_id, l.details_json, l.created_at, COALESCE(aa.display_name, aa.username, p.display_name, u.email) AS actor_name, u.email AS actor_email " +
+            "FROM admin_audit_logs l " +
+            "LEFT JOIN admin_audit_actor_refs ar ON ar.audit_log_id = l.id " +
+            "LEFT JOIN admin_accounts aa ON aa.id = ar.admin_id " +
+            "LEFT JOIN users u ON u.id = l.actor_user_id LEFT JOIN profiles p ON p.user_id = l.actor_user_id " +
             "ORDER BY l.created_at DESC LIMIT 100"
           ).all();
           const entries = (result.results ?? []).map((entry) => {
@@ -823,6 +922,160 @@ export default {
             publishedPosts: posts?.total ?? 0, roomMessagesLast7Days: messages?.total ?? 0
           }, daily: { users: dailyUsers.results ?? [], messages: dailyMessages.results ?? [] }, topFollowers: topFollowers.results ?? [] } }, 200, origin, env);
         }
+        if (url.pathname === "/api/v1/admin/accounts" && request.method === "GET") {
+          if (actor.role !== "owner") return json({ error: "permission_denied" }, 403, origin, env);
+          const query = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
+          const like = `%${query}%`;
+          const now = new Date().toISOString();
+          const result = await env.DB.prepare(
+            "SELECT a.id, a.username, a.display_name, a.status, a.created_at, r.role, COUNT(s.id) AS active_sessions " +
+            "FROM admin_accounts a " +
+            "LEFT JOIN admin_account_roles r ON r.admin_id = a.id " +
+            "LEFT JOIN admin_sessions s ON s.admin_id = a.id AND s.revoked_at IS NULL AND s.expires_at > ? " +
+            "WHERE (? = '' OR a.username LIKE ? OR a.display_name LIKE ?) " +
+            "GROUP BY a.id, a.username, a.display_name, a.status, a.created_at, r.role " +
+            "ORDER BY CASE WHEN r.role = 'owner' THEN 0 ELSE 1 END, a.created_at ASC LIMIT 200"
+          ).bind(now, query, like, like).all();
+          return json({ ok: true, admins: result.results ?? [] }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/accounts" && request.method === "POST") {
+          if (actor.role !== "owner") return json({ error: "permission_denied" }, 403, origin, env);
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
+          const displayName = typeof body.displayName === "string" ? body.displayName.trim() : "";
+          const role = body.role === "admin" || body.role === "moderator" ? body.role : null;
+          const password = typeof body.password === "string" ? body.password : "";
+          const confirmation = typeof body.confirmation === "string" ? body.confirmation : "";
+          if (!/^[a-z0-9][a-z0-9._-]{2,39}$/.test(username)) return json({ error: "invalid_admin_username" }, 400, origin, env);
+          if (!displayName || displayName.length > 80) return json({ error: "invalid_admin_display_name" }, 400, origin, env);
+          if (!role) return json({ error: "invalid_admin_role" }, 400, origin, env);
+          if (password.length < 12 || password.length > 128 || password !== confirmation) return json({ error: "invalid_password" }, 400, origin, env);
+          const existing = await env.DB.prepare("SELECT id FROM admin_accounts WHERE username = ? COLLATE NOCASE LIMIT 1")
+            .bind(username).first<{ id: string }>();
+          if (existing) return json({ error: "admin_username_unavailable" }, 409, origin, env);
+          const id = crypto.randomUUID();
+          const now = new Date().toISOString();
+          const passwordHash = await hashPassword(password);
+          try {
+            await env.DB.batch([
+              env.DB.prepare("INSERT INTO admin_accounts (id, username, display_name, password_hash, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', ?, ?)")
+                .bind(id, username, displayName, passwordHash, now, now),
+              env.DB.prepare("INSERT INTO admin_account_roles (admin_id, role) VALUES (?, ?)")
+                .bind(id, role),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "admin.account.create",
+                targetType: "admin_account",
+                targetId: id,
+                details: { username, role },
+                createdAt: now
+              })
+            ]);
+          } catch (error) {
+            if (error instanceof Error && /UNIQUE constraint failed/i.test(error.message)) {
+              return json({ error: "admin_username_unavailable" }, 409, origin, env);
+            }
+            console.error("[admin.accounts.create] failed", error instanceof Error ? error.message : "UnknownError");
+            return json({ error: "admin_account_create_failed" }, 503, origin, env);
+          }
+          return json({ ok: true, admin: { id, username, display_name: displayName, role, status: "active" } }, 201, origin, env);
+        }
+        const adminAccountRoute = url.pathname.match(/^\/api\/v1\/admin\/accounts\/([0-9a-f-]{36})\/(role|status|password|revoke-sessions)$/i);
+        if (adminAccountRoute && (request.method === "PATCH" || request.method === "POST")) {
+          if (actor.role !== "owner") return json({ error: "permission_denied" }, 403, origin, env);
+          const targetId = adminAccountRoute[1];
+          const action = adminAccountRoute[2];
+          const target = await env.DB.prepare(
+            "SELECT a.id, a.username, a.status, r.role FROM admin_accounts a LEFT JOIN admin_account_roles r ON r.admin_id = a.id WHERE a.id = ? LIMIT 1"
+          ).bind(targetId).first<{ id: string; username: string; status: string; role: string | null }>();
+          if (!target) return json({ error: "admin_account_not_found" }, 404, origin, env);
+          if (target.role === "owner" || target.username.toLowerCase() === "owner") {
+            return json({ error: "owner_account_is_protected" }, 403, origin, env);
+          }
+
+          if (action === "role" && request.method === "PATCH") {
+            let body: Record<string, unknown>;
+            try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+            const nextRole = body.role === "admin" || body.role === "moderator" ? body.role : null;
+            if (!nextRole) return json({ error: "invalid_admin_role" }, 400, origin, env);
+            if (target.role === nextRole) return json({ ok: true, id: targetId, role: nextRole }, 200, origin, env);
+            const now = new Date().toISOString();
+            await env.DB.batch([
+              env.DB.prepare("INSERT INTO admin_account_roles (admin_id, role) VALUES (?, ?) ON CONFLICT(admin_id) DO UPDATE SET role = excluded.role")
+                .bind(targetId, nextRole),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "admin.account.role.update",
+                targetType: "admin_account",
+                targetId,
+                details: { role: nextRole },
+                createdAt: now
+              })
+            ]);
+            return json({ ok: true, id: targetId, role: nextRole }, 200, origin, env);
+          }
+
+          if (action === "status" && request.method === "PATCH") {
+            let body: Record<string, unknown>;
+            try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+            const nextStatus = body.status === "active" || body.status === "disabled" ? body.status : null;
+            if (!nextStatus) return json({ error: "invalid_admin_status" }, 400, origin, env);
+            if (target.id === actor.id && nextStatus === "disabled") return json({ error: "cannot_disable_current_admin" }, 409, origin, env);
+            if (target.status === nextStatus) return json({ ok: true, id: targetId, status: nextStatus }, 200, origin, env);
+            const now = new Date().toISOString();
+            const statements: D1PreparedStatement[] = [
+              env.DB.prepare("UPDATE admin_accounts SET status = ?, updated_at = ? WHERE id = ?").bind(nextStatus, now, targetId)
+            ];
+            if (nextStatus === "disabled") {
+              statements.push(env.DB.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL").bind(now, targetId));
+            }
+            statements.push(...adminAuditStatements(env.DB, actor, {
+              action: nextStatus === "disabled" ? "admin.account.disable" : "admin.account.enable",
+              targetType: "admin_account",
+              targetId,
+              details: { status: nextStatus, sessionsRevoked: nextStatus === "disabled" },
+              createdAt: now
+            }));
+            await env.DB.batch(statements);
+            return json({ ok: true, id: targetId, status: nextStatus }, 200, origin, env);
+          }
+
+          if (action === "password" && request.method === "POST") {
+            let body: Record<string, unknown>;
+            try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+            const password = typeof body.password === "string" ? body.password : "";
+            const confirmation = typeof body.confirmation === "string" ? body.confirmation : "";
+            if (password.length < 12 || password.length > 128 || password !== confirmation) return json({ error: "invalid_password" }, 400, origin, env);
+            const now = new Date().toISOString();
+            const passwordHash = await hashPassword(password);
+            await env.DB.batch([
+              env.DB.prepare("UPDATE admin_accounts SET password_hash = ?, updated_at = ? WHERE id = ?").bind(passwordHash, now, targetId),
+              env.DB.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL").bind(now, targetId),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "admin.account.password.rotate",
+                targetType: "admin_account",
+                targetId,
+                details: { passwordRotated: true, sessionsRevoked: true },
+                createdAt: now
+              })
+            ]);
+            return json({ ok: true, id: targetId, sessionsRevoked: true }, 200, origin, env);
+          }
+
+          if (action === "revoke-sessions" && request.method === "POST") {
+            const now = new Date().toISOString();
+            const results = await env.DB.batch([
+              env.DB.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL").bind(now, targetId),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "admin.account.sessions.revoke",
+                targetType: "admin_account",
+                targetId,
+                details: { scope: "all_sessions" },
+                createdAt: now
+              })
+            ]);
+            return json({ ok: true, id: targetId, revokedSessions: results[0]?.meta?.changes ?? 0 }, 200, origin, env);
+          }
+        }
         if (url.pathname === "/api/v1/admin/moderators" && request.method === "GET") {
           if (!hasAdminPermission(actor, "users.roles.manage")) return json({ error: "permission_denied" }, 403, origin, env);
           const result = await env.DB.prepare("SELECT u.id, u.email, u.status, p.display_name, p.gabo_id, ar.role, ar.granted_at FROM admin_roles ar INNER JOIN users u ON u.id = ar.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE ar.role IN ('admin', 'moderator') ORDER BY ar.granted_at DESC LIMIT 200").all();
@@ -844,7 +1097,13 @@ export default {
           const statements: D1PreparedStatement[] = [];
           if (nextRole) statements.push(env.DB.prepare("INSERT INTO admin_roles (user_id, role, granted_by, granted_at) VALUES (?, ?, NULL, ?) ON CONFLICT(user_id) DO UPDATE SET role = excluded.role, granted_by = NULL, granted_at = excluded.granted_at").bind(targetId, nextRole, now));
           else statements.push(env.DB.prepare("DELETE FROM admin_roles WHERE user_id = ? AND role <> 'owner'").bind(targetId));
-          statements.push(env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'user', ?, ?, ?)").bind(crypto.randomUUID(), action, targetId, JSON.stringify({ role: nextRole, adminUsername: actor.username, adminId: actor.id }), now));
+          statements.push(...adminAuditStatements(env.DB, actor, {
+            action,
+            targetType: "user",
+            targetId,
+            details: { role: nextRole },
+            createdAt: now
+          }));
           await env.DB.batch(statements);
           return json({ ok: true, userId: targetId, role: nextRole }, 200, origin, env);
         }
@@ -868,7 +1127,13 @@ export default {
             statements.push(env.DB.prepare("DELETE FROM room_seats WHERE user_id = ?").bind(targetId));
             statements.push(env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE user_id = ? AND exited_at IS NULL").bind(now, targetId));
           }
-          statements.push(env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'user', ?, ?, ?)").bind(crypto.randomUUID(), status === "suspended" ? "user.suspend" : "user.activate", targetId, JSON.stringify({ status, adminUsername: actor.username, adminId: actor.id }), now));
+          statements.push(...adminAuditStatements(env.DB, actor, {
+            action: status === "suspended" ? "user.suspend" : "user.activate",
+            targetType: "user",
+            targetId,
+            details: { status },
+            createdAt: now
+          }));
           await env.DB.batch(statements);
           if (status === "suspended") await removeUserFromAllRoomSeats(env, env.DB, targetId);
           return json({ ok: true, userId: targetId, status }, 200, origin, env);
@@ -886,7 +1151,13 @@ export default {
             env.DB.prepare("UPDATE user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL").bind(now, targetId),
             env.DB.prepare("DELETE FROM room_seats WHERE user_id = ?").bind(targetId),
             env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE user_id = ? AND exited_at IS NULL").bind(now, targetId),
-            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'user.kick', 'user', ?, ?, ?)").bind(crypto.randomUUID(), targetId, JSON.stringify({ adminUsername: actor.username, adminId: actor.id, effect: "all_sessions_revoked" }), now)
+            ...adminAuditStatements(env.DB, actor, {
+              action: "user.kick",
+              targetType: "user",
+              targetId,
+              details: { effect: "all_sessions_revoked" },
+              createdAt: now
+            })
           ]);
           await removeUserFromAllRoomSeats(env, env.DB, targetId);
           return json({ ok: true, userId: targetId, revokedSessions: results[0]?.meta?.changes ?? 0 }, 200, origin, env);
@@ -1082,22 +1353,18 @@ export default {
             auditAction = muted ? "room.user.mute" : "room.user.unmute";
           }
 
-          statements.push(env.DB.prepare(
-            "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'room_user', ?, ?, ?)"
-          ).bind(
-            crypto.randomUUID(),
-            auditAction,
-            targetUserId,
-            JSON.stringify({
+          statements.push(...adminAuditStatements(env.DB, actor, {
+            action: auditAction,
+            targetType: "room_user",
+            targetId: targetUserId,
+            details: {
               roomId,
               targetUserId,
               reason,
-              adminId: actor.id,
-              adminUsername: actor.username,
               durationSeconds: action === "kick" ? 60 : null
-            }),
-            now
-          ));
+            },
+            createdAt: now
+          }));
           await env.DB.batch(statements);
           const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
           if (action === "assign_moderator" || action === "remove_moderator") {
@@ -1137,8 +1404,13 @@ export default {
           const now = new Date().toISOString();
           await env.DB.batch([
             env.DB.prepare("UPDATE rooms SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, targetId),
-            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, 'room', ?, ?, ?)")
-              .bind(crypto.randomUUID(), null, status === "closed" ? "room.close" : "room.reopen", targetId, JSON.stringify({ status, adminUsername: actor.username }), now)
+            ...adminAuditStatements(env.DB, actor, {
+              action: status === "closed" ? "room.close" : "room.reopen",
+              targetType: "room",
+              targetId,
+              details: { status },
+              createdAt: now
+            })
           ]);
           if (status === "closed" && env.ROOM_SEATS) {
             const stub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(targetId));
