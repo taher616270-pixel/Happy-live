@@ -329,6 +329,9 @@ export async function handleCatGreedRequest(
     if (!admin) return wheelError("authentication_required",401,json,origin,env);
     if (admin.role!=="owner" && admin.role!=="admin") return wheelError("permission_denied",403,json,origin,env);
     if (mainOverview) {
+      // Admin reads also settle an expired round and complete idempotent payouts;
+      // the overview must not classify unpaid winners as losses.
+      await currentRound(db,false);
       const [settings,symbols,rounds,players,totals] = await Promise.all([
         getSettings(db),getSymbols(db),
         db.prepare("SELECT r.id,r.phase,r.starts_at,r.closes_at,r.result_slot,r.special,r.seed_commitment,r.settled_at,COALESCE(b.wagered,0) AS wagered,COALESCE(b.players,0) AS players FROM cat_greed_rounds r LEFT JOIN (SELECT round_id,SUM(amount) AS wagered,COUNT(DISTINCT user_id) AS players FROM cat_greed_bets GROUP BY round_id) b ON b.round_id=r.id ORDER BY r.created_at DESC LIMIT 20").all(),
@@ -413,6 +416,7 @@ export async function handleCatGreedRequest(
       return json({ok:true,symbols:saved,odds:calculateOdds(snapshot),maxExpectedReturnBp:maxExpectedReturnBp(snapshot)},200,origin,env);
     }
     if (adminRounds) {
+      await currentRound(db,false);
       const rounds=await db.prepare("SELECT r.id,r.phase,r.starts_at,r.closes_at,r.result_slot,r.special,r.seed_commitment,CASE WHEN r.phase='result' THEN r.server_seed ELSE NULL END AS revealed_seed,CASE WHEN r.phase='result' THEN r.config_snapshot ELSE NULL END AS config_snapshot,r.settled_at,COALESCE(b.wagered,0) AS wagered,COALESCE(b.players,0) AS players FROM cat_greed_rounds r LEFT JOIN (SELECT round_id,SUM(amount) AS wagered,COUNT(DISTINCT user_id) AS players FROM cat_greed_bets GROUP BY round_id) b ON b.round_id=r.id ORDER BY r.created_at DESC LIMIT 100").all();
       return json({rounds:rounds.results??[]},200,origin,env);
     }
