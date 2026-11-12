@@ -1864,7 +1864,6 @@ export default {
         }
         if (recipientUserId === user.id) return json({ error: "cannot_gift_self" }, 400, origin, env);
         const now = new Date().toISOString();
-        const presenceCutoff = new Date(Date.now() - 90_000).toISOString();
         const existing = await env.DB.prepare(
           "SELECT id, status, coin_cost AS coinCost, experience_awarded AS experienceAwarded, recipient_coins AS recipientCoins " +
           "FROM gift_transactions WHERE sender_user_id = ? AND idempotency_key = ? LIMIT 1"
