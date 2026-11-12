@@ -20,7 +20,42 @@ type CatGreedSnapshot = {
 };
 
 const BET_CHIPS = new Set([10, 500, 6000, 30000, 100000]);
+const BET_RATE_WINDOW_SECONDS = 10;
+const BET_RATE_MAX_REQUESTS = 10;
 const isoNow = () => new Date().toISOString();
+
+function isValidImageKitUrl(value: string): boolean {
+  if (!value || value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" &&
+      (url.hostname === "ik.imagekit.io" || url.hostname.endsWith(".imagekit.io")) &&
+      !url.username && !url.password && !url.port;
+  } catch {
+    return false;
+  }
+}
+
+function calculateOdds(snapshot: CatGreedSnapshot) {
+  const totalWeight = snapshot.symbols.reduce((sum, symbol) => sum + Math.max(0, symbol.weight), 0);
+  if (totalWeight <= 0) return [];
+  const regularWeightBp = 10000 - snapshot.saladWeightBp - snapshot.pizzaWeightBp;
+  return snapshot.symbols.map(symbol => {
+    const appearanceProbabilityBp = Math.round(regularWeightBp * Math.max(0, symbol.weight) / totalWeight);
+    const winProbabilityBp = appearanceProbabilityBp +
+      (symbol.isVegetable ? snapshot.saladWeightBp : snapshot.pizzaWeightBp);
+    return {
+      slot: symbol.slot,
+      appearanceProbabilityBp,
+      winProbabilityBp,
+      expectedReturnBp: winProbabilityBp * symbol.multiplier
+    };
+  });
+}
+
+function maxExpectedReturnBp(snapshot: CatGreedSnapshot): number {
+  return Math.max(0, ...calculateOdds(snapshot).map(odds => odds.expectedReturnBp));
+}
 const randomHex = (size = 32) => Array.from(crypto.getRandomValues(new Uint8Array(size))).map(x => x.toString(16).padStart(2, "0")).join("");
 async function digestHex(value: string): Promise<string> {
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -45,19 +80,27 @@ async function createRound(db: D1Database): Promise<any> {
   const settings = await getSettings(db);
   const symbols = await getSymbols(db);
   const snapshot = makeSnapshot(settings, symbols);
+  if (snapshot.symbols.length !== 8 || new Set(snapshot.symbols.map(symbol => symbol.slot)).size !== 8 ||
+      snapshot.symbols.some((symbol, index) => symbol.slot !== index) ||
+      snapshot.symbols.reduce((sum, symbol) => sum + symbol.weight, 0) <= 0) {
+    throw new Error("wheel_configuration_invalid");
+  }
   const id = crypto.randomUUID();
   const seed = randomHex();
+  const configSnapshot = JSON.stringify(snapshot);
+  const commitment = await digestHex(seed + "|" + id + "|" + configSnapshot);
   const now = Date.now();
   const startsAt = new Date(now).toISOString();
   const closesAt = new Date(now + settings.betting_seconds * 1000).toISOString();
   await db.prepare(
     "INSERT INTO cat_greed_rounds (id, phase, starts_at, closes_at, server_seed, seed_commitment, config_snapshot, created_at) VALUES (?, 'betting', ?, ?, ?, ?, ?, ?)"
-  ).bind(id, startsAt, closesAt, seed, await digestHex(seed), JSON.stringify(snapshot), startsAt).run();
+  ).bind(id, startsAt, closesAt, seed, commitment, configSnapshot, startsAt).run();
   return db.prepare("SELECT * FROM cat_greed_rounds WHERE id=?").bind(id).first();
 }
 async function unitRandom(round: any): Promise<number> {
   const hex = await digestHex(round.server_seed + "|" + round.id + "|" + round.config_snapshot);
-  return parseInt(hex.slice(0, 13), 16) / Math.pow(16, 13);
+  // 13 hex digits are exactly 52 bits, safely represented by a JS number.
+  return parseInt(hex.slice(0, 13), 16) / 4503599627370496;
 }
 async function chooseOutcome(round: any): Promise<{slot:number|null;special:string|null}> {
   const config = JSON.parse(round.config_snapshot) as CatGreedSnapshot;
@@ -83,19 +126,21 @@ async function payRound(db: D1Database, round: any): Promise<void> {
     const wins = round.special === "salad" ? symbol.isVegetable : round.special === "pizza" ? !symbol.isVegetable : round.result_slot === bet.slot;
     if (wins) totals.set(bet.user_id, (totals.get(bet.user_id) ?? 0) + bet.amount * symbol.multiplier);
   }
-  const now = isoNow();
-  const statements: D1PreparedStatement[] = [];
+
+  // Each user's payout is claimed with a fresh transaction id before the wallet
+  // changes. Concurrent state requests can therefore never credit the same round twice.
   for (const [userId, amount] of totals) {
     if (!Number.isSafeInteger(amount) || amount <= 0) continue;
+    const now = isoNow();
     const transactionId = crypto.randomUUID();
-    statements.push(
-      db.prepare("INSERT OR IGNORE INTO cat_greed_payouts (round_id,user_id,amount,created_at,transaction_id) VALUES (?,?,?,?,?)").bind(round.id,userId,amount,now,transactionId),
-      db.prepare("UPDATE user_wallets SET balance=balance+?, updated_at=? WHERE user_id=? AND EXISTS (SELECT 1 FROM cat_greed_payouts WHERE round_id=? AND user_id=? AND paid_at IS NULL)").bind(amount,now,userId,round.id,userId),
-      db.prepare("INSERT INTO cat_greed_ledger (id,user_id,round_id,amount,balance_after,transaction_type,description,created_at) SELECT ?,user_id,?,?,balance,'payout','جائزة قط الجشع',? FROM user_wallets WHERE user_id=? AND changes()=1").bind(transactionId,round.id,amount,now,userId),
-      db.prepare("UPDATE cat_greed_payouts SET paid_at=?, transaction_id=? WHERE round_id=? AND user_id=? AND paid_at IS NULL AND EXISTS (SELECT 1 FROM cat_greed_ledger WHERE id=?)").bind(now,transactionId,round.id,userId,transactionId)
-    );
+    await db.batch([
+      db.prepare("INSERT OR IGNORE INTO user_wallets (user_id,balance,updated_at) VALUES (?,0,?)").bind(userId,now),
+      db.prepare("INSERT OR IGNORE INTO cat_greed_payouts (round_id,user_id,amount,created_at,paid_at,transaction_id) VALUES (?,?,?, ?,NULL,NULL)").bind(round.id,userId,amount,now),
+      db.prepare("UPDATE cat_greed_payouts SET paid_at=?,transaction_id=? WHERE round_id=? AND user_id=? AND paid_at IS NULL").bind(now,transactionId,round.id,userId),
+      db.prepare("UPDATE user_wallets SET balance=balance+?,updated_at=? WHERE user_id=? AND EXISTS (SELECT 1 FROM cat_greed_payouts WHERE round_id=? AND user_id=? AND paid_at=? AND transaction_id=?)").bind(amount,now,userId,round.id,userId,now,transactionId),
+      db.prepare("INSERT INTO cat_greed_ledger (id,user_id,round_id,amount,balance_after,transaction_type,description,created_at) SELECT ?,user_id,?,?,balance,'payout','جائزة قط الجشع',? FROM user_wallets WHERE user_id=? AND changes()=1 AND EXISTS (SELECT 1 FROM cat_greed_payouts WHERE round_id=? AND user_id=? AND paid_at=? AND transaction_id=?)").bind(transactionId,round.id,amount,now,userId,round.id,userId,now,transactionId)
+    ]);
   }
-  if (statements.length) await db.batch(statements);
 }
 async function settleRound(db: D1Database, round: any): Promise<any> {
   if (round.phase === "betting" && Date.parse(round.closes_at) <= Date.now()) {
@@ -108,7 +153,8 @@ async function settleRound(db: D1Database, round: any): Promise<any> {
   return settled;
 }
 async function currentRound(db: D1Database): Promise<any> {
-  let round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first();
+  let round = await db.prepare("SELECT * FROM cat_greed_rounds WHERE phase='betting' ORDER BY created_at DESC LIMIT 1").first();
+  if (!round) round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first();
   if (!round) {
     try { round = await createRound(db); }
     catch { round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first(); }
@@ -147,48 +193,87 @@ export async function handleCatGreedRequest(
       const settings = await getSettings(db);
       if (!settings.enabled) return json({enabled:false,error:"game_disabled"},423,origin,env);
       let round = await currentRound(db);
+      let betReceipt: { id: string; roundId: string; slot: number; amount: number } | null = null;
+      let duplicateBet = false;
       if (publicBet) {
+        const rawBody = await request.text();
+        if (rawBody.length > 2048) return wheelError("request_too_large",413,json,origin,env);
         let body: any;
-        try { body = await request.json(); } catch { return wheelError("invalid_json",400,json,origin,env); }
+        try { body = JSON.parse(rawBody); } catch { return wheelError("invalid_json",400,json,origin,env); }
+        if (!body || typeof body !== "object" || Array.isArray(body)) return wheelError("invalid_bet",400,json,origin,env);
         const slot = Number(body.slot), amount = Number(body.amount), roundId = String(body.roundId ?? "");
-        if (!Number.isInteger(slot) || slot<0 || slot>7 || !BET_CHIPS.has(amount)) return wheelError("invalid_bet",400,json,origin,env);
+        const idempotencyKey = String(body.idempotencyKey ?? "");
+        if (!Number.isInteger(slot) || slot<0 || slot>7 || !BET_CHIPS.has(amount) ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
+          return wheelError("invalid_bet",400,json,origin,env);
+        }
         if (!round || round.id !== roundId || round.phase !== "betting" || Date.parse(round.closes_at)<=Date.now()) return wheelError("round_closed",409,json,origin,env);
-        await db.prepare("INSERT OR IGNORE INTO user_wallets (user_id,balance,updated_at) VALUES (?,0,?)").bind(user.id,isoNow()).run();
-        const control = await db.prepare("SELECT enabled,max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?").bind(user.id).first<{enabled:number;max_bet_per_round:number}>();
-        if (control?.enabled===0) return wheelError("player_disabled",403,json,origin,env);
-        const currentTotal = await db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(roundId,user.id).first<{total:number}>();
-        const limit = control?.max_bet_per_round ?? 1000000;
-        if ((currentTotal?.total ?? 0) + amount > limit) return wheelError("bet_limit_exceeded",400,json,origin,env);
-        const now=isoNow(), transactionId=crypto.randomUUID(), betId=crypto.randomUUID();
-        await db.batch([
-          db.prepare("UPDATE user_wallets SET balance=balance-?,updated_at=? WHERE user_id=? AND balance>=? AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?) AND (SELECT COALESCE(SUM(amount),0) FROM cat_greed_bets WHERE round_id=? AND user_id=?) + ? <= ?").bind(amount,now,user.id,amount,roundId,now,roundId,user.id,amount,limit),
-          db.prepare("INSERT INTO cat_greed_ledger (id,user_id,round_id,amount,balance_after,transaction_type,description,created_at) SELECT ?,user_id,?,?,balance,'bet','رهان قط الجشع',? FROM user_wallets WHERE user_id=? AND changes()=1").bind(transactionId,roundId,-amount,now,user.id),
-          db.prepare("INSERT INTO cat_greed_bets (id,round_id,user_id,slot,amount,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cat_greed_ledger WHERE id=?)").bind(betId,roundId,user.id,slot,amount,now,transactionId)
-        ]);
-        const placed = await db.prepare("SELECT id FROM cat_greed_bets WHERE id=?").bind(betId).first();
-        if (!placed) {
-          const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id=?").bind(user.id).first<{balance:number}>();
-          const latestTotal = await db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(roundId,user.id).first<{total:number}>();
-          if ((latestTotal?.total ?? 0) + amount > limit) return wheelError("bet_limit_exceeded",400,json,origin,env);
-          return wheelError((wallet?.balance ?? 0)<amount ? "insufficient_balance" : "round_closed",409,json,origin,env);
+
+        const prior = await db.prepare("SELECT round_id,slot,amount,bet_id FROM cat_greed_bet_requests WHERE idempotency_key=? AND user_id=?")
+          .bind(idempotencyKey,user.id).first<{round_id:string;slot:number;amount:number;bet_id:string}>();
+        if (prior) {
+          if (prior.round_id!==roundId || prior.slot!==slot || prior.amount!==amount) return wheelError("idempotency_key_reused",409,json,origin,env);
+          const existingBet = await db.prepare("SELECT id FROM cat_greed_bets WHERE id=? AND round_id=? AND user_id=?")
+            .bind(prior.bet_id,roundId,user.id).first();
+          if (!existingBet) return wheelError("bet_request_incomplete",409,json,origin,env);
+          betReceipt={id:prior.bet_id,roundId,slot,amount};
+          duplicateBet=true;
+        } else {
+          await db.prepare("INSERT OR IGNORE INTO user_wallets (user_id,balance,updated_at) VALUES (?,0,?)").bind(user.id,isoNow()).run();
+          const control = await db.prepare("SELECT enabled,max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?").bind(user.id).first<{enabled:number;max_bet_per_round:number}>();
+          if (control?.enabled===0) return wheelError("player_disabled",403,json,origin,env);
+          const currentTotal = await db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(roundId,user.id).first<{total:number}>();
+          const limit = control?.max_bet_per_round ?? 1000000;
+          if ((currentTotal?.total ?? 0) + amount > limit) return wheelError("bet_limit_exceeded",400,json,origin,env);
+
+          const windowStart = Math.floor(Date.now()/BET_RATE_WINDOW_SECONDS);
+          const rate = await db.prepare("INSERT INTO cat_greed_bet_rate_limits (user_id,window_start,request_count) VALUES (?,?,1) ON CONFLICT(user_id) DO UPDATE SET window_start=CASE WHEN cat_greed_bet_rate_limits.window_start=excluded.window_start THEN cat_greed_bet_rate_limits.window_start ELSE excluded.window_start END,request_count=CASE WHEN cat_greed_bet_rate_limits.window_start=excluded.window_start THEN cat_greed_bet_rate_limits.request_count+1 ELSE 1 END RETURNING request_count")
+            .bind(user.id,windowStart).first<{request_count:number}>();
+          if (!rate || rate.request_count>BET_RATE_MAX_REQUESTS) return json({error:"bet_rate_limited",retry_after_seconds:BET_RATE_WINDOW_SECONDS},429,origin,env);
+
+          const now=isoNow(), betId=crypto.randomUUID();
+          await db.batch([
+            db.prepare("INSERT OR IGNORE INTO cat_greed_bet_requests (idempotency_key,user_id,round_id,slot,amount,bet_id,created_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM user_wallets WHERE user_id=? AND balance>=?) AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?) AND NOT EXISTS (SELECT 1 FROM cat_greed_player_controls WHERE user_id=? AND enabled=0) AND (SELECT COALESCE(SUM(amount),0) FROM cat_greed_bets WHERE round_id=? AND user_id=?) + ? <= COALESCE((SELECT max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?),1000000)")
+              .bind(idempotencyKey,user.id,roundId,slot,amount,betId,now,user.id,amount,roundId,now,user.id,roundId,user.id,amount,user.id),
+            db.prepare("UPDATE user_wallets SET balance=balance-?,updated_at=? WHERE user_id=? AND balance>=? AND EXISTS (SELECT 1 FROM cat_greed_bet_requests WHERE idempotency_key=? AND bet_id=? AND user_id=?) AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?)")
+              .bind(amount,now,user.id,amount,idempotencyKey,betId,user.id,roundId,now),
+            db.prepare("INSERT INTO cat_greed_ledger (id,user_id,round_id,amount,balance_after,transaction_type,description,created_at) SELECT ?,user_id,?,?,balance,'bet','رهان قط الجشع',? FROM user_wallets WHERE user_id=? AND changes()=1")
+              .bind(betId,user.id,roundId,-amount,now,user.id),
+            db.prepare("INSERT INTO cat_greed_bets (id,round_id,user_id,slot,amount,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cat_greed_ledger WHERE id=?)")
+              .bind(betId,roundId,user.id,slot,amount,now,betId)
+          ]);
+          const placed = await db.prepare("SELECT id FROM cat_greed_bets WHERE id=? AND round_id=? AND user_id=?")
+            .bind(betId,roundId,user.id).first();
+          if (!placed) {
+            const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id=?").bind(user.id).first<{balance:number}>();
+            const latestTotal = await db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(roundId,user.id).first<{total:number}>();
+            const latestControl = await db.prepare("SELECT enabled,max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?").bind(user.id).first<{enabled:number;max_bet_per_round:number}>();
+            if (latestControl?.enabled===0) return wheelError("player_disabled",403,json,origin,env);
+            if ((latestTotal?.total ?? 0) + amount > (latestControl?.max_bet_per_round ?? 1000000)) return wheelError("bet_limit_exceeded",400,json,origin,env);
+            return wheelError((wallet?.balance ?? 0)<amount ? "insufficient_balance" : "round_closed",409,json,origin,env);
+          }
+          betReceipt={id:betId,roundId,slot,amount};
         }
         round = await currentRound(db);
       }
       const pools = await db.prepare("SELECT slot,SUM(amount) AS total FROM cat_greed_bets WHERE round_id=? GROUP BY slot").bind(round.id).all<{slot:number;total:number}>();
       const mine = await db.prepare("SELECT slot,SUM(amount) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=? GROUP BY slot").bind(round.id,user.id).all<{slot:number;total:number}>();
       const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id=?").bind(user.id).first<{balance:number}>();
-      const payout = await db.prepare("SELECT amount FROM cat_greed_payouts WHERE round_id=? AND user_id=?").bind(round.id,user.id).first<{amount:number}>();
-      const history = await db.prepare("SELECT result_slot,special FROM cat_greed_rounds WHERE phase='result' ORDER BY settled_at DESC LIMIT 9").all<{result_slot:number|null;special:string|null}>();
+      const payout = await db.prepare("SELECT amount,round_id FROM cat_greed_payouts WHERE user_id=? AND paid_at IS NOT NULL ORDER BY paid_at DESC LIMIT 1").bind(user.id).first<{amount:number;round_id:string}>();
+      const history = await db.prepare("SELECT result_slot,special,config_snapshot FROM cat_greed_rounds WHERE phase='result' ORDER BY settled_at DESC LIMIT 9").all<{result_slot:number|null;special:string|null;config_snapshot:string}>();
       const config = JSON.parse(round.config_snapshot) as CatGreedSnapshot;
+      const odds = calculateOdds(config);
       const isBetting=round.phase==="betting";
       return json({
         enabled:true,roundId:round.id,secondsLeft:Math.max(0,Math.ceil((Date.parse(isBetting?round.closes_at:new Date(Date.parse(round.settled_at)+config.resultSeconds*1000).toISOString())-Date.now())/1000)),
         phase:round.phase,pools:Array.from({length:8},(_,i)=>pools.results?.find(x=>x.slot===i)?.total??0),
         myBets:Array.from({length:8},(_,i)=>mine.results?.find(x=>x.slot===i)?.total??0),
-        balance:wallet?.balance??0,myPayout:payout?.amount??0,
+        balance:wallet?.balance??0,myPayout:payout?.amount??0,myPayoutRoundId:payout?.round_id??null,
         resultSlot:isBetting?null:round.result_slot,special:isBetting?null:round.special,
         seedCommitment:round.seed_commitment,revealedSeed:isBetting?null:round.server_seed,configSnapshot:isBetting?null:round.config_snapshot,
-        symbols:config.symbols,history:(history.results??[]).map(x=>x.special==="salad"?"🥗":x.special==="pizza"?"🍕":config.symbols.find(s=>s.slot===x.result_slot)?.emoji??"—")
+        symbols:config.symbols,odds,specialOdds:{saladWeightBp:config.saladWeightBp,pizzaWeightBp:config.pizzaWeightBp},
+        betReceipt,duplicateBet,
+        history:(history.results??[]).map(x=>{const old=JSON.parse(x.config_snapshot) as CatGreedSnapshot;return x.special==="salad"?"🥗":x.special==="pizza"?"🍕":old.symbols.find(s=>s.slot===x.result_slot)?.emoji??"—";})
       },200,origin,env);
     }
 
@@ -202,7 +287,8 @@ export async function handleCatGreedRequest(
         db.prepare("SELECT u.id,p.display_name AS name,p.gabo_id AS userCode,COALESCE(c.enabled,1) AS enabled,COALESCE(c.max_bet_per_round,1000000) AS maxBetPerRound,COALESCE(b.rounds,0) AS rounds,COALESCE(b.wagered,0) AS wagered,COALESCE(b.wins,0) AS wins,COALESCE(b.losses,0) AS losses,COALESCE(b.paid,0) AS paid FROM users u LEFT JOIN profiles p ON p.user_id=u.id LEFT JOIN cat_greed_player_controls c ON c.user_id=u.id LEFT JOIN (SELECT user_id,COUNT(*) AS rounds,SUM(wagered) AS wagered,SUM(CASE WHEN payout>0 THEN 1 ELSE 0 END) AS wins,SUM(CASE WHEN payout=0 THEN 1 ELSE 0 END) AS losses,SUM(payout) AS paid FROM (SELECT b.user_id,b.round_id,SUM(b.amount) AS wagered,COALESCE(p.amount,0) AS payout FROM cat_greed_bets b LEFT JOIN cat_greed_payouts p ON p.user_id=b.user_id AND p.round_id=b.round_id GROUP BY b.user_id,b.round_id) GROUP BY user_id) b ON b.user_id=u.id WHERE b.user_id IS NOT NULL ORDER BY wagered DESC LIMIT 50").all(),
         db.prepare("SELECT (SELECT COUNT(*) FROM cat_greed_rounds) AS rounds,COALESCE((SELECT SUM(amount) FROM cat_greed_bets),0) AS wagered,(SELECT COUNT(DISTINCT user_id) FROM cat_greed_bets) AS players").first()
       ]);
-      return json({settings,symbols,rounds:rounds.results??[],players:players.results??[],totals:totals??{}},200,origin,env);
+      const snapshot=makeSnapshot(settings,symbols);
+      return json({settings,symbols,odds:calculateOdds(snapshot),maxExpectedReturnBp:maxExpectedReturnBp(snapshot),rounds:rounds.results??[],players:players.results??[],totals:totals??{}},200,origin,env);
     }
     if (playerControl && request.method==="PATCH") {
       if (admin.role!=="owner" && admin.role!=="admin") return wheelError("permission_denied",403,json,origin,env);
@@ -218,36 +304,53 @@ export async function handleCatGreedRequest(
       return json({ok:true},200,origin,env);
     }
     if (adminSettings) {
-      if (request.method==="GET") return json({settings:await getSettings(db)},200,origin,env);
+      if (request.method==="GET") {
+        const settings=await getSettings(db), snapshot=makeSnapshot(settings,await getSymbols(db));
+        return json({settings,odds:calculateOdds(snapshot),maxExpectedReturnBp:maxExpectedReturnBp(snapshot)},200,origin,env);
+      }
       if (request.method!=="PATCH") return wheelError("method_not_allowed",405,json,origin,env);
       if (admin.role!=="owner") return wheelError("owner_permission_required",403,json,origin,env);
       let body:any; try { body=await request.json(); } catch { return wheelError("invalid_json",400,json,origin,env); }
       const current=await getSettings(db);
-      const next={enabled:body.enabled==null?current.enabled:body.enabled?1:0,betting:Number(body.bettingSeconds??current.betting_seconds),result:Number(body.resultSeconds??current.result_seconds),salad:Number(body.saladWeightBp??current.salad_weight_bp),pizza:Number(body.pizzaWeightBp??current.pizza_weight_bp)};
-      if (!Number.isInteger(next.betting)||next.betting<10||next.betting>120||!Number.isInteger(next.result)||next.result<5||next.result>30||!Number.isInteger(next.salad)||!Number.isInteger(next.pizza)||next.salad<0||next.pizza<0||next.salad+next.pizza>5000) return wheelError("invalid_settings",400,json,origin,env);
+      if (!body || typeof body!=="object" || Array.isArray(body)) return wheelError("invalid_settings",400,json,origin,env);
+      const next={enabled:body.enabled==null?current.enabled:body.enabled===true?1:body.enabled===false?0:-1,betting:Number(body.bettingSeconds??current.betting_seconds),result:Number(body.resultSeconds??current.result_seconds),salad:Number(body.saladWeightBp??current.salad_weight_bp),pizza:Number(body.pizzaWeightBp??current.pizza_weight_bp)};
+      if (![0,1].includes(next.enabled)||!Number.isInteger(next.betting)||next.betting<10||next.betting>120||!Number.isInteger(next.result)||next.result<5||next.result>30||!Number.isInteger(next.salad)||!Number.isInteger(next.pizza)||next.salad<0||next.pizza<0||next.salad+next.pizza>5000) return wheelError("invalid_settings",400,json,origin,env);
+      const proposedSnapshot=makeSnapshot({...current,enabled:next.enabled,betting_seconds:next.betting,result_seconds:next.result,salad_weight_bp:next.salad,pizza_weight_bp:next.pizza},await getSymbols(db));
+      const exposure=maxExpectedReturnBp(proposedSnapshot);
+      if(next.enabled===1&&exposure>10000) return json({error:"payout_exposure_too_high",maxExpectedReturnBp:exposure,odds:calculateOdds(proposedSnapshot)},409,origin,env);
       const now=isoNow();
       await db.prepare("UPDATE cat_greed_settings SET enabled=?,betting_seconds=?,result_seconds=?,salad_weight_bp=?,pizza_weight_bp=?,updated_by_admin_id=?,updated_at=? WHERE id='current'").bind(next.enabled,next.betting,next.result,next.salad,next.pizza,admin.id,now).run();
       await db.prepare("INSERT INTO cat_greed_admin_audit (id,admin_id,action,details_json,created_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(),admin.id,"settings_update",JSON.stringify(next),now).run();
       return json({ok:true,settings:await getSettings(db)},200,origin,env);
     }
     if (adminSymbols) {
-      if (request.method==="GET") return json({symbols:await getSymbols(db)},200,origin,env);
+      if (request.method==="GET") {
+        const symbols=await getSymbols(db), settings=await getSettings(db), snapshot=makeSnapshot(settings,symbols);
+        return json({symbols,odds:calculateOdds(snapshot),maxExpectedReturnBp:maxExpectedReturnBp(snapshot)},200,origin,env);
+      }
       if (request.method!=="PATCH") return wheelError("method_not_allowed",405,json,origin,env);
       if (admin.role!=="owner") return wheelError("owner_permission_required",403,json,origin,env);
       let body:any; try { body=await request.json(); } catch { return wheelError("invalid_json",400,json,origin,env); }
-      if (!Array.isArray(body.symbols)||body.symbols.length!==8) return wheelError("invalid_symbols",400,json,origin,env);
+      if (!body || typeof body!=="object" || !Array.isArray(body.symbols)||body.symbols.length!==8) return wheelError("invalid_symbols",400,json,origin,env);
       const now=isoNow(), statements:D1PreparedStatement[]=[], seenSlots=new Set<number>();
       let totalWeight=0;
+      const proposed: CatGreedSymbol[]=[];
       for (const item of body.symbols) {
+        if (!item || typeof item!=="object") return wheelError("invalid_symbol",400,json,origin,env);
         const slot=Number(item.slot),multiplier=Number(item.multiplier),weight=Number(item.weight);
         const emoji=String(item.emoji??""),label=String(item.label??"").trim(),imageUrl=item.imageUrl==null?"":String(item.imageUrl).trim();
-        if (!Number.isInteger(slot)||slot<0||slot>7||seenSlots.has(slot)||!Number.isInteger(multiplier)||multiplier<1||multiplier>100||!Number.isInteger(weight)||weight<0||weight>100000||!emoji||emoji.length>12||!label||label.length>40||imageUrl.length>2048||(imageUrl&&!/^https:\/\//i.test(imageUrl))) return wheelError("invalid_symbol",400,json,origin,env);
+        if (!Number.isInteger(slot)||slot<0||slot>7||seenSlots.has(slot)||!Number.isInteger(multiplier)||multiplier<1||multiplier>100||!Number.isInteger(weight)||weight<0||weight>100000||!emoji.trim()||emoji.length>12||/[<>\u0000-\u001f]/.test(emoji)||!label||label.length>40||/[<>\u0000-\u001f]/.test(label)||(imageUrl&&!isValidImageKitUrl(imageUrl))||typeof item.isVegetable!=="boolean") return wheelError("invalid_symbol",400,json,origin,env);
         seenSlots.add(slot); totalWeight+=weight;
+        proposed.push({slot,emoji,label,multiplier,is_vegetable:item.isVegetable?1:0,weight,image_url:imageUrl||null});
         statements.push(db.prepare("UPDATE cat_greed_symbols SET emoji=?,label=?,multiplier=?,is_vegetable=?,weight=?,image_url=?,updated_at=? WHERE slot=?").bind(emoji,label,multiplier,item.isVegetable?1:0,weight,imageUrl||null,now,slot));
       }
-      if(seenSlots.size!==8||totalWeight<=0) return wheelError("invalid_symbol_weights",400,json,origin,env);
+      if(seenSlots.size!==8||totalWeight<=0||proposed.some((symbol,index)=>symbol.slot!==index)) return wheelError("invalid_symbol_weights",400,json,origin,env);
+      const settings=await getSettings(db);
+      const proposedSnapshot=makeSnapshot(settings,proposed);
+      const exposure=maxExpectedReturnBp(proposedSnapshot);
+      if(settings.enabled===1&&exposure>10000) return json({error:"payout_exposure_too_high",maxExpectedReturnBp:exposure,odds:calculateOdds(proposedSnapshot)},409,origin,env);
       await db.batch(statements);
-      await db.prepare("INSERT INTO cat_greed_admin_audit (id,admin_id,action,details_json,created_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(),admin.id,"symbols_update",JSON.stringify({count:8}),now).run();
+      await db.prepare("INSERT INTO cat_greed_admin_audit (id,admin_id,action,details_json,created_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(),admin.id,"symbols_update",JSON.stringify({symbols:proposed.map(({slot,emoji,label,multiplier,is_vegetable,weight,image_url})=>({slot,emoji,label,multiplier,isVegetable:!!is_vegetable,weight,imageUrl:image_url}))}),now).run();
       return json({ok:true,symbols:await getSymbols(db)},200,origin,env);
     }
     if (adminRounds) {
