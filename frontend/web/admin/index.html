@@ -221,7 +221,7 @@ async function giftsPage(){
         const iconEmoji=window.prompt("الرمز الاحتياطي",gift.iconEmoji||"🎁");if(iconEmoji===null)return;
         const mediaType=window.prompt("نوع الوسائط: emoji أو svga أو apng أو webp",gift.mediaType||"emoji");if(mediaType===null)return;
         const mediaUrl=window.prompt("رابط ملف الوسائط HTTPS (اتركه فارغًا للرمز التعبيري)",gift.mediaUrl||"");if(mediaUrl===null)return;
-        const soundFile=await chooseGiftSoundFile();
+        const soundFile=window.confirm("هل تريد إضافة أو استبدال صوت الهدية؟")?await chooseGiftSoundFile():null;
         const soundUrl=soundFile?await uploadGiftSound(soundFile):(gift.soundUrl||null);
         const raw=window.prompt("السعر بالعملات",String(gift.coinPrice));if(raw===null)return;
         const coinPrice=Number(raw);
