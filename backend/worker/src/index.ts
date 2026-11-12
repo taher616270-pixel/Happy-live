@@ -1,9 +1,23 @@
 import { RtcTokenBuilder } from "agora-token";
 export { RoomSeatsHub } from "./room_seats_hub";
+export { GlobalGiftHub } from "./global_gift_hub";
+import type { GlobalGiftHub } from "./global_gift_hub";
+const GLOBAL_GIFT_SHARD_COUNT = 16;
+
+function globalGiftShardForUser(userId: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < userId.length; index++) {
+    hash ^= userId.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % GLOBAL_GIFT_SHARD_COUNT;
+}
+
 export interface Env {
   DB?: D1Database;
   ROOM_CHAT?: DurableObjectNamespace;
   ROOM_SEATS?: DurableObjectNamespace;
+  GLOBAL_GIFTS?: DurableObjectNamespace<GlobalGiftHub>;
   APP_ENV?: string;
   ALLOWED_ORIGINS?: string;
   IMAGEKIT_PUBLIC_KEY?: string;
@@ -494,6 +508,7 @@ export default {
       url.pathname === "/api/v1/admin/users" ||
       url.pathname === "/api/v1/admin/wallets" ||
       url.pathname === "/api/v1/admin/gifts/settings" ||
+      url.pathname === "/api/v1/admin/gifts/banner-settings" ||
       url.pathname === "/api/v1/admin/gifts/catalog" ||
       url.pathname === "/api/v1/admin/gifts/custom-requests" ||
       /^\/api\/v1\/admin\/gifts\/custom-requests\/[0-9a-f-]{36}$/i.test(url.pathname) ||
@@ -552,6 +567,30 @@ export default {
           ]);
           if ((results[0]?.meta?.changes ?? 0) !== 1) return json({ error: "gift_settings_conflict", message: "تم تعديل النسب بالتزامن. حدّث الصفحة وحاول مجددًا." }, 409, origin, env);
           return json({ ok: true, settings: { appPercent, recipientPercent, updatedAt: now } }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/gifts/banner-settings" && (request.method === "GET" || request.method === "PATCH")) {
+          if (actor.role !== "owner" && actor.role !== "admin") return json({ error: "permission_denied" }, 403, origin, env);
+          if (request.method === "GET") {
+            const settings = await env.DB.prepare(
+              "SELECT enabled, minimum_coins AS minimumCoins, updated_at AS updatedAt FROM gift_banner_settings WHERE id = 'current'"
+            ).first<Record<string, unknown>>();
+            return json({ ok: true, settings: settings ?? { enabled: 0, minimumCoins: 0, updatedAt: null } }, 200, origin, env);
+          }
+          if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; }
+          catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const enabled = body.enabled === true || body.enabled === 1;
+          const minimumCoins = Number(body.minimumCoins);
+          if (!Number.isSafeInteger(minimumCoins) || minimumCoins < 0 || minimumCoins > 1000000000) {
+            return json({ error: "invalid_banner_minimum", message: "أدخل حدًا صحيحًا من 0 إلى مليار كوينز" }, 400, origin, env);
+          }
+          const now = new Date().toISOString();
+          await env.DB.prepare(
+            "INSERT INTO gift_banner_settings (id, enabled, minimum_coins, updated_by_admin_id, updated_at) VALUES ('current', ?, ?, ?, ?) " +
+            "ON CONFLICT(id) DO UPDATE SET enabled = excluded.enabled, minimum_coins = excluded.minimum_coins, updated_by_admin_id = excluded.updated_by_admin_id, updated_at = excluded.updated_at"
+          ).bind(enabled ? 1 : 0, minimumCoins, actor.id, now).run();
+          return json({ ok: true, settings: { enabled, minimumCoins, updatedAt: now } }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/gifts/catalog" || /^\/api\/v1\/admin\/gifts\/catalog\/[a-z0-9-]{1,80}$/i.test(url.pathname)) {
           if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
@@ -1413,6 +1452,38 @@ export default {
     }
 
 
+    // Authenticated application-wide gift banner stream. The global hub is shared by all signed-in users.
+    if (url.pathname === "/api/v1/gifts/global-stream" && request.method === "GET") {
+      if (!env.DB || !env.GLOBAL_GIFTS) return json({ error: "global_gift_stream_unavailable" }, 503, origin, env);
+      try {
+        if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+          return json({ error: "websocket_upgrade_required" }, 426, origin, env);
+        }
+        const protocols = (request.headers.get("Sec-WebSocket-Protocol") ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+        if (!protocols.includes("happy-live-gifts")) return json({ error: "websocket_protocol_required" }, 400, origin, env);
+        const streamToken = protocols.find((value) => value !== "happy-live-gifts");
+        if (!streamToken || !/^[A-Za-z0-9._~-]{32,512}$/.test(streamToken)) {
+          return json({ error: "authentication_required" }, 401, origin, env);
+        }
+        const authHeaders = new Headers(request.headers);
+        authHeaders.set("Authorization", `Bearer ${streamToken}`);
+        const user = await authenticatedUser(new Request(request, { headers: authHeaders }), env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const shard = globalGiftShardForUser(user.id);
+        const stub = env.GLOBAL_GIFTS.get(env.GLOBAL_GIFTS.idFromName(`application-global-${shard}`));
+        return await stub.fetch(new Request("https://global-gifts.internal/connect", {
+          method: "GET",
+          headers: new Headers({
+            "Upgrade": "websocket",
+            "Sec-WebSocket-Protocol": "happy-live-gifts"
+          })
+        }));
+      } catch (error) {
+        console.error("[gifts.global-stream] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "global_gift_stream_failed" }, 503, origin, env);
+      }
+    }
+
     // Authenticated, room-scoped WebSocket for atomic microphone-seat state.
     const seatStreamRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/seat-stream$/);
     if (seatStreamRoute && request.method === "GET") {
@@ -2084,10 +2155,12 @@ export default {
         if (transaction.status !== "succeeded") return json({ error: "gift_not_processed" }, 409, origin, env);
         // Notify every connected room member after the wallet transaction is committed.
         // Animation delivery is best-effort and must never undo a successful gift.
+        let gift: Record<string, unknown> | null = null;
         try {
-          const gift = await env.DB.prepare(
+          gift = await env.DB.prepare(
             "SELECT g.name, g.icon_emoji AS iconEmoji, g.media_url AS mediaUrl, g.media_type AS mediaType, g.sound_url AS soundUrl, " +
-            "COALESCE(sp.display_name, 'مستخدم') AS senderName, COALESCE(rp.display_name, 'مستخدم') AS recipientName " +
+            "COALESCE(sp.display_name, 'مستخدم') AS senderName, COALESCE(rp.display_name, 'مستخدم') AS recipientName, " +
+            "COALESCE(sp.avatar_key, '') AS senderAvatar, COALESCE(rp.avatar_key, '') AS recipientAvatar " +
             "FROM gift_catalog g LEFT JOIN profiles sp ON sp.user_id = ? " +
             "LEFT JOIN profiles rp ON rp.user_id = ? WHERE g.id = ? LIMIT 1"
           ).bind(user.id, recipientUserId, giftId).first<Record<string, unknown>>();
@@ -2114,6 +2187,42 @@ export default {
           }
         } catch (broadcastError) {
           console.warn("[gifts.room.broadcast] skipped", broadcastError instanceof Error ? broadcastError.message : "UnknownError");
+        }
+        // A qualifying gift also produces one application-wide banner, including for users outside rooms.
+        try {
+          const bannerSettings = await env.DB.prepare(
+            "SELECT enabled, minimum_coins AS minimumCoins FROM gift_banner_settings WHERE id = 'current'"
+          ).first<{ enabled: number; minimumCoins: number }>();
+          const giftCoins = Number(transaction.coinCost ?? 0);
+          if (env.GLOBAL_GIFTS && bannerSettings?.enabled === 1 &&
+              Number.isSafeInteger(giftCoins) && giftCoins >= Number(bannerSettings.minimumCoins) &&
+              Number(bannerSettings.minimumCoins) > 0 && gift) {
+            const bannerPayload = {
+              type: "global_gift_banner",
+              transactionId: transaction.id,
+              senderName: gift.senderName,
+              receiverName: gift.recipientName,
+              giftImage: gift.mediaUrl || gift.iconEmoji,
+              senderAvatar: gift.senderAvatar,
+              receiverAvatar: gift.recipientAvatar,
+              message: `${gift.senderName} أرسل هدية إلى ${gift.recipientName}`,
+              level: 0,
+              style: giftCoins >= Number(bannerSettings.minimumCoins) * 10 ? "blue" : "green",
+              coinCost: giftCoins,
+              quantity: Number(transaction.quantity ?? quantity),
+              createdAt: new Date().toISOString()
+            };
+            // Fan out across independent shards instead of concentrating every
+            // connected app user on one globally serialized Durable Object.
+            await Promise.all(Array.from({ length: GLOBAL_GIFT_SHARD_COUNT }, (_, shard) => {
+              const hub = env.GLOBAL_GIFTS!.get(
+                env.GLOBAL_GIFTS!.idFromName(`application-global-${shard}`)
+              );
+              return hub.broadcast(bannerPayload);
+            }));
+          }
+        } catch (globalBroadcastError) {
+          console.warn("[gifts.global.broadcast] skipped", globalBroadcastError instanceof Error ? globalBroadcastError.message : "UnknownError");
         }
         return json({ ok: true, duplicate: false, transaction }, 201, origin, env);
       } catch (error) {

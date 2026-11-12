@@ -16,6 +16,8 @@ import 'dart:convert';
 import 'widgets/custom_bottom_nav.dart';
 import 'widgets/purple_tech_background.dart';
 import 'services/session_token_store.dart';
+import 'services/global_gift_events.dart';
+import 'widgets/global_gift_banner.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +70,9 @@ class HappyLiveApp extends StatelessWidget {
         children: [
           Positioned.fill(child: PurpleTechBackground()),
           if (child != null) child,
+          Positioned.fill(
+            child: GiftBannerHost(stream: GlobalGiftEvents.instance.events),
+          ),
         ],
       ),
       theme: ThemeData(
@@ -1430,10 +1435,17 @@ class _SessionHomePageState extends State<SessionHomePage> {
   @override
   void initState() {
     super.initState();
+    GlobalGiftEvents.instance.connect(widget.accessToken);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshProfile();
       _refreshWalletBalance();
     });
+  }
+
+  @override
+  void dispose() {
+    GlobalGiftEvents.instance.disconnect();
+    super.dispose();
   }
 
   Future<void> _refreshProfile() async {

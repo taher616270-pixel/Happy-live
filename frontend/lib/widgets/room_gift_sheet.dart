@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/global_gift_banner.dart';
 import 'package:flutter_svga/flutter_svga.dart';
 import 'package:gif_view/gif_view.dart';
 
@@ -84,6 +85,10 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   Map<String, dynamic>? _selectedGift;
   int _quantity = 1;
   bool _sending = false;
+  Map<String, dynamic>? _comboGift;
+  String? _comboRecipientId;
+  int _comboCount = sentQuantity;
+  int _comboNonce = 0;
   bool _requesting = false;
   String? _message;
   final _customName = TextEditingController();
@@ -136,13 +141,14 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   Future<void> _sendGift() async {
     final gift = _selectedGift;
     final recipientIds = _recipientIds.toList();
+    final sentQuantity = _quantity;
     if (gift == null || _sending) return;
     if (recipientIds.isEmpty) {
       _showMessage('اختر مستلم الهدية أولًا');
       return;
     }
     final price = (gift['coinPrice'] as num?)?.toInt() ?? 0;
-    if (price < 1 || price * _quantity * recipientIds.length > _balance) {
+    if (price < 1 || price * sentQuantity * recipientIds.length > _balance) {
       _showMessage('رصيدك من العملات غير كافٍ لإرسال الهدايا المحددة');
       return;
     }
@@ -150,12 +156,18 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     var sent = 0;
     try {
       for (final recipientId in recipientIds) {
-        _balance = await widget.onSend(gift, _quantity, recipientId);
+        _balance = await widget.onSend(gift, sentQuantity, recipientId);
         sent++;
         if (mounted) setState(() {});
       }
       if (mounted) {
-        setState(() => _selectedGift = null);
+        setState(() {
+          _selectedGift = null;
+          _comboGift = recipientIds.length == 1 ? Map<String, dynamic>.from(gift) : null;
+          _comboRecipientId = recipientIds.length == 1 ? recipientIds.first : null;
+          _comboCount = 1;
+          _comboNonce++;
+        });
         _showMessage(recipientIds.length == 1 ? 'تم إرسال الهدية بنجاح' : 'تم إرسال الهدية إلى $sent مستلمين');
       }
     } catch (error) {
@@ -292,6 +304,46 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
                     Expanded(child: _customCreating ? _customRequestForm() : _customHome())
                   else
                     Expanded(child: _giftGrid()),
+                  if (_comboGift != null && _comboRecipientId != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                      child: GiftComboBanner(
+                        senderName: 'أنت',
+                        receiverName: (widget.recipients.firstWhere(
+                          (item) => (item['userId'] ?? '').toString() == _comboRecipientId,
+                          orElse: () => const <String, dynamic>{'name': 'المستلم'},
+                        )['name'] ?? 'المستلم').toString(),
+                        giftImage: (_comboGift!['mediaUrl'] ?? _comboGift!['iconEmoji'] ?? '🎁').toString(),
+                        count: _comboCount,
+                        child: GiftComboButton(
+                          key: ValueKey('gift-combo-$_comboNonce'),
+                          onResend: (quantity) async {
+                            try {
+                              final updatedBalance = await widget.onSend(
+                                _comboGift!,
+                                quantity,
+                                _comboRecipientId!,
+                              );
+                              if (mounted) {
+                                setState(() {
+                                  _balance = updatedBalance;
+                                  _comboCount += quantity;
+                                });
+                              }
+                            } catch (error) {
+                              _showMessage(error.toString().replaceFirst('Exception: ', ''));
+                            }
+                          },
+                          onExpired: () {
+                            if (!mounted) return;
+                            setState(() {
+                              _comboGift = null;
+                              _comboRecipientId = null;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
                   if (_tab != 'vip') _bottomBar(),
                 ],
               ),

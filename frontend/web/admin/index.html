@@ -182,7 +182,7 @@ async function render(){
 
 async function giftsPage(){
   if(admin.role!=="owner"&&admin.role!=="admin"){$("content").innerHTML='<div class="section"><p class="notice">إعدادات أرباح الهدايا متاحة للمالك ومدير التطبيق فقط.</p></div>';return}
-  const data=await api("/admin/gifts/settings"),settings=data.settings||{},totals=data.totals||{},withdrawals=data.withdrawals||{};
+  const data=await api("/admin/gifts/settings"),bannerData=await api("/admin/gifts/banner-settings"),settings=data.settings||{},bannerSettings=bannerData.settings||{},totals=data.totals||{},withdrawals=data.withdrawals||{};
   const canEdit=admin.role==="owner";
   $("content").innerHTML=
     '<div class="cards">'+metric("عدد الهدايا المسجلة",totals.giftCount)+metric("إجمالي قيمة الهدايا",totals.totalGiftCoins)+metric("حصة التطبيق",totals.appCoins)+metric("حصة المستلمين",totals.recipientCoins)+'</div>'+
@@ -191,6 +191,12 @@ async function giftsPage(){
     '<p class="muted">يجب أن يكون مجموع النسبتين 100%. آخر تحديث: '+esc(settings.updatedAt?new Date(settings.updatedAt).toLocaleString("ar"):"لم يتم التعديل") +'</p>'+
     (canEdit?'<button class="primary" id="saveGiftSplit">حفظ نسب الأرباح</button>':'<p class="notice">التعديل متاح لمالك التطبيق فقط.</p>')+
     '<div id="giftSettingsMessage" class="muted" style="margin-top:12px"></div></div>'+
+    '<div class="section"><div class="section-head"><div><h2>البونر العام للهدايا</h2><p class="muted">يظهر لجميع مستخدمي التطبيق داخل الغرف وخارجها عند وصول إجمالي قيمة عملية إرسال الهدية إلى الحد المحدد.</p></div><span class="badge '+(bannerSettings.enabled?'good':'warn')+'">'+(bannerSettings.enabled?'مفعّل':'متوقف')+'</span></div>'+
+    '<label style="display:flex;align-items:center;gap:10px;margin:12px 0"><input id="giftBannerEnabled" type="checkbox" '+(bannerSettings.enabled?'checked ':'')+(canEdit?'':'disabled')+'> تفعيل البونر العام</label>'+
+    '<label style="display:grid;gap:7px;max-width:360px">الحد الأدنى لقيمة الهدية بالكوينز<input id="giftBannerMinimum" class="search" type="number" min="0" max="1000000000" step="1" value="'+Number(bannerSettings.minimumCoins||0)+'" '+(canEdit?'':'disabled')+'></label>'+
+    '<p class="muted">يُحسب الحد على إجمالي قيمة عملية الإرسال (سعر الهدية × الكمية). اجعل القيمة 0 لإيقاف ظهور البونر.</p>'+
+    (canEdit?'<button class="primary" id="saveGiftBanner">حفظ إعدادات البونر</button>':'<p class="notice">تعديل إعدادات البونر متاح لمالك التطبيق فقط.</p>')+
+    '<div id="giftBannerMessage" class="muted" style="margin-top:12px"></div></div>'+
     '<div class="section"><div class="section-head"><div><h2>السحب عبر الوكالات</h2><p class="muted">البنية مهيأة لربط أرباح الهدايا بالوكالات مستقبلًا.</p></div><span class="badge warn">غير مفعّل</span></div><p class="notice">طلبات السحب والتحويل النقدي مغلقة حاليًا. لن تُقبل طلبات سحب حتى تفعيل الوكالات واعتماد التحويل والحد الأدنى وإجراءات التحقق.</p><div class="cards">'+metric("السحب مفعّل",withdrawals.enabled?"نعم":"لا")+metric("ربط الوكالات",withdrawals.agencyIntegrationReady?"جاهز":"بانتظار التفعيل")+'</div></div>'+
     '<div class="section"><div class="section-head"><div><h2>كتالوج الهدايا</h2><p class="muted">إضافة الهدايا وتعديل أسعارها وربط ملفات SVGA وAPNG وWEBP عبر رابط HTTPS مباشر.</p></div></div>' +
     '<form id="giftCreateForm" class="room-tools" style="align-items:end;margin:16px 0">' +
@@ -269,6 +275,15 @@ async function giftsPage(){
       const button=$("saveGiftSplit");button.disabled=true;message.textContent="جارٍ الحفظ…";
       try{await api("/admin/gifts/settings",{method:"PATCH",body:JSON.stringify({appPercent,recipientPercent})});message.textContent="تم حفظ النسب. ستُطبق على المعاملات الجديدة فقط.";await giftsPage()}
       catch(error){message.textContent=error.message||"تعذر حفظ النسب."}
+      finally{button.disabled=false}
+    };
+    if($("saveGiftBanner")) $("saveGiftBanner").onclick=async()=>{
+      const enabled=$("giftBannerEnabled").checked,minimumCoins=Number($("giftBannerMinimum").value),message=$("giftBannerMessage"),button=$("saveGiftBanner");
+      if(!Number.isSafeInteger(minimumCoins)||minimumCoins<0||minimumCoins>1000000000){message.textContent="أدخل حدًا صحيحًا من 0 إلى مليار كوينز.";return}
+      if(enabled&&minimumCoins<1){message.textContent="حدد حدًا لا يقل عن 1 كوينز أو أوقف البونر.";return}
+      button.disabled=true;message.textContent="جارٍ حفظ إعدادات البونر…";
+      try{await api("/admin/gifts/banner-settings",{method:"PATCH",body:JSON.stringify({enabled,minimumCoins})});message.textContent="تم حفظ إعدادات البونر العام.";await giftsPage()}
+      catch(error){message.textContent=error.message||"تعذر حفظ إعدادات البونر."}
       finally{button.disabled=false}
     };
   }
