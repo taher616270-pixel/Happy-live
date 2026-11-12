@@ -9,6 +9,7 @@ const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8
 const adminPage = await readFile(new URL("../../../frontend/web/admin/index.html", import.meta.url), "utf8");
 const giftSheet = await readFile(new URL("../../../frontend/lib/widgets/room_gift_sheet.dart", import.meta.url), "utf8");
 const roomPage = await readFile(new URL("../../../frontend/lib/pages/room_page.dart", import.meta.url), "utf8");
+const roomSeatsHub = await readFile(new URL("../src/room_seats_hub.ts", import.meta.url), "utf8");
 
 test("gift revenue split defaults to 30/70 and is constrained to 100 percent", () => {
   assert.match(migration, /DEFAULT 30/);
@@ -143,6 +144,10 @@ test("custom gift animation uploads use ImageKit and are limited to GIF/SVGA und
   assert.match(worker, /ik\.imagekit\.io/);
   assert.match(worker, /mediaDurationMs > 5000/);
   assert.match(worker, /media_file_id/);
+  assert.match(worker, /type: "room_gift"/);
+  assert.match(worker, /gifts\\.room\\.broadcast/);
+  assert.match(roomSeatsHub, /url\\.pathname === "\/gift"/);
+  assert.match(roomPage, /_roomGiftFullscreenOverlay/);
   assert.match(worker, /attempt < 3/);
   assert.match(worker, /imagekit_credentials_invalid/);
   assert.match(worker, /providerStatus/);
