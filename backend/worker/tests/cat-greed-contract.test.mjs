@@ -85,6 +85,9 @@ test("Cat Greed bet requests are idempotent and rate-limited per authenticated p
   assert.match(worker, /idempotencyKey/);
   assert.match(worker, /BET_RATE_MAX_REQUESTS/);
   assert.match(worker, /bet_rate_limited/);
+  assert.match(worker, /excluded\.window_start-cat_greed_bet_rate_limits\.window_start>=\?/);
+  assert.match(worker, /excluded\.window_start-cat_greed_state_rate_limits\.window_start>=\?/);
+  assert.doesNotMatch(worker, /Math\.floor\(Date\.now\(\)\/BET_RATE_WINDOW_SECONDS\)/);
 });
 
 test("payout settlement claims a unique payout before crediting the wallet", () => {
