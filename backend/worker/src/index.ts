@@ -1988,9 +1988,11 @@ export default {
         // Animation delivery is best-effort and must never undo a successful gift.
         try {
           const gift = await env.DB.prepare(
-            "SELECT name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType " +
-            "FROM gift_catalog WHERE id = ? LIMIT 1"
-          ).bind(giftId).first<Record<string, unknown>>();
+            "SELECT g.name, g.icon_emoji AS iconEmoji, g.media_url AS mediaUrl, g.media_type AS mediaType, " +
+            "COALESCE(sp.display_name, 'مستخدم') AS senderName, COALESCE(rp.display_name, 'مستخدم') AS recipientName " +
+            "FROM gift_catalog g LEFT JOIN profiles sp ON sp.user_id = ? " +
+            "LEFT JOIN profiles rp ON rp.user_id = ? WHERE g.id = ? LIMIT 1"
+          ).bind(user.id, recipientUserId, giftId).first<Record<string, unknown>>();
           if (env.ROOM_SEATS && gift) {
             const hub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
             await hub.fetch(new Request("https://room-seats.internal/gift", {
@@ -2000,8 +2002,8 @@ export default {
                 transactionId: transaction.id,
                 senderUserId: user.id,
                 recipientUserId,
-                senderName: "مستخدم",
-                recipientName: "مستخدم",
+                senderName: gift.senderName,
+                recipientName: gift.recipientName,
                 name: gift.name,
                 iconEmoji: gift.iconEmoji,
                 mediaUrl: gift.mediaUrl,
