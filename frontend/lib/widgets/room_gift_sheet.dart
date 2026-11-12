@@ -155,7 +155,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
 
   Future<void> _pickCustomMedia() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: const ['gif', 'svga'],
         withData: true,
