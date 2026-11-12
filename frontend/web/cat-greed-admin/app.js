@@ -1,4 +1,6 @@
-const PRODUCTION_API="https://happy-live-api.taher616270.workers.dev/api/v1",API=location.hostname==="happy-live.pages.dev"?PRODUCTION_API:"";
+const PRODUCTION_API="https://happy-live-api.taher616270.workers.dev/api/v1";
+function resolveApi(){if(location.hostname==="happy-live.pages.dev")return PRODUCTION_API;try{const u=new URL(new URLSearchParams(location.search).get("catGreedApi")||"");if(u.protocol==="https:"&&u.port===""&&u.username===""&&u.password===""&&u.hostname!=="happy-live-api.taher616270.workers.dev"&&/^[a-z0-9-]*happy-live-api[a-z0-9-]*\.taher616270\.workers\.dev$/i.test(u.hostname))return u.origin+"/api/v1"}catch{}return ""}
+const API=resolveApi();
 let token=sessionStorage.getItem("happy_live_admin_token")||"",symbols=[],odds=[],maxExpectedReturnBp=0;
 const $=id=>document.getElementById(id);
 const esc=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
