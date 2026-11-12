@@ -65,7 +65,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     ['vip', 'VIP'],
     ['custom', 'مخصص'],
   ];
-  static const _quantities = <int>[1, 7, 17, 77];
+  static const _quantities = <int>[1, 7, 17, 77, 177, 777];
 
   late Future<List<Map<String, dynamic>>> _giftsFuture;
   late int _balance;
@@ -411,13 +411,13 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
             GestureDetector(
               onTap: _sending || !hasRecipient || _selectedGift == null || total > _balance ? null : _sendGift,
               child: Container(
-                width: 76,
+                width: 92,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: !hasRecipient || _selectedGift == null || total > _balance ? const Color(0xFF514A57) : const Color(0xFF8A2BFF),
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: _sending ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('إرسال', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                child: _sending ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(total > 0 ? 'إرسال · $total' : 'إرسال', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
               ),
             ),
           ]),
