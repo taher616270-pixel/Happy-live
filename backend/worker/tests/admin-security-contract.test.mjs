@@ -181,3 +181,20 @@ test("migration backfills legacy admin actor ids from valid audit JSON", () => {
   assert.match(auditMigration, /json_extract\(l\.details_json, '\$\.adminId'\)/);
   assert.match(auditMigration, /EXISTS \([\s\S]*FROM admin_accounts a[\s\S]*a\.id = json_extract/);
 });
+
+
+test("gift catalogue and custom-request administration are owner-audited", () => {
+  const start = worker.indexOf('if (url.pathname === "/api/v1/admin/gifts/settings"');
+  const end = worker.indexOf('if (url.pathname === "/api/v1/admin/moderators"', start);
+  assert.ok(start >= 0 && end > start, "gift administration routes must exist");
+  const routes = worker.slice(start, end);
+  for (const action of [
+    "gift.catalog.create",
+    "gift.catalog.update",
+    "gift.catalog.deactivate",
+    "gift.custom_request.approve",
+    "gift.custom_request.reject"
+  ]) assert.ok(routes.includes(action), `expected audit action ${action}`);
+  assert.match(routes, /actor\.role !== "owner"/);
+  assert.match(routes, /adminAuditStatements\(env\.DB, actor,/);
+});
