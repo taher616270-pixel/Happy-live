@@ -124,9 +124,9 @@ test("custom gift requests are authenticated, rate limited, and owner-reviewed",
 });
 
 test("room gift sends enforce event windows and sender country eligibility", () => {
-  assert.match(worker, /g\\.starts_at IS NULL OR g\\.starts_at <=/);
-  assert.match(worker, /g\\.ends_at IS NULL OR g\\.ends_at >=/);
-  assert.match(worker, /sender_profile\\.country_name/);
-  assert.match(worker, /g\\.category <> 'country' OR g\\.country_code = CASE/);
+  assert.match(worker, /g\.starts_at IS NULL OR g\.starts_at <=/);
+  assert.match(worker, /g\.ends_at IS NULL OR g\.ends_at >=/);
+  assert.match(worker, /sender_profile\.country_name/);
+  assert.match(worker, /g\.category <> 'country' OR g\.country_code = CASE/);
   assert.match(worker, /THEN 'SOUTH_ARABIA'/);
 });
