@@ -246,3 +246,7 @@ test("admin overview and round history settle expired rounds before reporting pa
   assert.ok(overview >= 0 && worker.indexOf("await currentRound(db,false);",overview) < worker.indexOf("const [settings,symbols,rounds,players,totals]",overview));
   assert.ok(history >= 0 && worker.indexOf("await currentRound(db,false);",history) < worker.indexOf("const rounds=",history));
 });
+
+test("global game net excludes wagers from unsettled rounds", () => {
+  assert.match(worker, /INNER JOIN cat_greed_rounds r ON r\.id=b\.round_id WHERE r\.phase='result'/);
+});
