@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -37,6 +38,9 @@ class _CatGreedGameState extends State<CatGreedGame> {
   Map<String, String> get _headers => {'Content-Type':'application/json','Authorization':'Bearer ${widget.accessToken}'};
 
   Future<Map<String,dynamic>> _request(String path,{String method='GET',Map<String,dynamic>? body}) async {
+    if(kIsWeb&&Uri.base.host!='happy-live.pages.dev') {
+      throw Exception('نسخة المعاينة غير موصولة بخادم اختبار معزول؛ تم تعطيل اللعبة لحماية رصيد الإنتاج.');
+    }
     final response = method == 'GET'
       ? await http.get(Uri.parse('$_wheelApi$path'),headers:_headers)
       : await http.post(Uri.parse('$_wheelApi$path'),headers:_headers,body:jsonEncode(body));
