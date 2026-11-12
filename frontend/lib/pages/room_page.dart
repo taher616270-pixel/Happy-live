@@ -1837,32 +1837,91 @@ class _RoomPageState extends State<RoomPage> {
                         style: const TextStyle(color: Colors.white70, fontSize: 12)),
                       const SizedBox(height: 14),
                       if (selectedRecipient == null) ...[
-                        const Text('اختر العضو الذي تريد إرسال الهدية إليه',
-                          style: TextStyle(color: Colors.white70, fontSize: 13)),
-                        const SizedBox(height: 8),
-                        Flexible(
-                          child: ListView.separated(
+                        if (recipients.isEmpty) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF282131),
+                              borderRadius: BorderRadius.circular(13),
+                              border: Border.all(color: const Color(0x55E8C477)),
+                            ),
+                            child: const Column(
+                              children: [
+                                Icon(Icons.card_giftcard_rounded, color: Color(0xFFE8C477), size: 27),
+                                SizedBox(height: 7),
+                                Text('لا يوجد أعضاء في الغرفة حاليًا',
+                                  style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                                SizedBox(height: 4),
+                                Text('يمكنك استعراض الهدايا، وستتمكن من إرسالها عند وجود أعضاء.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.white60, fontSize: 11, height: 1.5)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          GridView.builder(
                             shrinkWrap: true,
-                            itemCount: recipients.length,
-                            separatorBuilder: (_, __) => const Divider(color: Colors.white12, height: 1),
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: gifts.length,
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10,
+                              childAspectRatio: .82,
+                            ),
                             itemBuilder: (_, index) {
-                              final user = recipients[index];
-                              final avatar = (user['avatarUrl'] ?? '').toString();
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundImage: avatar.startsWith('https://') ? NetworkImage(avatar) : null,
-                                  child: !avatar.startsWith('https://')
-                                      ? const Icon(Icons.person, color: Colors.white70) : null,
+                              final gift = gifts[index];
+                              return Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF282131),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color(0x66E8C477)),
                                 ),
-                                title: Text(user['name'].toString(),
-                                  style: const TextStyle(color: Colors.white)),
-                                subtitle: Text('ID: ${user['userCode'] ?? user['id'] ?? user['userId']}',
-                                  style: const TextStyle(color: Colors.white54, fontSize: 11)),
-                                onTap: () => setSheetState(() => selectedRecipient = user),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text((gift['iconEmoji'] ?? '🎁').toString(),
+                                      style: const TextStyle(fontSize: 32)),
+                                    const SizedBox(height: 7),
+                                    Text(gift['name'].toString(),
+                                      textAlign: TextAlign.center, maxLines: 2,
+                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                                    const SizedBox(height: 5),
+                                    Text('${gift['coinPrice']} عملة',
+                                      style: const TextStyle(color: Color(0xFFE8C477), fontSize: 11)),
+                                  ],
+                                ),
                               );
                             },
                           ),
-                        ),
+                        ] else ...[
+                          const Text('اختر العضو الذي تريد إرسال الهدية إليه',
+                            style: TextStyle(color: Colors.white70, fontSize: 13)),
+                          const SizedBox(height: 8),
+                          Flexible(
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: recipients.length,
+                              separatorBuilder: (_, __) => const Divider(color: Colors.white12, height: 1),
+                              itemBuilder: (_, index) {
+                                final user = recipients[index];
+                                final avatar = (user['avatarUrl'] ?? '').toString();
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundImage: avatar.startsWith('https://') ? NetworkImage(avatar) : null,
+                                    child: !avatar.startsWith('https://')
+                                        ? const Icon(Icons.person, color: Colors.white70) : null,
+                                  ),
+                                  title: Text(user['name'].toString(),
+                                    style: const TextStyle(color: Colors.white)),
+                                  subtitle: Text('ID: ${user['userCode'] ?? user['id'] ?? user['userId']}',
+                                    style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                                  onTap: () => setSheetState(() => selectedRecipient = user),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ] else ...[
                         Row(
                           children: [
