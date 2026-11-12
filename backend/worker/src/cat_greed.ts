@@ -192,11 +192,12 @@ export async function handleCatGreedRequest(
 
     const admin = await authenticateAdmin(request,db);
     if (!admin) return wheelError("authentication_required",401,json,origin,env);
+    if (admin.role!=="owner" && admin.role!=="admin") return wheelError("permission_denied",403,json,origin,env);
     if (mainOverview) {
       const [settings,symbols,rounds,players,totals] = await Promise.all([
         getSettings(db),getSymbols(db),
         db.prepare("SELECT id,phase,starts_at,closes_at,result_slot,special,seed_commitment,settled_at FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 20").all(),
-        db.prepare("SELECT u.id,p.display_name AS name,p.gabo_id AS userCode,COALESCE(c.enabled,1) AS enabled,COALESCE(c.max_bet_per_round,1000000) AS maxBetPerRound,COALESCE(b.rounds,0) AS rounds,COALESCE(b.wagered,0) AS wagered,COALESCE(py.paid,0) AS paid FROM users u LEFT JOIN profiles p ON p.user_id=u.id LEFT JOIN cat_greed_player_controls c ON c.user_id=u.id LEFT JOIN (SELECT user_id,COUNT(DISTINCT round_id) AS rounds,SUM(amount) AS wagered FROM cat_greed_bets GROUP BY user_id) b ON b.user_id=u.id LEFT JOIN (SELECT user_id,SUM(amount) AS paid FROM cat_greed_payouts WHERE paid_at IS NOT NULL GROUP BY user_id) py ON py.user_id=u.id WHERE b.user_id IS NOT NULL ORDER BY wagered DESC LIMIT 50").all(),
+        db.prepare("SELECT u.id,p.display_name AS name,p.gabo_id AS userCode,COALESCE(c.enabled,1) AS enabled,COALESCE(c.max_bet_per_round,1000000) AS maxBetPerRound,COALESCE(b.rounds,0) AS rounds,COALESCE(b.wagered,0) AS wagered,COALESCE(b.wins,0) AS wins,COALESCE(b.losses,0) AS losses,COALESCE(b.paid,0) AS paid FROM users u LEFT JOIN profiles p ON p.user_id=u.id LEFT JOIN cat_greed_player_controls c ON c.user_id=u.id LEFT JOIN (SELECT user_id,COUNT(*) AS rounds,SUM(wagered) AS wagered,SUM(CASE WHEN payout>0 THEN 1 ELSE 0 END) AS wins,SUM(CASE WHEN payout=0 THEN 1 ELSE 0 END) AS losses,SUM(payout) AS paid FROM (SELECT b.user_id,b.round_id,SUM(b.amount) AS wagered,COALESCE(p.amount,0) AS payout FROM cat_greed_bets b LEFT JOIN cat_greed_payouts p ON p.user_id=b.user_id AND p.round_id=b.round_id GROUP BY b.user_id,b.round_id) GROUP BY user_id) b ON b.user_id=u.id WHERE b.user_id IS NOT NULL ORDER BY wagered DESC LIMIT 50").all(),
         db.prepare("SELECT COUNT(*) AS rounds,COALESCE(SUM(amount),0) AS wagered FROM cat_greed_bets").first()
       ]);
       return json({settings,symbols,rounds:rounds.results??[],players:players.results??[],totals:totals??{}},200,origin,env);
