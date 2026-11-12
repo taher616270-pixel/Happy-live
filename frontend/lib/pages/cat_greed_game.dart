@@ -134,7 +134,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
                 IconButton(onPressed:()=>Navigator.of(context).maybePop(),icon:const Icon(Icons.close,color:Colors.white)),
               ])),
               Text('جولة ${s['roundId']} · ${s['phase']=='betting'?'استقبال الرهانات':'النتيجة'} · ${s['secondsLeft']} ث',style:const TextStyle(color:Colors.white70,fontWeight:FontWeight.bold)),
-              if(s['seedCommitment']!=null)Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:4),child:Text('بصمة نزاهة الجولة: ${s['seedCommitment'].toString().substring(0,math.min(24,s['seedCommitment'].toString().length))}…',style:const TextStyle(color:Color(0xFFD4AF37),fontSize:10))),
+              if(s['seedCommitment']!=null)Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:4),child:Text('بصمة نزاهة الجولة: ${s['seedCommitment'].toString().substring(0,s['seedCommitment'].toString().length<24?s['seedCommitment'].toString().length:24)}…',style:const TextStyle(color:Color(0xFFD4AF37),fontSize:10))),
               Expanded(child:LayoutBuilder(builder:(context,c){
                 final d=c.maxWidth<c.maxHeight?c.maxWidth:c.maxHeight;
                 return Center(child:SizedBox(width:d,height:d,child:Stack(children:[
