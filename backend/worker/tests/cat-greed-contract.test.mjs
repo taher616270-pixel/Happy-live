@@ -132,4 +132,8 @@ test("standalone Cat Greed scripts are external and route CSP blocks inline scri
   assert.match(gameAdmin, /<script src="app\.js" defer><\/script>/);
   assert.match(pageHeaders, /script-src 'self'/);
   assert.match(pageHeaders, /frame-ancestors 'none'/);
+  assert.match(gameScript, /location\.hostname==="happy-live\.pages\.dev"/);
+  assert.match(gameAdminScript, /location\.hostname==="happy-live\.pages\.dev"/);
+  assert.match(mainAdmin, /location\.hostname!=="happy-live\.pages\.dev"/);
+  assert.match(flutterGame, /kIsWeb&&Uri\.base\.host!='happy-live\.pages\.dev'/);
 });
