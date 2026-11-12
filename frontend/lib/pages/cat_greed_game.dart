@@ -63,11 +63,18 @@ class _CatGreedGameState extends State<CatGreedGame> {
   Future<void> _spin(Map<String,dynamic> s) async {
     if(_spinning)return;
     _spinning=true;
-    final target=s['resultSlot'] is int?s['resultSlot'] as int:math.Random().nextInt(8);
-    final start=math.Random().nextInt(8),steps=25+((target-start+8)%8);
+    final special=s['special']?.toString();
+    final symbols=(s['symbols'] as List?)??const [];
+    final targets=special=='salad'
+      ? [for(var i=0;i<symbols.length;i++) if((symbols[i] as Map)['isVegetable']==true)i]
+      : special=='pizza'
+        ? [for(var i=0;i<symbols.length;i++) if((symbols[i] as Map)['isVegetable']!=true)i]
+        : [s['resultSlot'] is int?s['resultSlot'] as int:math.Random().nextInt(8)];
+    final activeTargets=targets.isEmpty?[0]:targets;
+    final steps=special=='salad'||special=='pizza'?activeTargets.length*3:25;
     for(var k=0;k<steps;k++){
       if(!mounted){_spinning=false;return;}
-      setState(()=>_hit=(start+k)%8);
+      setState(()=>_hit=activeTargets[k%activeTargets.length]);
       await Future.delayed(Duration(milliseconds:55+(k*k*.32).round()));
     }
     if(!mounted)return;
@@ -138,6 +145,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
                 IconButton(onPressed:()=>Navigator.of(context).maybePop(),icon:const Icon(Icons.close,color:Colors.white)),
               ])),
               Text('جولة ${s['roundId']} · ${s['phase']=='betting'?'استقبال الرهانات':'النتيجة'} · ${s['secondsLeft']} ث',style:const TextStyle(color:Colors.white70,fontWeight:FontWeight.bold)),
+              if(s['specialOdds'] is Map)Padding(padding:const EdgeInsets.symmetric(vertical:3),child:Text('السلطة ${(((s['specialOdds'] as Map)['saladWeightBp'] as num? ?? 0)/100).toStringAsFixed(2)}% · البيتزا ${(((s['specialOdds'] as Map)['pizzaWeightBp'] as num? ?? 0)/100).toStringAsFixed(2)}%',style:const TextStyle(color:Color(0xFFD4AF37),fontSize:10))),
               if(s['seedCommitment']!=null)Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:4),child:Text('بصمة نزاهة الجولة: ${s['seedCommitment'].toString().substring(0,s['seedCommitment'].toString().length<24?s['seedCommitment'].toString().length:24)}…',style:const TextStyle(color:Color(0xFFD4AF37),fontSize:10))),
               Expanded(child:LayoutBuilder(builder:(context,c){
                 final d=c.maxWidth<c.maxHeight?c.maxWidth:c.maxHeight;
