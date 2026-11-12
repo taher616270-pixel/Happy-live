@@ -1,7 +1,7 @@
 type CatGreedUser = { id: string };
 type CatGreedAdmin = { id: string; username: string; role: string };
 type CatGreedEnv = { DB?: D1Database };
-type CatGreedJson = (data: unknown, status: number, origin?: string, env?: unknown) => Response;
+type CatGreedJson = (data: unknown, status: number, origin?: string, env?: any) => Response;
 
 type CatGreedSettings = {
   enabled: number;
@@ -185,7 +185,7 @@ export async function handleCatGreedRequest(
         myBets:Array.from({length:8},(_,i)=>mine.results?.find(x=>x.slot===i)?.total??0),
         balance:wallet?.balance??0,myPayout:payout?.amount??0,
         resultSlot:isBetting?null:round.result_slot,special:isBetting?null:round.special,
-        seedCommitment:round.seed_commitment,revealedSeed:isBetting?null:round.server_seed,
+        seedCommitment:round.seed_commitment,revealedSeed:isBetting?null:round.server_seed,configSnapshot:isBetting?null:round.config_snapshot,
         symbols:config.symbols,history:(history.results??[]).map(x=>x.special==="salad"?"🥗":x.special==="pizza"?"🍕":config.symbols.find(s=>s.slot===x.result_slot)?.emoji??"—")
       },200,origin,env);
     }
@@ -196,7 +196,7 @@ export async function handleCatGreedRequest(
       const [settings,symbols,rounds,players,totals] = await Promise.all([
         getSettings(db),getSymbols(db),
         db.prepare("SELECT id,phase,starts_at,closes_at,result_slot,special,seed_commitment,settled_at FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 20").all(),
-        db.prepare("SELECT u.id,p.display_name AS name,p.gabo_id AS userCode,COALESCE(c.enabled,1) AS enabled,COALESCE(c.max_bet_per_round,1000000) AS maxBetPerRound,COUNT(DISTINCT b.round_id) AS rounds,COALESCE(SUM(b.amount),0) AS wagered,COALESCE(SUM(py.amount),0) AS paid FROM users u LEFT JOIN profiles p ON p.user_id=u.id LEFT JOIN cat_greed_player_controls c ON c.user_id=u.id LEFT JOIN cat_greed_bets b ON b.user_id=u.id LEFT JOIN cat_greed_payouts py ON py.user_id=u.id AND py.round_id=b.round_id GROUP BY u.id ORDER BY wagered DESC LIMIT 50").all(),
+        db.prepare("SELECT u.id,p.display_name AS name,p.gabo_id AS userCode,COALESCE(c.enabled,1) AS enabled,COALESCE(c.max_bet_per_round,1000000) AS maxBetPerRound,COALESCE(b.rounds,0) AS rounds,COALESCE(b.wagered,0) AS wagered,COALESCE(py.paid,0) AS paid FROM users u LEFT JOIN profiles p ON p.user_id=u.id LEFT JOIN cat_greed_player_controls c ON c.user_id=u.id LEFT JOIN (SELECT user_id,COUNT(DISTINCT round_id) AS rounds,SUM(amount) AS wagered FROM cat_greed_bets GROUP BY user_id) b ON b.user_id=u.id LEFT JOIN (SELECT user_id,SUM(amount) AS paid FROM cat_greed_payouts WHERE paid_at IS NOT NULL GROUP BY user_id) py ON py.user_id=u.id WHERE b.user_id IS NOT NULL ORDER BY wagered DESC LIMIT 50").all(),
         db.prepare("SELECT COUNT(*) AS rounds,COALESCE(SUM(amount),0) AS wagered FROM cat_greed_bets").first()
       ]);
       return json({settings,symbols,rounds:rounds.results??[],players:players.results??[],totals:totals??{}},200,origin,env);
@@ -245,7 +245,7 @@ export async function handleCatGreedRequest(
       return json({ok:true,symbols:await getSymbols(db)},200,origin,env);
     }
     if (adminRounds) {
-      const rounds=await db.prepare("SELECT id,phase,starts_at,closes_at,result_slot,special,seed_commitment,settled_at,config_snapshot FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 100").all();
+      const rounds=await db.prepare("SELECT id,phase,starts_at,closes_at,result_slot,special,seed_commitment,CASE WHEN phase='result' THEN server_seed ELSE NULL END AS revealed_seed,settled_at FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 100").all();
       return json({rounds:rounds.results??[]},200,origin,env);
     }
     return null;
