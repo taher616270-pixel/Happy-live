@@ -1716,6 +1716,17 @@ class _RoomPageState extends State<RoomPage> {
           .whereType<Map>()
           .map((item) => Map<String, dynamic>.from(item))
           .toList();
+      final walletResponse = await http.get(
+        Uri.parse('$_apiBase/wallet'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 8));
+      var walletBalance = 0;
+      if (walletResponse.statusCode == 200) {
+        final walletData = jsonDecode(walletResponse.body);
+        if (walletData is Map && walletData['balance'] is num) {
+          walletBalance = (walletData['balance'] as num).toInt();
+        }
+      }
       if (gifts.isEmpty) {
         _showMessage('لا توجد هدايا متاحة حاليًا');
         return;
@@ -1724,7 +1735,7 @@ class _RoomPageState extends State<RoomPage> {
       final participants = <String, Map<String, dynamic>>{};
       for (final user in [..._seats, ..._audienceUsers]) {
         final id = (user['userId'] ?? user['id'] ?? '').toString().trim();
-        if (id.isEmpty) continue;
+        if (id.isEmpty || id == _seatStateStore.currentUserId) continue;
         participants[id] = <String, dynamic>{
           ...user,
           'userId': id,
@@ -1777,7 +1788,7 @@ class _RoomPageState extends State<RoomPage> {
                     final error = result is Map ? result['error']?.toString() : null;
                     final message = switch (error) {
                       'insufficient_balance' => 'رصيدك من العملات غير كافٍ',
-                      'recipient_not_present' => 'المستلم لم يعد موجودًا في الغرفة',
+                      'recipient_not_present' || 'recipient_not_in_room' => 'المستلم لم يعد موجودًا في الغرفة',
                       'cannot_gift_self' => 'لا يمكنك إرسال هدية لنفسك',
                       'gift_not_available' => 'هذه الهدية غير متاحة حاليًا',
                       'room_not_found' => 'الغرفة لم تعد نشطة',
@@ -1813,6 +1824,10 @@ class _RoomPageState extends State<RoomPage> {
                       const Text('إرسال هدية في الغرفة',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Color(0xFFE8C477), fontSize: 18, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 6),
+                      Text('رصيدك: $walletBalance عملة',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70, fontSize: 12)),
                       const SizedBox(height: 14),
                       if (selectedRecipient == null) ...[
                         const Text('اختر العضو الذي تريد إرسال الهدية إليه',
