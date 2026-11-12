@@ -485,7 +485,7 @@ export default {
       }
     }
 
-    const roomReportStatusRoute = url.pathname.match(/^\/api\/v1\/admin\/reports\/rooms\/([0-9a-f-]{36})\/status$/i);
+    const roomReportStatusRoute = url.pathname.match(/^\\/api\\/v1\\/admin\\/reports\\/rooms\\/([0-9a-f-]{36})\\/status$/i);
     if (roomReportStatusRoute && request.method === "PATCH") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
@@ -495,9 +495,22 @@ export default {
         const body = await request.json() as Record<string, unknown>;
         const status = typeof body.status === "string" ? body.status : "";
         if (!["reviewed", "dismissed"].includes(status)) return json({ error: "invalid_report_status" }, 400, origin, env);
-        const result = await env.DB.prepare("UPDATE room_profile_reports SET status = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ?")
-          .bind(status, new Date().toISOString(), admin.id, roomReportStatusRoute[1]).run();
-        if ((result.meta?.changes ?? 0) === 0) return json({ error: "report_not_found" }, 404, origin, env);
+        const report = await env.DB.prepare("SELECT id, status FROM room_profile_reports WHERE id = ? LIMIT 1")
+          .bind(roomReportStatusRoute[1]).first<{ id: string; status: string }>();
+        if (!report) return json({ error: "report_not_found" }, 404, origin, env);
+        const now = new Date().toISOString();
+        const results = await env.DB.batch([
+          env.DB.prepare("UPDATE room_profile_reports SET status = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ?")
+            .bind(status, now, admin.id, report.id),
+          ...adminAuditStatements(env.DB, admin, {
+            action: status === "reviewed" ? "report.room.review" : "report.room.dismiss",
+            targetType: "room_profile_report",
+            targetId: report.id,
+            details: { status, previousStatus: report.status },
+            createdAt: now
+          })
+        ]);
+        if ((results[0]?.meta?.changes ?? 0) === 0) return json({ error: "report_update_conflict" }, 409, origin, env);
         return json({ ok: true, status }, 200, origin, env);
       } catch (error) {
         console.error("[admin.room-reports.update] failed", error instanceof Error ? error.message : "UnknownError");
