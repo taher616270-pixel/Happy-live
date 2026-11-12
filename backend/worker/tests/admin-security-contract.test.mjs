@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import { readFile } from "node:fs/promises";
 
 const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
@@ -20,6 +21,10 @@ const profilePage = await readFile(
   "utf8",
 );
 const auditMigration = await readFile(new URL("../migrations/0031_admin_audit_actor_refs.sql", import.meta.url), "utf8");
+const workerOnlyDeployWorkflow = await readFile(
+  new URL("../../../.github/workflows/deploy-happy-live-worker-only.yml", import.meta.url),
+  "utf8",
+);
 
 test("admin sessions and roles are resolved from D1, not from browser input", () => {
   const start = worker.indexOf("async function authenticatedAdmin(");
@@ -89,7 +94,14 @@ test("wallet administration uses the server-backed wallet ledger and owner-only 
   assert.match(worker, /url\.pathname === "\/api\/v1\/wallet"/);
   assert.match(worker, /wallet_transactions/);
   assert.match(worker, /actor\.role !== "owner".*إضافة العملات متاحة لمالك التطبيق فقط/s);
-  assert.match(worker, /VALUES \(\?, NULL, 'wallet\.credit', 'user', \?, \?, \?\)/);
+  const walletRouteStart = worker.indexOf("const adminWalletCreditRoute =");
+  const walletRouteEnd = worker.indexOf('if (url.pathname === "/api/v1/admin/agora/voice"', walletRouteStart);
+  assert.ok(walletRouteStart >= 0 && walletRouteEnd > walletRouteStart, "wallet credit route must exist");
+  const walletRoute = worker.slice(walletRouteStart, walletRouteEnd);
+  assert.match(walletRoute, /actor\.role !== "owner"/);
+  assert.match(walletRoute, /INSERT INTO wallet_transactions/);
+  assert.match(walletRoute, /'admin_credit'/);
+  assert.match(walletRoute, /action: "wallet\.credit"/);
   assert.match(adminUi, /async function walletsPage\(/);
   assert.match(adminUi, /input\.focus\(\);input\.setSelectionRange\(value\.length,value\.length\)/);
   assert.match(adminUi, /\/admin\/users\/.*\/wallet\/credit/);
@@ -126,7 +138,8 @@ test("admin account management is owner-only, protects the owner, and revokes se
 });
 
 test("admin audit records use a relational manager reference", () => {
-  assert.match(auditMigration, /CREATE TABLE IF NOT EXISTS admin_audit_actor_refs/);
+  assert.match(auditMigration, /CASE WHEN json_valid\(l\.details_json\) = 1/);
+  assert.match(auditMigration, /a\.id = CASE WHEN json_valid\(l\.details_json\) = 1/);
   assert.match(auditMigration, /REFERENCES admin_audit_logs\(id\) ON DELETE CASCADE/);
   assert.match(auditMigration, /REFERENCES admin_accounts\(id\) ON DELETE RESTRICT/);
   const start = worker.indexOf("function adminAuditStatements(");
@@ -197,4 +210,34 @@ test("gift catalogue and custom-request administration are owner-audited", () =>
   ]) assert.ok(routes.includes(action), `expected audit action ${action}`);
   assert.match(routes, /actor\.role !== "owner"/);
   assert.match(routes, /adminAuditStatements\(env\.DB, actor,/);
+});
+
+
+test("admin audit migration is idempotent and ignores malformed or unknown legacy actors", () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    db.exec("CREATE TABLE admin_accounts (id TEXT PRIMARY KEY); CREATE TABLE admin_audit_logs (id TEXT PRIMARY KEY, details_json TEXT NOT NULL);");
+    db.exec("INSERT INTO admin_accounts (id) VALUES ('owner')");
+    db.exec("INSERT INTO admin_audit_logs (id, details_json) VALUES ('valid', '{\"adminId\":\"owner\"}'), ('malformed', 'not-json'), ('unknown', '{\"adminId\":\"missing\"}')");
+    db.exec(auditMigration);
+    db.exec(auditMigration);
+    const rows = db.prepare("SELECT audit_log_id, admin_id FROM admin_audit_actor_refs ORDER BY audit_log_id").all();
+    assert.deepEqual(rows, [{ audit_log_id: "valid", admin_id: "owner" }]);
+    assert.throws(() => db.prepare("DELETE FROM admin_accounts WHERE id = ?").run("owner"), /FOREIGN KEY constraint failed/);
+    db.prepare("DELETE FROM admin_audit_logs WHERE id = ?").run("valid");
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM admin_audit_actor_refs").get().count, 0);
+  } finally {
+    db.close();
+  }
+});
+
+test("manual worker-only deployment checks the audit migration before deploying", () => {
+  const guardStart = workerOnlyDeployWorkflow.indexOf("Verify required admin audit migration");
+  const deployStart = workerOnlyDeployWorkflow.indexOf("Deploy Worker only");
+  assert.ok(guardStart >= 0 && deployStart > guardStart, "migration guard must run before the worker-only deploy");
+  const guard = workerOnlyDeployWorkflow.slice(guardStart, deployStart);
+  assert.match(guard, /wrangler d1 execute happy-live-db --remote/);
+  assert.match(guard, /admin_audit_actor_refs/);
+  assert.match(guard, /grep -q/);
+  assert.match(guard, /exit 1/);
 });
