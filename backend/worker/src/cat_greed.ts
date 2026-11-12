@@ -161,13 +161,15 @@ export async function handleCatGreedRequest(
         if ((currentTotal?.total ?? 0) + amount > limit) return wheelError("bet_limit_exceeded",400,json,origin,env);
         const now=isoNow(), transactionId=crypto.randomUUID(), betId=crypto.randomUUID();
         await db.batch([
-          db.prepare("UPDATE user_wallets SET balance=balance-?,updated_at=? WHERE user_id=? AND balance>=? AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?)").bind(amount,now,user.id,amount,roundId,now),
+          db.prepare("UPDATE user_wallets SET balance=balance-?,updated_at=? WHERE user_id=? AND balance>=? AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?) AND (SELECT COALESCE(SUM(amount),0) FROM cat_greed_bets WHERE round_id=? AND user_id=?) + ? <= ?").bind(amount,now,user.id,amount,roundId,now,roundId,user.id,amount,limit),
           db.prepare("INSERT INTO cat_greed_ledger (id,user_id,round_id,amount,balance_after,transaction_type,description,created_at) SELECT ?,user_id,?,?,balance,'bet','رهان قط الجشع',? FROM user_wallets WHERE user_id=? AND changes()=1").bind(transactionId,roundId,-amount,now,user.id),
           db.prepare("INSERT INTO cat_greed_bets (id,round_id,user_id,slot,amount,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cat_greed_ledger WHERE id=?)").bind(betId,roundId,user.id,slot,amount,now,transactionId)
         ]);
         const placed = await db.prepare("SELECT id FROM cat_greed_bets WHERE id=?").bind(betId).first();
         if (!placed) {
           const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id=?").bind(user.id).first<{balance:number}>();
+          const latestTotal = await db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(roundId,user.id).first<{total:number}>();
+          if ((latestTotal?.total ?? 0) + amount > limit) return wheelError("bet_limit_exceeded",400,json,origin,env);
           return wheelError((wallet?.balance ?? 0)<amount ? "insufficient_balance" : "round_closed",409,json,origin,env);
         }
         round = await currentRound(db);
