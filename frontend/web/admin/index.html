@@ -156,6 +156,7 @@ async function render(){
     else if(page==="stats")statsPage((await api("/admin/stats")).stats);
     else if(page==="users")users((await api("/admin/users")).users||[]);
     else if(page==="wallets")await walletsPage();
+    else if(page==="gifts")await giftsPage();
     else if(page==="rooms")rooms((await api("/admin/rooms")).rooms||[]);
     else if(page==="reports")await roomReportsPage();
     else if(page==="moderators")await moderatorsPage();
@@ -165,6 +166,68 @@ async function render(){
   }catch(e){$("content").innerHTML='<div class="section"><p class="error">'+esc(e.message)+'</p><p class="muted">تحقق من صلاحية حسابك الإداري واتصال الخادم.</p></div>'}
 }
 
+async function giftsPage(){
+  if(admin.role!=="owner"&&admin.role!=="admin"){$("content").innerHTML='<div class="section"><p class="notice">إعدادات أرباح الهدايا متاحة للمالك ومدير التطبيق فقط.</p></div>';return}
+  const data=await api("/admin/gifts/settings"),settings=data.settings||{},totals=data.totals||{},withdrawals=data.withdrawals||{};
+  const canEdit=admin.role==="owner";
+  $("content").innerHTML=
+    '<div class="cards">'+metric("عدد الهدايا المسجلة",totals.giftCount)+metric("إجمالي قيمة الهدايا",totals.totalGiftCoins)+metric("حصة التطبيق",totals.appCoins)+metric("حصة المستلمين",totals.recipientCoins)+'</div>'+
+    '<div class="section"><div class="section-head"><div><h2>إعدادات أرباح الهدايا</h2><p class="muted">النسب الجديدة تطبق على الهدايا المستقبلية فقط، وتُحفظ النسب المستخدمة داخل كل معاملة.</p></div><span class="badge good">30% للتطبيق · 70% للمستلم افتراضيًا</span></div>'+
+    '<div class="form-grid"><label>نسبة التطبيق %<input id="giftAppPercent" type="number" min="0" max="100" step="1" value="'+Number(settings.appPercent??30)+'" '+(canEdit?"":"disabled")+'></label><label>نسبة مستلم الهدية %<input id="giftRecipientPercent" type="number" min="0" max="100" step="1" value="'+Number(settings.recipientPercent??70)+'" '+(canEdit?"":"disabled")+'></label></div>'+
+    '<p class="muted">يجب أن يكون مجموع النسبتين 100%. آخر تحديث: '+esc(settings.updatedAt?new Date(settings.updatedAt).toLocaleString("ar"):"لم يتم التعديل") +'</p>'+
+    (canEdit?'<button class="primary" id="saveGiftSplit">حفظ نسب الأرباح</button>':'<p class="notice">التعديل متاح لمالك التطبيق فقط.</p>')+
+    '<div id="giftSettingsMessage" class="muted" style="margin-top:12px"></div></div>'+
+    '<div class="section"><div class="section-head"><div><h2>السحب عبر الوكالات</h2><p class="muted">البنية مهيأة لربط أرباح الهدايا بالوكالات مستقبلًا.</p></div><span class="badge warn">غير مفعّل</span></div><p class="notice">طلبات السحب والتحويل النقدي مغلقة حاليًا. لن تُقبل طلبات سحب حتى تفعيل الوكالات واعتماد التحويل والحد الأدنى وإجراءات التحقق.</p><div class="cards">'+metric("السحب مفعّل",withdrawals.enabled?"نعم":"لا")+metric("ربط الوكالات",withdrawals.agencyIntegrationReady?"جاهز":"بانتظار التفعيل")+'</div></div>'+
+    '<div class="section"><div class="section-head"><div><h2>كتالوج الهدايا</h2><p class="muted">إضافة الهدايا وتعديل أسعارها بالعملات. التعطيل لا يحذف سجل الهدية.</p></div></div>' +
+    '<form id="giftCreateForm" class="room-tools" style="align-items:end;margin:16px 0">' +
+    '<label style="display:grid;gap:6px">اسم الهدية<input id="newGiftName" class="search" maxlength="80" required placeholder="اسم الهدية"></label>' +
+    '<label style="display:grid;gap:6px">الرمز<input id="newGiftEmoji" class="search" maxlength="16" value="🎁" required></label>' +
+    '<label style="display:grid;gap:6px">السعر بالعملات<input id="newGiftPrice" class="search" type="number" min="1" step="1" required placeholder="999"></label>' +
+    '<label style="display:grid;gap:6px">الترتيب<input id="newGiftOrder" class="search" type="number" min="0" value="100"></label>' +
+    '<button class="action" type="submit">＋ إضافة هدية</button></form><div id="giftCatalogMessage" class="muted"></div>' +
+    '<div class="table-wrap"><table><thead><tr><th>الهدية</th><th>السعر</th><th>الترتيب</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody id="giftCatalogRows"><tr><td colspan="5" class="loading">جارٍ تحميل الكتالوج…</td></tr></tbody></table></div></div>';
+  if(canEdit){
+    const catalogMessage=$("giftCatalogMessage");
+    const loadCatalog=async()=>{
+      const result=await api("/admin/gifts/catalog");
+      const rows=result.gifts||[];
+      $("giftCatalogRows").innerHTML=rows.length?rows.map(g=>'<tr><td><span style="font-size:24px;margin-left:8px">'+esc(g.iconEmoji||"🎁")+'</span><strong>'+esc(g.name)+'</strong></td><td>'+Number(g.coinPrice).toLocaleString("en-US")+' عملة</td><td>'+Number(g.sortOrder||0)+'</td><td>'+(Number(g.isActive)===1||g.isActive===true?'<span class="badge good">نشطة</span>':'<span class="badge bad">متوقفة</span>')+'</td><td><div class="room-tools"><button class="action" data-gift-edit="'+esc(g.id)+'">تعديل</button><button class="action" data-gift-toggle="'+esc(g.id)+'" data-active="'+(Number(g.isActive)===1||g.isActive===true?"1":"0")+'">'+(Number(g.isActive)===1||g.isActive===true?"تعطيل":"تفعيل")+'</button></div></td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد هدايا في الكتالوج.</td></tr>';
+      document.querySelectorAll("[data-gift-edit]").forEach(button=>button.onclick=async()=>{
+        const gift=rows.find(x=>x.id===button.dataset.giftEdit);if(!gift)return;
+        const name=window.prompt("اسم الهدية",gift.name);if(name===null)return;
+        const iconEmoji=window.prompt("رمز الهدية",gift.iconEmoji||"🎁");if(iconEmoji===null)return;
+        const raw=window.prompt("السعر بالعملات",String(gift.coinPrice));if(raw===null)return;
+        const coinPrice=Number(raw);
+        const orderRaw=window.prompt("ترتيب العرض",String(gift.sortOrder||0));if(orderRaw===null)return;
+        const sortOrder=Number(orderRaw);
+        if(!name.trim()||!iconEmoji.trim()||!Number.isSafeInteger(coinPrice)||coinPrice<1||!Number.isSafeInteger(sortOrder)||sortOrder<0){alert("بيانات الهدية غير صحيحة.");return}
+        try{await api("/admin/gifts/catalog/"+encodeURIComponent(gift.id),{method:"PATCH",body:JSON.stringify({name:name.trim(),iconEmoji:iconEmoji.trim(),coinPrice,sortOrder})});catalogMessage.textContent="تم تحديث الهدية.";await loadCatalog()}catch(error){alert(error.message)}
+      });
+      document.querySelectorAll("[data-gift-toggle]").forEach(button=>button.onclick=async()=>{
+        const active=button.dataset.active==="1";
+        try{await api("/admin/gifts/catalog/"+encodeURIComponent(button.dataset.giftToggle),{method:active?"DELETE":"PATCH",...(active?{}:{body:JSON.stringify({isActive:true})})});await loadCatalog()}catch(error){alert(error.message)}
+      });
+    };
+    $("giftCreateForm").onsubmit=async event=>{
+      event.preventDefault();
+      const name=$("newGiftName").value.trim(),iconEmoji=$("newGiftEmoji").value.trim(),coinPrice=Number($("newGiftPrice").value),sortOrder=Number($("newGiftOrder").value);
+      if(!name||!iconEmoji||!Number.isSafeInteger(coinPrice)||coinPrice<1||!Number.isSafeInteger(sortOrder)||sortOrder<0){catalogMessage.textContent="تحقق من الاسم والرمز والسعر والترتيب.";return}
+      const submit=event.submitter;submit.disabled=true;catalogMessage.textContent="جارٍ إضافة الهدية…";
+      try{await api("/admin/gifts/catalog",{method:"POST",body:JSON.stringify({name,iconEmoji,coinPrice,sortOrder,isActive:true})});$("giftCreateForm").reset();$("newGiftEmoji").value="🎁";$("newGiftOrder").value="100";catalogMessage.textContent="تمت إضافة الهدية وتفعيلها.";await loadCatalog()}
+      catch(error){catalogMessage.textContent=error.message||"تعذرت إضافة الهدية."}
+      finally{submit.disabled=false}
+    };
+    await loadCatalog();
+    $("saveGiftSplit").onclick=async()=>{
+      const appPercent=Number($("giftAppPercent").value),recipientPercent=Number($("giftRecipientPercent").value),message=$("giftSettingsMessage");
+      if(!Number.isInteger(appPercent)||!Number.isInteger(recipientPercent)||appPercent+recipientPercent!==100){message.textContent="يجب أن تكون النسب أعدادًا صحيحة ومجموعها 100%.";return}
+      const button=$("saveGiftSplit");button.disabled=true;message.textContent="جارٍ الحفظ…";
+      try{await api("/admin/gifts/settings",{method:"PATCH",body:JSON.stringify({appPercent,recipientPercent})});message.textContent="تم حفظ النسب. ستُطبق على المعاملات الجديدة فقط.";await giftsPage()}
+      catch(error){message.textContent=error.message||"تعذر حفظ النسب."}
+      finally{button.disabled=false}
+    };
+  }
+}
 async function walletsPage(q="",selectedUserId=""){
   if(admin.role!=="owner"&&admin.role!=="admin"){$("content").innerHTML='<div class="section"><p class="notice">عرض المحافظ وإدارتها متاح للمالك ومدير التطبيق فقط.</p></div>';return}
   const query="/admin/wallets?q="+encodeURIComponent(q)+"&limit=100"+(selectedUserId?"&userId="+encodeURIComponent(selectedUserId):"");

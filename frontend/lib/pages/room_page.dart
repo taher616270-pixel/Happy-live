@@ -1696,6 +1696,237 @@ class _RoomPageState extends State<RoomPage> {
     }
   }
 
+  Future<void> _openRoomGiftPicker() async {
+    if (_roomId.isEmpty || widget.accessToken.isEmpty) {
+      _showMessage('تعذر فتح الهدايا: بيانات الغرفة غير مكتملة');
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiBase/gifts/catalog'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 8));
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200 || data is! Map || data['gifts'] is! List) {
+        _showMessage('تعذر تحميل قائمة الهدايا');
+        return;
+      }
+      final gifts = (data['gifts'] as List)
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+      final walletResponse = await http.get(
+        Uri.parse('$_apiBase/wallet'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 8));
+      var walletBalance = 0;
+      if (walletResponse.statusCode == 200) {
+        final walletData = jsonDecode(walletResponse.body);
+        if (walletData is Map && walletData['balance'] is num) {
+          walletBalance = (walletData['balance'] as num).toInt();
+        }
+      }
+      if (gifts.isEmpty) {
+        _showMessage('لا توجد هدايا متاحة حاليًا');
+        return;
+      }
+
+      final participants = <String, Map<String, dynamic>>{};
+      for (final user in [..._seats, ..._audienceUsers]) {
+        final id = (user['userId'] ?? user['id'] ?? '').toString().trim();
+        if (id.isEmpty || id == _seatStateStore.currentUserId) continue;
+        participants[id] = <String, dynamic>{
+          ...user,
+          'userId': id,
+          'name': (user['name'] ?? user['displayName'] ?? 'مستخدم').toString(),
+          'avatarUrl': (user['avatarUrl'] ?? user['avatar'] ?? '').toString(),
+        };
+      }
+      final recipients = participants.values.toList()
+        ..sort((a, b) => (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString()));
+      if (recipients.isEmpty) {
+        _showMessage('لا يوجد أعضاء حاليًا لإرسال هدية لهم');
+        return;
+      }
+
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: const Color(0xFF17131F),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        builder: (sheetContext) {
+          Map<String, dynamic>? selectedRecipient;
+          bool sending = false;
+          return StatefulBuilder(
+            builder: (context, setSheetState) {
+              Future<void> sendGift(Map<String, dynamic> gift) async {
+                if (selectedRecipient == null || sending) return;
+                setSheetState(() => sending = true);
+                try {
+                  final idempotencyKey =
+                      'roomgift:${DateTime.now().microsecondsSinceEpoch}:${gift['id']}';
+                  final sendResponse = await http.post(
+                    Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/gifts/send'),
+                    headers: _headers,
+                    body: jsonEncode({
+                      'recipientUserId': selectedRecipient!['userId'],
+                      'giftId': gift['id'],
+                      'quantity': 1,
+                      'idempotencyKey': idempotencyKey,
+                    }),
+                  ).timeout(const Duration(seconds: 12));
+                  final result = jsonDecode(sendResponse.body);
+                  if (sendResponse.statusCode == 200 &&
+                      result is Map && result['ok'] == true) {
+                    if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                    _showMessage('تم إرسال ${gift['name']} بنجاح');
+                    await _refreshSeats();
+                  } else {
+                    final error = result is Map ? result['error']?.toString() : null;
+                    final message = switch (error) {
+                      'insufficient_balance' => 'رصيدك من العملات غير كافٍ',
+                      'recipient_not_present' || 'recipient_not_in_room' => 'المستلم لم يعد موجودًا في الغرفة',
+                      'cannot_gift_self' => 'لا يمكنك إرسال هدية لنفسك',
+                      'gift_not_available' => 'هذه الهدية غير متاحة حاليًا',
+                      'room_not_found' => 'الغرفة لم تعد نشطة',
+                      _ => 'تعذر إرسال الهدية. تحقق من اتصال الخادم وتحديثاته.',
+                    };
+                    _showMessage(message);
+                  }
+                } catch (_) {
+                  _showMessage('تعذر الاتصال بخدمة إرسال الهدايا');
+                } finally {
+                  if (sheetContext.mounted) setSheetState(() => sending = false);
+                }
+              }
+
+              return SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(16, 16, 16,
+                    16 + MediaQuery.of(context).viewInsets.bottom),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 42, height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.white30,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text('إرسال هدية في الغرفة',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Color(0xFFE8C477), fontSize: 18, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 6),
+                      Text('رصيدك: $walletBalance عملة',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                      const SizedBox(height: 14),
+                      if (selectedRecipient == null) ...[
+                        const Text('اختر العضو الذي تريد إرسال الهدية إليه',
+                          style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        const SizedBox(height: 8),
+                        Flexible(
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: recipients.length,
+                            separatorBuilder: (_, __) => const Divider(color: Colors.white12, height: 1),
+                            itemBuilder: (_, index) {
+                              final user = recipients[index];
+                              final avatar = (user['avatarUrl'] ?? '').toString();
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage: avatar.startsWith('https://') ? NetworkImage(avatar) : null,
+                                  child: !avatar.startsWith('https://')
+                                      ? const Icon(Icons.person, color: Colors.white70) : null,
+                                ),
+                                title: Text(user['name'].toString(),
+                                  style: const TextStyle(color: Colors.white)),
+                                subtitle: Text('ID: ${user['userCode'] ?? user['id'] ?? user['userId']}',
+                                  style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                                onTap: () => setSheetState(() => selectedRecipient = user),
+                              );
+                            },
+                          ),
+                        ),
+                      ] else ...[
+                        Row(
+                          children: [
+                            IconButton(
+                              onPressed: sending ? null : () => setSheetState(() => selectedRecipient = null),
+                              icon: const Icon(Icons.arrow_back, color: Colors.white),
+                            ),
+                            Expanded(
+                              child: Text('إهداء إلى ${selectedRecipient!['name']}',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: gifts.length,
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10,
+                            childAspectRatio: .82,
+                          ),
+                          itemBuilder: (_, index) {
+                            final gift = gifts[index];
+                            return InkWell(
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: sending ? null : () => sendGift(gift),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF282131),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color(0x66E8C477)),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text((gift['iconEmoji'] ?? '🎁').toString(),
+                                      style: const TextStyle(fontSize: 32)),
+                                    const SizedBox(height: 7),
+                                    Text(gift['name'].toString(),
+                                      textAlign: TextAlign.center, maxLines: 2,
+                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                                    const SizedBox(height: 5),
+                                    Text('${gift['coinPrice']} عملة',
+                                      style: const TextStyle(color: Color(0xFFE8C477), fontSize: 11)),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        if (sending)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 12),
+                            child: Center(child: CircularProgressIndicator(color: Color(0xFFE8C477))),
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      );
+    } catch (_) {
+      _showMessage('تعذر تحميل الهدايا من الخادم');
+    }
+  }
+
   void _showMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1750,6 +1981,7 @@ class _RoomPageState extends State<RoomPage> {
       onMinimizeRoom: _minimizeRoom,
       onCloseRoom: _closeRoom,
       onUpgradeRoom: upgradeRoom,
+      onOpenGifts: _openRoomGiftPicker,
           ),
         ),        if (_isLoading)
           Positioned.fill(

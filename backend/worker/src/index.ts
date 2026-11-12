@@ -482,6 +482,9 @@ export default {
       url.pathname === "/api/v1/admin/stats" ||
       url.pathname === "/api/v1/admin/users" ||
       url.pathname === "/api/v1/admin/wallets" ||
+      url.pathname === "/api/v1/admin/gifts/settings" ||
+      url.pathname === "/api/v1/admin/gifts/catalog" ||
+      /^\/api\/v1\/admin\/gifts\/catalog\/[a-z0-9-]{1,80}$/i.test(url.pathname) ||
       url.pathname === "/api/v1/admin/moderators" ||
       url.pathname === "/api/v1/admin/rooms" ||
       url.pathname === "/api/v1/admin/audit" ||
@@ -498,6 +501,89 @@ export default {
       try {
         const actor = await authenticatedAdmin(request, env.DB);
         if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
+        if (url.pathname === "/api/v1/admin/gifts/settings" && (request.method === "GET" || request.method === "PATCH")) {
+          if (actor.role !== "owner" && actor.role !== "admin") return json({ error: "permission_denied" }, 403, origin, env);
+          if (request.method === "PATCH" && actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
+          if (request.method === "GET") {
+            const [settings, withdrawal, totals] = await Promise.all([
+              env.DB.prepare("SELECT app_percent AS appPercent, recipient_percent AS recipientPercent, updated_at AS updatedAt FROM gift_revenue_settings WHERE id = 'current'").first<Record<string, unknown>>(),
+              env.DB.prepare("SELECT enabled, agency_integration_ready AS agencyIntegrationReady, minimum_coins AS minimumCoins FROM gift_withdrawal_settings WHERE id = 'current'").first<Record<string, unknown>>(),
+              env.DB.prepare("SELECT COUNT(*) AS giftCount, COALESCE(SUM(coin_cost), 0) AS totalGiftCoins, COALESCE(SUM(app_coins), 0) AS appCoins, COALESCE(SUM(recipient_coins), 0) AS recipientCoins FROM gift_transactions WHERE status = 'succeeded'").first<Record<string, unknown>>()
+            ]);
+            return json({
+              ok: true,
+              settings: settings ?? { appPercent: 30, recipientPercent: 70 },
+              withdrawals: { ...(withdrawal ?? {}), enabled: false, agencyIntegrationReady: false, ready: false },
+              totals: totals ?? { giftCount: 0, totalGiftCoins: 0, appCoins: 0, recipientCoins: 0 }
+            }, 200, origin, env);
+          }
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; }
+          catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const appPercent = Number(body.appPercent);
+          const recipientPercent = Number(body.recipientPercent);
+          if (!Number.isInteger(appPercent) || !Number.isInteger(recipientPercent) || appPercent < 0 || appPercent > 100 || recipientPercent < 0 || recipientPercent > 100 || appPercent + recipientPercent !== 100) {
+            return json({ error: "invalid_revenue_split", message: "يجب أن تكون النسب أعدادًا صحيحة ومجموعها 100%" }, 400, origin, env);
+          }
+          const current = await env.DB.prepare("SELECT app_percent, recipient_percent FROM gift_revenue_settings WHERE id = 'current'").first<{ app_percent: number; recipient_percent: number }>();
+          if (!current) return json({ error: "gift_settings_not_initialized" }, 503, origin, env);
+          const now = new Date().toISOString();
+          const auditId = crypto.randomUUID();
+          const results = await env.DB.batch([
+            env.DB.prepare("UPDATE gift_revenue_settings SET app_percent = ?, recipient_percent = ?, updated_by_admin_id = ?, updated_at = ? WHERE id = 'current' AND app_percent = ? AND recipient_percent = ?")
+              .bind(appPercent, recipientPercent, actor.id, now, current.app_percent, current.recipient_percent),
+            env.DB.prepare(
+              "INSERT INTO gift_revenue_settings_audit (id, admin_id, old_app_percent, old_recipient_percent, new_app_percent, new_recipient_percent, created_at) " +
+              "SELECT ?, ?, ?, ?, ?, ?, ? FROM gift_revenue_settings WHERE id = 'current' AND app_percent = ? AND recipient_percent = ? AND updated_by_admin_id = ? AND updated_at = ?"
+            ).bind(auditId, actor.id, current.app_percent, current.recipient_percent, appPercent, recipientPercent, now, appPercent, recipientPercent, actor.id, now)
+          ]);
+          if ((results[0]?.meta?.changes ?? 0) !== 1) return json({ error: "gift_settings_conflict", message: "تم تعديل النسب بالتزامن. حدّث الصفحة وحاول مجددًا." }, 409, origin, env);
+          return json({ ok: true, settings: { appPercent, recipientPercent, updatedAt: now } }, 200, origin, env);
+        }
+        if (url.pathname === "/api/v1/admin/gifts/catalog" || /^\/api\/v1\/admin\/gifts\/catalog\/[a-z0-9-]{1,80}$/i.test(url.pathname)) {
+          if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
+          const itemRoute = url.pathname.match(/^\/api\/v1\/admin\/gifts\/catalog\/([a-z0-9-]{1,80})$/i);
+          if (request.method === "GET" && !itemRoute) {
+            const rows = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt FROM gift_catalog ORDER BY sort_order ASC, created_at ASC").all();
+            return json({ ok: true, gifts: rows.results ?? [] }, 200, origin, env);
+          }
+          if (request.method === "POST" && !itemRoute) {
+            let body: Record<string, unknown>;
+            try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+            const name = typeof body.name === "string" ? body.name.trim() : "";
+            const iconEmoji = typeof body.iconEmoji === "string" ? body.iconEmoji.trim() : "🎁";
+            const coinPrice = Number(body.coinPrice);
+            const sortOrder = Number(body.sortOrder ?? 0);
+            const isActive = body.isActive === false ? 0 : 1;
+            if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000) return json({ error: "invalid_gift", message: "تحقق من اسم الهدية ورمزها وسعرها وترتيبها." }, 400, origin, env);
+            const id = crypto.randomUUID(), now = new Date().toISOString();
+            await env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?)")
+              .bind(id, name, iconEmoji, coinPrice, isActive, sortOrder, now, now).run();
+            return json({ ok: true, gift: { id, name, iconEmoji, coinPrice, isActive: Boolean(isActive), sortOrder, createdAt: now, updatedAt: now } }, 201, origin, env);
+          }
+          if (request.method === "PATCH" && itemRoute) {
+            let body: Record<string, unknown>;
+            try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+            const current = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder FROM gift_catalog WHERE id = ?").bind(itemRoute[1]).first<Record<string, unknown>>();
+            if (!current) return json({ error: "gift_not_found" }, 404, origin, env);
+            const name = body.name === undefined ? String(current.name) : (typeof body.name === "string" ? body.name.trim() : "");
+            const iconEmoji = body.iconEmoji === undefined ? String(current.iconEmoji) : (typeof body.iconEmoji === "string" ? body.iconEmoji.trim() : "");
+            const coinPrice = body.coinPrice === undefined ? Number(current.coinPrice) : Number(body.coinPrice);
+            const sortOrder = body.sortOrder === undefined ? Number(current.sortOrder) : Number(body.sortOrder);
+            const isActive = body.isActive === undefined ? Number(current.isActive) : (body.isActive === true ? 1 : body.isActive === false ? 0 : -1);
+            if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || ![0, 1].includes(isActive)) return json({ error: "invalid_gift", message: "تحقق من بيانات الهدية." }, 400, origin, env);
+            const now = new Date().toISOString();
+            await env.DB.prepare("UPDATE gift_catalog SET name = ?, icon_emoji = ?, coin_price = ?, is_active = ?, sort_order = ?, updated_at = ? WHERE id = ?")
+              .bind(name, iconEmoji, coinPrice, isActive, sortOrder, now, itemRoute[1]).run();
+            return json({ ok: true, gift: { id: itemRoute[1], name, iconEmoji, coinPrice, isActive: Boolean(isActive), sortOrder, updatedAt: now } }, 200, origin, env);
+          }
+          if (request.method === "DELETE" && itemRoute) {
+            const result = await env.DB.prepare("UPDATE gift_catalog SET is_active = 0, updated_at = ? WHERE id = ?").bind(new Date().toISOString(), itemRoute[1]).run();
+            if ((result.meta?.changes ?? 0) === 0) return json({ error: "gift_not_found" }, 404, origin, env);
+            return json({ ok: true, deactivated: true }, 200, origin, env);
+          }
+          return json({ error: "method_not_allowed" }, 405, origin, env);
+        }
         const adminWalletCreditRoute = url.pathname.match(new RegExp("^/api/v1/admin/users/([0-9a-f-]{36})/wallet/credit$", "i"));
         if (adminWalletCreditRoute && request.method === "POST") {
           if (actor.role !== "owner") return json({ error: "owner_permission_required", message: "إضافة العملات متاحة لمالك التطبيق فقط" }, 403, origin, env);
@@ -1543,17 +1629,225 @@ export default {
     }
 
     // Authenticated wallet balance and immutable transaction history.
+    if (url.pathname === "/api/v1/gifts/catalog" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const rows = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, coin_price AS coinPrice, sort_order AS sortOrder FROM gift_catalog WHERE is_active = 1 ORDER BY sort_order ASC, created_at ASC").all();
+        return json({ ok: true, gifts: rows.results ?? [] }, 200, origin, env);
+      } catch (error) {
+        console.error("[gifts.catalog] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "gift_catalog_unavailable" }, 500, origin, env);
+      }
+    }
+
+    // Battle state is controlled by the room owner or a room-scoped moderator.
+    // Gift XP reads this server-side state; client flags can never enable the 2x multiplier.
+    const roomBattleRoute = url.pathname.match(/^\/api\/v1\/rooms\/([0-9a-f-]{36})\/battle$/i);
+    if (roomBattleRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const actor = await authenticatedUser(request, env.DB);
+        if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = roomBattleRoute[1];
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; }
+        catch { return json({ error: "invalid_json" }, 400, origin, env); }
+        const action = body.action;
+        if (action !== "start" && action !== "end") return json({ error: "invalid_battle_action" }, 400, origin, env);
+        const room = await env.DB.prepare("SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
+          .bind(roomId).first<{ id: string; owner_user_id: string }>();
+        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        const moderator = await env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1")
+          .bind(roomId, actor.id).first<{ user_id: string }>();
+        if (room.owner_user_id !== actor.id && !moderator) return json({ error: "room_moderator_permission_required" }, 403, origin, env);
+        const now = new Date().toISOString();
+        if (action === "start") {
+          const battleId = crypto.randomUUID();
+          const result = await env.DB.prepare(
+            "INSERT INTO room_battles (id, room_id, status, started_at, ended_at, created_by_user_id) " +
+            "SELECT ?, ?, 'active', ?, NULL, ? WHERE NOT EXISTS (SELECT 1 FROM room_battles WHERE room_id = ? AND status = 'active')"
+          ).bind(battleId, roomId, now, actor.id, roomId).run();
+          if ((result.meta?.changes ?? 0) !== 1) {
+            const active = await env.DB.prepare("SELECT id, started_at AS startedAt FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1")
+              .bind(roomId).first<Record<string, unknown>>();
+            return json({ error: "battle_already_active", battle: active ?? null }, 409, origin, env);
+          }
+          return json({ ok: true, battle: { id: battleId, roomId, status: "active", startedAt: now } }, 201, origin, env);
+        }
+        const ended = await env.DB.prepare(
+          "UPDATE room_battles SET status = 'finished', ended_at = ? WHERE room_id = ? AND status = 'active'"
+        ).bind(now, roomId).run();
+        if ((ended.meta?.changes ?? 0) !== 1) return json({ error: "no_active_battle" }, 409, origin, env);
+        return json({ ok: true, roomId, status: "finished", endedAt: now }, 200, origin, env);
+      } catch (error) {
+        const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[rooms.battle] failed", diagnostic);
+        return json({ error: "room_battle_unavailable" }, 500, origin, env);
+      }
+    }
+
+    // Room gifts only. Private gifts intentionally remain unavailable until a separately
+    // authorized private-conversation system exists.
+    const roomGiftSendRoute = url.pathname.match(/^\/api\/v1\/rooms\/([0-9a-f-]{36})\/gifts\/send$/i);
+    if (roomGiftSendRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = roomGiftSendRoute[1];
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; }
+        catch { return json({ error: "invalid_json" }, 400, origin, env); }
+        const recipientUserId = typeof body.recipientUserId === "string" ? body.recipientUserId.trim() : "";
+        const giftId = typeof body.giftId === "string" ? body.giftId.trim() : "";
+        const quantity = Number(body.quantity ?? 1);
+        const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+        if (!/^[0-9a-f-]{36}$/i.test(recipientUserId) || !/^[a-z0-9-]{1,80}$/i.test(giftId) ||
+            !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100 ||
+            !/^[A-Za-z0-9._:-]{16,128}$/.test(idempotencyKey)) {
+          return json({ error: "invalid_gift_request" }, 400, origin, env);
+        }
+        if (recipientUserId === user.id) return json({ error: "cannot_gift_self" }, 400, origin, env);
+        const now = new Date().toISOString();
+        const presenceCutoff = new Date(Date.now() - 90_000).toISOString();
+        const existing = await env.DB.prepare(
+          "SELECT id, status, coin_cost AS coinCost, experience_awarded AS experienceAwarded, recipient_coins AS recipientCoins " +
+          "FROM gift_transactions WHERE sender_user_id = ? AND idempotency_key = ? LIMIT 1"
+        ).bind(user.id, idempotencyKey).first<Record<string, unknown>>();
+        if (existing) {
+          if (existing.status === "succeeded") return json({ ok: true, duplicate: true, transaction: existing }, 200, origin, env);
+          return json({ error: "gift_request_in_progress" }, 409, origin, env);
+        }
+        await env.DB.prepare(
+          "INSERT OR IGNORE INTO room_exp_daily (user_id, day_key, points) VALUES (?, ?, 0)"
+        ).bind(user.id, now.slice(0, 10)).run();
+        const transactionId = crypto.randomUUID();
+        const statements = [
+          env.DB.prepare(
+            "INSERT OR IGNORE INTO gift_transactions " +
+            "(id, sender_user_id, recipient_user_id, context_type, room_id, gift_id, quantity, coin_cost, " +
+            "app_percent_snapshot, recipient_percent_snapshot, app_coins, recipient_coins, experience_awarded, " +
+            "experience_multiplier, battle_id, idempotency_key, sender_balance_before, status, created_at) " +
+            "SELECT ?, ?, ?, 'room', r.id, g.id, ?, g.coin_price * ?, s.app_percent, s.recipient_percent, " +
+            "CAST((g.coin_price * ? * s.app_percent) / 100 AS INTEGER), " +
+            "(g.coin_price * ?) - CAST((g.coin_price * ? * s.app_percent) / 100 AS INTEGER), " +
+            "MIN(g.coin_price * ? * CASE WHEN b.id IS NULL THEN 1 ELSE 2 END, MAX(0, 3000000 - COALESCE(d.points, 0))), " +
+            "CASE WHEN b.id IS NULL THEN 1 ELSE 2 END, b.id, ?, sender_wallet.balance, 'processing', ? " +
+            "FROM rooms r JOIN gift_catalog g ON g.id = ? AND g.is_active = 1 " +
+            "JOIN gift_revenue_settings s ON s.id = 'current' " +
+            "JOIN users recipient ON recipient.id = ? AND recipient.status = 'active' " +
+            "JOIN room_chat_visits v ON v.room_id = r.id AND v.user_id = recipient.id AND v.exited_at IS NULL AND v.last_seen_at >= ? " +
+            "JOIN user_wallets sender_wallet ON sender_wallet.user_id = ? AND sender_wallet.balance >= g.coin_price * ? " +
+            "LEFT JOIN room_exp_daily d ON d.user_id = ? AND d.day_key = ? " +
+            "LEFT JOIN room_battles b ON b.room_id = r.id AND b.status = 'active' " +
+            "WHERE r.id = ? AND r.status = 'active' AND r.owner_user_id IS NOT NULL AND ? <> recipient.id"
+          ).bind(transactionId, user.id, recipientUserId, quantity, quantity, quantity, quantity, quantity, quantity,
+            idempotencyKey, now, giftId, recipientUserId, presenceCutoff, user.id, quantity, user.id, now.slice(0, 10), roomId, user.id),
+          env.DB.prepare(
+            "UPDATE user_wallets SET balance = balance - (SELECT coin_cost FROM gift_transactions WHERE id = ? AND status = 'processing'), " +
+            "updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM gift_transactions WHERE id = ? AND status = 'processing') " +
+            "AND balance >= (SELECT coin_cost FROM gift_transactions WHERE id = ? AND status = 'processing')"
+          ).bind(transactionId, now, user.id, transactionId, transactionId),
+          // Gift-derived coins are ordinary spendable balance, but spending them
+          // consumes their future withdrawal eligibility in FIFO order.
+          env.DB.prepare(
+            "WITH ordered AS (SELECT l.id, l.remaining_tagged_coins, COALESCE(SUM(l.remaining_tagged_coins) OVER (ORDER BY l.created_at, l.id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS prior " +
+            "FROM gift_earning_lots l WHERE l.user_id = ? AND l.remaining_tagged_coins > 0), " +
+            "consumption AS (SELECT id, MIN(remaining_tagged_coins, MAX(0, (SELECT coin_cost FROM gift_transactions WHERE id = ?) - prior)) AS used FROM ordered) " +
+            "UPDATE gift_earning_lots SET remaining_tagged_coins = MAX(0, remaining_tagged_coins - (SELECT used FROM consumption WHERE consumption.id = gift_earning_lots.id)), " +
+            "remaining_withdrawable_coins = MAX(0, remaining_withdrawable_coins - (SELECT used FROM consumption WHERE consumption.id = gift_earning_lots.id)) " +
+            "WHERE id IN (SELECT id FROM consumption WHERE used > 0) AND EXISTS (SELECT 1 FROM gift_wallet_ledger WHERE gift_transaction_id = ? AND entry_type = 'sender_debit')"
+          ).bind(user.id, transactionId, transactionId),
+          env.DB.prepare(
+            "INSERT INTO gift_wallet_ledger (id, gift_transaction_id, user_id, entry_type, amount, balance_after, created_at) " +
+            "SELECT ?, t.id, t.sender_user_id, 'sender_debit', -t.coin_cost, w.balance, ? FROM gift_transactions t " +
+            "JOIN user_wallets w ON w.user_id = t.sender_user_id WHERE t.id = ? AND t.status = 'processing' " +
+            "AND w.balance = t.sender_balance_before - t.coin_cost " +
+            "AND NOT EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
+          ).bind(crypto.randomUUID(), now, transactionId),
+          env.DB.prepare(
+            "INSERT INTO user_wallets (user_id, balance, updated_at) " +
+            "SELECT recipient_user_id, recipient_coins, ? FROM gift_transactions t WHERE t.id = ? AND t.status = 'processing' " +
+            "AND EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit') " +
+            "ON CONFLICT(user_id) DO UPDATE SET balance = user_wallets.balance + excluded.balance, updated_at = excluded.updated_at"
+          ).bind(now, transactionId),
+          env.DB.prepare(
+            "INSERT INTO gift_earning_lots (id, gift_transaction_id, user_id, credited_coins, remaining_tagged_coins, remaining_withdrawable_coins, created_at) " +
+            "SELECT ?, t.id, t.recipient_user_id, t.recipient_coins, t.recipient_coins, t.recipient_coins, ? FROM gift_transactions t " +
+            "WHERE t.id = ? AND t.status = 'processing' AND EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
+          ).bind(crypto.randomUUID(), now, transactionId),
+          env.DB.prepare(
+            "INSERT INTO gift_wallet_ledger (id, gift_transaction_id, user_id, entry_type, amount, balance_after, created_at) " +
+            "SELECT ?, t.id, t.recipient_user_id, 'recipient_credit', t.recipient_coins, w.balance, ? FROM gift_transactions t " +
+            "JOIN user_wallets w ON w.user_id = t.recipient_user_id WHERE t.id = ? AND t.status = 'processing' " +
+            "AND EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
+          ).bind(crypto.randomUUID(), now, transactionId),
+          env.DB.prepare(
+            "INSERT INTO room_exp_gift_awards (id, gift_transaction_id, room_id, user_id, day_key, points, created_at) " +
+            "SELECT ?, t.id, t.room_id, t.sender_user_id, ?, t.experience_awarded, ? FROM gift_transactions t " +
+            "WHERE t.id = ? AND t.status = 'processing' AND t.experience_awarded > 0 " +
+            "AND EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
+          ).bind(crypto.randomUUID(), now.slice(0, 10), now, transactionId),
+          env.DB.prepare(
+            "UPDATE room_exp_daily SET points = points + COALESCE((SELECT points FROM room_exp_gift_awards WHERE gift_transaction_id = ?), 0) " +
+            "WHERE user_id = ? AND day_key = ? AND EXISTS (SELECT 1 FROM room_exp_gift_awards WHERE gift_transaction_id = ?)"
+          ).bind(transactionId, user.id, now.slice(0, 10), transactionId),
+          env.DB.prepare(
+            "INSERT INTO room_experience (room_id, total_exp, updated_at) " +
+            "SELECT room_id, points, ? FROM room_exp_gift_awards WHERE gift_transaction_id = ? " +
+            "ON CONFLICT(room_id) DO UPDATE SET total_exp = room_experience.total_exp + excluded.total_exp, updated_at = excluded.updated_at"
+          ).bind(now, transactionId),
+          env.DB.prepare(
+            "UPDATE gift_transactions SET status = 'succeeded' WHERE id = ? AND status = 'processing' " +
+            "AND EXISTS (SELECT 1 FROM gift_wallet_ledger WHERE gift_transaction_id = ? AND entry_type = 'sender_debit')"
+          ).bind(transactionId, transactionId),
+          env.DB.prepare("DELETE FROM gift_transactions WHERE id = ? AND status = 'processing'").bind(transactionId)
+        ];
+        await env.DB.batch(statements);
+        const transaction = await env.DB.prepare(
+          "SELECT id, sender_user_id AS senderUserId, recipient_user_id AS recipientUserId, room_id AS roomId, gift_id AS giftId, quantity, coin_cost AS coinCost, app_coins AS appCoins, recipient_coins AS recipientCoins, experience_awarded AS experienceAwarded, experience_multiplier AS experienceMultiplier, status, created_at AS createdAt " +
+          "FROM gift_transactions WHERE sender_user_id = ? AND idempotency_key = ? LIMIT 1"
+        ).bind(user.id, idempotencyKey).first<Record<string, unknown>>();
+        if (!transaction) {
+          const wallet = await env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>();
+          const gift = await env.DB.prepare("SELECT coin_price FROM gift_catalog WHERE id = ? AND is_active = 1").bind(giftId).first<{ coin_price: number }>();
+          if (!gift) return json({ error: "gift_not_available" }, 404, origin, env);
+          const room = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active'").bind(roomId).first<{ id: string }>();
+          if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+          const present = await env.DB.prepare("SELECT id FROM room_chat_visits WHERE room_id = ? AND user_id = ? AND exited_at IS NULL AND last_seen_at >= ? LIMIT 1")
+            .bind(roomId, recipientUserId, presenceCutoff).first<{ id: string }>();
+          if (!present) return json({ error: "recipient_not_in_room" }, 409, origin, env);
+          const needed = gift.coin_price * quantity;
+          if ((wallet?.balance ?? 0) < needed) return json({ error: "insufficient_balance", balance: wallet?.balance ?? 0, required: needed }, 409, origin, env);
+          return json({ error: "gift_not_processed" }, 409, origin, env);
+        }
+        if (transaction.status !== "succeeded") return json({ error: "gift_not_processed" }, 409, origin, env);
+        return json({ ok: true, duplicate: false, transaction }, 201, origin, env);
+      } catch (error) {
+        const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[gifts.room.send] failed", diagnostic);
+        return json({ error: "gift_send_failed" }, 500, origin, env);
+      }
+    }
+
     if (url.pathname === "/api/v1/wallet" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         await env.DB.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(user.id, new Date().toISOString()).run();
-        const [wallet, transactions] = await Promise.all([
+        const [wallet, transactions, giftEarnings] = await Promise.all([
           env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>(),
-          env.DB.prepare("SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, reference_id AS referenceId, description, created_at AS createdAt FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 30").bind(user.id).all()
+          env.DB.prepare("SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, reference_id AS referenceId, description, created_at AS createdAt FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 30").bind(user.id).all(),
+          env.DB.prepare("SELECT COALESCE(SUM(credited_coins), 0) AS totalGiftCoins, COALESCE(SUM(remaining_tagged_coins), 0) AS remainingTaggedCoins, COALESCE(SUM(remaining_withdrawable_coins), 0) AS futureWithdrawableCoins FROM gift_earning_lots WHERE user_id = ?").bind(user.id).first<Record<string, number>>()
         ]);
-        return json({ ok: true, balance: wallet?.balance ?? 0, transactions: transactions.results ?? [] }, 200, origin, env);
+        return json({
+          ok: true,
+          balance: wallet?.balance ?? 0,
+          transactions: transactions.results ?? [],
+          giftEarnings: giftEarnings ?? { totalGiftCoins: 0, remainingTaggedCoins: 0, futureWithdrawableCoins: 0 },
+          withdrawals: { enabled: false, ready: false }
+        }, 200, origin, env);
       } catch (error) {
         console.error("[wallet.get] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "wallet_unavailable" }, 500, origin, env);
@@ -1585,9 +1879,19 @@ export default {
         const results = await env.DB.batch([
           env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, amount, balance_after, transaction_type, reference_id, description, created_at) SELECT ?, w.user_id, ?, w.balance - ?, 'room_upgrade', ?, ?, ? FROM user_wallets w INNER JOIN rooms r ON r.id = ? LEFT JOIN room_levels rl ON rl.room_id = r.id WHERE w.user_id = ? AND w.balance >= ? AND COALESCE(rl.level, 1) < ? AND r.status <> 'deleted'").bind(transactionId, -price, price, roomId, "ترقية غرفة " + room.name, now, roomId, user.id, price, targetLevel),
           env.DB.prepare("UPDATE user_wallets SET balance = balance - ?, updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade')").bind(price, now, user.id, transactionId),
+          env.DB.prepare(
+            "WITH ordered AS (SELECT id, remaining_tagged_coins, COALESCE(SUM(remaining_tagged_coins) OVER (ORDER BY created_at, id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS prior FROM gift_earning_lots WHERE user_id = ? AND remaining_tagged_coins > 0), " +
+            "consumption AS (SELECT id, MIN(remaining_tagged_coins, MAX(0, ? - prior)) AS used FROM ordered) " +
+            "UPDATE gift_earning_lots SET remaining_tagged_coins = MAX(0, remaining_tagged_coins - (SELECT used FROM consumption WHERE consumption.id = gift_earning_lots.id)), " +
+            "remaining_withdrawable_coins = MAX(0, remaining_withdrawable_coins - (SELECT used FROM consumption WHERE consumption.id = gift_earning_lots.id)) " +
+            "WHERE id IN (SELECT id FROM consumption WHERE used > 0) AND EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade')"
+          ).bind(user.id, price, transactionId),
           env.DB.prepare("INSERT INTO room_levels (room_id, level, updated_at) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade') ON CONFLICT(room_id) DO UPDATE SET level = excluded.level, updated_at = excluded.updated_at WHERE room_levels.level < excluded.level").bind(roomId, targetLevel, now, transactionId)
         ]);
-        if ((results[0]?.meta?.changes ?? 0) !== 1 || (results[1]?.meta?.changes ?? 0) !== 1 || (results[2]?.meta?.changes ?? 0) !== 1) {
+        // A wallet may contain no gift-derived lots at all. FIFO consumption is
+        // intentionally allowed to update zero rows; only the purchase debit and
+        // wallet balance mutation determine whether the upgrade succeeded.
+        if ((results[0]?.meta?.changes ?? 0) !== 1 || (results[1]?.meta?.changes ?? 0) !== 1) {
           const [latestRoom, wallet] = await Promise.all([
             env.DB.prepare("SELECT COALESCE(rl.level, 1) AS level FROM rooms r LEFT JOIN room_levels rl ON rl.room_id = r.id WHERE r.id = ? AND r.status <> 'deleted' LIMIT 1").bind(roomId).first<{ level: number }>(),
             env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>()
