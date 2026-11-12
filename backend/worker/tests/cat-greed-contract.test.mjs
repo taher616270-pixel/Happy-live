@@ -225,3 +225,10 @@ test("both admin entry points warn before enabling cash-value wagering", () => {
   assert.match(gameAdminScript, /احتياطي يغطي أقصى الجوائز/);
   assert.match(mainAdmin, /احتياطي يغطي أقصى الجوائز/);
 });
+
+test("D1 independently rejects unsupported chips and bets on closed rounds", () => {
+  assert.match(protectionMigration, /CREATE TRIGGER IF NOT EXISTS cat_greed_bet_guard_insert/);
+  assert.match(protectionMigration, /NEW\.amount NOT IN \(10, 500, 6000, 30000, 100000\)/);
+  assert.match(protectionMigration, /phase='betting' AND julianday\(closes_at\)>julianday\('now'\)/);
+  assert.match(protectionMigration, /invalid_or_closed_cat_greed_bet/);
+});
