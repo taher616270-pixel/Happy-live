@@ -87,7 +87,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   bool _sending = false;
   Map<String, dynamic>? _comboGift;
   String? _comboRecipientId;
-  int _comboCount = sentQuantity;
+  int _comboCount = 1;
   int _comboNonce = 0;
   bool _requesting = false;
   String? _message;
