@@ -1723,13 +1723,25 @@ class _RoomPageState extends State<RoomPage> {
       final participants = <String, Map<String, dynamic>>{};
       for (final user in [..._seats, ..._audienceUsers]) {
         final id = (user['userId'] ?? user['id'] ?? '').toString().trim();
-        if (id.isEmpty || id == _seatStateStore.currentUserId) continue;
+        if (id.isEmpty) continue;
         participants[id] = <String, dynamic>{
           ...user,
           'userId': id,
           'name': (user['name'] ?? user['displayName'] ?? 'مستخدم').toString(),
           'avatarUrl': (user['avatarUrl'] ?? user['avatar'] ?? '').toString(),
         };
+      }
+      // Keep the signed-in user selectable too: the API rejects self-gifting
+      // with the dedicated "cannot_gift_self" response shown in the sheet.
+      final currentUserId = _seatStateStore.currentUserId.trim();
+      if (currentUserId.isNotEmpty) {
+        final selfSeat = _seats.where((user) => user['isMe'] == true).firstOrNull;
+        participants.putIfAbsent(currentUserId, () => <String, dynamic>{
+          'userId': currentUserId,
+          'name': (selfSeat?['name'] ?? (_ownerId == currentUserId ? _ownerName : 'أنا')).toString(),
+          'avatarUrl': (selfSeat?['avatarUrl'] ?? _seatStateStore.currentAvatarUrl).toString(),
+          'isMe': true,
+        });
       }
       final recipients = participants.values.toList()
         ..sort((a, b) => (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString()));
