@@ -19,6 +19,10 @@ const profilePage = await readFile(
   new URL("../../../frontend/lib/pages/profile_page.dart", import.meta.url),
   "utf8",
 );
+const auditMigration = await readFile(
+  new URL("../migrations/0031_admin_audit_actor_refs.sql", import.meta.url),
+  "utf8",
+);
 
 test("admin sessions and roles are resolved from D1, not from browser input", () => {
   const start = worker.indexOf("async function authenticatedAdmin(");
@@ -108,4 +112,39 @@ test("mobile wallet is connected to the authenticated wallet API and profile bal
 
 test("unsupported recharge, VIP and gift services are not presented as live data", () => {
   assert.match(adminUi, /الشحن الإلكتروني عبر بوابة دفع غير مفعّل بعد/);
+});
+
+test("owner-managed admin accounts are protected and audited with relational actor identity", () => {
+  assert.match(worker, /url\.pathname === "\/api\/v1\/admin\/accounts"/);
+  assert.match(worker, /admin\/accounts\/\[0-9a-f-\]\{36\}\/\(role\|status\|password\|revoke-sessions\)/);
+  assert.match(worker, /actor\.role !== "owner"/);
+  assert.match(worker, /owner_account_is_protected/);
+  assert.match(worker, /adminAuditStatements\(env\.DB, actor/);
+  assert.match(worker, /INSERT INTO admin_audit_actor_refs \(audit_log_id, admin_id\)/);
+  assert.match(adminUi, /data-page="adminAccounts"/);
+  assert.match(adminUi, /async function adminAccountsPage\(/);
+  assert.match(adminUi, /function adminPasswordDialog\(/);
+});
+
+test("admin audit actor migration preserves referential integrity and is retry-safe", () => {
+  assert.match(auditMigration, /CREATE TABLE IF NOT EXISTS admin_audit_actor_refs/);
+  assert.match(auditMigration, /REFERENCES admin_audit_logs\(id\) ON DELETE CASCADE/);
+  assert.match(auditMigration, /REFERENCES admin_accounts\(id\) ON DELETE RESTRICT/);
+  assert.match(auditMigration, /CREATE INDEX IF NOT EXISTS idx_admin_audit_actor_refs_admin_created/);
+});
+
+test("admin room level controls adjust the canonical room experience total, not a duplicate progression store", () => {
+  assert.match(worker, /function roomExperienceTotalForLevel\(targetLevel: number\)/);
+  assert.match(worker, /enteringLevel <= safeLevel/);
+  assert.match(worker, /INSERT INTO room_experience \(room_id, total_exp, updated_at\)/);
+  assert.match(worker, /LEFT JOIN room_experience rx ON rx\.room_id = r\.id/);
+  assert.match(worker, /progression_level/);
+  assert.doesNotMatch(worker, /room_progression_events|CREATE TABLE IF NOT EXISTS room_progression/);
+  assert.match(adminUi, /data-progression-adjust/);
+  assert.match(adminUi, /\/admin\/rooms\/.*\/progression/);
+});
+
+test("Worker CORS allows only explicitly configured exact origins", () => {
+  assert.match(worker, /function isAllowedOrigin\(origin: string, env: Env\): boolean \{\s*return allowedOrigins\(env\)\.has\(origin\);/s);
+  assert.doesNotMatch(worker, /hostname\.endsWith\("\.happy-live\.pages\.dev"\)/);
 });
