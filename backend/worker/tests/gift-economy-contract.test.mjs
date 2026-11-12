@@ -221,8 +221,8 @@ test("global gift banners are authenticated, threshold-controlled, and delivered
   assert.match(worker, /giftCoins >= Number\(bannerSettings\.minimumCoins\)/);
   assert.match(worker, /type: "global_gift_banner"/);
   assert.match(worker, /GLOBAL_GIFTS/);
-  assert.match(globalGiftHub, /url\.pathname === "\/connect"/);
-  assert.match(globalGiftHub, /url\.pathname === "\/broadcast"/);
+  assert.match(globalGiftHub, /url\.pathname !== "\/connect"/);
+  assert.match(globalGiftHub, /async broadcast\(/);
   assert.match(adminPage, /giftBannerMinimum/);
   assert.match(adminPage, /saveGiftBanner/);
   assert.match(adminPage, /\/admin\/gifts\/banner-settings/);
