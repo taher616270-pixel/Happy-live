@@ -119,6 +119,29 @@ test("admin account management is owner-only, protects the owner, and revokes se
   const end = worker.indexOf('if (url.pathname === "/api/v1/admin/moderators"', start);
   assert.ok(start >= 0 && end > start, "admin account routes must exist");
   const routes = worker.slice(start, end);
+  assert.ok(routes.includes('actor.role !== "owner"'));
+  assert.ok(routes.includes('target.role === "owner"'));
+  assert.ok(routes.includes("hashPassword(password)"));
+  assert.ok(routes.includes("UPDATE admin_sessions SET revoked_at = ?"));
+  assert.ok(routes.includes("adminAuditStatements(env.DB, actor,"));
+  assert.doesNotMatch(routes, /body\.(?:adminId|actorId|actorRole)/);
+});
+
+test("admin audit relation links sensitive manager actions to the authenticated admin", () => {
+  assert.match(auditMigration, /CREATE TABLE IF NOT EXISTS admin_audit_actor_refs/);
+  assert.match(auditMigration, /REFERENCES admin_audit_logs\(id\) ON DELETE CASCADE/);
+  assert.match(auditMigration, /REFERENCES admin_accounts\(id\) ON DELETE RESTRICT/);
+  assert.match(worker, /function adminAuditStatements\(/);
+  assert.match(worker, /INSERT INTO admin_audit_actor_refs/);
+  assert.ok(adminUi.includes('data-page="adminAccounts"'));
+  assert.ok(adminUi.includes('admin.role!=="owner"'));
+  assert.ok(adminUi.includes('api("/admin/accounts'));
+});
+
+  const start = worker.indexOf('if (url.pathname === "/api/v1/admin/accounts" && request.method === "GET")');
+  const end = worker.indexOf('if (url.pathname === "/api/v1/admin/moderators"', start);
+  assert.ok(start >= 0 && end > start, "admin account routes must exist");
+  const routes = worker.slice(start, end);
   assert.match(routes, /actor\\.role !== "owner"/);
   assert.match(routes, /target\\.role === "owner"/);
   assert.match(routes, /hashPassword\\(password\\)/);
