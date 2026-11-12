@@ -183,6 +183,11 @@ async function render(){
 
 
 async function catGreedMainPage(){
+  if(location.hostname!=="happy-live.pages.dev"){
+    if(window.catGreedMonitorTimer){clearInterval(window.catGreedMonitorTimer);window.catGreedMonitorTimer=null}
+    $("content").innerHTML='<div class="section"><h2>قط الجشع — معاينة آمنة</h2><p class="notice">لوحة اللعبة معطلة في معاينات Pages حتى لا تتصل ببيانات الإنتاج. اربطها بعنوان Worker Preview معزول قبل الاختبار.</p></div>';
+    return;
+  }
   const data=await api("/admin/games/cat-greed/overview");
   if(window.catGreedMonitorTimer)clearInterval(window.catGreedMonitorTimer);
   window.catGreedMonitorTimer=setInterval(()=>{if(document.hidden)return;if(page==="games")catGreedMainPage().catch(()=>{});else{clearInterval(window.catGreedMonitorTimer);window.catGreedMonitorTimer=null}},5000);
