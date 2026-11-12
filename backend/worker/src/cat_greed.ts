@@ -228,17 +228,17 @@ export async function handleCatGreedRequest(
           duplicateBet=true;
         } else {
           if (!round || round.id !== roundId || round.phase !== "betting" || Date.parse(round.closes_at)<=Date.now()) return wheelError("round_closed",409,json,origin,env);
+          const windowStart = Math.floor(Date.now()/BET_RATE_WINDOW_SECONDS);
+          const rate = await db.prepare("INSERT INTO cat_greed_bet_rate_limits (user_id,window_start,request_count) VALUES (?,?,1) ON CONFLICT(user_id) DO UPDATE SET window_start=CASE WHEN cat_greed_bet_rate_limits.window_start=excluded.window_start THEN cat_greed_bet_rate_limits.window_start ELSE excluded.window_start END,request_count=CASE WHEN cat_greed_bet_rate_limits.window_start=excluded.window_start THEN cat_greed_bet_rate_limits.request_count+1 ELSE 1 END RETURNING request_count")
+            .bind(user.id,windowStart).first<{request_count:number}>();
+          if (!rate || rate.request_count>BET_RATE_MAX_REQUESTS) return json({error:"bet_rate_limited",retry_after_seconds:BET_RATE_WINDOW_SECONDS},429,origin,env);
+
           await db.prepare("INSERT OR IGNORE INTO user_wallets (user_id,balance,updated_at) VALUES (?,0,?)").bind(user.id,isoNow()).run();
           const control = await db.prepare("SELECT enabled,max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?").bind(user.id).first<{enabled:number;max_bet_per_round:number}>();
           if (control?.enabled===0) return wheelError("player_disabled",403,json,origin,env);
           const currentTotal = await db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(roundId,user.id).first<{total:number}>();
           const limit = control?.max_bet_per_round ?? 1000000;
           if ((currentTotal?.total ?? 0) + amount > limit) return wheelError("bet_limit_exceeded",400,json,origin,env);
-
-          const windowStart = Math.floor(Date.now()/BET_RATE_WINDOW_SECONDS);
-          const rate = await db.prepare("INSERT INTO cat_greed_bet_rate_limits (user_id,window_start,request_count) VALUES (?,?,1) ON CONFLICT(user_id) DO UPDATE SET window_start=CASE WHEN cat_greed_bet_rate_limits.window_start=excluded.window_start THEN cat_greed_bet_rate_limits.window_start ELSE excluded.window_start END,request_count=CASE WHEN cat_greed_bet_rate_limits.window_start=excluded.window_start THEN cat_greed_bet_rate_limits.request_count+1 ELSE 1 END RETURNING request_count")
-            .bind(user.id,windowStart).first<{request_count:number}>();
-          if (!rate || rate.request_count>BET_RATE_MAX_REQUESTS) return json({error:"bet_rate_limited",retry_after_seconds:BET_RATE_WINDOW_SECONDS},429,origin,env);
 
           const now=isoNow(), betId=crypto.randomUUID();
           await db.batch([
