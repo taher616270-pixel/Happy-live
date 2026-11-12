@@ -57,8 +57,14 @@ jobs:
         working-directory: frontend
         run: flutter build web --release
 
-      - name: Verify standalone admin page is included
+      - name: Verify standalone admin and Cat Greed pages are included
         working-directory: frontend
         run: |
           test -f build/web/admin/index.html
           grep -q "لوحة إدارة Happy Live" build/web/admin/index.html
+          test -f build/web/cat-greed/index.html
+          test -f build/web/cat-greed/app.js
+          test -f build/web/cat-greed-admin/index.html
+          test -f build/web/cat-greed-admin/app.js
+          test -f build/web/_headers
+          grep -q "script-src 'self'" build/web/_headers
