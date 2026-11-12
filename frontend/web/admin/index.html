@@ -210,7 +210,7 @@ async function catGreedMainPage(){
   if(toggle)toggle.onclick=async()=>{
     const enabled=Number(data.settings?.enabled)!==1;
     const action=enabled?"تشغيل":"إيقاف";
-    if(!confirm("هل تريد "+action+" لعبة قط الجشع؟ عند الإيقاف لن تُقبل رهانات جديدة وستكتمل تسوية الجولة الحالية."))return;
+    if(!confirm(enabled?"تنبيه قبل التشغيل: لا تشغّل اللعبة إذا كانت العملات قابلة للشراء أو السحب أو التحويل إلى قيمة نقدية قبل إعداد احتياطي يغطي أقصى الجوائز ومراجعة الامتثال. هل تريد المتابعة؟":"هل تريد إيقاف لعبة قط الجشع؟ لن تُقبل رهانات جديدة وستكتمل تسوية الجولة الحالية."))return;
     toggle.disabled=true;
     try{await api("/admin/cat-greed/settings",{method:"PATCH",body:JSON.stringify({enabled})});await catGreedMainPage();}
     catch(e){alert(e.message);toggle.disabled=false}
