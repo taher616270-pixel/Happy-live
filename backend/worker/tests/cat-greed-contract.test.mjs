@@ -239,3 +239,10 @@ test("D1 independently rejects unsupported chips and bets on closed rounds", () 
   assert.match(roundGuardMigration, /phase='betting' AND julianday\(closes_at\)>julianday\('now'\)/);
   assert.match(roundGuardMigration, /invalid_or_closed_cat_greed_bet/);
 });
+
+test("admin overview and round history settle expired rounds before reporting payouts", () => {
+  const overview = worker.indexOf("if (mainOverview)");
+  const history = worker.indexOf("if (adminRounds)");
+  assert.ok(overview >= 0 && worker.indexOf("await currentRound(db,false);",overview) < worker.indexOf("const [settings,symbols,rounds,players,totals]",overview));
+  assert.ok(history >= 0 && worker.indexOf("await currentRound(db,false);",history) < worker.indexOf("const rounds=",history));
+});
