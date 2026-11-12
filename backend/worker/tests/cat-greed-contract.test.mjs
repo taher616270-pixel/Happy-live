@@ -143,6 +143,12 @@ test("new migration defaults keep the maximum expected return below the activati
   assert.ok(maximum <= 10000, "default theoretical return must stay at or below 100%");
 });
 
+test("main admin player net totals use settled rounds only", () => {
+  assert.match(worker, /COALESCE\(b\.settledWagered,0\) AS settledWagered/);
+  assert.match(worker, /SUM\(CASE WHEN settled=1 THEN wagered ELSE 0 END\) AS settledWagered/);
+  assert.match(mainAdmin, /p\.settledWagered/);
+});
+
 test("pausing Cat Greed blocks new bets but keeps the active round visible for settlement", () => {
   assert.match(worker, /if \(publicBet && !settings\.enabled\)/);
   assert.match(worker, /currentRound\(db,settings\.enabled===1\)/);
