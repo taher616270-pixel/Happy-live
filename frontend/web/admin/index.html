@@ -190,7 +190,7 @@ async function catGreedMainPage(){
   const fmt=n=>Number(n||0).toLocaleString("en-US");
   $("content").innerHTML=
     '<div class="section"><div class="section-head"><div><h2>قط الجشع 🐱</h2><p class="muted">إدارة اللاعبين ومراقبة الجولات من لوحة Happy Live الرئيسية.</p></div><a class="action" href="../cat-greed-admin/" target="_blank" rel="noopener">فتح لوحة إدارة اللعبة المستقلة ↗</a></div>'+
-    '<div class="cards">'+metric("عدد الجولات",totals.rounds)+metric("إجمالي الرهانات",totals.wagered)+metric("اللاعبون",players.length)+'</div>'+
+    '<div class="cards">'+metric("عدد الجولات",totals.rounds)+metric("إجمالي الرهانات",totals.wagered)+metric("اللاعبون",totals.players)+'</div>'+
     '<div class="notice">احتمالات النتيجة موحّدة ومعلنة للجميع. يمكنك هنا إيقاف لاعب أو تحديد سقف رهانه، ومراجعة نتائجه؛ لا توجد نسب فوز سرية مختلفة بين اللاعبين.</div></div>'+
     '<div class="section"><div class="section-head"><h2>الجولات الأخيرة</h2><button class="action" id="catGreedRefresh">تحديث</button></div>'+
     (rounds.length?'<div class="table-wrap"><table><thead><tr><th>الجولة</th><th>الحالة</th><th>النتيجة</th><th>التوقيت</th><th>بصمة النتيجة</th></tr></thead><tbody>'+
