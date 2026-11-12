@@ -5,6 +5,9 @@ import { readFile } from "node:fs/promises";
 const migration = await readFile(new URL("../migrations/0034_cat_greed_wheel.sql", import.meta.url), "utf8");
 const ledgerMigration = await readFile(new URL("../migrations/0035_cat_greed_ledger.sql", import.meta.url), "utf8");
 const protectionMigration = await readFile(new URL("../migrations/0036_cat_greed_bet_protection.sql", import.meta.url), "utf8");
+const previewWheelMigration = await readFile(new URL("../migrations-cat-greed-preview/0034_cat_greed_wheel.sql", import.meta.url), "utf8");
+const previewLedgerMigration = await readFile(new URL("../migrations-cat-greed-preview/0035_cat_greed_ledger.sql", import.meta.url), "utf8");
+const previewProtectionMigration = await readFile(new URL("../migrations-cat-greed-preview/0036_cat_greed_bet_protection.sql", import.meta.url), "utf8");
 const previewMigrationConfig = await readFile(new URL("../wrangler.preview-migrations.toml", import.meta.url), "utf8");
 const wranglerConfig = await readFile(new URL("../wrangler.toml", import.meta.url), "utf8");
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
@@ -175,4 +178,10 @@ test("manual production Worker deployment applies all Cat Greed migrations befor
   const m36 = deployWorkflow.indexOf("migrations/0036_cat_greed_bet_protection.sql");
   const deploy = deployWorkflow.indexOf("Deploy Worker with Wrangler");
   assert.ok(m34 >= 0 && m35 > m34 && m36 > m35 && deploy > m36);
+});
+
+test("Preview-only migration copies stay byte-identical to the canonical Cat Greed migrations", () => {
+  assert.equal(previewWheelMigration, migration);
+  assert.equal(previewLedgerMigration, ledgerMigration);
+  assert.equal(previewProtectionMigration, protectionMigration);
 });
