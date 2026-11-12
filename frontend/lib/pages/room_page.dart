@@ -1735,7 +1735,8 @@ class _RoomPageState extends State<RoomPage> {
       // with the dedicated "cannot_gift_self" response shown in the sheet.
       final currentUserId = _seatStateStore.currentUserId.trim();
       if (currentUserId.isNotEmpty) {
-        final selfSeat = _seats.where((user) => user['isMe'] == true).firstOrNull;
+        final selfSeats = _seats.where((user) => user['isMe'] == true).toList();
+        final selfSeat = selfSeats.isEmpty ? null : selfSeats.first;
         participants.putIfAbsent(currentUserId, () => <String, dynamic>{
           'userId': currentUserId,
           'name': (selfSeat?['name'] ?? (_ownerId == currentUserId ? _ownerName : 'أنا')).toString(),
