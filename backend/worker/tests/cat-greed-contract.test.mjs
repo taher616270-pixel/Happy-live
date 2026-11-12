@@ -212,3 +212,10 @@ test("admin write endpoints reject oversized and non-JSON request bodies", () =>
   assert.match(worker, /readBoundedJson\(request,16384\)/);
   assert.doesNotMatch(worker, /request\.json\(\)/);
 });
+
+test("player win/loss statistics count settled rounds only", () => {
+  assert.match(worker, /INNER JOIN cat_greed_rounds r ON r\.id=b\.round_id/);
+  assert.match(worker, /CASE WHEN r\.phase='result' THEN 1 ELSE 0 END AS settled/);
+  assert.match(worker, /settled=1 AND payout>0/);
+  assert.match(worker, /settled=1 AND payout=0/);
+});
