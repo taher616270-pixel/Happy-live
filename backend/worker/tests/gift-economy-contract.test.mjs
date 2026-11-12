@@ -200,7 +200,7 @@ test("animated gifts carry a separate optional audio asset to every room member"
   assert.match(roomPage, /AudioPlayer/);
   assert.match(roomPage, /UrlSource\(soundUrl\)/);
   assert.match(roomPage, /_unlockGiftAudio/);
-  assert.match(roomPage, /onPointerDown: \\(\\) => unawaited\\(_unlockGiftAudio\\(\\)\\)/);
+  assert.match(roomPage, /onPointerDown: \\(_\\) => unawaited\\(_unlockGiftAudio\\(\\)\\)/);
   assert.match(roomPage, /GifView\\.network\\(/);
   assert.match(worker, /CASE WHEN media_type = 'gif' THEN 'gif'/);
   assert.match(giftSheet, /إضافة صوت MP3 \(اختياري\)/);
