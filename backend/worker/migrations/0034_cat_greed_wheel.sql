@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS cat_greed_symbols (
   updated_at TEXT NOT NULL
 );
 INSERT OR IGNORE INTO cat_greed_symbols (slot, emoji, label, multiplier, is_vegetable, weight, updated_at) VALUES
-  (0, '🐔', 'دجاج', 45, 0, 2, CURRENT_TIMESTAMP),
+  (0, '🐔', 'دجاج', 45, 0, 1, CURRENT_TIMESTAMP),
   (1, '🍅', 'طماطم', 5, 1, 20, CURRENT_TIMESTAMP),
   (2, '🐐', 'ماعز', 15, 0, 7, CURRENT_TIMESTAMP),
   (3, '🌶️', 'فلفل', 5, 1, 20, CURRENT_TIMESTAMP),
