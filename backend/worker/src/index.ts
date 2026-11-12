@@ -1742,15 +1742,19 @@ export default {
           }
           // Confirm that the submitted URL and file ID belong to a real ImageKit upload.
           if (!env.IMAGEKIT_PRIVATE_KEY?.trim()) return json({ error: "imagekit_not_configured" }, 503, origin, env);
-          // ImageKit can briefly take time to expose a freshly uploaded file through
-          // its management API. Retry transient 404/5xx responses before rejecting it.
+          // Both the upload-signing endpoint and this lookup use this exact Worker
+          // IMAGEKIT_PRIVATE_KEY. ImageKit's file-management index can lag behind a
+          // successful upload, so allow a longer bounded window for a fresh file to appear.
           let imageKitFileResponse: Response | null = null;
-          for (let attempt = 0; attempt < 3; attempt++) {
+          const lookupDelaysMs = [400, 700, 1000, 1300, 1600, 2000, 2500];
+          for (let attempt = 0; attempt <= lookupDelaysMs.length; attempt++) {
             imageKitFileResponse = await fetch("https://api.imagekit.io/v1/files/" + encodeURIComponent(mediaFileId) + "/details", {
               headers: { Authorization: "Basic " + btoa(env.IMAGEKIT_PRIVATE_KEY.trim() + ":") }
             });
             if (imageKitFileResponse.ok || (imageKitFileResponse.status !== 404 && imageKitFileResponse.status < 500)) break;
-            if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+            if (attempt < lookupDelaysMs.length) {
+              await new Promise(resolve => setTimeout(resolve, lookupDelaysMs[attempt]));
+            }
           }
           if (!imageKitFileResponse?.ok) {
             const providerStatus = imageKitFileResponse?.status ?? 0;
