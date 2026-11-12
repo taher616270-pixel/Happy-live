@@ -2,8 +2,8 @@
 
 ## الحالة الحالية
 
-- تم تطبيق migrations `0034`–`0037` على قاعدة Preview فقط: `happy-live-room-exp-preview-db`.
-- تم التحقق بعد التطبيق: `enabled=0`، والإعدادات الافتراضية الآمنة موجودة، ولا توجد جولات أو رهانات أو جوائز. migrations 0034–0037 مسجلة كتطبيق في `d1_migrations`.
+- تم تطبيق migrations `0034`–`0036` سابقاً على قاعدة Preview فقط: `happy-live-room-exp-preview-db`.
+- وفق فحص Preview السابق: `enabled=0`، والإعدادات الافتراضية الآمنة موجودة، ولا توجد جولات أو رهانات أو جوائز. migrations 0034–0036 مسجلة في `d1_migrations`. migration 0037 أضيفت لاحقاً كحماية إضافية ولم تُطبّق بعد.
 - قاعدة الإنتاج `happy-live-db` لم تُعدّل، ولم يُنشر Worker أو Pages، ولم يُدمج PR.
 
 - اللعبة مستقلة كواجهة داخل موقع Happy Live الحالي: `/cat-greed/`.
@@ -22,7 +22,7 @@
 - `backend/worker/migrations/0035_cat_greed_ledger.sql`: دفتر حركات اللعبة.
 - `backend/worker/migrations/0036_cat_greed_bet_protection.sql`: مفاتيح منع تكرار الرهان وحدود الطلبات والقيم الافتراضية الأكثر أماناً.
 - `backend/worker/migrations/0037_cat_greed_round_guard.sql`: قيد D1 إضافي يرفض أي رهان بعملة غير معتمدة أو على جولة مغلقة، دون تعديل migrations السابقة.
-- مجلد `migrations-cat-greed-preview/` يحتوي النسخ الثلاث المعزولة من migrations 0034–0037، ويستخدمه `wrangler.preview-migrations.toml` فقط. مجلد `migrations/` هو مصدر تطبيق الإنتاج. لم أحذف أو أنقل أي ملف.
+- مجلد `migrations-cat-greed-preview/` يحتوي النسخ الأربع المعزولة من migrations 0034–0037، ويستخدمه `wrangler.preview-migrations.toml` فقط. مجلد `migrations/` هو مصدر تطبيق الإنتاج. لم أحذف أو أنقل أي ملف.
 - `frontend/lib/pages/cat_greed_game.dart`: واجهة Flutter داخل الغرفة.
 - `frontend/web/cat-greed/`: الموقع المستقل للعبة.
 - `frontend/web/cat-greed-admin/`: لوحة اللعبة المستقلة.
@@ -115,7 +115,7 @@
 1. مراجعة PR وجميع التغييرات ومقارنة الملفات مع `main`.
 2. تشغيل `npm test` و`npm run typecheck` من `backend/worker`.
 3. تشغيل Flutter analyze/build للويب.
-4. فحصت قاعدة `happy-live-room-exp-preview-db` مباشرة: migrations 0034–0037 مسجلة بالفعل في `d1_migrations`، وجداول اللعبة والقيود والفهارس موجودة. مجلد `migrations/` الكامل لا يصلح لتطبيق Preview لأنه يحتوي migrations أقدم غير آمنة لإعادة التشغيل؛ لذلك ملف `wrangler.preview-migrations.toml` يستخدم مجلد `migrations-cat-greed-preview` المعزول الذي يحتوي فقط نسخ 0034–0036. نفّذ `npm run db:preview:list` للتحقق؛ لا تشغّل `npm run db:preview` إلا إذا أظهر الأمر migration معلقة. لا تستخدم `db:remote` لأنه يستهدف D1 الإنتاج.
+4. فُحصت قاعدة `happy-live-room-exp-preview-db` سابقاً: migrations 0034–0036 مسجلة في `d1_migrations`، وجداول اللعبة الأساسية موجودة. migration 0037 لم تُطبّق بعد. مجلد `migrations/` الكامل لا يصلح لتطبيق Preview لأنه يحتوي migrations أقدم غير آمنة لإعادة التشغيل؛ لذلك ملف `wrangler.preview-migrations.toml` يستخدم مجلد `migrations-cat-greed-preview` المعزول الذي يحتوي فقط نسخ 0034–0037. نفّذ `npm run db:preview:list` للتحقق؛ لا تشغّل `npm run db:preview` إلا إذا أظهر الأمر migration معلقة. لا تستخدم `db:remote` لأنه يستهدف D1 الإنتاج.
 5. بعد نجاح الفحوص، يمكن تشغيل workflow اليدوي `.github/workflows/deploy-cat-greed-preview.yml` مع تفعيل تأكيد Preview فقط؛ أو من مجلد `backend/worker` استخدم `npm run preview:deploy`. ينشئ Wrangler Preview باسم `cat-greed` على Worker `happy-live-api` مع `--ignore-base-config` لمنع إعدادات Preview العامة غير المراجعة من تغيير الربط؛ ويكون عنوانه على نمط `cat-greed-happy-live-api.<account>.workers.dev`. احتفظ بعنوان Preview الذي يرجعه الأمر.
 6. اضبط أسرار ImageKit المطلوبة على Preview عبر `wrangler preview secret put`؛ لا تنسخ كلمات مرور أو أسرار الإنتاج ولا تحفظها في Git. أنشئ حسابات اختبار منفصلة داخل قاعدة Preview.
 7. افتح صفحات Preview مع معامل `?catGreedApi=https://<preview-worker-host>` بعد التأكد من أن المضيف هو Worker Preview الخاص بـ Happy Live؛ الواجهة ترفض عنوان الإنتاج على صفحات Preview.
