@@ -46,7 +46,11 @@ class _CatGreedGameState extends State<CatGreedGame> {
       : await http.post(Uri.parse('$_wheelApi$path'),headers:_headers,body:jsonEncode(body));
     final decoded = jsonDecode(response.body);
     if(decoded is! Map<String,dynamic>) throw Exception('استجابة الخادم غير صالحة');
-    if(response.statusCode<200 || response.statusCode>=300) throw Exception(decoded['message']??decoded['error']??'تعذر تنفيذ الطلب');
+    if(response.statusCode<200 || response.statusCode>=300) {
+      final code=decoded['error']?.toString();
+      final message=decoded['message']??(code=='state_rate_limited'?'طلبات التحديث كثيرة؛ انتظر قليلاً.':code=='bet_rate_limited'?'تجاوزت حد الرهانات السريع؛ انتظر قليلاً.':code??'تعذر تنفيذ الطلب');
+      throw Exception(message);
+    }
     return decoded;
   }
 
