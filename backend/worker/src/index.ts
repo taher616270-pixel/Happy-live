@@ -1740,6 +1740,20 @@ export default {
               (mediaType === "svga" && !/\.svga(?:$|[?#])/i.test(mediaPath))) {
             return json({ error: "invalid_custom_gift_media_type" }, 400, origin, env);
           }
+          // Confirm that the submitted URL and file ID belong to a real ImageKit upload.
+          if (!env.IMAGEKIT_PRIVATE_KEY?.trim()) return json({ error: "imagekit_not_configured" }, 503, origin, env);
+          const imageKitFileResponse = await fetch("https://api.imagekit.io/v1/files/" + encodeURIComponent(mediaFileId), {
+            headers: { Authorization: "Basic " + btoa(env.IMAGEKIT_PRIVATE_KEY + ":") }
+          });
+          if (!imageKitFileResponse.ok) return json({ error: "imagekit_file_not_found" }, 400, origin, env);
+          const imageKitFile = await imageKitFileResponse.json() as Record<string, unknown>;
+          const uploadedName = typeof imageKitFile.name === "string" ? imageKitFile.name : "";
+          const uploadedUrl = typeof imageKitFile.url === "string" ? imageKitFile.url : "";
+          const expectedExtension = mediaType === "gif" ? /\.gif$/i : /\.svga$/i;
+          if (uploadedUrl !== mediaUrl || !expectedExtension.test(uploadedName) ||
+              Number(imageKitFile.size) < 1 || Number(imageKitFile.size) > 10 * 1024 * 1024) {
+            return json({ error: "imagekit_file_validation_failed" }, 400, origin, env);
+          }
         }
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const recent = await env.DB.prepare("SELECT COUNT(*) AS count FROM gift_custom_requests WHERE user_id = ? AND created_at >= ?").bind(user.id, since).first<{ count: number }>();
