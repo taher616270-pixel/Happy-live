@@ -184,6 +184,8 @@ async function render(){
 
 async function catGreedMainPage(){
   const data=await api("/admin/games/cat-greed/overview");
+  if(window.catGreedMonitorTimer)clearInterval(window.catGreedMonitorTimer);
+  window.catGreedMonitorTimer=setInterval(()=>{if(page==="games")catGreedMainPage().catch(()=>{});else{clearInterval(window.catGreedMonitorTimer);window.catGreedMonitorTimer=null}},1000);
   const totals=data.totals||{},players=data.players||[],rounds=data.rounds||[];
   const fmt=n=>Number(n||0).toLocaleString("en-US");
   $("content").innerHTML=
