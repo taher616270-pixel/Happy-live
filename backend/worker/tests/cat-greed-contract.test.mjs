@@ -5,6 +5,9 @@ import { readFile } from "node:fs/promises";
 const migration = await readFile(new URL("../migrations/0034_cat_greed_wheel.sql", import.meta.url), "utf8");
 const ledgerMigration = await readFile(new URL("../migrations/0035_cat_greed_ledger.sql", import.meta.url), "utf8");
 const protectionMigration = await readFile(new URL("../migrations/0036_cat_greed_bet_protection.sql", import.meta.url), "utf8");
+const previewMigrationConfig = await readFile(new URL("../wrangler.preview-migrations.toml", import.meta.url), "utf8");
+const wranglerConfig = await readFile(new URL("../wrangler.toml", import.meta.url), "utf8");
+const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const worker = await readFile(new URL("../src/cat_greed.ts", import.meta.url), "utf8");
 const flutterGame = await readFile(new URL("../../../frontend/lib/pages/cat_greed_game.dart", import.meta.url), "utf8");
 const roomPreview = await readFile(new URL("../../../frontend/lib/pages/voice_room_design_preview.dart", import.meta.url), "utf8");
@@ -139,4 +142,14 @@ test("standalone Cat Greed scripts are external and route CSP blocks inline scri
   assert.match(gameAdminScript, /location\.hostname==="happy-live\.pages\.dev"/);
   assert.match(mainAdmin, /location\.hostname!=="happy-live\.pages\.dev"/);
   assert.match(flutterGame, /kIsWeb&&Uri\.base\.host!='happy-live\.pages\.dev'/);
+});
+
+test("Preview migrations are explicitly isolated from the production D1 database", () => {
+  assert.match(previewMigrationConfig, /database_name = "happy-live-room-exp-preview-db"/);
+  assert.match(previewMigrationConfig, /database_id = "7ade3803-97bf-4f6d-9200-48b3dfb0573c"/);
+  assert.match(previewMigrationConfig, /binding = "PREVIEW_DB"/);
+  assert.match(wranglerConfig, /database_name = "happy-live-room-exp-preview-db"/);
+  assert.match(wranglerConfig, /database_name = "happy-live-db"/);
+  assert.match(packageJson.scripts["db:preview"], /wrangler\.preview-migrations\.toml/);
+  assert.match(packageJson.scripts["db:preview"], /PREVIEW_DB/);
 });
