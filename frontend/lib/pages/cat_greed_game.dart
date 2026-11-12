@@ -369,7 +369,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
             Text(s.phase == RoundPhase.betting ? '${s.secondsLeft}s' : '🎡', style: TextStyle(color: Colors.white, fontSize: d * 0.3, fontWeight: FontWeight.w900)),
           ]),
         )),
-      ]);
+      ]));
     });
   }
 
