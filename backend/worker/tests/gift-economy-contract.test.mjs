@@ -118,7 +118,7 @@ test("admin gift tools expose category scheduling and custom-request approval", 
   assert.match(adminPage, /newGiftStartsAt/);
   assert.match(adminPage, /newGiftEndsAt/);
   assert.match(adminPage, /customGiftRequestRows/);
-  assert.match(adminPage, /custom-gift-approve/);
+  assert.match(adminPage, /data-custom-approve/);
 });
 
 test("room gift picker keeps previews available without recipients and marks VIP and bag as coming soon", () => {
