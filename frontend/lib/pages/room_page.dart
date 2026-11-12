@@ -106,6 +106,7 @@ class _RoomPageState extends State<RoomPage> {
   Map<String, dynamic>? _activeRoomGift;
   Timer? _roomGiftOverlayTimer;
   int _roomGiftOverlayNonce = 0;
+  bool _giftAudioUnlocked = false;
   final AudioPlayer _giftAudioPlayer = AudioPlayer();
   int _roomLevel = 1;
   int _roomExperienceLevel = 1;
@@ -1724,8 +1725,19 @@ class _RoomPageState extends State<RoomPage> {
     _roomGiftOverlayTimer = Timer(Duration(milliseconds: durationMs), () {
       if (!mounted) return;
       setState(() => _activeRoomGift = null);
-      unawaited(_giftAudioPlayer.stop());
     });
+  }
+
+  Future<void> _unlockGiftAudio() async {
+    if (_giftAudioUnlocked) return;
+    try {
+      // Browsers (especially mobile Safari) may suspend audio until a real
+      // user gesture. Resume the room player on the first room interaction.
+      await _giftAudioPlayer.resume();
+      _giftAudioUnlocked = true;
+    } catch (error) {
+      debugPrint('[GiftSound] audio unlock pending: $error');
+    }
   }
 
   Future<void> _playGiftSound(Map<String, dynamic> gift) async {
@@ -2087,7 +2099,9 @@ class _RoomPageState extends State<RoomPage> {
         body: SizedBox.expand(),
       );
     }
-    return Stack(
+    return Listener(
+      onPointerDown: (_) => unawaited(_unlockGiftAudio()),
+      child: Stack(
       fit: StackFit.expand,
       children: [
         ChangeNotifierProvider<SeatStateStore>.value(
@@ -2141,7 +2155,7 @@ class _RoomPageState extends State<RoomPage> {
             ),
           ),
       ],
-    );
+    ));
   }
 
   Widget _referenceRoomHeader() {
