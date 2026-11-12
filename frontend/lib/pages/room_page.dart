@@ -2029,10 +2029,7 @@ class _RoomPageState extends State<RoomPage> {
                                 : const Text('إرسال طلب الهدية للإدارة'))),
                           ]),
                         ),
-                      Expanded(child: activeTab == 'custom'
-                        ? const Center(child: Text('ستظهر الهدايا المخصصة المعتمدة هنا.',
-                            style: TextStyle(color: Colors.white38, fontSize: 11)))
-                        : giftGrid()),
+                      Expanded(child: giftGrid()),
                       if (localMessage != null)
                         Padding(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                           child: Text(localMessage!, textAlign: TextAlign.center,
