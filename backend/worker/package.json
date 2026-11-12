@@ -11,6 +11,8 @@
     "db:remote": "wrangler d1 migrations apply happy-live-db --remote",
     "db:preview:list": "wrangler d1 migrations list PREVIEW_DB --remote --config wrangler.preview-migrations.toml",
     "db:preview": "wrangler d1 migrations apply PREVIEW_DB --remote --config wrangler.preview-migrations.toml",
+    "preview:deploy": "wrangler preview --name cat-greed",
+    "preview:secrets:list": "wrangler preview secret list --name cat-greed",
     "test": "node --test tests/*.test.mjs"
   },
   "devDependencies": {
