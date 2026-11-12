@@ -87,7 +87,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   bool _sending = false;
   Map<String, dynamic>? _comboGift;
   String? _comboRecipientId;
-  int _comboCount = sentQuantity;
+  int _comboCount = 1;
   int _comboNonce = 0;
   bool _requesting = false;
   String? _message;
@@ -165,7 +165,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
           _selectedGift = null;
           _comboGift = recipientIds.length == 1 ? Map<String, dynamic>.from(gift) : null;
           _comboRecipientId = recipientIds.length == 1 ? recipientIds.first : null;
-          _comboCount = 1;
+          _comboCount = sentQuantity;
           _comboNonce++;
         });
         _showMessage(recipientIds.length == 1 ? 'تم إرسال الهدية بنجاح' : 'تم إرسال الهدية إلى $sent مستلمين');
