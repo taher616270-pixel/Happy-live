@@ -35,7 +35,9 @@ test("console roles are constrained and primary owner is seeded", () => {
 test("standalone admin page exposes stats and moderator management without fake economy data", () => {
   assert.match(adminPage, /data-page="overview"/);
   assert.match(adminPage, /data-page="moderators"/);
-  assert.match(adminPage, /VIP والشحن والهدايا/);
+  assert.match(adminPage, /إدارة VIP والشحن الإلكتروني غير مفعّلة/);
+  assert.match(adminPage, /async function giftsPage\\(\\)/);
+  assert.match(adminPage, /data-page="adminAccounts"/);
 });
 
 test("admin room moderation is scoped to an existing room and uses server-side permissions", () => {
