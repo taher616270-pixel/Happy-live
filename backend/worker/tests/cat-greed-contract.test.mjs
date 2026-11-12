@@ -108,3 +108,11 @@ test("new migration defaults keep the maximum expected return below the activati
   ));
   assert.ok(maximum <= 10000, "default theoretical return must stay at or below 100%");
 });
+
+test("pausing Cat Greed blocks new bets but keeps the active round visible for settlement", () => {
+  assert.match(worker, /if \(publicBet && !settings\.enabled\)/);
+  assert.match(worker, /currentRound\(db,settings\.enabled===1\)/);
+  assert.match(worker, /enabled:settings\.enabled===1/);
+  assert.match(gameSite, /n\.enabled!==true&&!n\.roundId/);
+  assert.match(flutterGame, /next\['enabled'\]!=true&&next\['roundId'\]==null/);
+});
