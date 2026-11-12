@@ -10,7 +10,10 @@ const flutterGame = await readFile(new URL("../../../frontend/lib/pages/cat_gree
 const roomPreview = await readFile(new URL("../../../frontend/lib/pages/voice_room_design_preview.dart", import.meta.url), "utf8");
 const mainAdmin = await readFile(new URL("../../../frontend/web/admin/index.html", import.meta.url), "utf8");
 const gameAdmin = await readFile(new URL("../../../frontend/web/cat-greed-admin/index.html", import.meta.url), "utf8");
+const gameAdminScript = await readFile(new URL("../../../frontend/web/cat-greed-admin/app.js", import.meta.url), "utf8");
 const gameSite = await readFile(new URL("../../../frontend/web/cat-greed/index.html", import.meta.url), "utf8");
+const gameScript = await readFile(new URL("../../../frontend/web/cat-greed/app.js", import.meta.url), "utf8");
+const pageHeaders = await readFile(new URL("../../../frontend/web/_headers", import.meta.url), "utf8");
 
 test("Cat Greed stores rounds, bets, payouts, symbols and player limits separately", () => {
   for (const table of ["cat_greed_settings","cat_greed_symbols","cat_greed_rounds","cat_greed_bets","cat_greed_payouts","cat_greed_player_controls","cat_greed_admin_audit","cat_greed_ledger"]) {
@@ -51,10 +54,10 @@ test("the room games sheet launches Cat Greed without replacing other room contr
 test("both requested admin surfaces and the standalone game route are present", () => {
   assert.match(mainAdmin, /catGreedMainPage/);
   assert.match(mainAdmin, /maxBetPerRound/);
-  assert.match(gameAdmin, /admin\/cat-greed\/settings/);
-  assert.match(gameAdmin, /admin\/cat-greed\/symbols/);
-  assert.match(gameAdmin, /admin\/cat-greed\/rounds/);
-  assert.match(gameSite, /\/games\/cat-greed\/state/);
+  assert.match(gameAdminScript, /admin\/cat-greed\/settings/);
+  assert.match(gameAdminScript, /admin\/cat-greed\/symbols/);
+  assert.match(gameAdminScript, /admin\/cat-greed\/rounds/);
+  assert.match(gameScript, /\/games\/cat-greed\/state/);
 });
 
 test("Cat Greed bet requests are idempotent and rate-limited per authenticated player", () => {
@@ -88,8 +91,8 @@ test("unsafe payout exposure cannot be enabled and all players share published o
 test("symbol images are restricted to ImageKit and game pages use safe rendering", () => {
   assert.match(worker, /isValidImageKitUrl/);
   assert.match(worker, /hostname === "ik\.imagekit\.io"/);
-  assert.match(gameSite, /safeImage/);
-  assert.match(gameSite, /idempotencyKey/);
+  assert.match(gameScript, /safeImage/);
+  assert.match(gameScript, /idempotencyKey/);
 });
 
 test("bet debit, ledger entry and bet insert use the same idempotent transaction id", () => {
@@ -113,6 +116,13 @@ test("pausing Cat Greed blocks new bets but keeps the active round visible for s
   assert.match(worker, /if \(publicBet && !settings\.enabled\)/);
   assert.match(worker, /currentRound\(db,settings\.enabled===1\)/);
   assert.match(worker, /enabled:settings\.enabled===1/);
-  assert.match(gameSite, /n\.enabled!==true&&!n\.roundId/);
+  assert.match(gameScript, /n\.enabled!==true&&!n\.roundId/);
   assert.match(flutterGame, /next\['enabled'\]!=true&&next\['roundId'\]==null/);
+});
+
+test("standalone Cat Greed scripts are external and route CSP blocks inline script execution", () => {
+  assert.match(gameSite, /<script src="app\.js" defer><\/script>/);
+  assert.match(gameAdmin, /<script src="app\.js" defer><\/script>/);
+  assert.match(pageHeaders, /script-src 'self'/);
+  assert.match(pageHeaders, /frame-ancestors 'none'/);
 });
