@@ -2142,8 +2142,9 @@ export default {
         if (transaction.status !== "succeeded") return json({ error: "gift_not_processed" }, 409, origin, env);
         // Notify every connected room member after the wallet transaction is committed.
         // Animation delivery is best-effort and must never undo a successful gift.
+        let gift: Record<string, unknown> | null = null;
         try {
-          const gift = await env.DB.prepare(
+          gift = await env.DB.prepare(
             "SELECT g.name, g.icon_emoji AS iconEmoji, g.media_url AS mediaUrl, g.media_type AS mediaType, g.sound_url AS soundUrl, " +
             "COALESCE(sp.display_name, 'مستخدم') AS senderName, COALESCE(rp.display_name, 'مستخدم') AS recipientName, " +
             "COALESCE(sp.avatar_key, '') AS senderAvatar, COALESCE(rp.avatar_key, '') AS recipientAvatar " +
