@@ -140,8 +140,11 @@ test("standalone Cat Greed scripts are external and route CSP blocks inline scri
   assert.match(pageHeaders, /frame-ancestors 'none'/);
   assert.match(gameScript, /location\.hostname==="happy-live\.pages\.dev"/);
   assert.match(gameAdminScript, /location\.hostname==="happy-live\.pages\.dev"/);
+  assert.match(gameScript, /catGreedApi/);
+  assert.match(gameAdminScript, /catGreedApi/);
   assert.match(mainAdmin, /location\.hostname!=="happy-live\.pages\.dev"/);
-  assert.match(flutterGame, /kIsWeb&&Uri\.base\.host!='happy-live\.pages\.dev'/);
+  assert.match(flutterGame, /Uri\.base\.queryParameters\['catGreedApi'\]/);
+  assert.match(flutterGame, /host\.endsWith\('\.taher616270\.workers\.dev'\)/);
 });
 
 test("Preview migrations are explicitly isolated from the production D1 database", () => {
