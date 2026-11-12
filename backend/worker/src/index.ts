@@ -1733,7 +1733,7 @@ export default {
             mediaDurationMs < 1 || mediaDurationMs > 5000) {
           return json({ error: "invalid_custom_gift_media", message: "يُسمح بملفات GIF أو SVGA فقط، وبمدة لا تتجاوز 5 ثوانٍ، عبر ImageKit." }, 400, origin, env);
         }
-        if (mediaType === "gif" && !/\\.gif(?:$|[?#])/i.test(parsedMediaUrl.pathname + parsedMediaUrl.search)) {
+        if (mediaType === "gif" && !/\.gif(?:$|[?#])/i.test(parsedMediaUrl.pathname + parsedMediaUrl.search)) {
           return json({ error: "invalid_custom_gift_media_type" }, 400, origin, env);
         }
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
