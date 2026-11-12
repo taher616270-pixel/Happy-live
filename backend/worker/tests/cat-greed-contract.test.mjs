@@ -8,6 +8,7 @@ const protectionMigration = await readFile(new URL("../migrations/0036_cat_greed
 const previewMigrationConfig = await readFile(new URL("../wrangler.preview-migrations.toml", import.meta.url), "utf8");
 const wranglerConfig = await readFile(new URL("../wrangler.toml", import.meta.url), "utf8");
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+const deployWorkflow = await readFile(new URL("../../../.github/workflows/deploy-happy-live-worker.yml", import.meta.url), "utf8");
 const worker = await readFile(new URL("../src/cat_greed.ts", import.meta.url), "utf8");
 const flutterGame = await readFile(new URL("../../../frontend/lib/pages/cat_greed_game.dart", import.meta.url), "utf8");
 const roomPreview = await readFile(new URL("../../../frontend/lib/pages/voice_room_design_preview.dart", import.meta.url), "utf8");
@@ -157,4 +158,13 @@ test("Preview migrations are explicitly isolated from the production D1 database
   assert.match(packageJson.scripts["db:preview"], /PREVIEW_DB/);
   assert.match(packageJson.scripts["preview:deploy"], /wrangler preview --name cat-greed/);
   assert.match(packageJson.scripts["preview:secrets:list"], /preview secret list --name cat-greed/);
+});
+
+test("manual production Worker deployment applies all Cat Greed migrations before deploy", () => {
+  assert.match(deployWorkflow, /workflow_dispatch:/);
+  const m34 = deployWorkflow.indexOf("migrations/0034_cat_greed_wheel.sql");
+  const m35 = deployWorkflow.indexOf("migrations/0035_cat_greed_ledger.sql");
+  const m36 = deployWorkflow.indexOf("migrations/0036_cat_greed_bet_protection.sql");
+  const deploy = deployWorkflow.indexOf("Deploy Worker with Wrangler");
+  assert.ok(m34 >= 0 && m35 > m34 && m36 > m35 && deploy > m36);
 });
