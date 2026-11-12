@@ -186,8 +186,9 @@ test("manual production Worker deployment applies all Cat Greed migrations befor
   const m34 = deployWorkflow.indexOf("migrations/0034_cat_greed_wheel.sql");
   const m35 = deployWorkflow.indexOf("migrations/0035_cat_greed_ledger.sql");
   const m36 = deployWorkflow.indexOf("migrations/0036_cat_greed_bet_protection.sql");
+  const m37 = deployWorkflow.indexOf("migrations/0037_cat_greed_round_guard.sql");
   const deploy = deployWorkflow.indexOf("Deploy Worker with Wrangler");
-  assert.ok(m34 >= 0 && m35 > m34 && m36 > m35 && deploy > m36);
+  assert.ok(m34 >= 0 && m35 > m34 && m36 > m35 && m37 > m36 && deploy > m37);
 });
 
 test("Preview-only migration copies stay byte-identical to the canonical Cat Greed migrations", () => {
