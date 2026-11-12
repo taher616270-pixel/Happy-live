@@ -106,7 +106,7 @@
 1. مراجعة PR وجميع التغييرات ومقارنة الملفات مع `main`.
 2. تشغيل `npm test` و`npm run typecheck` من `backend/worker`.
 3. تشغيل Flutter analyze/build للويب.
-4. من `backend/worker` نفّذ `npm run db:preview:list` لمراجعة المعلّق، ثم `npm run db:preview` لتطبيق migrations على `happy-live-room-exp-preview-db` فقط. ملف `wrangler.preview-migrations.toml` مخصص لهذه القاعدة؛ لا تستخدم `db:remote` لأنه يستهدف D1 الإنتاج.
+4. فحصت قاعدة `happy-live-room-exp-preview-db` مباشرة: الجداول الأساسية موجودة، لكن جدول `d1_migrations` فارغ. لذلك لا يجوز استخدام مجلد `migrations` الكامل؛ بعض الملفات القديمة تحتوي `ALTER TABLE` غير قابلة لإعادة التشغيل. ملف `wrangler.preview-migrations.toml` يستخدم مجلد `migrations-cat-greed-preview` المعزول الذي يحتوي فقط نسخ migrations `0034`–`0036`. نفّذ `npm run db:preview:list` ثم `npm run db:preview` على قاعدة Preview فقط. لا تستخدم `db:remote` لأنه يستهدف D1 الإنتاج.
 5. بعد نجاح migrations، أنشئ Worker Preview باسم `cat-greed` من مجلد `backend/worker` باستخدام `npm run preview:deploy` (Wrangler 4.135.0 أو أحدث). احتفظ بعنوان Preview الذي يرجعه الأمر.
 6. اضبط أسرار ImageKit المطلوبة على Preview عبر `wrangler preview secret put`؛ لا تنسخ كلمات مرور أو أسرار الإنتاج ولا تحفظها في Git. أنشئ حسابات اختبار منفصلة داخل قاعدة Preview.
 7. افتح صفحات Preview مع معامل `?catGreedApi=https://<preview-worker-host>` بعد التأكد من أن المضيف هو Worker Preview الخاص بـ Happy Live؛ الواجهة ترفض عنوان الإنتاج على صفحات Preview.
