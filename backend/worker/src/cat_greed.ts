@@ -23,6 +23,8 @@ type CatGreedSnapshot = {
 const BET_CHIPS = new Set([10, 500, 6000, 30000, 100000]);
 const BET_RATE_WINDOW_SECONDS = 10;
 const BET_RATE_MAX_REQUESTS = 10;
+const STATE_RATE_WINDOW_SECONDS = 60;
+const STATE_RATE_MAX_REQUESTS = 90;
 const isoNow = () => new Date().toISOString();
 
 function isValidImageKitUrl(value: string): boolean {
@@ -195,6 +197,12 @@ export async function handleCatGreedRequest(
     if (publicState || publicBet) {
       const user = await authenticateUser(request,db);
       if (!user) return wheelError("authentication_required",401,json,origin,env);
+      if(publicState){
+        const windowStart=Math.floor(Date.now()/STATE_RATE_WINDOW_SECONDS);
+        const rate=await db.prepare("INSERT INTO cat_greed_state_rate_limits (user_id,window_start,request_count) VALUES (?,?,1) ON CONFLICT(user_id) DO UPDATE SET window_start=CASE WHEN cat_greed_state_rate_limits.window_start=excluded.window_start THEN cat_greed_state_rate_limits.window_start ELSE excluded.window_start END,request_count=CASE WHEN cat_greed_state_rate_limits.window_start=excluded.window_start THEN cat_greed_state_rate_limits.request_count+1 ELSE 1 END RETURNING request_count")
+          .bind(user.id,windowStart).first<{request_count:number}>();
+        if(!rate||rate.request_count>STATE_RATE_MAX_REQUESTS) return json({error:"state_rate_limited",retry_after_seconds:STATE_RATE_WINDOW_SECONDS},429,origin,env);
+      }
       const settings = await getSettings(db);
       if (publicBet && !settings.enabled) return json({enabled:false,error:"game_disabled"},423,origin,env);
       let round = await currentRound(db,settings.enabled===1);
