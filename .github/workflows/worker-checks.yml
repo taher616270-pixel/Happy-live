@@ -7,6 +7,8 @@ on:
     paths:
       - "backend/worker/**"
       - ".github/workflows/worker-checks.yml"
+      - ".github/workflows/deploy-happy-live-worker-only.yml"
+      - ".github/workflows/deploy-happy-live-worker.yml"
   pull_request:
     paths:
       - "backend/worker/**"
