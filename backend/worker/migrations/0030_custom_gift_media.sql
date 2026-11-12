@@ -8,3 +8,10 @@ ALTER TABLE gift_custom_requests ADD COLUMN media_duration_ms INTEGER
 ALTER TABLE gift_custom_requests ADD COLUMN media_file_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_gift_custom_requests_media_file
   ON gift_custom_requests(media_file_id);
+
+-- Ensure the pre-existing ImageKit signing endpoint has its rate-limit table.
+CREATE TABLE IF NOT EXISTS imagekit_auth_rate_limits (
+  ip TEXT PRIMARY KEY,
+  window_start INTEGER NOT NULL,
+  request_count INTEGER NOT NULL DEFAULT 0
+);
