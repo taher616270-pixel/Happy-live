@@ -272,7 +272,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
                     Expanded(child: _customCreating ? _customRequestForm() : _customHome())
                   else
                     Expanded(child: _giftGrid()),
-                  if (_tab != 'vip' && (_tab != 'custom' || !_customCreating)) _bottomBar(),
+                  if (_tab != 'vip') _bottomBar(),
                 ],
               ),
               if (_message != null)
