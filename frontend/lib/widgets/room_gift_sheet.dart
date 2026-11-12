@@ -299,7 +299,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
       return Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 34));
     }
     if (type == 'svga') {
-      return SVGAEasyPlayer(resUrl: url, fit: BoxFit.contain);
+      return SVGAEasyPlayer(resUrl: url, fit: BoxFit.contain, volume: 0, muted: true);
     }
     if (type == 'apng') {
       return GifView.network(
