@@ -1984,6 +1984,36 @@ export default {
           return json({ error: "gift_not_processed" }, 409, origin, env);
         }
         if (transaction.status !== "succeeded") return json({ error: "gift_not_processed" }, 409, origin, env);
+        // Notify every connected room member after the wallet transaction is committed.
+        // Animation delivery is best-effort and must never undo a successful gift.
+        try {
+          const gift = await env.DB.prepare(
+            "SELECT name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType " +
+            "FROM gift_catalog WHERE id = ? LIMIT 1"
+          ).bind(giftId).first<Record<string, unknown>>();
+          if (env.ROOM_SEATS && gift) {
+            const hub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+            await hub.fetch(new Request("https://room-seats.internal/gift", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-room-id": roomId },
+              body: JSON.stringify({
+                transactionId: transaction.id,
+                senderUserId: user.id,
+                recipientUserId,
+                senderName: "مستخدم",
+                recipientName: "مستخدم",
+                name: gift.name,
+                iconEmoji: gift.iconEmoji,
+                mediaUrl: gift.mediaUrl,
+                mediaType: gift.mediaType,
+                mediaDurationMs: 5000,
+                quantity
+              })
+            }));
+          }
+        } catch (broadcastError) {
+          console.warn("[gifts.room.broadcast] skipped", broadcastError instanceof Error ? broadcastError.message : "UnknownError");
+        }
         return json({ ok: true, duplicate: false, transaction }, 201, origin, env);
       } catch (error) {
         const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
