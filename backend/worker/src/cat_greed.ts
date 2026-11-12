@@ -42,14 +42,15 @@ function calculateOdds(snapshot: CatGreedSnapshot) {
   if (totalWeight <= 0) return [];
   const regularWeightBp = 10000 - snapshot.saladWeightBp - snapshot.pizzaWeightBp;
   return snapshot.symbols.map(symbol => {
-    const appearanceProbabilityBp = Math.round(regularWeightBp * Math.max(0, symbol.weight) / totalWeight);
-    const winProbabilityBp = appearanceProbabilityBp +
+    const appearanceRawBp = regularWeightBp * Math.max(0, symbol.weight) / totalWeight;
+    const winRawBp = appearanceRawBp +
       (symbol.isVegetable ? snapshot.saladWeightBp : snapshot.pizzaWeightBp);
     return {
       slot: symbol.slot,
-      appearanceProbabilityBp,
-      winProbabilityBp,
-      expectedReturnBp: winProbabilityBp * symbol.multiplier
+      appearanceProbabilityBp: Math.round(appearanceRawBp),
+      winProbabilityBp: Math.round(winRawBp),
+      // Round upward for the activation guard so display rounding can never hide excess exposure.
+      expectedReturnBp: Math.ceil(winRawBp * symbol.multiplier)
     };
   });
 }
