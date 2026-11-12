@@ -34,15 +34,85 @@ interface SocketIdentity {
 
 const EMPTY_SNAPSHOT: RoomSeatSnapshot = { seats: {}, versions: {}, revision: 0, voiceEnabled: true };
 const SEAT_LEASE_MS = 45_000;
+const ROOM_EXP_DAILY_USER_CAP = 3_000_000;
+
+interface RoomSeatsEnv {
+  DB: D1Database;
+}
+
+async function resetRoomSeatExperienceTimer(
+  db: D1Database, roomId: string, userId: string, now: string
+): Promise<void> {
+  await db.prepare(
+    "INSERT INTO room_exp_activity (room_id, user_id, last_awarded_at) VALUES (?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET last_awarded_at = excluded.last_awarded_at"
+  ).bind(roomId, userId, now).run();
+}
+
+async function awardRoomSeatExperience(
+  db: D1Database, roomId: string, userId: string, now: string
+): Promise<void> {
+  await db.prepare(
+    "INSERT OR IGNORE INTO room_exp_activity (room_id, user_id, last_awarded_at) VALUES (?, ?, ?)"
+  ).bind(roomId, userId, now).run();
+  const previous = await db.prepare(
+    "SELECT last_awarded_at FROM room_exp_activity WHERE room_id = ? AND user_id = ? LIMIT 1"
+  ).bind(roomId, userId).first<{ last_awarded_at: string }>();
+  if (!previous?.last_awarded_at || Date.parse(now) - Date.parse(previous.last_awarded_at) < 300_000) return;
+
+  const dayKey = now.slice(0, 10);
+  const nowMs = Date.parse(now);
+  const account = await db.prepare(
+    "SELECT created_at FROM users WHERE id = ? LIMIT 1"
+  ).bind(userId).first<{ created_at: string }>();
+  const accountCreatedAt = Date.parse(account?.created_at ?? "");
+  const isNewAccount = Number.isFinite(accountCreatedAt) &&
+    nowMs >= accountCreatedAt &&
+    nowMs - accountCreatedAt < 15 * 24 * 60 * 60 * 1000;
+  const awardPoints = isNewAccount ? 1200 : 600;
+  const advanced = await db.prepare(
+    "UPDATE room_exp_activity SET last_awarded_at = ? WHERE room_id = ? AND user_id = ? AND last_awarded_at = ?"
+  ).bind(now, roomId, userId, previous.last_awarded_at).run();
+  if ((advanced.meta?.changes ?? 0) !== 1) return;
+
+  try {
+    await db.prepare(
+      "INSERT OR IGNORE INTO room_exp_daily (user_id, day_key, points) VALUES (?, ?, 0)"
+    ).bind(userId, dayKey).run();
+    const awardId = crypto.randomUUID();
+    await db.batch([
+      db.prepare(
+        "INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) SELECT ?, ?, ?, ?, MIN(?, ? - points), ? FROM room_exp_daily WHERE user_id = ? AND day_key = ? AND points < ?"
+      ).bind(awardId, roomId, userId, dayKey, awardPoints, ROOM_EXP_DAILY_USER_CAP, now, userId, dayKey, ROOM_EXP_DAILY_USER_CAP),
+      db.prepare(
+        "UPDATE room_exp_daily SET points = points + COALESCE((SELECT points FROM room_exp_awards WHERE id = ?), 0) WHERE user_id = ? AND day_key = ?"
+      ).bind(awardId, userId, dayKey),
+      db.prepare(
+        "INSERT INTO room_experience (room_id, total_exp, updated_at) SELECT ?, points, ? FROM room_exp_awards WHERE id = ? ON CONFLICT(room_id) DO UPDATE SET total_exp = room_experience.total_exp + excluded.total_exp, updated_at = excluded.updated_at"
+      ).bind(roomId, now, awardId)
+    ]);
+  } catch (error) {
+    // If D1 fails, restore the old timestamp so the user's earned mic time is not lost.
+    try {
+      await db.prepare(
+        "UPDATE room_exp_activity SET last_awarded_at = ? WHERE room_id = ? AND user_id = ? AND last_awarded_at = ?"
+      ).bind(previous.last_awarded_at, roomId, userId, now).run();
+    } catch {
+      // Keep the original D1 error; the next heartbeat can retry if rollback was unavailable.
+    }
+    throw error;
+  }
+}
 
 export class RoomSeatsHub {
   private snapshot: RoomSeatSnapshot = structuredClone(EMPTY_SNAPSHOT);
+  private roomId = '';
   private readonly sockets = new Map<WebSocket, SocketIdentity>();
   private mutationQueue: Promise<void> = Promise.resolve();
   private readonly ready: Promise<void>;
 
-  constructor(private readonly state: DurableObjectState, private readonly env: unknown) {
+  constructor(private readonly state: DurableObjectState, private readonly env: RoomSeatsEnv) {
     this.ready = this.state.blockConcurrencyWhile(async () => {
+      this.roomId = (await this.state.storage.get<string>("room-id")) ?? '';
       this.snapshot = (await this.state.storage.get<RoomSeatSnapshot>("room-seat-snapshot")) ?? structuredClone(EMPTY_SNAPSHOT);
       if (!this.snapshot.seats) this.snapshot.seats = {};
       if (!this.snapshot.versions) this.snapshot.versions = {};
@@ -62,6 +132,17 @@ export class RoomSeatsHub {
 
     if (url.pathname === "/clear" && request.method === "POST") {
       await this.enqueue(async () => {
+        // Clearing/disabling microphones ends every active continuous-time session.
+        const removedMembers = Object.values(this.snapshot.seats);
+        if (this.roomId) {
+          for (const member of removedMembers) {
+            try {
+              await resetRoomSeatExperienceTimer(this.env.DB, this.roomId, member.userId, new Date().toISOString());
+            } catch (error) {
+              console.error("[room-seats.experience] clear timer reset failed", error instanceof Error ? error.message : "UnknownError");
+            }
+          }
+        }
         this.snapshot.seats = {};
         this.snapshot.voiceEnabled = false;
         this.snapshot.revision++;
@@ -121,6 +202,14 @@ export class RoomSeatsHub {
       await this.enqueue(async () => {
         const current = Object.values(this.snapshot.seats).find((seat) => seat.userId === targetUserId);
         if (current) {
+          // Moderation removal ends the member's continuous microphone session.
+          if (this.roomId) {
+            try {
+              await resetRoomSeatExperienceTimer(this.env.DB, this.roomId, targetUserId, new Date().toISOString());
+            } catch (error) {
+              console.error("[room-seats.experience] removal timer reset failed", error instanceof Error ? error.message : "UnknownError");
+            }
+          }
           delete this.snapshot.seats[String(current.seatNumber)];
           this.snapshot.revision++;
           await this.persist();
@@ -192,6 +281,11 @@ export class RoomSeatsHub {
     if (url.pathname !== "/connect" || request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
       return new Response("Not found", { status: 404 });
     }
+
+    const requestedRoomId = request.headers.get("x-room-id") ?? this.roomId;
+    if (!requestedRoomId) return new Response("Room identity required", { status: 400 });
+    this.roomId = requestedRoomId;
+    await this.state.storage.put("room-id", requestedRoomId);
 
     const userId = request.headers.get("x-user-id") ?? "";
     if (!userId) return new Response("Unauthorized", { status: 401 });
@@ -278,6 +372,11 @@ export class RoomSeatsHub {
         member.expiresAt = Date.now() + SEAT_LEASE_MS;
         this.snapshot.revision++;
         await this.persist();
+        try {
+          if (this.roomId) await awardRoomSeatExperience(this.env.DB, this.roomId, identity.userId, new Date().toISOString());
+        } catch (error) {
+          console.error("[room-seats.experience] award failed", error instanceof Error ? error.message : "UnknownError");
+        }
       }
       this.send(socket, { type: "heartbeat_ack", serverTime: Date.now() });
       return;
@@ -344,6 +443,13 @@ export class RoomSeatsHub {
     this.snapshot.revision++;
     await this.persist();
     await this.scheduleExpiry();
+    if (current?.seatNumber !== to && this.roomId) {
+      try {
+        await resetRoomSeatExperienceTimer(this.env.DB, this.roomId, identity.userId, new Date().toISOString());
+      } catch (error) {
+        console.error("[room-seats.experience] timer reset failed", error instanceof Error ? error.message : "UnknownError");
+      }
+    }
     return { type: "ack", ok: true, code: "moved", version, from: current?.seatNumber ?? null, mySeat: to, ...this.publicSnapshot() };
   }
 
@@ -352,6 +458,14 @@ export class RoomSeatsHub {
     let changed = false;
     for (const [number, member] of Object.entries(this.snapshot.seats)) {
       if (member.expiresAt <= now) {
+        // An expired seat is no longer continuous microphone occupancy.
+        if (this.roomId) {
+          try {
+            await resetRoomSeatExperienceTimer(this.env.DB, this.roomId, member.userId, new Date(now).toISOString());
+          } catch (error) {
+            console.error("[room-seats.experience] expiry timer reset failed", error instanceof Error ? error.message : "UnknownError");
+          }
+        }
         delete this.snapshot.seats[number];
         changed = true;
       }

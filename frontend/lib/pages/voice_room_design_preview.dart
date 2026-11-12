@@ -267,57 +267,38 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     return '';
   }
 
-  RoomLevelData _roomLevelData({
-    String? resolvedOwnerName,
-    String? resolvedOwnerId,
-    String? resolvedOwnerAvatarUrl,
-  }) {
-    final ownerData = room['owner'] is Map
-        ? Map<String, dynamic>.from(room['owner'] as Map)
-        : room['roomOwner'] is Map
-            ? Map<String, dynamic>.from(room['roomOwner'] as Map)
-            : room['room_owner'] is Map
-                ? Map<String, dynamic>.from(room['room_owner'] as Map)
-                : <String, dynamic>{};
-    final ownerProfile = ownerData['profile'] is Map
-        ? Map<String, dynamic>.from(ownerData['profile'] as Map)
-        : ownerData;
-    String ownerValue(List<String> keys) {
-      for (final key in keys) {
-        final value = ownerProfile[key]?.toString().trim() ?? '';
-        if (value.isNotEmpty && value != 'null') return value;
-      }
-      return '';
-    }
-    final avatarUrl = (resolvedOwnerAvatarUrl ?? '').trim().isNotEmpty
-        ? resolvedOwnerAvatarUrl!.trim()
-        : (ownerValue(['avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url', 'imageUrl', 'image_url']).isNotEmpty
-            ? ownerValue(['avatarUrl', 'avatar_url', 'avatar', 'photoUrl', 'photo_url', 'imageUrl', 'image_url'])
-            : ownerAvatarUrl);
-    final exp = _roomInfoInt(['roomExp', 'room_exp', 'exp', 'experience'], 1800000);
-    final level = _roomInfoInt(['level', 'roomLevel', 'room_level'], 1);
-    // الخبرة داخل المستوى الحالي، والهدف التالي يتحدد من جدول الخمس مستويات.
-    // لا يوجد سقف للمستويات؛ الامتيازات فقط تنتهي عند المستوى 120.
-    final nextExp = roomLevelRequiredExpForLevel(level + 1);
+  RoomLevelData _roomLevelData() {
+    // Room identity belongs in the level window; it must never show the owner profile.
+    // Room experience remains independent from paid room upgrade tiers.
+    final exp = _roomInfoInt(['experienceExp', 'experience_exp'], 0);
+    final level = _roomInfoInt(['experienceLevel', 'experience_level'], 1)
+        .clamp(1, 2147483647).toInt();
+    final nextExp = _roomInfoInt(
+      ['experienceNextLevelExp', 'experience_next_level_exp'],
+      roomLevelRequiredExpForLevel(level + 1),
+    ).clamp(1, 2147483647).toInt();
+    final dailyExp = _roomInfoInt(
+      ['dailyExperienceExp', 'daily_experience_exp'], 0,
+    ).clamp(0, 3000000).toInt();
+    final dailyResetSeconds = _roomInfoInt(
+      ['dailyResetInSeconds', 'daily_reset_in_seconds'], 0,
+    ).clamp(0, 86400).toInt();
+    final roomImage = _roomInfoString(
+      ['imageUrl', 'image_url', 'coverUrl', 'cover_url'],
+    );
     return RoomLevelData(
       level: level,
-      ownerName: (resolvedOwnerName ?? '').trim().isNotEmpty
-          ? resolvedOwnerName!.trim()
-          : (ownerValue(['name', 'displayName', 'display_name', 'username']).isNotEmpty
-              ? ownerValue(['name', 'displayName', 'display_name', 'username'])
-              : ownerName),
-      ownerId: (resolvedOwnerId ?? '').trim().isNotEmpty
-          ? resolvedOwnerId!.trim()
-          : (ownerValue(['userCode', 'user_code', 'gabo_id', 'publicId', 'public_id']).isNotEmpty
-              ? ownerValue(['userCode', 'user_code', 'gabo_id', 'publicId', 'public_id'])
-              : _roomInfoString(['ownerCode', 'owner_code', 'ownerUserCode', 'owner_user_code'])),
-      ownerAvatar: avatarUrl.startsWith('http') ? NetworkImage(avatarUrl) : null,
+      roomName: _name,
+      roomId: _id,
+      roomAvatar: roomImage.startsWith('http') ? NetworkImage(roomImage) : null,
       exp: exp,
       nextLevelExp: nextExp,
-      dailyExpCurrent: _roomInfoString(['dailyExpCurrent', 'daily_exp_current'], '0'),
-      dailyExpMax: _roomInfoString(['dailyExpMax', 'daily_exp_max'], '9.9m'),
-      dailyRatio: double.tryParse(_roomInfoString(['dailyRatio', 'daily_ratio'], '0')) ?? 0,
-      dailyResetIn: const Duration(hours: 2, minutes: 48),
+      dailyExpCurrent: dailyExp.toString(),
+      dailyExpMax: '3.0m',
+      dailyRatio: dailyExp / 3000000,
+      dailyResetIn: dailyResetSeconds > 0
+          ? Duration(seconds: dailyResetSeconds)
+          : null,
       tasks: kSampleTasks,
       perkGroups: kSamplePerks,
     );
@@ -504,6 +485,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         tribeOwner: _roomInfoString(['tribeOwner', 'tribe_owner']),
         tribeLogoUrl: _roomInfoString(['tribe_logo', 'tribeLogo', 'tribeLogoUrl', 'tribe_logo_url']),
         level: _roomInfoInt(['level', 'roomLevel', 'room_level'], 1),
+        experienceLevel: _roomInfoInt(['experienceLevel', 'experience_level'], 1),
         palaceStatus: _roomInfoString(['palaceStatus', 'palace_status'], 'غير مفعّل'),
         membersCount: _roomInfoInt(['membersCount', 'members_count', 'memberCount'], 0) > members.length
             ? _roomInfoInt(['membersCount', 'members_count', 'memberCount'], 0)
@@ -534,11 +516,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         info,
         onLevelTap: () => showRoomLevelSheet(
           context,
-          _roomLevelData(
-            resolvedOwnerName: ownerMember.name,
-            resolvedOwnerId: ownerMember.id,
-            resolvedOwnerAvatarUrl: ownerMember.avatarUrl,
-          ),
+          _roomLevelData(),
         ),
         onUpgrade: () {
           Navigator.of(context).pop();

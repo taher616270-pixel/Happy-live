@@ -21,6 +21,100 @@ const PASSWORD_ITERATIONS = 100000;
 const AUTH_RATE_WINDOW_SECONDS = 900;
 const AUTH_RATE_MAX_ATTEMPTS = 8;
 
+const ROOM_EXP_PER_LEVEL_GROUP = 3_300_000;
+const ROOM_EXP_DAILY_USER_CAP = 3_000_000;
+
+function roomExperienceProgress(totalExperience: number) {
+  let level = 1;
+  let remaining = Number.isFinite(totalExperience)
+    ? Math.max(0, Math.floor(totalExperience))
+    : 0;
+
+  // The cost is determined by the level being entered:
+  // levels 2-5 cost 3.3m each, 6-10 cost 6.6m each, etc.
+  while (true) {
+    const nextLevel = level + 1;
+    const group = Math.floor((nextLevel - 1) / 5) + 1;
+    const nextLevelExp = group * ROOM_EXP_PER_LEVEL_GROUP;
+    if (remaining < nextLevelExp) {
+      return { level, exp: remaining, nextLevelExp };
+    }
+    remaining -= nextLevelExp;
+    level = nextLevel;
+  }
+}
+
+async function resetRoomSeatExperienceTimer(
+  db: D1Database,
+  roomId: string,
+  userId: string,
+  now: string
+): Promise<void> {
+  await db.prepare(
+    "INSERT INTO room_exp_activity (room_id, user_id, last_awarded_at) VALUES (?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET last_awarded_at = excluded.last_awarded_at"
+  ).bind(roomId, userId, now).run();
+}
+
+async function awardRoomSeatExperience(
+  db: D1Database,
+  roomId: string,
+  userId: string,
+  now: string
+): Promise<void> {
+  const nowMs = Date.parse(now);
+  const dayKey = now.slice(0, 10);
+  await db.prepare(
+    "INSERT OR IGNORE INTO room_exp_activity (room_id, user_id, last_awarded_at) VALUES (?, ?, ?)"
+  ).bind(roomId, userId, now).run();
+  const activity = await db.prepare(
+    "SELECT last_awarded_at FROM room_exp_activity WHERE room_id = ? AND user_id = ? LIMIT 1"
+  ).bind(roomId, userId).first<{ last_awarded_at: string }>();
+  if (!activity?.last_awarded_at || nowMs - Date.parse(activity.last_awarded_at) < 300_000) return;
+
+  const account = await db.prepare(
+    "SELECT created_at FROM users WHERE id = ? LIMIT 1"
+  ).bind(userId).first<{ created_at: string }>();
+  const accountCreatedAt = Date.parse(account?.created_at ?? "");
+  const isNewAccount = Number.isFinite(accountCreatedAt) &&
+    nowMs >= accountCreatedAt &&
+    nowMs - accountCreatedAt < 15 * 24 * 60 * 60 * 1000;
+  const awardPoints = isNewAccount ? 1200 : 600;
+  const advanced = await db.prepare(
+    "UPDATE room_exp_activity SET last_awarded_at = ? WHERE room_id = ? AND user_id = ? AND last_awarded_at = ?"
+  ).bind(now, roomId, userId, activity.last_awarded_at).run();
+  if ((advanced.meta?.changes ?? 0) !== 1) return;
+
+  try {
+    await db.prepare(
+      "INSERT OR IGNORE INTO room_exp_daily (user_id, day_key, points) VALUES (?, ?, 0)"
+    ).bind(userId, dayKey).run();
+
+    const awardId = crypto.randomUUID();
+    await db.batch([
+      db.prepare(
+        "INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) SELECT ?, ?, ?, ?, MIN(?, ? - points), ? FROM room_exp_daily WHERE user_id = ? AND day_key = ? AND points < ?"
+      ).bind(awardId, roomId, userId, dayKey, awardPoints, ROOM_EXP_DAILY_USER_CAP, now, userId, dayKey, ROOM_EXP_DAILY_USER_CAP),
+      db.prepare(
+        "UPDATE room_exp_daily SET points = points + COALESCE((SELECT points FROM room_exp_awards WHERE id = ?), 0) WHERE user_id = ? AND day_key = ?"
+      ).bind(awardId, userId, dayKey),
+      db.prepare(
+        "INSERT INTO room_experience (room_id, total_exp, updated_at) SELECT ?, points, ? FROM room_exp_awards WHERE id = ? ON CONFLICT(room_id) DO UPDATE SET total_exp = room_experience.total_exp + excluded.total_exp, updated_at = excluded.updated_at"
+      ).bind(roomId, now, awardId)
+    ]);
+  } catch (error) {
+    // If D1 fails, restore the old timestamp so the user's earned mic time is not lost.
+    try {
+      await db.prepare(
+        "UPDATE room_exp_activity SET last_awarded_at = ? WHERE room_id = ? AND user_id = ? AND last_awarded_at = ?"
+      ).bind(activity.last_awarded_at, roomId, userId, now).run();
+    } catch {
+      // Keep the original D1 error; the next heartbeat can retry if rollback was unavailable.
+    }
+    throw error;
+  }
+}
+
+
 const DEFAULT_GOOGLE_CLIENT_ID = '999298541545-5i0kn2d1emj2rohuvruj4o8ej49ho9kg.apps.googleusercontent.com';
 
 function toHex(bytes: Uint8Array): string {
@@ -1202,6 +1296,7 @@ export default {
         const headers = new Headers({
           "Upgrade": "websocket",
           "Sec-WebSocket-Protocol": "happy-live-seats",
+          "x-room-id": roomId,
           "x-user-id": user.id,
           "x-user-name": user.display_name?.trim() || "مستخدم",
           "x-user-code": user.gabo_id ?? "",
@@ -1689,8 +1784,8 @@ export default {
         const roomId = decodeURIComponent(seatRoute[1]);
         const now = new Date().toISOString();
         const room = await env.DB.prepare(
-          "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, COALESCE(rl.level, 1) AS level, p.display_name AS owner_name, p.avatar_key AS owner_avatar_url, p.country_name AS owner_country_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN room_levels rl ON rl.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
-        ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; level: number; owner_name: string | null; owner_avatar_url: string | null; owner_country_name: string | null }>();
+          "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, COALESCE(rl.level, 1) AS level, COALESCE(rx.total_exp, 0) AS total_exp, p.display_name AS owner_name, p.avatar_key AS owner_avatar_url, p.country_name AS owner_country_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN room_levels rl ON rl.room_id = r.id LEFT JOIN room_experience rx ON rx.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; level: number; total_exp: number; owner_name: string | null; owner_avatar_url: string | null; owner_country_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
 
         const [voiceEnabled, activeBan, activeKick, controlKick, profile, myControl, roomModerator] = await Promise.all([
@@ -1733,6 +1828,15 @@ export default {
               "UPDATE room_chat_visits SET last_seen_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
             ).bind(now, roomId, user.id).run();
             if (!heartbeat.ok) return json({ error: "seat_heartbeat_failed" }, 503, origin, env);
+            const heartbeatSnapshotResponse = await seatHub.fetch(new Request("https://room-seats.internal/snapshot"));
+            const heartbeatSnapshot = await heartbeatSnapshotResponse.json() as { seats?: Array<Record<string, unknown>> };
+            const isOnMic = (heartbeatSnapshot.seats ?? []).some((seat) => String(seat.userId ?? "") === user.id);
+            if (isOnMic) {
+              await awardRoomSeatExperience(env.DB, roomId, user.id, now);
+            } else {
+              // Only continuous microphone time counts; audience time resets the 5-minute clock.
+              await resetRoomSeatExperienceTimer(env.DB, roomId, user.id, now);
+            }
           } else {
             if (!voiceEnabled) return json({ error: "agora_voice_disabled", message: "الميكروفونات متوقفة حاليًا من إدارة التطبيق" }, 503, origin, env);
             if (activeBan) return json({ error: "room_banned", message: "أنت محظور من استخدام المايك في هذه الغرفة" }, 403, origin, env);
@@ -1771,6 +1875,11 @@ export default {
                 mySeat: failedSeats.find((seat) => seat.userId === user.id)?.seatNumber ?? null,
                 seats: failedSeats
               }, moveResponse.status, origin, env);
+            }
+            // Reset only when the server confirms an actual seat change.
+            // Re-selecting the same seat must not erase accumulated mic time.
+            if (moveData.from !== moveData.mySeat) {
+              await resetRoomSeatExperienceTimer(env.DB, roomId, user.id, now);
             }
           }
         }
@@ -1836,13 +1945,17 @@ export default {
             countryName: visitor.country_name ?? "",
             countryCode: visitor.country_code ?? ""
           }));
+        const experience = roomExperienceProgress(Number(room.total_exp ?? 0));
+        const dailyExperience = await env.DB.prepare(
+          "SELECT points FROM room_exp_daily WHERE user_id = ? AND day_key = ? LIMIT 1"
+        ).bind(user.id, now.slice(0, 10)).first<{ points: number }>();
         return json({
           ok: true,
           audienceCount: Math.max(0, (audience?.count ?? 0) - seatedIds.size),
           audienceUsers,
           voiceEnabled,
           seatRevision: snapshot.revision ?? 0,
-          room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code, level: room.level, palaceStatus: room.level >= 5 ? 'مفعّل' : 'غير مفعّل' },
+          room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code, level: room.level, palaceStatus: room.level >= 5 ? 'مفعّل' : 'غير مفعّل', experienceLevel: experience.level, experienceExp: experience.exp, experienceNextLevelExp: experience.nextLevelExp, experienceTotalExp: Number(room.total_exp ?? 0), dailyExperienceExp: Number(dailyExperience?.points ?? 0), dailyExperienceMax: ROOM_EXP_DAILY_USER_CAP, dailyResetInSeconds: Math.max(0, Math.ceil((Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate() + 1) - Date.parse(now)) / 1000)) },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة", avatarUrl: room.owner_avatar_url ?? "", countryName: room.owner_country_name ?? "" },
           me: { id: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id ?? "", avatarUrl: profile?.avatar_key ?? "", countryName: profile?.country_name ?? "", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
           isOwner: room.owner_user_id === user.id,
