@@ -15,6 +15,7 @@ type CatGreedSymbol = {
   is_vegetable: number; weight: number; image_url: string | null;
 };
 type CatGreedSnapshot = {
+  rulesVersion: number;
   bettingSeconds: number; resultSeconds: number; saladWeightBp: number; pizzaWeightBp: number;
   symbols: Array<{slot:number;emoji:string;label:string;multiplier:number;isVegetable:boolean;weight:number;imageUrl:string|null}>;
 };
@@ -71,6 +72,7 @@ async function getSymbols(db: D1Database): Promise<CatGreedSymbol[]> {
 }
 function makeSnapshot(settings: CatGreedSettings, symbols: CatGreedSymbol[]): CatGreedSnapshot {
   return {
+    rulesVersion: 1,
     bettingSeconds: settings.betting_seconds, resultSeconds: settings.result_seconds,
     saladWeightBp: settings.salad_weight_bp, pizzaWeightBp: settings.pizza_weight_bp,
     symbols: symbols.map(s => ({slot:s.slot,emoji:s.emoji,label:s.label,multiplier:s.multiplier,isVegetable:!!s.is_vegetable,weight:s.weight,imageUrl:s.image_url}))
