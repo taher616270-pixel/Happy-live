@@ -1729,7 +1729,7 @@ class _RoomPageState extends State<RoomPage> {
       final participants = <String, Map<String, dynamic>>{};
       for (final user in [..._seats, ..._audienceUsers]) {
         final id = (user['userId'] ?? user['id'] ?? '').toString().trim();
-        if (id.isEmpty || id == _seatStateStore.currentUserId) continue;
+        if (user['isMe'] == true || id.isEmpty || id == _seatStateStore.currentUserId) continue;
         participants[id] = <String, dynamic>{
           ...user,
           'userId': id,
