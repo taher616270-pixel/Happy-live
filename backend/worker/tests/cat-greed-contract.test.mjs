@@ -95,6 +95,9 @@ test("symbol images are restricted to ImageKit and game pages use safe rendering
   assert.match(worker, /hostname === "ik\.imagekit\.io"/);
   assert.match(gameScript, /safeImage/);
   assert.match(gameScript, /idempotencyKey/);
+  assert.match(gameScript, /فشل التحقق من نتيجة الجولة/);
+  assert.match(gameAdminScript, /verifyRoundRow/);
+  assert.match(worker, /THEN config_snapshot ELSE NULL END AS config_snapshot/);
 });
 
 test("bet debit, ledger entry and bet insert use the same idempotent transaction id", () => {
