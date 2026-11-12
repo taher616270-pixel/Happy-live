@@ -7,6 +7,8 @@ const categoriesMigration = await readFile(new URL("../migrations/0028_gift_cate
 const customGiftMediaMigration = await readFile(new URL("../migrations/0030_custom_gift_media.sql", import.meta.url), "utf8");
 const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const adminPage = await readFile(new URL("../../../frontend/web/admin/index.html", import.meta.url), "utf8");
+const giftSheet = await readFile(new URL("../../../frontend/lib/widgets/room_gift_sheet.dart", import.meta.url), "utf8");
+const roomPage = await readFile(new URL("../../../frontend/lib/pages/room_page.dart", import.meta.url), "utf8");
 
 test("gift revenue split defaults to 30/70 and is constrained to 100 percent", () => {
   assert.match(migration, /DEFAULT 30/);
@@ -146,8 +148,6 @@ test("custom gift animation uploads use ImageKit and are limited to GIF/SVGA und
 });
 
 test("custom gift creation UI uploads only selected GIF or SVGA files and sends the request for review", () => {
-  const giftSheet = require("node:fs").readFileSync(new URL("../../../frontend/lib/widgets/room_gift_sheet.dart", import.meta.url), "utf8");
-  const roomPage = require("node:fs").readFileSync(new URL("../../../frontend/lib/pages/room_page.dart", import.meta.url), "utf8");
   assert.match(giftSheet, /allowedExtensions: const \['gif', 'svga'\]/);
   assert.match(giftSheet, /durationMs > 5000/);
   assert.match(giftSheet, /_customHome\(\)/);
