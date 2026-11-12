@@ -154,12 +154,12 @@ test("custom gift animation uploads use ImageKit and are limited to GIF/SVGA und
   assert.match(worker, /ik\.imagekit\.io/);
   assert.match(worker, /mediaDurationMs > 5000/);
   assert.match(worker, /media_file_id/);
-  assert.match(worker, /type: "room_gift"/);
+  assert.match(roomSeatsHub, /type: "room_gift"/);
   assert.match(worker, /gifts\.room\.broadcast/);
   assert.match(roomSeatsHub, /url\.pathname === "\/gift"/);
   assert.match(roomPage, /_roomGiftFullscreenOverlay/);
   assert.match(worker, /lookupDelaysMs = \[400, 700, 1000, 1300, 1600, 2000, 2500\]/);
-  assert.match(worker, /api\\.imagekit\\.io\\/v1\\/files\\/.*\\/details/);
+  assert.match(worker, /api\.imagekit\.io\/v1\/files\/.*\/details/);
   assert.match(worker, /imagekit_credentials_invalid/);
   assert.match(worker, /providerStatus/);
   assert.match(adminPage, /mediaUrl/);
