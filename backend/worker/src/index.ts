@@ -644,6 +644,8 @@ export default {
             return json({ ok: true, gift: { id: itemRoute[1], name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, updatedAt: now } }, 200, origin, env);
           }
           if (request.method === "DELETE" && itemRoute) {
+            const existingGift = await env.DB.prepare("SELECT id FROM gift_catalog WHERE id = ? LIMIT 1").bind(itemRoute[1]).first<{ id: string }>();
+            if (!existingGift) return json({ error: "gift_not_found" }, 404, origin, env);
             const now = new Date().toISOString();
             const results = await env.DB.batch([
               env.DB.prepare("UPDATE gift_catalog SET is_active = 0, updated_at = ? WHERE id = ?").bind(now, itemRoute[1]),
