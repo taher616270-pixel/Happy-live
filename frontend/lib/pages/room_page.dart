@@ -1738,7 +1738,7 @@ class _RoomPageState extends State<RoomPage> {
         volume: 0,
         muted: true,
       );
-    } else if (mediaUrl.startsWith('https://') && mediaType == 'gif') {
+    } else if (mediaUrl.startsWith('https://') && (mediaType == 'gif' || mediaType == 'apng')) {
       animation = Image.network(
         mediaUrl,
         key: ValueKey('room-gift-gif-$_roomGiftOverlayNonce'),

@@ -133,6 +133,8 @@ test("custom gift requests are authenticated, rate limited, and owner-reviewed",
   assert.match(worker, /custom_gift_request_limit/);
   assert.match(worker, /owner_permission_required/);
   assert.match(worker, /INSERT INTO gift_catalog .*'custom'/);
+  assert.match(worker, /category, media_url, media_type/);
+  assert.match(worker, /CASE WHEN media_type = 'gif' THEN 'apng'/);
   assert.match(adminPage, /giftCustomRequestRows/);
   assert.match(adminPage, /اعتماد وإنشاء/);
 });
@@ -173,6 +175,10 @@ test("custom gift creation UI uploads only selected GIF or SVGA files and sends 
   assert.match(giftSheet, /allowedExtensions: const \['gif', 'svga'\]/);
   assert.match(giftSheet, /durationMs > 5000/);
   assert.match(giftSheet, /_customHome\(\)/);
+  assert.match(giftSheet, /widget\.loadGifts\(tab\)/);
+  assert.match(giftSheet, /Expanded\(child: _giftGrid\(\)\)/);
+  assert.match(giftSheet, /type == 'gif' \|\| type == 'apng'/);
+  assert.match(roomPage, /mediaType == 'gif' \|\| mediaType == 'apng'/);
   assert.match(roomPage, /upload\.imagekit\.io\/api\/v1\/files\/upload/);
   assert.match(roomPage, /mediaFileId/);
   assert.match(roomPage, /mediaDurationMs/);

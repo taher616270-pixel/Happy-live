@@ -119,7 +119,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
       _tab = tab;
       _selectedGift = null;
       _customCreating = false;
-      if (tab != 'vip' && tab != 'custom') _giftsFuture = widget.loadGifts(tab);
+      if (tab != 'vip') _giftsFuture = widget.loadGifts(tab);
     });
   }
 
@@ -440,7 +440,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     if (type == 'svga') {
       return SVGAEasyPlayer(resUrl: url, fit: BoxFit.contain, volume: 0, muted: true);
     }
-    if (type == 'apng') {
+    if (type == 'gif' || type == 'apng') {
       return GifView.network(
         url,
         width: 58,
@@ -515,23 +515,26 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   }
 
   Widget _customHome() {
-    return Center(
-      child: InkWell(
-        onTap: () => setState(() => _customCreating = true),
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          width: 150,
-          height: 142,
-          decoration: BoxDecoration(color: const Color(0xFF1B1721), borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0x66E8C477))),
-          child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.add_circle_outline, color: _gold, size: 42),
-            SizedBox(height: 10),
-            Text('إنشاء', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-            SizedBox(height: 4),
-            Text('اقترح هديتك الخاصة', style: TextStyle(color: _muted, fontSize: 10)),
-          ]),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 2, 12, 4),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: OutlinedButton.icon(
+              onPressed: () => setState(() => _customCreating = true),
+              icon: const Icon(Icons.add_circle_outline, color: _gold, size: 18),
+              label: const Text('اقترح هدية مخصصة', style: TextStyle(color: _gold, fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0x66E8C477)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
         ),
-      ),
+        Expanded(child: _giftGrid()),
+      ],
     );
   }
 

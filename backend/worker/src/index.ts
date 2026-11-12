@@ -628,7 +628,10 @@ export default {
             if (iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000) return json({ error: "invalid_approved_gift" }, 400, origin, env);
             const giftId = crypto.randomUUID();
             const results = await env.DB.batch([
-              env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at, category) SELECT ?, requested_name, ?, '', ?, 1, ?, ?, ?, 'custom' FROM gift_custom_requests WHERE id = ? AND status = 'pending'")
+              env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at, category, media_url, media_type) " +
+                "SELECT ?, requested_name, ?, '', ?, 1, ?, ?, ?, 'custom', media_url, " +
+                "CASE WHEN media_type = 'gif' THEN 'apng' WHEN media_type = 'svga' THEN 'svga' ELSE 'emoji' END " +
+                "FROM gift_custom_requests WHERE id = ? AND status = 'pending'")
                 .bind(giftId, iconEmoji, coinPrice, sortOrder, now, now, requestRoute[1]),
               env.DB.prepare("UPDATE gift_custom_requests SET status = 'approved', admin_note = ?, approved_gift_id = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
                 .bind(adminNote, giftId, actor.id, now, requestRoute[1])
