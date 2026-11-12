@@ -171,6 +171,7 @@ async function render(){
     else if(page==="users")users((await api("/admin/users")).users||[]);
     else if(page==="wallets")await walletsPage();
     else if(page==="gifts")await giftsPage();
+    else if(page==="games")await catGreedMainPage();
     else if(page==="rooms")rooms((await api("/admin/rooms")).rooms||[]);
     else if(page==="reports")await roomReportsPage();
     else if(page==="moderators")await moderatorsPage();
@@ -178,6 +179,40 @@ async function render(){
     else if(page==="agora")await agoraPage();
     else $("content").innerHTML='<div class="section"><h2>خدمات غير مفعّلة بعد</h2><p class="notice">VIP والشحن والهدايا ما زالت تحتاج خدماتها الخاصة. المحفظة مرتبطة الآن برصيد العملات وسجل الحركات الفعلي.</p></div>';
   }catch(e){$("content").innerHTML='<div class="section"><p class="error">'+esc(e.message)+'</p><p class="muted">تحقق من صلاحية حسابك الإداري واتصال الخادم.</p></div>'}
+}
+
+
+async function catGreedMainPage(){
+  const data=await api("/admin/games/cat-greed/overview");
+  const totals=data.totals||{},players=data.players||[],rounds=data.rounds||[];
+  const fmt=n=>Number(n||0).toLocaleString("en-US");
+  $("content").innerHTML=
+    '<div class="section"><div class="section-head"><div><h2>قط الجشع 🐱</h2><p class="muted">إدارة اللاعبين ومراقبة الجولات من لوحة Happy Live الرئيسية.</p></div><a class="action" href="../cat-greed-admin/" target="_blank" rel="noopener">فتح لوحة إدارة اللعبة المستقلة ↗</a></div>'+
+    '<div class="cards">'+metric("عدد الجولات",totals.rounds)+metric("إجمالي الرهانات",totals.wagered)+metric("اللاعبون",players.length)+'</div>'+
+    '<div class="notice">احتمالات النتيجة موحّدة ومعلنة للجميع. يمكنك هنا إيقاف لاعب أو تحديد سقف رهانه، ومراجعة نتائجه؛ لا توجد نسب فوز سرية مختلفة بين اللاعبين.</div></div>'+
+    '<div class="section"><div class="section-head"><h2>الجولات الأخيرة</h2><button class="action" id="catGreedRefresh">تحديث</button></div>'+
+    (rounds.length?'<div class="table-wrap"><table><thead><tr><th>الجولة</th><th>الحالة</th><th>النتيجة</th><th>التوقيت</th><th>بصمة النتيجة</th></tr></thead><tbody>'+
+      rounds.map(r=>'<tr><td>'+esc(r.id)+'</td><td>'+ (r.phase==="result"?'انتهت':'استقبال رهانات')+'</td><td>'+ (r.special==="salad"?'🥗 السلطة':r.special==="pizza"?'🍕 البيتزا':r.result_slot==null?'—':'الرمز '+(Number(r.result_slot)+1))+'</td><td>'+esc(r.settled_at||r.closes_at||"")+'</td><td><code>'+esc(String(r.seed_commitment||"").slice(0,18))+'…</code></td></tr>').join("")+
+    '</tbody></table></div>':'<div class="empty">لا توجد جولات بعد. فعّل اللعبة من لوحة اللعبة المستقلة بعد مراجعة الإعدادات.</div>')+'</div>'+
+    '<div class="section"><div class="section-head"><h2>اللاعبون وحدود الرهان</h2><span class="badge">'+players.length+' لاعب</span></div>'+
+    (players.length?'<div class="table-wrap"><table><thead><tr><th>اللاعب</th><th>الجولات</th><th>إجمالي الرهان</th><th>إجمالي الجوائز</th><th>الحالة</th><th>سقف الرهان/جولة</th><th>إجراء</th></tr></thead><tbody>'+
+      players.map(p=>'<tr><td>'+esc(p.name||"مستخدم")+' <small class="muted">'+esc(p.userCode||"")+'</small></td><td>'+fmt(p.rounds)+'</td><td>'+fmt(p.wagered)+'</td><td>'+fmt(p.paid)+'</td><td>'+(Number(p.enabled)===1?'نشط':'موقوف')+'</td><td>'+fmt(p.maxBetPerRound)+'</td><td><button class="action" data-cat-player="'+esc(p.id)+'" data-enabled="'+(Number(p.enabled)===1?'0':'1')+'">'+(Number(p.enabled)===1?'إيقاف':'تفعيل')+'</button> <button class="action" data-cat-limit="'+esc(p.id)+'" data-current="'+Number(p.maxBetPerRound||1000000)+'">تعديل السقف</button></td></tr>').join("")+
+    '</tbody></table></div>':'<div class="empty">سيظهر اللاعبون بعد أول رهانات.</div>')+'</div>';
+  $("catGreedRefresh").onclick=()=>catGreedMainPage();
+  document.querySelectorAll("[data-cat-player]").forEach(b=>b.onclick=async()=>{
+    b.disabled=true;
+    try{await api("/admin/games/cat-greed/players/"+encodeURIComponent(b.dataset.catPlayer),{method:"PATCH",body:JSON.stringify({enabled:b.dataset.enabled==="1"})});await catGreedMainPage();}
+    catch(e){alert(e.message);b.disabled=false}
+  });
+  document.querySelectorAll("[data-cat-limit]").forEach(b=>b.onclick=async()=>{
+    const value=prompt("أدخل الحد الأعلى للرهان في الجولة الواحدة:",b.dataset.current);
+    if(value===null)return;
+    const limit=Number(value);
+    if(!Number.isSafeInteger(limit)||limit<10||limit>100000000){alert("أدخل رقماً من 10 إلى 100,000,000");return}
+    b.disabled=true;
+    try{await api("/admin/games/cat-greed/players/"+encodeURIComponent(b.dataset.catLimit),{method:"PATCH",body:JSON.stringify({maxBetPerRound:limit})});await catGreedMainPage();}
+    catch(e){alert(e.message);b.disabled=false}
+  });
 }
 
 async function giftsPage(){
