@@ -32,9 +32,10 @@ type CatGreedRound = {
   seed_commitment: string;
 };
 
-const BET_CHIPS = new Set([10, 500, 6000, 30000, 100000]);
 const BET_RATE_WINDOW_SECONDS = 10;
-const BET_RATE_MAX_REQUESTS = 10;
+// Rapid taps are coalesced by the client; keep a generous server-side ceiling
+// for legitimate multi-slot betting while retaining abuse protection.
+const BET_RATE_MAX_REQUESTS = 60;
 const STATE_RATE_WINDOW_SECONDS = 60;
 const STATE_RATE_MAX_REQUESTS = 90;
 const isoNow = () => new Date().toISOString();
@@ -266,7 +267,7 @@ export async function handleCatGreedRequest(
         if (!body || typeof body !== "object" || Array.isArray(body)) return wheelError("invalid_bet",400,json,origin,env);
         const slot = Number(body.slot), amount = Number(body.amount), roundId = String(body.roundId ?? "");
         const idempotencyKey = String(body.idempotencyKey ?? "");
-        if (!Number.isInteger(slot) || slot<0 || slot>7 || !BET_CHIPS.has(amount) ||
+        if (!Number.isInteger(slot) || slot<0 || slot>7 || !Number.isSafeInteger(amount) || amount<=0 || amount>1000000 ||
             !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
           return wheelError("invalid_bet",400,json,origin,env);
         }
@@ -289,14 +290,21 @@ export async function handleCatGreedRequest(
           await db.prepare("INSERT OR IGNORE INTO user_wallets (user_id,balance,updated_at) VALUES (?,0,?)").bind(user.id,isoNow()).run();
           const control = await db.prepare("SELECT enabled,max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?").bind(user.id).first<{enabled:number;max_bet_per_round:number}>();
           if (control?.enabled===0) return wheelError("player_disabled",403,json,origin,env);
+          const existingSlot = await db.prepare("SELECT 1 AS found FROM cat_greed_bets WHERE round_id=? AND user_id=? AND slot=? LIMIT 1")
+            .bind(roundId,user.id,slot).first<{found:number}>();
+          if (!existingSlot) {
+            const selectedSlots = await db.prepare("SELECT COUNT(DISTINCT slot) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?")
+              .bind(roundId,user.id).first<{total:number}>();
+            if ((selectedSlots?.total ?? 0) >= 6) return wheelError("bet_slot_limit_exceeded",400,json,origin,env);
+          }
           const currentTotal = await db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(roundId,user.id).first<{total:number}>();
           const limit = control?.max_bet_per_round ?? 1000000;
           if ((currentTotal?.total ?? 0) + amount > limit) return wheelError("bet_limit_exceeded",400,json,origin,env);
 
           const now=isoNow(), betId=crypto.randomUUID();
           await db.batch([
-            db.prepare("INSERT OR IGNORE INTO cat_greed_bet_requests (idempotency_key,user_id,round_id,slot,amount,bet_id,created_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM user_wallets WHERE user_id=? AND balance>=?) AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?) AND NOT EXISTS (SELECT 1 FROM cat_greed_player_controls WHERE user_id=? AND enabled=0) AND (SELECT COALESCE(SUM(amount),0) FROM cat_greed_bets WHERE round_id=? AND user_id=?) + ? <= COALESCE((SELECT max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?),1000000)")
-              .bind(idempotencyKey,user.id,roundId,slot,amount,betId,now,user.id,amount,roundId,now,user.id,roundId,user.id,amount,user.id),
+            db.prepare("INSERT OR IGNORE INTO cat_greed_bet_requests (idempotency_key,user_id,round_id,slot,amount,bet_id,created_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM user_wallets WHERE user_id=? AND balance>=?) AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?) AND NOT EXISTS (SELECT 1 FROM cat_greed_player_controls WHERE user_id=? AND enabled=0) AND (SELECT COALESCE(SUM(amount),0) FROM cat_greed_bets WHERE round_id=? AND user_id=?) + ? <= COALESCE((SELECT max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?),1000000) AND (EXISTS (SELECT 1 FROM cat_greed_bets WHERE round_id=? AND user_id=? AND slot=?) OR (SELECT COUNT(DISTINCT slot) FROM cat_greed_bets WHERE round_id=? AND user_id=?) < 6)")
+              .bind(idempotencyKey,user.id,roundId,slot,amount,betId,now,user.id,amount,roundId,now,user.id,roundId,user.id,amount,user.id,roundId,user.id,slot,roundId,user.id),
             db.prepare("UPDATE user_wallets SET balance=balance-?,updated_at=? WHERE user_id=? AND balance>=? AND EXISTS (SELECT 1 FROM cat_greed_bet_requests WHERE idempotency_key=? AND bet_id=? AND user_id=?) AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?)")
               .bind(amount,now,user.id,amount,idempotencyKey,betId,user.id,roundId,now),
             db.prepare("INSERT INTO cat_greed_ledger (id,user_id,round_id,amount,balance_after,transaction_type,description,created_at) SELECT ?,user_id,?,?,balance,'bet','رهان قط الجشع',? FROM user_wallets WHERE user_id=? AND changes()=1")
@@ -322,6 +330,11 @@ export async function handleCatGreedRequest(
             const latestControl = await db.prepare("SELECT enabled,max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?").bind(user.id).first<{enabled:number;max_bet_per_round:number}>();
             if (latestControl?.enabled===0) return wheelError("player_disabled",403,json,origin,env);
             if ((latestTotal?.total ?? 0) + amount > (latestControl?.max_bet_per_round ?? 1000000)) return wheelError("bet_limit_exceeded",400,json,origin,env);
+            const latestSlot = await db.prepare("SELECT 1 AS found FROM cat_greed_bets WHERE round_id=? AND user_id=? AND slot=? LIMIT 1")
+              .bind(roundId,user.id,slot).first<{found:number}>();
+            const latestSlots = await db.prepare("SELECT COUNT(DISTINCT slot) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?")
+              .bind(roundId,user.id).first<{total:number}>();
+            if (!latestSlot && (latestSlots?.total ?? 0) >= 6) return wheelError("bet_slot_limit_exceeded",400,json,origin,env);
             return wheelError((wallet?.balance ?? 0)<amount ? "insufficient_balance" : "round_closed",409,json,origin,env);
           }
           if(!duplicateBet) betReceipt={id:betId,roundId,slot,amount};
