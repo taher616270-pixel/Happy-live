@@ -1640,6 +1640,52 @@ export default {
       }
     }
 
+    // Battle state is controlled by the room owner or a room-scoped moderator.
+    // Gift XP reads this server-side state; client flags can never enable the 2x multiplier.
+    const roomBattleRoute = url.pathname.match(/^\/api\/v1\/rooms\/([0-9a-f-]{36})\/battle$/i);
+    if (roomBattleRoute && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const actor = await authenticatedUser(request, env.DB);
+        if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = roomBattleRoute[1];
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; }
+        catch { return json({ error: "invalid_json" }, 400, origin, env); }
+        const action = body.action;
+        if (action !== "start" && action !== "end") return json({ error: "invalid_battle_action" }, 400, origin, env);
+        const room = await env.DB.prepare("SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
+          .bind(roomId).first<{ id: string; owner_user_id: string }>();
+        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        const moderator = await env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1")
+          .bind(roomId, actor.id).first<{ user_id: string }>();
+        if (room.owner_user_id !== actor.id && !moderator) return json({ error: "room_moderator_permission_required" }, 403, origin, env);
+        const now = new Date().toISOString();
+        if (action === "start") {
+          const battleId = crypto.randomUUID();
+          const result = await env.DB.prepare(
+            "INSERT INTO room_battles (id, room_id, status, started_at, ended_at, created_by_user_id) " +
+            "SELECT ?, ?, 'active', ?, NULL, ? WHERE NOT EXISTS (SELECT 1 FROM room_battles WHERE room_id = ? AND status = 'active')"
+          ).bind(battleId, roomId, now, actor.id, roomId).run();
+          if ((result.meta?.changes ?? 0) !== 1) {
+            const active = await env.DB.prepare("SELECT id, started_at AS startedAt FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1")
+              .bind(roomId).first<Record<string, unknown>>();
+            return json({ error: "battle_already_active", battle: active ?? null }, 409, origin, env);
+          }
+          return json({ ok: true, battle: { id: battleId, roomId, status: "active", startedAt: now } }, 201, origin, env);
+        }
+        const ended = await env.DB.prepare(
+          "UPDATE room_battles SET status = 'finished', ended_at = ? WHERE room_id = ? AND status = 'active'"
+        ).bind(now, roomId).run();
+        if ((ended.meta?.changes ?? 0) !== 1) return json({ error: "no_active_battle" }, 409, origin, env);
+        return json({ ok: true, roomId, status: "finished", endedAt: now }, 200, origin, env);
+      } catch (error) {
+        const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
+        console.error("[rooms.battle] failed", diagnostic);
+        return json({ error: "room_battle_unavailable" }, 500, origin, env);
+      }
+    }
+
     // Room gifts only. Private gifts intentionally remain unavailable until a separately
     // authorized private-conversation system exists.
     const roomGiftSendRoute = url.pathname.match(/^\/api\/v1\/rooms\/([0-9a-f-]{36})\/gifts\/send$/i);
