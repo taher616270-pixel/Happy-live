@@ -546,7 +546,7 @@ export default {
           if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const itemRoute = url.pathname.match(/^\/api\/v1\/admin\/gifts\/catalog\/([a-z0-9-]{1,80})$/i);
           if (request.method === "GET" && !itemRoute) {
-            const rows = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt, created_at AS createdAt, updated_at AS updatedAt FROM gift_catalog ORDER BY category ASC, sort_order ASC, created_at ASC").all();
+            const rows = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, sound_url AS soundUrl, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt, created_at AS createdAt, updated_at AS updatedAt FROM gift_catalog ORDER BY category ASC, sort_order ASC, created_at ASC").all();
             return json({ ok: true, gifts: rows.results ?? [] }, 200, origin, env);
           }
           if (request.method === "POST" && !itemRoute) {
@@ -563,17 +563,19 @@ export default {
             const endsAt = typeof body.endsAt === "string" && body.endsAt ? body.endsAt : null;
             const mediaUrl = typeof body.mediaUrl === "string" && body.mediaUrl.trim() ? body.mediaUrl.trim() : null;
             const mediaType = mediaUrl ? String(body.mediaType ?? "").toLowerCase() : "emoji";
+            const soundUrl = typeof body.soundUrl === "string" && body.soundUrl.trim() ? body.soundUrl.trim() : null;
+            if (soundUrl && (soundUrl.length > 2048 || !/^https:\/\//i.test(soundUrl) || !/\.(mp3|m4a|ogg|wav)(?:$|[?#])/i.test(new URL(soundUrl).pathname + new URL(soundUrl).search))) return json({ error: "invalid_gift_sound", message: "ملف الصوت يجب أن يكون MP3 أو M4A أو OGG أو WAV برابط HTTPS." }, 400, origin, env);
             if ((mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) || !["emoji", "svga", "apng", "webp"].includes(mediaType) || (mediaUrl && mediaType === "emoji") || (!mediaUrl && mediaType !== "emoji")) return json({ error: "invalid_gift_media", message: "رابط الوسائط يجب أن يكون HTTPS ونوعه SVGA أو APNG أو WEBP." }, 400, origin, env);
             if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من اسم الهدية ورمزها وسعرها وتصنيفها والدولة وفترة العرض." }, 400, origin, env);
             const id = crypto.randomUUID(), now = new Date().toISOString();
-            await env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, media_url, media_type, coin_price, is_active, sort_order, created_at, updated_at, category, country_code, starts_at, ends_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-              .bind(id, name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive, sortOrder, now, now, category, countryCode, startsAt, endsAt).run();
-            return json({ ok: true, gift: { id, name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, createdAt: now, updatedAt: now } }, 201, origin, env);
+            await env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, media_url, media_type, sound_url, coin_price, is_active, sort_order, created_at, updated_at, category, country_code, starts_at, ends_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+              .bind(id, name, iconEmoji, mediaUrl, mediaType, soundUrl, coinPrice, isActive, sortOrder, now, now, category, countryCode, startsAt, endsAt).run();
+            return json({ ok: true, gift: { id, name, iconEmoji, mediaUrl, mediaType, soundUrl, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, createdAt: now, updatedAt: now } }, 201, origin, env);
           }
           if (request.method === "PATCH" && itemRoute) {
             let body: Record<string, unknown>;
             try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
-            const current = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt FROM gift_catalog WHERE id = ?").bind(itemRoute[1]).first<Record<string, unknown>>();
+            const current = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, sound_url AS soundUrl, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt FROM gift_catalog WHERE id = ?").bind(itemRoute[1]).first<Record<string, unknown>>();
             if (!current) return json({ error: "gift_not_found" }, 404, origin, env);
             const name = body.name === undefined ? String(current.name) : (typeof body.name === "string" ? body.name.trim() : "");
             const iconEmoji = body.iconEmoji === undefined ? String(current.iconEmoji) : (typeof body.iconEmoji === "string" ? body.iconEmoji.trim() : "");
@@ -586,12 +588,14 @@ export default {
             const endsAt = body.endsAt === undefined ? (current.endsAt ? String(current.endsAt) : null) : (typeof body.endsAt === "string" && body.endsAt ? body.endsAt : null);
             const mediaUrl = body.mediaUrl === undefined ? (current.mediaUrl ? String(current.mediaUrl) : null) : (typeof body.mediaUrl === "string" && body.mediaUrl.trim() ? body.mediaUrl.trim() : null);
             const mediaType = body.mediaType === undefined ? String(current.mediaType ?? (mediaUrl ? "webp" : "emoji")) : String(body.mediaType).toLowerCase();
+            const soundUrl = body.soundUrl === undefined ? (current.soundUrl ? String(current.soundUrl) : null) : (typeof body.soundUrl === "string" && body.soundUrl.trim() ? body.soundUrl.trim() : null);
+            if (soundUrl && (soundUrl.length > 2048 || !/^https:\/\//i.test(soundUrl) || !/\.(mp3|m4a|ogg|wav)(?:$|[?#])/i.test(new URL(soundUrl).pathname + new URL(soundUrl).search))) return json({ error: "invalid_gift_sound", message: "ملف الصوت يجب أن يكون MP3 أو M4A أو OGG أو WAV برابط HTTPS." }, 400, origin, env);
             if ((mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) || !["emoji", "svga", "apng", "webp"].includes(mediaType) || (mediaUrl && mediaType === "emoji") || (!mediaUrl && mediaType !== "emoji")) return json({ error: "invalid_gift_media", message: "رابط الوسائط يجب أن يكون HTTPS ونوعه SVGA أو APNG أو WEBP." }, 400, origin, env);
             if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || ![0, 1].includes(isActive) || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من بيانات الهدية." }, 400, origin, env);
             const now = new Date().toISOString();
-            await env.DB.prepare("UPDATE gift_catalog SET name = ?, icon_emoji = ?, media_url = ?, media_type = ?, coin_price = ?, is_active = ?, sort_order = ?, category = ?, country_code = ?, starts_at = ?, ends_at = ?, updated_at = ? WHERE id = ?")
-              .bind(name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive, sortOrder, category, countryCode, startsAt, endsAt, now, itemRoute[1]).run();
-            return json({ ok: true, gift: { id: itemRoute[1], name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, updatedAt: now } }, 200, origin, env);
+            await env.DB.prepare("UPDATE gift_catalog SET name = ?, icon_emoji = ?, media_url = ?, media_type = ?, sound_url = ?, coin_price = ?, is_active = ?, sort_order = ?, category = ?, country_code = ?, starts_at = ?, ends_at = ?, updated_at = ? WHERE id = ?")
+              .bind(name, iconEmoji, mediaUrl, mediaType, soundUrl, coinPrice, isActive, sortOrder, category, countryCode, startsAt, endsAt, now, itemRoute[1]).run();
+            return json({ ok: true, gift: { id: itemRoute[1], name, iconEmoji, mediaUrl, mediaType, soundUrl, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, updatedAt: now } }, 200, origin, env);
           }
           if (request.method === "DELETE" && itemRoute) {
             const result = await env.DB.prepare("UPDATE gift_catalog SET is_active = 0, updated_at = ? WHERE id = ?").bind(new Date().toISOString(), itemRoute[1]).run();
@@ -1704,7 +1708,7 @@ export default {
         }
         const now = new Date().toISOString();
         const rows = await env.DB.prepare(
-          "SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, coin_price AS coinPrice, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt " +
+          "SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, sound_url AS soundUrl, coin_price AS coinPrice, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt " +
           "FROM gift_catalog WHERE is_active = 1 AND (starts_at IS NULL OR starts_at <= ?) AND (ends_at IS NULL OR ends_at >= ?) " +
           "AND (? IS NULL OR category = ?) AND (category <> 'country' OR country_code = ?) ORDER BY sort_order ASC, created_at ASC"
         ).bind(now, now, tab, tab, countryCode).all();
@@ -2017,7 +2021,7 @@ export default {
         // Animation delivery is best-effort and must never undo a successful gift.
         try {
           const gift = await env.DB.prepare(
-            "SELECT g.name, g.icon_emoji AS iconEmoji, g.media_url AS mediaUrl, g.media_type AS mediaType, " +
+            "SELECT g.name, g.icon_emoji AS iconEmoji, g.media_url AS mediaUrl, g.media_type AS mediaType, g.sound_url AS soundUrl, " +
             "COALESCE(sp.display_name, 'مستخدم') AS senderName, COALESCE(rp.display_name, 'مستخدم') AS recipientName " +
             "FROM gift_catalog g LEFT JOIN profiles sp ON sp.user_id = ? " +
             "LEFT JOIN profiles rp ON rp.user_id = ? WHERE g.id = ? LIMIT 1"
@@ -2037,6 +2041,7 @@ export default {
                 iconEmoji: gift.iconEmoji,
                 mediaUrl: gift.mediaUrl,
                 mediaType: gift.mediaType,
+                soundUrl: gift.soundUrl,
                 mediaDurationMs: 5000,
                 quantity
               })
@@ -3222,30 +3227,27 @@ export default {
         return json({ error: "imagekit_not_configured" }, 503, origin, env);
       }
 
-      // Require a live application session before issuing upload credentials.
-      // Session tokens are stored only as SHA-256 hashes in D1.
+      // Permit the application owner and signed-in users to upload their own media.
+      // Admin sessions are separately scoped; only the owner may use this upload path.
+      const adminActor = await authenticatedAdmin(request, env.DB);
+      const isOwnerAdmin = adminActor?.role === "owner";
       const authorization = request.headers.get("Authorization") ?? "";
       const bearerMatch = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
-      if (!bearerMatch) {
-        return json({ error: "authentication_required" }, 401, origin, env);
+      if (!isOwnerAdmin) {
+        if (!bearerMatch) return json({ error: "authentication_required" }, 401, origin, env);
+        try {
+          const tokenHashBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(bearerMatch[1]));
+          const tokenHash = Array.from(new Uint8Array(tokenHashBytes)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+          const session = await env.DB.prepare(
+            "SELECT s.user_id FROM user_sessions s INNER JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
+          ).bind(tokenHash, new Date().toISOString()).first<{ user_id: string }>();
+          if (!session) return json({ error: "invalid_or_expired_session" }, 401, origin, env);
+        } catch {
+          return json({ error: "authentication_required" }, 401, origin, env);
+        }
       }
 
       try {
-        const tokenHashBytes = await crypto.subtle.digest(
-          "SHA-256",
-          new TextEncoder().encode(bearerMatch[1])
-        );
-        const tokenHash = Array.from(new Uint8Array(tokenHashBytes))
-          .map((byte) => byte.toString(16).padStart(2, "0"))
-          .join("");
-        const session = await env.DB.prepare(
-          "SELECT s.user_id FROM user_sessions s INNER JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
-        ).bind(tokenHash, new Date().toISOString()).first<{ user_id: string }>();
-
-        if (!session) {
-          return json({ error: "invalid_or_expired_session" }, 401, origin, env);
-        }
-
         const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
         const now = Math.floor(Date.now() / 1000);
         const windowStart = now - 60;
