@@ -165,7 +165,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
           _selectedGift = null;
           _comboGift = recipientIds.length == 1 ? Map<String, dynamic>.from(gift) : null;
           _comboRecipientId = recipientIds.length == 1 ? recipientIds.first : null;
-          _comboCount = 1;
+          _comboCount = sentQuantity;
           _comboNonce++;
         });
         _showMessage(recipientIds.length == 1 ? 'تم إرسال الهدية بنجاح' : 'تم إرسال الهدية إلى $sent مستلمين');
