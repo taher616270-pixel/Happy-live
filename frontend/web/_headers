@@ -1,0 +1,15 @@
+/cat-greed/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Cache-Control: no-store
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://ik.imagekit.io https://*.imagekit.io; connect-src 'self' https://happy-live-api.taher616270.workers.dev https://upload.imagekit.io; upgrade-insecure-requests
+
+/cat-greed-admin/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Cache-Control: no-store
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://ik.imagekit.io https://*.imagekit.io; connect-src 'self' https://happy-live-api.taher616270.workers.dev https://upload.imagekit.io; upgrade-insecure-requests
