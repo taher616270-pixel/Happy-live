@@ -1823,15 +1823,18 @@ export default {
             "MIN(g.coin_price * ? * CASE WHEN b.id IS NULL THEN 1 ELSE 2 END, MAX(0, 3000000 - COALESCE(d.points, 0))), " +
             "CASE WHEN b.id IS NULL THEN 1 ELSE 2 END, b.id, ?, sender_wallet.balance, 'processing', ? " +
             "FROM rooms r JOIN gift_catalog g ON g.id = ? AND g.is_active = 1 " +
+            "AND (g.starts_at IS NULL OR g.starts_at <= ?) AND (g.ends_at IS NULL OR g.ends_at >= ?) " +
+            "LEFT JOIN profiles sender_profile ON sender_profile.user_id = ? " +
             "JOIN gift_revenue_settings s ON s.id = 'current' " +
             "JOIN users recipient ON recipient.id = ? AND recipient.status = 'active' " +
             "JOIN room_chat_visits v ON v.room_id = r.id AND v.user_id = recipient.id AND v.exited_at IS NULL AND v.last_seen_at >= ? " +
             "JOIN user_wallets sender_wallet ON sender_wallet.user_id = ? AND sender_wallet.balance >= g.coin_price * ? " +
             "LEFT JOIN room_exp_daily d ON d.user_id = ? AND d.day_key = ? " +
             "LEFT JOIN room_battles b ON b.room_id = r.id AND b.status = 'active' " +
-            "WHERE r.id = ? AND r.status = 'active' AND r.owner_user_id IS NOT NULL AND ? <> recipient.id"
+            "WHERE r.id = ? AND r.status = 'active' AND r.owner_user_id IS NOT NULL AND ? <> recipient.id " +
+            "AND (g.category <> 'country' OR g.country_code = CASE WHEN UPPER(TRIM(COALESCE(sender_profile.country_name, ''))) IN ('SOUTH_ARABIA', 'SOUTH ARABIA', 'الجنوب العربي') THEN 'SOUTH_ARABIA' ELSE UPPER(TRIM(COALESCE(sender_profile.country_code, ''))) END)"
           ).bind(transactionId, user.id, recipientUserId, quantity, quantity, quantity, quantity, quantity, quantity,
-            idempotencyKey, now, giftId, recipientUserId, presenceCutoff, user.id, quantity, user.id, now.slice(0, 10), roomId, user.id),
+            idempotencyKey, now, giftId, now, now, user.id, recipientUserId, presenceCutoff, user.id, quantity, user.id, now.slice(0, 10), roomId, user.id),
           env.DB.prepare(
             "UPDATE user_wallets SET balance = balance - (SELECT coin_cost FROM gift_transactions WHERE id = ? AND status = 'processing'), " +
             "updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM gift_transactions WHERE id = ? AND status = 'processing') " +
@@ -1899,7 +1902,11 @@ export default {
         ).bind(user.id, idempotencyKey).first<Record<string, unknown>>();
         if (!transaction) {
           const wallet = await env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>();
-          const gift = await env.DB.prepare("SELECT coin_price FROM gift_catalog WHERE id = ? AND is_active = 1").bind(giftId).first<{ coin_price: number }>();
+          const gift = await env.DB.prepare(
+            "SELECT g.coin_price FROM gift_catalog g LEFT JOIN profiles p ON p.user_id = ? " +
+            "WHERE g.id = ? AND g.is_active = 1 AND (g.starts_at IS NULL OR g.starts_at <= ?) AND (g.ends_at IS NULL OR g.ends_at >= ?) " +
+            "AND (g.category <> 'country' OR g.country_code = CASE WHEN UPPER(TRIM(COALESCE(p.country_name, ''))) IN ('SOUTH_ARABIA', 'SOUTH ARABIA', 'الجنوب العربي') THEN 'SOUTH_ARABIA' ELSE UPPER(TRIM(COALESCE(p.country_code, ''))) END)"
+          ).bind(user.id, giftId, now, now).first<{ coin_price: number }>();
           if (!gift) return json({ error: "gift_not_available" }, 404, origin, env);
           const room = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active'").bind(roomId).first<{ id: string }>();
           if (!room) return json({ error: "room_not_found" }, 404, origin, env);
