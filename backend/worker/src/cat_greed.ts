@@ -39,6 +39,18 @@ const STATE_RATE_WINDOW_SECONDS = 60;
 const STATE_RATE_MAX_REQUESTS = 90;
 const isoNow = () => new Date().toISOString();
 
+// Saudi Arabia uses UTC+3 year-round. Count rounds from Riyadh midnight.
+function saudiDayStartIso(nowMs = Date.now()): string {
+  const offsetMs = 3 * 60 * 60 * 1000;
+  const saudiNow = new Date(nowMs + offsetMs);
+  const midnightUtc = Date.UTC(
+    saudiNow.getUTCFullYear(),
+    saudiNow.getUTCMonth(),
+    saudiNow.getUTCDate()
+  ) - offsetMs;
+  return new Date(midnightUtc).toISOString();
+}
+
 function isValidImageKitUrl(value: string): boolean {
   if (!value || value.length > 2048) return false;
   try {
@@ -325,8 +337,13 @@ export async function handleCatGreedRequest(
       const config = JSON.parse(round.config_snapshot) as CatGreedSnapshot;
       const odds = calculateOdds(config);
       const isBetting=round.phase==="betting";
+      const dayStart = saudiDayStartIso();
+      const dailyRounds = await db.prepare(
+        "SELECT COUNT(*) AS total FROM cat_greed_rounds WHERE starts_at >= ? AND starts_at <= ?"
+      ).bind(dayStart, isoNow()).first<{total:number}>();
+      const dailyRoundNumber = Math.max(1, dailyRounds?.total ?? 0);
       return json({
-        enabled:settings.enabled===1,roundId:round.id,secondsLeft:Math.max(0,Math.ceil((Date.parse(isBetting?round.closes_at:new Date(Date.parse(round.settled_at ?? round.created_at)+config.resultSeconds*1000).toISOString())-Date.now())/1000)),
+        enabled:settings.enabled===1,roundId:round.id,dailyRoundNumber,secondsLeft:Math.max(0,Math.ceil((Date.parse(isBetting?round.closes_at:new Date(Date.parse(round.settled_at ?? round.created_at)+config.resultSeconds*1000).toISOString())-Date.now())/1000)),
         phase:round.phase,pools:Array.from({length:8},(_,i)=>pools.results?.find(x=>x.slot===i)?.total??0),
         myBets:Array.from({length:8},(_,i)=>mine.results?.find(x=>x.slot===i)?.total??0),
         balance:wallet?.balance??0,myPayout:payout?.amount??0,myPayoutRoundId:payout?.round_id??null,
