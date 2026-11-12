@@ -224,6 +224,7 @@ test("player win/loss statistics count settled rounds only", () => {
   assert.match(worker, /CASE WHEN r\.phase='result' THEN 1 ELSE 0 END AS settled/);
   assert.match(worker, /settled=1 AND payout>0/);
   assert.match(worker, /settled=1 AND payout=0/);
+  assert.match(worker, /SUM\(CASE WHEN settled=1 THEN wagered ELSE 0 END\) AS settledWagered/);
 });
 
 test("both admin entry points warn before enabling cash-value wagering", () => {
