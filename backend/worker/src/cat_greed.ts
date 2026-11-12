@@ -88,7 +88,7 @@ async function createRound(db: D1Database): Promise<any> {
   const id = crypto.randomUUID();
   const seed = randomHex();
   const configSnapshot = JSON.stringify(snapshot);
-  const commitment = await digestHex(seed + "|" + id + "|" + configSnapshot);
+  const commitment = await digestHex("commit|" + seed + "|" + id + "|" + configSnapshot);
   const now = Date.now();
   const startsAt = new Date(now).toISOString();
   const closesAt = new Date(now + settings.betting_seconds * 1000).toISOString();
@@ -98,7 +98,7 @@ async function createRound(db: D1Database): Promise<any> {
   return db.prepare("SELECT * FROM cat_greed_rounds WHERE id=?").bind(id).first();
 }
 async function unitRandom(round: any): Promise<number> {
-  const hex = await digestHex(round.server_seed + "|" + round.id + "|" + round.config_snapshot);
+  const hex = await digestHex("outcome|" + round.server_seed + "|" + round.id + "|" + round.config_snapshot);
   // 13 hex digits are exactly 52 bits, safely represented by a JS number.
   return parseInt(hex.slice(0, 13), 16) / 4503599627370496;
 }
