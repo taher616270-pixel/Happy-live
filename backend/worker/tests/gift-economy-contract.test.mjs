@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const migration = await readFile(new URL("../migrations/0027_gift_economy_foundation.sql", import.meta.url), "utf8");
+const giftCategoriesMigration = await readFile(new URL("../migrations/0028_gift_categories_and_custom_requests.sql", import.meta.url), "utf8");
 const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const adminPage = await readFile(new URL("../../../frontend/web/admin/index.html", import.meta.url), "utf8");
 
@@ -95,4 +96,34 @@ test("battle multiplier can only be enabled through owner/moderator server-side 
   assert.match(worker, /INSERT INTO room_battles/);
   assert.match(worker, /UPDATE room_battles SET status = 'finished'/);
   assert.match(worker, /CASE WHEN b\.id IS NULL THEN 1 ELSE 2 END/);
+});
+
+
+test("gift categories support event schedules, country targeting, and custom gift requests", () => {
+  assert.match(giftCategoriesMigration, /category TEXT NOT NULL DEFAULT 'trending'/);
+  assert.match(giftCategoriesMigration, /country_name TEXT/);
+  assert.match(giftCategoriesMigration, /starts_at TEXT/);
+  assert.match(giftCategoriesMigration, /ends_at TEXT/);
+  assert.match(giftCategoriesMigration, /CREATE TABLE IF NOT EXISTS gift_custom_requests/);
+  assert.match(giftCategoriesMigration, /UNIQUE INDEX IF NOT EXISTS idx_gift_custom_requests_one_pending_per_user/);
+  assert.match(worker, /\/api\/v1\/gifts\/custom-requests/);
+  assert.match(worker, /\/api\/v1\/admin\/gifts\/custom-requests/);
+  assert.match(worker, /giftMeta\.category === "event"/);
+  assert.match(worker, /giftMeta\.category === "country"/);
+});
+
+test("admin gift tools expose category scheduling and custom-request approval", () => {
+  assert.match(adminPage, /newGiftCategory/);
+  assert.match(adminPage, /newGiftCountry/);
+  assert.match(adminPage, /newGiftStartsAt/);
+  assert.match(adminPage, /newGiftEndsAt/);
+  assert.match(adminPage, /customGiftRequestRows/);
+  assert.match(adminPage, /custom-gift-approve/);
+});
+
+test("room gift picker keeps previews available without recipients and marks VIP and bag as coming soon", () => {
+  assert.match(worker, /quantity > 1000/);
+  assert.match(adminPage, /طلبات الهدايا المخصصة/);
+  assert.match(worker, /category <> 'event'/);
+  assert.match(worker, /category <> 'country'/);
 });
