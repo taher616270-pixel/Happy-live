@@ -6,6 +6,7 @@ const migration = await readFile(new URL("../migrations/0027_gift_economy_founda
 const categoriesMigration = await readFile(new URL("../migrations/0028_gift_categories_events_custom.sql", import.meta.url), "utf8");
 const customGiftMediaMigration = await readFile(new URL("../migrations/0030_custom_gift_media.sql", import.meta.url), "utf8");
 const giftSoundMigration = await readFile(new URL("../migrations/0031_gift_sound.sql", import.meta.url), "utf8");
+const customGiftSoundMigration = await readFile(new URL("../migrations/0032_custom_gift_request_sound.sql", import.meta.url), "utf8");
 const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const adminPage = await readFile(new URL("../../../frontend/web/admin/index.html", import.meta.url), "utf8");
 const giftSheet = await readFile(new URL("../../../frontend/lib/widgets/room_gift_sheet.dart", import.meta.url), "utf8");
@@ -198,4 +199,9 @@ test("animated gifts carry a separate optional audio asset to every room member"
   assert.match(adminPage, /newGiftSoundFile/);
   assert.match(roomPage, /AudioPlayer/);
   assert.match(roomPage, /UrlSource\(soundUrl\)/);
+  assert.match(giftSheet, /إضافة صوت MP3 \(اختياري\)/);
+  assert.match(roomPage, /soundFileId/);
+  assert.match(worker, /sound_file_id/);
+  assert.match(worker, /soundExtensionMatches/);
+  assert.match(customGiftSoundMigration, /ALTER TABLE gift_custom_requests ADD COLUMN sound_url TEXT/);
 });
