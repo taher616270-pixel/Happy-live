@@ -8,7 +8,7 @@ import 'package:gif_view/gif_view.dart';
 
 typedef GiftCatalogLoader = Future<List<Map<String, dynamic>>> Function(String category);
 typedef RoomGiftSender = Future<int> Function(Map<String, dynamic> gift, int quantity, String recipientId);
-typedef CustomGiftRequester = Future<void> Function(String name, String description, Uint8List bytes, String fileName, String mediaType, int durationMs);
+typedef CustomGiftRequester = Future<void> Function(String name, String description, Uint8List bytes, String fileName, String mediaType, int durationMs, Uint8List? soundBytes, String? soundFileName);
 
 Future<void> showRoomGiftSheet(
   BuildContext context, {
@@ -93,6 +93,8 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   String? _customMediaName;
   String? _customMediaType;
   int? _customMediaDurationMs;
+  Uint8List? _customSoundBytes;
+  String? _customSoundName;
 
   @override
   void initState() {
@@ -217,6 +219,20 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     }
   }
 
+  Future<void> _pickCustomSound() async {
+    try {
+      final result = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: const ['mp3'], withData: true, allowMultiple: false);
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      final bytes = file.bytes;
+      final extension = (file.extension ?? file.name.split('.').last).toLowerCase();
+      if (bytes == null || bytes.isEmpty) throw Exception('تعذر قراءة ملف الصوت');
+      if (extension != 'mp3' || bytes.length > 5 * 1024 * 1024) throw Exception('اختر ملف MP3 لا يتجاوز 5 ميجابايت');
+      if (!mounted) return;
+      setState(() { _customSoundBytes = bytes; _customSoundName = file.name; });
+    } catch (error) { _showMessage(error.toString().replaceFirst('Exception: ', '')); }
+  }
+
   Future<void> _submitCustomRequest() async {
     final name = _customName.text.trim();
     final description = _customDescription.text.trim();
@@ -224,12 +240,14 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     final fileName = _customMediaName;
     final mediaType = _customMediaType;
     final durationMs = _customMediaDurationMs;
+    final soundBytes = _customSoundBytes;
+    final soundFileName = _customSoundName;
     if (name.length < 2) { _showMessage('اكتب اسم الهدية المقترحة'); return; }
     if (bytes == null || fileName == null || mediaType == null || durationMs == null) { _showMessage('اختر ملف GIF أو SVGA أولًا'); return; }
     if (_requesting) return;
     setState(() => _requesting = true);
     try {
-      await widget.onRequestCustomGift(name, description, bytes, fileName, mediaType, durationMs);
+      await widget.onRequestCustomGift(name, description, bytes, fileName, mediaType, durationMs, soundBytes, soundFileName);
       _customName.clear();
       _customDescription.clear();
       setState(() {
@@ -237,6 +255,8 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
         _customMediaName = null;
         _customMediaType = null;
         _customMediaDurationMs = null;
+        _customSoundBytes = null;
+        _customSoundName = null;
         _customCreating = false;
       });
       _showMessage('تم رفع الهدية وإرسالها للإدارة للمراجعة');
@@ -568,7 +588,21 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
               IconButton(onPressed: _requesting ? null : () => setState(() { _customMediaBytes = null; _customMediaName = null; _customMediaType = null; _customMediaDurationMs = null; }), icon: const Icon(Icons.close, color: _muted, size: 18)),
             ])),
         ],
-        const Padding(padding: EdgeInsets.only(top: 8), child: Text('المسموح GIF أو SVGA فقط · مدة الحركة حتى 5 ثوانٍ · الحد الأقصى للحجم 10MB', textAlign: TextAlign.center, style: TextStyle(color: _muted, fontSize: 10))),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _requesting ? null : _pickCustomSound,
+          icon: const Icon(Icons.music_note, color: _gold),
+          label: Text(_customSoundName == null ? 'إضافة صوت MP3 (اختياري)' : 'تغيير صوت MP3', style: const TextStyle(color: _gold)),
+          style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0x66E8C477))),
+        ),
+        if (_customSoundName != null)
+          Padding(padding: const EdgeInsets.only(top: 6), child: Row(children: [
+            const Icon(Icons.audiotrack, color: _gold, size: 18),
+            const SizedBox(width: 7),
+            Expanded(child: Text(_customSoundName!, style: const TextStyle(color: Colors.white, fontSize: 11), overflow: TextOverflow.ellipsis)),
+            IconButton(onPressed: _requesting ? null : () => setState(() { _customSoundBytes = null; _customSoundName = null; }), icon: const Icon(Icons.close, color: _muted, size: 17)),
+          ])),
+        const Padding(padding: EdgeInsets.only(top: 8), child: Text('GIF أو SVGA حتى 5 ثوانٍ و10MB · صوت MP3 اختياري حتى 5MB', textAlign: TextAlign.center, style: TextStyle(color: _muted, fontSize: 10))),
         const SizedBox(height: 12),
         FilledButton(onPressed: _requesting ? null : _submitCustomRequest, style: FilledButton.styleFrom(backgroundColor: const Color(0xFF8A2BFF), foregroundColor: Colors.white),
           child: _requesting ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('رفع وإرسال للإدارة')),
