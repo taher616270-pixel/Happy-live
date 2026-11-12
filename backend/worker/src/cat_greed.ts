@@ -306,9 +306,11 @@ export async function handleCatGreedRequest(
       if (admin.role!=="owner" && admin.role!=="admin") return wheelError("permission_denied",403,json,origin,env);
       let body:any; try { body=await request.json(); } catch { return wheelError("invalid_json",400,json,origin,env); }
       if(!body||typeof body!=="object"||Array.isArray(body)) return wheelError("invalid_player_control",400,json,origin,env);
-      const enabled=body.enabled===false?0:body.enabled===true?1:null;
-      const limit=body.maxBetPerRound==null?null:Number(body.maxBetPerRound);
-      if (enabled===null && (limit===null || !Number.isSafeInteger(limit) || limit<10 || limit>100000000)) return wheelError("invalid_player_control",400,json,origin,env);
+      const hasEnabled=Object.prototype.hasOwnProperty.call(body,"enabled");
+      const enabled=hasEnabled?(body.enabled===false?0:body.enabled===true?1:null):null;
+      const hasLimit=body.maxBetPerRound!=null;
+      const limit=hasLimit?Number(body.maxBetPerRound):null;
+      if ((hasEnabled&&enabled===null)||(hasLimit&&(!Number.isSafeInteger(limit)||limit!<10||limit!>100000000))||(enabled===null&&limit===null)) return wheelError("invalid_player_control",400,json,origin,env);
       const userId=playerControl[1],now=isoNow();
       await db.prepare("INSERT INTO cat_greed_player_controls (user_id,enabled,max_bet_per_round,updated_by_admin_id,updated_at) VALUES (?,?,? ,?,?) ON CONFLICT(user_id) DO UPDATE SET enabled=COALESCE(?,enabled),max_bet_per_round=COALESCE(?,max_bet_per_round),updated_by_admin_id=excluded.updated_by_admin_id,updated_at=excluded.updated_at")
         .bind(userId,enabled??1,limit??1000000,admin.id,now,enabled,limit).run();
