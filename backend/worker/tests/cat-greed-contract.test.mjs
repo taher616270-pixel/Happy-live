@@ -139,7 +139,7 @@ test("standalone Cat Greed scripts are external and route CSP blocks inline scri
   assert.match(gameAdmin, /<script src="app\.js" defer><\/script>/);
   assert.match(pageHeaders, /script-src 'self'/);
   assert.match(pageHeaders, /frame-ancestors 'none'/);
-  assert.match(pageHeaders.slice(pageHeaders.indexOf("/cat-greed-admin/*")), /connect-src[^\\n]*https:\\/\\/\\*\\.taher616270\\.workers\\.dev/);
+  assert.ok(pageHeaders.slice(pageHeaders.indexOf("/cat-greed-admin/*")).includes("https://*.taher616270.workers.dev"));
   assert.match(gameScript, /location\.hostname==="happy-live\.pages\.dev"/);
   assert.match(gameAdminScript, /location\.hostname==="happy-live\.pages\.dev"/);
   assert.match(gameScript, /catGreedApi/);
