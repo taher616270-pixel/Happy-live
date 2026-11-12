@@ -209,6 +209,61 @@ class _BannerAvatar extends StatelessWidget {
   }
 }
 
+class GiftComboBanner extends StatelessWidget {
+  const GiftComboBanner({
+    super.key,
+    required this.senderName,
+    required this.receiverName,
+    required this.giftImage,
+    required this.count,
+    required this.child,
+  });
+
+  final String senderName;
+  final String receiverName;
+  final String giftImage;
+  final int count;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUrl = giftImage.startsWith('https://') || giftImage.startsWith('http://');
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xE91A1720),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x88D4AF37)),
+      ),
+      child: Row(
+        children: [
+          if (isUrl)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(giftImage, width: 34, height: 34, fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const SizedBox(width: 34, height: 34, child: Center(child: Text('🎁')))),
+            )
+          else
+            SizedBox(width: 34, child: Center(child: Text(giftImage.isEmpty ? '🎁' : giftImage, style: const TextStyle(fontSize: 23)))),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$senderName ← $receiverName',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(width: 7),
+          Text('×$count', style: const TextStyle(color: Color(0xFFFFD76A), fontSize: 17, fontWeight: FontWeight.w900)),
+          const SizedBox(width: 8),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
 class GiftComboButton extends StatefulWidget {
   const GiftComboButton({
     super.key,
@@ -228,7 +283,6 @@ class _GiftComboButtonState extends State<GiftComboButton> {
   int _remainingMs = 3000;
   bool _sending = false;
   bool _expired = false;
-  int _sentCount = 1;
 
   @override
   void initState() {
@@ -254,7 +308,6 @@ class _GiftComboButtonState extends State<GiftComboButton> {
     });
     try {
       await widget.onResend(1);
-      if (mounted) setState(() => _sentCount++);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -288,7 +341,7 @@ class _GiftComboButtonState extends State<GiftComboButton> {
               children: [
                 const Icon(Icons.replay_rounded, color: Color(0xFFFFD76A), size: 17),
                 const SizedBox(width: 7),
-                Text(_sending ? 'جارٍ التكرار…' : 'إرسال مرة أخرى ×$_sentCount',
+                Text(_sending ? 'جارٍ التكرار…' : 'إرسال مرة أخرى',
                     style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
                 const SizedBox(width: 9),
                 Text('${(_remainingMs / 1000).ceil()}',
