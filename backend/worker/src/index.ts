@@ -1748,6 +1748,16 @@ export default {
             "updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM gift_transactions WHERE id = ? AND status = 'processing') " +
             "AND balance >= (SELECT coin_cost FROM gift_transactions WHERE id = ? AND status = 'processing')"
           ).bind(transactionId, now, user.id, transactionId, transactionId),
+          // Gift-derived coins are ordinary spendable balance, but spending them
+          // consumes their future withdrawal eligibility in FIFO order.
+          env.DB.prepare(
+            "WITH ordered AS (SELECT l.id, l.remaining_tagged_coins, COALESCE(SUM(l.remaining_tagged_coins) OVER (ORDER BY l.created_at, l.id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS prior " +
+            "FROM gift_earning_lots l WHERE l.user_id = ? AND l.remaining_tagged_coins > 0), " +
+            "consumption AS (SELECT id, MIN(remaining_tagged_coins, MAX(0, (SELECT coin_cost FROM gift_transactions WHERE id = ?) - prior)) AS used FROM ordered) " +
+            "UPDATE gift_earning_lots SET remaining_tagged_coins = MAX(0, remaining_tagged_coins - (SELECT used FROM consumption WHERE consumption.id = gift_earning_lots.id)), " +
+            "remaining_withdrawable_coins = MAX(0, remaining_withdrawable_coins - (SELECT used FROM consumption WHERE consumption.id = gift_earning_lots.id)) " +
+            "WHERE id IN (SELECT id FROM consumption WHERE used > 0) AND EXISTS (SELECT 1 FROM gift_wallet_ledger WHERE gift_transaction_id = ? AND entry_type = 'sender_debit')"
+          ).bind(user.id, transactionId, transactionId),
           env.DB.prepare(
             "INSERT INTO gift_wallet_ledger (id, gift_transaction_id, user_id, entry_type, amount, balance_after, created_at) " +
             "SELECT ?, t.id, t.sender_user_id, 'sender_debit', -t.coin_cost, w.balance, ? FROM gift_transactions t " +
@@ -1878,7 +1888,10 @@ export default {
           ).bind(user.id, price, transactionId),
           env.DB.prepare("INSERT INTO room_levels (room_id, level, updated_at) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade') ON CONFLICT(room_id) DO UPDATE SET level = excluded.level, updated_at = excluded.updated_at WHERE room_levels.level < excluded.level").bind(roomId, targetLevel, now, transactionId)
         ]);
-        if ((results[0]?.meta?.changes ?? 0) !== 1 || (results[1]?.meta?.changes ?? 0) !== 1 || (results[2]?.meta?.changes ?? 0) !== 1) {
+        // A wallet may contain no gift-derived lots at all. FIFO consumption is
+        // intentionally allowed to update zero rows; only the purchase debit and
+        // wallet balance mutation determine whether the upgrade succeeded.
+        if ((results[0]?.meta?.changes ?? 0) !== 1 || (results[1]?.meta?.changes ?? 0) !== 1) {
           const [latestRoom, wallet] = await Promise.all([
             env.DB.prepare("SELECT COALESCE(rl.level, 1) AS level FROM rooms r LEFT JOIN room_levels rl ON rl.room_id = r.id WHERE r.id = ? AND r.status <> 'deleted' LIMIT 1").bind(roomId).first<{ level: number }>(),
             env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>()
