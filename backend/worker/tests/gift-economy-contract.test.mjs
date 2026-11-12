@@ -190,6 +190,9 @@ test("animated gifts carry a separate optional audio asset to every room member"
   assert.match(giftSoundMigration, /ALTER TABLE gift_catalog ADD COLUMN sound_url TEXT/);
   assert.match(worker, /sound_url AS soundUrl/);
   assert.match(worker, /soundUrl: gift\.soundUrl/);
+  assert.match(worker, /\\.mp3\$\/i\.test\(parsed\.pathname\)/);
+  assert.match(adminPage, /accept="\.mp3,audio\/mpeg"/);
+  assert.match(adminPage, /اختر ملف MP3 فقط/);
   assert.match(worker, /isOwnerAdmin/);
   assert.match(adminPage, /uploadGiftSound\(file\)/);
   assert.match(adminPage, /newGiftSoundFile/);
