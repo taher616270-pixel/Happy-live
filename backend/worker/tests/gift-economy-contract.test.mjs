@@ -96,3 +96,30 @@ test("battle multiplier can only be enabled through owner/moderator server-side 
   assert.match(worker, /UPDATE room_battles SET status = 'finished'/);
   assert.match(worker, /CASE WHEN b\.id IS NULL THEN 1 ELSE 2 END/);
 });
+
+
+test("gift category migration defines event, country, lucky, and custom metadata", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const categories = await readFile(new URL("../migrations/0028_gift_categories_and_custom_requests.sql", import.meta.url), "utf8");
+  assert.match(categories, /category TEXT NOT NULL DEFAULT 'trending'/);
+  assert.match(categories, /country_name TEXT/);
+  assert.match(categories, /starts_at TEXT/);
+  assert.match(categories, /ends_at TEXT/);
+  assert.match(categories, /CREATE TABLE IF NOT EXISTS gift_custom_requests/);
+  assert.match(categories, /UNIQUE INDEX IF NOT EXISTS idx_gift_custom_requests_one_pending_per_user/);
+});
+
+test("gift catalog enforces event windows and country targeting on the server", () => {
+  assert.match(worker, /category <> 'event' OR \(\(starts_at IS NULL OR starts_at <= \?\)/);
+  assert.match(worker, /category <> 'country' OR \(\? <> '' AND lower\(trim\(country_name\)\) = lower\(trim\(\?\)\)\)/);
+  assert.match(worker, /giftMeta\.category === "event"/);
+  assert.match(worker, /giftMeta\.category === "country"/);
+});
+
+test("custom gift requests require authentication and owner-only review", () => {
+  assert.match(worker, /url\.pathname === "\/api\/v1\/gifts\/custom-requests" && request\.method === "POST"/);
+  assert.match(worker, /authenticatedUser\(request, env\.DB\)/);
+  assert.match(worker, /url\.pathname === "\/api\/v1\/admin\/gifts\/custom-requests" \|\| customGiftAdminRoute/);
+  assert.match(worker, /actor\.role !== "owner"/);
+  assert.match(worker, /linked_gift_id/);
+});
