@@ -598,8 +598,17 @@ export default {
             if ((mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) || !["emoji", "svga", "apng", "webp"].includes(mediaType) || (mediaUrl && mediaType === "emoji") || (!mediaUrl && mediaType !== "emoji")) return json({ error: "invalid_gift_media", message: "رابط الوسائط يجب أن يكون HTTPS ونوعه SVGA أو APNG أو WEBP." }, 400, origin, env);
             if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من اسم الهدية ورمزها وسعرها وتصنيفها والدولة وفترة العرض." }, 400, origin, env);
             const id = crypto.randomUUID(), now = new Date().toISOString();
-            await env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, media_url, media_type, coin_price, is_active, sort_order, created_at, updated_at, category, country_code, starts_at, ends_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-              .bind(id, name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive, sortOrder, now, now, category, countryCode, startsAt, endsAt).run();
+            await env.DB.batch([
+              env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, media_url, media_type, coin_price, is_active, sort_order, created_at, updated_at, category, country_code, starts_at, ends_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                .bind(id, name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive, sortOrder, now, now, category, countryCode, startsAt, endsAt),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "gift.catalog.create",
+                targetType: "gift",
+                targetId: id,
+                details: { name, coinPrice, category, countryCode, isActive: Boolean(isActive), mediaType },
+                createdAt: now
+              })
+            ]);
             return json({ ok: true, gift: { id, name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, createdAt: now, updatedAt: now } }, 201, origin, env);
           }
           if (request.method === "PATCH" && itemRoute) {
@@ -621,13 +630,32 @@ export default {
             if ((mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) || !["emoji", "svga", "apng", "webp"].includes(mediaType) || (mediaUrl && mediaType === "emoji") || (!mediaUrl && mediaType !== "emoji")) return json({ error: "invalid_gift_media", message: "رابط الوسائط يجب أن يكون HTTPS ونوعه SVGA أو APNG أو WEBP." }, 400, origin, env);
             if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || ![0, 1].includes(isActive) || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من بيانات الهدية." }, 400, origin, env);
             const now = new Date().toISOString();
-            await env.DB.prepare("UPDATE gift_catalog SET name = ?, icon_emoji = ?, media_url = ?, media_type = ?, coin_price = ?, is_active = ?, sort_order = ?, category = ?, country_code = ?, starts_at = ?, ends_at = ?, updated_at = ? WHERE id = ?")
-              .bind(name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive, sortOrder, category, countryCode, startsAt, endsAt, now, itemRoute[1]).run();
+            await env.DB.batch([
+              env.DB.prepare("UPDATE gift_catalog SET name = ?, icon_emoji = ?, media_url = ?, media_type = ?, coin_price = ?, is_active = ?, sort_order = ?, category = ?, country_code = ?, starts_at = ?, ends_at = ?, updated_at = ? WHERE id = ?")
+                .bind(name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive, sortOrder, category, countryCode, startsAt, endsAt, now, itemRoute[1]),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "gift.catalog.update",
+                targetType: "gift",
+                targetId: itemRoute[1],
+                details: { name, coinPrice, category, countryCode, isActive: Boolean(isActive), mediaType },
+                createdAt: now
+              })
+            ]);
             return json({ ok: true, gift: { id: itemRoute[1], name, iconEmoji, mediaUrl, mediaType, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, updatedAt: now } }, 200, origin, env);
           }
           if (request.method === "DELETE" && itemRoute) {
-            const result = await env.DB.prepare("UPDATE gift_catalog SET is_active = 0, updated_at = ? WHERE id = ?").bind(new Date().toISOString(), itemRoute[1]).run();
-            if ((result.meta?.changes ?? 0) === 0) return json({ error: "gift_not_found" }, 404, origin, env);
+            const now = new Date().toISOString();
+            const results = await env.DB.batch([
+              env.DB.prepare("UPDATE gift_catalog SET is_active = 0, updated_at = ? WHERE id = ?").bind(now, itemRoute[1]),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "gift.catalog.deactivate",
+                targetType: "gift",
+                targetId: itemRoute[1],
+                details: { isActive: false },
+                createdAt: now
+              })
+            ]);
+            if ((results[0]?.meta?.changes ?? 0) === 0) return json({ error: "gift_not_found" }, 404, origin, env);
             return json({ ok: true, deactivated: true }, 200, origin, env);
           }
           return json({ error: "method_not_allowed" }, 405, origin, env);
@@ -649,9 +677,18 @@ export default {
             if (!pending) return json({ error: "request_not_pending" }, 409, origin, env);
             const now = new Date().toISOString();
             if (status === "rejected") {
-              const result = await env.DB.prepare("UPDATE gift_custom_requests SET status = 'rejected', admin_note = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
-                .bind(adminNote, actor.id, now, requestRoute[1]).run();
-              if ((result.meta?.changes ?? 0) !== 1) return json({ error: "request_not_pending" }, 409, origin, env);
+              const results = await env.DB.batch([
+                env.DB.prepare("UPDATE gift_custom_requests SET status = 'rejected', admin_note = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
+                  .bind(adminNote, actor.id, now, requestRoute[1]),
+                ...adminAuditStatements(env.DB, actor, {
+                  action: "gift.custom_request.reject",
+                  targetType: "gift_custom_request",
+                  targetId: requestRoute[1],
+                  details: { status: "rejected" },
+                  createdAt: now
+                })
+              ]);
+              if ((results[0]?.meta?.changes ?? 0) !== 1) return json({ error: "request_not_pending" }, 409, origin, env);
               return json({ ok: true, status: "rejected" }, 200, origin, env);
             }
             const iconEmoji = typeof body.iconEmoji === "string" && body.iconEmoji.trim() ? body.iconEmoji.trim() : "🎁";
@@ -663,7 +700,14 @@ export default {
               env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at, category) SELECT ?, requested_name, ?, '', ?, 1, ?, ?, ?, 'custom' FROM gift_custom_requests WHERE id = ? AND status = 'pending'")
                 .bind(giftId, iconEmoji, coinPrice, sortOrder, now, now, requestRoute[1]),
               env.DB.prepare("UPDATE gift_custom_requests SET status = 'approved', admin_note = ?, approved_gift_id = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
-                .bind(adminNote, giftId, actor.id, now, requestRoute[1])
+                .bind(adminNote, giftId, actor.id, now, requestRoute[1]),
+              ...adminAuditStatements(env.DB, actor, {
+                action: "gift.custom_request.approve",
+                targetType: "gift_custom_request",
+                targetId: requestRoute[1],
+                details: { status: "approved", giftId, coinPrice },
+                createdAt: now
+              })
             ]);
             if ((results[1]?.meta?.changes ?? 0) !== 1) return json({ error: "request_not_pending" }, 409, origin, env);
             return json({ ok: true, status: "approved", giftId }, 200, origin, env);
