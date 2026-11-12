@@ -27,6 +27,7 @@ test("round results are committed before betting and revealed only after settlem
   assert.match(worker, /seed_commitment/);
   assert.match(worker, /revealedSeed:isBetting\?null:round\.server_seed/);
   assert.match(worker, /configSnapshot:isBetting\?null:round\.config_snapshot/);
+  assert.match(worker, /rulesVersion: 1/);
   assert.match(worker, /phase='result'/);
   assert.match(worker, /server_seed/);
 });
