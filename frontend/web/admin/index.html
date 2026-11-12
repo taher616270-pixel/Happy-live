@@ -207,8 +207,8 @@ async function giftsPage(){
     '<label style="display:grid;gap:6px">الترتيب<input id="newGiftOrder" class="search" type="number" min="0" value="100"></label>' +
     '<button class="action" type="submit">＋ إضافة هدية</button></form><div id="giftCatalogMessage" class="muted"></div>' +
     '<div class="table-wrap"><table><thead><tr><th>الهدية</th><th>السعر</th><th>التصنيف</th><th>الدولة</th><th>فترة العرض</th><th>الترتيب</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody id="giftCatalogRows"><tr><td colspan="8" class="loading">جارٍ تحميل الكتالوج…</td></tr></tbody></table></div></div>' +
-    '<div class="section"><div class="section-head"><div><h2>طلبات الهدايا المخصصة</h2><p class="muted">راجع طلبات المستخدمين، وعند الموافقة تُنشأ الهدية تلقائيًا في تصنيف «مخصص».</p></div></div><div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>اسم الهدية المقترح</th><th>الوصف</th><th>ملف الحركة</th><th>الصوت MP3</th><th>الحالة</th><th>تاريخ الطلب</th><th>الإجراء</th></tr></thead><tbody id="giftCustomRequestRows"><tr><td colspan="7" class="loading">جارٍ تحميل الطلبات…</td></tr></tbody></table></div><div id="giftCustomRequestMessage" class="muted"></div></div>';
-  if(!canEdit){$("giftCustomRequestRows").innerHTML='<tr><td colspan="7" class="empty">مراجعة الطلبات متاحة لمالك التطبيق فقط.</td></tr>'}
+    '<div class="section"><div class="section-head"><div><h2>طلبات الهدايا المخصصة</h2><p class="muted">راجع طلبات المستخدمين، وعند الموافقة تُنشأ الهدية تلقائيًا في تصنيف «مخصص».</p></div></div><div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>اسم الهدية المقترح</th><th>الوصف</th><th>ملف الحركة</th><th>الصوت MP3</th><th>الحالة</th><th>تاريخ الطلب</th><th>الإجراء</th></tr></thead><tbody id="giftCustomRequestRows"><tr><td colspan="8" class="loading">جارٍ تحميل الطلبات…</td></tr></tbody></table></div><div id="giftCustomRequestMessage" class="muted"></div></div>';
+  if(!canEdit){$("giftCustomRequestRows").innerHTML='<tr><td colspan="8" class="empty">مراجعة الطلبات متاحة لمالك التطبيق فقط.</td></tr>'}
   if(canEdit){
     const catalogMessage=$("giftCatalogMessage");
     const loadCatalog=async()=>{
