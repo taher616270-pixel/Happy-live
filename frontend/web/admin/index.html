@@ -47,7 +47,7 @@ async function api(path,opt){opt=opt||{};let r=await fetch(API+path,{method:opt.
 async function uploadGiftSound(file){
   if(!file)return null;
   const ext=(file.name.split(".").pop()||"").toLowerCase();
-  if(!ext!=="mp3"||file.size>5*1024*1024)throw Error("اختر ملف MP3 فقط، وبحجم لا يتجاوز 5MB.");
+  if(ext!=="mp3"||file.size>5*1024*1024)throw Error("اختر ملف MP3 فقط، وبحجم لا يتجاوز 5MB.");
   const authResponse=await fetch(API+"/imagekit/auth",{headers:{Authorization:"Bearer "+token}});
   const auth=await authResponse.json();if(!authResponse.ok||!auth.token||!auth.signature||!auth.expire||!auth.publicKey)throw Error(auth.message||auth.error||"تعذر تجهيز رفع الصوت.");
   const form=new FormData();form.append("file",file);form.append("fileName",file.name);form.append("publicKey",auth.publicKey);form.append("token",auth.token);form.append("expire",String(auth.expire));form.append("signature",auth.signature);form.append("folder","/happy-live/gift-sounds");form.append("useUniqueFileName","true");
