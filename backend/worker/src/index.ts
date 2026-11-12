@@ -619,7 +619,7 @@ export default {
           if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const requestRoute = url.pathname.match(/^\/api\/v1\/admin\/gifts\/custom-requests\/([0-9a-f-]{36})$/i);
           if (request.method === "GET" && !requestRoute) {
-            const rows = await env.DB.prepare("SELECT r.id, r.requested_name AS requestedName, r.description, r.media_url AS mediaUrl, r.media_type AS mediaType, r.media_duration_ms AS mediaDurationMs, r.media_file_id AS mediaFileId, r.status, r.admin_note AS adminNote, r.created_at AS createdAt, p.display_name AS displayName, p.gabo_id AS gaboId FROM gift_custom_requests r LEFT JOIN profiles p ON p.user_id = r.user_id ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, r.created_at DESC LIMIT 200").all();
+            const rows = await env.DB.prepare("SELECT r.id, r.requested_name AS requestedName, r.description, r.media_url AS mediaUrl, r.media_type AS mediaType, r.media_duration_ms AS mediaDurationMs, r.media_file_id AS mediaFileId, r.sound_url AS soundUrl, r.status, r.admin_note AS adminNote, r.created_at AS createdAt, p.display_name AS displayName, p.gabo_id AS gaboId FROM gift_custom_requests r LEFT JOIN profiles p ON p.user_id = r.user_id ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, r.created_at DESC LIMIT 200").all();
             return json({ ok: true, requests: rows.results ?? [] }, 200, origin, env);
           }
           if (request.method === "PATCH" && requestRoute) {
@@ -645,7 +645,7 @@ export default {
             const results = await env.DB.batch([
               env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at, category, media_url, media_type) " +
                 "SELECT ?, requested_name, ?, '', ?, 1, ?, ?, ?, 'custom', media_url, " +
-                "CASE WHEN media_type = 'gif' THEN 'apng' WHEN media_type = 'svga' THEN 'svga' ELSE 'emoji' END " +
+                "CASE WHEN media_type = 'gif' THEN 'apng' WHEN media_type = 'svga' THEN 'svga' ELSE 'emoji' END, sound_url " +
                 "FROM gift_custom_requests WHERE id = ? AND status = 'pending'")
                 .bind(giftId, iconEmoji, coinPrice, sortOrder, now, now, requestRoute[1]),
               env.DB.prepare("UPDATE gift_custom_requests SET status = 'approved', admin_note = ?, approved_gift_id = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
@@ -1743,6 +1743,8 @@ export default {
         const mediaType = typeof body.mediaType === "string" ? body.mediaType.trim().toLowerCase() : "";
         const mediaFileId = typeof body.mediaFileId === "string" ? body.mediaFileId.trim() : "";
         const mediaDurationMs = Number(body.mediaDurationMs);
+        const soundUrl = typeof body.soundUrl === "string" ? body.soundUrl.trim() : "";
+        const soundFileId = typeof body.soundFileId === "string" ? body.soundFileId.trim() : "";
         if (requestedName.length < 2 || requestedName.length > 80 || description.length > 500) return json({ error: "invalid_custom_gift_request", message: "اكتب اسم الهدية ووصفًا لا يتجاوز 500 حرف." }, 400, origin, env);
         const hasMedia = Boolean(mediaUrl || mediaType || mediaFileId || body.mediaDurationMs !== undefined);
         let parsedMediaUrl: URL | null = null;
@@ -1827,13 +1829,65 @@ export default {
             return json({ error: "imagekit_file_validation_failed" }, 400, origin, env);
           }
         }
+        if (Boolean(soundUrl) !== Boolean(soundFileId)) {
+          return json({ error: "invalid_custom_gift_sound", message: "ارفع ملف الصوت MP3 من نفس النموذج أو اتركه فارغًا." }, 400, origin, env);
+        }
+        if (soundUrl || soundFileId) {
+          let parsedSoundUrl: URL | null = null;
+          try { parsedSoundUrl = new URL(soundUrl); } catch { parsedSoundUrl = null; }
+          if (!parsedSoundUrl || parsedSoundUrl.protocol !== "https:" || parsedSoundUrl.hostname !== "ik.imagekit.io" ||
+              !/\.mp3$/i.test(parsedSoundUrl.pathname) || !/^[A-Za-z0-9_-]{5,160}$/.test(soundFileId)) {
+            return json({ error: "invalid_custom_gift_sound", message: "ملف الصوت يجب أن يكون MP3 مرفوعًا عبر ImageKit." }, 400, origin, env);
+          }
+          if (!env.IMAGEKIT_PRIVATE_KEY?.trim()) return json({ error: "imagekit_not_configured" }, 503, origin, env);
+          let soundLookup: Response | null = null;
+          const soundLookupDelaysMs = [400, 700, 1000, 1300, 1600, 2000, 2500];
+          for (let attempt = 0; attempt <= soundLookupDelaysMs.length; attempt++) {
+            soundLookup = await fetch("https://api.imagekit.io/v1/files/" + encodeURIComponent(soundFileId) + "/details", {
+              headers: { Authorization: "Basic " + btoa(env.IMAGEKIT_PRIVATE_KEY.trim() + ":") }
+            });
+            if (soundLookup.ok || (soundLookup.status !== 404 && soundLookup.status < 500)) break;
+            if (attempt < soundLookupDelaysMs.length) await new Promise(resolve => setTimeout(resolve, soundLookupDelaysMs[attempt]));
+          }
+          if (!soundLookup?.ok) {
+            const status = soundLookup?.status ?? 0;
+            return json({
+              error: status === 401 || status === 403 ? "imagekit_credentials_invalid" : status === 404 ? "imagekit_file_not_found" : "imagekit_file_lookup_failed",
+              message: status === 404
+                ? "تم رفع الصوت، لكن ImageKit لم يعثر على معرّفه بعد إعادة المحاولة. تحقق من تطابق حساب الرفع والتحقق."
+                : "تعذر التحقق من ملف الصوت في ImageKit. حاول مرة أخرى.",
+              providerStatus: status
+            }, 400, origin, env);
+          }
+          const uploadedSound = await soundLookup.json() as Record<string, unknown>;
+          const uploadedSoundUrl = typeof uploadedSound.url === "string" ? uploadedSound.url : "";
+          const uploadedSoundName = typeof uploadedSound.name === "string" ? uploadedSound.name : "";
+          const uploadedSoundPath = typeof uploadedSound.filePath === "string" ? uploadedSound.filePath : "";
+          let soundUrlMatches = false;
+          try {
+            const verified = new URL(uploadedSoundUrl), submitted = new URL(soundUrl);
+            soundUrlMatches = verified.protocol === "https:" && verified.hostname === "ik.imagekit.io" &&
+              submitted.protocol === "https:" && submitted.hostname === "ik.imagekit.io" &&
+              decodeURIComponent(verified.pathname).replace(/\/+$/, "") === decodeURIComponent(submitted.pathname).replace(/\/+$/, "");
+          } catch { soundUrlMatches = false; }
+          const soundExtensionMatches = [uploadedSoundName, uploadedSoundPath, uploadedSoundUrl].some(value => {
+            if (!value) return false;
+            try { return /\.mp3$/i.test(value.startsWith("https://") ? new URL(value).pathname : value.split(/[?#]/, 1)[0]); }
+            catch { return false; }
+          });
+          const soundSize = Number(uploadedSound.size);
+          if (uploadedSound.fileId !== soundFileId || !soundUrlMatches || !soundExtensionMatches ||
+              !Number.isFinite(soundSize) || soundSize < 1 || soundSize > 5 * 1024 * 1024) {
+            return json({ error: "imagekit_file_validation_failed", message: "تعذر مطابقة ملف الصوت مع الملف المرفوع." }, 400, origin, env);
+          }
+        }
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const recent = await env.DB.prepare("SELECT COUNT(*) AS count FROM gift_custom_requests WHERE user_id = ? AND created_at >= ?").bind(user.id, since).first<{ count: number }>();
         if (Number(recent?.count ?? 0) >= 5) return json({ error: "custom_gift_request_limit" }, 429, origin, env);
         const id = crypto.randomUUID(), now = new Date().toISOString();
-        await env.DB.prepare("INSERT INTO gift_custom_requests (id, user_id, requested_name, description, media_url, media_type, media_duration_ms, media_file_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)")
-          .bind(id, user.id, requestedName, description, hasMedia ? mediaUrl : null, hasMedia ? mediaType : null, hasMedia ? mediaDurationMs : null, hasMedia ? mediaFileId : null, now).run();
-        return json({ ok: true, request: { id, requestedName, description, mediaUrl, mediaType, mediaDurationMs, mediaFileId, status: "pending", createdAt: now } }, 201, origin, env);
+        await env.DB.prepare("INSERT INTO gift_custom_requests (id, user_id, requested_name, description, media_url, media_type, media_duration_ms, media_file_id, sound_url, sound_file_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)")
+          .bind(id, user.id, requestedName, description, hasMedia ? mediaUrl : null, hasMedia ? mediaType : null, hasMedia ? mediaDurationMs : null, hasMedia ? mediaFileId : null, soundUrl || null, soundFileId || null, now).run();
+        return json({ ok: true, request: { id, requestedName, description, mediaUrl, mediaType, mediaDurationMs, mediaFileId, soundUrl: soundUrl || null, status: "pending", createdAt: now } }, 201, origin, env);
       } catch (error) {
         console.error("[gifts.custom-request] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "custom_gift_request_failed" }, 500, origin, env);
