@@ -26,6 +26,10 @@ type CatGreedRound = {
   settled_at: string | null;
   created_at: string;
   config_snapshot: string;
+  result_slot: number | null;
+  special: string | null;
+  server_seed: string;
+  seed_commitment: string;
 };
 
 const BET_CHIPS = new Set([10, 500, 6000, 30000, 100000]);
@@ -311,6 +315,7 @@ export async function handleCatGreedRequest(
           if(!duplicateBet) betReceipt={id:betId,roundId,slot,amount};
         }
         round = await currentRound(db);
+        if (!round) return json({enabled:false,error:"game_disabled"},423,origin,env);
       }
       const pools = await db.prepare("SELECT slot,SUM(amount) AS total FROM cat_greed_bets WHERE round_id=? GROUP BY slot").bind(round.id).all<{slot:number;total:number}>();
       const mine = await db.prepare("SELECT slot,SUM(amount) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=? GROUP BY slot").bind(round.id,user.id).all<{slot:number;total:number}>();
@@ -321,7 +326,7 @@ export async function handleCatGreedRequest(
       const odds = calculateOdds(config);
       const isBetting=round.phase==="betting";
       return json({
-        enabled:settings.enabled===1,roundId:round.id,secondsLeft:Math.max(0,Math.ceil((Date.parse(isBetting?round.closes_at:new Date(Date.parse(round.settled_at)+config.resultSeconds*1000).toISOString())-Date.now())/1000)),
+        enabled:settings.enabled===1,roundId:round.id,secondsLeft:Math.max(0,Math.ceil((Date.parse(isBetting?round.closes_at:new Date(Date.parse(round.settled_at ?? round.created_at)+config.resultSeconds*1000).toISOString())-Date.now())/1000)),
         phase:round.phase,pools:Array.from({length:8},(_,i)=>pools.results?.find(x=>x.slot===i)?.total??0),
         myBets:Array.from({length:8},(_,i)=>mine.results?.find(x=>x.slot===i)?.total??0),
         balance:wallet?.balance??0,myPayout:payout?.amount??0,myPayoutRoundId:payout?.round_id??null,
