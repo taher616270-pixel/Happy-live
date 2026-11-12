@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const migration = await readFile(new URL("../migrations/0034_cat_greed_wheel.sql", import.meta.url), "utf8");
+const ledgerMigration = await readFile(new URL("../migrations/0035_cat_greed_ledger.sql", import.meta.url), "utf8");
 const worker = await readFile(new URL("../src/cat_greed.ts", import.meta.url), "utf8");
 const flutterGame = await readFile(new URL("../../../frontend/lib/pages/cat_greed_game.dart", import.meta.url), "utf8");
 const roomPreview = await readFile(new URL("../../../frontend/lib/pages/voice_room_design_preview.dart", import.meta.url), "utf8");
@@ -26,7 +27,7 @@ test("round results are committed before betting and revealed only after settlem
 });
 
 test("betting and payouts are server-authoritative and use the Happy Live wallet ledger", () => {
-  assert.match(worker, /authenticatedUser\(request,db\)/);
+  assert.match(worker, /authenticateUser\(request,db\)/);
   assert.match(worker, /UPDATE user_wallets SET balance=balance-\?/);
   assert.match(worker, /INSERT INTO cat_greed_ledger/);
   assert.match(worker, /cat_greed_payouts/);
