@@ -402,7 +402,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
             PopupMenuButton<int>(
               color: const Color(0xFF211D27),
               onSelected: (value) => setState(() => _quantity = value),
-              itemBuilder: (_) => _quantities.map((value) => PopupMenuItem<int>(value: value, child: Text(value.toString(), style: const TextStyle(color: Colors.white))).toList(),
+              itemBuilder: (_) => _quantities.map((value) => PopupMenuItem<int>(value: value, child: Text(value.toString(), style: const TextStyle(color: Colors.white)))).toList(),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Row(children: [Text(_quantity.toString(), style: const TextStyle(color: Colors.white, fontSize: 13)), const Icon(Icons.keyboard_arrow_down, color: _muted, size: 18)]),
