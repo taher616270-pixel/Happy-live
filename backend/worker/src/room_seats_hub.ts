@@ -130,6 +130,16 @@ export class RoomSeatsHub {
       return Response.json(this.publicSnapshot());
     }
 
+    if (url.pathname === "/gift" && request.method === "POST") {
+      const roomId = request.headers.get("x-room-id") ?? "";
+      if (!roomId || roomId !== this.roomId) return Response.json({ error: "room_mismatch" }, { status: 403 });
+      let event: Record<string, unknown>;
+      try { event = await request.json() as Record<string, unknown>; }
+      catch { return Response.json({ error: "invalid_json" }, { status: 400 }); }
+      this.broadcast({ type: "room_gift", ...event });
+      return Response.json({ ok: true });
+    }
+
     if (url.pathname === "/clear" && request.method === "POST") {
       await this.enqueue(async () => {
         // Clearing/disabling microphones ends every active continuous-time session.

@@ -1984,6 +1984,38 @@ export default {
           return json({ error: "gift_not_processed" }, 409, origin, env);
         }
         if (transaction.status !== "succeeded") return json({ error: "gift_not_processed" }, 409, origin, env);
+        // Notify every connected room member after the wallet transaction is committed.
+        // Animation delivery is best-effort and must never undo a successful gift.
+        try {
+          const gift = await env.DB.prepare(
+            "SELECT g.name, g.icon_emoji AS iconEmoji, g.media_url AS mediaUrl, g.media_type AS mediaType, " +
+            "COALESCE(sp.display_name, 'مستخدم') AS senderName, COALESCE(rp.display_name, 'مستخدم') AS recipientName " +
+            "FROM gift_catalog g LEFT JOIN profiles sp ON sp.user_id = ? " +
+            "LEFT JOIN profiles rp ON rp.user_id = ? WHERE g.id = ? LIMIT 1"
+          ).bind(user.id, recipientUserId, giftId).first<Record<string, unknown>>();
+          if (env.ROOM_SEATS && gift) {
+            const hub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+            await hub.fetch(new Request("https://room-seats.internal/gift", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-room-id": roomId },
+              body: JSON.stringify({
+                transactionId: transaction.id,
+                senderUserId: user.id,
+                recipientUserId,
+                senderName: gift.senderName,
+                recipientName: gift.recipientName,
+                name: gift.name,
+                iconEmoji: gift.iconEmoji,
+                mediaUrl: gift.mediaUrl,
+                mediaType: gift.mediaType,
+                mediaDurationMs: 5000,
+                quantity
+              })
+            }));
+          }
+        } catch (broadcastError) {
+          console.warn("[gifts.room.broadcast] skipped", broadcastError instanceof Error ? broadcastError.message : "UnknownError");
+        }
         return json({ ok: true, duplicate: false, transaction }, 201, origin, env);
       } catch (error) {
         const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
