@@ -19,6 +19,18 @@ type CatGreedSnapshot = {
   bettingSeconds: number; resultSeconds: number; saladWeightBp: number; pizzaWeightBp: number;
   symbols: Array<{slot:number;emoji:string;label:string;multiplier:number;isVegetable:boolean;weight:number;imageUrl:string|null}>;
 };
+type CatGreedRound = {
+  id: string;
+  phase: "betting" | "result";
+  closes_at: string;
+  settled_at: string | null;
+  created_at: string;
+  config_snapshot: string;
+  result_slot: number | null;
+  special: string | null;
+  server_seed: string;
+  seed_commitment: string;
+};
 
 const BET_CHIPS = new Set([10, 500, 6000, 30000, 100000]);
 const BET_RATE_WINDOW_SECONDS = 10;
@@ -159,17 +171,17 @@ async function settleRound(db: D1Database, round: any): Promise<any> {
   if (settled?.phase === "result") await payRound(db, settled);
   return settled;
 }
-async function currentRound(db: D1Database, allowCreate = true): Promise<any> {
-  let round = await db.prepare("SELECT * FROM cat_greed_rounds WHERE phase='betting' ORDER BY created_at DESC LIMIT 1").first();
-  if (!round) round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first();
+async function currentRound(db: D1Database, allowCreate = true): Promise<CatGreedRound | null> {
+  let round = await db.prepare("SELECT * FROM cat_greed_rounds WHERE phase='betting' ORDER BY created_at DESC LIMIT 1").first<CatGreedRound>();
+  if (!round) round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first<CatGreedRound>();
   if (!round && allowCreate) {
     try { round = await createRound(db); }
-    catch { round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first(); }
+    catch { round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first<CatGreedRound>(); }
   }
   if (round?.phase === "betting" && Date.parse(round.closes_at) <= Date.now()) round = await settleRound(db, round);
   if (allowCreate && round?.phase === "result" && Date.now() - Date.parse(round.settled_at ?? round.created_at) >= JSON.parse(round.config_snapshot).resultSeconds * 1000) {
     try { round = await createRound(db); }
-    catch { round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first(); }
+    catch { round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first<CatGreedRound>(); }
   }
   return round;
 }
@@ -199,7 +211,7 @@ async function readBoundedJson(request: Request, maxBytes: number): Promise<{ok:
   const bytes = new Uint8Array(total);
   let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk,offset); offset += chunk.byteLength; }
-  try { return {ok:true,value:JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes))}; }
+  try { return {ok:true,value:JSON.parse(new TextDecoder("utf-8",{fatal:true,ignoreBOM:false}).decode(bytes))}; }
   catch { return {ok:false,status:400,error:"invalid_json"}; }
 }
 export async function handleCatGreedRequest(
@@ -303,6 +315,7 @@ export async function handleCatGreedRequest(
           if(!duplicateBet) betReceipt={id:betId,roundId,slot,amount};
         }
         round = await currentRound(db);
+        if (!round) return json({enabled:false,error:"game_disabled"},423,origin,env);
       }
       const pools = await db.prepare("SELECT slot,SUM(amount) AS total FROM cat_greed_bets WHERE round_id=? GROUP BY slot").bind(round.id).all<{slot:number;total:number}>();
       const mine = await db.prepare("SELECT slot,SUM(amount) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=? GROUP BY slot").bind(round.id,user.id).all<{slot:number;total:number}>();
@@ -313,7 +326,7 @@ export async function handleCatGreedRequest(
       const odds = calculateOdds(config);
       const isBetting=round.phase==="betting";
       return json({
-        enabled:settings.enabled===1,roundId:round.id,secondsLeft:Math.max(0,Math.ceil((Date.parse(isBetting?round.closes_at:new Date(Date.parse(round.settled_at)+config.resultSeconds*1000).toISOString())-Date.now())/1000)),
+        enabled:settings.enabled===1,roundId:round.id,secondsLeft:Math.max(0,Math.ceil((Date.parse(isBetting?round.closes_at:new Date(Date.parse(round.settled_at ?? round.created_at)+config.resultSeconds*1000).toISOString())-Date.now())/1000)),
         phase:round.phase,pools:Array.from({length:8},(_,i)=>pools.results?.find(x=>x.slot===i)?.total??0),
         myBets:Array.from({length:8},(_,i)=>mine.results?.find(x=>x.slot===i)?.total??0),
         balance:wallet?.balance??0,myPayout:payout?.amount??0,myPayoutRoundId:payout?.round_id??null,

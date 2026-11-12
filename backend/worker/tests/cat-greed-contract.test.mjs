@@ -123,7 +123,7 @@ test("symbol images are restricted to ImageKit and game pages use safe rendering
   assert.match(gameAdminScript, /fmt\(r\.wagered\)/);
   assert.match(gameAdminScript, /fmt\(r\.players\)/);
   assert.match(worker, /COALESCE\(b\.wagered,0\) AS wagered/);
-  assert.match(worker, /THEN config_snapshot ELSE NULL END AS config_snapshot/);
+  assert.match(worker, /THEN r\.config_snapshot ELSE NULL END AS config_snapshot/);
 });
 
 test("bet debit, ledger entry and bet insert use the same idempotent transaction id", () => {
