@@ -16,6 +16,7 @@ import 'package:happy_live/services/agora_room_bridge.dart';
 import 'package:happy_live/services/room_seat_socket.dart';
 import 'package:happy_live/pages/wallet_page.dart';
 import 'package:happy_live/widgets/room_gift_sheet.dart';
+import 'package:flutter_svga/flutter_svga.dart';
 
 class RoomPage extends StatefulWidget {
   const RoomPage({super.key, required this.room, required this.accessToken});
@@ -100,6 +101,9 @@ class _RoomPageState extends State<RoomPage> {
   List<Map<String, dynamic>> _seats = [];
   List<Map<String, dynamic>> _audienceUsers = [];
   int _audienceCount = 0;
+  Map<String, dynamic>? _activeRoomGift;
+  Timer? _roomGiftOverlayTimer;
+  int _roomGiftOverlayNonce = 0;
   int _roomLevel = 1;
   int _roomExperienceLevel = 1;
   int _roomExperienceExp = 0;
@@ -239,6 +243,10 @@ class _RoomPageState extends State<RoomPage> {
   void _handleSeatSocketEvent(Map<String, dynamic> event) {
     if (!mounted) return;
     final type = event['type']?.toString();
+    if (type == 'room_gift') {
+      _showRoomGiftOverlay(event);
+      return;
+    }
     final rawSeats = event['seats'];
     final seats = rawSeats is List ? rawSeats : const <dynamic>[];
 
@@ -364,6 +372,7 @@ class _RoomPageState extends State<RoomPage> {
     unawaited(AgoraRoomBridge.leave());
     _miniOverlayEntry?.remove();
     _miniOverlayEntry = null;
+    _roomGiftOverlayTimer?.cancel();
     _refreshTimer?.cancel();
     _volumeTimer?.cancel();
     for (final timer in _hideTimers.values) {
@@ -1698,6 +1707,90 @@ class _RoomPageState extends State<RoomPage> {
     }
   }
 
+  void _showRoomGiftOverlay(Map<String, dynamic> event) {
+    final gift = Map<String, dynamic>.from(event);
+    final durationValue = gift['mediaDurationMs'];
+    final durationMs = durationValue is num ? durationValue.toInt().clamp(1800, 5000) : 4000;
+    _roomGiftOverlayTimer?.cancel();
+    setState(() {
+      _activeRoomGift = gift;
+      _roomGiftOverlayNonce++;
+    });
+    _roomGiftOverlayTimer = Timer(Duration(milliseconds: durationMs), () {
+      if (!mounted) return;
+      setState(() => _activeRoomGift = null);
+    });
+  }
+
+  Widget _roomGiftFullscreenOverlay() {
+    final gift = _activeRoomGift!;
+    final mediaUrl = (gift['mediaUrl'] ?? '').toString().trim();
+    final mediaType = (gift['mediaType'] ?? '').toString().toLowerCase();
+    final sender = (gift['senderName'] ?? 'مستخدم').toString();
+    final recipient = (gift['recipientName'] ?? 'مستخدم').toString();
+    final giftName = (gift['name'] ?? 'هدية').toString();
+    Widget animation;
+    if (mediaUrl.startsWith('https://') && mediaType == 'svga') {
+      animation = SVGAEasyPlayer(
+        key: ValueKey('room-gift-svga-$_roomGiftOverlayNonce'),
+        resUrl: mediaUrl,
+        fit: BoxFit.contain,
+        volume: 0,
+        muted: true,
+      );
+    } else if (mediaUrl.startsWith('https://') && mediaType == 'gif') {
+      animation = Image.network(
+        mediaUrl,
+        key: ValueKey('room-gift-gif-$_roomGiftOverlayNonce'),
+        fit: BoxFit.contain,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, __, ___) => Center(
+          child: Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 110)),
+        ),
+      );
+    } else {
+      animation = Center(
+        child: Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 120)),
+      );
+    }
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: ColoredBox(
+          color: const Color(0x44000000),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Center(child: SizedBox.expand(child: animation)),
+              Positioned(
+                left: 18,
+                right: 18,
+                bottom: 34,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: const Color(0xD9000000),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0x99E8C477)),
+                    ),
+                    child: Text(
+                      '$sender أهدى $giftName إلى $recipient',
+                      maxLines: 2,
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _openRoomGiftPicker() async {
     if (_roomId.isEmpty || widget.accessToken.isEmpty) {
       _showMessage('تعذر فتح الهدايا: بيانات الغرفة غير مكتملة');
@@ -1942,7 +2035,8 @@ class _RoomPageState extends State<RoomPage> {
       onUpgradeRoom: upgradeRoom,
       onOpenGifts: _openRoomGiftPicker,
           ),
-        ),        if (_isLoading)
+        ),        if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
+        if (_isLoading)
           Positioned.fill(
             child: AbsorbPointer(
               child: ColoredBox(
