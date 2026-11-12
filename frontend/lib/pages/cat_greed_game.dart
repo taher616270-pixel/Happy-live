@@ -27,10 +27,11 @@ class _CatGreedGameState extends State<CatGreedGame> {
   Map<String, dynamic>? _state;
   String? _error, _notice;
   int _chip = 500, _hit = -1;
-  bool _busy = false, _spinning = false;
+  bool _busy = false, _spinning = false, _refreshing = false;
   String _animatedRound = '';
+  String _pendingBetKey = '', _pendingBetSignature = '';
 
-  @override void initState() { super.initState(); _refresh(); _poll = Timer.periodic(const Duration(seconds: 1), (_) => _refresh()); }
+  @override void initState() { super.initState(); _refresh(); _poll = Timer.periodic(const Duration(milliseconds: 1500), (_) => _refresh()); }
   @override void dispose() { _poll?.cancel(); super.dispose(); }
 
   Map<String, String> get _headers => {'Content-Type':'application/json','Authorization':'Bearer ${widget.accessToken}'};
@@ -39,12 +40,15 @@ class _CatGreedGameState extends State<CatGreedGame> {
     final response = method == 'GET'
       ? await http.get(Uri.parse('$_wheelApi$path'),headers:_headers)
       : await http.post(Uri.parse('$_wheelApi$path'),headers:_headers,body:jsonEncode(body));
-    final data = jsonDecode(response.body) as Map<String,dynamic>;
-    if(response.statusCode<200 || response.statusCode>=300) throw Exception(data['message']??data['error']??'تعذر تنفيذ الطلب');
-    return data;
+    final decoded = jsonDecode(response.body);
+    if(decoded is! Map<String,dynamic>) throw Exception('استجابة الخادم غير صالحة');
+    if(response.statusCode<200 || response.statusCode>=300) throw Exception(decoded['message']??decoded['error']??'تعذر تنفيذ الطلب');
+    return decoded;
   }
 
   Future<void> _refresh() async {
+    if(_refreshing)return;
+    _refreshing=true;
     try {
       final next=await _request('/games/cat-greed/state');
       if(!mounted)return;
@@ -53,6 +57,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
       setState(()=>_state=next);
       if(next['phase']=='result' && round!=_animatedRound){_animatedRound=round;await _spin(next);}
     } catch(e) { if(mounted)setState(()=>_error=e.toString().replaceFirst('Exception: ','')); }
+    finally { _refreshing=false; }
   }
 
   Future<void> _spin(Map<String,dynamic> s) async {
@@ -75,9 +80,16 @@ class _CatGreedGameState extends State<CatGreedGame> {
     final s=_state;
     if(s==null||s['phase']!='betting'){_message('انتهى وقت الرهان');return;}
     if(_busy||(s['balance'] as num? ?? 0)<_chip){_message('الرصيد غير كافٍ أو يوجد طلب جارٍ');return;}
+    final signature='undefined:$slot:$_chip';
+    if(_pendingBetSignature!=signature){
+      final random=math.Random.secure();
+      _pendingBetKey=List.generate(16,(_)=>random.nextInt(256).toRadixString(16).padLeft(2,'0')).join();
+      _pendingBetSignature=signature;
+    }
     setState(()=>_busy=true);
     try{
-      final next=await _request('/games/cat-greed/bet',method:'POST',body:{'roundId':s['roundId'],'slot':slot,'amount':_chip});
+      final next=await _request('/games/cat-greed/bet',method:'POST',body:{'roundId':s['roundId'],'slot':slot,'amount':_chip,'idempotencyKey':_pendingBetKey});
+      _pendingBetKey='';_pendingBetSignature='';
       if(mounted)setState(()=>_state=next);
     }catch(e){_message(e.toString().replaceFirst('Exception: ',''));await _refresh();}
     finally{if(mounted)setState(()=>_busy=false);}
@@ -122,6 +134,7 @@ class _CatGreedGameState extends State<CatGreedGame> {
                 IconButton(onPressed:()=>Navigator.of(context).maybePop(),icon:const Icon(Icons.close,color:Colors.white)),
               ])),
               Text('جولة ${s['roundId']} · ${s['phase']=='betting'?'استقبال الرهانات':'النتيجة'} · ${s['secondsLeft']} ث',style:const TextStyle(color:Colors.white70,fontWeight:FontWeight.bold)),
+              if(s['seedCommitment']!=null)Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:4),child:Text('بصمة نزاهة الجولة: ${s['seedCommitment'].toString().substring(0,math.min(24,s['seedCommitment'].toString().length))}…',style:const TextStyle(color:Color(0xFFD4AF37),fontSize:10))),
               Expanded(child:LayoutBuilder(builder:(context,c){
                 final d=c.maxWidth<c.maxHeight?c.maxWidth:c.maxHeight;
                 return Center(child:SizedBox(width:d,height:d,child:Stack(children:[
@@ -143,10 +156,18 @@ class _CatGreedGameState extends State<CatGreedGame> {
     ));
   }
 
+  bool _safeImage(dynamic value){
+    if(value==null)return false;
+    final uri=Uri.tryParse(value.toString());
+    return uri!=null&&uri.scheme=='https'&&(uri.host=='ik.imagekit.io'||uri.host.endsWith('.imagekit.io'))&&uri.userInfo.isEmpty&&uri.port==443;
+  }
+
   Widget _slot(int i,Map<String,dynamic> s,double d){
     final symbols=(s['symbols'] as List?)??const [];
     final symbol=i<symbols.length?Map<String,dynamic>.from(symbols[i] as Map):<String,dynamic>{};
     final pools=(s['pools'] as List?)??const [],bets=(s['myBets'] as List?)??const [];
+    final odds=(s['odds'] as List?)??const [];
+    final currentOdds=i<odds.length?Map<String,dynamic>.from(odds[i] as Map):<String,dynamic>{};
     final poolValues=pools.map((e)=>(e as num).toDouble()).toList();
     final hot=poolValues.isNotEmpty&&poolValues[i]==poolValues.reduce((a,b)=>a>b?a:b);
     return GestureDetector(onTap:()=>_bet(i),child:AnimatedContainer(duration:const Duration(milliseconds:120),
@@ -154,9 +175,11 @@ class _CatGreedGameState extends State<CatGreedGame> {
       decoration:BoxDecoration(shape:BoxShape.circle,color:_hit==i?const Color(0xFFFFE68A):const Color(0xFFFFF3C4),border:Border.all(color:const Color(0xFFB67A39),width:3),boxShadow:_hit==i?[const BoxShadow(color:Color(0xFFFFD700),blurRadius:18,spreadRadius:3)]:null),
       child:Stack(alignment:Alignment.center,children:[
         Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-          symbol['imageUrl']!=null&&symbol['imageUrl'].toString().startsWith('https://')?Image.network(symbol['imageUrl'].toString(),width:d*.42,height:d*.42,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Text(symbol['emoji']?.toString()??'🐱',style:TextStyle(fontSize:d*.35))):Text(symbol['emoji']?.toString()??'🐱',style:TextStyle(fontSize:d*.35)),
+          _safeImage(symbol['imageUrl'])?Image.network(symbol['imageUrl'].toString(),width:d*.42,height:d*.42,fit:BoxFit.contain,errorBuilder:(_,__,___)=>Text(symbol['emoji']?.toString()??'🐱',style:TextStyle(fontSize:d*.35))):Text(symbol['emoji']?.toString()??'🐱',style:TextStyle(fontSize:d*.35)),
           Text('${symbol['multiplier']??1}x',style:TextStyle(color:const Color(0xFF5A3A00),fontSize:d*.15,fontWeight:FontWeight.w900)),
           Text(_fmt(pools.isNotEmpty?pools[i]:0),style:TextStyle(color:const Color(0xFF5A3A00),fontSize:d*.12)),
+          Text('ظهور ${((currentOdds['appearanceProbabilityBp'] as num? ?? 0)/100).toStringAsFixed(1)}%',style:TextStyle(color:const Color(0xFF5A3A00),fontSize:d*.085)),
+          Text('عائد نظري ${((currentOdds['expectedReturnBp'] as num? ?? 0)/100).toStringAsFixed(1)}%',style:TextStyle(color:const Color(0xFF5A3A00),fontSize:d*.085)),
           if(bets.isNotEmpty&&(bets[i] as num)>0)Text('رهانك ${_fmt(bets[i])}',style:TextStyle(color:const Color(0xFF7A22FF),fontSize:d*.09)),
         ]),
         if(hot)const Positioned(top:3,right:4,child:Text('HOT',style:TextStyle(color:Colors.red,fontSize:8,fontWeight:FontWeight.w900))),
