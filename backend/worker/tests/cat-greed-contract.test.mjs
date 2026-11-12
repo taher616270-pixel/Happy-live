@@ -219,3 +219,9 @@ test("player win/loss statistics count settled rounds only", () => {
   assert.match(worker, /settled=1 AND payout>0/);
   assert.match(worker, /settled=1 AND payout=0/);
 });
+
+test("both admin entry points warn before enabling cash-value wagering", () => {
+  assert.match(gameAdminScript, /currentEnabled!==1/);
+  assert.match(gameAdminScript, /احتياطي يغطي أقصى الجوائز/);
+  assert.match(mainAdmin, /احتياطي يغطي أقصى الجوائز/);
+});
