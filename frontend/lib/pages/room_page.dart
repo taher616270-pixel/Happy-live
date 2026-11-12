@@ -1786,7 +1786,7 @@ class _RoomPageState extends State<RoomPage> {
                     }),
                   ).timeout(const Duration(seconds: 12));
                   final result = jsonDecode(sendResponse.body);
-                  if (sendResponse.statusCode == 200 &&
+                  if ((sendResponse.statusCode == 200 || sendResponse.statusCode == 201) &&
                       result is Map && result['ok'] == true) {
                     if (sheetContext.mounted) Navigator.of(sheetContext).pop();
                     _showMessage('تم إرسال ${gift['name']} بنجاح');
