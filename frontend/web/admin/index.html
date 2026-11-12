@@ -185,13 +185,13 @@ async function render(){
 async function catGreedMainPage(){
   const data=await api("/admin/games/cat-greed/overview");
   if(window.catGreedMonitorTimer)clearInterval(window.catGreedMonitorTimer);
-  window.catGreedMonitorTimer=setInterval(()=>{if(page==="games")catGreedMainPage().catch(()=>{});else{clearInterval(window.catGreedMonitorTimer);window.catGreedMonitorTimer=null}},1000);
+  window.catGreedMonitorTimer=setInterval(()=>{if(document.hidden)return;if(page==="games")catGreedMainPage().catch(()=>{});else{clearInterval(window.catGreedMonitorTimer);window.catGreedMonitorTimer=null}},5000);
   const totals=data.totals||{},players=data.players||[],rounds=data.rounds||[];
   const fmt=n=>Number(n||0).toLocaleString("en-US");
   $("content").innerHTML=
     '<div class="section"><div class="section-head"><div><h2>قط الجشع 🐱</h2><p class="muted">إدارة اللاعبين ومراقبة الجولات من لوحة Happy Live الرئيسية.</p></div><a class="action" href="../cat-greed-admin/" target="_blank" rel="noopener">فتح لوحة إدارة اللعبة المستقلة ↗</a></div>'+
-    '<div class="cards">'+metric("عدد الجولات",totals.rounds)+metric("إجمالي الرهانات",totals.wagered)+metric("اللاعبون",totals.players)+'</div>'+
-    '<div class="notice">احتمالات النتيجة موحّدة ومعلنة للجميع. يمكنك هنا إيقاف لاعب أو تحديد سقف رهانه، ومراجعة نتائجه؛ لا توجد نسب فوز سرية مختلفة بين اللاعبين.</div></div>'+
+    '<div class="cards">'+metric("عدد الجولات",totals.rounds)+metric("إجمالي الرهانات",totals.wagered)+metric("اللاعبون",totals.players)+metric("أعلى عائد نظري",(Number(data.maxExpectedReturnBp||0)/100).toFixed(2)+"%")+'</div>'+
+    '<div class="notice">احتمالات النتيجة موحّدة ومعلنة للجميع. أعلى عائد نظري محسوب لكل رمز؛ الخادم يمنع تفعيل اللعبة إذا تجاوز 100% حتى لا تصبح الجوائز المتوقعة أعلى من الرهانات. لا توجد نسب فوز سرية مختلفة بين اللاعبين.</div></div>'+
     '<div class="section"><div class="section-head"><h2>الجولات الأخيرة</h2><button class="action" id="catGreedRefresh">تحديث</button></div>'+
     (rounds.length?'<div class="table-wrap"><table><thead><tr><th>الجولة</th><th>الحالة</th><th>النتيجة</th><th>التوقيت</th><th>بصمة النتيجة</th></tr></thead><tbody>'+
       rounds.map(r=>'<tr><td>'+esc(r.id)+'</td><td>'+ (r.phase==="result"?'انتهت':'استقبال رهانات')+'</td><td>'+ (r.special==="salad"?'🥗 السلطة':r.special==="pizza"?'🍕 البيتزا':r.result_slot==null?'—':'الرمز '+(Number(r.result_slot)+1))+'</td><td>'+esc(r.settled_at||r.closes_at||"")+'</td><td><code>'+esc(String(r.seed_commitment||"").slice(0,18))+'…</code></td></tr>').join("")+
