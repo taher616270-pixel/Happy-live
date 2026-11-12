@@ -1791,7 +1791,7 @@ class _RoomPageState extends State<RoomPage> {
     );
   }
 
-  Future<void> _openRoomGiftPicker() async {
+  Future<void> _openRoomGiftPicker({Map<String, dynamic>? targetRecipient}) async {
     if (_roomId.isEmpty || widget.accessToken.isEmpty) {
       _showMessage('تعذر فتح الهدايا: بيانات الغرفة غير مكتملة');
       return;
@@ -1814,6 +1814,17 @@ class _RoomPageState extends State<RoomPage> {
       final walletBalance = (walletData['balance'] as num).toInt();
 
       final participants = <String, Map<String, dynamic>>{};
+      if (targetRecipient != null) {
+        final targetId = (targetRecipient['userId'] ?? targetRecipient['id'] ?? '').toString().trim();
+        if (targetId.isNotEmpty) {
+          participants[targetId] = <String, dynamic>{
+            ...targetRecipient,
+            'userId': targetId,
+            'name': (targetRecipient['name'] ?? targetRecipient['displayName'] ?? 'مستخدم').toString(),
+            'avatarUrl': (targetRecipient['avatarUrl'] ?? targetRecipient['avatar'] ?? '').toString(),
+          };
+        }
+      }
       for (final user in [..._seats, ..._audienceUsers]) {
         final id = (user['userId'] ?? user['id'] ?? '').toString().trim();
         if (id.isEmpty) continue;
@@ -1845,6 +1856,7 @@ class _RoomPageState extends State<RoomPage> {
         balance: walletBalance,
         avatarUrl: _seatStateStore.currentAvatarUrl,
         recipients: recipients,
+        initialRecipientId: (targetRecipient?['userId'] ?? targetRecipient?['id'] ?? '').toString(),
         loadGifts: (category) async {
           final uri = Uri.parse('$_apiBase/gifts/catalog').replace(
             queryParameters: {'tab': category},
@@ -1869,7 +1881,7 @@ class _RoomPageState extends State<RoomPage> {
         },
         onSend: (gift, quantity, recipientId) async {
           final idempotencyKey =
-              'roomgift:${DateTime.now().microsecondsSinceEpoch}:${gift['id']}';
+              'roomgift:${DateTime.now().microsecondsSinceEpoch}:${gift['id']}:$recipientId';
           final response = await http.post(
             Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/gifts/send'),
             headers: _headers,
@@ -1887,7 +1899,7 @@ class _RoomPageState extends State<RoomPage> {
             final error = result is Map ? result['error']?.toString() : null;
             throw Exception(switch (error) {
               'insufficient_balance' => 'رصيدك من العملات غير كافٍ',
-              'recipient_not_present' || 'recipient_not_in_room' => 'المستلم لم يعد موجودًا في الغرفة',
+              'recipient_not_present' || 'recipient_not_in_room' || 'recipient_not_room_member' => 'لا يمكن إرسال الهدية لهذا الحساب من هذه الغرفة',
               'cannot_gift_self' => 'لا يمكنك إرسال هدية لنفسك',
               'gift_not_available' => 'هذه الهدية غير متاحة حاليًا',
               'room_not_found' => 'الغرفة لم تعد نشطة',
