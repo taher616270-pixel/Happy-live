@@ -17,6 +17,12 @@ CREATE TABLE IF NOT EXISTS cat_greed_bet_rate_limits (
   request_count INTEGER NOT NULL CHECK (request_count >= 0)
 );
 
+CREATE TABLE IF NOT EXISTS cat_greed_state_rate_limits (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  window_start INTEGER NOT NULL,
+  request_count INTEGER NOT NULL CHECK (request_count >= 0)
+);
+
 -- Safer defaults for a new, disabled game. These settings keep the maximum
 -- theoretical gross return for any single-symbol bet below 100% under the
 -- current salad/pizza category payout rules. Preserve any owner-customized config.
