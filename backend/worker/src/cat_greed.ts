@@ -209,8 +209,6 @@ export async function handleCatGreedRequest(
             !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
           return wheelError("invalid_bet",400,json,origin,env);
         }
-        if (!round || round.id !== roundId || round.phase !== "betting" || Date.parse(round.closes_at)<=Date.now()) return wheelError("round_closed",409,json,origin,env);
-
         const prior = await db.prepare("SELECT round_id,slot,amount,bet_id FROM cat_greed_bet_requests WHERE idempotency_key=? AND user_id=?")
           .bind(idempotencyKey,user.id).first<{round_id:string;slot:number;amount:number;bet_id:string}>();
         if (prior) {
@@ -221,6 +219,7 @@ export async function handleCatGreedRequest(
           betReceipt={id:prior.bet_id,roundId,slot,amount};
           duplicateBet=true;
         } else {
+          if (!round || round.id !== roundId || round.phase !== "betting" || Date.parse(round.closes_at)<=Date.now()) return wheelError("round_closed",409,json,origin,env);
           await db.prepare("INSERT OR IGNORE INTO user_wallets (user_id,balance,updated_at) VALUES (?,0,?)").bind(user.id,isoNow()).run();
           const control = await db.prepare("SELECT enabled,max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?").bind(user.id).first<{enabled:number;max_bet_per_round:number}>();
           if (control?.enabled===0) return wheelError("player_disabled",403,json,origin,env);
@@ -240,7 +239,7 @@ export async function handleCatGreedRequest(
             db.prepare("UPDATE user_wallets SET balance=balance-?,updated_at=? WHERE user_id=? AND balance>=? AND EXISTS (SELECT 1 FROM cat_greed_bet_requests WHERE idempotency_key=? AND bet_id=? AND user_id=?) AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?)")
               .bind(amount,now,user.id,amount,idempotencyKey,betId,user.id,roundId,now),
             db.prepare("INSERT INTO cat_greed_ledger (id,user_id,round_id,amount,balance_after,transaction_type,description,created_at) SELECT ?,user_id,?,?,balance,'bet','رهان قط الجشع',? FROM user_wallets WHERE user_id=? AND changes()=1")
-              .bind(betId,user.id,roundId,-amount,now,user.id),
+              .bind(betId,roundId,-amount,now,user.id),
             db.prepare("INSERT INTO cat_greed_bets (id,round_id,user_id,slot,amount,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cat_greed_ledger WHERE id=?)")
               .bind(betId,roundId,user.id,slot,amount,now,betId)
           ]);
@@ -264,7 +263,7 @@ export async function handleCatGreedRequest(
             if ((latestTotal?.total ?? 0) + amount > (latestControl?.max_bet_per_round ?? 1000000)) return wheelError("bet_limit_exceeded",400,json,origin,env);
             return wheelError((wallet?.balance ?? 0)<amount ? "insufficient_balance" : "round_closed",409,json,origin,env);
           }
-          betReceipt={id:betId,roundId,slot,amount};
+          if(!duplicateBet) betReceipt={id:betId,roundId,slot,amount};
         }
         round = await currentRound(db);
       }
@@ -305,6 +304,7 @@ export async function handleCatGreedRequest(
     if (playerControl && request.method==="PATCH") {
       if (admin.role!=="owner" && admin.role!=="admin") return wheelError("permission_denied",403,json,origin,env);
       let body:any; try { body=await request.json(); } catch { return wheelError("invalid_json",400,json,origin,env); }
+      if(!body||typeof body!=="object"||Array.isArray(body)) return wheelError("invalid_player_control",400,json,origin,env);
       const enabled=body.enabled===false?0:body.enabled===true?1:null;
       const limit=body.maxBetPerRound==null?null:Number(body.maxBetPerRound);
       if (enabled===null && (limit===null || !Number.isSafeInteger(limit) || limit<10 || limit>100000000)) return wheelError("invalid_player_control",400,json,origin,env);
