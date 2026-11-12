@@ -23,7 +23,7 @@ test("sensitive routes have server-side permission checks", () => {
 test("account suspension and kick revoke sessions and are auditable", () => {
   assert.match(worker, /UPDATE user_sessions SET revoked_at = \? WHERE user_id = \? AND revoked_at IS NULL/);
   assert.match(worker, /DELETE FROM room_seats WHERE user_id = \?/);
-  assert.match(worker, /'user\.kick'/);
+  assert.match(worker, /["']user\.kick["']/);
   assert.match(worker, /adminUsername: actor\.username/);
 });
 
