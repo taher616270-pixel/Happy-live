@@ -44,3 +44,41 @@ WHERE (SELECT COUNT(*) FROM cat_greed_symbols) = 8
     (slot = 2 AND weight = 7) OR (slot = 3 AND weight = 20) OR
     (slot = 4 AND weight = 4) OR (slot = 5 AND weight = 20) OR
     (slot = 6 AND weight = 10) OR (slot = 7 AND weight = 20)) = 8;
+
+-- Query-path indexes for payout reads, player history, and audit review.
+CREATE INDEX IF NOT EXISTS idx_cat_greed_payouts_user_paid
+  ON cat_greed_payouts(user_id, paid_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cat_greed_bets_round_user_slot
+  ON cat_greed_bets(round_id, user_id, slot);
+CREATE INDEX IF NOT EXISTS idx_cat_greed_admin_audit_created
+  ON cat_greed_admin_audit(created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cat_greed_payout_transaction
+  ON cat_greed_payouts(transaction_id) WHERE transaction_id IS NOT NULL;
+
+-- Defense in depth: a settled normal round must have one slot; a special
+-- round must have no slot. A betting round must not expose a result.
+CREATE TRIGGER IF NOT EXISTS cat_greed_round_result_consistency_insert
+BEFORE INSERT ON cat_greed_rounds
+WHEN NOT (
+  (NEW.phase='betting' AND NEW.result_slot IS NULL AND NEW.special IS NULL) OR
+  (NEW.phase='result' AND (
+    (NEW.special IS NULL AND NEW.result_slot BETWEEN 0 AND 7) OR
+    (NEW.special IN ('salad','pizza') AND NEW.result_slot IS NULL)
+  ))
+)
+BEGIN
+  SELECT RAISE(ABORT, 'invalid_cat_greed_round_result');
+END;
+
+CREATE TRIGGER IF NOT EXISTS cat_greed_round_result_consistency_update
+BEFORE UPDATE OF phase, result_slot, special ON cat_greed_rounds
+WHEN NOT (
+  (NEW.phase='betting' AND NEW.result_slot IS NULL AND NEW.special IS NULL) OR
+  (NEW.phase='result' AND (
+    (NEW.special IS NULL AND NEW.result_slot BETWEEN 0 AND 7) OR
+    (NEW.special IN ('salad','pizza') AND NEW.result_slot IS NULL)
+  ))
+)
+BEGIN
+  SELECT RAISE(ABORT, 'invalid_cat_greed_round_result');
+END;
