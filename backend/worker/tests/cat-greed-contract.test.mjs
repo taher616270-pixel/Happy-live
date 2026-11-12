@@ -139,6 +139,7 @@ test("standalone Cat Greed scripts are external and route CSP blocks inline scri
   assert.match(gameAdmin, /<script src="app\.js" defer><\/script>/);
   assert.match(pageHeaders, /script-src 'self'/);
   assert.match(pageHeaders, /frame-ancestors 'none'/);
+  assert.match(pageHeaders.slice(pageHeaders.indexOf("/cat-greed-admin/*")), /connect-src[^\\n]*https:\\/\\/\\*\\.taher616270\\.workers\\.dev/);
   assert.match(gameScript, /location\.hostname==="happy-live\.pages\.dev"/);
   assert.match(gameAdminScript, /location\.hostname==="happy-live\.pages\.dev"/);
   assert.match(gameScript, /catGreedApi/);
@@ -155,7 +156,8 @@ test("Preview migrations are explicitly isolated from the production D1 database
   assert.match(wranglerConfig, /database_name = "happy-live-room-exp-preview-db"/);
   assert.match(wranglerConfig, /database_name = "happy-live-db"/);
   assert.match(packageJson.scripts["db:preview"], /wrangler\.preview-migrations\.toml/);
-  assert.match(packageJson.scripts["db:preview"], /PREVIEW_DB/);
+  assert.match(packageJson.scripts["db:preview"], /happy-live-room-exp-preview-db/);
+  assert.match(previewMigrationConfig, /migrations_dir = "migrations-cat-greed-preview"/);
   assert.match(packageJson.scripts["preview:deploy"], /wrangler preview --name cat-greed/);
   assert.match(packageJson.scripts["preview:secrets:list"], /preview secret list --name cat-greed/);
 });
