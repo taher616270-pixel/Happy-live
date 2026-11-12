@@ -645,7 +645,7 @@ export default {
             const results = await env.DB.batch([
               env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at, category, media_url, media_type, sound_url) " +
                 "SELECT ?, requested_name, ?, '', ?, 1, ?, ?, ?, 'custom', media_url, " +
-                "CASE WHEN media_type = 'gif' THEN 'apng' WHEN media_type = 'svga' THEN 'svga' ELSE 'emoji' END, sound_url " +
+                "CASE WHEN media_type = 'gif' THEN 'gif' WHEN media_type = 'svga' THEN 'svga' ELSE 'emoji' END, sound_url " +
                 "FROM gift_custom_requests WHERE id = ? AND status = 'pending'")
                 .bind(giftId, iconEmoji, coinPrice, sortOrder, now, now, requestRoute[1]),
               env.DB.prepare("UPDATE gift_custom_requests SET status = 'approved', admin_note = ?, approved_gift_id = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
