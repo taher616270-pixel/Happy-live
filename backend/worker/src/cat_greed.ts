@@ -236,13 +236,16 @@ export async function handleCatGreedRequest(
       if (admin.role!=="owner") return wheelError("owner_permission_required",403,json,origin,env);
       let body:any; try { body=await request.json(); } catch { return wheelError("invalid_json",400,json,origin,env); }
       if (!Array.isArray(body.symbols)||body.symbols.length!==8) return wheelError("invalid_symbols",400,json,origin,env);
-      const now=isoNow(), statements:D1PreparedStatement[]=[];
+      const now=isoNow(), statements:D1PreparedStatement[]=[], seenSlots=new Set<number>();
+      let totalWeight=0;
       for (const item of body.symbols) {
         const slot=Number(item.slot),multiplier=Number(item.multiplier),weight=Number(item.weight);
         const emoji=String(item.emoji??""),label=String(item.label??"").trim(),imageUrl=item.imageUrl==null?"":String(item.imageUrl).trim();
-        if (!Number.isInteger(slot)||slot<0||slot>7||!Number.isInteger(multiplier)||multiplier<1||multiplier>100||!Number.isInteger(weight)||weight<0||weight>100000||!emoji||emoji.length>12||!label||label.length>40||(imageUrl&&!/^https:\/\//i.test(imageUrl))) return wheelError("invalid_symbol",400,json,origin,env);
+        if (!Number.isInteger(slot)||slot<0||slot>7||seenSlots.has(slot)||!Number.isInteger(multiplier)||multiplier<1||multiplier>100||!Number.isInteger(weight)||weight<0||weight>100000||!emoji||emoji.length>12||!label||label.length>40||imageUrl.length>2048||(imageUrl&&!/^https:\/\//i.test(imageUrl))) return wheelError("invalid_symbol",400,json,origin,env);
+        seenSlots.add(slot); totalWeight+=weight;
         statements.push(db.prepare("UPDATE cat_greed_symbols SET emoji=?,label=?,multiplier=?,is_vegetable=?,weight=?,image_url=?,updated_at=? WHERE slot=?").bind(emoji,label,multiplier,item.isVegetable?1:0,weight,imageUrl||null,now,slot));
       }
+      if(seenSlots.size!==8||totalWeight<=0) return wheelError("invalid_symbol_weights",400,json,origin,env);
       await db.batch(statements);
       await db.prepare("INSERT INTO cat_greed_admin_audit (id,admin_id,action,details_json,created_at) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(),admin.id,"symbols_update",JSON.stringify({count:8}),now).run();
       return json({ok:true,symbols:await getSymbols(db)},200,origin,env);
