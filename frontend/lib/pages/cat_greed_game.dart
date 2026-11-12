@@ -1,11 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 // نسخة معاينة محلية لعجلة الأطعمة.
 // لا تتصل بخادم الإنتاج ولا تستخدم رصيد الحساب الحقيقي.
 Future<void> showCatGreedGame(BuildContext context, {required String accessToken}) {
-  return showFoodWheelGame(context, api: MockFoodWheelApi());
+  return showFoodWheelGame(context, api: HttpFoodWheelApi(accessToken: accessToken));
 }
 
 class WheelSlot {
@@ -30,7 +32,10 @@ const kChips = [10, 500, 6000, 30000, 100000];
 enum RoundPhase { betting, result }
 
 class RoundState {
-  final int roundId, secondsLeft, balance, myPayout;
+  final String roundId;
+  final int secondsLeft, balance, myPayout;
+  final bool enabled;
+  final List<WheelSlot> symbols;
   final RoundPhase phase;
   final List<int> pools, myBets;
   final int? resultSlot;
@@ -40,6 +45,8 @@ class RoundState {
   const RoundState({
     required this.roundId,
     required this.secondsLeft,
+    this.enabled = true,
+    this.symbols = kSlots,
     required this.phase,
     required this.pools,
     required this.myBets,
@@ -50,23 +57,34 @@ class RoundState {
     this.history = const [],
   });
 
-  factory RoundState.fromJson(Map<String, dynamic> j) => RoundState(
-    roundId: (j['round_id'] as num).toInt(),
-    secondsLeft: (j['seconds_left'] as num).toInt(),
-    phase: j['phase'] == 'result' ? RoundPhase.result : RoundPhase.betting,
-    pools: (j['pools'] as List).map((e) => (e as num).toInt()).toList(),
-    myBets: (j['my_bets'] as List).map((e) => (e as num).toInt()).toList(),
-    balance: (j['balance'] as num).toInt(),
-    myPayout: (j['my_payout'] as num?)?.toInt() ?? 0,
-    resultSlot: (j['result_slot'] as num?)?.toInt(),
-    special: j['special'] as String?,
-    history: ((j['history'] as List?) ?? []).map((e) => '$e').toList(),
-  );
+  factory RoundState.fromJson(Map<String, dynamic> j) {
+    final rawSymbols = (j['symbols'] as List?) ?? const [];
+    final symbols = rawSymbols.map((e) {
+      final item = Map<String, dynamic>.from(e as Map);
+      return WheelSlot((item['emoji'] ?? '❔').toString(),
+        (item['multiplier'] as num? ?? 1).toInt(), item['isVegetable'] == true);
+    }).toList();
+    final rawHistory = (j['history'] as List?) ?? const [];
+    return RoundState(
+      roundId: (j['roundId'] ?? '').toString(),
+      secondsLeft: (j['secondsLeft'] as num? ?? 0).toInt(),
+      phase: j['phase'] == 'result' ? RoundPhase.result : RoundPhase.betting,
+      pools: ((j['pools'] as List?) ?? List.filled(8, 0)).map((e) => (e as num).toInt()).toList(),
+      myBets: ((j['myBets'] as List?) ?? List.filled(8, 0)).map((e) => (e as num).toInt()).toList(),
+      balance: (j['balance'] as num? ?? 0).toInt(),
+      myPayout: (j['myPayout'] as num? ?? 0).toInt(),
+      resultSlot: (j['resultSlot'] as num?)?.toInt(),
+      special: j['special'] as String?,
+      history: rawHistory.map((e) => '$e').toList(),
+      enabled: j['enabled'] == true,
+      symbols: symbols.length == 8 ? symbols : kSlots,
+    );
+  }
 }
 
 abstract class FoodWheelApi {
   Future<RoundState> fetchState();
-  Future<RoundState> placeBet(int roundId, int slot, int amount);
+  Future<RoundState> placeBet(String roundId, int slot, int amount, String idempotencyKey);
 }
 
 class MockFoodWheelApi implements FoodWheelApi {
@@ -153,14 +171,41 @@ class MockFoodWheelApi implements FoodWheelApi {
   Future<RoundState> fetchState() async { _tick(); return _state(); }
 
   @override
-  Future<RoundState> placeBet(int roundId, int slot, int amount) async {
+  Future<RoundState> placeBet(String roundId, int slot, int amount, String idempotencyKey) async {
     _tick();
-    if (roundId != _round || _elapsed >= _betSecs) throw Exception('round_closed');
+    if (roundId != '$_round' || _elapsed >= _betSecs) throw Exception('round_closed');
     if (amount > _balance) throw Exception('insufficient_balance');
     _balance -= amount;
     _bets[slot] += amount;
     _pools[slot] += amount;
     return _state();
+  }
+}
+
+/// Authenticated production adapter. The Worker owns outcomes and all wallet changes.
+class HttpFoodWheelApi implements FoodWheelApi {
+  static const _base = 'https://happy-live-api.taher616270.workers.dev/api/v1';
+  final String accessToken;
+  final http.Client _client;
+  HttpFoodWheelApi({required this.accessToken, http.Client? client}) : _client = client ?? http.Client();
+  Map<String, String> get _headers => {'Content-Type':'application/json','Authorization':'Bearer $accessToken'};
+  Future<Map<String, dynamic>> _request(String path, {Map<String, dynamic>? body}) async {
+    final uri = Uri.parse('$_base$path');
+    final response = body == null ? await _client.get(uri, headers:_headers) : await _client.post(uri, headers:_headers, body:jsonEncode(body));
+    Map<String, dynamic> data;
+    try { final decoded = jsonDecode(response.body); if (decoded is! Map<String, dynamic>) throw const FormatException(); data = decoded; }
+    catch (_) { throw Exception('استجابة الخادم غير مفهومة (${response.statusCode})'); }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final code = (data['error'] ?? 'request_failed').toString();
+      const messages = {'authentication_required':'انتهت جلسة الدخول، سجّل الدخول مجدداً.','game_disabled':'اللعبة متوقفة حالياً.','round_closed':'انتهى وقت الرهان؛ انتظر الجولة القادمة.','insufficient_balance':'رصيدك غير كافٍ.','player_disabled':'تم إيقاف اللعب لهذا الحساب.','bet_limit_exceeded':'وصلت إلى الحد المسموح للرهان في الجولة.','bet_rate_limited':'طلبات الرهان سريعة؛ انتظر قليلاً.','state_rate_limited':'التحديثات كثيرة؛ انتظر قليلاً.'};
+      throw Exception(messages[code] ?? 'تعذر تنفيذ الطلب: $code');
+    }
+    return data;
+  }
+  @override Future<RoundState> fetchState() async => RoundState.fromJson(await _request('/games/cat-greed/state'));
+  @override Future<RoundState> placeBet(String roundId, int slot, int amount, String idempotencyKey) async {
+    final result = await _request('/games/cat-greed/bet', body:{'roundId':roundId,'slot':slot,'amount':amount,'idempotencyKey':idempotencyKey});
+    return RoundState.fromJson(result);
   }
 }
 
@@ -194,7 +239,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   final _rnd = math.Random();
   Timer? _poll, _msgTimer;
   RoundState? _s;
-  int _bal = 0, _chip = 500, _hit = -1, _animatedRound = -1;
+  int _bal = 0, _chip = 500, _hit = -1;
+  String _animatedRound = '', _pendingBetKey = '', _pendingBetSignature = '';
   Set<int> _win = {};
   String? _lit, _err, _msg;
   bool _spinning = false, _busy = false;
@@ -203,7 +249,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   void initState() {
     super.initState();
     _refresh();
-    _poll = Timer.periodic(const Duration(seconds: 1), (_) => _refresh());
+    _poll = Timer.periodic(const Duration(seconds: 2), (_) => _refresh());
   }
 
   @override
@@ -255,7 +301,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       _lit = s.special;
       _win = s.special == null
         ? {target}
-        : {for (var i = 0; i < 8; i++) if (kSlots[i].veg == (s.special == 'salad')) i};
+        : {for (var i = 0; i < 8; i++) if (s.symbols[i].veg == (s.special == 'salad')) i};
     });
     if (s.myPayout > 0) {
       _say('ربحت ${_fmt(s.myPayout)} 🎉');
@@ -266,15 +312,25 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   Future<void> _bet(int i) async {
     final s = _s;
-    if (s == null || s.phase != RoundPhase.betting) { _say('انتظر الجولة القادمة'); return; }
+    if (s == null || !s.enabled) { _say('اللعبة متوقفة حالياً'); return; }
+    if (s.phase != RoundPhase.betting) { _say('انتظر الجولة القادمة'); return; }
     if (_bal < _chip) { _say('رصيدك لا يكفي'); return; }
     if (_busy) return;
+    final signature = '${s.roundId}:$i:$_chip';
+    if (_pendingBetSignature != signature) {
+      final bytes = List<int>.generate(16, (_) => math.Random.secure().nextInt(256));
+      bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      final hex = bytes.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
+      _pendingBetKey = '${hex.substring(0,8)}-${hex.substring(8,12)}-${hex.substring(12,16)}-${hex.substring(16,20)}-${hex.substring(20,32)}';
+      _pendingBetSignature = signature;
+    }
     _busy = true;
     try {
-      final n = await widget.api.placeBet(s.roundId, i, _chip);
+      final n = await widget.api.placeBet(s.roundId, i, _chip, _pendingBetKey);
+      _pendingBetKey = ''; _pendingBetSignature = '';
       if (mounted) setState(() { _s = n; _bal = n.balance; });
     } catch (e) {
-      _say('تعذر الرهان، حاول مرة ثانية');
+      _say(e.toString().replaceFirst('Exception: ', ''));
     } finally { _busy = false; }
   }
 
@@ -304,6 +360,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                     padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
                     child: Column(children: [_topBar(s), _wheel(s)]),
                   ),
+                  if (!s.enabled) const Padding(padding: EdgeInsets.all(8), child: Text('اللعبة متوقفة حالياً؛ لا يمكن وضع رهانات جديدة.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
                   CustomPaint(
                     painter: _WoodPainter(),
                     child: Container(
@@ -374,13 +431,13 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   }
 
   Widget _slot(int i, RoundState s, double d) {
-    final slot = kSlots[i];
+    final slot = s.symbols[i];
     final hit = _hit == i, win = _win.contains(i);
     final mx = s.pools.reduce((a, b) => a > b ? a : b);
     final frac = mx == 0 ? 0.45 : 0.45 + 0.35 * (s.pools[i] / mx);
     const dark = Color(0xFF5A3A00);
     return GestureDetector(
-      onTap: () => _bet(i),
+      onTap: s.enabled ? () => _bet(i) : null,
       child: Stack(clipBehavior: Clip.none, children: [
         AnimatedContainer(
           duration: const Duration(milliseconds: 120),
