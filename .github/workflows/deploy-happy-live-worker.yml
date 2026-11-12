@@ -2,12 +2,6 @@ name: Deploy Happy Live Worker
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - "backend/worker/**"
-      - ".github/workflows/deploy-happy-live-worker.yml"
 
 jobs:
   deploy:
