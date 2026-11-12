@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const migration = await readFile(new URL("../migrations/0034_cat_greed_wheel.sql", import.meta.url), "utf8");
 const ledgerMigration = await readFile(new URL("../migrations/0035_cat_greed_ledger.sql", import.meta.url), "utf8");
+const protectionMigration = await readFile(new URL("../migrations/0036_cat_greed_bet_protection.sql", import.meta.url), "utf8");
 const worker = await readFile(new URL("../src/cat_greed.ts", import.meta.url), "utf8");
 const flutterGame = await readFile(new URL("../../../frontend/lib/pages/cat_greed_game.dart", import.meta.url), "utf8");
 const roomPreview = await readFile(new URL("../../../frontend/lib/pages/voice_room_design_preview.dart", import.meta.url), "utf8");
@@ -54,4 +55,39 @@ test("both requested admin surfaces and the standalone game route are present", 
   assert.match(gameAdmin, /admin\/cat-greed\/symbols/);
   assert.match(gameAdmin, /admin\/cat-greed\/rounds/);
   assert.match(gameSite, /\/games\/cat-greed\/state/);
+});
+
+test("Cat Greed bet requests are idempotent and rate-limited per authenticated player", () => {
+  assert.match(protectionMigration, /CREATE TABLE IF NOT EXISTS cat_greed_bet_requests/);
+  assert.match(protectionMigration, /idempotency_key TEXT PRIMARY KEY/);
+  assert.match(protectionMigration, /CREATE TABLE IF NOT EXISTS cat_greed_bet_rate_limits/);
+  assert.match(worker, /idempotencyKey/);
+  assert.match(worker, /BET_RATE_MAX_REQUESTS/);
+  assert.match(worker, /bet_rate_limited/);
+});
+
+test("payout settlement claims a unique payout before crediting the wallet", () => {
+  assert.match(worker, /UPDATE cat_greed_payouts SET paid_at=\?,transaction_id=\? WHERE round_id=\? AND user_id=\? AND paid_at IS NULL/);
+  assert.match(worker, /Concurrent state requests can therefore never credit the same round twice/);
+  assert.match(worker, /cat_greed_ledger/);
+});
+
+test("round commitments bind the seed to the round id and immutable config", () => {
+  assert.match(worker, /digestHex\(seed \+ "\\|" \+ id \+ "\\|" \+ configSnapshot\)/);
+  assert.match(worker, /round\.server_seed \+ "\\|" \+ round\.id \+ "\\|" \+ round\.config_snapshot/);
+});
+
+test("unsafe payout exposure cannot be enabled and all players share published odds", () => {
+  assert.match(worker, /payout_exposure_too_high/);
+  assert.match(worker, /maxExpectedReturnBp/);
+  assert.match(worker, /appearanceProbabilityBp/);
+  assert.match(worker, /expectedReturnBp/);
+  assert.match(protectionMigration, /salad_weight_bp = 30, pizza_weight_bp = 30/);
+});
+
+test("symbol images are restricted to ImageKit and game pages use safe rendering", () => {
+  assert.match(worker, /isValidImageKitUrl/);
+  assert.match(worker, /hostname === "ik\.imagekit\.io"/);
+  assert.match(gameSite, /safeImage/);
+  assert.match(gameSite, /idempotencyKey/);
 });
