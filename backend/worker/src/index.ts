@@ -1746,7 +1746,7 @@ export default {
           // its management API. Retry transient 404/5xx responses before rejecting it.
           let imageKitFileResponse: Response | null = null;
           for (let attempt = 0; attempt < 3; attempt++) {
-            imageKitFileResponse = await fetch("https://api.imagekit.io/v1/files/" + encodeURIComponent(mediaFileId), {
+            imageKitFileResponse = await fetch("https://api.imagekit.io/v1/files/" + encodeURIComponent(mediaFileId) + "/details", {
               headers: { Authorization: "Basic " + btoa(env.IMAGEKIT_PRIVATE_KEY.trim() + ":") }
             });
             if (imageKitFileResponse.ok || (imageKitFileResponse.status !== 404 && imageKitFileResponse.status < 500)) break;
