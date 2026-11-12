@@ -1,6 +1,6 @@
 # Dedicated migration target for Cat Greed only. The preview DB already contains the Happy Live baseline schema,
 # but its d1_migrations history is empty; replaying the full migrations directory would rerun ALTER TABLEs.
-# This directory intentionally contains only 0034-0036.
+# This directory intentionally contains only 0034-0037.
 # Keep this database_name/database_id identical to previews.d1_databases in wrangler.toml.
 [[d1_databases]]
 binding = "PREVIEW_DB"
