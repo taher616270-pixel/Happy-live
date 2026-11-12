@@ -1938,7 +1938,7 @@ class _RoomPageState extends State<RoomPage> {
           await _refreshSeats();
           return (refreshedData['balance'] as num).toInt();
         },
-        onRequestCustomGift: (name, description, bytes, fileName, mediaType, durationMs) async {
+        onRequestCustomGift: (name, description, bytes, fileName, mediaType, durationMs, soundBytes, soundFileName) async {
           final authResponse = await http.get(
             Uri.parse('$_apiBase/imagekit/auth'),
             headers: _headers,
@@ -1976,6 +1976,29 @@ class _RoomPageState extends State<RoomPage> {
             throw Exception('فشل رفع الملف إلى ImageKit');
           }
 
+          String? soundUrl;
+          String? soundFileId;
+          if (soundBytes != null && soundFileName != null) {
+            if (!soundFileName.toLowerCase().endsWith('.mp3') || soundBytes.isEmpty || soundBytes.length > 5 * 1024 * 1024) throw Exception('اختر ملف MP3 لا يتجاوز 5 ميجابايت');
+            final soundRequest = http.MultipartRequest('POST', Uri.parse('https://upload.imagekit.io/api/v1/files/upload'));
+            soundRequest.fields.addAll({
+              'fileName': soundFileName,
+              'publicKey': authData['publicKey'].toString(),
+              'token': authData['token'].toString(),
+              'expire': authData['expire'].toString(),
+              'signature': authData['signature'].toString(),
+              'folder': '/happy-live/custom-gift-sounds',
+              'useUniqueFileName': 'true',
+            });
+            soundRequest.files.add(http.MultipartFile.fromBytes('file', soundBytes, filename: soundFileName));
+            final soundStream = await soundRequest.send().timeout(const Duration(seconds: 60));
+            final soundResponse = await http.Response.fromStream(soundStream);
+            final soundData = jsonDecode(soundResponse.body);
+            if (soundResponse.statusCode != 200 || soundData is! Map || soundData['url'] == null || soundData['fileId'] == null) throw Exception('فشل رفع صوت الهدية إلى ImageKit');
+            soundUrl = soundData['url'].toString();
+            soundFileId = soundData['fileId'].toString();
+          }
+
           final response = await http.post(
             Uri.parse('$_apiBase/gifts/custom-requests'),
             headers: _headers,
@@ -1986,6 +2009,8 @@ class _RoomPageState extends State<RoomPage> {
               'mediaFileId': uploadData['fileId'],
               'mediaType': mediaType,
               'mediaDurationMs': durationMs,
+              'soundUrl': soundUrl,
+              'soundFileId': soundFileId,
             }),
           ).timeout(const Duration(seconds: 12));
           final data = jsonDecode(response.body);
