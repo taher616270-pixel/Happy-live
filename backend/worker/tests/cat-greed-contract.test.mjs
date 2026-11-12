@@ -59,6 +59,9 @@ test("the room games sheet launches Cat Greed without replacing other room contr
 
 test("both requested admin surfaces and the standalone game route are present", () => {
   assert.match(mainAdmin, /catGreedMainPage/);
+  assert.match(mainAdmin, /catGreedToggle/);
+  assert.match(mainAdmin, /admin\.role==="owner"/);
+  assert.match(mainAdmin, /admin\/cat-greed\/settings/);
   assert.match(mainAdmin, /maxBetPerRound/);
   assert.match(gameAdminScript, /admin\/cat-greed\/settings/);
   assert.match(gameAdminScript, /admin\/cat-greed\/symbols/);
