@@ -38,14 +38,27 @@ class _CatGreedGameState extends State<CatGreedGame> {
   Map<String, String> get _headers => {'Content-Type':'application/json','Authorization':'Bearer ${widget.accessToken}'};
 
   String get _apiBase {
-    if(!kIsWeb||Uri.base.host=='happy-live.pages.dev')return _wheelApi;
-    final raw=Uri.base.queryParameters['catGreedApi']??'';
-    final uri=Uri.tryParse(raw);
-    final host=uri?.host??'';
-    final valid=uri!=null&&uri.scheme=='https'&&uri.port==443&&uri.userInfo.isEmpty&&
-      host!='happy-live-api.taher616270.workers.dev'&&
-      RegExp(r'^[a-z0-9-]*happy-live-api[a-z0-9-]*\.taher616270\.workers\.dev
+    if (!kIsWeb || Uri.base.host == 'happy-live.pages.dev') return _wheelApi;
+    final raw = Uri.base.queryParameters['catGreedApi'] ?? '';
+    final uri = Uri.tryParse(raw);
+    final host = uri?.host ?? '';
+    final valid = uri != null && uri.scheme == 'https' && uri.port == 443 &&
+      uri.userInfo.isEmpty && host != 'happy-live-api.taher616270.workers.dev' &&
+      host.contains('happy-live-api') && host.endsWith('.taher616270.workers.dev');
+    return valid ? uri.origin + '/api/v1' : '';
+  }
+
+  Future<Map<String,dynamic>> _request(String path,{String method='GET',Map<String,dynamic>? body}) async {
+    final apiBase = _apiBase;
+    if (apiBase.isEmpty) {
+      throw Exception('نسخة المعاينة غير موصولة بخادم اختبار معزول؛ تم تعطيل اللعبة لحماية رصيد الإنتاج.');
+    }
+    final uri = Uri.parse(apiBase + path);
+    final response = method == 'GET'
+      ? await http.get(uri,headers:_headers)
+      : await http.post(uri,headers:_headers,body:jsonEncode(body));
     final decoded = jsonDecode(response.body);
+
     if(decoded is! Map<String,dynamic>) throw Exception('استجابة الخادم غير صالحة');
     if(response.statusCode<200 || response.statusCode>=300) {
       final code=decoded['error']?.toString();
