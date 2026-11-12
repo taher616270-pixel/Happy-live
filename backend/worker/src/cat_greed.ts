@@ -154,15 +154,15 @@ async function settleRound(db: D1Database, round: any): Promise<any> {
   if (settled?.phase === "result") await payRound(db, settled);
   return settled;
 }
-async function currentRound(db: D1Database): Promise<any> {
+async function currentRound(db: D1Database, allowCreate = true): Promise<any> {
   let round = await db.prepare("SELECT * FROM cat_greed_rounds WHERE phase='betting' ORDER BY created_at DESC LIMIT 1").first();
   if (!round) round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first();
-  if (!round) {
+  if (!round && allowCreate) {
     try { round = await createRound(db); }
     catch { round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first(); }
   }
   if (round?.phase === "betting" && Date.parse(round.closes_at) <= Date.now()) round = await settleRound(db, round);
-  if (round?.phase === "result" && Date.now() - Date.parse(round.settled_at ?? round.created_at) >= JSON.parse(round.config_snapshot).resultSeconds * 1000) {
+  if (allowCreate && round?.phase === "result" && Date.now() - Date.parse(round.settled_at ?? round.created_at) >= JSON.parse(round.config_snapshot).resultSeconds * 1000) {
     try { round = await createRound(db); }
     catch { round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first(); }
   }
@@ -193,8 +193,9 @@ export async function handleCatGreedRequest(
       const user = await authenticateUser(request,db);
       if (!user) return wheelError("authentication_required",401,json,origin,env);
       const settings = await getSettings(db);
-      if (!settings.enabled) return json({enabled:false,error:"game_disabled"},423,origin,env);
-      let round = await currentRound(db);
+      if (publicBet && !settings.enabled) return json({enabled:false,error:"game_disabled"},423,origin,env);
+      let round = await currentRound(db,settings.enabled===1);
+      if (!round) return json({enabled:false,error:"game_disabled"},423,origin,env);
       let betReceipt: { id: string; roundId: string; slot: number; amount: number } | null = null;
       let duplicateBet = false;
       if (publicBet) {
@@ -276,7 +277,7 @@ export async function handleCatGreedRequest(
       const odds = calculateOdds(config);
       const isBetting=round.phase==="betting";
       return json({
-        enabled:true,roundId:round.id,secondsLeft:Math.max(0,Math.ceil((Date.parse(isBetting?round.closes_at:new Date(Date.parse(round.settled_at)+config.resultSeconds*1000).toISOString())-Date.now())/1000)),
+        enabled:settings.enabled===1,roundId:round.id,secondsLeft:Math.max(0,Math.ceil((Date.parse(isBetting?round.closes_at:new Date(Date.parse(round.settled_at)+config.resultSeconds*1000).toISOString())-Date.now())/1000)),
         phase:round.phase,pools:Array.from({length:8},(_,i)=>pools.results?.find(x=>x.slot===i)?.total??0),
         myBets:Array.from({length:8},(_,i)=>mine.results?.find(x=>x.slot===i)?.total??0),
         balance:wallet?.balance??0,myPayout:payout?.amount??0,myPayoutRoundId:payout?.round_id??null,
