@@ -200,7 +200,7 @@ class HttpFoodWheelApi implements FoodWheelApi {
     catch (_) { throw Exception('استجابة الخادم غير مفهومة (${response.statusCode})'); }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final code = (data['error'] ?? 'request_failed').toString();
-      const messages = {'authentication_required':'انتهت جلسة الدخول، سجّل الدخول مجدداً.','game_disabled':'اللعبة متوقفة حالياً.','round_closed':'انتهى وقت الرهان؛ انتظر الجولة القادمة.','insufficient_balance':'رصيدك غير كافٍ.','player_disabled':'تم إيقاف اللعب لهذا الحساب.','bet_limit_exceeded':'وصلت إلى الحد المسموح للرهان في الجولة.','bet_rate_limited':'طلبات الرهان سريعة؛ انتظر قليلاً.','state_rate_limited':'التحديثات كثيرة؛ انتظر قليلاً.'};
+      const messages = {'authentication_required':'انتهت جلسة الدخول، سجّل الدخول مجدداً.','game_disabled':'اللعبة متوقفة حالياً.','round_closed':'انتهى وقت الرهان؛ انتظر الجولة القادمة.','insufficient_balance':'رصيدك غير كافٍ.','player_disabled':'تم إيقاف اللعب لهذا الحساب.','bet_limit_exceeded':'وصلت إلى الحد المسموح للرهان في الجولة.','bet_slot_limit_exceeded':'يمكنك الرهان على 6 خانات مختلفة فقط.','bet_rate_limited':'طلبات الرهان سريعة؛ انتظر قليلاً.','state_rate_limited':'التحديثات كثيرة؛ انتظر قليلاً.'};
       throw Exception(messages[code] ?? 'تعذر تنفيذ الطلب: $code');
     }
     return data;
@@ -352,6 +352,11 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       return;
     }
     if (_bal < _chip) { _say('رصيدك لا يكفي'); return; }
+    final alreadyWagered = s.myBets.fold<int>(0, (sum, value) => sum + value) + _reservedBetTotal();
+    if (alreadyWagered + _chip > 1000000) {
+      _say('وصلت إلى الحد الأقصى للرهان في الجولة');
+      return;
+    }
 
     _queuedRoundId = s.roundId;
     setState(() {
@@ -412,7 +417,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       if (mounted && _queuedBets.any((amount) => amount > 0)) {
         _betDebounce?.cancel();
         _betDebounce = Timer(const Duration(milliseconds: 80), _flushPendingBets);
-      } else if (!_inFlightSlots.isNotEmpty) {
+      } else if (_inFlightSlots.isEmpty) {
         _queuedRoundId = null;
       }
     }
