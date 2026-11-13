@@ -616,12 +616,42 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
               style: TextStyle(color: Color(0xFFFFD400),
                   fontWeight: FontWeight.w800, fontSize: 15)),
           const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _resultPlace('🥈', 'المركز الثاني', 58),
+              _resultPlace('🥇', 'المركز الأول', 74),
+              _resultPlace('🥉', 'المركز الثالث', 48),
+            ],
+          ),
+          const SizedBox(height: 5),
           const Text('تظهر بيانات الفائزين عند اعتمادها من الخادم',
               style: TextStyle(color: Colors.white70, fontSize: 11)),
         ]),
       ),
     );
   }
+
+  Widget _resultPlace(String medal, String title, double height) => Expanded(
+        child: Column(children: [
+          Text(medal, style: const TextStyle(fontSize: 24)),
+          const SizedBox(height: 3),
+          Container(
+            height: height,
+            alignment: Alignment.center,
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFD978), Color(0xFF9E672A)],
+                begin: Alignment.topCenter, end: Alignment.bottomCenter),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              border: Border.all(color: const Color(0xFFFFE6A0))),
+            child: Text(title, textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF4A250B),
+                fontSize: 10, fontWeight: FontWeight.w900)),
+          ),
+        ]),
+      );
 
   Widget _errorBox() => Column(mainAxisSize: MainAxisSize.min, children: [
         const Text('تعذر الاتصال بالخادم', style: TextStyle(color: Colors.white)),
@@ -742,24 +772,29 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         ]),
       );
 
-  Widget _chestBar() => Column(children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          for (final e in ['🧰', '🧰', '🧰', '🧰', '🧰', '🧰', '🧰'])
-            const Column(mainAxisSize: MainAxisSize.min, children: [
-              Text('🧰', style: TextStyle(fontSize: 26)),
-              Text('—', style: TextStyle(color: Colors.white, fontSize: 11)),
-            ]),
-        ]),
-        const SizedBox(height: 6),
-        ClipRRect(borderRadius: BorderRadius.circular(6),
-          child: const LinearProgressIndicator(value: 0, minHeight: 10,
-            backgroundColor: Color(0x59000000),
-            valueColor: AlwaysStoppedAnimation(Color(0xFFFFB400)))),
-        const SizedBox(height: 4),
-        const Text('تقدم الصناديق غير متاح من الخادم حالياً',
-            style: TextStyle(color: Colors.white, fontSize: 12)),
-        const SizedBox(height: 10),
-      ]);
+  Widget _chestBar() {
+    const rewards = [20000, 30000, 50000, 80000, 120000, 200000, 400000];
+    return Column(children: [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        for (var i = 0; i < rewards.length; i++)
+          Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('🧰', style: TextStyle(fontSize: 26,
+              shadows: i == 0 ? const [Shadow(color: Color(0xFFFFD400), blurRadius: 10)] : null)),
+            Text(_fmt(rewards[i]),
+              style: const TextStyle(color: Colors.white, fontSize: 11)),
+          ]),
+      ]),
+      const SizedBox(height: 6),
+      ClipRRect(borderRadius: BorderRadius.circular(6),
+        child: const LinearProgressIndicator(value: 0, minHeight: 10,
+          backgroundColor: Color(0x59000000),
+          valueColor: AlwaysStoppedAnimation(Color(0xFFFFB400)))),
+      const SizedBox(height: 4),
+      const Text('صندوق 1 من 7 — 0 / 1M',
+        style: TextStyle(color: Colors.white, fontSize: 12)),
+      const SizedBox(height: 10),
+    ]);
+  }
 
   Widget _special(String key, String label) {
     final on = _lit == key;
@@ -963,28 +998,34 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       context: context,
       builder: (_) => Directionality(
         textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: const Color(0xFF7E2019),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: const BorderSide(color: Color(0xFFFFD66B), width: 2),
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(14),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                colors: [Color(0xFF4A86EE), Color(0xFF5A2FE6)]),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: const Color(0xFFCFE0FF), width: 3)),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                IconButton(onPressed: _showRules,
+                  icon: const Icon(Icons.help_outline, color: Colors.white)),
+                const Text('🏆 أقوى الفائزين',
+                  style: TextStyle(color: Colors.white,
+                    fontSize: 18, fontWeight: FontWeight.w900)),
+                IconButton(onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close, color: Colors.white)),
+              ]),
+              const Padding(
+                padding: EdgeInsets.all(36),
+                child: Text('لا توجد بيانات بعد',
+                  style: TextStyle(color: Colors.white70, fontSize: 14)),
+              ),
+            ]),
           ),
-          title: const Text(
-            '🏆 أقوى الفائزين',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFFFFE6A0), fontWeight: FontWeight.w900),
-          ),
-          content: const Text(
-            'لا تتوفر حالياً بيانات ترتيب موثوقة من الخادم.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, height: 1.6),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('إغلاق', style: TextStyle(color: Color(0xFFFFE6A0))),
-            ),
-          ],
         ),
       ),
     );
