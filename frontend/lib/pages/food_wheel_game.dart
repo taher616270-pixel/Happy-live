@@ -287,7 +287,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   String? _animatedRound;
   Set<int> _win = {};
   String? _lit, _err, _msg;
-  bool _spinning = false, _flushingBets = false;
+  bool _spinning = false, _flushingBets = false, _refreshing = false;
 
   @override
   void initState() {
@@ -319,6 +319,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   }
 
   Future<void> _refresh() async {
+    // Prevent overlapping 2-second polls from applying older wallet responses
+    // after a newer response has already updated the visible balance.
+    if (_refreshing) return;
+    _refreshing = true;
     try {
       final s = await widget.api.fetchState();
       if (!mounted) return;
@@ -333,7 +337,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       setState(() {
         _s = s;
         _err = null;
-        if (!_spinning) _bal = (s.balance - _reservedBetTotal()).clamp(0, 1 << 62).toInt();
+        _bal = (s.balance - _reservedBetTotal()).clamp(0, 1 << 62).toInt();
         if (newRound) { _win = {}; _hit = -1; _lit = null; _msg = null; }
       });
       if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
@@ -342,6 +346,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       }
     } catch (e) {
       if (mounted) setState(() => _err = '$e');
+    } finally {
+      _refreshing = false;
     }
   }
 
