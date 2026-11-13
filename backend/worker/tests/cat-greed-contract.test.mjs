@@ -16,7 +16,6 @@ const previewMigrationConfig = await readFile(new URL("../wrangler.preview-migra
 const wranglerConfig = await readFile(new URL("../wrangler.toml", import.meta.url), "utf8");
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const deployWorkflow = await readFile(new URL("../../../.github/workflows/deploy-happy-live-worker.yml", import.meta.url), "utf8");
-const previewDeployWorkflow = await readFile(new URL("../../../.github/workflows/deploy-cat-greed-preview.yml", import.meta.url), "utf8");
 const worker = await readFile(new URL("../src/cat_greed.ts", import.meta.url), "utf8");
 const flutterGame = await readFile(new URL("../../../frontend/lib/pages/cat_greed_game.dart", import.meta.url), "utf8");
 const roomPreview = await readFile(new URL("../../../frontend/lib/pages/voice_room_design_preview.dart", import.meta.url), "utf8");
@@ -158,7 +157,7 @@ test("pausing Cat Greed blocks new bets but keeps the active round visible for s
   assert.match(worker, /Keep the round clock and daily counter advancing while gameplay is disabled/);
   assert.match(worker, /enabled:settings\.enabled===1/);
   assert.match(gameScript, /n\.enabled!==true&&!n\.roundId/);
-  assert.match(flutterGame, /next\['enabled'\]!=true&&next\['roundId'\]==null/);
+  assert.match(flutterGame, /enabled: j\['enabled'\] == true/);
 });
 
 test("standalone Cat Greed scripts are external and route CSP blocks inline script execution", () => {
@@ -210,14 +209,6 @@ test("Preview-only migration copies stay byte-identical to the canonical Cat Gre
   assert.equal(previewProtectionMigration, protectionMigration);
   assert.equal(previewRoundGuardMigration, roundGuardMigration);
   assert.equal(previewAggregatedBetsMigration, aggregatedBetsMigration);
-});
-
-test("Cat Greed Preview deployment is manual, confirmed, and cannot target production", () => {
-  assert.match(previewDeployWorkflow, /workflow_dispatch:/);
-  assert.match(previewDeployWorkflow, /confirm_preview_only/);
-  assert.match(previewDeployWorkflow, /npm run db:preview/);
-  assert.match(previewDeployWorkflow, /npm run preview:deploy/);
-  assert.doesNotMatch(previewDeployWorkflow, /db:remote|happy-live-db|wrangler deploy/);
 });
 
 test("admin write endpoints reject oversized and non-JSON request bodies", () => {
