@@ -6,7 +6,9 @@ const migration = await readFile(new URL("../migrations/0034_cat_greed_wheel.sql
 const ledgerMigration = await readFile(new URL("../migrations/0035_cat_greed_ledger.sql", import.meta.url), "utf8");
 const protectionMigration = await readFile(new URL("../migrations/0036_cat_greed_bet_protection.sql", import.meta.url), "utf8");
 const roundGuardMigration = await readFile(new URL("../migrations/0037_cat_greed_round_guard.sql", import.meta.url), "utf8");
+const aggregatedBetsMigration = await readFile(new URL("../migrations/0038_cat_greed_aggregated_bets.sql", import.meta.url), "utf8");
 const previewRoundGuardMigration = await readFile(new URL("../migrations-cat-greed-preview/0037_cat_greed_round_guard.sql", import.meta.url), "utf8");
+const previewAggregatedBetsMigration = await readFile(new URL("../migrations-cat-greed-preview/0038_cat_greed_aggregated_bets.sql", import.meta.url), "utf8");
 const previewWheelMigration = await readFile(new URL("../migrations-cat-greed-preview/0034_cat_greed_wheel.sql", import.meta.url), "utf8");
 const previewLedgerMigration = await readFile(new URL("../migrations-cat-greed-preview/0035_cat_greed_ledger.sql", import.meta.url), "utf8");
 const previewProtectionMigration = await readFile(new URL("../migrations-cat-greed-preview/0036_cat_greed_bet_protection.sql", import.meta.url), "utf8");
@@ -47,7 +49,8 @@ test("betting and payouts are server-authoritative and use the Happy Live wallet
   assert.match(worker, /UPDATE user_wallets SET balance=balance-\?/);
   assert.match(worker, /INSERT INTO cat_greed_ledger/);
   assert.match(worker, /cat_greed_payouts/);
-  assert.match(worker, /BET_CHIPS/);
+  assert.match(worker, /Number\.isSafeInteger\(amount\)/);
+  assert.match(worker, /amount>1000000/);
 });
 
 test("player-specific controls are risk limits, not hidden personalized outcome odds", () => {
@@ -81,7 +84,7 @@ test("Cat Greed bet requests are idempotent and rate-limited per authenticated p
   assert.match(protectionMigration, /CREATE TABLE IF NOT EXISTS cat_greed_bet_rate_limits/);
   assert.match(protectionMigration, /CREATE TABLE IF NOT EXISTS cat_greed_state_rate_limits/);
   assert.match(worker, /STATE_RATE_MAX_REQUESTS = 90/);
-  assert.match(worker, /BET_RATE_MAX_REQUESTS = 10/);
+  assert.match(worker, /BET_RATE_MAX_REQUESTS = 60/);
   assert.match(protectionMigration, /cat_greed_round_result_consistency_update/);
   assert.match(protectionMigration, /idx_cat_greed_payout_transaction/);
   assert.match(worker, /idempotencyKey/);
@@ -151,7 +154,8 @@ test("main admin player net totals use settled rounds only", () => {
 
 test("pausing Cat Greed blocks new bets but keeps the active round visible for settlement", () => {
   assert.match(worker, /if \(publicBet && !settings\.enabled\)/);
-  assert.match(worker, /currentRound\(db,settings\.enabled===1\)/);
+  assert.match(worker, /currentRound\(db,true\)/);
+  assert.match(worker, /Keep the round clock and daily counter advancing while gameplay is disabled/);
   assert.match(worker, /enabled:settings\.enabled===1/);
   assert.match(gameScript, /n\.enabled!==true&&!n\.roundId/);
   assert.match(flutterGame, /next\['enabled'\]!=true&&next\['roundId'\]==null/);
@@ -168,8 +172,8 @@ test("standalone Cat Greed scripts are external and route CSP blocks inline scri
   assert.match(gameScript, /catGreedApi/);
   assert.match(gameAdminScript, /catGreedApi/);
   assert.match(mainAdmin, /location\.hostname!=="happy-live\.pages\.dev"/);
-  assert.match(flutterGame, /Uri\.base\.queryParameters\['catGreedApi'\]/);
-  assert.match(flutterGame, /host\.endsWith\('\.taher616270\.workers\.dev'\)/);
+  assert.match(flutterGame, /static const _base = 'https:\/\/happy-live-api\.taher616270\.workers\.dev\/api\/v1'/);
+  assert.match(flutterGame, /HttpFoodWheelApi/);
 });
 
 test("Preview migrations are explicitly isolated from the production D1 database", () => {
@@ -195,8 +199,9 @@ test("manual production Worker deployment applies all Cat Greed migrations befor
   const m35 = deployWorkflow.indexOf("migrations/0035_cat_greed_ledger.sql");
   const m36 = deployWorkflow.indexOf("migrations/0036_cat_greed_bet_protection.sql");
   const m37 = deployWorkflow.indexOf("migrations/0037_cat_greed_round_guard.sql");
+  const m38 = deployWorkflow.indexOf("migrations/0038_cat_greed_aggregated_bets.sql");
   const deploy = deployWorkflow.indexOf("Deploy Worker with Wrangler");
-  assert.ok(m34 >= 0 && m35 > m34 && m36 > m35 && m37 > m36 && deploy > m37);
+  assert.ok(m34 >= 0 && m35 > m34 && m36 > m35 && m37 > m36 && m38 > m37 && deploy > m38);
 });
 
 test("Preview-only migration copies stay byte-identical to the canonical Cat Greed migrations", () => {
@@ -204,6 +209,7 @@ test("Preview-only migration copies stay byte-identical to the canonical Cat Gre
   assert.equal(previewLedgerMigration, ledgerMigration);
   assert.equal(previewProtectionMigration, protectionMigration);
   assert.equal(previewRoundGuardMigration, roundGuardMigration);
+  assert.equal(previewAggregatedBetsMigration, aggregatedBetsMigration);
 });
 
 test("Cat Greed Preview deployment is manual, confirmed, and cannot target production", () => {
@@ -239,11 +245,14 @@ test("both admin entry points warn before enabling cash-value wagering", () => {
   assert.match(mainAdmin, /احتياطي يغطي أقصى الجوائز/);
 });
 
-test("D1 independently rejects unsupported chips and bets on closed rounds", () => {
-  assert.match(roundGuardMigration, /CREATE TRIGGER IF NOT EXISTS cat_greed_bet_guard_insert/);
+test("D1 allows aggregated integer wagers up to the round cap and rejects closed rounds", () => {
   assert.match(roundGuardMigration, /NEW\.amount NOT IN \(10, 500, 6000, 30000, 100000\)/);
-  assert.match(roundGuardMigration, /phase='betting' AND julianday\(closes_at\)>julianday\('now'\)/);
-  assert.match(roundGuardMigration, /invalid_or_closed_cat_greed_bet/);
+  assert.match(aggregatedBetsMigration, /DROP TRIGGER IF EXISTS cat_greed_bet_guard_insert/);
+  assert.match(aggregatedBetsMigration, /NEW\.amount < 1/);
+  assert.match(aggregatedBetsMigration, /NEW\.amount > 1000000/);
+  assert.match(aggregatedBetsMigration, /NEW\.amount != CAST\(NEW\.amount AS INTEGER\)/);
+  assert.match(aggregatedBetsMigration, /phase='betting' AND julianday\(closes_at\)>julianday\('now'\)/);
+  assert.match(aggregatedBetsMigration, /invalid_or_closed_cat_greed_bet/);
 });
 
 test("admin overview and round history settle expired rounds before reporting payouts", () => {
