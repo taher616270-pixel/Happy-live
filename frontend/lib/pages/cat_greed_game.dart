@@ -487,7 +487,37 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                 child: Column(children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-                    child: Column(children: [_topBar(s), _wheel(s)]),
+                    child: Column(children: [
+                       _topBar(s),
+                       if (_err != null) Padding(
+                         padding: const EdgeInsets.only(top: 6, bottom: 4),
+                         child: Container(
+                           width: double.infinity,
+                           padding: const EdgeInsets.all(9),
+                           decoration: BoxDecoration(
+                             color: const Color(0xCC8B1E1E),
+                             borderRadius: BorderRadius.circular(10),
+                             border: Border.all(color: const Color(0xFFFF7777)),
+                           ),
+                           child: Row(children: [
+                             const Icon(Icons.error_outline, color: Colors.white, size: 18),
+                             const SizedBox(width: 7),
+                             Expanded(child: Text(
+                               'تعذر تحديث رصيد المحفظة: $_err',
+                               maxLines: 3,
+                               overflow: TextOverflow.ellipsis,
+                               textDirection: TextDirection.rtl,
+                               style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                             )),
+                             TextButton(
+                               onPressed: _refresh,
+                               child: const Text('إعادة', style: TextStyle(color: Colors.white)),
+                             ),
+                           ]),
+                         ),
+                       ),
+                       _wheel(s),
+                     ]),
                   ),
                   if (!s.enabled) const Padding(padding: EdgeInsets.all(8), child: Text('اللعبة متوقفة حالياً؛ لا يمكن وضع رهانات جديدة.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
                   CustomPaint(
