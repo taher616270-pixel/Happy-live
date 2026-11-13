@@ -101,6 +101,7 @@ class MockFoodWheelApi implements FoodWheelApi {
   DateTime _start = DateTime.now();
   late List<int> _pools;
   List<int> _bets = List.filled(8, 0);
+  int _betCount = 0;
   int? _slot;
   String? _special;
   int _payout = 0;
@@ -121,6 +122,7 @@ class MockFoodWheelApi implements FoodWheelApi {
       _start = DateTime.now();
       _pools = _freshPools();
       _bets = List.filled(8, 0);
+      _betCount = 0;
       _slot = null;
       _special = null;
       _payout = 0;
@@ -166,7 +168,7 @@ class MockFoodWheelApi implements FoodWheelApi {
       phase: betting ? RoundPhase.betting : RoundPhase.result,
       pools: List.of(_pools),
       myBets: List.of(_bets),
-      myBetCount: _bets.where((amount) => amount > 0).length,
+      myBetCount: _betCount,
       maxBetsPerRound: 6,
       balance: _balance,
       myPayout: betting ? 0 : _payout,
@@ -184,7 +186,8 @@ class MockFoodWheelApi implements FoodWheelApi {
     _tick();
     if (roundId != '$_round' || _elapsed >= _betSecs) throw Exception('round_closed');
     if (amount > _balance) throw Exception('insufficient_balance');
-    if (_bets.where((value) => value > 0).length >= 6 && _bets[slot] == 0) throw Exception('bet_count_limit');
+    if (_betCount >= 6) throw Exception('bet_count_limit');
+    _betCount++;
     _balance -= amount;
     _bets[slot] += amount;
     _pools[slot] += amount;
@@ -254,6 +257,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   final Set<int> _inFlightSlots = <int>{};
   int _inFlightAmount = 0;
   String? _queuedRoundId;
+  String? _animatedRound;
   Set<int> _win = {};
   String? _lit, _err, _msg;
   bool _spinning = false, _flushingBets = false;
@@ -408,7 +412,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
             setState(() {
               _bal = ((_s?.balance ?? _bal) - _reservedBetTotal()).clamp(0, 1 << 62).toInt();
             });
-            _say(e.toString().replaceFirst('Exception: ', ''));
+            final error = e.toString().replaceFirst('Exception: ', '');
+            _say(error == 'bet_count_limit'
+                ? 'وصلت إلى الحد الأقصى: 6 رهانات في الجولة الواحدة'
+                : error);
           }
           await _refresh();
         }
