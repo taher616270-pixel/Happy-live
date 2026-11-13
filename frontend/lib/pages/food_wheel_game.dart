@@ -499,75 +499,298 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF4AA3FF), Color(0xFF8FD0FF), Color(0xFFBFE6FF)],
-              stops: [0, 0.6, 1],
+              colors: [Color(0xFF3D91E8), Color(0xFF8CCBFA), Color(0xFFBFE6FF)],
+              stops: [0, 0.55, 1],
             ),
           ),
           child: SafeArea(
             top: false,
             child: s == null
-              ? Center(child: _err != null ? _errorBox() : const CircularProgressIndicator(color: Colors.white))
-              : SingleChildScrollView(
-                child: Column(children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-                    child: Column(children: [
-                       _topBar(s),
-                       if (_err != null) Padding(
-                         padding: const EdgeInsets.only(top: 6, bottom: 4),
-                         child: Container(
-                           width: double.infinity,
-                           padding: const EdgeInsets.all(9),
-                           decoration: BoxDecoration(
-                             color: const Color(0xCC8B1E1E),
-                             borderRadius: BorderRadius.circular(10),
-                             border: Border.all(color: const Color(0xFFFF7777)),
-                           ),
-                           child: Row(children: [
-                             const Icon(Icons.error_outline, color: Colors.white, size: 18),
-                             const SizedBox(width: 7),
-                             Expanded(child: Text(
-                               'تعذر تحديث رصيد المحفظة: $_err',
-                               maxLines: 3,
-                               overflow: TextOverflow.ellipsis,
-                               textDirection: TextDirection.rtl,
-                               style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
-                             )),
-                             TextButton(
-                               onPressed: _refresh,
-                               child: const Text('إعادة', style: TextStyle(color: Colors.white)),
-                             ),
-                           ]),
-                         ),
-                       ),
-                       _wheel(s),
-                     ]),
-                  ),
-                  if (!s.enabled) const Padding(padding: EdgeInsets.all(8), child: Text('اللعبة متوقفة حالياً؛ لا يمكن وضع رهانات جديدة.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                  CustomPaint(
-                    painter: _WoodPainter(),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.fromLTRB(12, 20, 12, 20),
-                      child: Column(children: [
-                        _specials(),
-                        const SizedBox(height: 8),
-                        Text('رهاناتك: ${math.min(_localRoundBetCount, s.maxBetsPerRound)}/${s.maxBetsPerRound}  •  إجمالي الرهان: ${_fmt(s.myBets.fold(0, (a, b) => a + b) + _pendingBetAmount)}', style: const TextStyle(color: Colors.white, fontSize: 13)),
-                        SizedBox(height: 30, child: Center(child: Text(_msg ?? '', style: const TextStyle(color: Color(0xFFFFE36A), fontSize: 15, fontWeight: FontWeight.w800)))),
-                        _chips(),
-                        const SizedBox(height: 10),
-                        _history(s),
-                        if (_err != null) _errorBox(),
-                      ]),
+                ? Center(
+                    child: _err != null
+                        ? _errorBox()
+                        : const CircularProgressIndicator(color: Colors.white),
+                  )
+                : SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                          child: Column(
+                            children: [
+                              _topBar(s),
+                              if (_err != null) _walletWarning(),
+                              const SizedBox(height: 6),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF9C6337), Color(0xFF633718)],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                  borderRadius: BorderRadius.circular(26),
+                                  border: Border.all(
+                                    color: const Color(0xFFFFD78A),
+                                    width: 3,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x66351A08),
+                                      blurRadius: 14,
+                                      offset: Offset(0, 7),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Text(
+                                      '🎡 عجلة الأطعمة 🎡',
+                                      style: TextStyle(
+                                        color: Color(0xFFFFE8A8),
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                        shadows: [
+                                          Shadow(
+                                            color: Color(0xFF3D1C08),
+                                            blurRadius: 5,
+                                            offset: Offset(1, 2),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    _wheel(s),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (!s.enabled)
+                          const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Text(
+                              'اللعبة متوقفة حالياً؛ لا يمكن وضع رهانات جديدة.',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.fromLTRB(8, 2, 8, 12),
+                          padding: const EdgeInsets.fromLTRB(12, 14, 12, 18),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFC83224), Color(0xFF8F1717)],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: const Color(0xFFFFD37A),
+                              width: 2,
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x663D0909),
+                                blurRadius: 12,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              _specials(),
+                              const SizedBox(height: 12),
+                              _chestProgress(),
+                              const SizedBox(height: 10),
+                              Text(
+                                'رهاناتك: ${math.min(_localRoundBetCount, s.maxBetsPerRound)}/${s.maxBetsPerRound}  •  إجمالي الرهان: ${_fmt(s.myBets.fold(0, (a, b) => a + b) + _pendingBetAmount)}',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(
+                                height: 32,
+                                child: Center(
+                                  child: Text(
+                                    _msg ?? '',
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFE36A),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              _chips(),
+                              const SizedBox(height: 12),
+                              _history(s),
+                              if (s.phase == RoundPhase.result) ...[
+                                const SizedBox(height: 14),
+                                _winnerPodium(),
+                              ],
+                              if (_err != null) _walletWarning(),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ]),
-              ),
           ),
         ),
       ),
     );
   }
+
+  Widget _walletWarning() => Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 7, bottom: 5),
+        padding: const EdgeInsets.all(9),
+        decoration: BoxDecoration(
+          color: const Color(0xCC651515),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFFF9999)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 18),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                'تعذر تحديث رصيد المحفظة: $_err',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: _refresh,
+              child: const Text('إعادة', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+
+  Widget _chestProgress() => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: const Color(0xAA5B170F),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFFFD66B), width: 1.4),
+        ),
+        child: Row(
+          children: [
+            const Text('🎁', style: TextStyle(fontSize: 30)),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'صناديق المكافآت',
+                    style: TextStyle(
+                      color: Color(0xFFFFE7A0),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'بيانات التقدم والمكافآت غير متاحة من الخادم حالياً',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.lock_outline, color: Color(0xFFFFD66B)),
+          ],
+        ),
+      );
+
+  Widget _winnerPodium() => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xAA57150E),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFFFD66B)),
+        ),
+        child: Column(
+          children: [
+            const Text(
+              '🏆 منصة الفائزين 🏆',
+              style: TextStyle(
+                color: Color(0xFFFFE6A0),
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _podiumPlace('🥈', 'المركز الثاني', 58),
+                _podiumPlace('🥇', 'المركز الأول', 78),
+                _podiumPlace('🥉', 'المركز الثالث', 48),
+              ],
+            ),
+            const SizedBox(height: 5),
+            const Text(
+              'سيظهر ترتيب الفائزين عند توفير بياناته من الخادم',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70, fontSize: 10),
+            ),
+          ],
+        ),
+      );
+
+  Widget _podiumPlace(String medal, String title, double height) => Expanded(
+        child: Column(
+          children: [
+            Text(medal, style: const TextStyle(fontSize: 24)),
+            const SizedBox(height: 3),
+            Container(
+              height: height,
+              alignment: Alignment.center,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFD978), Color(0xFF9E672A)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                border: Border.all(color: const Color(0xFFFFE6A0)),
+              ),
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF4A250B),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _errorBox() => Column(mainAxisSize: MainAxisSize.min, children: [
     const Text('تعذر الاتصال بالخادم', style: TextStyle(color: Colors.white)),
@@ -587,12 +810,53 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       const SizedBox(width: 5),
       _pill(Text('ID: ${s.userCode}', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700))),
     ],
-    const SizedBox(width: 6),
-    IconButton(onPressed: _showRules, icon: const Icon(Icons.help_outline, color: Colors.white)),
+    const SizedBox(width: 2),
+    IconButton(
+      tooltip: 'قواعد اللعبة',
+      onPressed: _showRules,
+      icon: const Icon(Icons.help_outline, color: Colors.white),
+    ),
+    IconButton(
+      tooltip: 'أقوى الفائزين',
+      onPressed: _showTopWins,
+      icon: const Icon(Icons.emoji_events_outlined, color: Color(0xFFFFE28A)),
+    ),
     const Spacer(),
     _pill(Text('🪙 ${_fmt(_bal)}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold))),
     IconButton(onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.close, color: Colors.white)),
   ]);
+
+  void _showTopWins() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF7E2019),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: const BorderSide(color: Color(0xFFFFD66B), width: 2),
+          ),
+          title: const Text(
+            '🏆 أقوى الفائزين',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFFFFE6A0), fontWeight: FontWeight.w900),
+          ),
+          content: const Text(
+            'لا تتوفر حالياً بيانات ترتيب موثوقة من الخادم.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, height: 1.6),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('إغلاق', style: TextStyle(color: Color(0xFFFFE6A0))),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _wheel(RoundState s) {
     return LayoutBuilder(builder: (context, c) {
