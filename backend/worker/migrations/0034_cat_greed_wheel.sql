@@ -1,4 +1,4 @@
--- Cat Greed wheel: transparent, server-authoritative rounds and wallet ledger.
+-- Food Wheel wheel: transparent, server-authoritative rounds and wallet ledger.
 CREATE TABLE IF NOT EXISTS cat_greed_settings (
   id TEXT PRIMARY KEY CHECK (id = 'current'),
   enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
