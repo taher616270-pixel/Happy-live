@@ -1018,24 +1018,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     });
   }
 
-  Widget _special(String key, String label) {
-    final on = _lit == key;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-      decoration: BoxDecoration(
-        color: on ? const Color(0xFFFFD400) : const Color(0x8C3C1E0A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x59FFFFFF), width: 2),
-        boxShadow: on ? const [BoxShadow(color: Color(0xFFFFD400), blurRadius: 18)] : null,
-      ),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(key == 'salad' ? '🥗' : '🍕', style: const TextStyle(fontSize: 34)),
-        Text(label, style: TextStyle(color: on ? const Color(0xFF4A2A00) : Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-      ]),
-    );
-  }
-
   Widget _chips() => Row(mainAxisAlignment: MainAxisAlignment.center, children: [
     for (final v in kChips)
       GestureDetector(
