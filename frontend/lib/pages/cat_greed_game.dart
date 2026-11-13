@@ -218,10 +218,37 @@ class HttpFoodWheelApi implements FoodWheelApi {
     }
     return data;
   }
-  @override Future<RoundState> fetchState() async => RoundState.fromJson(await _request('/games/cat-greed/state'));
+  // The application wallet endpoint is the canonical balance source.
+  // Read it with the same session and verify the public account code before
+  // displaying it in the game, so a stale/incorrect game-state balance cannot
+  // make a funded account appear empty.
+  Future<Map<String, dynamic>> _stateWithWallet(Map<String, dynamic> state) async {
+    try {
+      final wallet = await _request('/wallet');
+      final gameCode = (state['userCode'] ?? '').toString();
+      final walletCode = (wallet['userCode'] ?? '').toString();
+      if (gameCode.isNotEmpty && walletCode.isNotEmpty && gameCode != walletCode) {
+        throw Exception('معرّف المحفظة لا يطابق معرّف اللعبة');
+      }
+      final walletBalance = wallet['balance'];
+      if (walletBalance is num && walletBalance >= 0) {
+        state['balance'] = walletBalance;
+      }
+    } catch (error) {
+      if (error.toString().contains('معرّف المحفظة لا يطابق')) rethrow;
+      // Keep the game-state balance if the wallet endpoint is temporarily unavailable.
+    }
+    return state;
+  }
+
+  @override Future<RoundState> fetchState() async {
+    final state = await _request('/games/cat-greed/state');
+    return RoundState.fromJson(await _stateWithWallet(state));
+  }
+
   @override Future<RoundState> placeBet(String roundId, int slot, int amount, String idempotencyKey) async {
     final result = await _request('/games/cat-greed/bet', body:{'roundId':roundId,'slot':slot,'amount':amount,'idempotencyKey':idempotencyKey});
-    return RoundState.fromJson(result);
+    return RoundState.fromJson(await _stateWithWallet(result));
   }
 }
 
