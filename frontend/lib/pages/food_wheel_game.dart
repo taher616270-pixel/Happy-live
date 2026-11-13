@@ -215,7 +215,7 @@ class HttpFoodWheelApi implements FoodWheelApi {
     catch (_) { throw Exception('استجابة الخادم غير مفهومة (${response.statusCode})'); }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final code = (data['error'] ?? 'request_failed').toString();
-      const messages = {'authentication_required':'انتهت جلسة الدخول، سجّل الدخول مجدداً.','game_disabled':'اللعبة متوقفة حالياً.','round_closed':'انتهى وقت الرهان؛ انتظر الجولة القادمة.','insufficient_balance':'رصيدك غير كافٍ.','player_disabled':'تم إيقاف اللعب لهذا الحساب.','bet_limit_exceeded':'وصلت إلى الحد المسموح للرهان في الجولة.','bet_rate_limited':'طلبات الرهان سريعة؛ انتظر قليلاً.','state_rate_limited':'التحديثات كثيرة؛ انتظر قليلاً.'};
+      const messages = {'authentication_required':'انتهت جلسة الدخول، سجّل الدخول مجدداً.','game_disabled':'اللعبة متوقفة حالياً.','round_closed':'انتهى وقت الرهان؛ انتظر الجولة القادمة.','insufficient_balance':'رصيدك غير كافٍ.','player_disabled':'تم إيقاف اللعب لهذا الحساب.','bet_limit_exceeded':'وصلت إلى الحد المالي المسموح للرهان في الجولة.','bet_count_limit':'وصلت إلى الحد الأقصى: 6 رهانات في الجولة.','bet_rate_limited':'طلبات الرهان سريعة؛ انتظر قليلاً.','state_rate_limited':'التحديثات كثيرة؛ انتظر قليلاً.'};
       throw Exception(messages[code] ?? 'تعذر تنفيذ الطلب: $code');
     }
     return data;
@@ -339,10 +339,12 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   Timer? _poll, _msgTimer;
   RoundState? _s;
   int _bal = 0, _chip = 500, _hit = -1;
-  String _animatedRound = '', _pendingBetKey = '', _pendingBetSignature = '';
+  String _animatedRound = '';
   Set<int> _win = {};
   String? _lit, _err, _msg;
-  bool _spinning = false, _busy = false, _refreshing = false;
+  int _pendingBetCount = 0, _pendingBetAmount = 0, _localRoundBetCount = 0;
+  String _localBetRoundId = '';
+  bool _spinning = false, _refreshing = false;
 
   @override
   void initState() {
@@ -379,8 +381,15 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       setState(() {
         _s = s;
         _err = zeroBalanceWarning;
-        _bal = s.balance;
-        if (newRound) { _win = {}; _hit = -1; _lit = null; _msg = null; }
+        // Keep in-flight taps reserved locally so a poll cannot briefly
+        // restore their coins or make a sixth bet look available twice.
+        _bal = s.balance - _pendingBetAmount;
+        if (_pendingBetCount == 0) _localRoundBetCount = s.myBetCount;
+        if (newRound || _localBetRoundId != s.roundId) {
+          _localBetRoundId = s.roundId;
+          _localRoundBetCount = s.myBetCount;
+          _win = {}; _hit = -1; _lit = null; _msg = null;
+        }
       });
       if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
         _animatedRound = s.roundId;
@@ -420,28 +429,52 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     }
   }
 
+  String _newBetIdempotencyKey() {
+    final bytes = List<int>.generate(16, (_) => math.Random.secure().nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex = bytes.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
+    return '${hex.substring(0,8)}-${hex.substring(8,12)}-${hex.substring(12,16)}-${hex.substring(16,20)}-${hex.substring(20,32)}';
+  }
+
   Future<void> _bet(int i) async {
     final s = _s;
     if (s == null || !s.enabled) { _say('اللعبة متوقفة حالياً'); return; }
     if (s.phase != RoundPhase.betting) { _say('انتظر الجولة القادمة'); return; }
-    if (_bal < _chip) { _say('رصيدك لا يكفي'); return; }
-    if (_busy) return;
-    final signature = '${s.roundId}:$i:$_chip';
-    if (_pendingBetSignature != signature) {
-      final bytes = List<int>.generate(16, (_) => math.Random.secure().nextInt(256));
-      bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
-      final hex = bytes.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
-      _pendingBetKey = '${hex.substring(0,8)}-${hex.substring(8,12)}-${hex.substring(12,16)}-${hex.substring(16,20)}-${hex.substring(20,32)}';
-      _pendingBetSignature = signature;
+    if (_localBetRoundId != s.roundId) {
+      _localBetRoundId = s.roundId;
+      _localRoundBetCount = s.myBetCount;
     }
-    _busy = true;
+    if (_localRoundBetCount >= s.maxBetsPerRound) {
+      _say('وصلت إلى الحد الأقصى: 6 رهانات في الجولة');
+      return;
+    }
+    if (_bal < _chip) { _say('رصيدك لا يكفي'); return; }
+
+    // Every tap is a separate bet with its own idempotency key. Requests are
+    // sent concurrently; three fast taps therefore create three independent
+    // bets instead of being dropped behind a single busy flag.
+    final amount = _chip;
+    final roundId = s.roundId;
+    final key = _newBetIdempotencyKey();
+    _localRoundBetCount++;
+    _pendingBetCount++;
+    _pendingBetAmount += amount;
+    setState(() { _bal -= amount; });
     try {
-      final n = await widget.api.placeBet(s.roundId, i, _chip, _pendingBetKey);
-      _pendingBetKey = ''; _pendingBetSignature = '';
-      if (mounted) setState(() { _s = n; _bal = n.balance; });
+      await widget.api.placeBet(roundId, i, amount, key);
     } catch (e) {
       _say(e.toString().replaceFirst('Exception: ', ''));
-    } finally { _busy = false; }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _pendingBetCount--;
+          _pendingBetAmount -= amount;
+          if (_pendingBetCount == 0) _localRoundBetCount = _s?.roundId == roundId ? _localRoundBetCount : 0;
+        });
+        if (_pendingBetCount == 0) await _refresh();
+      }
+    }
   }
 
   @override
@@ -509,7 +542,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                       child: Column(children: [
                         _specials(),
                         const SizedBox(height: 8),
-                        Text('إجمالي رهانك في الجولة: ${_fmt(s.myBets.fold(0, (a, b) => a + b))}', style: const TextStyle(color: Colors.white, fontSize: 13)),
+                        Text('رهاناتك: ${math.min(_localRoundBetCount, s.maxBetsPerRound)}/${s.maxBetsPerRound}  •  إجمالي الرهان: ${_fmt(s.myBets.fold(0, (a, b) => a + b) + _pendingBetAmount)}', style: const TextStyle(color: Colors.white, fontSize: 13)),
                         SizedBox(height: 30, child: Center(child: Text(_msg ?? '', style: const TextStyle(color: Color(0xFFFFE36A), fontSize: 15, fontWeight: FontWeight.w800)))),
                         _chips(),
                         const SizedBox(height: 10),
