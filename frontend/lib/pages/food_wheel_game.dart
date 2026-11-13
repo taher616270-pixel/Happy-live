@@ -499,8 +499,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF3D91E8), Color(0xFF8CCBFA), Color(0xFFBFE6FF)],
-              stops: [0, 0.55, 1],
+              colors: [Color(0xFF2F7DEE), Color(0xFF6CC4FF), Color(0xFFBFE6FF)],
+              stops: [0, 0.45, 1],
             ),
           ),
           child: SafeArea(
@@ -509,145 +509,277 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                 ? Center(
                     child: _err != null
                         ? _errorBox()
-                        : const CircularProgressIndicator(color: Colors.white),
-                  )
-                : SingleChildScrollView(
-                    child: Column(
-                      children: [
+                        : const CircularProgressIndicator(color: Colors.white))
+                : Stack(children: [
+                    SingleChildScrollView(
+                      child: Column(children: [
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-                          child: Column(
-                            children: [
-                              _topBar(s),
-                              if (_err != null) _walletWarning(),
-                              const SizedBox(height: 6),
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF9C6337), Color(0xFF633718)],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                  borderRadius: BorderRadius.circular(26),
-                                  border: Border.all(
-                                    color: const Color(0xFFFFD78A),
-                                    width: 3,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x66351A08),
-                                      blurRadius: 14,
-                                      offset: Offset(0, 7),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  children: [
-                                    const Text(
-                                      '🎡 عجلة الأطعمة 🎡',
-                                      style: TextStyle(
-                                        color: Color(0xFFFFE8A8),
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w900,
-                                        shadows: [
-                                          Shadow(
-                                            color: Color(0xFF3D1C08),
-                                            blurRadius: 5,
-                                            offset: Offset(1, 2),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    _wheel(s),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+                          child: Column(children: [
+                            _topBar(s),
+                            const SizedBox(height: 26),
+                            _wheel(s),
+                          ]),
                         ),
-                        if (!s.enabled)
-                          const Padding(
-                            padding: EdgeInsets.all(8),
-                            child: Text(
-                              'اللعبة متوقفة حالياً؛ لا يمكن وضع رهانات جديدة.',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.fromLTRB(8, 2, 8, 12),
-                          padding: const EdgeInsets.fromLTRB(12, 14, 12, 18),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFC83224), Color(0xFF8F1717)],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(
-                              color: const Color(0xFFFFD37A),
-                              width: 2,
-                            ),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x663D0909),
-                                blurRadius: 12,
-                                offset: Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              _specials(),
-                              const SizedBox(height: 12),
-                              _chestProgress(),
-                              const SizedBox(height: 10),
-                              Text(
-                                'رهاناتك: ${math.min(_localRoundBetCount, s.maxBetsPerRound)}/${s.maxBetsPerRound}  •  إجمالي الرهان: ${_fmt(s.myBets.fold(0, (a, b) => a + b) + _pendingBetAmount)}',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              SizedBox(
-                                height: 32,
-                                child: Center(
-                                  child: Text(
-                                    _msg ?? '',
-                                    style: const TextStyle(
-                                      color: Color(0xFFFFE36A),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              _chips(),
-                              const SizedBox(height: 12),
-                              _history(s),
-                              if (s.phase == RoundPhase.result) ...[
-                                const SizedBox(height: 14),
-                                _winnerPodium(),
-                              ],
-                              if (_err != null) _walletWarning(),
-                            ],
-                          ),
-                        ),
-                      ],
+                        _platform(s),
+                        _redFloor(s),
+                      ]),
                     ),
-                  ),
+                    _resultOverlay(s),
+                  ]),
           ),
         ),
       ),
     );
+  }
+
+  Widget _resultOverlay(RoundState s) => Align(
+        alignment: Alignment.bottomCenter,
+        child: FractionallySizedBox(
+          heightFactor: 0.6,
+          widthFactor: 1,
+          child: IgnorePointer(
+            ignoring: s.phase != RoundPhase.result,
+            child: AnimatedSlide(
+              offset: s.phase == RoundPhase.result
+                  ? Offset.zero
+                  : const Offset(0, 1.05),
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutCubic,
+              child: _resultPanel(s),
+            ),
+          ),
+        ),
+      );
+
+  Widget _resultPanel(RoundState s) {
+    final food = s.special == 'salad'
+        ? '🥗'
+        : s.special == 'pizza'
+            ? '🍕'
+            : s.symbols[s.resultSlot ?? 0].emoji;
+    final mine = s.myBets.fold(0, (a, b) => a + b);
+    const t = TextStyle(
+        color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, height: 1.8);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF3F7BFF), Color(0xFF5B2FE6)],
+        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(children: [
+          SizedBox(
+            height: 62,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CustomPaint(size: const Size(20, 54), painter: _CutleryPainter(true)),
+                const SizedBox(width: 14),
+                Text(food, style: const TextStyle(fontSize: 48)),
+                const SizedBox(width: 14),
+                CustomPaint(size: const Size(20, 54), painter: _CutleryPainter(false)),
+              ],
+            ),
+          ),
+          Container(
+            height: 6,
+            margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              gradient: const LinearGradient(colors: [
+                Color(0x00FFD400), Color(0xFFFFD400),
+                Color(0xFFFFD400), Color(0x00FFD400)
+              ], stops: [0, 0.15, 0.85, 1]),
+            ),
+          ),
+          Row(children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('نتيجة الجولة ${s.dailyRoundNumber} $food', style: t),
+                  Text('رهانك في هذه الجولة: ${_fmt(mine)}', style: t),
+                  Text('الفائز في هذه الجولة: ${_fmt(s.myPayout)}', style: t),
+                ],
+              ),
+            ),
+            Text(s.myPayout > 0 ? '🥳' : '😿', style: const TextStyle(fontSize: 44)),
+          ]),
+          const SizedBox(height: 8),
+          const Text('الفائز الأكبر لهذه الجولة',
+              style: TextStyle(color: Color(0xFFFFD400),
+                  fontWeight: FontWeight.w800, fontSize: 15)),
+          const SizedBox(height: 6),
+          const Text('تظهر بيانات الفائزين عند اعتمادها من الخادم',
+              style: TextStyle(color: Colors.white70, fontSize: 11)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _errorBox() => Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('تعذر الاتصال بالخادم', style: TextStyle(color: Colors.white)),
+        Text('$_err', maxLines: 2, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white70, fontSize: 10)),
+        TextButton(onPressed: _refresh, child: const Text('إعادة المحاولة')),
+      ]);
+
+  Widget _pill(Widget child) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0x7314087A),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0x59FFFFFF)),
+        ),
+        child: child,
+      );
+
+  Widget _topBar(RoundState s) => Row(children: [
+        _pill(Text('جولة ${s.dailyRoundNumber}',
+            style: const TextStyle(color: Colors.white, fontSize: 12,
+                fontWeight: FontWeight.bold))),
+        const SizedBox(width: 6),
+        IconButton(onPressed: _showRules,
+            icon: const Icon(Icons.help_outline, color: Colors.white)),
+        IconButton(onPressed: _showTopWins,
+            icon: const Text('🏆', style: TextStyle(fontSize: 20))),
+        const Spacer(),
+        _pill(Text('🪙 ${_fmt(_bal)}',
+            style: const TextStyle(color: Colors.white, fontSize: 13,
+                fontWeight: FontWeight.bold))),
+        IconButton(onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.close, color: Colors.white)),
+      ]);
+
+  Widget _platform(RoundState s) => Stack(clipBehavior: Clip.none, children: [
+        Column(children: [
+          CustomPaint(painter: _PlatTopPainter(),
+              child: const SizedBox(height: 30, width: double.infinity)),
+          CustomPaint(
+            painter: _PlatFacePainter(),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(10, 34, 10, 16),
+              child: _pills(s),
+            ),
+          ),
+        ]),
+        Positioned(
+          top: -46, left: 8, right: 8,
+          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [_special('salad', 'السلطة'), _special('pizza', 'البيتزا')]),
+        ),
+      ]);
+
+  Widget _pills(RoundState s) => Row(children: [
+        GestureDetector(
+          onTap: _showRules,
+          child: Container(
+            width: 30, height: 30, alignment: Alignment.center,
+            decoration: BoxDecoration(shape: BoxShape.circle,
+              color: const Color(0xFFFFD9A0),
+              border: Border.all(color: const Color(0xFFB3261E), width: 2)),
+            child: const Text('!', style: TextStyle(color: Color(0xFFB3261E),
+                fontWeight: FontWeight.w900, fontSize: 16)),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(child: _plPill('رهانك في هذه الجولة',
+            '${_fmt(s.myBets.fold(0, (a, b) => a + b) + _pendingBetAmount)} 🪙')),
+        const SizedBox(width: 8),
+        Expanded(child: _plPill('رصيدي', '${_fmt(_bal)} 🪙')),
+        const SizedBox(width: 8),
+        Expanded(child: _plPill('الجولة', '${s.dailyRoundNumber}')),
+      ]);
+
+  Widget _plPill(String label, String value) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF5DE),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: const Color(0xFF6B3A1E), width: 2),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Color(0xFF4A2A10), fontSize: 10)),
+          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Color(0xFF4A2A10), fontSize: 13,
+                  fontWeight: FontWeight.bold)),
+        ]),
+      );
+
+  Widget _redFloor(RoundState s) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 34, 12, 20),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter, end: Alignment.bottomCenter,
+            colors: [Color(0xFFFC4755), Color(0xFFC91E31)], stops: [0, 0.45]),
+        ),
+        child: Stack(clipBehavior: Clip.none, children: [
+          Positioned(
+            top: -30, left: 24, right: 24,
+            child: Container(height: 14, decoration: const BoxDecoration(
+              color: Color(0xFF870816),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(14)))),
+          ),
+          Column(children: [
+            SizedBox(height: 13, child: Center(child: Text(_msg ?? '',
+              style: const TextStyle(color: Color(0xFFFFE36A), fontSize: 13,
+                  height: 1.0, fontWeight: FontWeight.w800)))),
+            _chestBar(),
+            _chips(),
+            const SizedBox(height: 10),
+            _history(s),
+            if (_err != null) _walletWarning(),
+          ]),
+        ]),
+      );
+
+  Widget _chestBar() => Column(children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          for (final e in ['🧰', '🧰', '🧰', '🧰', '🧰', '🧰', '🧰'])
+            const Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('🧰', style: TextStyle(fontSize: 26)),
+              Text('—', style: TextStyle(color: Colors.white, fontSize: 11)),
+            ]),
+        ]),
+        const SizedBox(height: 6),
+        ClipRRect(borderRadius: BorderRadius.circular(6),
+          child: const LinearProgressIndicator(value: 0, minHeight: 10,
+            backgroundColor: Color(0x59000000),
+            valueColor: AlwaysStoppedAnimation(Color(0xFFFFB400)))),
+        const SizedBox(height: 4),
+        const Text('تقدم الصناديق غير متاح من الخادم حالياً',
+            style: TextStyle(color: Colors.white, fontSize: 12)),
+        const SizedBox(height: 10),
+      ]);
+
+  Widget _special(String key, String label) {
+    final on = _lit == key;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Text(key == 'salad' ? '🥗' : '🍕',
+          style: TextStyle(fontSize: 46,
+            shadows: on ? const [Shadow(color: Color(0xFFFFD400), blurRadius: 18)] : null)),
+      Transform.translate(
+        offset: const Offset(0, -6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          decoration: BoxDecoration(
+            color: on ? const Color(0xFFFFD400) : const Color(0xFFFFF5DE),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF6B3A1E), width: 2)),
+          child: Text(label, style: const TextStyle(color: Color(0xFF4A2A10),
+              fontWeight: FontWeight.w800, fontSize: 14)),
+        ),
+      ),
+    ]);
   }
 
   Widget _walletWarning() => Container(
@@ -860,81 +992,31 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   Widget _wheel(RoundState s) {
     return LayoutBuilder(builder: (context, c) {
-      final w = c.maxWidth, d = w * 0.27;
+      final w = c.maxWidth, d = w * 0.27, ds = w * 0.22;
       return SizedBox(width: w, height: w, child: Stack(children: [
         Positioned.fill(child: CustomPaint(painter: _SpokesPainter(d))),
         for (var i = 0; i < 8; i++)
           Positioned(
-            left: w / 2 + w * 0.37 * math.sin(i * math.pi / 4) - d / 2,
-            top: w / 2 - w * 0.37 * math.cos(i * math.pi / 4) - d / 2,
-            width: d, height: d, child: _slot(i, s, d),
+            left: w / 2 + w * 0.37 * math.sin(i * math.pi / 4) - ds / 2,
+            top: w / 2 - w * 0.37 * math.cos(i * math.pi / 4) - ds / 2,
+            width: ds, height: ds, child: _slot(i, s, ds),
           ),
         Center(child: Container(
           width: d, height: d, alignment: Alignment.center,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF8A4B2A), border: Border.all(color: const Color(0xFF5A2F16), width: 4)),
+          decoration: BoxDecoration(shape: BoxShape.circle,
+            color: const Color(0xFF8A4B2A),
+            border: Border.all(color: const Color(0xFF5A2F16), width: 4)),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(s.phase == RoundPhase.betting ? 'حدد الوقت' : 'النتيجة', style: TextStyle(color: Colors.white, fontSize: d * 0.13)),
-            Text(s.phase == RoundPhase.betting ? '${_visibleSecondsLeft}s' : '🎡', style: TextStyle(color: Colors.white, fontSize: d * 0.3, fontWeight: FontWeight.w900)),
+            Text(s.phase == RoundPhase.betting ? 'حدد الوقت' : 'النتيجة',
+              style: TextStyle(color: Colors.white, fontSize: d * 0.13)),
+            Text(s.phase == RoundPhase.betting ? '${_visibleSecondsLeft}s' : '🎡',
+              style: TextStyle(color: Colors.white, fontSize: d * 0.3,
+                fontWeight: FontWeight.w900)),
           ]),
         )),
       ]));
     });
   }
-
-  Widget _slot(int i, RoundState s, double d) {
-    final slot = s.symbols[i];
-    final hit = _hit == i, win = _win.contains(i);
-    final mx = s.pools.reduce((a, b) => a > b ? a : b);
-    final frac = mx == 0 ? 0.45 : 0.45 + 0.35 * (s.pools[i] / mx);
-    const dark = Color(0xFF5A3A00);
-    return GestureDetector(
-      onTap: s.enabled ? () => _bet(i) : null,
-      child: Stack(clipBehavior: Clip.none, children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          width: d, height: d,
-          transform: Matrix4.identity()..scale(hit ? 1.12 : 1.0),
-          transformAlignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle, color: const Color(0xFFFFF3C4),
-            border: Border.all(color: const Color(0xFF8A4B2A), width: 4),
-            boxShadow: hit || win ? [BoxShadow(color: win ? const Color(0xFF3DFF7A) : const Color(0xFFFFD400), blurRadius: 22, spreadRadius: 4)] : null,
-          ),
-          child: ClipOval(child: Stack(children: [
-            Positioned.fill(child: ColoredBox(color: win ? const Color(0xFFBFFFB8) : const Color(0xFFFFF3C4))),
-            Align(alignment: Alignment.bottomCenter, child: FractionallySizedBox(heightFactor: frac, widthFactor: 1, child: ColoredBox(color: win ? const Color(0xFF4DE06A) : const Color(0xFFFFD84D)))),
-            Align(alignment: const Alignment(0, -0.28), child: Text('${slot.mult} اضعاف', style: TextStyle(color: dark, fontSize: d * 0.14))),
-            Align(alignment: const Alignment(0, 0.52), child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text(_fmt(s.pools[i]), style: TextStyle(color: dark, fontSize: d * 0.17, fontWeight: FontWeight.bold)),
-              SizedBox(width: d * 0.04),
-              Text('🪙', style: TextStyle(fontSize: d * 0.14)),
-            ])),
-          ])),
-        ),
-        Positioned(top: -d * 0.22, left: 0, right: 0, child: Center(child: Text(slot.emoji, style: TextStyle(fontSize: d * 0.38)))),
-        if (mx > 0 && s.pools[i] == mx)
-          Positioned(top: -d * 0.1, right: -d * 0.12, child: Transform.rotate(
-            angle: -0.14,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-              decoration: BoxDecoration(color: const Color(0xFFE5251B), borderRadius: BorderRadius.circular(5)),
-              child: Text('Hot', style: TextStyle(color: Colors.white, fontSize: d * 0.15, fontWeight: FontWeight.w900)),
-            ),
-          )),
-        if (s.myBets[i] > 0)
-          Positioned(bottom: -8, left: 0, right: 0, child: Center(child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7),
-            decoration: BoxDecoration(color: const Color(0xFF7A22FF), borderRadius: BorderRadius.circular(9)),
-            child: Text(_fmt(s.myBets[i]), style: const TextStyle(color: Colors.white, fontSize: 10)),
-          ))),
-      ]),
-    );
-  }
-
-  Widget _specials() => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 6),
-    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [_special('salad', 'السلطة'), _special('pizza', 'البيتزا')]),
-  );
 
   Widget _special(String key, String label) {
     final on = _lit == key;
@@ -1012,31 +1094,84 @@ class _SpokesPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
     final c = size.center(Offset.zero);
-    final r = size.width * 0.37;
-    final w = size.width, bottom = size.height * 0.99;
-    Path trap(double topHalf, double botHalf, double top, double bot) => Path()
-      ..moveTo(c.dx - topHalf, top)..lineTo(c.dx + topHalf, top)
-      ..lineTo(c.dx + botHalf, bot)..lineTo(c.dx - botHalf, bot)..close();
-    final outer = trap(d * 0.5, w * 0.3, c.dy, bottom);
-    canvas.drawPath(outer, Paint()..color = const Color(0xFFB8763F));
-    canvas.drawPath(outer, Paint()..style = PaintingStyle.stroke..strokeWidth = d * 0.05..color = const Color(0xFF5A2F16));
-    canvas.drawPath(trap(d * 0.16, w * 0.17, c.dy + d * 0.3, bottom), Paint()..color = const Color(0xFF6B3A1E));
-    canvas.drawRect(Rect.fromLTRB(c.dx - w * 0.2, c.dy + w * 0.2, c.dx + w * 0.2, c.dy + w * 0.2 + d * 0.14), Paint()..color = const Color(0xFFB8763F));
-    final spoke = Paint()..color = const Color(0xFF8A4B2A)..strokeWidth = d * 0.13..strokeCap = StrokeCap.round;
-    final shine = Paint()..color = const Color(0xFFC08A55)..strokeWidth = d * 0.04..strokeCap = StrokeCap.round;
-    final bulb = Paint()..color = Colors.white;
+
+    canvas.drawOval(Rect.fromLTWH(-w * 0.35, h * 0.80, w * 1.0, h * 0.5),
+        Paint()..color = const Color(0xFF7CCF63));
+    canvas.drawOval(Rect.fromLTWH(w * 0.25, h * 0.84, w * 1.2, h * 0.5),
+        Paint()..color = const Color(0xFF9BD465));
+
+    final sw = w * 0.59, u = sw / 100;
+    final ox = c.dx - sw / 2, oy = h * 0.985 - 64 * u;
+    Offset p(double x, double y) => Offset(ox + x * u, oy + y * u);
+    final frame = Path()..fillType = PathFillType.evenOdd;
+    frame.addPolygon([p(37, 0), p(63, 0), p(100, 64), p(0, 64)], true);
+    frame.moveTo(p(35, 27).dx, p(35, 27).dy);
+    frame.lineTo(p(35, 19).dx, p(35, 19).dy);
+    frame.quadraticBezierTo(p(35, 12.5).dx, p(35, 12.5).dy,
+        p(50, 12.5).dx, p(50, 12.5).dy);
+    frame.quadraticBezierTo(p(65, 12.5).dx, p(65, 12.5).dy,
+        p(65, 19).dx, p(65, 19).dy);
+    frame.lineTo(p(65, 27).dx, p(65, 27).dy);
+    frame.close();
+    frame.addPolygon([p(31, 41.7), p(69, 41.7), p(77, 64), p(23, 64)], true);
+    canvas.drawPath(frame, Paint()..color = const Color(0xFFDD964A));
+    canvas.save();
+    canvas.clipPath(frame);
+    final grain = Paint()..color = const Color(0xFFC8823A)..strokeWidth = u * 0.4;
+    for (double x = 0; x < 100; x += 3) {
+      canvas.drawLine(p(x, 0), p(x, 64), grain);
+    }
+    canvas.restore();
+    canvas.drawPath(frame, Paint()
+      ..style = PaintingStyle.stroke..strokeWidth = u * 0.9
+      ..strokeJoin = StrokeJoin.round..color = const Color(0xFF6B3A1E));
+    for (final sx in [25.0, 75.0]) {
+      canvas.save();
+      canvas.translate(p(sx, 35).dx, p(sx, 35).dy);
+      canvas.rotate(sx < 50 ? 0.25 : -0.25);
+      canvas.drawOval(Rect.fromCenter(center: Offset.zero,
+          width: u * 5.2, height: u * 14),
+          Paint()..color = const Color(0x526B3A1E));
+      canvas.restore();
+    }
+    for (final fx in [-1.5, 76.5]) {
+      final rr = RRect.fromRectAndRadius(
+          Rect.fromLTWH(p(fx, 62).dx, p(fx, 62).dy, 25 * u, 2.6 * u),
+          Radius.circular(u * 0.8));
+      canvas.drawRRect(rr, Paint()..color = const Color(0xFFEFDAA9));
+      canvas.drawRRect(rr, Paint()..style = PaintingStyle.stroke
+        ..strokeWidth = u * 0.4..color = const Color(0xFF6B3A1E));
+    }
+
+    final plank = Paint()..color = const Color(0xFFA9553B);
+    final edge = Paint()..style = PaintingStyle.stroke
+      ..strokeWidth = 2..color = const Color(0xFF7B3524);
+    final peg = Paint()..color = const Color(0xFFFFF5DE);
     for (var i = 0; i < 8; i++) {
       final a = i * math.pi / 4;
-      final end = Offset(c.dx + r * math.sin(a), c.dy - r * math.cos(a));
-      canvas.drawLine(c, end, spoke);
-      canvas.drawLine(c, end, shine);
-      canvas.drawCircle(Offset.lerp(c, end, 0.5)!, d * 0.035, bulb);
+      final pc = Offset(c.dx + w * 0.19 * math.sin(a),
+          c.dy - w * 0.19 * math.cos(a));
+      canvas.save();
+      canvas.translate(pc.dx, pc.dy);
+      canvas.rotate(a);
+      final rr = RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset.zero, width: w * 0.038,
+              height: w * 0.14), const Radius.circular(3));
+      canvas.drawRRect(rr, plank);
+      canvas.drawRRect(rr, edge);
+      canvas.drawCircle(Offset.zero, 3.5, peg);
+      canvas.restore();
     }
-    canvas.drawCircle(c, d * 0.56, Paint()..style = PaintingStyle.stroke..strokeWidth = d * 0.1..color = const Color(0xFFC08A55));
+
+    canvas.drawCircle(c, d * 0.56, Paint()
+      ..style = PaintingStyle.stroke..strokeWidth = d * 0.1
+      ..color = const Color(0xFFC08A55));
     for (var k = 0; k < 14; k++) {
       final a = k * 2 * math.pi / 14;
-      canvas.drawCircle(Offset(c.dx + d * 0.56 * math.sin(a), c.dy - d * 0.56 * math.cos(a)), d * 0.03, bulb);
+      canvas.drawCircle(Offset(c.dx + d * 0.56 * math.sin(a),
+          c.dy - d * 0.56 * math.cos(a)), d * 0.03, peg);
     }
   }
 
@@ -1044,18 +1179,71 @@ class _SpokesPainter extends CustomPainter {
   bool shouldRepaint(_SpokesPainter old) => old.d != d;
 }
 
-class _WoodPainter extends CustomPainter {
+class _PlatTopPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF9C5A2E));
-    final line = Paint()..color = const Color(0xFF8E4F25)..strokeWidth = 2;
-    for (double x = 48; x < size.width; x += 48) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), line);
-    }
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, 8), Paint()..color = const Color(0xFF6B3A1E));
-    canvas.drawRect(Rect.fromLTWH(0, 8, size.width, 3), Paint()..color = const Color(0xFFC08A55));
+    final w = size.width, h = size.height;
+    final path = Path()..addPolygon(
+      [Offset(w * 0.06, 0), Offset(w * 0.94, 0), Offset(w, h), Offset(0, h)], true);
+    canvas.drawPath(path, Paint()..shader = const LinearGradient(
+      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      colors: [Color(0xFFECC26F), Color(0xFFE0A456)],
+    ).createShader(Offset.zero & size));
+    canvas.drawPath(path, Paint()..style = PaintingStyle.stroke
+      ..strokeWidth = 2..strokeJoin = StrokeJoin.round
+      ..color = const Color(0xFF6B3A1E));
   }
-
   @override
-  bool shouldRepaint(_WoodPainter old) => false;
+  bool shouldRepaint(_PlatTopPainter old) => false;
+}
+
+class _PlatFacePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = RRect.fromRectAndCorners(Offset.zero & size,
+      bottomLeft: const Radius.circular(24), bottomRight: const Radius.circular(24));
+    canvas.drawRRect(r, Paint()..color = const Color(0xFFD89046));
+    canvas.save();
+    canvas.clipRRect(r);
+    final hatch = Paint()..color = const Color(0xFFCC8440)..strokeWidth = 2;
+    for (double x = -size.height; x < size.width; x += 11) {
+      canvas.drawLine(Offset(x, size.height),
+          Offset(x + size.height * 0.47, 0), hatch);
+    }
+    canvas.restore();
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, 3),
+        Paint()..color = const Color(0xFFEFC98A));
+    canvas.drawRRect(r.deflate(1.5), Paint()..style = PaintingStyle.stroke
+      ..strokeWidth = 3..color = const Color(0xFF6B3A1E));
+  }
+  @override
+  bool shouldRepaint(_PlatFacePainter old) => false;
+}
+
+class _CutleryPainter extends CustomPainter {
+  final bool fork;
+  _CutleryPainter(this.fork);
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 19, size.height / 64);
+    final fill = Paint()..color = const Color(0xFFE9EDF6);
+    final line = Paint()..style = PaintingStyle.stroke..strokeWidth = 1
+      ..color = const Color(0xFF8D96AD);
+    void rr(double x, double y, double w, double h, double r) {
+      final b = RRect.fromRectAndRadius(Rect.fromLTWH(x, y, w, h), Radius.circular(r));
+      canvas.drawRRect(b, fill);
+      canvas.drawRRect(b, line);
+    }
+    if (fork) {
+      rr(3, 2, 3, 20, 1.5); rr(8, 2, 3, 20, 1.5); rr(13, 2, 3, 20, 1.5);
+      rr(3, 18, 13, 8, 3); rr(7, 24, 5, 38, 2.5);
+    } else {
+      final blade = Path()..moveTo(5, 2)..cubicTo(13, 4, 15, 16, 12, 34)
+        ..lineTo(5, 34)..close();
+      canvas.drawPath(blade, fill); canvas.drawPath(blade, line);
+      rr(5, 32, 7, 30, 3);
+    }
+  }
+  @override
+  bool shouldRepaint(_CutleryPainter old) => false;
 }
