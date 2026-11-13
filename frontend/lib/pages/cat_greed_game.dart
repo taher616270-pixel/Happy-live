@@ -34,7 +34,7 @@ enum RoundPhase { betting, result }
 class RoundState {
   final String roundId;
   final int dailyRoundNumber;
-  final int secondsLeft, balance, myPayout;
+  final int secondsLeft, balance, myPayout, myBetCount, maxBetsPerRound;
   final bool enabled;
   final List<WheelSlot> symbols;
   final RoundPhase phase;
@@ -54,6 +54,8 @@ class RoundState {
     required this.myBets,
     required this.balance,
     this.myPayout = 0,
+    this.myBetCount = 0,
+    this.maxBetsPerRound = 6,
     this.resultSlot,
     this.special,
     this.history = const [],
@@ -76,6 +78,8 @@ class RoundState {
       myBets: ((j['myBets'] as List?) ?? List.filled(8, 0)).map((e) => (e as num).toInt()).toList(),
       balance: (j['balance'] as num? ?? 0).toInt(),
       myPayout: (j['myPayout'] as num? ?? 0).toInt(),
+      myBetCount: (j['myBetCount'] as num? ?? 0).toInt(),
+      maxBetsPerRound: (j['maxBetsPerRound'] as num? ?? 6).toInt(),
       resultSlot: (j['resultSlot'] as num?)?.toInt(),
       special: j['special'] as String?,
       history: rawHistory.map((e) => '$e').toList(),
@@ -162,6 +166,8 @@ class MockFoodWheelApi implements FoodWheelApi {
       phase: betting ? RoundPhase.betting : RoundPhase.result,
       pools: List.of(_pools),
       myBets: List.of(_bets),
+      myBetCount: _bets.where((amount) => amount > 0).length,
+      maxBetsPerRound: 6,
       balance: _balance,
       myPayout: betting ? 0 : _payout,
       resultSlot: betting ? null : _slot,
@@ -178,6 +184,7 @@ class MockFoodWheelApi implements FoodWheelApi {
     _tick();
     if (roundId != '$_round' || _elapsed >= _betSecs) throw Exception('round_closed');
     if (amount > _balance) throw Exception('insufficient_balance');
+    if (_bets.where((value) => value > 0).length >= 6 && _bets[slot] == 0) throw Exception('bet_count_limit');
     _balance -= amount;
     _bets[slot] += amount;
     _pools[slot] += amount;
@@ -343,12 +350,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       return;
     }
 
-    final selected = <int>{
-      for (var slot = 0; slot < 8; slot++)
-        if (s.myBets[slot] > 0 || _queuedBets[slot] > 0 || _inFlightSlots.contains(slot)) slot,
-    };
-    if (!selected.contains(i) && selected.length >= 6) {
-      _say('يمكنك اختيار 6 خانات مختلفة فقط، واضغط عليها مجدداً لزيادة الرهان');
+    final pendingBetCount = _queuedBets.where((amount) => amount > 0).length + _inFlightSlots.length;
+    final totalBetCount = s.myBetCount + pendingBetCount;
+    if (_queuedBets[i] == 0 && !_inFlightSlots.contains(i) && totalBetCount >= s.maxBetsPerRound) {
+      _say('وصلت إلى الحد الأقصى: 6 رهانات في الجولة الواحدة');
       return;
     }
     if (_bal < _chip) { _say('رصيدك لا يكفي'); return; }
@@ -458,7 +463,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                       child: Column(children: [
                         _specials(),
                         const SizedBox(height: 8),
-                        Text('رهانك في هذه الجولة: ${_fmt(s.myBets.fold(0, (a, b) => a + b) + _reservedBetTotal())}', style: const TextStyle(color: Colors.white, fontSize: 13)),
+                        Text('رهاناتك: ${s.myBetCount + _queuedBets.where((amount) => amount > 0).length + _inFlightSlots.length}/${s.maxBetsPerRound}  •  إجمالي الرهان: ${_fmt(s.myBets.fold(0, (a, b) => a + b) + _reservedBetTotal())}', style: const TextStyle(color: Colors.white, fontSize: 13)),
                         SizedBox(height: 30, child: Center(child: Text(_msg ?? '', style: const TextStyle(color: Color(0xFFFFE36A), fontSize: 15, fontWeight: FontWeight.w800)))),
                         _chips(),
                         const SizedBox(height: 10),
