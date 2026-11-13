@@ -4,6 +4,7 @@ import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/posts_page.dart';
 import 'pages/edit_profile_page.dart';
+import 'pages/food_wheel_game.dart';
 import 'pages/wallet_page.dart';
 import 'package:flutter/services.dart';
 import 'package:country_picker/country_picker.dart';
@@ -1577,7 +1578,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      _HappyCreateTab(onSoon: _soon),
+      _HappyCreateTab(onSoon: _soon, accessToken: widget.accessToken),
       HappyHomeTab(
         name: _name,
         accessToken: widget.accessToken,
@@ -1744,8 +1745,9 @@ class _HappyPlaceholderTab extends StatelessWidget {
 }
 
 class _HappyCreateTab extends StatelessWidget {
-  const _HappyCreateTab({required this.onSoon});
+  const _HappyCreateTab({required this.onSoon, required this.accessToken});
   final ValueChanged<String> onSoon;
+  final String accessToken;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1815,6 +1817,20 @@ class _HappyCreateTab extends StatelessWidget {
             ),
           ],
         ),
+      ),
+      const SizedBox(height: 23),
+      const Padding(
+        padding: EdgeInsets.only(right: 3, bottom: 12),
+        child: Text(
+          'الألعاب',
+          style: TextStyle(color: Color(0xFF1E2233), fontSize: 16, fontWeight: FontWeight.w900),
+        ),
+      ),
+      _HappyCreateAction(
+        icon: Icons.casino_outlined,
+        title: 'عجلة الأطعمة',
+        subtitle: 'العب واربح باستخدام رصيد محفظتك',
+        onTap: () => openFoodWheelGame(context, accessToken: accessToken),
       ),
       const SizedBox(height: 23),
       const Padding(
