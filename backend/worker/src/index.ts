@@ -1,5 +1,5 @@
 import { RtcTokenBuilder } from "agora-token";
-import { handleCatGreedRequest } from "./cat_greed";
+import { handleFoodWheelRequest } from "./food_wheel";
 export { RoomSeatsHub } from "./room_seats_hub";
 export { GlobalGiftHub } from "./global_gift_hub";
 import type { GlobalGiftHub } from "./global_gift_hub";
@@ -384,8 +384,8 @@ export default {
       return new Response(null, { status: 204, headers });
     }
 
-    const catGreedResponse = await handleCatGreedRequest(request, env, origin, authenticatedUser, authenticatedAdmin, json);
-    if (catGreedResponse) return catGreedResponse;
+    const foodWheelResponse = await handleFoodWheelRequest(request, env, origin, authenticatedUser, authenticatedAdmin, json);
+    if (foodWheelResponse) return foodWheelResponse;
 
     if (url.pathname === "/api/v1/admin/auth/setup-status" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
