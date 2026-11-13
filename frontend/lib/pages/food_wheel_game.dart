@@ -215,7 +215,7 @@ class HttpFoodWheelApi implements FoodWheelApi {
     catch (_) { throw Exception('استجابة الخادم غير مفهومة (${response.statusCode})'); }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final code = (data['error'] ?? 'request_failed').toString();
-      const messages = {'authentication_required':'انتهت جلسة الدخول، سجّل الدخول مجدداً.','game_disabled':'اللعبة متوقفة حالياً.','round_closed':'انتهى وقت الرهان؛ انتظر الجولة القادمة.','insufficient_balance':'رصيدك غير كافٍ.','player_disabled':'تم إيقاف اللعب لهذا الحساب.','bet_limit_exceeded':'وصلت إلى الحد المسموح للرهان في الجولة.','bet_slot_limit_exceeded':'يمكنك الرهان على 6 خانات مختلفة فقط.','bet_rate_limited':'طلبات الرهان سريعة؛ انتظر قليلاً.','state_rate_limited':'التحديثات كثيرة؛ انتظر قليلاً.'};
+      const messages = {'authentication_required':'انتهت جلسة الدخول، سجّل الدخول مجدداً.','game_disabled':'اللعبة متوقفة حالياً.','round_closed':'انتهى وقت الرهان؛ انتظر الجولة القادمة.','insufficient_balance':'رصيدك غير كافٍ.','player_disabled':'تم إيقاف اللعب لهذا الحساب.','bet_limit_exceeded':'وصلت إلى الحد المسموح للرهان في الجولة.','bet_rate_limited':'طلبات الرهان سريعة؛ انتظر قليلاً.','state_rate_limited':'التحديثات كثيرة؛ انتظر قليلاً.'};
       throw Exception(messages[code] ?? 'تعذر تنفيذ الطلب: $code');
     }
     return data;
@@ -509,7 +509,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                       child: Column(children: [
                         _specials(),
                         const SizedBox(height: 8),
-                        Text('رهاناتك: ${s.myBetCount + _queuedBets.where((amount) => amount > 0).length + _inFlightSlots.length}/${s.maxBetsPerRound}  •  إجمالي الرهان: ${_fmt(s.myBets.fold(0, (a, b) => a + b) + _reservedBetTotal())}', style: const TextStyle(color: Colors.white, fontSize: 13)),
+                        Text('إجمالي رهانك في الجولة: ${_fmt(s.myBets.fold(0, (a, b) => a + b))}', style: const TextStyle(color: Colors.white, fontSize: 13)),
                         SizedBox(height: 30, child: Center(child: Text(_msg ?? '', style: const TextStyle(color: Color(0xFFFFE36A), fontSize: 15, fontWeight: FontWeight.w800)))),
                         _chips(),
                         const SizedBox(height: 10),
