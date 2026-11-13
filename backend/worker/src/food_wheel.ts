@@ -272,6 +272,13 @@ export async function handleFoodWheelRequest(
             !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
           return wheelError("invalid_bet",400,json,origin,env);
         }
+        // Count every authenticated bet request, including idempotent retries.
+        // Otherwise a client can bypass the burst limit by replaying a known key.
+        const nowSeconds = Math.floor(Date.now()/1000);
+        const rate = await db.prepare("INSERT INTO cat_greed_bet_rate_limits (user_id,window_start,request_count) VALUES (?,?,1) ON CONFLICT(user_id) DO UPDATE SET window_start=CASE WHEN excluded.window_start-cat_greed_bet_rate_limits.window_start>=? THEN excluded.window_start ELSE cat_greed_bet_rate_limits.window_start END,request_count=CASE WHEN excluded.window_start-cat_greed_bet_rate_limits.window_start>=? THEN 1 ELSE cat_greed_bet_rate_limits.request_count+1 END RETURNING request_count,window_start")
+          .bind(user.id,nowSeconds,BET_RATE_WINDOW_SECONDS,BET_RATE_WINDOW_SECONDS).first<{request_count:number;window_start:number}>();
+        if (!rate || rate.request_count>BET_RATE_MAX_REQUESTS) return json({error:"bet_rate_limited",retry_after_seconds:Math.max(1,(rate?.window_start??nowSeconds)+BET_RATE_WINDOW_SECONDS-nowSeconds)},429,origin,env);
+
         const prior = await db.prepare("SELECT round_id,slot,amount,bet_id FROM cat_greed_bet_requests WHERE idempotency_key=? AND user_id=?")
           .bind(idempotencyKey,user.id).first<{round_id:string;slot:number;amount:number;bet_id:string}>();
         if (prior) {
@@ -283,11 +290,6 @@ export async function handleFoodWheelRequest(
           duplicateBet=true;
         } else {
           if (!round || round.id !== roundId || round.phase !== "betting" || Date.parse(round.closes_at)<=Date.now()) return wheelError("round_closed",409,json,origin,env);
-          const nowSeconds = Math.floor(Date.now()/1000);
-          const rate = await db.prepare("INSERT INTO cat_greed_bet_rate_limits (user_id,window_start,request_count) VALUES (?,?,1) ON CONFLICT(user_id) DO UPDATE SET window_start=CASE WHEN excluded.window_start-cat_greed_bet_rate_limits.window_start>=? THEN excluded.window_start ELSE cat_greed_bet_rate_limits.window_start END,request_count=CASE WHEN excluded.window_start-cat_greed_bet_rate_limits.window_start>=? THEN 1 ELSE cat_greed_bet_rate_limits.request_count+1 END RETURNING request_count,window_start")
-            .bind(user.id,nowSeconds,BET_RATE_WINDOW_SECONDS,BET_RATE_WINDOW_SECONDS).first<{request_count:number;window_start:number}>();
-          if (!rate || rate.request_count>BET_RATE_MAX_REQUESTS) return json({error:"bet_rate_limited",retry_after_seconds:Math.max(1,(rate?.window_start??nowSeconds)+BET_RATE_WINDOW_SECONDS-nowSeconds)},429,origin,env);
-
           await db.prepare("INSERT OR IGNORE INTO user_wallets (user_id,balance,updated_at) VALUES (?,0,?)").bind(user.id,isoNow()).run();
           const control = await db.prepare("SELECT enabled,max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?").bind(user.id).first<{enabled:number;max_bet_per_round:number}>();
           if (control?.enabled===0) return wheelError("player_disabled",403,json,origin,env);
