@@ -11,12 +11,6 @@ preview_urls = true
 APP_ENV = "preview"
 GOOGLE_CLIENT_ID = "999298541545-5i0kn2d1emj2rohuvruj4o8ej49ho9kg.apps.googleusercontent.com"
 
-[[previews.d1_databases]]
-binding = "DB"
-database_name = "happy-live-room-exp-preview-db"
-database_id = "7ade3803-97bf-4f6d-9200-48b3dfb0573c"
-migrations_dir = "migrations-cat-greed-preview"
-
 [[previews.durable_objects.bindings]]
 name = "ROOM_CHAT"
 class_name = "RoomChatHub"
