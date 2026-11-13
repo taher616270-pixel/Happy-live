@@ -1,4 +1,4 @@
-type CatGreedUser = { id: string };
+type CatGreedUser = { id: string; gabo_id?: string | null };
 type CatGreedAdmin = { id: string; username: string; role: string };
 type CatGreedEnv = { DB?: D1Database };
 type CatGreedJson = (data: unknown, status: number, origin?: string, env?: any) => Response;
@@ -349,7 +349,7 @@ export async function handleCatGreedRequest(
       ).bind(dayStart, isoNow()).first<{total:number}>();
       const dailyRoundNumber = Math.max(1, dailyRounds?.total ?? 0);
       return json({
-        enabled:settings.enabled===1,roundId:round.id,dailyRoundNumber,secondsLeft:Math.max(0,Math.ceil((Date.parse(isBetting?round.closes_at:new Date(Date.parse(round.settled_at ?? round.created_at)+config.resultSeconds*1000).toISOString())-Date.now())/1000)),
+        enabled:settings.enabled===1,roundId:round.id,userCode:user.gabo_id??'',dailyRoundNumber,secondsLeft:Math.max(0,Math.ceil((Date.parse(isBetting?round.closes_at:new Date(Date.parse(round.settled_at ?? round.created_at)+config.resultSeconds*1000).toISOString())-Date.now())/1000)),
         phase:round.phase,pools:Array.from({length:8},(_,i)=>pools.results?.find(x=>x.slot===i)?.total??0),
         myBets:Array.from({length:8},(_,i)=>mine.results?.find(x=>x.slot===i)?.total??0),
         myBetCount:myBetCountRow?.total??0,maxBetsPerRound:MAX_BETS_PER_ROUND,

@@ -20,6 +20,7 @@ class _WalletPageState extends State<WalletPage> {
   bool _loading = true;
   String? _error;
   int _balance = 0;
+  String _userCode = '';
   List<Map<String, dynamic>> _transactions = [];
 
   @override
@@ -46,6 +47,7 @@ class _WalletPageState extends State<WalletPage> {
       if (!mounted) return;
       setState(() {
         _balance = (payload['balance'] as num?)?.toInt() ?? 0;
+        _userCode = (payload['userCode'] ?? '').toString();
         _transactions = items;
         _loading = false;
       });
@@ -141,6 +143,10 @@ class _WalletPageState extends State<WalletPage> {
                         const SizedBox(width: 9),
                         const Icon(Icons.monetization_on_rounded, color: _gold, size: 27),
                       ]),
+                    if (_userCode.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text('معرّف الحساب: $_userCode', style: const TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w700)),
+                    ],
                     const SizedBox(height: 17),
                     SizedBox(
                       width: double.infinity,

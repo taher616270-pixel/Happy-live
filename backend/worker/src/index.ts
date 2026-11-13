@@ -2253,6 +2253,7 @@ export default {
         ]);
         return json({
           ok: true,
+          userCode: user.gabo_id ?? "",
           balance: wallet?.balance ?? 0,
           transactions: transactions.results ?? [],
           giftEarnings: giftEarnings ?? { totalGiftCoins: 0, remainingTaggedCoins: 0, futureWithdrawableCoins: 0 },
