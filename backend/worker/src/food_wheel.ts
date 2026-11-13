@@ -458,3 +458,4 @@ export async function handleFoodWheelRequest(
     return wheelError("food_wheel_unavailable",500,json,origin,env);
   }
 }
+// Production deploy trigger: publish the restored pre-six-slot betting behavior.
