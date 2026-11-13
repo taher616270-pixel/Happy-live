@@ -223,21 +223,19 @@ class HttpFoodWheelApi implements FoodWheelApi {
   // displaying it in the game, so a stale/incorrect game-state balance cannot
   // make a funded account appear empty.
   Future<Map<String, dynamic>> _stateWithWallet(Map<String, dynamic> state) async {
-    try {
-      final wallet = await _request('/wallet');
-      final gameCode = (state['userCode'] ?? '').toString();
-      final walletCode = (wallet['userCode'] ?? '').toString();
-      if (gameCode.isNotEmpty && walletCode.isNotEmpty && gameCode != walletCode) {
-        throw Exception('معرّف المحفظة لا يطابق معرّف اللعبة');
-      }
-      final walletBalance = wallet['balance'];
-      if (walletBalance is num && walletBalance >= 0) {
-        state['balance'] = walletBalance;
-      }
-    } catch (error) {
-      if (error.toString().contains('معرّف المحفظة لا يطابق')) rethrow;
-      // Keep the game-state balance if the wallet endpoint is temporarily unavailable.
+    // Never silently fall back to a possibly stale/zero game balance. If the
+    // canonical app-wallet request fails, surface the exact failure instead.
+    final wallet = await _request('/wallet');
+    final gameCode = (state['userCode'] ?? '').toString();
+    final walletCode = (wallet['userCode'] ?? '').toString();
+    if (gameCode.isEmpty || walletCode.isEmpty || gameCode != walletCode) {
+      throw Exception('تعذر التحقق من تطابق حساب محفظة التطبيق مع حساب اللعبة');
     }
+    final walletBalance = wallet['balance'];
+    if (walletBalance is! num || walletBalance < 0) {
+      throw Exception('استجابة محفظة التطبيق لا تحتوي على رصيد صالح');
+    }
+    state['balance'] = walletBalance;
     return state;
   }
 
