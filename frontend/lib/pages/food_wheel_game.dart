@@ -336,7 +336,8 @@ class FoodWheelGame extends StatefulWidget {
 
 class _FoodWheelGameState extends State<FoodWheelGame> {
   final _rnd = math.Random();
-  Timer? _poll, _msgTimer;
+  Timer? _poll, _msgTimer, _clock;
+  int _visibleSecondsLeft = 0;
   RoundState? _s;
   int _bal = 0, _chip = 500, _hit = -1;
   String _animatedRound = '';
@@ -350,11 +351,17 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   void initState() {
     super.initState();
     _refresh();
+    // Keep the visible countdown moving locally; server polling is only for
+    // authoritative phase, bets, pools and wallet synchronization.
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _visibleSecondsLeft <= 0) return;
+      setState(() => _visibleSecondsLeft--);
+    });
     _poll = Timer.periodic(const Duration(seconds: 2), (_) => _refresh());
   }
 
   @override
-  void dispose() { _poll?.cancel(); _msgTimer?.cancel(); super.dispose(); }
+  void dispose() { _poll?.cancel(); _msgTimer?.cancel(); _clock?.cancel(); super.dispose(); }
 
   void _say(String m) {
     _msgTimer?.cancel();
@@ -380,6 +387,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           : null;
       setState(() {
         _s = s;
+        _visibleSecondsLeft = s.secondsLeft;
         _err = zeroBalanceWarning;
         // Keep in-flight taps reserved locally so a poll cannot briefly
         // restore their coins or make a sixth bet look available twice.
@@ -440,7 +448,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   Future<void> _bet(int i) async {
     final s = _s;
     if (s == null || !s.enabled) { _say('اللعبة متوقفة حالياً'); return; }
-    if (s.phase != RoundPhase.betting) { _say('انتظر الجولة القادمة'); return; }
+    if (s.phase != RoundPhase.betting || _visibleSecondsLeft <= 0) { _say('انتهى وقت الرهان؛ انتظر الجولة القادمة'); return; }
     if (_localBetRoundId != s.roundId) {
       _localBetRoundId = s.roundId;
       _localRoundBetCount = s.myBetCount;
@@ -602,7 +610,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF8A4B2A), border: Border.all(color: const Color(0xFF5A2F16), width: 4)),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Text(s.phase == RoundPhase.betting ? 'حدد الوقت' : 'النتيجة', style: TextStyle(color: Colors.white, fontSize: d * 0.13)),
-            Text(s.phase == RoundPhase.betting ? '${s.secondsLeft}s' : '🎡', style: TextStyle(color: Colors.white, fontSize: d * 0.3, fontWeight: FontWeight.w900)),
+            Text(s.phase == RoundPhase.betting ? '${_visibleSecondsLeft}s' : '🎡', style: TextStyle(color: Colors.white, fontSize: d * 0.3, fontWeight: FontWeight.w900)),
           ]),
         )),
       ]));
