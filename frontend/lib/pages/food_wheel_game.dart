@@ -202,6 +202,9 @@ class HttpFoodWheelApi implements FoodWheelApi {
   static const _base = 'https://happy-live-api.taher616270.workers.dev/api/v1';
   final String accessToken;
   final http.Client _client;
+  Map<String, dynamic> lastDiagnostics = <String, dynamic>{};
+  int? lastStateStatus;
+  int? lastWalletStatus;
   HttpFoodWheelApi({required this.accessToken, http.Client? client}) : _client = client ?? http.Client();
   Map<String, String> get _headers => {'Content-Type':'application/json','Authorization':'Bearer $accessToken'};
   Future<Map<String, dynamic>> _request(String path, {Map<String, dynamic>? body}) async {
@@ -224,9 +227,58 @@ class HttpFoodWheelApi implements FoodWheelApi {
   Future<Map<String, dynamic>> _stateWithWallet(Map<String, dynamic> state) async {
     // Never silently fall back to a possibly stale/zero game balance. If the
     // canonical app-wallet request fails, surface the exact failure instead.
-    final wallet = await _request('/wallet');
+    final gameBalance = state['balance'];
+    Map<String, dynamic> wallet;
+    try {
+      final response = await _client.get(Uri.parse('$_base/wallet'), headers: _headers);
+      lastWalletStatus = response.statusCode;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map<String, dynamic>) throw const FormatException();
+        wallet = decoded;
+      } catch (_) {
+        lastDiagnostics = <String, dynamic>{
+          'stateStatus': lastStateStatus,
+          'walletStatus': response.statusCode,
+          'gameCode': state['userCode'],
+          'gameBalance': gameBalance,
+          'walletParse': 'failed',
+        };
+        throw Exception('استجابة محفظة التطبيق غير مفهومة (${response.statusCode})');
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final code = (wallet['error'] ?? 'wallet_request_failed').toString();
+        lastDiagnostics = <String, dynamic>{
+          'stateStatus': lastStateStatus,
+          'walletStatus': response.statusCode,
+          'gameCode': state['userCode'],
+          'gameBalance': gameBalance,
+          'walletError': code,
+        };
+        throw Exception('تعذر قراءة محفظة التطبيق: $code');
+      }
+    } catch (e) {
+      if (lastDiagnostics.isEmpty) {
+        lastDiagnostics = <String, dynamic>{
+          'stateStatus': lastStateStatus,
+          'walletStatus': lastWalletStatus,
+          'gameCode': state['userCode'],
+          'gameBalance': gameBalance,
+          'walletRequest': e.toString(),
+        };
+      }
+      rethrow;
+    }
     final gameCode = (state['userCode'] ?? '').toString();
     final walletCode = (wallet['userCode'] ?? '').toString();
+    lastDiagnostics = <String, dynamic>{
+      'stateStatus': lastStateStatus,
+      'walletStatus': lastWalletStatus,
+      'gameCode': gameCode,
+      'walletCode': walletCode,
+      'gameBalance': gameBalance,
+      'walletBalance': wallet['balance'],
+    };
     if (gameCode.isEmpty || walletCode.isEmpty || gameCode != walletCode) {
       throw Exception('تعذر التحقق من تطابق حساب محفظة التطبيق مع حساب اللعبة');
     }
@@ -240,6 +292,13 @@ class HttpFoodWheelApi implements FoodWheelApi {
 
   @override Future<RoundState> fetchState() async {
     final state = await _request('/games/food-wheel/state');
+    lastStateStatus = 200;
+    lastWalletStatus = null;
+    lastDiagnostics = <String, dynamic>{
+      'stateStatus': lastStateStatus,
+      'gameCode': state['userCode'],
+      'gameBalance': state['balance'],
+    };
     return RoundState.fromJson(await _stateWithWallet(state));
   }
 
@@ -334,9 +393,14 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         _queuedRoundId = null;
         _betDebounce?.cancel();
       }
+      final api = widget.api;
+      final diagnostic = api is HttpFoodWheelApi ? api.lastDiagnostics : const <String, dynamic>{};
+      final zeroBalanceWarning = s.balance == 0
+          ? 'الخادم أعاد رصيدًا صفرًا. تشخيص آمن: ${diagnostic.entries.map((e) => '${e.key}=${e.value}').join(' | ')}'
+          : null;
       setState(() {
         _s = s;
-        _err = null;
+        _err = zeroBalanceWarning;
         _bal = (s.balance - _reservedBetTotal()).clamp(0, 1 << 62).toInt();
         if (newRound) { _win = {}; _hit = -1; _lit = null; _msg = null; }
       });
