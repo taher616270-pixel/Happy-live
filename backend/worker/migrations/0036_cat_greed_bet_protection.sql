@@ -1,4 +1,4 @@
--- Cat Greed abuse protection: idempotent bet requests and per-user burst limits.
+-- Food Wheel abuse protection: idempotent bet requests and per-user burst limits.
 CREATE TABLE IF NOT EXISTS cat_greed_bet_requests (
   idempotency_key TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
