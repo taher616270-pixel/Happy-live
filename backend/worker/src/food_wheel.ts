@@ -266,7 +266,7 @@ export async function handleFoodWheelRequest(
         if (!body || typeof body !== "object" || Array.isArray(body)) return wheelError("invalid_bet",400,json,origin,env);
         const slot = Number(body.slot), amount = Number(body.amount), roundId = String(body.roundId ?? "");
         const idempotencyKey = String(body.idempotencyKey ?? "");
-        if (!Number.isInteger(slot) || slot<0 || slot>7 || !Number.isSafeInteger(amount) || amount<=0 || amount>1000000 ||
+        if (!Number.isInteger(slot) || slot<0 || slot>7 || !BET_CHIPS.has(amount) ||
             !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
           return wheelError("invalid_bet",400,json,origin,env);
         }
