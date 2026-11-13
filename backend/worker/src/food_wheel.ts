@@ -33,7 +33,6 @@ type FoodWheelRound = {
 };
 
 const BET_CHIPS = new Set([10, 500, 6000, 30000, 100000]);
-const MAX_BETS_PER_ROUND = 6;
 const BET_RATE_WINDOW_SECONDS = 10;
 const BET_RATE_MAX_REQUESTS = 10;
 const STATE_RATE_WINDOW_SECONDS = 60;
@@ -267,7 +266,7 @@ export async function handleFoodWheelRequest(
         if (!body || typeof body !== "object" || Array.isArray(body)) return wheelError("invalid_bet",400,json,origin,env);
         const slot = Number(body.slot), amount = Number(body.amount), roundId = String(body.roundId ?? "");
         const idempotencyKey = String(body.idempotencyKey ?? "");
-        if (!Number.isInteger(slot) || slot<0 || slot>7 || !BET_CHIPS.has(amount) ||
+        if (!Number.isInteger(slot) || slot<0 || slot>7 || !Number.isSafeInteger(amount) || amount<=0 || amount>1000000 ||
             !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
           return wheelError("invalid_bet",400,json,origin,env);
         }
@@ -290,16 +289,14 @@ export async function handleFoodWheelRequest(
           await db.prepare("INSERT OR IGNORE INTO user_wallets (user_id,balance,updated_at) VALUES (?,0,?)").bind(user.id,isoNow()).run();
           const control = await db.prepare("SELECT enabled,max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?").bind(user.id).first<{enabled:number;max_bet_per_round:number}>();
           if (control?.enabled===0) return wheelError("player_disabled",403,json,origin,env);
-          const currentBetCount = await db.prepare("SELECT COUNT(*) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(roundId,user.id).first<{total:number}>();
-          if ((currentBetCount?.total ?? 0) >= MAX_BETS_PER_ROUND) return wheelError("bet_count_limit",409,json,origin,env);
           const currentTotal = await db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(roundId,user.id).first<{total:number}>();
           const limit = control?.max_bet_per_round ?? 1000000;
           if ((currentTotal?.total ?? 0) + amount > limit) return wheelError("bet_limit_exceeded",400,json,origin,env);
 
           const now=isoNow(), betId=crypto.randomUUID();
           await db.batch([
-            db.prepare("INSERT OR IGNORE INTO cat_greed_bet_requests (idempotency_key,user_id,round_id,slot,amount,bet_id,created_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM user_wallets WHERE user_id=? AND balance>=?) AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?) AND NOT EXISTS (SELECT 1 FROM cat_greed_player_controls WHERE user_id=? AND enabled=0) AND (SELECT COALESCE(SUM(amount),0) FROM cat_greed_bets WHERE round_id=? AND user_id=?) + ? <= COALESCE((SELECT max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?),1000000) AND (SELECT COUNT(*) FROM cat_greed_bets WHERE round_id=? AND user_id=?) < ?)")
-              .bind(idempotencyKey,user.id,roundId,slot,amount,betId,now,user.id,amount,roundId,now,user.id,roundId,user.id,amount,user.id,roundId,user.id,MAX_BETS_PER_ROUND),
+            db.prepare("INSERT OR IGNORE INTO cat_greed_bet_requests (idempotency_key,user_id,round_id,slot,amount,bet_id,created_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM user_wallets WHERE user_id=? AND balance>=?) AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?) AND NOT EXISTS (SELECT 1 FROM cat_greed_player_controls WHERE user_id=? AND enabled=0) AND (SELECT COALESCE(SUM(amount),0) FROM cat_greed_bets WHERE round_id=? AND user_id=?) + ? <= COALESCE((SELECT max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?),1000000) ")
+              .bind(idempotencyKey,user.id,roundId,slot,amount,betId,now,user.id,amount,roundId,now,user.id,roundId,user.id,amount,user.id),
             db.prepare("UPDATE user_wallets SET balance=balance-?,updated_at=? WHERE user_id=? AND balance>=? AND EXISTS (SELECT 1 FROM cat_greed_bet_requests WHERE idempotency_key=? AND bet_id=? AND user_id=?) AND EXISTS (SELECT 1 FROM cat_greed_rounds WHERE id=? AND phase='betting' AND closes_at>?)")
               .bind(amount,now,user.id,amount,idempotencyKey,betId,user.id,roundId,now),
             db.prepare("INSERT INTO cat_greed_ledger (id,user_id,round_id,amount,balance_after,transaction_type,description,created_at) SELECT ?,user_id,?,?,balance,'bet','رهان عجلة الأطعمة',? FROM user_wallets WHERE user_id=? AND changes()=1")
@@ -321,11 +318,9 @@ export async function handleFoodWheelRequest(
           }
           if (!placed) {
             const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id=?").bind(user.id).first<{balance:number}>();
-            const latestBetCount = await db.prepare("SELECT COUNT(*) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(roundId,user.id).first<{total:number}>();
             const latestTotal = await db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(roundId,user.id).first<{total:number}>();
             const latestControl = await db.prepare("SELECT enabled,max_bet_per_round FROM cat_greed_player_controls WHERE user_id=?").bind(user.id).first<{enabled:number;max_bet_per_round:number}>();
             if (latestControl?.enabled===0) return wheelError("player_disabled",403,json,origin,env);
-            if ((latestBetCount?.total ?? 0) >= MAX_BETS_PER_ROUND) return wheelError("bet_count_limit",409,json,origin,env);
             if ((latestTotal?.total ?? 0) + amount > (latestControl?.max_bet_per_round ?? 1000000)) return wheelError("bet_limit_exceeded",400,json,origin,env);
             return wheelError((wallet?.balance ?? 0)<amount ? "insufficient_balance" : "round_closed",409,json,origin,env);
           }
