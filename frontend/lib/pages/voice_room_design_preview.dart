@@ -12,7 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:happy_live/models/seat_state.dart';
 import 'edit_profile_page.dart';
-import 'cat_greed_game.dart';
+import 'food_wheel_game.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
   static final Set<String> _openingRoomInfo = <String>{};
@@ -1601,7 +1601,7 @@ Widget _roomActionButton({
                       _GamesTabPlaceholder(
                         message: 'ستظهر ألعاب الطرف الثالث هنا',
                       ),
-                      _CatGreedLaunchTile(accessToken: accessToken),
+                      _FoodWheelLaunchTile(accessToken: accessToken),
                     ],
                   ),
                 ),
@@ -2792,15 +2792,15 @@ class _GamesTabPlaceholder extends StatelessWidget {
 }
 
 
-class _CatGreedLaunchTile extends StatelessWidget {
-  const _CatGreedLaunchTile({required this.accessToken});
+class _FoodWheelLaunchTile extends StatelessWidget {
+  const _FoodWheelLaunchTile({required this.accessToken});
   final String accessToken;
 
   @override
   Widget build(BuildContext context) => Center(
     child: InkWell(
       borderRadius: BorderRadius.circular(18),
-      onTap: () => showCatGreedGame(context, accessToken: accessToken),
+      onTap: () => openFoodWheelGame(context, accessToken: accessToken),
       child: Container(
         width: 220,
         padding: const EdgeInsets.all(18),
