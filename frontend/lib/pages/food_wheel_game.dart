@@ -959,40 +959,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         ),
       );
 
-  Widget _errorBox() => Column(mainAxisSize: MainAxisSize.min, children: [
-    const Text('تعذر الاتصال بالخادم', style: TextStyle(color: Colors.white)),
-    Text('$_err', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 10)),
-    TextButton(onPressed: _refresh, child: const Text('إعادة المحاولة')),
-  ]);
-
-  Widget _pill(Widget child) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    decoration: BoxDecoration(color: const Color(0x7314087A), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0x59FFFFFF))),
-    child: child,
-  );
-
-  Widget _topBar(RoundState s) => Row(children: [
-    _pill(Text('الجولة ${s.dailyRoundNumber}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
-    if (s.userCode.isNotEmpty) ...[
-      const SizedBox(width: 5),
-      _pill(Text('ID: ${s.userCode}', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700))),
-    ],
-    const SizedBox(width: 2),
-    IconButton(
-      tooltip: 'قواعد اللعبة',
-      onPressed: _showRules,
-      icon: const Icon(Icons.help_outline, color: Colors.white),
-    ),
-    IconButton(
-      tooltip: 'أقوى الفائزين',
-      onPressed: _showTopWins,
-      icon: const Icon(Icons.emoji_events_outlined, color: Color(0xFFFFE28A)),
-    ),
-    const Spacer(),
-    _pill(Text('🪙 ${_fmt(_bal)}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold))),
-    IconButton(onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.close, color: Colors.white)),
-  ]);
-
   void _showTopWins() {
     showDialog<void>(
       context: context,
@@ -1025,6 +991,74 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                   style: TextStyle(color: Colors.white70, fontSize: 14)),
               ),
             ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _slot(int i, RoundState s, double size) {
+    final item = s.symbols[i];
+    final selected = _hit == i;
+    final won = _win.contains(i);
+    final amount = s.myBets[i];
+    final pool = i < s.pools.length ? s.pools[i] : 0;
+    final canBet = s.enabled && s.phase == RoundPhase.betting &&
+        _visibleSecondsLeft > 0 && !_spinning;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: canBet ? () => _bet(i) : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        width: size,
+        height: size,
+        padding: EdgeInsets.all(size * 0.055),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: selected || won
+                ? const [Color(0xFFFFF7B0), Color(0xFFFFC928), Color(0xFFE18A18)]
+                : item.veg
+                    ? const [Color(0xFFFFFDF0), Color(0xFFE6F5C8), Color(0xFFB5D982)]
+                    : const [Color(0xFFFFFDF5), Color(0xFFFFE0B0), Color(0xFFE8A35D)],
+          ),
+          border: Border.all(
+            color: selected || won ? const Color(0xFFFFD400) : const Color(0xFF6B3A1E),
+            width: selected || won ? 4 : 2.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.24),
+              blurRadius: selected ? 12 : 5,
+              offset: const Offset(0, 3),
+            ),
+            if (selected || won)
+              const BoxShadow(color: Color(0xAAFFF176), blurRadius: 15),
+          ],
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(item.emoji, style: TextStyle(fontSize: size * 0.39)),
+              Text('${item.mult}x', style: TextStyle(
+                color: const Color(0xFF542B12),
+                fontSize: size * 0.14,
+                fontWeight: FontWeight.w900,
+              )),
+              if (amount > 0)
+                Text(_fmt(amount), style: TextStyle(
+                  color: const Color(0xFF1746A0),
+                  fontSize: size * 0.12,
+                  fontWeight: FontWeight.w900,
+                )),
+              Text(_fmt(pool), style: TextStyle(
+                color: const Color(0xFF5A351D),
+                fontSize: size * 0.105,
+                fontWeight: FontWeight.w700,
+              )),
+            ],
           ),
         ),
       ),
