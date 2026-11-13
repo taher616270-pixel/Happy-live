@@ -256,7 +256,9 @@ export async function handleCatGreedRequest(
       }
       const settings = await getSettings(db);
       if (publicBet && !settings.enabled) return json({enabled:false,error:"game_disabled"},423,origin,env);
-      let round = await currentRound(db,settings.enabled===1);
+      // Keep the round clock and daily counter advancing while gameplay is disabled.
+      // Betting remains blocked above whenever settings.enabled is false.
+      let round = await currentRound(db,true);
       if (!round) return json({enabled:false,error:"game_disabled"},423,origin,env);
       let betReceipt: { id: string; roundId: string; slot: number; amount: number } | null = null;
       let duplicateBet = false;
