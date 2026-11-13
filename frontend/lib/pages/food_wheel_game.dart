@@ -461,8 +461,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     _pendingBetCount++;
     _pendingBetAmount += amount;
     setState(() { _bal -= amount; });
+    var placed = false;
     try {
       await widget.api.placeBet(roundId, i, amount, key);
+      placed = true;
     } catch (e) {
       _say(e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -470,7 +472,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         setState(() {
           _pendingBetCount--;
           _pendingBetAmount -= amount;
-          if (_pendingBetCount == 0) _localRoundBetCount = _s?.roundId == roundId ? _localRoundBetCount : 0;
+          if (!placed) _localRoundBetCount = math.max(0, _localRoundBetCount - 1);
         });
         if (_pendingBetCount == 0) await _refresh();
       }
