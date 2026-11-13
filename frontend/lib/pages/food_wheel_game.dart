@@ -336,17 +336,13 @@ class FoodWheelGame extends StatefulWidget {
 
 class _FoodWheelGameState extends State<FoodWheelGame> {
   final _rnd = math.Random();
-  Timer? _poll, _msgTimer, _betDebounce;
+  Timer? _poll, _msgTimer;
   RoundState? _s;
   int _bal = 0, _chip = 500, _hit = -1;
-  final List<int> _queuedBets = List<int>.filled(8, 0);
-  final Set<int> _inFlightSlots = <int>{};
-  int _inFlightAmount = 0;
-  String? _queuedRoundId;
-  String? _animatedRound;
+  String _animatedRound = '', _pendingBetKey = '', _pendingBetSignature = '';
   Set<int> _win = {};
   String? _lit, _err, _msg;
-  bool _spinning = false, _flushingBets = false, _refreshing = false;
+  bool _spinning = false, _busy = false, _refreshing = false;
 
   @override
   void initState() {
@@ -356,18 +352,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   }
 
   @override
-  void dispose() { _poll?.cancel(); _msgTimer?.cancel(); _betDebounce?.cancel(); super.dispose(); }
-
-  int _reservedBetTotal() =>
-      _queuedBets.fold<int>(0, (sum, value) => sum + value) + _inFlightAmount;
-
-  String _newBetKey() {
-    final bytes = List<int>.generate(16, (_) => math.Random.secure().nextInt(256));
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    final hex = bytes.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
-    return '${hex.substring(0,8)}-${hex.substring(8,12)}-${hex.substring(12,16)}-${hex.substring(16,20)}-${hex.substring(20,32)}';
-  }
+  void dispose() { _poll?.cancel(); _msgTimer?.cancel(); super.dispose(); }
 
   void _say(String m) {
     _msgTimer?.cancel();
@@ -386,13 +371,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       final s = await widget.api.fetchState();
       if (!mounted) return;
       final newRound = _s != null && _s!.roundId != s.roundId;
-      if (newRound && _queuedRoundId != s.roundId) {
-        for (var i = 0; i < _queuedBets.length; i++) {
-          _queuedBets[i] = 0;
-        }
-        _queuedRoundId = null;
-        _betDebounce?.cancel();
-      }
       final api = widget.api;
       final diagnostic = api is HttpFoodWheelApi ? api.lastDiagnostics : const <String, dynamic>{};
       final zeroBalanceWarning = s.balance == 0
@@ -401,7 +379,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       setState(() {
         _s = s;
         _err = zeroBalanceWarning;
-        _bal = (s.balance - _reservedBetTotal()).clamp(0, 1 << 62).toInt();
+        _bal = s.balance;
         if (newRound) { _win = {}; _hit = -1; _lit = null; _msg = null; }
       });
       if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
@@ -429,7 +407,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     _spinning = false;
     setState(() {
       _hit = -1;
-      _bal = (s.balance - _reservedBetTotal()).clamp(0, 1 << 62).toInt();
+      _bal = s.balance;
       _lit = s.special;
       _win = s.special == null
         ? {target}
@@ -446,90 +424,24 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     final s = _s;
     if (s == null || !s.enabled) { _say('اللعبة متوقفة حالياً'); return; }
     if (s.phase != RoundPhase.betting) { _say('انتظر الجولة القادمة'); return; }
-    if (_queuedRoundId != null && _queuedRoundId != s.roundId) {
-      _say('انتظر تأكيد رهانات الجولة السابقة');
-      return;
-    }
-
-    final pendingBetCount = _queuedBets.where((amount) => amount > 0).length + _inFlightSlots.length;
-    final totalBetCount = s.myBetCount + pendingBetCount;
-    if (_queuedBets[i] == 0 && !_inFlightSlots.contains(i) && totalBetCount >= s.maxBetsPerRound) {
-      _say('وصلت إلى الحد الأقصى: 6 رهانات في الجولة الواحدة');
-      return;
-    }
     if (_bal < _chip) { _say('رصيدك لا يكفي'); return; }
-    final alreadyWagered = s.myBets.fold<int>(0, (sum, value) => sum + value) + _reservedBetTotal();
-    if (alreadyWagered + _chip > 1000000) {
-      _say('وصلت إلى الحد الأقصى للرهان في الجولة');
-      return;
+    if (_busy) return;
+    final signature = '${s.roundId}:$i:$_chip';
+    if (_pendingBetSignature != signature) {
+      final bytes = List<int>.generate(16, (_) => math.Random.secure().nextInt(256));
+      bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      final hex = bytes.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
+      _pendingBetKey = '${hex.substring(0,8)}-${hex.substring(8,12)}-${hex.substring(12,16)}-${hex.substring(16,20)}-${hex.substring(20,32)}';
+      _pendingBetSignature = signature;
     }
-
-    _queuedRoundId = s.roundId;
-    setState(() {
-      _queuedBets[i] += _chip;
-      _bal -= _chip;
-    });
-    _betDebounce?.cancel();
-    _betDebounce = Timer(const Duration(milliseconds: 180), _flushPendingBets);
-  }
-
-  Future<void> _flushPendingBets() async {
-    if (_flushingBets || !mounted) return;
-    _flushingBets = true;
+    _busy = true;
     try {
-      while (mounted) {
-        final slot = _queuedBets.indexWhere((amount) => amount > 0);
-        if (slot < 0) break;
-        final roundId = _queuedRoundId;
-        if (roundId == null) break;
-        final amount = _queuedBets[slot];
-        _queuedBets[slot] = 0;
-        _inFlightAmount += amount;
-        _inFlightSlots.add(slot);
-        if (mounted) {
-          setState(() {
-            _bal = ((_s?.balance ?? _bal) - _reservedBetTotal()).clamp(0, 1 << 62).toInt();
-          });
-        }
-
-        try {
-          final n = await widget.api.placeBet(roundId, slot, amount, _newBetKey());
-          _inFlightAmount -= amount;
-          _inFlightSlots.remove(slot);
-          if (mounted) {
-            setState(() {
-              _s = n;
-              _bal = (n.balance - _reservedBetTotal()).clamp(0, 1 << 62).toInt();
-            });
-          }
-        } catch (e) {
-          _inFlightAmount -= amount;
-          _inFlightSlots.remove(slot);
-          if (mounted) {
-            setState(() {
-              _bal = ((_s?.balance ?? _bal) - _reservedBetTotal()).clamp(0, 1 << 62).toInt();
-            });
-            final error = e.toString().replaceFirst('Exception: ', '');
-            _say(error == 'bet_count_limit'
-                ? 'وصلت إلى الحد الأقصى: 6 رهانات في الجولة الواحدة'
-                : error);
-          }
-          await _refresh();
-        }
-
-        // Serialize and pace requests: rapid taps are coalesced into one amount
-        // per selected slot, instead of flooding the Worker with one request per tap.
-        await Future.delayed(const Duration(milliseconds: 180));
-      }
-    } finally {
-      _flushingBets = false;
-      if (mounted && _queuedBets.any((amount) => amount > 0)) {
-        _betDebounce?.cancel();
-        _betDebounce = Timer(const Duration(milliseconds: 80), _flushPendingBets);
-      } else if (_inFlightSlots.isEmpty) {
-        _queuedRoundId = null;
-      }
-    }
+      final n = await widget.api.placeBet(s.roundId, i, _chip, _pendingBetKey);
+      _pendingBetKey = ''; _pendingBetSignature = '';
+      if (mounted) setState(() { _s = n; _bal = n.balance; });
+    } catch (e) {
+      _say(e.toString().replaceFirst('Exception: ', ''));
+    } finally { _busy = false; }
   }
 
   @override
