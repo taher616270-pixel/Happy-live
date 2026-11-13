@@ -33,6 +33,7 @@ type FoodWheelRound = {
 };
 
 const BET_CHIPS = new Set([10, 500, 6000, 30000, 100000]);
+// Retained for the state response contract; it is not enforced as a betting limit.
 const BET_RATE_WINDOW_SECONDS = 10;
 const BET_RATE_MAX_REQUESTS = 10;
 const STATE_RATE_WINDOW_SECONDS = 60;
