@@ -7,6 +7,7 @@ const api = await readFile(new URL("src/games_api.ts", root), "utf8");
 const worker = await readFile(new URL("src/index.ts", root), "utf8");
 const migration = await readFile(new URL("migrations/0041_game_sessions.sql", root), "utf8");
 const bindingMigration = await readFile(new URL("migrations/0042_game_session_app_binding.sql", root), "utf8");
+const happyIdMigration = await readFile(new URL("migrations/0043_rename_gabo_id_to_happy_id.sql", root), "utf8");
 
 test("temporary game sessions are isolated, expiring, revocable, and indexed", () => {
   assert.match(migration, /CREATE TABLE IF NOT EXISTS game_sessions/);
@@ -91,4 +92,13 @@ test("game auth and profile expose only the player's public identity and verify 
   assert.match(api, /profile\.accountStatus !== "active"/);
   assert.match(api, /player_account_unavailable/);
   assert.doesNotMatch(api, /id: user\.id/);
+});
+
+
+test("public player identifier is renamed to happy_id without changing existing IDs", () => {
+  assert.match(happyIdMigration, /ALTER TABLE profiles RENAME COLUMN gabo_id TO happy_id/i);
+  assert.match(api, /happy_id/);
+  assert.match(worker, /happy_id/);
+  assert.doesNotMatch(api, /gabo_id/);
+  assert.doesNotMatch(worker, /gabo_id/);
 });
