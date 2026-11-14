@@ -188,36 +188,42 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
     final time = TimeOfDay.fromDateTime(date).format(context);
     final today = DateTime(now.year, now.month, now.day);
     final messageDay = DateTime(date.year, date.month, date.day);
-    final daysAgo = today.difference(messageDay).inDays;
-    if (daysAgo <= 0) return time;
-    if (daysAgo == 1) return 'قبل يوم • $time';
-    final dateLabel =
-        '${date.year}/${date.month}/${date.day}';
-    return '$dateLabel $time';
+    if (messageDay == today) return time;
+    final dateLabel = MaterialLocalizations.of(context).formatMediumDate(date);
+    return '$dateLabel • $time';
   }
 
-  Widget _timeSeparator(int index, {required bool mine}) {
+  Widget _timeSeparator(int index) {
     final label = _timeGroupLabel(index);
     if (label.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(top: 10, bottom: 5),
-      child: Align(
-        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFECE7DC),
-            borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.only(top: 12, bottom: 7),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Divider(
+              color: Color(0xFFD8D2C7),
+              thickness: 1,
+              endIndent: 10,
+            ),
           ),
-          child: Text(
+          Text(
             label,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               color: Color(0xFF777064),
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),
-        ),
+          const Expanded(
+            child: Divider(
+              color: Color(0xFFD8D2C7),
+              thickness: 1,
+              indent: 10,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -286,7 +292,7 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     if (_startsTimeGroup(index))
-                                      _timeSeparator(index, mine: mine),
+                                      _timeSeparator(index),
                                     Align(
                                       alignment: mine
                                           ? Alignment.centerRight
