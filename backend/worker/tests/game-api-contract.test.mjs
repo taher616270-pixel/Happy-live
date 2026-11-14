@@ -52,3 +52,13 @@ test("temporary game tokens are invalidated after a game URL origin change", () 
   assert.match(api, /const currentGameOrigin = await gameOriginForId\(db, session\.gameId\)/);
   assert.match(api, /currentGameOrigin !== session\.gameOrigin/);
 });
+
+test("web game launcher exchanges the app session and never puts the game token in its URL", async () => {
+  const widget = await readFile(new URL("../../../frontend/lib/widgets/dynamic_games_list.dart", import.meta.url), "utf8");
+  const launcher = await readFile(new URL("../../../frontend/lib/services/game_link_launcher_web.dart", import.meta.url), "utf8");
+  assert.match(widget, /SessionTokenStore\.read\(\)/);
+  assert.match(widget, /\/game\/auth/);
+  assert.match(launcher, /postMessage/);
+  assert.match(launcher, /parsed\.origin/);
+  assert.doesNotMatch(launcher, /searchParams\.set|fragment|queryParameters/);
+});
