@@ -516,7 +516,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   void _applySettledState(RoundState s) {
     _spinning = false;
     setState(() {
-      _hit = -1;
+      _hit = s.resultSlot ?? -1;
       _bal = s.balance;
       _lit = s.special;
       _win = s.special == null
@@ -1314,23 +1314,27 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
-            colors: selected || won
-                ? const [Color(0xFFFFF7B0), Color(0xFFFFC928), Color(0xFFE18A18)]
-                : item.veg
-                    ? const [Color(0xFFFFFDF0), Color(0xFFE6F5C8), Color(0xFFB5D982)]
-                    : const [Color(0xFFFFFDF5), Color(0xFFFFE0B0), Color(0xFFE8A35D)],
+            colors: won
+                ? const [Color(0xFFD9FFD7), Color(0xFF55D66B), Color(0xFF168B42)]
+                : selected
+                    ? const [Color(0xFFFFF7B0), Color(0xFFFFC928), Color(0xFFE18A18)]
+                    : item.veg
+                        ? const [Color(0xFFFFFDF0), Color(0xFFE6F5C8), Color(0xFFB5D982)]
+                        : const [Color(0xFFFFFDF5), Color(0xFFFFE0B0), Color(0xFFE8A35D)],
           ),
           border: Border.all(
-            color: selected || won ? const Color(0xFFFFD400) : const Color(0xFF6B3A1E),
+            color: won ? const Color(0xFF16A34A) : selected ? const Color(0xFFFFD400) : const Color(0xFF6B3A1E),
             width: selected || won ? 4 : 2.2,
           ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.24),
-              blurRadius: selected ? 12 : 5,
+              blurRadius: selected || won ? 12 : 5,
               offset: const Offset(0, 3),
             ),
-            if (selected || won)
+            if (won)
+              const BoxShadow(color: Color(0xAA22C55E), blurRadius: 15)
+            else if (selected)
               const BoxShadow(color: Color(0xAAFFF176), blurRadius: 15),
           ],
         ),
