@@ -97,10 +97,11 @@ export async function handleGamesApiRequest(
   const path = new URL(request.url).pathname;
   const isAuth = path === "/api/v1/game/auth" && request.method === "POST";
   const isSession = path === "/api/v1/game/session" && request.method === "GET";
+  const isRefresh = path === "/api/v1/game/session/refresh" && request.method === "POST";
   const isRevoke = path === "/api/v1/game/session/revoke" && request.method === "POST";
   const isProfile = path === "/api/v1/game/profile" && request.method === "GET";
   const isWallet = path === "/api/v1/game/wallet" && request.method === "GET";
-  if (!isAuth && !isSession && !isRevoke && !isProfile && !isWallet) return null;
+  if (!isAuth && !isSession && !isRefresh && !isRevoke && !isProfile && !isWallet) return null;
   const reply = (data: unknown, status = 200, _origin?: string, _env?: any) => origin
     ? withGameCors(json(data, status, undefined, env), origin, origin)
     : json(data, status, undefined, env);
@@ -152,9 +153,9 @@ export async function handleGamesApiRequest(
     if (!rawToken) return reply({ error: "game_session_required" }, 401, origin, env);
     const tokenHash = await sha256(rawToken);
     const session = await db.prepare(
-      "SELECT s.id, s.game_id AS gameId, s.user_id AS userId, s.permissions_json AS permissionsJson, s.game_origin AS gameOrigin, s.expires_at AS expiresAt, g.name AS gameName, g.game_url AS gameUrl, g.enabled, l.status, u.status AS userStatus FROM game_sessions s INNER JOIN game_session_app_bindings app_binding ON app_binding.game_session_id = s.id INNER JOIN user_sessions app ON app.id = app_binding.app_session_id AND app.user_id = s.user_id AND app.revoked_at IS NULL AND app.expires_at > ? INNER JOIN game_registry g ON g.id = s.game_id INNER JOIN game_registry_lifecycle l ON l.game_id = g.id INNER JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? LIMIT 1"
+      "SELECT s.id, s.game_id AS gameId, s.user_id AS userId, app_binding.app_session_id AS appSessionId, s.permissions_json AS permissionsJson, s.game_origin AS gameOrigin, s.expires_at AS expiresAt, g.name AS gameName, g.game_url AS gameUrl, g.enabled, l.status, u.status AS userStatus FROM game_sessions s INNER JOIN game_session_app_bindings app_binding ON app_binding.game_session_id = s.id INNER JOIN user_sessions app ON app.id = app_binding.app_session_id AND app.user_id = s.user_id AND app.revoked_at IS NULL AND app.expires_at > ? INNER JOIN game_registry g ON g.id = s.game_id INNER JOIN game_registry_lifecycle l ON l.game_id = g.id INNER JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? LIMIT 1"
     ).bind(new Date().toISOString(), tokenHash, new Date().toISOString()).first<{
-      id: string; gameId: string; userId: string; permissionsJson: string; gameOrigin: string; expiresAt: string;
+      id: string; gameId: string; userId: string; appSessionId: string; permissionsJson: string; gameOrigin: string; expiresAt: string;
       gameName: string; gameUrl: string; enabled: number; status: string; userStatus: string;
     }>();
     if (!session) return reply({ error: "game_session_expired_or_invalid" }, 401, origin, env);
@@ -172,6 +173,36 @@ export async function handleGamesApiRequest(
     if (rate.request_count > GAME_SESSION_RATE_MAX_REQUESTS) return reply({ error: "game_rate_limited" }, 429, origin, env);
     const permissions = JSON.parse(session.permissionsJson) as string[];
     const has = (permission: string) => permissions.includes(permission);
+    if (isRefresh) {
+      // Rotate the token atomically. The old token is revoked and the new
+      // token remains bound to the same still-valid Happy Live app session.
+      const nextToken = "hlg_" + crypto.randomUUID() + "." + crypto.randomUUID();
+      const nextSessionId = crypto.randomUUID();
+      const rotatedAt = new Date().toISOString();
+      const nextExpiresAt = new Date(Date.now() + GAME_SESSION_TTL_SECONDS * 1000).toISOString();
+      const nextTokenHash = await sha256(nextToken);
+      const rotation = await db.batch([
+        db.prepare(
+          "UPDATE game_sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL AND expires_at > ?"
+        ).bind(rotatedAt, session.id, rotatedAt),
+        db.prepare(
+          "INSERT INTO game_sessions (id, game_id, user_id, token_hash, permissions_json, game_origin, expires_at, created_at, rate_window_started_at, request_count) SELECT ?, old.game_id, old.user_id, ?, old.permissions_json, old.game_origin, ?, ?, ?, 0 FROM game_sessions old INNER JOIN game_session_app_bindings binding ON binding.game_session_id = old.id INNER JOIN user_sessions app ON app.id = binding.app_session_id AND app.user_id = old.user_id INNER JOIN game_registry g ON g.id = old.game_id INNER JOIN game_registry_lifecycle l ON l.game_id = g.id INNER JOIN users u ON u.id = old.user_id WHERE old.id = ? AND old.revoked_at = ? AND app.revoked_at IS NULL AND app.expires_at > ? AND g.enabled = 1 AND l.status = 'active' AND u.status = 'active'"
+        ).bind(nextSessionId, nextTokenHash, nextExpiresAt, rotatedAt, Math.floor(Date.now() / 1000), session.id, rotatedAt, rotatedAt),
+        db.prepare(
+          "INSERT INTO game_session_app_bindings (game_session_id, app_session_id, created_at) SELECT ?, app_session_id, ? FROM game_session_app_bindings WHERE game_session_id = ? AND EXISTS (SELECT 1 FROM game_sessions WHERE id = ? AND revoked_at = ?)"
+        ).bind(nextSessionId, rotatedAt, session.id, nextSessionId, rotatedAt)
+      ]);
+      const created = Number(rotation[1]?.meta?.changes ?? 0) > 0;
+      if (!created) return reply({ error: "game_session_refresh_denied" }, 401, origin, env);
+      return reply({
+        ok: true,
+        tokenType: "Bearer",
+        sessionToken: nextToken,
+        expiresAt: nextExpiresAt,
+        expiresIn: GAME_SESSION_TTL_SECONDS,
+        permissions
+      }, 200, origin, env);
+    }
     if (isRevoke) {
       await db.prepare("UPDATE game_sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL").bind(new Date().toISOString(), session.id).run();
       return reply({ ok: true, revoked: true }, 200, origin, env);
