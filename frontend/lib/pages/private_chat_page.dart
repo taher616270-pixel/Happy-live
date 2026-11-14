@@ -161,6 +161,68 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
   String _senderId(Map<String, dynamic> message) =>
       (message['senderId'] ?? message['sender_id'] ?? '').toString();
 
+  DateTime? _messageDate(Map<String, dynamic> message) {
+    final raw = message['createdAt'] ?? message['created_at'] ??
+        message['timestamp'] ?? message['sentAt'];
+    if (raw == null) return null;
+    return DateTime.tryParse(raw.toString())?.toLocal();
+  }
+
+  bool _startsTimeGroup(int index) {
+    if (index == 0) return true;
+    final current = _messageDate(_messages[index]);
+    final previous = _messageDate(_messages[index - 1]);
+    if (current == null) return false;
+    if (previous == null) return true;
+    final gap = current.difference(previous);
+    return gap > const Duration(hours: 2) ||
+        current.year != previous.year ||
+        current.month != previous.month ||
+        current.day != previous.day;
+  }
+
+  String _timeGroupLabel(int index) {
+    final date = _messageDate(_messages[index]);
+    if (date == null) return '';
+    final now = DateTime.now();
+    final time = TimeOfDay.fromDateTime(date).format(context);
+    final sameDay = date.year == now.year &&
+        date.month == now.month && date.day == now.day;
+    final yesterday = DateTime(now.year, now.month, now.day)
+        .difference(DateTime(date.year, date.month, date.day)).inDays == 1;
+    final dayLabel = sameDay
+        ? 'اليوم'
+        : yesterday
+            ? 'أمس'
+            : '${date.day}/${date.month}/${date.year}';
+    return '$dayLabel • $time';
+  }
+
+  Widget _timeSeparator(int index) {
+    final label = _timeGroupLabel(index);
+    if (label.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 14),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFECE7DC),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF777064),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -221,35 +283,42 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
                               itemBuilder: (context, index) {
                                 final message = _messages[index];
                                 final mine = _senderId(message) == _currentUserId;
-                                return Align(
-                                  alignment: mine
-                                      ? Alignment.centerRight
-                                      : Alignment.centerLeft,
-                                  child: Container(
-                                    constraints: BoxConstraints(
-                                      maxWidth:
-                                          MediaQuery.of(context).size.width * .78,
-                                    ),
-                                    margin: const EdgeInsets.only(bottom: 9),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: mine
-                                          ? const Color(0xFFFFE8B2)
-                                          : Colors.white,
-                                      borderRadius: BorderRadius.circular(17),
-                                    ),
-                                    child: Text(
-                                      _messageText(message),
-                                      style: const TextStyle(
-                                        color: Color(0xFF292929),
-                                        fontSize: 14,
-                                        height: 1.45,
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_startsTimeGroup(index))
+                                      _timeSeparator(index),
+                                    Align(
+                                      alignment: mine
+                                          ? Alignment.centerRight
+                                          : Alignment.centerLeft,
+                                      child: Container(
+                                        constraints: BoxConstraints(
+                                          maxWidth:
+                                              MediaQuery.of(context).size.width * .78,
+                                        ),
+                                        margin: const EdgeInsets.only(bottom: 9),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 10,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: mine
+                                              ? const Color(0xFFFFE8B2)
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(17),
+                                        ),
+                                        child: Text(
+                                          _messageText(message),
+                                          style: const TextStyle(
+                                            color: Color(0xFF292929),
+                                            fontSize: 14,
+                                            height: 1.45,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 );
                               },
                             ),
