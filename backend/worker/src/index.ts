@@ -416,8 +416,8 @@ export default {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
         const rows = await env.DB.prepare(
-          "SELECT id, name, game_url AS url, icon_url AS iconUrl, description, category, sort_order AS sortOrder " +
-          "FROM game_registry WHERE status = 'active' AND enabled = 1 AND game_url <> 'https://pending-game.happylive.invalid' ORDER BY sort_order ASC, created_at DESC"
+          "SELECT g.id, g.name, g.game_url AS url, g.icon_url AS iconUrl, g.description, g.category, g.sort_order AS sortOrder " +
+          "FROM game_registry g INNER JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE l.status = 'active' AND g.enabled = 1 AND g.game_url <> 'https://pending-game.happylive.invalid' ORDER BY g.sort_order ASC, g.created_at DESC"
         ).all();
         return json({ ok: true, games: rows.results ?? [] }, 200, origin, env);
       } catch (error) {
@@ -436,8 +436,8 @@ export default {
         const gameId = adminGamesRoute[1];
         if (request.method === "GET") {
           const rows = await env.DB.prepare(
-            "SELECT id, name, CASE WHEN game_url = 'https://pending-game.happylive.invalid' THEN '' ELSE game_url END AS url, icon_url AS iconUrl, description, category, status, enabled, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt " +
-            "FROM game_registry ORDER BY sort_order ASC, created_at DESC"
+            "SELECT g.id, g.name, CASE WHEN g.game_url = 'https://pending-game.happylive.invalid' THEN '' ELSE g.game_url END AS url, g.icon_url AS iconUrl, g.description, g.category, COALESCE(l.status, 'disabled') AS status, g.enabled, g.sort_order AS sortOrder, g.created_at AS createdAt, g.updated_at AS updatedAt " +
+            "FROM game_registry g LEFT JOIN game_registry_lifecycle l ON l.game_id = g.id ORDER BY g.sort_order ASC, g.created_at DESC"
           ).all();
           return json({ ok: true, games: rows.results ?? [] }, 200, origin, env);
         }
@@ -463,13 +463,14 @@ export default {
           const id = crypto.randomUUID();
           const enabled = status === "active" ? 1 : 0;
           await env.DB.batch([
-            env.DB.prepare("INSERT INTO game_registry (id, name, game_url, icon_url, description, category, status, enabled, sort_order, created_by_admin_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(id, name, gameUrl, iconUrl || null, description, category, status, enabled, sortOrder, actor.id, now, now),
+            env.DB.prepare("INSERT INTO game_registry (id, name, game_url, icon_url, description, category, enabled, sort_order, created_by_admin_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(id, name, gameUrl, iconUrl || null, description, category, enabled, sortOrder, actor.id, now, now),
+            env.DB.prepare("INSERT INTO game_registry_lifecycle (game_id, status, updated_at) VALUES (?, ?, ?)").bind(id, status, now),
             env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.create', 'game', ?, ?, ?)").bind(crypto.randomUUID(), id, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, name, status }), now)
           ]);
           return json({ ok: true, game: { id, name, url: requestedUrl, iconUrl: iconUrl || null, description, category, status, enabled, sortOrder } }, 201, origin, env);
         }
         if (!gameId) return json({ error: "game_id_required" }, 400, origin, env);
-        const current = await env.DB.prepare("SELECT id, game_url, status FROM game_registry WHERE id = ? LIMIT 1").bind(gameId).first<{ id: string; game_url: string; status: string }>();
+        const current = await env.DB.prepare("SELECT g.id, g.game_url, COALESCE(l.status, 'disabled') AS status FROM game_registry g LEFT JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE g.id = ? LIMIT 1").bind(gameId).first<{ id: string; game_url: string; status: string }>();
         if (!current) return json({ error: "game_not_found" }, 404, origin, env);
         const name = typeof body.name === "string" ? body.name.trim() : null;
         const requestedUrl = typeof body.url === "string" ? body.url.trim() : null;
@@ -494,7 +495,8 @@ export default {
         const updatedAt = new Date().toISOString();
         const enabled = status === null ? null : (status === "active" ? 1 : 0);
         await env.DB.batch([
-          env.DB.prepare("UPDATE game_registry SET name = COALESCE(?, name), game_url = COALESCE(?, game_url), icon_url = COALESCE(?, icon_url), description = COALESCE(?, description), category = COALESCE(?, category), status = COALESCE(?, status), enabled = COALESCE(?, enabled), sort_order = COALESCE(?, sort_order), updated_at = ? WHERE id = ?").bind(name, gameUrl, iconUrl, description, category, status, enabled, sortOrder, updatedAt, gameId),
+          env.DB.prepare("UPDATE game_registry SET name = COALESCE(?, name), game_url = COALESCE(?, game_url), icon_url = COALESCE(?, icon_url), description = COALESCE(?, description), category = COALESCE(?, category), enabled = COALESCE(?, enabled), sort_order = COALESCE(?, sort_order), updated_at = ? WHERE id = ?").bind(name, gameUrl, iconUrl, description, category, enabled, sortOrder, updatedAt, gameId),
+          env.DB.prepare("UPDATE game_registry_lifecycle SET status = COALESCE(?, status), updated_at = ? WHERE game_id = ?").bind(status, updatedAt, gameId),
           env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.update', 'game', ?, ?, ?)").bind(crypto.randomUUID(), gameId, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, changed: { name, url: requestedUrl, iconUrl, description, category, status, sortOrder } }), updatedAt)
         ]);
         return json({ ok: true }, 200, origin, env);
