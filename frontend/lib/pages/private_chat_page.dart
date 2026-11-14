@@ -205,35 +205,17 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
       _dateForMessage(message);
 
   bool _startsTimeGroup(int index) {
-    // A timestamp is only inserted BETWEEN messages, never above the first one.
-    if (index <= 0) return false;
-    final current = _messageDate(_messages[index]);
-    final previous = _messageDate(_messages[index - 1]);
-    if (current == null || previous == null) return false;
-
-    final changedDay = current.year != previous.year ||
-        current.month != previous.month ||
-        current.day != previous.day;
-    return changedDay ||
-        current.difference(previous) > const Duration(hours: 2);
+    // Keep timestamps on their own centered line between messages.
+    return index > 0;
   }
 
   String _timeGroupLabel(int index) {
     final current = _messageDate(_messages[index]);
-    final previous = _messageDate(_messages[index - 1]);
-    if (current == null || previous == null) return '';
+    if (current == null) return '';
 
     String twoDigits(int value) => value.toString().padLeft(2, '0');
-    final time =
-        '${twoDigits(current.hour)}:${twoDigits(current.minute)}';
-    final changedDay = current.year != previous.year ||
-        current.month != previous.month ||
-        current.day != previous.day;
-
-    if (changedDay) {
-      return '${current.year}-${twoDigits(current.month)}-${twoDigits(current.day)} $time';
-    }
-    return time;
+    return '${current.year}-${twoDigits(current.month)}-${twoDigits(current.day)} '
+        '${twoDigits(current.hour)}:${twoDigits(current.minute)}:${twoDigits(current.second)}';
   }
 
   Widget _timeSeparator(int index) {
