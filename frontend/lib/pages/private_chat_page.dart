@@ -169,61 +169,52 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
   }
 
   bool _startsTimeGroup(int index) {
-    if (index == 0) return true;
+    // A timestamp is only inserted BETWEEN messages, never above the first one.
+    if (index <= 0) return false;
     final current = _messageDate(_messages[index]);
     final previous = _messageDate(_messages[index - 1]);
-    if (current == null) return false;
-    if (previous == null) return true;
-    final gap = current.difference(previous);
-    return gap > const Duration(hours: 2) ||
-        current.year != previous.year ||
+    if (current == null || previous == null) return false;
+
+    final changedDay = current.year != previous.year ||
         current.month != previous.month ||
         current.day != previous.day;
+    return changedDay ||
+        current.difference(previous) > const Duration(hours: 2);
   }
 
   String _timeGroupLabel(int index) {
-    final date = _messageDate(_messages[index]);
-    if (date == null) return '';
-    final now = DateTime.now();
-    final time = TimeOfDay.fromDateTime(date).format(context);
-    final today = DateTime(now.year, now.month, now.day);
-    final messageDay = DateTime(date.year, date.month, date.day);
-    if (messageDay == today) return time;
-    final dateLabel = MaterialLocalizations.of(context).formatMediumDate(date);
-    return '$dateLabel • $time';
+    final current = _messageDate(_messages[index]);
+    final previous = _messageDate(_messages[index - 1]);
+    if (current == null || previous == null) return '';
+
+    String twoDigits(int value) => value.toString().padLeft(2, '0');
+    final time =
+        '${twoDigits(current.hour)}:${twoDigits(current.minute)}';
+    final changedDay = current.year != previous.year ||
+        current.month != previous.month ||
+        current.day != previous.day;
+
+    if (changedDay) {
+      return '${current.year}-${twoDigits(current.month)}-${twoDigits(current.day)} $time';
+    }
+    return time;
   }
 
   Widget _timeSeparator(int index) {
     final label = _timeGroupLabel(index);
     if (label.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(top: 12, bottom: 7),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Divider(
-              color: Color(0xFFD8D2C7),
-              thickness: 1,
-              endIndent: 10,
-            ),
+      padding: const EdgeInsets.only(top: 9, bottom: 9),
+      child: Center(
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFFB0B0B0),
+            fontSize: 10,
+            fontWeight: FontWeight.w400,
           ),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF777064),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const Expanded(
-            child: Divider(
-              color: Color(0xFFD8D2C7),
-              thickness: 1,
-              indent: 10,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
