@@ -142,7 +142,7 @@ abstract class FoodWheelApi {
 }
 
 class MockFoodWheelApi implements FoodWheelApi {
-  static const _betSecs = 30, _spinSecs = 5, _resSecs = 3;
+  static const _betSecs = 30, _spinSecs = 4, _resSecs = 3;
   final _rnd = math.Random();
   int _balance, _round = 330554;
   DateTime _start = DateTime.now();
@@ -1452,7 +1452,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           backgroundColor: const Color(0xFF4A3DF0),
           content: const Text(
             '1. اختر قيمة الرهان ثم اضغط على الوجبة خلال 30 ثانية.\n'
-            '2. بعد إغلاق الرهان تدور العجلة لمدة 5 ثوانٍ لتحديد الوجبة الفائزة.\n'
+            '2. بعد إغلاق الرهان تدور العجلة لمدة 4 ثوانٍ لتحديد الوجبة الفائزة.\n'
             '3. تظهر نافذة النتيجة لمدة 3 ثوانٍ.\n'
             '4. الربح = رهانك × عدد الأضعاف.\n'
             '5. يمكنك الرهان على أكثر من وجبة.\n'
