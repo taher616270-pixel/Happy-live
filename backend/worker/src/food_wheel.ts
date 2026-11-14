@@ -35,6 +35,11 @@ type FoodWheelRound = {
 const BET_CHIPS = new Set([10, 500, 6000, 30000, 100000]);
 // Each player may place at most six individual bets in one round.
 const MAX_BETS_PER_ROUND = 6;
+// Round flow: 30s betting, 5s wheel selection, then a 3s result panel.
+const SPIN_SECONDS = 5;
+const RESULT_DISPLAY_SECONDS = 3;
+const OUTCOME_REVEAL_OFFSET_SECONDS = SPIN_SECONDS - 1;
+const ROUND_CYCLE_SECONDS = SPIN_SECONDS + RESULT_DISPLAY_SECONDS;
 const BET_RATE_WINDOW_SECONDS = 10;
 const BET_RATE_MAX_REQUESTS = 10;
 const STATE_RATE_WINDOW_SECONDS = 60;
@@ -176,10 +181,12 @@ async function payRound(db: D1Database, round: any): Promise<void> {
   }
 }
 async function settleRound(db: D1Database, round: any): Promise<any> {
-  if (round.phase === "betting" && Date.parse(round.closes_at) <= Date.now()) {
+  if (round.phase === "betting" && Date.parse(round.closes_at) + OUTCOME_REVEAL_OFFSET_SECONDS * 1000 <= Date.now()) {
     const outcome = await chooseOutcome(round);
+    const now = isoNow();
+    const eligibleCloseTime = new Date(Date.now() - OUTCOME_REVEAL_OFFSET_SECONDS * 1000).toISOString();
     await db.prepare("UPDATE cat_greed_rounds SET phase='result', result_slot=?, special=?, settled_at=? WHERE id=? AND phase='betting' AND closes_at<=?")
-      .bind(outcome.slot,outcome.special,isoNow(),round.id,isoNow()).run();
+      .bind(outcome.slot,outcome.special,now,round.id,eligibleCloseTime).run();
   }
   const settled = await db.prepare("SELECT * FROM cat_greed_rounds WHERE id=?").bind(round.id).first();
   if (settled?.phase === "result") await payRound(db, settled);
@@ -192,8 +199,8 @@ async function currentRound(db: D1Database, allowCreate = true): Promise<FoodWhe
     try { round = await createRound(db); }
     catch { round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first<FoodWheelRound>(); }
   }
-  if (round?.phase === "betting" && Date.parse(round.closes_at) <= Date.now()) round = await settleRound(db, round);
-  if (allowCreate && round?.phase === "result" && Date.now() - Date.parse(round.settled_at ?? round.created_at) >= JSON.parse(round.config_snapshot).resultSeconds * 1000) {
+  if (round?.phase === "betting" && Date.parse(round.closes_at) + OUTCOME_REVEAL_OFFSET_SECONDS * 1000 <= Date.now()) round = await settleRound(db, round);
+  if (allowCreate && round?.phase === "result" && Date.now() - Date.parse(round.closes_at) >= ROUND_CYCLE_SECONDS * 1000) {
     try { round = await createRound(db); }
     catch { round = await db.prepare("SELECT * FROM cat_greed_rounds ORDER BY created_at DESC LIMIT 1").first<FoodWheelRound>(); }
   }
@@ -339,25 +346,35 @@ export async function handleFoodWheelRequest(
       const mine = await db.prepare("SELECT slot,SUM(amount) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=? GROUP BY slot").bind(round.id,user.id).all<{slot:number;total:number}>();
       const myBetCountRow = await db.prepare("SELECT COUNT(*) AS total FROM cat_greed_bets WHERE round_id=? AND user_id=?").bind(round.id,user.id).first<{total:number}>();
       const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id=?").bind(user.id).first<{balance:number}>();
-      const payout = await db.prepare("SELECT amount,round_id FROM cat_greed_payouts WHERE user_id=? AND paid_at IS NOT NULL ORDER BY paid_at DESC LIMIT 1").bind(user.id).first<{amount:number;round_id:string}>();
+      const payout = await db.prepare("SELECT amount,round_id FROM cat_greed_payouts WHERE user_id=? AND round_id=? AND paid_at IS NOT NULL").bind(user.id,round.id).first<{amount:number;round_id:string}>();
       const history = await db.prepare("SELECT result_slot,special,config_snapshot FROM cat_greed_rounds WHERE phase='result' ORDER BY settled_at DESC LIMIT 9").all<{result_slot:number|null;special:string|null;config_snapshot:string}>();
       const config = JSON.parse(round.config_snapshot) as FoodWheelSnapshot;
       const odds = calculateOdds(config);
-      const isBetting=round.phase==="betting";
+      const nowMs = Date.now();
+      const closesAtMs = Date.parse(round.closes_at);
+      const spinEndsAtMs = closesAtMs + SPIN_SECONDS * 1000;
+      const cycleEndsAtMs = closesAtMs + ROUND_CYCLE_SECONDS * 1000;
+      const outcomeReady = round.phase === "result";
+      const clientPhase = nowMs < closesAtMs ? "betting" : nowMs < spinEndsAtMs ? "spinning" : "result";
+      const phaseDeadlineMs = clientPhase === "betting" ? closesAtMs : clientPhase === "spinning" ? spinEndsAtMs : cycleEndsAtMs;
+      const topWinners = outcomeReady
+        ? await db.prepare("SELECT COALESCE(NULLIF(TRIM(p.display_name),''),'لاعب') AS name, COALESCE(p.gabo_id,'') AS userCode, cp.amount AS payout FROM cat_greed_payouts cp LEFT JOIN profiles p ON p.user_id=cp.user_id WHERE cp.round_id=? AND cp.paid_at IS NOT NULL ORDER BY cp.amount DESC, cp.created_at ASC LIMIT 3")
+            .bind(round.id).all<{name:string;userCode:string;payout:number}>()
+        : {results:[] as Array<{name:string;userCode:string;payout:number}>};
       const dayStart = saudiDayStartIso();
       const dailyRounds = await db.prepare(
         "SELECT COUNT(*) AS total FROM cat_greed_rounds WHERE starts_at >= ? AND starts_at <= ?"
       ).bind(dayStart, isoNow()).first<{total:number}>();
       const dailyRoundNumber = Math.max(1, dailyRounds?.total ?? 0);
       return json({
-        enabled:settings.enabled===1,roundId:round.id,userCode:user.gabo_id??'',dailyRoundNumber,secondsLeft:Math.max(0,Math.ceil((Date.parse(isBetting?round.closes_at:new Date(Date.parse(round.settled_at ?? round.created_at)+config.resultSeconds*1000).toISOString())-Date.now())/1000)),
-        phase:round.phase,pools:Array.from({length:8},(_,i)=>pools.results?.find(x=>x.slot===i)?.total??0),
+        enabled:settings.enabled===1,roundId:round.id,userCode:user.gabo_id??'',dailyRoundNumber,secondsLeft:Math.max(0,Math.ceil((phaseDeadlineMs-nowMs)/1000)),
+        phase:clientPhase,pools:Array.from({length:8},(_,i)=>pools.results?.find(x=>x.slot===i)?.total??0),
         myBets:Array.from({length:8},(_,i)=>mine.results?.find(x=>x.slot===i)?.total??0),
         myBetCount:myBetCountRow?.total??0,maxBetsPerRound:MAX_BETS_PER_ROUND,
         balance:wallet?.balance??0,myPayout:payout?.amount??0,myPayoutRoundId:payout?.round_id??null,
-        resultSlot:isBetting?null:round.result_slot,special:isBetting?null:round.special,
-        seedCommitment:round.seed_commitment,revealedSeed:isBetting?null:round.server_seed,configSnapshot:isBetting?null:round.config_snapshot,
-        symbols:config.symbols,odds,specialOdds:{saladWeightBp:config.saladWeightBp,pizzaWeightBp:config.pizzaWeightBp},
+        resultSlot:outcomeReady?round.result_slot:null,special:outcomeReady?round.special:null,
+        seedCommitment:round.seed_commitment,revealedSeed:outcomeReady?round.server_seed:null,configSnapshot:outcomeReady?round.config_snapshot:null,
+        topWinners:topWinners.results??[],symbols:config.symbols,odds,specialOdds:{saladWeightBp:config.saladWeightBp,pizzaWeightBp:config.pizzaWeightBp},
         betReceipt,duplicateBet,
         history:(history.results??[]).map(x=>{const old=JSON.parse(x.config_snapshot) as FoodWheelSnapshot;return x.special==="salad"?"🥗":x.special==="pizza"?"🍕":old.symbols.find(s=>s.slot===x.result_slot)?.emoji??"—";})
       },200,origin,env);
