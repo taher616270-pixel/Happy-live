@@ -127,9 +127,15 @@ export async function handleGamesApiRequest(
       const sessionToken = "hlg_" + crypto.randomUUID() + "." + crypto.randomUUID();
       const now = new Date();
       const expiresAt = new Date(now.getTime() + GAME_SESSION_TTL_SECONDS * 1000).toISOString();
-      await db.prepare(
-        "INSERT INTO game_sessions (id, game_id, user_id, app_session_id, token_hash, permissions_json, game_origin, expires_at, created_at, rate_window_started_at, request_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
-      ).bind(crypto.randomUUID(), gameId, user.id, user.session_id, await sha256(sessionToken), JSON.stringify(GAME_PERMISSIONS), gameOrigin, expiresAt, now.toISOString(), Math.floor(now.getTime() / 1000)).run();
+      const gameSessionId = crypto.randomUUID();
+      await db.batch([
+        db.prepare(
+          "INSERT INTO game_sessions (id, game_id, user_id, token_hash, permissions_json, game_origin, expires_at, created_at, rate_window_started_at, request_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
+        ).bind(gameSessionId, gameId, user.id, await sha256(sessionToken), JSON.stringify(GAME_PERMISSIONS), gameOrigin, expiresAt, now.toISOString(), Math.floor(now.getTime() / 1000)),
+        db.prepare(
+          "INSERT INTO game_session_app_bindings (game_session_id, app_session_id, created_at) VALUES (?, ?, ?)"
+        ).bind(gameSessionId, user.session_id, now.toISOString())
+      ]);
       return reply({
         ok: true,
         tokenType: "Bearer",
@@ -146,7 +152,7 @@ export async function handleGamesApiRequest(
     if (!rawToken) return reply({ error: "game_session_required" }, 401, origin, env);
     const tokenHash = await sha256(rawToken);
     const session = await db.prepare(
-      "SELECT s.id, s.game_id AS gameId, s.user_id AS userId, s.permissions_json AS permissionsJson, s.game_origin AS gameOrigin, s.expires_at AS expiresAt, g.name AS gameName, g.game_url AS gameUrl, g.enabled, l.status, u.status AS userStatus FROM game_sessions s INNER JOIN user_sessions app ON app.id = s.app_session_id AND app.user_id = s.user_id AND app.revoked_at IS NULL AND app.expires_at > ? INNER JOIN game_registry g ON g.id = s.game_id INNER JOIN game_registry_lifecycle l ON l.game_id = g.id INNER JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? LIMIT 1"
+      "SELECT s.id, s.game_id AS gameId, s.user_id AS userId, s.permissions_json AS permissionsJson, s.game_origin AS gameOrigin, s.expires_at AS expiresAt, g.name AS gameName, g.game_url AS gameUrl, g.enabled, l.status, u.status AS userStatus FROM game_sessions s INNER JOIN game_session_app_bindings app_binding ON app_binding.game_session_id = s.id INNER JOIN user_sessions app ON app.id = app_binding.app_session_id AND app.user_id = s.user_id AND app.revoked_at IS NULL AND app.expires_at > ? INNER JOIN game_registry g ON g.id = s.game_id INNER JOIN game_registry_lifecycle l ON l.game_id = g.id INNER JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? LIMIT 1"
     ).bind(new Date().toISOString(), tokenHash, new Date().toISOString()).first<{
       id: string; gameId: string; userId: string; permissionsJson: string; gameOrigin: string; expiresAt: string;
       gameName: string; gameUrl: string; enabled: number; status: string; userStatus: string;
