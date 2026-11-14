@@ -3730,7 +3730,7 @@ export default {
       }
     }
 
-    const privateConversationRoute = url.pathname.match(/^\\/api\\/v1\\/messages\\/conversations\\/([0-9a-f-]{36})(?:\\/(messages|read))?$/i);
+    const privateConversationRoute = url.pathname.match(/^\/api\/v1\/messages\/conversations\/([0-9a-f-]{36})(?:\/(messages|read))?$/i);
     if (privateConversationRoute && (request.method === "GET" || request.method === "POST" || request.method === "PATCH")) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
