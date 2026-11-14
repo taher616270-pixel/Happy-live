@@ -1737,6 +1737,86 @@ class _HappyPlaceholderTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The messages tab follows the same light palette as the home page.
+    if (title == 'الرسائل') {
+      return Container(
+        color: const Color(0xFFF6F7FB),
+        width: double.infinity,
+        height: double.infinity,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+          children: [
+            const Text(
+              'الرسائل',
+              style: TextStyle(
+                color: Color(0xFF1E2233),
+                fontSize: 25,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 5),
+            const Text(
+              'محادثاتك الخاصة في مكان واحد',
+              style: TextStyle(color: Color(0xFF9A98AD), fontSize: 12),
+            ),
+            const SizedBox(height: 22),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFE4E4EC)),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0D1E2233),
+                    blurRadius: 14,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 62,
+                    height: 62,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFAF6EA),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Icons.forum_outlined,
+                      color: Color(0xFFD9A93C),
+                      size: 31,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'لا توجد محادثات بعد',
+                    style: TextStyle(
+                      color: Color(0xFF1E2233),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  const Text(
+                    'ستظهر محادثاتك هنا عند تفعيل نظام الرسائل الخاصة.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF9A98AD),
+                      fontSize: 12,
+                      height: 1.7,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return PurpleTechBackground(
       child: SizedBox.expand(
         child: ListView(
@@ -1748,10 +1828,8 @@ class _HappyPlaceholderTab extends StatelessWidget {
             const SizedBox(height: 22),
             _HappyEmptyState(
               icon: icon,
-              title: title == 'الرسائل' ? 'لا توجد محادثات بعد' : 'هذه المساحة قيد التجهيز',
-              message: title == 'الرسائل'
-                  ? 'ستظهر محادثاتك هنا عند تفعيل نظام الرسائل الخاصة.'
-                  : 'نعمل على تجهيز هذه المساحة لتكون جاهزة للاستخدام.',
+              title: 'هذه المساحة قيد التجهيز',
+              message: 'نعمل على تجهيز هذه المساحة لتكون جاهزة للاستخدام.',
             ),
             if (onSoon != null) ...[
               const SizedBox(height: 15),
