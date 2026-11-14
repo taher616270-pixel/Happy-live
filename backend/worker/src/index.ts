@@ -3646,7 +3646,7 @@ export default {
           env.DB.prepare(
             "SELECT u.id AS userId, p.display_name AS name, p.happy_id AS userCode, p.avatar_key AS avatarUrl " +
             "FROM users u INNER JOIN profiles p ON p.user_id = u.id " +
-            "WHERE u.status = 'active' AND u.id <> ? AND (p.display_name LIKE ? ESCAPE '\\\\' OR p.happy_id LIKE ? ESCAPE '\\\\') " +
+            "WHERE u.status = 'active' AND u.id <> ? AND (p.display_name LIKE ? OR p.happy_id LIKE ?) " +
             "AND NOT EXISTS (SELECT 1 FROM user_hidden_users h WHERE (h.user_id = ? AND h.hidden_user_id = u.id) OR (h.user_id = u.id AND h.hidden_user_id = ?)) " +
             "ORDER BY CASE WHEN p.happy_id = ? THEN 0 ELSE 1 END, p.display_name LIMIT 30"
           ).bind(viewer.id, pattern, pattern, viewer.id, viewer.id, q).all(),
