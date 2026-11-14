@@ -4,7 +4,7 @@ type GameApiJson = (data: unknown, status?: number, origin?: string, env?: any) 
 const GAME_SESSION_TTL_SECONDS = 15 * 60;
 const GAME_SESSION_RATE_WINDOW_SECONDS = 60;
 const GAME_SESSION_RATE_MAX_REQUESTS = 120;
-const GAME_PERMISSIONS = ["session.read", "profile.read", "wallet.read"] as const;
+const GAME_PERMISSIONS = ["session.read", "profile.read", "wallet.read", "round.create", "round.read", "bets.place"] as const;
 
 async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -16,12 +16,13 @@ function tokenValue(request: Request): string {
   return match?.[1] ?? "";
 }
 
-async function readBody(request: Request): Promise<Record<string, unknown> | null> {
+async function readBody(request: Request, maxBytes = 2048): Promise<Record<string, unknown> | null> {
   const length = Number(request.headers.get("Content-Length") ?? 0);
-  if (Number.isFinite(length) && length > 2048) return null;
+  if (Number.isFinite(length) && length > maxBytes) return null;
   try {
     const body = await request.json();
-    return body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : null;
+    if (!body || typeof body !== "object" || Array.isArray(body) || new TextEncoder().encode(JSON.stringify(body)).length > maxBytes) return null;
+    return body as Record<string, unknown>;
   } catch {
     return null;
   }
@@ -92,7 +93,8 @@ export async function handleGamesApiRequest(
   env: GameApiEnv,
   origin: string | undefined,
   authenticateUser: (request: Request, db: D1Database) => Promise<GameApiUser | null>,
-  json: GameApiJson
+  json: GameApiJson,
+  authenticateAdmin: (request: Request, db: D1Database) => Promise<{ id: string; username: string; role: string } | null>
 ): Promise<Response | null> {
   const path = new URL(request.url).pathname;
   const isAuth = path === "/api/v1/game/auth" && request.method === "POST";
@@ -101,13 +103,170 @@ export async function handleGamesApiRequest(
   const isRevoke = path === "/api/v1/game/session/revoke" && request.method === "POST";
   const isProfile = path === "/api/v1/game/profile" && request.method === "GET";
   const isWallet = path === "/api/v1/game/wallet" && request.method === "GET";
-  if (!isAuth && !isSession && !isRefresh && !isRevoke && !isProfile && !isWallet) return null;
+  const isCreateRound = path === "/api/v1/game/rounds" && request.method === "POST";
+  const isListRounds = path === "/api/v1/game/rounds" && request.method === "GET";
+  const placeBetMatch = path.match(/^\/api\/v1\/game\/rounds\/([0-9a-f-]{36})\/bets$/i);
+  const getRoundMatch = path.match(/^\/api\/v1\/game\/rounds\/([0-9a-f-]{36})$/i);
+  const serverSettleMatch = path.match(/^\/api\/v1\/game\/server\/rounds\/([0-9a-f-]{36})\/settle$/i);
+  const serverCancelMatch = path.match(/^\/api\/v1\/game\/server\/rounds\/([0-9a-f-]{36})\/cancel$/i);
+  const adminEconomyMatch = path.match(/^\/api\/v1\/admin\/games\/([0-9a-f-]{36})\/economy$/i);
+  const adminKeyMatch = path.match(/^\/api\/v1\/admin\/games\/([0-9a-f-]{36})\/server-key$/i);
+  const adminRoundsMatch = path.match(/^\/api\/v1\/admin\/games\/([0-9a-f-]{36})\/rounds$/i);
+  if (!isAuth && !isSession && !isRefresh && !isRevoke && !isProfile && !isWallet &&
+      !isCreateRound && !isListRounds && !(placeBetMatch && request.method === "POST") &&
+      !(getRoundMatch && request.method === "GET") &&
+      !(serverSettleMatch && request.method === "POST") && !(serverCancelMatch && request.method === "POST") &&
+      !(adminEconomyMatch && ["GET", "PATCH"].includes(request.method)) &&
+      !(adminKeyMatch && request.method === "POST") && !(adminRoundsMatch && request.method === "GET")) return null;
   const reply = (data: unknown, status = 200, _origin?: string, _env?: any) => origin
     ? withGameCors(json(data, status, undefined, env), origin, origin)
     : json(data, status, undefined, env);
   if (!env.DB) return reply({ error: "database_unavailable" }, 503, origin, env);
   const db = env.DB;
   try {
+    if (adminEconomyMatch || adminKeyMatch || adminRoundsMatch) {
+      const actor = await authenticateAdmin(request, db);
+      if (!actor) return reply({ error: "authentication_required" }, 401, origin, env);
+      if (actor.role !== "owner" && actor.role !== "admin") return reply({ error: "permission_denied" }, 403, origin, env);
+      const gameId = (adminEconomyMatch ?? adminKeyMatch ?? adminRoundsMatch)![1];
+      const game = await db.prepare("SELECT id FROM game_registry WHERE id = ? LIMIT 1").bind(gameId).first<{ id: string }>();
+      if (!game) return reply({ error: "game_not_found" }, 404, origin, env);
+      if (adminRoundsMatch && request.method === "GET") {
+        const rows = await db.prepare(
+          "SELECT r.id, COALESCE(p.happy_id, '') AS userCode, COALESCE(p.display_name, '') AS playerName, r.status, r.total_stake AS totalStake, r.total_payout AS totalPayout, r.result_json AS result, r.created_at AS createdAt, r.settled_at AS settledAt FROM game_rounds r LEFT JOIN profiles p ON p.user_id = r.user_id WHERE r.game_id = ? ORDER BY r.created_at DESC LIMIT 100"
+        ).bind(gameId).all();
+        return reply({ ok: true, rounds: rows.results ?? [] }, 200, origin, env);
+      }
+      if (adminEconomyMatch && request.method === "GET") {
+        const settings = await db.prepare(
+          "SELECT enabled, min_bet AS minBet, max_bet AS maxBet, max_bets_per_round AS maxBetsPerRound, max_total_bet AS maxTotalBet, max_payout_multiplier_bp AS maxPayoutMultiplierBp, updated_at AS updatedAt FROM game_economy_settings WHERE game_id = ? LIMIT 1"
+        ).bind(gameId).first<Record<string, unknown>>();
+        const key = await db.prepare("SELECT key_prefix AS keyPrefix, created_at AS createdAt, revoked_at AS revokedAt FROM game_server_keys WHERE game_id = ? LIMIT 1").bind(gameId).first<Record<string, unknown>>();
+        return reply({ ok: true, settings: settings ?? { enabled: 0, minBet: 1, maxBet: 100000, maxBetsPerRound: 6, maxTotalBet: 600000, maxPayoutMultiplierBp: 100000 }, serverKey: key ?? null }, 200, origin, env);
+      }
+      if (adminEconomyMatch && request.method === "PATCH") {
+        const body = await readBody(request);
+        const enabled = body?.enabled;
+        const minBet = body?.minBet, maxBet = body?.maxBet, maxBets = body?.maxBetsPerRound;
+        const maxTotal = body?.maxTotalBet, maxMultiplier = body?.maxPayoutMultiplierBp;
+        if (typeof enabled !== "boolean" || typeof minBet !== "number" || !Number.isSafeInteger(minBet) || typeof maxBet !== "number" || !Number.isSafeInteger(maxBet) ||
+            typeof maxBets !== "number" || !Number.isSafeInteger(maxBets) || typeof maxTotal !== "number" || !Number.isSafeInteger(maxTotal) || typeof maxMultiplier !== "number" || !Number.isSafeInteger(maxMultiplier) ||
+            Number(minBet) < 1 || Number(maxBet) < Number(minBet) || Number(maxBet) > 100000000 ||
+            Number(maxBets) < 1 || Number(maxBets) > 100 || Number(maxTotal) < Number(maxBet) ||
+            Number(maxTotal) > 1000000000 || Number(maxMultiplier) < 0 || Number(maxMultiplier) > 1000000) {
+          return reply({ error: "invalid_game_economy_settings" }, 400, origin, env);
+        }
+        if (enabled) {
+          const activeGame = await db.prepare("SELECT g.enabled, l.status FROM game_registry g INNER JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE g.id = ? LIMIT 1").bind(gameId).first<{ enabled: number; status: string }>();
+          const serverKey = await db.prepare("SELECT game_id FROM game_server_keys WHERE game_id = ? AND revoked_at IS NULL LIMIT 1").bind(gameId).first<{ game_id: string }>();
+          if (!activeGame || activeGame.enabled !== 1 || activeGame.status !== "active") return reply({ error: "game_must_be_active_before_economy" }, 409, origin, env);
+          if (!serverKey) return reply({ error: "game_server_key_required_before_economy" }, 409, origin, env);
+        }
+        const now = new Date().toISOString();
+        await db.batch([
+          db.prepare("INSERT INTO game_economy_settings (game_id, enabled, min_bet, max_bet, max_bets_per_round, max_total_bet, max_payout_multiplier_bp, updated_by_admin_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(game_id) DO UPDATE SET enabled = excluded.enabled, min_bet = excluded.min_bet, max_bet = excluded.max_bet, max_bets_per_round = excluded.max_bets_per_round, max_total_bet = excluded.max_total_bet, max_payout_multiplier_bp = excluded.max_payout_multiplier_bp, updated_by_admin_id = excluded.updated_by_admin_id, updated_at = excluded.updated_at").bind(gameId, enabled ? 1 : 0, minBet, maxBet, maxBets, maxTotal, maxMultiplier, actor.id, now),
+          db.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.economy.update', 'game', ?, ?, ?)").bind(crypto.randomUUID(), gameId, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, enabled, minBet, maxBet, maxBetsPerRound: maxBets, maxTotalBet: maxTotal, maxPayoutMultiplierBp: maxMultiplier }), now)
+        ]);
+        return reply({ ok: true }, 200, origin, env);
+      }
+      if (adminKeyMatch && request.method === "POST") {
+        const serverKey = "hlgs_" + crypto.randomUUID() + "." + crypto.randomUUID();
+        const now = new Date().toISOString();
+        await db.batch([
+          db.prepare("INSERT INTO game_server_keys (game_id, key_hash, key_prefix, created_at, rotated_at, revoked_at) VALUES (?, ?, ?, ?, ?, NULL) ON CONFLICT(game_id) DO UPDATE SET key_hash = excluded.key_hash, key_prefix = excluded.key_prefix, created_at = excluded.created_at, rotated_at = excluded.rotated_at, revoked_at = NULL").bind(gameId, await sha256(serverKey), serverKey.slice(0, 12), now, now),
+          db.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.server_key.rotate', 'game', ?, ?, ?)").bind(crypto.randomUUID(), gameId, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, keyPrefix: serverKey.slice(0, 12) }), now)
+        ]);
+        return reply({ ok: true, serverKey, warning: "احفظ المفتاح الآن؛ لن يمكن عرضه مرة أخرى." }, 201, origin, env);
+      }
+    }
+
+    if (serverCancelMatch && request.method === "POST") {
+      if (origin) return reply({ error: "server_to_server_only" }, 403, origin, env);
+      const rawKey = request.headers.get("X-Happy-Live-Game-Key") ?? "";
+      if (rawKey.length < 32 || rawKey.length > 512) return reply({ error: "game_server_key_required" }, 401, origin, env);
+      const key = await db.prepare("SELECT game_id AS gameId FROM game_server_keys WHERE key_hash = ? AND revoked_at IS NULL LIMIT 1").bind(await sha256(rawKey)).first<{ gameId: string }>();
+      if (!key) return reply({ error: "game_server_key_invalid" }, 401, origin, env);
+      const roundId = serverCancelMatch[1];
+      const round = await db.prepare("SELECT id, game_id AS gameId, user_id AS userId, status, total_stake AS totalStake FROM game_rounds WHERE id = ? AND game_id = ? LIMIT 1").bind(roundId, key.gameId).first<{ id: string; gameId: string; userId: string; status: string; totalStake: number }>();
+      if (!round) return reply({ error: "game_round_not_found" }, 404, origin, env);
+      if (round.status !== "open") return reply({ error: "game_round_already_settled" }, 409, origin, env);
+      const bets = await db.prepare("SELECT id, stake FROM game_bets WHERE round_id = ? AND status = 'accepted' ORDER BY created_at, id").bind(roundId).all<{ id: string; stake: number }>();
+      const betRows = bets.results ?? [];
+      const refundAmount = betRows.reduce((sum, bet) => sum + bet.stake, 0);
+      if (refundAmount !== round.totalStake) return reply({ error: "game_round_ledger_mismatch" }, 409, origin, env);
+      const now = new Date().toISOString(), settlementId = crypto.randomUUID();
+      const statements = [
+        db.prepare("UPDATE game_rounds SET status = 'settling', total_payout = 0, result_json = ?, settled_at = ?, settlement_id = ? WHERE id = ? AND status = 'open' AND total_stake = ? AND (SELECT COALESCE(SUM(stake), 0) FROM game_bets WHERE round_id = ? AND status = 'accepted') = ? AND (SELECT COUNT(*) FROM game_bets WHERE round_id = ? AND status = 'accepted') = ? AND (? = 0 OR EXISTS (SELECT 1 FROM user_wallets WHERE user_id = ?))").bind(JSON.stringify({ cancelled: true }), now, settlementId, roundId, round.totalStake, roundId, refundAmount, roundId, betRows.length, refundAmount, round.userId),
+        ...betRows.map(b => db.prepare("UPDATE game_bets SET status = 'cancelled', payout = 0, settled_at = ? WHERE id = ? AND round_id = ? AND status = 'accepted' AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling' AND settlement_id = ?)").bind(now, b.id, roundId, roundId, settlementId))
+      ];
+      if (refundAmount > 0) {
+        statements.push(db.prepare("UPDATE user_wallets SET balance = balance + ?, updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling' AND settlement_id = ?)").bind(refundAmount, now, round.userId, roundId, settlementId));
+        statements.push(db.prepare("INSERT INTO game_wallet_ledger (id, game_id, round_id, bet_id, user_id, entry_type, amount, balance_after, idempotency_key, created_at) SELECT ?, ?, ?, NULL, ?, 'refund_credit', ?, w.balance, ?, ? FROM user_wallets w WHERE w.user_id = ? AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling' AND settlement_id = ?)").bind(crypto.randomUUID(), key.gameId, roundId, round.userId, refundAmount, "refund:" + roundId, now, round.userId, roundId, settlementId));
+      }
+      statements.push(db.prepare("UPDATE game_rounds SET status = 'cancelled' WHERE id = ? AND status = 'settling' AND settlement_id = ?").bind(roundId, settlementId));
+      await db.batch(statements);
+      const cancelled = await db.prepare("SELECT status FROM game_rounds WHERE id = ? LIMIT 1").bind(roundId).first<{ status: string }>();
+      if (cancelled?.status !== "cancelled") return reply({ error: "game_round_cancellation_conflict" }, 409, origin, env);
+      const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(round.userId).first<{ balance: number }>();
+      return reply({ ok: true, roundId, status: "cancelled", refunded: refundAmount, balance: wallet?.balance ?? 0 }, 200, origin, env);
+    }
+
+    if (serverSettleMatch && request.method === "POST") {
+      if (origin) return reply({ error: "server_to_server_only" }, 403, origin, env);
+      const rawKey = request.headers.get("X-Happy-Live-Game-Key") ?? "";
+      if (rawKey.length < 32 || rawKey.length > 512) return reply({ error: "game_server_key_required" }, 401, origin, env);
+      const key = await db.prepare("SELECT game_id AS gameId FROM game_server_keys WHERE key_hash = ? AND revoked_at IS NULL LIMIT 1").bind(await sha256(rawKey)).first<{ gameId: string }>();
+      if (!key) return reply({ error: "game_server_key_invalid" }, 401, origin, env);
+      const body = await readBody(request, 16384);
+      if (!body || !body.result || typeof body.result !== "object" || Array.isArray(body.result) || !Array.isArray(body.payouts) || body.payouts.length > 100) {
+        return reply({ error: "invalid_settlement_payload" }, 400, origin, env);
+      }
+      const roundId = serverSettleMatch[1];
+      const round = await db.prepare("SELECT id, game_id AS gameId, user_id AS userId, status, total_stake AS totalStake FROM game_rounds WHERE id = ? AND game_id = ? LIMIT 1").bind(roundId, key.gameId).first<{ id: string; gameId: string; userId: string; status: string; totalStake: number }>();
+      if (!round) return reply({ error: "game_round_not_found" }, 404, origin, env);
+      if (round.status !== "open") return reply({ error: "game_round_already_settled" }, 409, origin, env);
+      const settings = await db.prepare("SELECT max_payout_multiplier_bp AS maxMultiplier FROM game_economy_settings WHERE game_id = ? LIMIT 1").bind(key.gameId).first<{ maxMultiplier: number }>();
+      if (!settings) return reply({ error: "game_economy_not_configured" }, 409, origin, env);
+      const bets = await db.prepare("SELECT id, stake FROM game_bets WHERE round_id = ? AND status = 'accepted' ORDER BY created_at, id").bind(roundId).all<{ id: string; stake: number }>();
+      const betRows = bets.results ?? [];
+      const acceptedStakeTotal = betRows.reduce((sum, bet) => sum + bet.stake, 0);
+      if (acceptedStakeTotal !== round.totalStake) return reply({ error: "game_round_ledger_mismatch" }, 409, origin, env);
+      if (betRows.length === 0 || body.payouts.length !== betRows.length) return reply({ error: "settlement_bet_set_mismatch" }, 400, origin, env);
+      const betMap = new Map<string, { id: string; stake: number }>(betRows.map(b => [b.id, b] as const));
+      const payoutMap = new Map<string, number>();
+      let totalPayout = 0;
+      for (const item of body.payouts) {
+        if (!item || typeof item !== "object" || Array.isArray(item)) return reply({ error: "invalid_settlement_payout" }, 400, origin, env);
+        const betId = (item as Record<string, unknown>).betId;
+        const payout = (item as Record<string, unknown>).payout;
+        if (typeof betId !== "string" || !betMap.has(betId) || typeof payout !== "number" || !Number.isSafeInteger(payout) || payout < 0 || payoutMap.has(betId)) {
+          return reply({ error: "invalid_settlement_payout" }, 400, origin, env);
+        }
+        payoutMap.set(betId, Number(payout));
+        totalPayout += Number(payout);
+      }
+      if (payoutMap.size !== betRows.length || totalPayout > Math.floor(round.totalStake * settings.maxMultiplier / 10000)) {
+        return reply({ error: "settlement_payout_limit_exceeded" }, 400, origin, env);
+      }
+      const resultJson = JSON.stringify(body.result) ?? "{}";
+      if (new TextEncoder().encode(resultJson).length > 4096) return reply({ error: "settlement_result_too_large" }, 400, origin, env);
+      const now = new Date().toISOString(), settlementId = crypto.randomUUID();
+      const statements = [
+        db.prepare("UPDATE game_rounds SET status = 'settling', total_payout = ?, result_json = ?, settled_at = ?, settlement_id = ? WHERE id = ? AND status = 'open' AND total_stake = ? AND (SELECT COALESCE(SUM(stake), 0) FROM game_bets WHERE round_id = ? AND status = 'accepted') = ? AND (SELECT COUNT(*) FROM game_bets WHERE round_id = ? AND status = 'accepted') = ? AND (? = 0 OR EXISTS (SELECT 1 FROM user_wallets WHERE user_id = ?))").bind(totalPayout, resultJson, now, settlementId, roundId, round.totalStake, roundId, acceptedStakeTotal, roundId, betRows.length, totalPayout, round.userId),
+        ...betRows.map(b => db.prepare("UPDATE game_bets SET status = 'settled', payout = ?, settled_at = ? WHERE id = ? AND round_id = ? AND status = 'accepted' AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling' AND settlement_id = ?)").bind(payoutMap.get(b.id) ?? 0, now, b.id, roundId, roundId, settlementId))
+      ];
+      if (totalPayout > 0) {
+        statements.push(db.prepare("UPDATE user_wallets SET balance = balance + ?, updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling' AND settlement_id = ?)").bind(totalPayout, now, round.userId, roundId, settlementId));
+        statements.push(db.prepare("INSERT INTO game_wallet_ledger (id, game_id, round_id, bet_id, user_id, entry_type, amount, balance_after, idempotency_key, created_at) SELECT ?, ?, ?, NULL, ?, 'payout_credit', ?, w.balance, ?, ? FROM user_wallets w WHERE w.user_id = ? AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling' AND settlement_id = ?)").bind(crypto.randomUUID(), key.gameId, roundId, round.userId, totalPayout, "payout:" + roundId, now, round.userId, roundId, settlementId));
+      }
+      statements.push(db.prepare("UPDATE game_rounds SET status = 'settled' WHERE id = ? AND status = 'settling' AND settlement_id = ?").bind(roundId, settlementId));
+      await db.batch(statements);
+      const settled = await db.prepare("SELECT status, total_payout AS totalPayout FROM game_rounds WHERE id = ? LIMIT 1").bind(roundId).first<{ status: string; totalPayout: number }>();
+      if (settled?.status !== "settled") return reply({ error: "game_round_settlement_conflict" }, 409, origin, env);
+      const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(round.userId).first<{ balance: number }>();
+      return reply({ ok: true, roundId, status: "settled", totalPayout: settled.totalPayout, balance: wallet?.balance ?? 0 }, 200, origin, env);
+    }
+
     if (isAuth) {
       const user = await authenticateUser(request, db);
       if (!user) return reply({ error: "authentication_required" }, 401, origin, env);
@@ -184,6 +343,79 @@ export async function handleGamesApiRequest(
     if (rate.request_count > GAME_SESSION_RATE_MAX_REQUESTS) return reply({ error: "game_rate_limited" }, 429, origin, env);
     const permissions = JSON.parse(session.permissionsJson) as string[];
     const has = (permission: string) => permissions.includes(permission);
+    if (isListRounds) {
+      if (!has("round.read")) return reply({ error: "permission_denied" }, 403, origin, env);
+      const rows = await db.prepare(
+        "SELECT id, status, total_stake AS totalStake, total_payout AS totalPayout, result_json AS result, created_at AS createdAt, settled_at AS settledAt FROM game_rounds WHERE game_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT 50"
+      ).bind(session.gameId, session.userId).all();
+      return reply({ ok: true, rounds: rows.results ?? [] }, 200, origin, env);
+    }
+    if (isCreateRound) {
+      if (!has("round.create")) return reply({ error: "permission_denied" }, 403, origin, env);
+      const body = await readBody(request);
+      const idempotencyKey = typeof body?.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+      if (!/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) return reply({ error: "invalid_idempotency_key" }, 400, origin, env);
+      const existing = await db.prepare("SELECT id, status, total_stake AS totalStake FROM game_rounds WHERE game_id = ? AND user_id = ? AND idempotency_key = ? LIMIT 1").bind(session.gameId, session.userId, idempotencyKey).first<Record<string, unknown>>();
+      if (existing) return reply({ ok: true, round: existing, reused: true }, 200, origin, env);
+      const roundId = crypto.randomUUID(), now = new Date().toISOString();
+      await db.prepare("INSERT OR IGNORE INTO game_rounds (id, game_id, user_id, idempotency_key, status, total_stake, total_payout, created_at) SELECT ?, ?, ?, ?, 'open', 0, 0, ? WHERE EXISTS (SELECT 1 FROM game_economy_settings WHERE game_id = ? AND enabled = 1)").bind(roundId, session.gameId, session.userId, idempotencyKey, now, session.gameId).run();
+      const created = await db.prepare("SELECT id, status, total_stake AS totalStake FROM game_rounds WHERE game_id = ? AND user_id = ? AND idempotency_key = ? LIMIT 1").bind(session.gameId, session.userId, idempotencyKey).first<Record<string, unknown>>();
+      if (!created) return reply({ error: "game_economy_disabled" }, 403, origin, env);
+      return reply({ ok: true, round: created, reused: false }, 201, origin, env);
+    }
+    if (placeBetMatch && request.method === "POST") {
+      if (!has("bets.place")) return reply({ error: "permission_denied" }, 403, origin, env);
+      const body = await readBody(request, 4096);
+      const idempotencyKey = typeof body?.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+      const stake = body?.stake;
+      const selection = body?.selection === undefined ? {} : body.selection;
+      if (!/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey) || typeof stake !== "number" || !Number.isSafeInteger(stake) || stake <= 0 ||
+          !selection || typeof selection !== "object" || Array.isArray(selection)) return reply({ error: "invalid_bet_data" }, 400, origin, env);
+      const selectionJson = JSON.stringify(selection);
+      if (new TextEncoder().encode(selectionJson).length > 1024) return reply({ error: "bet_selection_too_large" }, 400, origin, env);
+      const roundId = placeBetMatch[1];
+      const round = await db.prepare("SELECT id, status FROM game_rounds WHERE id = ? AND game_id = ? AND user_id = ? LIMIT 1").bind(roundId, session.gameId, session.userId).first<{ id: string; status: string }>();
+      if (!round) return reply({ error: "game_round_not_found" }, 404, origin, env);
+      const existing = await db.prepare("SELECT id, stake, selection_json AS selectionJson, status FROM game_bets WHERE round_id = ? AND idempotency_key = ? LIMIT 1").bind(roundId, idempotencyKey).first<{ id: string; stake: number; selectionJson: string; status: string }>();
+      if (existing) {
+        if (existing.stake !== Number(stake) || existing.selectionJson !== selectionJson) return reply({ error: "idempotency_key_reused" }, 409, origin, env);
+        const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(session.userId).first<{ balance: number }>();
+        return reply({ ok: true, bet: existing, balance: wallet?.balance ?? 0, reused: true }, 200, origin, env);
+      }
+      if (round.status !== "open") return reply({ error: "game_round_not_open" }, 409, origin, env);
+      const settings = await db.prepare("SELECT enabled, min_bet AS minBet, max_bet AS maxBet, max_bets_per_round AS maxBets, max_total_bet AS maxTotal FROM game_economy_settings WHERE game_id = ? LIMIT 1").bind(session.gameId).first<{ enabled: number; minBet: number; maxBet: number; maxBets: number; maxTotal: number }>();
+      if (!settings || settings.enabled !== 1) return reply({ error: "game_economy_disabled" }, 403, origin, env);
+      if (Number(stake) < settings.minBet || Number(stake) > settings.maxBet) return reply({ error: "bet_out_of_range", minBet: settings.minBet, maxBet: settings.maxBet }, 400, origin, env);
+      const betId = crypto.randomUUID(), now = new Date().toISOString();
+      await db.batch([
+        db.prepare("INSERT OR IGNORE INTO game_bets (id, round_id, game_id, user_id, idempotency_key, stake, selection_json, payout, status, created_at) SELECT ?, ?, ?, ?, ?, ?, ?, 0, 'processing', ? WHERE EXISTS (SELECT 1 FROM game_rounds r JOIN game_economy_settings s ON s.game_id = r.game_id WHERE r.id = ? AND r.status = 'open' AND r.game_id = ? AND r.user_id = ? AND s.enabled = 1 AND ? BETWEEN s.min_bet AND s.max_bet AND (SELECT COUNT(*) FROM game_bets b WHERE b.round_id = r.id AND b.status IN ('accepted','settled')) < s.max_bets_per_round AND r.total_stake + ? <= s.max_total_bet) AND EXISTS (SELECT 1 FROM user_wallets w WHERE w.user_id = ? AND w.balance >= ?)").bind(betId, roundId, session.gameId, session.userId, idempotencyKey, stake, selectionJson, now, roundId, session.gameId, session.userId, stake, stake, session.userId, stake),
+        db.prepare("UPDATE user_wallets SET balance = balance - ?, updated_at = ? WHERE user_id = ? AND balance >= ? AND changes() = 1").bind(stake, now, session.userId, stake),
+        db.prepare("UPDATE game_bets SET status = 'accepted' WHERE id = ? AND status = 'processing' AND changes() = 1").bind(betId),
+        db.prepare("UPDATE game_rounds SET total_stake = total_stake + ? WHERE id = ? AND status = 'open' AND changes() = 1").bind(stake, roundId),
+        db.prepare("INSERT INTO game_wallet_ledger (id, game_id, round_id, bet_id, user_id, entry_type, amount, balance_after, idempotency_key, created_at) SELECT ?, ?, ?, b.id, b.user_id, 'bet_debit', -b.stake, w.balance, ?, ? FROM game_bets b JOIN user_wallets w ON w.user_id = b.user_id WHERE b.id = ? AND b.status = 'accepted' AND changes() = 1").bind(crypto.randomUUID(), session.gameId, roundId, "bet:" + betId, now, betId),
+        db.prepare("DELETE FROM game_bets WHERE id = ? AND status = 'processing'").bind(betId)
+      ]);
+      const accepted = await db.prepare("SELECT id, stake, selection_json AS selectionJson, status FROM game_bets WHERE round_id = ? AND idempotency_key = ? LIMIT 1").bind(roundId, idempotencyKey).first<Record<string, unknown>>();
+      if (!accepted) {
+        const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(session.userId).first<{ balance: number }>();
+        return reply({ error: (wallet?.balance ?? 0) < Number(stake) ? "insufficient_balance" : "bet_rejected" }, 409, origin, env);
+      }
+      // A concurrent request may win the same idempotency key after our
+      // preflight lookup. Never report success for a different stake/selection.
+      if (accepted.stake !== Number(stake) || accepted.selectionJson !== selectionJson) {
+        return reply({ error: "idempotency_key_reused" }, 409, origin, env);
+      }
+      const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(session.userId).first<{ balance: number }>();
+      return reply({ ok: true, bet: accepted, balance: wallet?.balance ?? 0, reused: false }, 201, origin, env);
+    }
+    if (getRoundMatch && request.method === "GET") {
+      if (!has("round.read")) return reply({ error: "permission_denied" }, 403, origin, env);
+      const roundId = getRoundMatch[1];
+      const round = await db.prepare("SELECT id, status, total_stake AS totalStake, total_payout AS totalPayout, result_json AS result, created_at AS createdAt, settled_at AS settledAt FROM game_rounds WHERE id = ? AND game_id = ? AND user_id = ? LIMIT 1").bind(roundId, session.gameId, session.userId).first<Record<string, unknown>>();
+      if (!round) return reply({ error: "game_round_not_found" }, 404, origin, env);
+      const bets = await db.prepare("SELECT id, stake, selection_json AS selection, payout, status, created_at AS createdAt FROM game_bets WHERE round_id = ? ORDER BY created_at, id").bind(roundId).all();
+      return reply({ ok: true, round, bets: bets.results ?? [] }, 200, origin, env);
+    }
     if (isRefresh) {
       // Extend this session in place. Keeping the same bearer token makes
       // refresh retries safe if a response is lost while the player is online.

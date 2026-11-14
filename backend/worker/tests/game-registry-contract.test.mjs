@@ -79,9 +79,22 @@ test("admin dashboard can create, edit, enable and disable registry entries", ()
 test("web app loads published games dynamically without replacing the native Food Wheel", () => {
   assert.match(appMain, /import 'pages\/food_wheel_game\.dart';/);
   assert.match(appMain, /openFoodWheelGame\(context, accessToken: accessToken\)/);
-  assert.match(appMain, /if \(kIsWeb\) const DynamicGamesList\(\)/);
+  assert.match(appMain, /if \(kIsWeb\) DynamicGamesList\(onGameClosed: _refreshWalletBalance\)/);
   assert.match(gamesWidget, /\/api\/v1\/games\/catalog/);
-  assert.match(gamesWidget, /launchExternalGame\(url, _createGameSession\(gameId\)\)/);
+  assert.match(gamesWidget, /launchExternalGame\(context, url, _createGameSession\(gameId\)\)/);
   assert.match(gamesWidget, /إعادة المحاولة/);
   assert.doesNotMatch(gamesWidget, /wallet|bet|reward|accessToken/i);
+});
+
+
+test("admin game catalogue exposes economy configuration and server-key rotation", () => {
+  assert.match(adminUi, /data-game-economy/);
+  assert.match(adminUi, /data-game-key/);
+  assert.match(adminUi, /data-game-connect/);
+  assert.match(adminUi, /data-game-rounds/);
+  assert.match(adminUi, /سجل الجولات/);
+  assert.match(adminUi, /API Base:/);
+  assert.match(adminUi, /إعداد الرهانات/);
+  assert.match(adminUi, /مفتاح الخادم/);
+  assert.match(adminUi, /لا تضعه في المتصفح/);
 });

@@ -26,6 +26,7 @@ dependencies:
   gif_view: ^1.0.3
   flutter_svga: ^0.0.14
   audioplayers: ^6.5.0
+  webview_flutter: ^4.10.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
