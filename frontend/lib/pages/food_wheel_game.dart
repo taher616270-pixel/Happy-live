@@ -35,7 +35,14 @@ class FoodWheelWinner {
   final String userCode;
   final String avatarUrl;
   final int payout;
-  const FoodWheelWinner({required this.name, required this.userCode, required this.avatarUrl, required this.payout});
+  final bool isMe;
+  const FoodWheelWinner({
+    required this.name,
+    required this.userCode,
+    required this.avatarUrl,
+    required this.payout,
+    this.isMe = false,
+  });
 }
 
 class RoundState {
@@ -85,9 +92,11 @@ class RoundState {
         (item['multiplier'] as num? ?? 1).toInt(), item['isVegetable'] == true);
     }).toList();
     final rawHistory = (j['history'] as List?) ?? const [];
+    final currentUserCode = (j['userCode'] ?? '').toString();
+    final rawWinners = (j['topWinners'] ?? j['top_winners'] ?? const []) as List;
     return RoundState(
       roundId: (j['roundId'] ?? '').toString(),
-      userCode: (j['userCode'] ?? '').toString(),
+      userCode: currentUserCode,
       dailyRoundNumber: (j['dailyRoundNumber'] as num? ?? 1).toInt(),
       secondsLeft: (j['secondsLeft'] as num? ?? 0).toInt(),
       phase: j['phase'] == 'result'
@@ -102,15 +111,18 @@ class RoundState {
       resultSlot: (j['resultSlot'] as num?)?.toInt(),
       special: j['special'] as String?,
       history: rawHistory.map((e) => '$e').toList(),
-      topWinners: ((j['topWinners'] as List?) ?? const []).map((e) {
+      topWinners: rawWinners.map((e) {
         final item = Map<String, dynamic>.from(e as Map);
+        final winnerCode = (item['userCode'] ?? item['user_code'] ?? '').toString();
+        final isMeValue = item['is_me'] ?? item['isMe'];
         return FoodWheelWinner(
           name: (item['name'] ?? 'لاعب').toString(),
-          userCode: (item['userCode'] ?? '').toString(),
-          avatarUrl: (item['avatarUrl'] ?? item['avatar_url'] ?? '').toString(),
-          payout: (item['payout'] as num? ?? 0).toInt(),
+          userCode: winnerCode,
+          avatarUrl: (item['avatar'] ?? item['avatarUrl'] ?? item['avatar_url'] ?? '').toString(),
+          payout: ((item['amount'] ?? item['payout']) as num? ?? 0).toInt(),
+          isMe: isMeValue is bool ? isMeValue : winnerCode.isNotEmpty && winnerCode == currentUserCode,
         );
-      }).toList(),
+      }).take(3).toList(),
       enabled: j['enabled'] == true,
       symbols: symbols.length == 8 ? symbols : kSlots,
     );
@@ -501,19 +513,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     }
   }
 
-  int _visualTarget(RoundState s) {
-    if (s.resultSlot != null) return s.resultSlot!;
-    if (s.special == 'salad') {
-      final matches = [for (var i = 0; i < 8; i++) if (s.symbols[i].veg) i];
-      if (matches.isNotEmpty) return matches.first;
-    }
-    if (s.special == 'pizza') {
-      final matches = [for (var i = 0; i < 8; i++) if (!s.symbols[i].veg) i];
-      if (matches.isNotEmpty) return matches.first;
-    }
-    return _rnd.nextInt(8);
-  }
-
   void _applySettledState(RoundState s) {
     _spinning = false;
     setState(() {
@@ -537,47 +536,72 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   Future<void> _spin(RoundState initial) async {
     _spinning = true;
-    // Use the phase deadline, not a fresh five seconds from the first poll.
-    // This keeps the wheel synchronized even if the client joins mid-countdown.
-    final seconds = initial.secondsLeft.clamp(1, 5).toInt();
+    // The Worker must provide the settled outcome at the start of the 4-second spin.
+    final seconds = initial.secondsLeft.clamp(1, 4).toInt();
     final deadline = DateTime.now().add(Duration(seconds: seconds));
-    final start = _rnd.nextInt(8);
-    final steps = seconds * 6;
-    final rawIntervals = List<double>.generate(
-      steps, (i) => 60 + 0.3 * i * i,
-    );
-    final totalRaw = rawIntervals.fold<double>(0, (a, b) => a + b);
-    for (var k = 0; k < steps; k++) {
-      if (!mounted) return;
-      setState(() => _hit = (start + k) % 8);
-      final sliceMs = (seconds * 1000 * rawIntervals[k] / totalRaw).round();
-      final remaining = deadline.difference(DateTime.now()).inMilliseconds;
-      if (remaining > 0 && k < steps - 1) {
-        await Future.delayed(Duration(milliseconds: math.min(sliceMs, remaining)));
-      }
-    }
+    var finalState = initial;
 
-    // The final slot is always taken from the server's settled result.
-    // Never guess a winning food locally.
-    var finalState = _s != null && _s!.roundId == initial.roundId ? _s! : initial;
     while (mounted &&
         finalState.roundId == initial.roundId &&
         finalState.resultSlot == null &&
         finalState.special == null &&
-        DateTime.now().isBefore(deadline.add(const Duration(seconds: 2)))) {
-      await Future.delayed(const Duration(milliseconds: 200));
-      finalState = _s != null && _s!.roundId == initial.roundId ? _s! : finalState;
+        DateTime.now().isBefore(deadline)) {
+      await Future.delayed(const Duration(milliseconds: 80));
+      final latest = _s;
+      if (latest != null &&
+          latest.roundId == initial.roundId &&
+          (latest.resultSlot != null || latest.special != null)) {
+        finalState = latest;
+      }
     }
+
     if (!mounted) return;
     if (finalState.resultSlot == null && finalState.special == null) {
       _spinning = false;
+      setState(() => _hit = -1);
       await _refresh();
       return;
     }
-    setState(() => _hit = _visualTarget(finalState));
-    final remaining = deadline.difference(DateTime.now()).inMilliseconds;
-    if (remaining > 0) await Future.delayed(Duration(milliseconds: remaining));
+
+    final resultSlot = finalState.resultSlot;
+    // Normal food: 24 clockwise steps, then stop on the server slot.
+    // Salad/pizza: exactly 24 steps, then turn off the wheel highlight.
+    final steps = resultSlot == null ? 3 * 8 : 3 * 8 + resultSlot + 1;
+    final durationMs = math.max(0, deadline.difference(DateTime.now()).inMilliseconds);
+    final weights = List<int>.generate(
+      math.max(0, steps - 1), (i) => (i + 1) * (i + 1),
+    );
+    final totalWeight = weights.fold<int>(0, (sum, value) => sum + value);
+    var previousElapsed = 0;
+    var cumulativeWeight = 0;
+
+    for (var k = 0; k < steps; k++) {
+      if (!mounted) return;
+      setState(() => _hit = k % 8);
+      if (k < steps - 1 && totalWeight > 0) {
+        cumulativeWeight += weights[k];
+        final targetElapsed = (durationMs * cumulativeWeight / totalWeight).round();
+        final delayMs = targetElapsed - previousElapsed;
+        previousElapsed = targetElapsed;
+        if (delayMs > 0) {
+          await Future.delayed(Duration(milliseconds: delayMs));
+        }
+      }
+    }
+
     if (!mounted) return;
+    if (resultSlot != null) {
+      final finalHighlightedIndex = (steps - 1) % 8;
+      assert(
+        finalHighlightedIndex == resultSlot,
+        'Food Wheel mismatch: highlighted $finalHighlightedIndex, server resultSlot $resultSlot',
+      );
+      debugPrint('Food Wheel final slot: $finalHighlightedIndex == resultSlot $resultSlot');
+      setState(() => _hit = finalHighlightedIndex);
+    } else {
+      setState(() => _hit = -1);
+    }
+
     _applySettledState(finalState);
     _presentResult(finalState);
   }
@@ -706,95 +730,155 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       );
   }
 
-  Widget _topWinnersCorner(RoundState s) {
+  Widget _podium(RoundState s) {
     final winners = s.topWinners.take(3).toList();
-    // Always keep the three podium positions visible: 2nd, 1st, 3rd.
-    const podium = <int>[1, 0, 2];
+    final players = <Widget>[];
+
+    // RTL Row: second at the right, first in the center, third at the left.
+    if (winners.length > 1) players.add(_podiumPlayer(winners[1], 2, isFirst: false));
+    if (winners.isNotEmpty) players.add(_podiumPlayer(winners[0], 1, isFirst: true));
+    if (winners.length > 2) players.add(_podiumPlayer(winners[2], 3, isFirst: false));
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
       decoration: BoxDecoration(
-        color: const Color(0xA51A155D),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFFD978), width: 1.2),
+        color: const Color(0xAA24145D),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFD400), width: 1.3),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('أفضل 3 لاعبين',
-              style: TextStyle(color: Color(0xFFFFD978), fontSize: 11,
-                  fontWeight: FontWeight.w900)),
-          const SizedBox(height: 9),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.center,
+          const Text(
+            'الفائز الاكبر لهذه الجولة',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFFFFD400), fontSize: 14, fontWeight: FontWeight.w900),
+          ),
+          if (players.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (final player in players)
+                  Flexible(fit: FlexFit.loose, child: SizedBox(width: 96, child: player)),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _podiumPlayer(FoodWheelWinner winner, int rank, {required bool isFirst}) {
+    final medalColor = rank == 1
+        ? const Color(0xFFFFD400)
+        : rank == 2 ? const Color(0xFFC0C0C0) : const Color(0xFFCD7F32);
+    final nameGradient = rank == 1
+        ? const [Color(0xFFFFE66D), Color(0xFFB97800)]
+        : rank == 2
+            ? const [Color(0xFFE9EDF2), Color(0xFF788493)]
+            : const [Color(0xFFFFC18A), Color(0xFF995024)];
+    final avatarSize = isFirst ? 74.0 : 60.0;
+    final avatar = winner.avatarUrl.trim();
+    final name = winner.name.trim();
+    final fallback = winner.isMe
+        ? '⭐'
+        : name.isEmpty ? '؟' : String.fromCharCode(name.runes.first);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ColorFiltered(
+            colorFilter: ColorFilter.mode(medalColor, BlendMode.modulate),
+            child: Transform.rotate(
+              angle: -0.35,
+              child: Text('👑', style: TextStyle(fontSize: isFirst ? 27 : 23)),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Stack(
+            clipBehavior: Clip.none,
             children: [
-              for (final rankIndex in podium)
-                Expanded(
-                  child: _winnerPodiumItem(
-                    rankIndex < winners.length ? winners[rankIndex] : null,
-                    rankIndex + 1,
-                    isFirst: rankIndex == 0,
-                  ),
+              Container(
+                width: avatarSize,
+                height: avatarSize,
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: medalColor,
+                  border: Border.all(color: medalColor, width: 2),
+                  boxShadow: [
+                    BoxShadow(color: medalColor.withValues(alpha: 0.35), blurRadius: 8, spreadRadius: 1),
+                  ],
                 ),
+                child: ClipOval(
+                  child: avatar.isEmpty
+                      ? _podiumAvatarFallback(fallback, medalColor)
+                      : Image.network(
+                          avatar,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _podiumAvatarFallback(fallback, medalColor),
+                        ),
+                ),
+              ),
+              Positioned(
+                right: -3,
+                bottom: -2,
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: medalColor,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  child: Text('$rank', style: const TextStyle(
+                    color: Color(0xFF34200A), fontSize: 11, fontWeight: FontWeight.w900,
+                  )),
+                ),
+              ),
             ],
+          ),
+          const SizedBox(height: 7),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: nameGradient, begin: Alignment.topCenter, end: Alignment.bottomCenter),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              winner.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF30200D), fontSize: 10, fontWeight: FontWeight.w900),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            '${_fmt(winner.payout)} 🪙',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFFFFD978), fontSize: 10, fontWeight: FontWeight.w900),
           ),
         ],
       ),
     );
   }
 
-  Widget _winnerPodiumItem(FoodWheelWinner? winner, int rank,
-      {required bool isFirst}) {
-    final avatar = winner?.avatarUrl.trim() ?? '';
-    final medal = rank == 1 ? '🥇' : rank == 2 ? '🥈' : '🥉';
-    final title = rank == 1 ? 'مركز الأول' :
-        rank == 2 ? 'مركز ثاني' : 'مركز ثالث';
-    final radius = isFirst ? 27.0 : 22.0;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(title,
-              maxLines: 1, textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFFFFD978),
-                  fontSize: 9, fontWeight: FontWeight.w900)),
-          Text(medal, style: TextStyle(fontSize: isFirst ? 19 : 16)),
-          Container(
-            width: radius * 2,
-            height: radius * 2,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: winner == null
-                  ? const Color(0x335FFFFFFF)
-                  : const Color(0xFFFFD978),
-              border: Border.all(
-                color: const Color(0xFFFFD978),
-                width: isFirst ? 2.5 : 1.5,
-              ),
-              image: avatar.isNotEmpty
-                  ? DecorationImage(
-                      image: NetworkImage(avatar), fit: BoxFit.cover)
-                  : null,
-            ),
-          ),
-          const SizedBox(height: 4),
-          if (winner != null) ...[
-            Text(winner.name,
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white,
-                    fontSize: 9, fontWeight: FontWeight.bold)),
-            Text(_fmt(winner.payout),
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFFFFD978),
-                    fontSize: 8, fontWeight: FontWeight.w800)),
-          ] else ...[
-            const SizedBox(height: 11),
-          ],
-        ],
-      ),
+  Widget _podiumAvatarFallback(String letter, Color medalColor) {
+    return Container(
+      color: const Color(0xFF38265D),
+      alignment: Alignment.center,
+      child: Text(letter, style: TextStyle(color: medalColor, fontSize: 26, fontWeight: FontWeight.w900)),
     );
   }
 
@@ -859,7 +943,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
             Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 280),
-                child: _topWinnersCorner(s),
+                child: _podium(s),
               ),
             ),
           ],
