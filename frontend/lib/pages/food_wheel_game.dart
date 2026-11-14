@@ -33,8 +33,9 @@ enum RoundPhase { betting, spinning, result }
 class FoodWheelWinner {
   final String name;
   final String userCode;
+  final String avatarUrl;
   final int payout;
-  const FoodWheelWinner({required this.name, required this.userCode, required this.payout});
+  const FoodWheelWinner({required this.name, required this.userCode, required this.avatarUrl, required this.payout});
 }
 
 class RoundState {
@@ -101,6 +102,7 @@ class RoundState {
         return FoodWheelWinner(
           name: (item['name'] ?? 'لاعب').toString(),
           userCode: (item['userCode'] ?? '').toString(),
+          avatarUrl: (item['avatarUrl'] ?? item['avatar_url'] ?? '').toString(),
           payout: (item['payout'] as num? ?? 0).toInt(),
         );
       }).toList(),
@@ -641,53 +643,85 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         ),
       );
 
-  Widget _topWinnersCorner(RoundState s) => Container(
-        padding: const EdgeInsets.all(7),
-        decoration: BoxDecoration(
-          color: const Color(0xA51A155D),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFFFD978), width: 1.2),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Text('أفضل 3 لاعبين',
-                style: TextStyle(color: Color(0xFFFFD978), fontSize: 10,
-                    fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            if (s.topWinners.isEmpty)
-              const Text('لا يوجد فائزون',
-                  style: TextStyle(color: Colors.white70, fontSize: 9))
-            else
-              for (var i = 0; i < s.topWinners.length && i < 3; i++)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    children: [
-                      Text(['🥇', '🥈', '🥉'][i],
-                          style: const TextStyle(fontSize: 12)),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(s.topWinners[i].name,
-                                maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.white,
-                                    fontSize: 9, fontWeight: FontWeight.bold)),
-                            Text(_fmt(s.topWinners[i].payout),
-                                style: const TextStyle(color: Color(0xFFFFD978),
-                                    fontSize: 8, fontWeight: FontWeight.w800)),
-                          ],
-                        ),
-                      ),
-                    ],
+  Widget _topWinnersCorner(RoundState s) {
+    final winners = s.topWinners.take(3).toList();
+    // Podium order from left to right: 2nd, 1st, 3rd.
+    final podium = <int>[1, 0, 2]
+        .where((i) => i < winners.length)
+        .map((i) => winners[i])
+        .toList();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: const Color(0xA51A155D),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFD978), width: 1.2),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('أفضل 3 لاعبين',
+              style: TextStyle(color: Color(0xFFFFD978), fontSize: 11,
+                  fontWeight: FontWeight.w900)),
+          const SizedBox(height: 9),
+          if (podium.isEmpty)
+            const Text('لا يوجد فائزون',
+                style: TextStyle(color: Colors.white70, fontSize: 10))
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < podium.length; i++)
+                  Expanded(
+                    child: _winnerPodiumItem(
+                      podium[i],
+                      podium[i].userCode == winners.first.userCode ? 1 :
+                        (winners.indexOf(podium[i]) + 1),
+                      isFirst: podium[i].userCode == winners.first.userCode,
+                    ),
                   ),
-                ),
-          ],
-        ),
-      );
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _winnerPodiumItem(FoodWheelWinner winner, int rank,
+      {required bool isFirst}) {
+    final avatar = winner.avatarUrl.trim();
+    final medal = rank == 1 ? '🥇' : rank == 2 ? '🥈' : '🥉';
+    final radius = isFirst ? 27.0 : 22.0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(medal, style: TextStyle(fontSize: isFirst ? 19 : 16)),
+          CircleAvatar(
+            radius: radius,
+            backgroundColor: const Color(0xFFFFD978),
+            backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
+            child: avatar.isEmpty
+                ? const Icon(Icons.person, color: Color(0xFF3F2A76))
+                : null,
+          ),
+          const SizedBox(height: 4),
+          Text(winner.name,
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white,
+                  fontSize: 9, fontWeight: FontWeight.bold)),
+          Text(_fmt(winner.payout),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFFFFD978),
+                  fontSize: 8, fontWeight: FontWeight.w800)),
+        ],
+      ),
+    );
+  }
 
   Widget _resultPanel(RoundState s) {
     final food = s.special == 'salad'
