@@ -50,6 +50,7 @@ class RoundState {
   final String userCode;
   final int dailyRoundNumber;
   final int secondsLeft, balance, myPayout, myBetCount, maxBetsPerRound;
+  final DateTime? phaseDeadlineAt;
   final bool enabled;
   final List<WheelSlot> symbols;
   final RoundPhase phase;
@@ -70,6 +71,7 @@ class RoundState {
     required this.pools,
     required this.myBets,
     required this.balance,
+    this.phaseDeadlineAt,
     this.myPayout = 0,
     this.myBetCount = 0,
     this.maxBetsPerRound = 6,
@@ -99,6 +101,7 @@ class RoundState {
       userCode: currentUserCode,
       dailyRoundNumber: (j['dailyRoundNumber'] as num? ?? 1).toInt(),
       secondsLeft: (j['secondsLeft'] as num? ?? 0).toInt(),
+      phaseDeadlineAt: DateTime.tryParse((j['phaseDeadlineAt'] ?? '').toString()),
       phase: j['phase'] == 'result'
           ? RoundPhase.result
           : j['phase'] == 'spinning' ? RoundPhase.spinning : RoundPhase.betting,
@@ -483,8 +486,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           }
         }
         if (shouldSyncClock) {
-          _countdownDeadline = DateTime.now().add(Duration(seconds: s.secondsLeft));
-          _visibleSecondsLeft = s.secondsLeft;
+          _countdownDeadline = s.phaseDeadlineAt ??
+              DateTime.now().add(Duration(seconds: s.secondsLeft));
+          final remainingMs = _countdownDeadline!.difference(DateTime.now()).inMilliseconds;
+          _visibleSecondsLeft = remainingMs <= 0 ? 0 : (remainingMs / 1000).ceil();
         }
         _err = zeroBalanceWarning;
         // Keep in-flight taps reserved locally so a poll cannot briefly
@@ -537,8 +542,9 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   Future<void> _spin(RoundState initial) async {
     _spinning = true;
     // The Worker must provide the settled outcome at the start of the 4-second spin.
-    final seconds = initial.secondsLeft.clamp(1, 4).toInt();
-    final deadline = DateTime.now().add(Duration(seconds: seconds));
+    final fallbackSeconds = initial.secondsLeft.clamp(1, 4).toInt();
+    final deadline = initial.phaseDeadlineAt ??
+        DateTime.now().add(Duration(seconds: fallbackSeconds));
     var finalState = initial;
 
     while (mounted &&
