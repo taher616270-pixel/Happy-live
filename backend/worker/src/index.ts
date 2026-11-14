@@ -387,6 +387,89 @@ export default {
     const foodWheelResponse = await handleFoodWheelRequest(request, env, origin, authenticatedUser, authenticatedAdmin, json);
     if (foodWheelResponse) return foodWheelResponse;
 
+    // Public, read-only catalogue. External games are links only; they do not receive wallet access.
+    if (url.pathname === "/api/v1/games/catalog" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const rows = await env.DB.prepare(
+          "SELECT id, name, game_url AS url, icon_url AS iconUrl, description, category, sort_order AS sortOrder " +
+          "FROM game_registry WHERE enabled = 1 ORDER BY sort_order ASC, created_at DESC"
+        ).all();
+        return json({ ok: true, games: rows.results ?? [] }, 200, origin, env);
+      } catch (error) {
+        console.error("[games.catalog] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "games_catalog_unavailable" }, 503, origin, env);
+      }
+    }
+
+    const adminGamesRoute = url.pathname.match(/^\\/api\\/v1\\/admin\\/games(?:\\/([0-9a-f-]{36}))?$/i);
+    if (adminGamesRoute && ["GET", "POST", "PATCH"].includes(request.method)) {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const actor = await authenticatedAdmin(request, env.DB);
+        if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
+        if (actor.role !== "owner" && actor.role !== "admin") return json({ error: "permission_denied" }, 403, origin, env);
+        const gameId = adminGamesRoute[1];
+        if (request.method === "GET") {
+          const rows = await env.DB.prepare(
+            "SELECT id, name, game_url AS url, icon_url AS iconUrl, description, category, enabled, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt " +
+            "FROM game_registry ORDER BY sort_order ASC, created_at DESC"
+          ).all();
+          return json({ ok: true, games: rows.results ?? [] }, 200, origin, env);
+        }
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; }
+        catch { return json({ error: "invalid_json" }, 400, origin, env); }
+        if (request.method === "POST") {
+          const name = typeof body.name === "string" ? body.name.trim() : "";
+          const gameUrl = typeof body.url === "string" ? body.url.trim() : "";
+          const iconUrl = typeof body.iconUrl === "string" ? body.iconUrl.trim() : "";
+          const description = typeof body.description === "string" ? body.description.trim() : "";
+          const category = typeof body.category === "string" ? body.category.trim() : "عام";
+          const sortOrder = Number.isInteger(body.sortOrder) ? Number(body.sortOrder) : 0;
+          let parsedUrl: URL;
+          try { parsedUrl = new URL(gameUrl); } catch { return json({ error: "invalid_game_url", message: "رابط اللعبة غير صالح." }, 400, origin, env); }
+          if (name.length < 2 || name.length > 80 || gameUrl.length > 2048 || parsedUrl.protocol !== "https:" || parsedUrl.username || parsedUrl.password ||
+              ["localhost", "127.0.0.1", "::1"].includes(parsedUrl.hostname) ||
+              description.length > 240 || category.length < 1 || category.length > 40 ||
+              (iconUrl && (!/^https:\\/\\//i.test(iconUrl) || iconUrl.length > 2048))) {
+            return json({ error: "invalid_game_data", message: "تحقق من الاسم والرابط https والوصف والأيقونة." }, 400, origin, env);
+          }
+          const now = new Date().toISOString();
+          const id = crypto.randomUUID();
+          await env.DB.prepare(
+            "INSERT INTO game_registry (id, name, game_url, icon_url, description, category, enabled, sort_order, created_by_admin_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)"
+          ).bind(id, name, gameUrl, iconUrl || null, description, category, sortOrder, actor.id, now, now).run();
+          return json({ ok: true, game: { id, name, url: gameUrl, iconUrl: iconUrl || null, description, category, enabled: 0, sortOrder } }, 201, origin, env);
+        }
+        if (!gameId) return json({ error: "game_id_required" }, 400, origin, env);
+        const current = await env.DB.prepare("SELECT id FROM game_registry WHERE id = ? LIMIT 1").bind(gameId).first();
+        if (!current) return json({ error: "game_not_found" }, 404, origin, env);
+        const name = typeof body.name === "string" ? body.name.trim() : null;
+        const gameUrl = typeof body.url === "string" ? body.url.trim() : null;
+        const iconUrl = typeof body.iconUrl === "string" ? body.iconUrl.trim() : null;
+        const description = typeof body.description === "string" ? body.description.trim() : null;
+        const category = typeof body.category === "string" ? body.category.trim() : null;
+        const enabled = typeof body.enabled === "boolean" ? (body.enabled ? 1 : 0) : null;
+        const sortOrder = Number.isInteger(body.sortOrder) ? Number(body.sortOrder) : null;
+        if (name !== null && (name.length < 2 || name.length > 80)) return json({ error: "invalid_game_name" }, 400, origin, env);
+        if (gameUrl !== null) {
+          try { const parsed = new URL(gameUrl); if (parsed.protocol !== "https:" || parsed.username || parsed.password || ["localhost","127.0.0.1","::1"].includes(parsed.hostname)) throw new Error(); }
+          catch { return json({ error: "invalid_game_url" }, 400, origin, env); }
+        }
+        if (iconUrl !== null && iconUrl && (!/^https:\\/\\//i.test(iconUrl) || iconUrl.length > 2048)) return json({ error: "invalid_icon_url" }, 400, origin, env);
+        if (description !== null && description.length > 240) return json({ error: "invalid_description" }, 400, origin, env);
+        if (category !== null && (category.length < 1 || category.length > 40)) return json({ error: "invalid_category" }, 400, origin, env);
+        await env.DB.prepare(
+          "UPDATE game_registry SET name = COALESCE(?, name), game_url = COALESCE(?, game_url), icon_url = ?, description = COALESCE(?, description), category = COALESCE(?, category), enabled = COALESCE(?, enabled), sort_order = COALESCE(?, sort_order), updated_at = ? WHERE id = ?"
+        ).bind(name, gameUrl, iconUrl, description, category, enabled, sortOrder, new Date().toISOString(), gameId).run();
+        return json({ ok: true }, 200, origin, env);
+      } catch (error) {
+        console.error("[admin.games] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "admin_games_unavailable" }, 503, origin, env);
+      }
+    }
+
     if (url.pathname === "/api/v1/admin/auth/setup-status" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       const state = await env.DB.prepare("SELECT id FROM admin_setup_state WHERE id = 'primary-owner' LIMIT 1").first();
