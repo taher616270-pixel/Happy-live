@@ -47,3 +47,8 @@ test("worker routes the unified game API and only trusts registered HTTPS game o
   assert.match(worker, /handleGamesApiRequest/);
   assert.match(worker, /isRegisteredGameOrigin/);
 });
+
+test("temporary game tokens are invalidated after a game URL origin change", () => {
+  assert.match(api, /const currentGameOrigin = await gameOriginForId\(db, session\.gameId\)/);
+  assert.match(api, /currentGameOrigin !== session\.gameOrigin/);
+});
