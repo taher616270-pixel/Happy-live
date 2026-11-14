@@ -6,6 +6,7 @@ const root = new URL("../", import.meta.url);
 const api = await readFile(new URL("src/games_api.ts", root), "utf8");
 const worker = await readFile(new URL("src/index.ts", root), "utf8");
 const migration = await readFile(new URL("migrations/0041_game_sessions.sql", root), "utf8");
+const bindingMigration = await readFile(new URL("migrations/0042_game_session_app_binding.sql", root), "utf8");
 
 test("temporary game sessions are isolated, expiring, revocable, and indexed", () => {
   assert.match(migration, /CREATE TABLE IF NOT EXISTS game_sessions/);
@@ -32,6 +33,7 @@ test("game tokens are bound to one player, one game, and the registered game ori
   assert.match(api, /u\.id = s\.user_id/);
   assert.match(api, /origin !== session\.gameOrigin/);
   assert.match(api, /game_origin/);
+  assert.match(api, /INNER JOIN game_session_app_bindings app_binding/);
   assert.match(api, /INNER JOIN user_sessions app/);
   assert.match(api, /app.revoked_at IS NULL/);
   assert.match(api, /game_session_expired_or_invalid/);
