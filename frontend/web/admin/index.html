@@ -65,6 +65,17 @@ async function uploadGiftSound(file){
   if(!response.ok||!result.url||!result.fileId)throw Error("فشل رفع ملف الصوت إلى ImageKit.");
   return result.url;
 }
+async function uploadGameIcon(file){
+  if(!file)return null;
+  const allowed=["image/png","image/jpeg","image/webp"];
+  if(!allowed.includes(file.type)||file.size>5*1024*1024)throw Error("اختر صورة PNG أو JPG أو WEBP، وبحجم لا يتجاوز 5MB.");
+  const authResponse=await fetch(API+"/imagekit/auth",{headers:{Authorization:"Bearer "+token}});
+  const auth=await authResponse.json();if(!authResponse.ok||!auth.token||!auth.signature||!auth.expire||!auth.publicKey)throw Error(auth.message||auth.error||"تعذر تجهيز رفع الأيقونة.");
+  const form=new FormData();form.append("file",file);form.append("fileName",file.name);form.append("publicKey",auth.publicKey);form.append("token",auth.token);form.append("expire",String(auth.expire));form.append("signature",auth.signature);form.append("folder","/happy-live/game-icons");form.append("useUniqueFileName","true");
+  const response=await fetch("https://upload.imagekit.io/api/v1/files/upload",{method:"POST",body:form});const result=await response.json();
+  if(!response.ok||!result.url||!result.fileId)throw Error("فشل رفع أيقونة اللعبة.");
+  return result.url;
+}
 function chooseGiftSoundFile(){
   return new Promise(resolve=>{const input=document.createElement("input");input.type="file";input.accept=".mp3,audio/mpeg";input.onchange=()=>resolve(input.files&&input.files[0]||null);input.click()});
 }
@@ -515,7 +526,7 @@ async function gamesPage(){
     '<label>اسم اللعبة<input id="gameName" maxlength="80" required placeholder="مثال: عجلة الأطعمة"></label>'+
     '<label>التصنيف<input id="gameCategory" maxlength="40" value="عام" required placeholder="مثال: ألعاب ترفيهية"></label>'+
     '<label class="form-wide">رابط اللعبة (HTTPS)<input id="gameUrl" type="url" maxlength="2048" required placeholder="https://game.example.com"></label>'+
-    '<label>رابط الأيقونة (اختياري)<input id="gameIcon" type="url" maxlength="2048" placeholder="https://..."></label>'+
+    '<label>أيقونة اللعبة (اختياري)<input id="gameIconFile" type="file" accept="image/png,image/jpeg,image/webp"><small class="muted">اختر صورة من معرض جهازك — PNG أو JPG أو WEBP، حتى 5MB.</small><img id="gameIconPreview" class="hidden" alt="معاينة أيقونة اللعبة" style="width:76px;height:76px;object-fit:cover;border-radius:14px;border:1px solid var(--line)"></label>'+
     '<label>ترتيب العرض<input id="gameSort" type="number" value="0" min="0" max="9999"></label>'+
     '<label class="form-wide">وصف مختصر<textarea id="gameDescription" maxlength="240" rows="2" placeholder="اكتب وصفًا مختصرًا للعبة (اختياري)"></textarea></label>'+
     '<div class="form-actions form-wide"><button class="action primary" type="submit">حفظ وإضافة اللعبة</button><button class="action" id="cancelGameCreate" type="button">إلغاء</button><span class="muted">لن يتم تشغيل اللعبة تلقائيًا بعد الحفظ.</span></div></form></div>'+
@@ -525,12 +536,19 @@ async function gamesPage(){
   const createPanel=$("gameCreatePanel");
   $("showGameCreate").onclick=()=>{createPanel.classList.remove("hidden");$("gameName").focus();createPanel.scrollIntoView({behavior:"smooth",block:"start"})};
   $("cancelGameCreate").onclick=()=>{createPanel.classList.add("hidden");$("gameCreateForm").reset();$("gameCategory").value="عام";$("gameSort").value="0"};
+  $("gameIconFile").onchange=()=>{
+    const file=$("gameIconFile").files&&$("gameIconFile").files[0],preview=$("gameIconPreview");
+    if(!file){preview.classList.add("hidden");preview.removeAttribute("src");return}
+    if(!["image/png","image/jpeg","image/webp"].includes(file.type)||file.size>5*1024*1024){$("gameIconFile").value="";preview.classList.add("hidden");alert("اختر صورة PNG أو JPG أو WEBP، وبحجم لا يتجاوز 5MB.");return}
+    preview.src=URL.createObjectURL(file);preview.classList.remove("hidden");
+  };
   $("gamesRefresh").onclick=()=>gamesPage();
   $("gameCreateForm").onsubmit=async e=>{
     e.preventDefault();
     const button=e.currentTarget.querySelector('button[type="submit"]');button.disabled=true;
     try{
-      await api("/admin/games",{method:"POST",body:JSON.stringify({name:$("gameName").value.trim(),url:$("gameUrl").value.trim(),iconUrl:$("gameIcon").value.trim(),category:$("gameCategory").value.trim(),description:$("gameDescription").value.trim(),sortOrder:Number($("gameSort").value||0)})});
+      const iconFile=$("gameIconFile").files&&$("gameIconFile").files[0],iconUrl=iconFile?await uploadGameIcon(iconFile):"";
+      await api("/admin/games",{method:"POST",body:JSON.stringify({name:$("gameName").value.trim(),url:$("gameUrl").value.trim(),iconUrl,category:$("gameCategory").value.trim(),description:$("gameDescription").value.trim(),sortOrder:Number($("gameSort").value||0)})});
       await gamesPage();
     }catch(error){alert(error.message);button.disabled=false}
   };
