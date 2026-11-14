@@ -11,6 +11,7 @@ test("temporary game sessions are isolated, expiring, revocable, and indexed", (
   assert.match(migration, /CREATE TABLE IF NOT EXISTS game_sessions/);
   assert.match(migration, /game_id TEXT NOT NULL REFERENCES game_registry\(id\)/);
   assert.match(migration, /user_id TEXT NOT NULL REFERENCES users\(id\)/);
+  assert.match(migration, /app_session_id TEXT NOT NULL REFERENCES user_sessions\(id\)/);
   assert.match(migration, /token_hash TEXT NOT NULL UNIQUE/);
   assert.match(migration, /expires_at TEXT NOT NULL/);
   assert.match(migration, /revoked_at TEXT/);
@@ -31,7 +32,9 @@ test("game tokens are bound to one player, one game, and the registered game ori
   assert.match(api, /u\.id = s\.user_id/);
   assert.match(api, /origin !== session\.gameOrigin/);
   assert.match(api, /game_origin/);
-  assert.match(api, /INNER JOIN user_sessions app/);\n  assert.match(api, /app.revoked_at IS NULL/);\n  assert.match(api, /game_session_expired_or_invalid/);
+  assert.match(api, /INNER JOIN user_sessions app/);
+  assert.match(api, /app.revoked_at IS NULL/);
+  assert.match(api, /game_session_expired_or_invalid/);
   assert.match(api, /game_or_player_unavailable/);
 });
 
