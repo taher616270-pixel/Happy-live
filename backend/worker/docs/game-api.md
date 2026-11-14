@@ -158,4 +158,4 @@ Both the successful `POST /game/auth` response and `GET /game/profile` return th
 }
 ```
 
-`id` is the public Happy Live player code (`gabo_id`), not the internal database UUID. The profile endpoint rechecks the account status on every request and rejects a missing or non-active account. The older `profile` response key remains available for compatibility. The temporary game bearer token is the only credential sent to the game; never send the Happy Live app access token or private account fields to an external game.
+`id` is the public Happy Live player code (`happy_id`), not the internal database UUID. The profile endpoint rechecks the account status on every request and rejects a missing or non-active account. The older `profile` response key remains available for compatibility. The temporary game bearer token is the only credential sent to the game; never send the Happy Live app access token or private account fields to an external game.
