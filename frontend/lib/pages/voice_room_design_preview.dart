@@ -360,7 +360,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           'name', 'displayName', 'display_name', 'username'
         ]);
         final publicId = memberValue(profile, [
-          'userCode', 'user_code', 'gabo_id', 'publicId', 'public_id'
+          'userCode', 'user_code', 'happy_id', 'publicId', 'public_id'
         ]);
         if (userId.isEmpty && avatarUrl.isEmpty && name.isEmpty) return;
 
@@ -447,7 +447,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             ? _profileValue(ownerProfile, ['name', 'displayName', 'display_name'])
             : ownerName,
         id: _profileValue(ownerProfile, [
-          'userCode', 'user_code', 'gabo_id'
+          'userCode', 'user_code', 'happy_id'
         ]),
         userId: resolvedOwnerUserId,
       );
@@ -1860,7 +1860,7 @@ class UserInfoBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = _value(['name', 'displayName', 'username'], 'مستخدم');
-    final id = _value(['userCode', 'gaboId', 'publicId', 'gabo_id'], '—');
+    final id = _value(['userCode', 'happyId', 'publicId', 'happy_id'], '—');
     final avatar = _value(['avatarUrl', 'avatar', 'photoUrl']);
     final country = _value(
       ['countryName', 'country_name', 'country'],
