@@ -1906,6 +1906,7 @@ class _HappyConversationPageState extends State<_HappyConversationPage> {
   bool _loading = true;
   bool _sending = false;
   String? _error;
+  String _currentUserId = '';
   List<Map<String, dynamic>> _messages = [];
 
   Map<String, String> get _headers => {'Authorization': 'Bearer ${widget.accessToken}', 'Content-Type': 'application/json'};
@@ -1934,7 +1935,7 @@ class _HappyConversationPageState extends State<_HappyConversationPage> {
       if (response.statusCode != 200 || data['ok'] != true) throw Exception((data['message'] ?? data['error'] ?? 'تعذر تحميل الرسائل').toString());
       final rows = (data['messages'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
       if (!mounted) return;
-      setState(() { _messages = rows; _loading = false; _error = null; });
+      setState(() { _messages = rows; _currentUserId = (data['currentUserId'] ?? '').toString(); _loading = false; _error = null; });
       await http.patch(Uri.parse('${widget.apiBase}/messages/conversations/$id/read'), headers: _headers).timeout(const Duration(seconds: 10));
       if (!silent && _scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
     } catch (e) {
@@ -1982,7 +1983,7 @@ class _HappyConversationPageState extends State<_HappyConversationPage> {
                 itemBuilder: (context, index) {
                   if (_error != null && index == 0) return Padding(padding: const EdgeInsets.all(12), child: Text(_error!, style: const TextStyle(color: Colors.redAccent)));
                   final message = _messages[index - (_error == null ? 0 : 1)];
-                  final mine = message['senderId'] == null ? false : message['senderId'] == widget.conversation['currentUserId'];
+                  final mine = message['senderId'] == _currentUserId;
                   return Align(
                     alignment: mine ? Alignment.centerLeft : Alignment.centerRight,
                     child: Container(
