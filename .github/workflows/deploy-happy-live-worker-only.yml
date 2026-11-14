@@ -1,4 +1,4 @@
-name: Deploy Happy Live Worker (no D1 migrations)
+name: Deploy Happy Live Worker (game lifecycle schema only)
 
 on:
   push:
@@ -40,7 +40,14 @@ jobs:
         working-directory: backend/worker
         run: npm test
 
-      - name: Deploy Worker only (do not run D1 migrations)
+      - name: Apply additive game lifecycle table only
+        working-directory: backend/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 execute happy-live-db --remote --file migrations/0040_game_registry_status.sql --config wrangler.toml
+
+      - name: Deploy Worker
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         working-directory: backend/worker
         env:
