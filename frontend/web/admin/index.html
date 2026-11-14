@@ -518,24 +518,26 @@ async function loadRoomModeration(roomId,roomName,q=""){
 async function gamesPage(){
   if(admin.role!=="owner"&&admin.role!=="admin"){$("content").innerHTML='<div class="section"><p class="notice">إدارة الألعاب متاحة للمالك ومدير التطبيق فقط.</p></div>';return}
   const data=await api("/admin/games"),games=data.games||[];
-  const rows=games.length?games.map(g=>'<tr><td>'+esc(g.name)+'</td><td><a href="'+esc(g.url)+'" target="_blank" rel="noopener noreferrer">فتح الرابط ↗</a></td><td>'+esc(g.category||"عام")+'</td><td><span class="badge '+(Number(g.enabled)?"good":"")+'">'+(Number(g.enabled)?"مفعّلة":"متوقفة")+'</span></td><td><button class="action" type="button" data-game-edit="'+esc(g.id)+'">تعديل</button> <button class="action" type="button" data-game-toggle="'+esc(g.id)+'" data-enabled="'+Number(g.enabled)+'">'+(Number(g.enabled)?"إيقاف":"تفعيل")+'</button></td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد ألعاب مضافة بعد.</td></tr>';
+  const statusLabel={development:"قيد التطوير",disabled:"متوقفة",active:"مفعّلة"};
+  const rows=games.length?games.map(g=>'<tr><td>'+esc(g.name)+'</td><td>'+(g.url?'<a href="'+esc(g.url)+'" target="_blank" rel="noopener noreferrer">فتح الرابط ↗</a>':'<span class="muted">لم يحدد بعد</span>')+'</td><td>'+esc(g.category||"عام")+'</td><td><span class="badge '+(g.status==="active"?"good":"")+'">'+esc(statusLabel[g.status]||"متوقفة")+'</span></td><td><button class="action" type="button" data-game-edit="'+esc(g.id)+'">تعديل</button> <button class="action" type="button" data-game-status="'+esc(g.id)+'">تغيير الحالة</button></td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد ألعاب مضافة بعد.</td></tr>';
   $("content").innerHTML=
-    '<div class="section"><div class="section-head"><div><h2>كتالوج الألعاب</h2><p class="muted">إدارة الألعاب المضافة إلى Happy Live وترتيب ظهورها.</p></div><button class="action primary" id="showGameCreate" type="button" style="width:auto">＋ إضافة لعبة</button></div></div>'+
-    '<div class="section hidden" id="gameCreatePanel"><div class="section-head"><div><h2>إضافة لعبة جديدة</h2><p class="muted">أدخل بيانات اللعبة. سيُحفظ الإدخال متوقفًا أولًا حتى تراجع الرابط ثم تفعّله.</p></div><span class="badge">إضافة جديدة</span></div>'+
+    '<div class="section"><div class="section-head"><div><h2>كتالوج الألعاب الداخلي</h2><p class="muted">تسجيل ألعاب Happy Live قبل برمجتها أو نشر رابطها.</p></div><button class="action primary" id="showGameCreate" type="button" style="width:auto">＋ إضافة لعبة</button></div></div>'+
+    '<div class="section hidden" id="gameCreatePanel"><div class="section-head"><div><h2>إضافة لعبة جديدة</h2><p class="muted">يمكنك تسجيل اللعبة الآن دون رابط. ستُحفظ بحالة قيد التطوير ولن تظهر للاعبين.</p></div><span class="badge">إضافة جديدة</span></div>'+
     '<form id="gameCreateForm" class="form-grid">'+
     '<label>اسم اللعبة<input id="gameName" maxlength="80" required placeholder="مثال: عجلة الأطعمة"></label>'+
     '<label>التصنيف<input id="gameCategory" maxlength="40" value="عام" required placeholder="مثال: ألعاب ترفيهية"></label>'+
-    '<label class="form-wide">رابط اللعبة (HTTPS)<input id="gameUrl" type="url" maxlength="2048" required placeholder="https://game.example.com"></label>'+
+    '<label class="form-wide">رابط اللعبة (اختياري الآن، HTTPS عند النشر)<input id="gameUrl" type="url" maxlength="2048" placeholder="اتركه فارغًا حتى تنتهي من برمجة اللعبة"></label>'+
+    '<label>حالة اللعبة<select id="gameStatus"><option value="development" selected>قيد التطوير</option><option value="disabled">متوقفة</option><option value="active">مفعّلة</option></select></label>'+
     '<label>أيقونة اللعبة (اختياري)<input id="gameIconFile" type="file" accept="image/png,image/jpeg,image/webp"><small class="muted">اختر صورة من معرض جهازك — PNG أو JPG أو WEBP، حتى 5MB.</small><img id="gameIconPreview" class="hidden" alt="معاينة أيقونة اللعبة" style="width:76px;height:76px;object-fit:cover;border-radius:14px;border:1px solid var(--line)"></label>'+
     '<label>ترتيب العرض<input id="gameSort" type="number" value="0" min="0" max="9999"></label>'+
     '<label class="form-wide">وصف مختصر<textarea id="gameDescription" maxlength="240" rows="2" placeholder="اكتب وصفًا مختصرًا للعبة (اختياري)"></textarea></label>'+
-    '<div class="form-actions form-wide"><button class="action primary" type="submit">حفظ وإضافة اللعبة</button><button class="action" id="cancelGameCreate" type="button">إلغاء</button><span class="muted">لن يتم تشغيل اللعبة تلقائيًا بعد الحفظ.</span></div></form></div>'+
+    '<div class="form-actions form-wide"><button class="action primary" type="submit">حفظ وإضافة اللعبة</button><button class="action" id="cancelGameCreate" type="button">إلغاء</button><span class="muted">لن تظهر اللعبة للاعبين إلا بعد إضافة رابطها وتفعيلها.</span></div></form></div>'+
     '<div class="section"><div class="section-head"><h2>الألعاب المسجلة ('+games.length+')</h2><button class="action" id="gamesRefresh" type="button">↻ تحديث</button></div>'+
     '<div class="table-wrap"><table><thead><tr><th>اللعبة</th><th>الرابط</th><th>التصنيف</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
-    '<p class="notice" style="margin-top:14px">تنبيه: الرابط الخارجي يفتح اللعبة فقط. ربط هوية اللاعب والمحفظة والرهانات يتطلب دعم اللعبة لبروتوكول تكامل Happy Live؛ لا يتم منح اللعبة وصولًا مباشرًا للأرصدة.</p></div>';
+    '<p class="notice" style="margin-top:14px">هذه المرحلة تسجل الألعاب وتدير هويتها وحالتها فقط. ربط اللاعب والمحفظة والرهانات سيُنفذ في المراحل التالية.</p></div>';
   const createPanel=$("gameCreatePanel");
   $("showGameCreate").onclick=()=>{createPanel.classList.remove("hidden");$("gameName").focus();createPanel.scrollIntoView({behavior:"smooth",block:"start"})};
-  $("cancelGameCreate").onclick=()=>{createPanel.classList.add("hidden");$("gameCreateForm").reset();$("gameCategory").value="عام";$("gameSort").value="0"};
+  $("cancelGameCreate").onclick=()=>{createPanel.classList.add("hidden");$("gameCreateForm").reset();$("gameCategory").value="عام";$("gameSort").value="0";$("gameStatus").value="development"};
   $("gameIconFile").onchange=()=>{
     const file=$("gameIconFile").files&&$("gameIconFile").files[0],preview=$("gameIconPreview");
     if(!file){preview.classList.add("hidden");preview.removeAttribute("src");return}
@@ -548,14 +550,14 @@ async function gamesPage(){
     const button=e.currentTarget.querySelector('button[type="submit"]');button.disabled=true;
     try{
       const iconFile=$("gameIconFile").files&&$("gameIconFile").files[0],iconUrl=iconFile?await uploadGameIcon(iconFile):"";
-      await api("/admin/games",{method:"POST",body:JSON.stringify({name:$("gameName").value.trim(),url:$("gameUrl").value.trim(),iconUrl,category:$("gameCategory").value.trim(),description:$("gameDescription").value.trim(),sortOrder:Number($("gameSort").value||0)})});
+      await api("/admin/games",{method:"POST",body:JSON.stringify({name:$("gameName").value.trim(),url:$("gameUrl").value.trim(),status:$("gameStatus").value,iconUrl,category:$("gameCategory").value.trim(),description:$("gameDescription").value.trim(),sortOrder:Number($("gameSort").value||0)})});
       await gamesPage();
     }catch(error){alert(error.message);button.disabled=false}
   };
   document.querySelectorAll("[data-game-edit]").forEach(button=>button.onclick=async()=>{
     const game=games.find(item=>item.id===button.dataset.gameEdit);if(!game)return;
     const name=window.prompt("اسم اللعبة",game.name);if(name===null)return;
-    const url=window.prompt("رابط اللعبة HTTPS",game.url);if(url===null)return;
+    const url=window.prompt("رابط اللعبة HTTPS (اتركه فارغًا إذا لم تنشرها بعد)",game.url||"");if(url===null)return;
     const category=window.prompt("التصنيف",game.category||"عام");if(category===null)return;
     const description=window.prompt("وصف مختصر",game.description||"");if(description===null)return;
     const iconUrl=window.prompt("رابط الأيقونة HTTPS (اتركه فارغًا لإزالة الأيقونة)",game.iconUrl||"");if(iconUrl===null)return;
@@ -565,13 +567,17 @@ async function gamesPage(){
     try{await api("/admin/games/"+encodeURIComponent(game.id),{method:"PATCH",body:JSON.stringify({name:name.trim(),url:url.trim(),category:category.trim(),description:description.trim(),iconUrl:iconUrl.trim(),sortOrder})});await gamesPage()}
     catch(error){alert(error.message);button.disabled=false}
   });
-  document.querySelectorAll("[data-game-toggle]").forEach(button=>button.onclick=async()=>{
+  document.querySelectorAll("[data-game-status]").forEach(button=>button.onclick=async()=>{
+    const game=games.find(item=>item.id===button.dataset.gameStatus);if(!game)return;
+    const choices="development = قيد التطوير\\ndisabled = متوقفة\\nactive = مفعّلة";
+    const nextStatus=window.prompt("اختر الحالة بكتابة قيمتها:\\n"+choices,game.status||"development");
+    if(nextStatus===null)return;
+    if(!["development","disabled","active"].includes(nextStatus)){alert("الحالة غير صحيحة.");return}
     button.disabled=true;
-    try{await api("/admin/games/"+encodeURIComponent(button.dataset.gameToggle),{method:"PATCH",body:JSON.stringify({enabled:button.dataset.enabled!=="1"})});await gamesPage()}
-    catch(error){alert(error.message);button.disabled=false}
+    try{await api("/admin/games/"+encodeURIComponent(game.id),{method:"PATCH",body:JSON.stringify({status:nextStatus})});await gamesPage()}
+    catch(error){alert(error.message==="game_url_required_before_activation"?"أضف رابط اللعبة HTTPS قبل تفعيلها.":error.message);button.disabled=false}
   });
 }
-
 function audit(a){$("content").innerHTML='<div class="section"><div class="section-head"><h2>آخر الإجراءات ('+a.length+')</h2></div><div class="table-wrap"><table><thead><tr><th>الإجراء</th><th>المدير</th><th>النوع</th><th>المعرف</th><th>التاريخ</th></tr></thead><tbody>'+(a.length?a.map(x=>'<tr><td>'+esc(x.action)+'</td><td>'+esc(x.actor_name||x.actor_email||"—")+'</td><td>'+esc(x.target_type)+'</td><td>'+esc(x.target_id)+'</td><td>'+esc(new Date(x.created_at).toLocaleString("ar"))+'</td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد إجراءات</td></tr>')+'</tbody></table></div></div>'}
 startup();
 </script></body></html>
