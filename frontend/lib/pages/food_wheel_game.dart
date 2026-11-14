@@ -394,7 +394,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   }
 
   Future<void> _refresh() async {
-    // Prevent overlapping 2-second polls from applying older wallet responses
+    // Prevent overlapping one-second polls from applying older wallet responses
     // after a newer response has already updated the visible balance.
     if (_refreshing) return;
     _refreshing = true;
