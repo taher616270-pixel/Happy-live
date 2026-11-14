@@ -1793,7 +1793,7 @@ class _HappyMessagesTabState extends State<_HappyMessagesTab> {
         accessToken: widget.accessToken,
         conversation: item,
       ),
-    )).then((_) => _loadConversations());
+    )).then((_) => _loadConversations(silent: true));
   }
 
   Widget _avatar(String? url, {double size = 48}) {
