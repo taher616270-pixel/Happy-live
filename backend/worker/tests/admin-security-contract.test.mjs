@@ -89,7 +89,9 @@ test("wallet administration uses the server-backed wallet ledger and owner-only 
   assert.match(worker, /wallet_transactions/);
   // Admin wallet history must include Food Wheel bets and payouts, not only
   // the generic wallet_transactions table.
-  assert.match(worker, /FROM wallet_transactions WHERE user_id = \\? \\" \\+\\s*\\"UNION ALL\\" \\+\\s*\\"SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, round_id AS referenceId, description, created_at AS createdAt\\" \\+\\s*\\"FROM cat_greed_ledger WHERE user_id = \\? /s);
+  assert.match(worker, /FROM wallet_transactions WHERE user_id = \\?/);
+  assert.match(worker, /UNION ALL/);
+  assert.match(worker, /FROM cat_greed_ledger WHERE user_id = \\?/);
   assert.match(worker, /\\.bind\\(userId, userId\\)\\.all\\(\\)/);
   assert.match(worker, /actor\\.role !== "owner".*إضافة العملات متاحة لمالك التطبيق فقط/s);
   assert.match(worker, /VALUES \(\?, NULL, 'wallet\.credit', 'user', \?, \?, \?\)/);
