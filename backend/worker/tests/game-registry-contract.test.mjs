@@ -16,9 +16,10 @@ test("game registry migration is additive and does not touch wallet or existing 
   assert.match(migration, /enabled INTEGER NOT NULL DEFAULT 0/);
   assert.match(migration, /CHECK\(enabled IN \(0,1\)\)/);
   assert.doesNotMatch(migration, /DROP TABLE|DELETE FROM|UPDATE user_wallets|wallet_transactions|cat_greed_/i);
-  assert.match(statusMigration, /ADD COLUMN status TEXT NOT NULL DEFAULT 'disabled'/);
+  assert.match(statusMigration, /CREATE TABLE IF NOT EXISTS game_registry_lifecycle/);
   assert.match(statusMigration, /development.*disabled.*active/);
-  assert.match(statusMigration, /UPDATE game_registry/);
+  assert.match(statusMigration, /INSERT OR IGNORE INTO game_registry_lifecycle/);
+  assert.match(statusMigration, /REFERENCES game_registry\(id\)/);
   assert.doesNotMatch(statusMigration, /DROP TABLE|DELETE FROM|UPDATE user_wallets|wallet_transactions/i);
 });
 
@@ -42,6 +43,7 @@ test("game administration requires a verified admin session and excludes moderat
   assert.match(route, /request\.method === "POST"/);
   assert.match(route, /request\.method === "PATCH"/);
   assert.match(route, /isSafeExternalHttpsUrl\(gameUrl\)/);
+  assert.match(route, /game_registry_lifecycle/);
   assert.match(route, /status = COALESCE\(\?, status\)/);
   assert.match(route, /game_url_required_before_activation/);
   assert.match(route, /development.*disabled.*active/);
