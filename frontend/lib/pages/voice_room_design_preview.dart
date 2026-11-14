@@ -787,20 +787,29 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ),
           const Spacer(),
           const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(.3),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(trophies, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 4),
-                const Text('🏆', style: TextStyle(fontSize: 16)),
-              ],
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(.3),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: const Text('🏆', style: TextStyle(fontSize: 16)),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                trophies,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 10),
           _headerAction(Icons.close_rounded, () => _showSaveLeaveDialog(context), 28),
