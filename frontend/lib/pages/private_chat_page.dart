@@ -89,6 +89,15 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
           .whereType<Map>()
           .map((item) => Map<String, dynamic>.from(item))
           .toList();
+      // Keep the timeline chronological even if the API changes its sort order.
+      rows.sort((a, b) {
+        final aDate = _dateForMessage(a);
+        final bDate = _dateForMessage(b);
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        return aDate.compareTo(bDate);
+      });
       if (!mounted) return;
       setState(() {
         _messages = rows;
@@ -161,12 +170,27 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
   String _senderId(Map<String, dynamic> message) =>
       (message['senderId'] ?? message['sender_id'] ?? '').toString();
 
-  DateTime? _messageDate(Map<String, dynamic> message) {
-    final raw = message['createdAt'] ?? message['created_at'] ??
-        message['timestamp'] ?? message['sentAt'];
+  DateTime? _dateForMessage(Map<String, dynamic> message) {
+    final raw = message['createdAt'] ??
+        message['created_at'] ??
+        message['timestamp'] ??
+        message['sentAt'];
     if (raw == null) return null;
+    if (raw is num) {
+      final value = raw.toInt();
+      final milliseconds = value.abs() < 1000000000000
+          ? value * 1000
+          : value;
+      return DateTime.fromMillisecondsSinceEpoch(
+        milliseconds,
+        isUtc: true,
+      ).toLocal();
+    }
     return DateTime.tryParse(raw.toString())?.toLocal();
   }
+
+  DateTime? _messageDate(Map<String, dynamic> message) =>
+      _dateForMessage(message);
 
   bool _startsTimeGroup(int index) {
     // A timestamp is only inserted BETWEEN messages, never above the first one.
