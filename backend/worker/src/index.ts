@@ -3679,7 +3679,7 @@ export default {
             "CASE WHEN c.kind = 'direct' THEN other_profile.avatar_key ELSE NULL END AS avatarUrl, " +
             "(SELECT COUNT(*) FROM private_messages unread WHERE unread.conversation_id = c.id AND unread.sender_id <> ? AND unread.deleted_at IS NULL AND (mine.last_read_at IS NULL OR unread.created_at > mine.last_read_at)) AS unreadCount " +
             "FROM conversation_members mine INNER JOIN conversations c ON c.id = mine.conversation_id " +
-            "LEFT JOIN conversation_members other_member ON other_member.conversation_id = c.id AND other_member.user_id <> ? " +
+            "LEFT JOIN conversation_members other_member ON other_member.conversation_id = c.id AND c.kind = 'direct' AND other_member.user_id <> ? " +
             "LEFT JOIN users other ON other.id = other_member.user_id AND c.kind = 'direct' " +
             "LEFT JOIN profiles other_profile ON other_profile.user_id = other.id " +
             "LEFT JOIN private_messages last_message ON last_message.id = (SELECT pm.id FROM private_messages pm WHERE pm.conversation_id = c.id AND pm.deleted_at IS NULL ORDER BY pm.created_at DESC LIMIT 1) " +
@@ -3759,7 +3759,7 @@ export default {
             "FROM conversation_members cm INNER JOIN users u ON u.id = cm.user_id LEFT JOIN profiles p ON p.user_id = u.id " +
             "WHERE cm.conversation_id = ? ORDER BY cm.joined_at ASC"
           ).bind(conversationId).all();
-          return json({ ok: true, messages: (rows.results ?? []).reverse(), participants: participants.results ?? [] }, 200, origin, env);
+          return json({ ok: true, currentUserId: viewer.id, messages: (rows.results ?? []).reverse(), participants: participants.results ?? [] }, 200, origin, env);
         }
         if (action === "messages" && request.method === "POST") {
           const body = await request.json() as Record<string, unknown>;
