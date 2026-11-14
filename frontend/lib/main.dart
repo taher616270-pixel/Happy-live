@@ -1833,7 +1833,7 @@ class _HappyCreateTab extends StatelessWidget {
         subtitle: 'العب واربح باستخدام رصيد محفظتك',
         onTap: () => openFoodWheelGame(context, accessToken: accessToken),
       ),
-      const DynamicGamesList(),
+      if (kIsWeb) const DynamicGamesList(),
       const SizedBox(height: 23),
       const Padding(
         padding: EdgeInsets.only(right: 3, bottom: 12),
