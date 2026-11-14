@@ -137,6 +137,10 @@ export async function handleGamesApiRequest(
           "INSERT INTO game_session_app_bindings (game_session_id, app_session_id, created_at) VALUES (?, ?, ?)"
         ).bind(gameSessionId, user.session_id, now.toISOString())
       ]);
+      const playerProfile = await db.prepare(
+        "SELECT avatar_key AS avatarUrl, country_name AS countryName FROM profiles WHERE user_id = ? LIMIT 1"
+      ).bind(user.id).first<{ avatarUrl: string | null; countryName: string | null }>();
+      const publicPlayerId = user.gabo_id ?? "";
       return reply({
         ok: true,
         tokenType: "Bearer",
@@ -144,7 +148,14 @@ export async function handleGamesApiRequest(
         expiresAt,
         expiresIn: GAME_SESSION_TTL_SECONDS,
         game: { id: game.id, name: game.name },
-        player: { userCode: user.gabo_id ?? "", displayName: user.display_name ?? "" },
+        player: {
+          id: publicPlayerId,
+          userCode: publicPlayerId,
+          displayName: user.display_name ?? "",
+          avatarUrl: playerProfile?.avatarUrl ?? null,
+          countryName: playerProfile?.countryName ?? null,
+          accountStatus: "active"
+        },
         permissions: GAME_PERMISSIONS
       }, 201, origin, env);
     }
@@ -201,9 +212,36 @@ export async function handleGamesApiRequest(
     if (isProfile) {
       if (!has("profile.read")) return reply({ error: "permission_denied" }, 403, origin, env);
       const profile = await db.prepare(
-        "SELECT display_name AS displayName, gabo_id AS userCode, avatar_key AS avatarUrl, country_name AS countryName FROM profiles WHERE user_id = ? LIMIT 1"
-      ).bind(session.userId).first();
-      return reply({ ok: true, profile: profile ?? { displayName: "", userCode: "", avatarUrl: null, countryName: null } }, 200, origin, env);
+        "SELECT u.status AS accountStatus, p.display_name AS displayName, p.gabo_id AS userCode, p.avatar_key AS avatarUrl, p.country_name AS countryName FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id = ? LIMIT 1"
+      ).bind(session.userId).first<{
+        accountStatus: string;
+        displayName: string | null;
+        userCode: string | null;
+        avatarUrl: string | null;
+        countryName: string | null;
+      }>();
+      if (!profile || profile.accountStatus !== "active") {
+        return reply({ error: "player_account_unavailable" }, 403, origin, env);
+      }
+      const publicPlayerId = profile.userCode ?? "";
+      return reply({
+        ok: true,
+        player: {
+          id: publicPlayerId,
+          userCode: publicPlayerId,
+          displayName: profile.displayName ?? "",
+          avatarUrl: profile.avatarUrl,
+          countryName: profile.countryName,
+          accountStatus: profile.accountStatus
+        },
+        // Keep the earlier key for clients already using the phase-2 profile response.
+        profile: {
+          displayName: profile.displayName ?? "",
+          userCode: publicPlayerId,
+          avatarUrl: profile.avatarUrl,
+          countryName: profile.countryName
+        }
+      }, 200, origin, env);
     }
     if (isWallet) {
       if (!has("wallet.read")) return reply({ error: "permission_denied" }, 403, origin, env);
