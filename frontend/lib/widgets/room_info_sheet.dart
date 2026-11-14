@@ -771,47 +771,71 @@ class _RoomInfoSheet extends StatelessWidget {
   }
 
   Widget _countryFlag(BuildContext context, String countryName) {
-    final savedProfileFlag = countryFlagForProfileName(countryName);
-    if (savedProfileFlag == 'SOUTH_ARABIA') {
+    final value = countryName.trim();
+    if (value.isEmpty) return const SizedBox.shrink();
+
+    // Resolve the saved profile name first. South Arabia must never be
+    // interpreted as Yemen or another ISO country.
+    final savedProfileFlag = countryFlagForProfileName(value);
+    final normalized = value.toLowerCase().replaceAll(RegExp(r'[\\s_\\-]+'), ' ').trim();
+    if (savedProfileFlag == 'SOUTH_ARABIA' ||
+        normalized == 'south arabia' ||
+        normalized == 'الجنوب العربي' ||
+        normalized == 'دولة الجنوب العربي') {
+      return const SizedBox(
+        width: 26,
+        height: 26,
+        child: Center(child: SquareCountryFlag('SOUTH_ARABIA', size: 26)),
+      );
+    }
+
+    // Accept both ISO-2 values and the country names commonly returned by
+    // older profile/API responses (Arabic and English).
+    const aliases = <String, String>{
+      'saudi arabia': 'SA', 'saudi': 'SA', 'ksa': 'SA',
+      'السعودية': 'SA', 'المملكة العربية السعودية': 'SA',
+      'yemen': 'YE', 'اليمن': 'YE',
+      'kuwait': 'KW', 'الكويت': 'KW',
+      'united arab emirates': 'AE', 'uae': 'AE',
+      'الإمارات': 'AE', 'الامارات': 'AE', 'الإمارات العربية المتحدة': 'AE',
+      'qatar': 'QA', 'قطر': 'QA',
+      'morocco': 'MA', 'المغرب': 'MA',
+      'egypt': 'EG', 'مصر': 'EG',
+      'syria': 'SY', 'سوريا': 'SY',
+      'turkey': 'TR', 'türkiye': 'TR', 'تركيا': 'TR',
+      'algeria': 'DZ', 'الجزائر': 'DZ',
+      'bahrain': 'BH', 'البحرين': 'BH',
+      'iraq': 'IQ', 'العراق': 'IQ',
+      'jordan': 'JO', 'الأردن': 'JO', 'الاردن': 'JO',
+      'lebanon': 'LB', 'لبنان': 'LB',
+      'oman': 'OM', 'عمان': 'OM', 'عُمان': 'OM',
+      'pakistan': 'PK', 'باكستان': 'PK',
+      'palestine': 'PS', 'فلسطين': 'PS',
+      'sudan': 'SD', 'السودان': 'SD',
+    };
+    final code = aliases[normalized] ??
+        (RegExp(r'^[a-z]{2}$').hasMatch(normalized) ? normalized.toUpperCase() : '');
+    if (code.isNotEmpty) {
       return SizedBox(
         width: 26,
         height: 26,
-        child: Center(
-          child: SquareCountryFlag('SOUTH_ARABIA', size: 26),
-        ),
+        child: Center(child: SquareCountryFlag(code, size: 26)),
       );
     }
-    if (savedProfileFlag.isNotEmpty) {
-      return SizedBox(
-        width: 26,
-        height: 26,
-        child: Center(child: SquareCountryFlag(savedProfileFlag, size: 26)),
-      );
-    }
-    if (countryName.trim().isEmpty) return const SizedBox.shrink();
+
+    // Fallback for localized names not covered by the saved profile list.
     for (final country in CountryService().getAll()) {
       final translated = country.getTranslatedName(context) ?? country.name;
-      if (translated.trim() == countryName.trim() ||
-          country.name.trim().toLowerCase() == countryName.trim().toLowerCase()) {
+      if (translated.trim().toLowerCase() == normalized ||
+          country.name.trim().toLowerCase() == normalized) {
         return SizedBox(
-          width: 22,
-          height: 22,
+          width: 26,
+          height: 26,
           child: Center(child: SquareCountryFlag(country.flagEmoji, size: 26)),
         );
       }
     }
-    // Backward compatibility for older room snapshots that carried ISO codes.
-    final code = countryName.trim().toUpperCase();
-    if (code.length == 2 &&
-        code.codeUnits.every((unit) => unit >= 65 && unit <= 90)) {
-      return SizedBox(
-        width: 26,
-        height: 26,
-        child: Center(
-          child: SquareCountryFlag(String.fromCharCodes(code.codeUnits.map((unit) => 0x1F1E6 + unit - 65)), size: 26),
-        ),
-      );
-    }
+
     return const SizedBox.shrink();
   }
 
