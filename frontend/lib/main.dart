@@ -1934,7 +1934,7 @@ class _HappyConversationPageState extends State<_HappyConversationPage> {
   void initState() {
     super.initState();
     _loadMessages();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) => _loadMessages(silent: true));
+    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (_) => _loadMessages(silent: true));
   }
 
   @override
