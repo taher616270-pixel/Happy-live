@@ -139,26 +139,27 @@ export async function handleGamesApiRequest(
     if (!rate) return json({ error: "game_session_expired_or_invalid" }, 401, origin, env);
     if (rate.request_count > GAME_SESSION_RATE_MAX_REQUESTS) return json({ error: "game_rate_limited" }, 429, origin, env);
     const permissions = JSON.parse(session.permissionsJson) as string[];
+    const gameJson = (data: unknown, status = 200) => withGameCors(json(data, status, undefined, env), origin, session.gameOrigin);
     const has = (permission: string) => permissions.includes(permission);
     if (isRevoke) {
       await db.prepare("UPDATE game_sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL").bind(new Date().toISOString(), session.id).run();
-      return json({ ok: true, revoked: true }, 200, origin, env);
+      return gameJson({ ok: true, revoked: true }, 200, origin, env);
     }
     if (isSession) {
-      if (!has("session.read")) return json({ error: "permission_denied" }, 403, origin, env);
-      return json({ ok: true, game: { id: session.gameId, name: session.gameName }, expiresAt: session.expiresAt, permissions }, 200, origin, env);
+      if (!has("session.read")) return gameJson({ error: "permission_denied" }, 403, origin, env);
+      return gameJson({ ok: true, game: { id: session.gameId, name: session.gameName }, expiresAt: session.expiresAt, permissions }, 200, origin, env);
     }
     if (isProfile) {
-      if (!has("profile.read")) return json({ error: "permission_denied" }, 403, origin, env);
+      if (!has("profile.read")) return gameJson({ error: "permission_denied" }, 403, origin, env);
       const profile = await db.prepare(
         "SELECT display_name AS displayName, gabo_id AS userCode, avatar_key AS avatarUrl, country_name AS countryName FROM profiles WHERE user_id = ? LIMIT 1"
       ).bind(session.userId).first();
-      return json({ ok: true, profile: profile ?? { displayName: "", userCode: "", avatarUrl: null, countryName: null } }, 200, origin, env);
+      return gameJson({ ok: true, profile: profile ?? { displayName: "", userCode: "", avatarUrl: null, countryName: null } }, 200, origin, env);
     }
     if (isWallet) {
-      if (!has("wallet.read")) return json({ error: "permission_denied" }, 403, origin, env);
+      if (!has("wallet.read")) return gameJson({ error: "permission_denied" }, 403, origin, env);
       const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(session.userId).first<{ balance: number }>();
-      return json({ ok: true, balance: wallet?.balance ?? 0, currency: "coins" }, 200, origin, env);
+      return gameJson({ ok: true, balance: wallet?.balance ?? 0, currency: "coins" }, 200, origin, env);
     }
     return null;
   } catch (error) {
