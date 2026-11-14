@@ -420,7 +420,7 @@ export default {
     if (url.pathname === "/api/v1/games/catalog" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
-        const rows = await env.DB.prepare(
+        const rows = await env.DB!.prepare(
           "SELECT g.id, g.name, g.game_url AS url, g.icon_url AS iconUrl, g.description, g.category, g.sort_order AS sortOrder " +
           "FROM game_registry g INNER JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE l.status = 'active' AND g.enabled = 1 AND g.game_url <> 'https://pending-game.happylive.invalid' ORDER BY g.sort_order ASC, g.created_at DESC"
         ).all();
@@ -440,7 +440,7 @@ export default {
         if (actor.role !== "owner" && actor.role !== "admin") return json({ error: "permission_denied" }, 403, origin, env);
         const gameId = adminGamesRoute[1];
         if (request.method === "GET") {
-          const rows = await env.DB.prepare(
+          const rows = await env.DB!.prepare(
             "SELECT g.id, g.name, CASE WHEN g.game_url = 'https://pending-game.happylive.invalid' THEN '' ELSE g.game_url END AS url, g.icon_url AS iconUrl, g.description, g.category, COALESCE(l.status, 'disabled') AS status, g.enabled, g.sort_order AS sortOrder, g.created_at AS createdAt, g.updated_at AS updatedAt " +
             "FROM game_registry g LEFT JOIN game_registry_lifecycle l ON l.game_id = g.id ORDER BY g.sort_order ASC, g.created_at DESC"
           ).all();
@@ -467,15 +467,15 @@ export default {
           const now = new Date().toISOString();
           const id = crypto.randomUUID();
           const enabled = status === "active" ? 1 : 0;
-          await env.DB.batch([
-            env.DB.prepare("INSERT INTO game_registry (id, name, game_url, icon_url, description, category, enabled, sort_order, created_by_admin_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(id, name, gameUrl, iconUrl || null, description, category, enabled, sortOrder, actor.id, now, now),
-            env.DB.prepare("INSERT INTO game_registry_lifecycle (game_id, status, updated_at) VALUES (?, ?, ?)").bind(id, status, now),
-            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.create', 'game', ?, ?, ?)").bind(crypto.randomUUID(), id, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, name, status }), now)
+          await env.DB!.batch([
+            env.DB!.prepare("INSERT INTO game_registry (id, name, game_url, icon_url, description, category, enabled, sort_order, created_by_admin_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(id, name, gameUrl, iconUrl || null, description, category, enabled, sortOrder, actor.id, now, now),
+            env.DB!.prepare("INSERT INTO game_registry_lifecycle (game_id, status, updated_at) VALUES (?, ?, ?)").bind(id, status, now),
+            env.DB!.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.create', 'game', ?, ?, ?)").bind(crypto.randomUUID(), id, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, name, status }), now)
           ]);
           return json({ ok: true, game: { id, name, url: requestedUrl, iconUrl: iconUrl || null, description, category, status, enabled, sortOrder } }, 201, origin, env);
         }
         if (!gameId) return json({ error: "game_id_required" }, 400, origin, env);
-        const current = await env.DB.prepare("SELECT g.id, g.game_url, COALESCE(l.status, 'disabled') AS status FROM game_registry g LEFT JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE g.id = ? LIMIT 1").bind(gameId).first<{ id: string; game_url: string; status: string }>();
+        const current = await env.DB!.prepare("SELECT g.id, g.game_url, COALESCE(l.status, 'disabled') AS status FROM game_registry g LEFT JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE g.id = ? LIMIT 1").bind(gameId).first<{ id: string; game_url: string; status: string }>();
         if (!current) return json({ error: "game_not_found" }, 404, origin, env);
         const name = typeof body.name === "string" ? body.name.trim() : null;
         const requestedUrl = typeof body.url === "string" ? body.url.trim() : null;
@@ -499,10 +499,10 @@ export default {
         if (category !== null && (category.length < 1 || category.length > 40)) return json({ error: "invalid_category" }, 400, origin, env);
         const updatedAt = new Date().toISOString();
         const enabled = status === null ? null : (status === "active" ? 1 : 0);
-        await env.DB.batch([
-          env.DB.prepare("UPDATE game_registry SET name = COALESCE(?, name), game_url = COALESCE(?, game_url), icon_url = COALESCE(?, icon_url), description = COALESCE(?, description), category = COALESCE(?, category), enabled = COALESCE(?, enabled), sort_order = COALESCE(?, sort_order), updated_at = ? WHERE id = ?").bind(name, gameUrl, iconUrl, description, category, enabled, sortOrder, updatedAt, gameId),
-          env.DB.prepare("UPDATE game_registry_lifecycle SET status = COALESCE(?, status), updated_at = ? WHERE game_id = ?").bind(status, updatedAt, gameId),
-          env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.update', 'game', ?, ?, ?)").bind(crypto.randomUUID(), gameId, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, changed: { name, url: requestedUrl, iconUrl, description, category, status, sortOrder } }), updatedAt)
+        await env.DB!.batch([
+          env.DB!.prepare("UPDATE game_registry SET name = COALESCE(?, name), game_url = COALESCE(?, game_url), icon_url = COALESCE(?, icon_url), description = COALESCE(?, description), category = COALESCE(?, category), enabled = COALESCE(?, enabled), sort_order = COALESCE(?, sort_order), updated_at = ? WHERE id = ?").bind(name, gameUrl, iconUrl, description, category, enabled, sortOrder, updatedAt, gameId),
+          env.DB!.prepare("UPDATE game_registry_lifecycle SET status = COALESCE(?, status), updated_at = ? WHERE game_id = ?").bind(status, updatedAt, gameId),
+          env.DB!.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.update', 'game', ?, ?, ?)").bind(crypto.randomUUID(), gameId, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, changed: { name, url: requestedUrl, iconUrl, description, category, status, sortOrder } }), updatedAt)
         ]);
         return json({ ok: true }, 200, origin, env);
       } catch (error) {
@@ -512,7 +512,7 @@ export default {
     }
     if (url.pathname === "/api/v1/admin/auth/setup-status" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
-      const state = await env.DB.prepare("SELECT id FROM admin_setup_state WHERE id = 'primary-owner' LIMIT 1").first();
+      const state = await env.DB!.prepare("SELECT id FROM admin_setup_state WHERE id = 'primary-owner' LIMIT 1").first();
       return json({ setupRequired: !state }, 200, origin, env);
     }
 
@@ -520,7 +520,7 @@ export default {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       if (!env.ADMIN_SETUP_TOKEN) return json({ error: "admin_setup_not_configured" }, 503, origin, env);
       try {
-        const state = await env.DB.prepare("SELECT id FROM admin_setup_state WHERE id = 'primary-owner' LIMIT 1").first();
+        const state = await env.DB!.prepare("SELECT id FROM admin_setup_state WHERE id = 'primary-owner' LIMIT 1").first();
         if (state) return json({ error: "admin_setup_already_completed" }, 409, origin, env);
         const body = await request.json() as Record<string, unknown>;
         const suppliedToken = typeof body.setupToken === "string" ? body.setupToken : "";
@@ -532,18 +532,18 @@ export default {
         if (password.length < 12 || password.length > 128 || password !== confirmation) {
           return json({ error: "invalid_password", message: "استخدم كلمة مرور من 12 حرفًا على الأقل وتأكد من تطابق الحقلين" }, 400, origin, env);
         }
-        const owner = await env.DB.prepare("SELECT id FROM admin_accounts WHERE username = 'owner' COLLATE NOCASE AND status = 'active' LIMIT 1")
+        const owner = await env.DB!.prepare("SELECT id FROM admin_accounts WHERE username = 'owner' COLLATE NOCASE AND status = 'active' LIMIT 1")
           .first<{ id: string }>();
         if (!owner) return json({ error: "primary_admin_not_found" }, 404, origin, env);
         const nonce = crypto.randomUUID();
         const now = new Date().toISOString();
         const passwordHash = await hashPassword(password);
-        const results = await env.DB.batch([
-          env.DB.prepare("INSERT OR IGNORE INTO admin_setup_state (id, setup_nonce, completed_at) VALUES ('primary-owner', ?, ?)")
+        const results = await env.DB!.batch([
+          env.DB!.prepare("INSERT OR IGNORE INTO admin_setup_state (id, setup_nonce, completed_at) VALUES ('primary-owner', ?, ?)")
             .bind(nonce, now),
-          env.DB.prepare("UPDATE admin_accounts SET password_hash = ?, updated_at = ? WHERE id = ? AND EXISTS (SELECT 1 FROM admin_setup_state WHERE id = 'primary-owner' AND setup_nonce = ?)")
+          env.DB!.prepare("UPDATE admin_accounts SET password_hash = ?, updated_at = ? WHERE id = ? AND EXISTS (SELECT 1 FROM admin_setup_state WHERE id = 'primary-owner' AND setup_nonce = ?)")
             .bind(passwordHash, now, owner.id, nonce),
-          env.DB.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL")
+          env.DB!.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL")
             .bind(now, owner.id)
         ]);
         if ((results[1]?.meta?.changes ?? 0) !== 1) {
@@ -565,7 +565,7 @@ export default {
         const username = typeof body.username === "string" ? body.username.trim().toLowerCase().slice(0, 80) : "";
         const password = typeof body.password === "string" ? body.password : "";
         if (!username || password.length < 1 || password.length > 256) return json({ error: "invalid_credentials" }, 401, origin, env);
-        const account = await env.DB.prepare("SELECT id, password_hash FROM admin_accounts WHERE username = ? COLLATE NOCASE AND status = 'active' LIMIT 1")
+        const account = await env.DB!.prepare("SELECT id, password_hash FROM admin_accounts WHERE username = ? COLLATE NOCASE AND status = 'active' LIMIT 1")
           .bind(username).first<{ id: string; password_hash: string }>();
         if (!account || !(await verifyPassword(password, account.password_hash))) return json({ error: "invalid_credentials", message: "اسم المستخدم أو كلمة المرور غير صحيحة" }, 401, origin, env);
         const session = await createAdminSession(env.DB, account.id);
@@ -579,7 +579,7 @@ export default {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       const authorization = request.headers.get("Authorization") ?? "";
       const match = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
-      if (match) await env.DB.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL")
+      if (match) await env.DB!.prepare("UPDATE admin_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL")
         .bind(new Date().toISOString(), await sha256(match[1])).run();
       return json({ ok: true }, 200, origin, env);
     }
@@ -593,7 +593,7 @@ export default {
         const status = url.searchParams.get("status") || "pending";
         if (!["pending", "reviewed", "dismissed", "all"].includes(status)) return json({ error: "invalid_report_status" }, 400, origin, env);
         const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 50), 1), 100);
-        const rows = await env.DB.prepare(
+        const rows = await env.DB!.prepare(
           "SELECT r.id, r.room_code, r.room_name, r.targets_json, r.violation, r.status, r.created_at, r.reviewed_at, " +
           "p.display_name AS reporter_name, p.happy_id AS reporter_code, a.display_name AS reviewer_name " +
           "FROM room_profile_reports r LEFT JOIN profiles p ON p.user_id = r.reporter_id LEFT JOIN admin_accounts a ON a.id = r.reviewed_by " +
@@ -616,7 +616,7 @@ export default {
         const body = await request.json() as Record<string, unknown>;
         const status = typeof body.status === "string" ? body.status : "";
         if (!["reviewed", "dismissed"].includes(status)) return json({ error: "invalid_report_status" }, 400, origin, env);
-        const result = await env.DB.prepare("UPDATE room_profile_reports SET status = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ?")
+        const result = await env.DB!.prepare("UPDATE room_profile_reports SET status = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ?")
           .bind(status, new Date().toISOString(), admin.id, roomReportStatusRoute[1]).run();
         if ((result.meta?.changes ?? 0) === 0) return json({ error: "report_not_found" }, 404, origin, env);
         return json({ ok: true, status }, 200, origin, env);
@@ -660,9 +660,9 @@ export default {
           if (request.method === "PATCH" && actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           if (request.method === "GET") {
             const [settings, withdrawal, totals] = await Promise.all([
-              env.DB.prepare("SELECT app_percent AS appPercent, recipient_percent AS recipientPercent, updated_at AS updatedAt FROM gift_revenue_settings WHERE id = 'current'").first<Record<string, unknown>>(),
-              env.DB.prepare("SELECT enabled, agency_integration_ready AS agencyIntegrationReady, minimum_coins AS minimumCoins FROM gift_withdrawal_settings WHERE id = 'current'").first<Record<string, unknown>>(),
-              env.DB.prepare("SELECT COUNT(*) AS giftCount, COALESCE(SUM(coin_cost), 0) AS totalGiftCoins, COALESCE(SUM(app_coins), 0) AS appCoins, COALESCE(SUM(recipient_coins), 0) AS recipientCoins FROM gift_transactions WHERE status = 'succeeded'").first<Record<string, unknown>>()
+              env.DB!.prepare("SELECT app_percent AS appPercent, recipient_percent AS recipientPercent, updated_at AS updatedAt FROM gift_revenue_settings WHERE id = 'current'").first<Record<string, unknown>>(),
+              env.DB!.prepare("SELECT enabled, agency_integration_ready AS agencyIntegrationReady, minimum_coins AS minimumCoins FROM gift_withdrawal_settings WHERE id = 'current'").first<Record<string, unknown>>(),
+              env.DB!.prepare("SELECT COUNT(*) AS giftCount, COALESCE(SUM(coin_cost), 0) AS totalGiftCoins, COALESCE(SUM(app_coins), 0) AS appCoins, COALESCE(SUM(recipient_coins), 0) AS recipientCoins FROM gift_transactions WHERE status = 'succeeded'").first<Record<string, unknown>>()
             ]);
             return json({
               ok: true,
@@ -679,14 +679,14 @@ export default {
           if (!Number.isInteger(appPercent) || !Number.isInteger(recipientPercent) || appPercent < 0 || appPercent > 100 || recipientPercent < 0 || recipientPercent > 100 || appPercent + recipientPercent !== 100) {
             return json({ error: "invalid_revenue_split", message: "يجب أن تكون النسب أعدادًا صحيحة ومجموعها 100%" }, 400, origin, env);
           }
-          const current = await env.DB.prepare("SELECT app_percent, recipient_percent FROM gift_revenue_settings WHERE id = 'current'").first<{ app_percent: number; recipient_percent: number }>();
+          const current = await env.DB!.prepare("SELECT app_percent, recipient_percent FROM gift_revenue_settings WHERE id = 'current'").first<{ app_percent: number; recipient_percent: number }>();
           if (!current) return json({ error: "gift_settings_not_initialized" }, 503, origin, env);
           const now = new Date().toISOString();
           const auditId = crypto.randomUUID();
-          const results = await env.DB.batch([
-            env.DB.prepare("UPDATE gift_revenue_settings SET app_percent = ?, recipient_percent = ?, updated_by_admin_id = ?, updated_at = ? WHERE id = 'current' AND app_percent = ? AND recipient_percent = ?")
+          const results = await env.DB!.batch([
+            env.DB!.prepare("UPDATE gift_revenue_settings SET app_percent = ?, recipient_percent = ?, updated_by_admin_id = ?, updated_at = ? WHERE id = 'current' AND app_percent = ? AND recipient_percent = ?")
               .bind(appPercent, recipientPercent, actor.id, now, current.app_percent, current.recipient_percent),
-            env.DB.prepare(
+            env.DB!.prepare(
               "INSERT INTO gift_revenue_settings_audit (id, admin_id, old_app_percent, old_recipient_percent, new_app_percent, new_recipient_percent, created_at) " +
               "SELECT ?, ?, ?, ?, ?, ?, ? FROM gift_revenue_settings WHERE id = 'current' AND app_percent = ? AND recipient_percent = ? AND updated_by_admin_id = ? AND updated_at = ?"
             ).bind(auditId, actor.id, current.app_percent, current.recipient_percent, appPercent, recipientPercent, now, appPercent, recipientPercent, actor.id, now)
@@ -697,7 +697,7 @@ export default {
         if (url.pathname === "/api/v1/admin/gifts/banner-settings" && (request.method === "GET" || request.method === "PATCH")) {
           if (actor.role !== "owner" && actor.role !== "admin") return json({ error: "permission_denied" }, 403, origin, env);
           if (request.method === "GET") {
-            const settings = await env.DB.prepare(
+            const settings = await env.DB!.prepare(
               "SELECT enabled, minimum_coins AS minimumCoins, updated_at AS updatedAt FROM gift_banner_settings WHERE id = 'current'"
             ).first<Record<string, unknown>>();
             return json({ ok: true, settings: settings ?? { enabled: 0, minimumCoins: 0, updatedAt: null } }, 200, origin, env);
@@ -712,7 +712,7 @@ export default {
             return json({ error: "invalid_banner_minimum", message: "أدخل حدًا صحيحًا من 0 إلى مليار كوينز" }, 400, origin, env);
           }
           const now = new Date().toISOString();
-          await env.DB.prepare(
+          await env.DB!.prepare(
             "INSERT INTO gift_banner_settings (id, enabled, minimum_coins, updated_by_admin_id, updated_at) VALUES ('current', ?, ?, ?, ?) " +
             "ON CONFLICT(id) DO UPDATE SET enabled = excluded.enabled, minimum_coins = excluded.minimum_coins, updated_by_admin_id = excluded.updated_by_admin_id, updated_at = excluded.updated_at"
           ).bind(enabled ? 1 : 0, minimumCoins, actor.id, now).run();
@@ -722,7 +722,7 @@ export default {
           if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const itemRoute = url.pathname.match(/^\/api\/v1\/admin\/gifts\/catalog\/([a-z0-9-]{1,80})$/i);
           if (request.method === "GET" && !itemRoute) {
-            const rows = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, sound_url AS soundUrl, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt, created_at AS createdAt, updated_at AS updatedAt FROM gift_catalog ORDER BY category ASC, sort_order ASC, created_at ASC").all();
+            const rows = await env.DB!.prepare("SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, sound_url AS soundUrl, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt, created_at AS createdAt, updated_at AS updatedAt FROM gift_catalog ORDER BY category ASC, sort_order ASC, created_at ASC").all();
             return json({ ok: true, gifts: rows.results ?? [] }, 200, origin, env);
           }
           if (request.method === "POST" && !itemRoute) {
@@ -744,14 +744,14 @@ export default {
             if ((mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) || !["emoji", "svga", "apng", "webp"].includes(mediaType) || (mediaUrl && mediaType === "emoji") || (!mediaUrl && mediaType !== "emoji")) return json({ error: "invalid_gift_media", message: "رابط الوسائط يجب أن يكون HTTPS ونوعه SVGA أو APNG أو WEBP." }, 400, origin, env);
             if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من اسم الهدية ورمزها وسعرها وتصنيفها والدولة وفترة العرض." }, 400, origin, env);
             const id = crypto.randomUUID(), now = new Date().toISOString();
-            await env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, media_url, media_type, sound_url, coin_price, is_active, sort_order, created_at, updated_at, category, country_code, starts_at, ends_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+            await env.DB!.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, media_url, media_type, sound_url, coin_price, is_active, sort_order, created_at, updated_at, category, country_code, starts_at, ends_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
               .bind(id, name, iconEmoji, mediaUrl, mediaType, soundUrl, coinPrice, isActive, sortOrder, now, now, category, countryCode, startsAt, endsAt).run();
             return json({ ok: true, gift: { id, name, iconEmoji, mediaUrl, mediaType, soundUrl, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, createdAt: now, updatedAt: now } }, 201, origin, env);
           }
           if (request.method === "PATCH" && itemRoute) {
             let body: Record<string, unknown>;
             try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
-            const current = await env.DB.prepare("SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, sound_url AS soundUrl, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt FROM gift_catalog WHERE id = ?").bind(itemRoute[1]).first<Record<string, unknown>>();
+            const current = await env.DB!.prepare("SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, sound_url AS soundUrl, coin_price AS coinPrice, is_active AS isActive, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt FROM gift_catalog WHERE id = ?").bind(itemRoute[1]).first<Record<string, unknown>>();
             if (!current) return json({ error: "gift_not_found" }, 404, origin, env);
             const name = body.name === undefined ? String(current.name) : (typeof body.name === "string" ? body.name.trim() : "");
             const iconEmoji = body.iconEmoji === undefined ? String(current.iconEmoji) : (typeof body.iconEmoji === "string" ? body.iconEmoji.trim() : "");
@@ -769,12 +769,12 @@ export default {
             if ((mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) || !["emoji", "svga", "apng", "webp"].includes(mediaType) || (mediaUrl && mediaType === "emoji") || (!mediaUrl && mediaType !== "emoji")) return json({ error: "invalid_gift_media", message: "رابط الوسائط يجب أن يكون HTTPS ونوعه SVGA أو APNG أو WEBP." }, 400, origin, env);
             if (!name || name.length > 80 || !iconEmoji || iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000 || ![0, 1].includes(isActive) || !["event", "trending", "country", "lucky", "custom"].includes(category) || (category === "country" && !countryCode) || (countryCode !== null && !/^[A-Z0-9_-]{2,24}$/.test(countryCode)) || (startsAt && Number.isNaN(Date.parse(startsAt))) || (endsAt && Number.isNaN(Date.parse(endsAt))) || (startsAt && endsAt && Date.parse(endsAt) <= Date.parse(startsAt))) return json({ error: "invalid_gift", message: "تحقق من بيانات الهدية." }, 400, origin, env);
             const now = new Date().toISOString();
-            await env.DB.prepare("UPDATE gift_catalog SET name = ?, icon_emoji = ?, media_url = ?, media_type = ?, sound_url = ?, coin_price = ?, is_active = ?, sort_order = ?, category = ?, country_code = ?, starts_at = ?, ends_at = ?, updated_at = ? WHERE id = ?")
+            await env.DB!.prepare("UPDATE gift_catalog SET name = ?, icon_emoji = ?, media_url = ?, media_type = ?, sound_url = ?, coin_price = ?, is_active = ?, sort_order = ?, category = ?, country_code = ?, starts_at = ?, ends_at = ?, updated_at = ? WHERE id = ?")
               .bind(name, iconEmoji, mediaUrl, mediaType, soundUrl, coinPrice, isActive, sortOrder, category, countryCode, startsAt, endsAt, now, itemRoute[1]).run();
             return json({ ok: true, gift: { id: itemRoute[1], name, iconEmoji, mediaUrl, mediaType, soundUrl, coinPrice, isActive: Boolean(isActive), sortOrder, category, countryCode, startsAt, endsAt, updatedAt: now } }, 200, origin, env);
           }
           if (request.method === "DELETE" && itemRoute) {
-            const result = await env.DB.prepare("UPDATE gift_catalog SET is_active = 0, updated_at = ? WHERE id = ?").bind(new Date().toISOString(), itemRoute[1]).run();
+            const result = await env.DB!.prepare("UPDATE gift_catalog SET is_active = 0, updated_at = ? WHERE id = ?").bind(new Date().toISOString(), itemRoute[1]).run();
             if ((result.meta?.changes ?? 0) === 0) return json({ error: "gift_not_found" }, 404, origin, env);
             return json({ ok: true, deactivated: true }, 200, origin, env);
           }
@@ -784,7 +784,7 @@ export default {
           if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const requestRoute = url.pathname.match(/^\/api\/v1\/admin\/gifts\/custom-requests\/([0-9a-f-]{36})$/i);
           if (request.method === "GET" && !requestRoute) {
-            const rows = await env.DB.prepare("SELECT r.id, r.requested_name AS requestedName, r.description, r.media_url AS mediaUrl, r.media_type AS mediaType, r.media_duration_ms AS mediaDurationMs, r.media_file_id AS mediaFileId, r.sound_url AS soundUrl, r.status, r.admin_note AS adminNote, r.created_at AS createdAt, p.display_name AS displayName, p.happy_id AS happyId FROM gift_custom_requests r LEFT JOIN profiles p ON p.user_id = r.user_id ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, r.created_at DESC LIMIT 200").all();
+            const rows = await env.DB!.prepare("SELECT r.id, r.requested_name AS requestedName, r.description, r.media_url AS mediaUrl, r.media_type AS mediaType, r.media_duration_ms AS mediaDurationMs, r.media_file_id AS mediaFileId, r.sound_url AS soundUrl, r.status, r.admin_note AS adminNote, r.created_at AS createdAt, p.display_name AS displayName, p.happy_id AS happyId FROM gift_custom_requests r LEFT JOIN profiles p ON p.user_id = r.user_id ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, r.created_at DESC LIMIT 200").all();
             return json({ ok: true, requests: rows.results ?? [] }, 200, origin, env);
           }
           if (request.method === "PATCH" && requestRoute) {
@@ -793,11 +793,11 @@ export default {
             const status = body.status;
             const adminNote = typeof body.adminNote === "string" ? body.adminNote.trim() : "";
             if (!["approved", "rejected"].includes(String(status)) || adminNote.length > 500) return json({ error: "invalid_request_review" }, 400, origin, env);
-            const pending = await env.DB.prepare("SELECT id, requested_name AS requestedName FROM gift_custom_requests WHERE id = ? AND status = 'pending'").bind(requestRoute[1]).first<{ id: string; requestedName: string }>();
+            const pending = await env.DB!.prepare("SELECT id, requested_name AS requestedName FROM gift_custom_requests WHERE id = ? AND status = 'pending'").bind(requestRoute[1]).first<{ id: string; requestedName: string }>();
             if (!pending) return json({ error: "request_not_pending" }, 409, origin, env);
             const now = new Date().toISOString();
             if (status === "rejected") {
-              const result = await env.DB.prepare("UPDATE gift_custom_requests SET status = 'rejected', admin_note = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
+              const result = await env.DB!.prepare("UPDATE gift_custom_requests SET status = 'rejected', admin_note = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
                 .bind(adminNote, actor.id, now, requestRoute[1]).run();
               if ((result.meta?.changes ?? 0) !== 1) return json({ error: "request_not_pending" }, 409, origin, env);
               return json({ ok: true, status: "rejected" }, 200, origin, env);
@@ -807,13 +807,13 @@ export default {
             const sortOrder = Number(body.sortOrder ?? 500);
             if (iconEmoji.length > 16 || !Number.isSafeInteger(coinPrice) || coinPrice < 1 || coinPrice > 1000000000 || !Number.isSafeInteger(sortOrder) || sortOrder < 0 || sortOrder > 100000) return json({ error: "invalid_approved_gift" }, 400, origin, env);
             const giftId = crypto.randomUUID();
-            const results = await env.DB.batch([
-              env.DB.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at, category, media_url, media_type, sound_url) " +
+            const results = await env.DB!.batch([
+              env.DB!.prepare("INSERT INTO gift_catalog (id, name, icon_emoji, asset_key, coin_price, is_active, sort_order, created_at, updated_at, category, media_url, media_type, sound_url) " +
                 "SELECT ?, requested_name, ?, '', ?, 1, ?, ?, ?, 'custom', media_url, " +
                 "CASE WHEN media_type = 'gif' THEN 'gif' WHEN media_type = 'svga' THEN 'svga' ELSE 'emoji' END, sound_url " +
                 "FROM gift_custom_requests WHERE id = ? AND status = 'pending'")
                 .bind(giftId, iconEmoji, coinPrice, sortOrder, now, now, requestRoute[1]),
-              env.DB.prepare("UPDATE gift_custom_requests SET status = 'approved', admin_note = ?, approved_gift_id = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
+              env.DB!.prepare("UPDATE gift_custom_requests SET status = 'approved', admin_note = ?, approved_gift_id = ?, reviewed_by_admin_id = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
                 .bind(adminNote, giftId, actor.id, now, requestRoute[1])
             ]);
             if ((results[1]?.meta?.changes ?? 0) !== 1) return json({ error: "request_not_pending" }, 409, origin, env);
@@ -830,17 +830,17 @@ export default {
           const amount = Number(body.amount);
           if (!Number.isSafeInteger(amount) || amount < 1 || amount > 1000000000) return json({ error: "invalid_credit_amount" }, 400, origin, env);
           const targetUserId = adminWalletCreditRoute[1];
-          const target = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1").bind(targetUserId).first<{ id: string }>();
+          const target = await env.DB!.prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1").bind(targetUserId).first<{ id: string }>();
           if (!target) return json({ error: "user_not_found" }, 404, origin, env);
           const now = new Date().toISOString();
           const transactionId = crypto.randomUUID();
-          await env.DB.batch([
-            env.DB.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(targetUserId, now),
-            env.DB.prepare("UPDATE user_wallets SET balance = balance + ?, updated_at = ? WHERE user_id = ?").bind(amount, now, targetUserId),
-            env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, amount, balance_after, transaction_type, reference_id, description, created_at) SELECT ?, user_id, ?, balance, 'admin_credit', ?, 'إضافة رصيد يدوية من الإدارة', ? FROM user_wallets WHERE user_id = ?").bind(transactionId, amount, actor.id, now, targetUserId),
-            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'wallet.credit', 'user', ?, ?, ?)").bind(crypto.randomUUID(), targetUserId, JSON.stringify({ amount, adminId: actor.id, adminUsername: actor.username }), now)
+          await env.DB!.batch([
+            env.DB!.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(targetUserId, now),
+            env.DB!.prepare("UPDATE user_wallets SET balance = balance + ?, updated_at = ? WHERE user_id = ?").bind(amount, now, targetUserId),
+            env.DB!.prepare("INSERT INTO wallet_transactions (id, user_id, amount, balance_after, transaction_type, reference_id, description, created_at) SELECT ?, user_id, ?, balance, 'admin_credit', ?, 'إضافة رصيد يدوية من الإدارة', ? FROM user_wallets WHERE user_id = ?").bind(transactionId, amount, actor.id, now, targetUserId),
+            env.DB!.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'wallet.credit', 'user', ?, ?, ?)").bind(crypto.randomUUID(), targetUserId, JSON.stringify({ amount, adminId: actor.id, adminUsername: actor.username }), now)
           ]);
-          const wallet = await env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(targetUserId).first<{ balance: number }>();
+          const wallet = await env.DB!.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(targetUserId).first<{ balance: number }>();
           return json({ ok: true, userId: targetUserId, credited: amount, balance: wallet?.balance ?? 0 }, 200, origin, env);
         }
 
@@ -867,14 +867,14 @@ export default {
           }
           const now = new Date().toISOString();
           const statements = [
-            env.DB.prepare(
+            env.DB!.prepare(
               "INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('agora_voice_enabled', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at"
             ).bind(body.enabled ? "true" : "false", now)
           ];
           if (!body.enabled) {
-            statements.push(env.DB.prepare("DELETE FROM room_seats"));
+            statements.push(env.DB!.prepare("DELETE FROM room_seats"));
           }
-          statements.push(env.DB.prepare(
+          statements.push(env.DB!.prepare(
             "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'platform', 'agora_voice', ?, ?)"
           ).bind(
             crypto.randomUUID(),
@@ -882,9 +882,9 @@ export default {
             JSON.stringify({ enabled: body.enabled, adminUsername: actor.username, adminId: actor.id, effect: body.enabled ? "voice_service_resumed" : "all_microphone_seats_released" }),
             now
           ));
-          await env.DB.batch(statements);
+          await env.DB!.batch(statements);
           if (env.ROOM_SEATS) {
-            const activeRooms = await env.DB.prepare("SELECT id FROM rooms WHERE status = 'active'").all<{ id: string }>();
+            const activeRooms = await env.DB!.prepare("SELECT id FROM rooms WHERE status = 'active'").all<{ id: string }>();
             const path = body.enabled ? "/enable" : "/clear";
             await Promise.all((activeRooms.results ?? []).map((room) => {
               const stub = env.ROOM_SEATS!.get(env.ROOM_SEATS!.idFromName(room.id));
@@ -899,9 +899,9 @@ export default {
         if (url.pathname === "/api/v1/admin/overview" && request.method === "GET") {
           if (!hasAdminPermission(actor, "dashboard.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const [users, rooms, posts] = await Promise.all([
-            env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM users").first<{total:number;active:number}>(),
-            env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM rooms").first<{total:number;active:number}>(),
-            env.DB.prepare("SELECT COUNT(*) AS total FROM posts WHERE status = 'published'").first<{total:number}>()
+            env.DB!.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM users").first<{total:number;active:number}>(),
+            env.DB!.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM rooms").first<{total:number;active:number}>(),
+            env.DB!.prepare("SELECT COUNT(*) AS total FROM posts WHERE status = 'published'").first<{total:number}>()
           ]);
           return json({ ok: true, overview: {
             users: { total: users?.total ?? 0, active: users?.active ?? 0 },
@@ -913,7 +913,7 @@ export default {
           if (!hasAdminPermission(actor, "users.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
           const limit = Math.max(1, Math.min(100, Number(url.searchParams.get("limit") ?? 50) || 50));
-          const result = await env.DB.prepare(
+          const result = await env.DB!.prepare(
             "SELECT u.id, u.email, u.status, u.auth_provider, u.created_at, p.display_name, p.happy_id, ar.role AS admin_role " +
             "FROM users u LEFT JOIN profiles p ON p.user_id = u.id LEFT JOIN admin_roles ar ON ar.user_id = u.id " +
             "WHERE (? = '' OR u.email LIKE '%' || ? || '%' OR p.display_name LIKE '%' || ? || '%' OR p.happy_id LIKE '%' || ? || '%') " +
@@ -928,12 +928,12 @@ export default {
           const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
           const limit = Math.max(1, Math.min(100, Number(url.searchParams.get("limit") ?? 100) || 100));
           const [summary, result] = await Promise.all([
-            env.DB.prepare(
+            env.DB!.prepare(
               "SELECT COUNT(*) AS users, COALESCE(SUM(COALESCE(w.balance, 0)), 0) AS totalBalance, " +
               "SUM(CASE WHEN COALESCE(w.balance, 0) > 0 THEN 1 ELSE 0 END) AS fundedUsers " +
               "FROM users u LEFT JOIN user_wallets w ON w.user_id = u.id WHERE u.status = 'active'"
             ).first<{ users: number; totalBalance: number; fundedUsers: number }>(),
-            env.DB.prepare(
+            env.DB!.prepare(
               "SELECT u.id, u.email, p.display_name, p.happy_id, COALESCE(w.balance, 0) AS balance, w.updated_at " +
               "FROM users u LEFT JOIN profiles p ON p.user_id = u.id LEFT JOIN user_wallets w ON w.user_id = u.id " +
               "WHERE u.status = 'active' AND (? = '' OR u.email LIKE '%' || ? || '%' OR p.display_name LIKE '%' || ? || '%' OR p.happy_id LIKE '%' || ? || '%') " +
@@ -944,13 +944,13 @@ export default {
           let selectedWallet: Record<string, unknown> | null = null;
           let transactions: unknown[] = [];
           if (userId) {
-            selectedWallet = await env.DB.prepare(
+            selectedWallet = await env.DB!.prepare(
               "SELECT u.id, u.email, p.display_name, p.happy_id, COALESCE(w.balance, 0) AS balance, w.updated_at " +
               "FROM users u LEFT JOIN profiles p ON p.user_id = u.id LEFT JOIN user_wallets w ON w.user_id = u.id " +
               "WHERE u.id = ? AND u.status = 'active' LIMIT 1"
             ).bind(userId).first<Record<string, unknown>>();
             if (selectedWallet) {
-              const history = await env.DB.prepare(
+              const history = await env.DB!.prepare(
                 "SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, reference_id AS referenceId, description, created_at AS createdAt " +
                 "FROM wallet_transactions WHERE user_id = ? " +
                 "UNION ALL " +
@@ -971,7 +971,7 @@ export default {
         }
         if (url.pathname === "/api/v1/admin/rooms" && request.method === "GET") {
           if (!hasAdminPermission(actor, "rooms.read")) return json({ error: "permission_denied" }, 403, origin, env);
-          const result = await env.DB.prepare(
+          const result = await env.DB!.prepare(
             "SELECT r.id, r.room_code, r.name, r.status, r.visibility, r.created_at, u.id AS owner_id, p.display_name AS owner_name " +
             "FROM rooms r INNER JOIN users u ON u.id = r.owner_user_id LEFT JOIN profiles p ON p.user_id = u.id " +
             "ORDER BY r.created_at DESC LIMIT 100"
@@ -980,7 +980,7 @@ export default {
         }
         if (url.pathname === "/api/v1/admin/audit" && request.method === "GET") {
           if (!hasAdminPermission(actor, "audit.read")) return json({ error: "permission_denied" }, 403, origin, env);
-          const result = await env.DB.prepare(
+          const result = await env.DB!.prepare(
             "SELECT l.id, l.action, l.target_type, l.target_id, l.details_json, l.created_at, p.display_name AS actor_name, u.email AS actor_email " +
             "FROM admin_audit_logs l LEFT JOIN users u ON u.id = l.actor_user_id LEFT JOIN profiles p ON p.user_id = l.actor_user_id " +
             "ORDER BY l.created_at DESC LIMIT 100"
@@ -996,13 +996,13 @@ export default {
           if (!hasAdminPermission(actor, "dashboard.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const since = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
           const [users, rooms, posts, messages, dailyUsers, dailyMessages, topFollowers] = await Promise.all([
-            env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active, SUM(CASE WHEN status = 'suspended' THEN 1 ELSE 0 END) AS suspended FROM users").first<{ total: number; active: number; suspended: number }>(),
-            env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM rooms").first<{ total: number; active: number }>(),
-            env.DB.prepare("SELECT COUNT(*) AS total FROM posts WHERE status = 'published'").first<{ total: number }>(),
-            env.DB.prepare("SELECT COUNT(*) AS total FROM room_messages WHERE created_at >= ?").bind(since).first<{ total: number }>(),
-            env.DB.prepare("SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total FROM users WHERE created_at >= ? GROUP BY substr(created_at, 1, 10) ORDER BY day").bind(since).all(),
-            env.DB.prepare("SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total FROM room_messages WHERE created_at >= ? GROUP BY substr(created_at, 1, 10) ORDER BY day").bind(since).all(),
-            env.DB.prepare("SELECT p.display_name AS name, COUNT(*) AS count FROM user_follows f INNER JOIN profiles p ON p.user_id = f.following_id GROUP BY f.following_id, p.display_name ORDER BY count DESC, p.display_name ASC LIMIT 10").all()
+            env.DB!.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active, SUM(CASE WHEN status = 'suspended' THEN 1 ELSE 0 END) AS suspended FROM users").first<{ total: number; active: number; suspended: number }>(),
+            env.DB!.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM rooms").first<{ total: number; active: number }>(),
+            env.DB!.prepare("SELECT COUNT(*) AS total FROM posts WHERE status = 'published'").first<{ total: number }>(),
+            env.DB!.prepare("SELECT COUNT(*) AS total FROM room_messages WHERE created_at >= ?").bind(since).first<{ total: number }>(),
+            env.DB!.prepare("SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total FROM users WHERE created_at >= ? GROUP BY substr(created_at, 1, 10) ORDER BY day").bind(since).all(),
+            env.DB!.prepare("SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total FROM room_messages WHERE created_at >= ? GROUP BY substr(created_at, 1, 10) ORDER BY day").bind(since).all(),
+            env.DB!.prepare("SELECT p.display_name AS name, COUNT(*) AS count FROM user_follows f INNER JOIN profiles p ON p.user_id = f.following_id GROUP BY f.following_id, p.display_name ORDER BY count DESC, p.display_name ASC LIMIT 10").all()
           ]);
           return json({ ok: true, stats: { summary: {
             users: { total: users?.total ?? 0, active: users?.active ?? 0, suspended: users?.suspended ?? 0 },
@@ -1012,7 +1012,7 @@ export default {
         }
         if (url.pathname === "/api/v1/admin/moderators" && request.method === "GET") {
           if (!hasAdminPermission(actor, "users.roles.manage")) return json({ error: "permission_denied" }, 403, origin, env);
-          const result = await env.DB.prepare("SELECT u.id, u.email, u.status, p.display_name, p.happy_id, ar.role, ar.granted_at FROM admin_roles ar INNER JOIN users u ON u.id = ar.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE ar.role IN ('admin', 'moderator') ORDER BY ar.granted_at DESC LIMIT 200").all();
+          const result = await env.DB!.prepare("SELECT u.id, u.email, u.status, p.display_name, p.happy_id, ar.role, ar.granted_at FROM admin_roles ar INNER JOIN users u ON u.id = ar.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE ar.role IN ('admin', 'moderator') ORDER BY ar.granted_at DESC LIMIT 200").all();
           return json({ ok: true, moderators: result.results ?? [] }, 200, origin, env);
         }
         const userRoleRoute = url.pathname.match(/^\/api\/v1\/admin\/users\/([0-9a-f-]{36})\/role$/i);
@@ -1023,16 +1023,16 @@ export default {
           const nextRole = body.role === "admin" || body.role === "moderator" ? body.role : body.role === null ? null : undefined;
           if (nextRole === undefined) return json({ error: "invalid_admin_role" }, 400, origin, env);
           const targetId = userRoleRoute[1];
-          const target = await env.DB.prepare("SELECT u.id, u.status, ar.role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1").bind(targetId).first<{ id: string; status: string; role: string | null }>();
+          const target = await env.DB!.prepare("SELECT u.id, u.status, ar.role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1").bind(targetId).first<{ id: string; status: string; role: string | null }>();
           if (!target) return json({ error: "user_not_found" }, 404, origin, env);
           if (target.status !== "active") return json({ error: "user_must_be_active" }, 409, origin, env);
           if (target.role === "owner") return json({ error: "owner_role_is_protected" }, 403, origin, env);
           const now = new Date().toISOString(), action = nextRole ? "user.role.assign" : "user.role.remove";
           const statements: D1PreparedStatement[] = [];
-          if (nextRole) statements.push(env.DB.prepare("INSERT INTO admin_roles (user_id, role, granted_by, granted_at) VALUES (?, ?, NULL, ?) ON CONFLICT(user_id) DO UPDATE SET role = excluded.role, granted_by = NULL, granted_at = excluded.granted_at").bind(targetId, nextRole, now));
-          else statements.push(env.DB.prepare("DELETE FROM admin_roles WHERE user_id = ? AND role <> 'owner'").bind(targetId));
-          statements.push(env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'user', ?, ?, ?)").bind(crypto.randomUUID(), action, targetId, JSON.stringify({ role: nextRole, adminUsername: actor.username, adminId: actor.id }), now));
-          await env.DB.batch(statements);
+          if (nextRole) statements.push(env.DB!.prepare("INSERT INTO admin_roles (user_id, role, granted_by, granted_at) VALUES (?, ?, NULL, ?) ON CONFLICT(user_id) DO UPDATE SET role = excluded.role, granted_by = NULL, granted_at = excluded.granted_at").bind(targetId, nextRole, now));
+          else statements.push(env.DB!.prepare("DELETE FROM admin_roles WHERE user_id = ? AND role <> 'owner'").bind(targetId));
+          statements.push(env.DB!.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'user', ?, ?, ?)").bind(crypto.randomUUID(), action, targetId, JSON.stringify({ role: nextRole, adminUsername: actor.username, adminId: actor.id }), now));
+          await env.DB!.batch(statements);
           return json({ ok: true, userId: targetId, role: nextRole }, 200, origin, env);
         }
         const userStatusRoute = url.pathname.match(/^\/api\/v1\/admin\/users\/([0-9a-f-]{36})\/status$/i);
@@ -1043,20 +1043,20 @@ export default {
           const body = await request.json() as Record<string, unknown>;
           const status = body.status === "active" || body.status === "suspended" ? body.status : null;
           if (!status) return json({ error: "invalid_status" }, 400, origin, env);
-          const target = await env.DB.prepare("SELECT u.id, u.status, ar.role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1")
+          const target = await env.DB!.prepare("SELECT u.id, u.status, ar.role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1")
             .bind(targetId).first<{id:string;status:string;role:string|null}>();
           if (!target) return json({ error: "user_not_found" }, 404, origin, env);
           if (target.status === "deleted") return json({ error: "deleted_user_cannot_be_reactivated" }, 409, origin, env);
           if (target.role && actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const now = new Date().toISOString();
-          const statements = [env.DB.prepare("UPDATE users SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, targetId)];
+          const statements = [env.DB!.prepare("UPDATE users SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, targetId)];
           if (status === "suspended") {
-            statements.push(env.DB.prepare("UPDATE user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL").bind(now, targetId));
-            statements.push(env.DB.prepare("DELETE FROM room_seats WHERE user_id = ?").bind(targetId));
-            statements.push(env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE user_id = ? AND exited_at IS NULL").bind(now, targetId));
+            statements.push(env.DB!.prepare("UPDATE user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL").bind(now, targetId));
+            statements.push(env.DB!.prepare("DELETE FROM room_seats WHERE user_id = ?").bind(targetId));
+            statements.push(env.DB!.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE user_id = ? AND exited_at IS NULL").bind(now, targetId));
           }
-          statements.push(env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'user', ?, ?, ?)").bind(crypto.randomUUID(), status === "suspended" ? "user.suspend" : "user.activate", targetId, JSON.stringify({ status, adminUsername: actor.username, adminId: actor.id }), now));
-          await env.DB.batch(statements);
+          statements.push(env.DB!.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'user', ?, ?, ?)").bind(crypto.randomUUID(), status === "suspended" ? "user.suspend" : "user.activate", targetId, JSON.stringify({ status, adminUsername: actor.username, adminId: actor.id }), now));
+          await env.DB!.batch(statements);
           if (status === "suspended") await removeUserFromAllRoomSeats(env, env.DB, targetId);
           return json({ ok: true, userId: targetId, status }, 200, origin, env);
         }
@@ -1064,16 +1064,16 @@ export default {
         if (userKickRoute && request.method === "POST") {
           if (!hasAdminPermission(actor, "users.kick")) return json({ error: "permission_denied" }, 403, origin, env);
           const targetId = userKickRoute[1];
-          const target = await env.DB.prepare("SELECT u.id, u.status, ar.role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1").bind(targetId).first<{ id: string; status: string; role: string | null }>();
+          const target = await env.DB!.prepare("SELECT u.id, u.status, ar.role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1").bind(targetId).first<{ id: string; status: string; role: string | null }>();
           if (!target) return json({ error: "user_not_found" }, 404, origin, env);
           if (target.status === "deleted") return json({ error: "deleted_user_cannot_be_kicked" }, 409, origin, env);
           if (target.role && actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const now = new Date().toISOString();
-          const results = await env.DB.batch([
-            env.DB.prepare("UPDATE user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL").bind(now, targetId),
-            env.DB.prepare("DELETE FROM room_seats WHERE user_id = ?").bind(targetId),
-            env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE user_id = ? AND exited_at IS NULL").bind(now, targetId),
-            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'user.kick', 'user', ?, ?, ?)").bind(crypto.randomUUID(), targetId, JSON.stringify({ adminUsername: actor.username, adminId: actor.id, effect: "all_sessions_revoked" }), now)
+          const results = await env.DB!.batch([
+            env.DB!.prepare("UPDATE user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL").bind(now, targetId),
+            env.DB!.prepare("DELETE FROM room_seats WHERE user_id = ?").bind(targetId),
+            env.DB!.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE user_id = ? AND exited_at IS NULL").bind(now, targetId),
+            env.DB!.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'user.kick', 'user', ?, ?, ?)").bind(crypto.randomUUID(), targetId, JSON.stringify({ adminUsername: actor.username, adminId: actor.id, effect: "all_sessions_revoked" }), now)
           ]);
           await removeUserFromAllRoomSeats(env, env.DB, targetId);
           return json({ ok: true, userId: targetId, revokedSessions: results[0]?.meta?.changes ?? 0 }, 200, origin, env);
@@ -1082,7 +1082,7 @@ export default {
         if (roomModerationRoute && (request.method === "GET" || request.method === "POST")) {
           if (!env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
           const roomId = roomModerationRoute[1];
-          const room = await env.DB.prepare(
+          const room = await env.DB!.prepare(
             "SELECT id, owner_user_id, name FROM rooms WHERE id = ? LIMIT 1"
           ).bind(roomId).first<{ id: string; owner_user_id: string; name: string }>();
           if (!room) return json({ error: "room_not_found" }, 404, origin, env);
@@ -1092,7 +1092,7 @@ export default {
             const now = new Date().toISOString();
             const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
             const [members, moderators, bans, kicks] = await Promise.all([
-              env.DB.prepare(
+              env.DB!.prepare(
                 "SELECT s.user_id, s.seat_number, s.joined_at, u.email, p.display_name, p.happy_id, " +
                 "CASE WHEN rm.user_id IS NULL THEN 0 ELSE 1 END AS is_moderator, COALESCE(c.is_muted, 0) AS is_muted " +
                 "FROM room_seats s INNER JOIN users u ON u.id = s.user_id " +
@@ -1101,17 +1101,17 @@ export default {
                 "LEFT JOIN room_user_controls c ON c.room_id = s.room_id AND c.user_id = s.user_id " +
                 "WHERE s.room_id = ? AND s.expires_at > ? ORDER BY s.seat_number"
               ).bind(roomId, now).all(),
-              env.DB.prepare(
+              env.DB!.prepare(
                 "SELECT rm.user_id, rm.created_at, u.email, p.display_name, p.happy_id " +
                 "FROM room_moderators rm INNER JOIN users u ON u.id = rm.user_id " +
                 "LEFT JOIN profiles p ON p.user_id = u.id WHERE rm.room_id = ? ORDER BY rm.created_at DESC"
               ).bind(roomId).all(),
-              env.DB.prepare(
+              env.DB!.prepare(
                 "SELECT b.user_id, b.created_at, u.email, p.display_name, p.happy_id " +
                 "FROM room_bans b INNER JOIN users u ON u.id = b.user_id " +
                 "LEFT JOIN profiles p ON p.user_id = u.id WHERE b.room_id = ? ORDER BY b.created_at DESC"
               ).bind(roomId).all(),
-              env.DB.prepare(
+              env.DB!.prepare(
                 "SELECT k.user_id, k.kicked_until, k.created_at, u.email, p.display_name, p.happy_id " +
                 "FROM room_kicks k INNER JOIN users u ON u.id = k.user_id " +
                 "LEFT JOIN profiles p ON p.user_id = u.id WHERE k.room_id = ? AND k.kicked_until > ? ORDER BY k.kicked_until DESC"
@@ -1127,7 +1127,7 @@ export default {
             if (activeSeats.length > 0) {
               const ids = activeSeats.map((seat) => String(seat.userId ?? ""));
               const placeholders = ids.map(() => "?").join(",");
-              const details = await env.DB.prepare(
+              const details = await env.DB!.prepare(
                 "SELECT u.id, u.email, p.display_name, p.happy_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id IN (" + placeholders + ")"
               ).bind(...ids).all<{ id: string; email: string; display_name: string | null; happy_id: string | null }>();
               const detailsById = new Map<string, { id: string; email: string; display_name: string | null; happy_id: string | null }>();
@@ -1148,7 +1148,7 @@ export default {
             }
             let userResults: unknown[] = [];
             if (q.length >= 2) {
-              const found = await env.DB.prepare(
+              const found = await env.DB!.prepare(
                 "SELECT u.id AS user_id, u.email, p.display_name, p.happy_id, " +
                 "CASE WHEN rm.user_id IS NULL THEN 0 ELSE 1 END AS is_moderator, " +
                 "CASE WHEN b.user_id IS NULL THEN 0 ELSE 1 END AS is_banned, " +
@@ -1189,7 +1189,7 @@ export default {
           if (!allowedActions.includes(action) || !/^[0-9a-f-]{36}$/i.test(targetUserId)) {
             return json({ error: "invalid_room_moderation_action" }, 400, origin, env);
           }
-          const target = await env.DB.prepare(
+          const target = await env.DB!.prepare(
             "SELECT u.id, u.status, ar.role AS admin_role FROM users u LEFT JOIN admin_roles ar ON ar.user_id = u.id WHERE u.id = ? LIMIT 1"
           ).bind(targetUserId).first<{ id: string; status: string; admin_role: string | null }>();
           if (!target) return json({ error: "user_not_found" }, 404, origin, env);
@@ -1199,7 +1199,7 @@ export default {
           if (targetUserId === room.owner_user_id || target.admin_role === "owner") {
             return json({ error: "protected_room_owner" }, 403, origin, env);
           }
-          const currentModerator = await env.DB.prepare(
+          const currentModerator = await env.DB!.prepare(
             "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
           ).bind(roomId, targetUserId).first<{ user_id: string }>();
           if (["kick", "ban", "mute", "unmute"].includes(action) && currentModerator) {
@@ -1214,23 +1214,23 @@ export default {
             if (currentModerator) return json({ error: "already_room_moderator" }, 409, origin, env);
             // Legacy room_moderators.assigned_by is constrained to an application-user FK.
             // The actual administrator identity is recorded in admin_audit_logs below.
-            statements.push(env.DB.prepare(
+            statements.push(env.DB!.prepare(
               "INSERT INTO room_moderators (room_id, user_id, assigned_by, created_at) VALUES (?, ?, ?, ?)"
             ).bind(roomId, targetUserId, room.owner_user_id, now));
             auditAction = "room.moderator.assign";
           } else if (action === "remove_moderator") {
             if (!currentModerator) return json({ error: "room_moderator_not_found" }, 404, origin, env);
-            statements.push(env.DB.prepare(
+            statements.push(env.DB!.prepare(
               "DELETE FROM room_moderators WHERE room_id = ? AND user_id = ?"
             ).bind(roomId, targetUserId));
             auditAction = "room.moderator.remove";
           } else if (action === "kick") {
             kickedUntil = new Date(Date.now() + 60000).toISOString();
             statements.push(
-              env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId),
-              env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL").bind(now, roomId, targetUserId),
+              env.DB!.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId),
+              env.DB!.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL").bind(now, roomId, targetUserId),
               // Legacy room_kicks.kicked_by is constrained to an application-user FK.
-              env.DB.prepare(
+              env.DB!.prepare(
                 "INSERT INTO room_kicks (room_id, user_id, kicked_by, kicked_until, created_at) VALUES (?, ?, ?, ?, ?) " +
                 "ON CONFLICT(room_id, user_id) DO UPDATE SET kicked_by = excluded.kicked_by, kicked_until = excluded.kicked_until, created_at = excluded.created_at"
               ).bind(roomId, targetUserId, room.owner_user_id, kickedUntil, now)
@@ -1238,22 +1238,22 @@ export default {
             auditAction = "room.user.kick";
           } else if (action === "ban") {
             statements.push(
-              env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId),
-              env.DB.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL").bind(now, roomId, targetUserId),
-              env.DB.prepare("DELETE FROM room_kicks WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId),
+              env.DB!.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId),
+              env.DB!.prepare("UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL").bind(now, roomId, targetUserId),
+              env.DB!.prepare("DELETE FROM room_kicks WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId),
               // Legacy room_bans.banned_by is constrained to an application-user FK.
-              env.DB.prepare(
+              env.DB!.prepare(
                 "INSERT INTO room_bans (room_id, user_id, banned_by, created_at) VALUES (?, ?, ?, ?) " +
                 "ON CONFLICT(room_id, user_id) DO UPDATE SET banned_by = excluded.banned_by, created_at = excluded.created_at"
               ).bind(roomId, targetUserId, room.owner_user_id, now)
             );
             auditAction = "room.user.ban";
           } else if (action === "unban") {
-            const existingBan = await env.DB.prepare(
+            const existingBan = await env.DB!.prepare(
               "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
             ).bind(roomId, targetUserId).first();
             if (!existingBan) return json({ error: "room_ban_not_found" }, 404, origin, env);
-            statements.push(env.DB.prepare("DELETE FROM room_bans WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId));
+            statements.push(env.DB!.prepare("DELETE FROM room_bans WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId));
             auditAction = "room.user.unban";
           } else if (action === "mute" || action === "unmute") {
             const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
@@ -1262,14 +1262,14 @@ export default {
             const isSeated = (seatSnapshot.seats ?? []).some((seat) => seat.userId === targetUserId);
             if (!isSeated) return json({ error: "user_not_on_active_mic_seat" }, 409, origin, env);
             const muted = action === "mute" ? 1 : 0;
-            statements.push(env.DB.prepare(
+            statements.push(env.DB!.prepare(
               "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, ?, ?) " +
               "ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = excluded.muted_by, updated_at = excluded.updated_at"
             ).bind(roomId, targetUserId, muted, muted ? room.owner_user_id : null, now));
             auditAction = muted ? "room.user.mute" : "room.user.unmute";
           }
 
-          statements.push(env.DB.prepare(
+          statements.push(env.DB!.prepare(
             "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, ?, 'room_user', ?, ?, ?)"
           ).bind(
             crypto.randomUUID(),
@@ -1285,7 +1285,7 @@ export default {
             }),
             now
           ));
-          await env.DB.batch(statements);
+          await env.DB!.batch(statements);
           const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
           if (action === "assign_moderator" || action === "remove_moderator") {
             await seatHub.fetch(new Request("https://room-seats.internal/set-moderator", {
@@ -1319,12 +1319,12 @@ export default {
           const body = await request.json() as Record<string, unknown>;
           const status = body.status === "active" || body.status === "closed" ? body.status : null;
           if (!status) return json({ error: "invalid_status" }, 400, origin, env);
-          const exists = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? LIMIT 1").bind(targetId).first();
+          const exists = await env.DB!.prepare("SELECT id FROM rooms WHERE id = ? LIMIT 1").bind(targetId).first();
           if (!exists) return json({ error: "room_not_found" }, 404, origin, env);
           const now = new Date().toISOString();
-          await env.DB.batch([
-            env.DB.prepare("UPDATE rooms SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, targetId),
-            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, 'room', ?, ?, ?)")
+          await env.DB!.batch([
+            env.DB!.prepare("UPDATE rooms SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, targetId),
+            env.DB!.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, 'room', ?, ?, ?)")
               .bind(crypto.randomUUID(), null, status === "closed" ? "room.close" : "room.reopen", targetId, JSON.stringify({ status, adminUsername: actor.username }), now)
           ]);
           if (status === "closed" && env.ROOM_SEATS) {
@@ -1381,13 +1381,13 @@ export default {
           return json({ error: "invalid_google_identity", message: "بيانات حساب Google غير صالحة" }, 401, origin, env);
         }
 
-        let user = await env.DB.prepare(
+        let user = await env.DB!.prepare(
           "SELECT u.id, u.email, u.status, p.display_name, p.happy_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.auth_provider = 'google' AND u.auth_subject = ? LIMIT 1"
         ).bind(subject).first<{ id: string; email: string; status: string; display_name: string | null; happy_id: string | null }>();
 
         let isNewUser = false;
         if (!user) {
-          const existingEmail = await env.DB.prepare(
+          const existingEmail = await env.DB!.prepare(
             "SELECT id, auth_provider FROM users WHERE email = ? COLLATE NOCASE LIMIT 1"
           ).bind(email).first<{ id: string; auth_provider: string }>();
           if (existingEmail) {
@@ -1404,23 +1404,23 @@ export default {
           let publicId = "";
           for (let attempt = 0; attempt < 20; attempt++) {
             const candidate = String(10000000 + crypto.getRandomValues(new Uint32Array(1))[0] % 90000000);
-            const exists = await env.DB.prepare("SELECT 1 FROM profiles WHERE happy_id = ? LIMIT 1").bind(candidate).first();
+            const exists = await env.DB!.prepare("SELECT 1 FROM profiles WHERE happy_id = ? LIMIT 1").bind(candidate).first();
             if (!exists) { publicId = candidate; break; }
           }
           if (!publicId) throw new Error("public_id_generation_failed");
 
           const now = new Date().toISOString();
           try {
-            await env.DB.batch([
-              env.DB.prepare(
+            await env.DB!.batch([
+              env.DB!.prepare(
                 "INSERT INTO users (id, email, password_hash, auth_provider, auth_subject, status, email_verified_at, terms_accepted_at) VALUES (?, ?, NULL, 'google', ?, 'active', ?, ?)"
               ).bind(userId, email, subject, now, now),
-              env.DB.prepare(
+              env.DB!.prepare(
                 "INSERT INTO profiles (user_id, display_name, happy_id) VALUES (?, ?, ?)"
               ).bind(userId, displayName || email.split("@")[0], publicId)
             ]);
           } catch (error) {
-            const racedUser = await env.DB.prepare(
+            const racedUser = await env.DB!.prepare(
               "SELECT u.id, u.email, u.status, p.display_name, p.happy_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.auth_provider = 'google' AND u.auth_subject = ? LIMIT 1"
             ).bind(subject).first<{ id: string; email: string; status: string; display_name: string | null; happy_id: string | null }>();
             if (!racedUser) throw error;
@@ -1470,7 +1470,7 @@ export default {
         let publicId = "";
         for (let attempt = 0; attempt < 10; attempt++) {
           const candidate = String(10000000 + crypto.getRandomValues(new Uint32Array(1))[0] % 90000000);
-          const existingId = await env.DB.prepare("SELECT 1 FROM profiles WHERE happy_id = ? LIMIT 1").bind(candidate).first();
+          const existingId = await env.DB!.prepare("SELECT 1 FROM profiles WHERE happy_id = ? LIMIT 1").bind(candidate).first();
           if (!existingId) {
             publicId = candidate;
             break;
@@ -1483,13 +1483,13 @@ export default {
         const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 86400000).toISOString();
         const tokenHash = await sha256(sessionToken);
         try {
-          await env.DB.batch([
-            env.DB.prepare("INSERT INTO users (id, email, password_hash, auth_provider, status, terms_accepted_at) VALUES (?, ?, ?, 'email', 'active', ?)").bind(userId, email, passwordHash, now),
-            env.DB.prepare("INSERT INTO profiles (user_id, display_name, birthday, happy_id) VALUES (?, ?, ?, ?)").bind(userId, name, birthday, publicId),
-            env.DB.prepare("INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)").bind(crypto.randomUUID(), userId, tokenHash, expiresAt)
+          await env.DB!.batch([
+            env.DB!.prepare("INSERT INTO users (id, email, password_hash, auth_provider, status, terms_accepted_at) VALUES (?, ?, ?, 'email', 'active', ?)").bind(userId, email, passwordHash, now),
+            env.DB!.prepare("INSERT INTO profiles (user_id, display_name, birthday, happy_id) VALUES (?, ?, ?, ?)").bind(userId, name, birthday, publicId),
+            env.DB!.prepare("INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)").bind(crypto.randomUUID(), userId, tokenHash, expiresAt)
           ]);
         } catch (error) {
-          const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ? LIMIT 1").bind(email).first();
+          const existing = await env.DB!.prepare("SELECT id FROM users WHERE email = ? LIMIT 1").bind(email).first();
           if (existing) return json({ error: "email_already_registered", message: "هذا البريد مسجل بالفعل، سجّل الدخول بدلًا من ذلك" }, 409, origin, env);
           throw error;
         }
@@ -1513,7 +1513,7 @@ export default {
         const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
         const password = typeof body.password === "string" ? body.password : "";
         if (!email || !password || password.length > 128) return json({ error: "invalid_credentials", message: "البريد أو كلمة المرور غير صحيحة" }, 401, origin, env);
-        const user = await env.DB.prepare(
+        const user = await env.DB!.prepare(
           "SELECT u.id, u.email, u.password_hash, u.status, p.display_name, p.happy_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.email = ? AND u.auth_provider = 'email' LIMIT 1"
         ).bind(email).first<{ id: string; email: string; password_hash: string | null; status: string; display_name: string | null; happy_id: string | null }>();
         if (!user || user.status !== "active" || !user.password_hash || !await verifyPassword(password, user.password_hash)) {
@@ -1532,7 +1532,7 @@ export default {
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        const profile = await env.DB.prepare("SELECT display_name, bio, avatar_key, birthday, gender, country_name FROM profiles WHERE user_id = ? LIMIT 1")
+        const profile = await env.DB!.prepare("SELECT display_name, bio, avatar_key, birthday, gender, country_name FROM profiles WHERE user_id = ? LIMIT 1")
           .bind(user.id).first<{ display_name: string; bio: string; avatar_key: string | null; birthday: string | null; gender: string | null; country_name: string | null }>();
         return json({ ok: true, user: {
           id: user.id, happy_id: user.happy_id ?? "", email: user.email,
@@ -1572,7 +1572,7 @@ export default {
             return json({ error: "invalid_avatar_url", message: "رابط الصورة غير صالح" }, 400, origin, env);
           }
         }
-        await env.DB.prepare("UPDATE profiles SET display_name = ?, bio = ?, avatar_key = ?, birthday = ?, gender = ?, country_name = ?, updated_at = ? WHERE user_id = ?")
+        await env.DB!.prepare("UPDATE profiles SET display_name = ?, bio = ?, avatar_key = ?, birthday = ?, gender = ?, country_name = ?, updated_at = ? WHERE user_id = ?")
           .bind(name, bio, avatarUrl, birthday, gender, countryName, new Date().toISOString(), user.id).run();
         return json({ ok: true, user: { id: user.id, happy_id: user.happy_id ?? "", email: user.email, name, bio, avatar_url: avatarUrl, birthday, gender, country_name: countryName } }, 200, origin, env);
       } catch (error) {
@@ -1633,18 +1633,18 @@ export default {
         const user = await authenticatedUser(new Request(request, { headers: authHeaders }), env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = decodeURIComponent(seatStreamRoute[1]);
-        const room = await env.DB.prepare("SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
+        const room = await env.DB!.prepare("SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
           .bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
         const now = new Date().toISOString();
         const [voiceEnabled, ban, kick, controlKick, profile, control, moderator] = await Promise.all([
           isAgoraVoiceEnabled(env.DB, env),
-          env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
-          env.DB.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
-          env.DB.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
-          env.DB.prepare("SELECT avatar_key, country_name FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null; country_name: string | null }>(),
-          env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
-          env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
+          env.DB!.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
+          env.DB!.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
+          env.DB!.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
+          env.DB!.prepare("SELECT avatar_key, country_name FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null; country_name: string | null }>(),
+          env.DB!.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
+          env.DB!.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
         ]);
         if (kick || controlKick) return json({ error: "room_kicked" }, 403, origin, env);
         if (ban) return json({ error: "room_banned" }, 403, origin, env);
@@ -1694,10 +1694,10 @@ export default {
         const user = await authenticatedUser(authRequest, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = decodeURIComponent(chatStreamRoute[1]);
-        const room = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
+        const room = await env.DB!.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
           .bind(roomId).first<{ id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
-        const visit = await env.DB.prepare(
+        const visit = await env.DB!.prepare(
           "SELECT id FROM room_chat_visits WHERE room_id = ? AND user_id = ? AND exited_at IS NULL ORDER BY entered_at DESC LIMIT 1"
         ).bind(roomId, user.id).first<{ id: string }>();
         if (!visit) return json({ error: "chat_session_not_active" }, 409, origin, env);
@@ -1718,17 +1718,17 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = decodeURIComponent(chatSessionRoute[1]);
-        const room = await env.DB.prepare(
+        const room = await env.DB!.prepare(
           "SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
-        const activeBan = await env.DB.prepare(
+        const activeBan = await env.DB!.prepare(
           "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
         ).bind(roomId, user.id).first<{ user_id: string }>();
-        const activeKick = await env.DB.prepare(
+        const activeKick = await env.DB!.prepare(
           "SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
         ).bind(roomId, user.id, new Date().toISOString()).first<{ kicked_until: string }>();
-        const controlKick = await env.DB.prepare(
+        const controlKick = await env.DB!.prepare(
           "SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1"
         ).bind(roomId, user.id, new Date().toISOString()).first<{ kicked_until: string }>();
         if (activeKick || controlKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
@@ -1741,15 +1741,15 @@ export default {
         if (action === "join") {
           // A new visit starts with a clean view of chat history. Any abandoned
           // visit (for example after a closed browser tab) is ended first.
-          await env.DB.prepare(
+          await env.DB!.prepare(
             "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
           ).bind(now, roomId, user.id).run();
           const visitId = crypto.randomUUID();
-          await env.DB.prepare(
+          await env.DB!.prepare(
             "INSERT INTO room_chat_visits (id, room_id, user_id, entered_at, last_seen_at) VALUES (?, ?, ?, ?, ?)"
           ).bind(visitId, roomId, user.id, now, now).run();
           const entryMessageId = crypto.randomUUID();
-          const entryProfile = await env.DB.prepare(
+          const entryProfile = await env.DB!.prepare(
             "SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1"
           ).bind(user.id).first<{ avatar_key: string | null }>();
           const entryMessage = {
@@ -1764,17 +1764,17 @@ export default {
           };
           // Chat is live-only: clear any legacy persisted chat rows and
           // broadcast this join event only to users currently connected.
-          await env.DB.prepare("DELETE FROM room_messages").run();
+          await env.DB!.prepare("DELETE FROM room_messages").run();
           await broadcastRoomChat(env, roomId, {
             type: "system",
             message: entryMessage
           });
           return json({ ok: true, enteredAt: now }, 200, origin, env);
         }
-        await env.DB.prepare(
+        await env.DB!.prepare(
           "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
         ).bind(now, roomId, user.id).run();
-        const exitProfile = await env.DB.prepare(
+        const exitProfile = await env.DB!.prepare(
           "SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1"
         ).bind(user.id).first<{ avatar_key: string | null }>();
         await broadcastRoomChat(env, roomId, {
@@ -1801,17 +1801,17 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = decodeURIComponent(chatRoute[1]);
-        const room = await env.DB.prepare(
+        const room = await env.DB!.prepare(
           "SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
-        const visit = await env.DB.prepare(
+        const visit = await env.DB!.prepare(
           "SELECT entered_at FROM room_chat_visits WHERE room_id = ? AND user_id = ? AND exited_at IS NULL ORDER BY entered_at DESC LIMIT 1"
         ).bind(roomId, user.id).first<{ entered_at: string }>();
         if (!visit) return json({ error: "chat_session_not_active" }, 409, origin, env);
 
         if (request.method === "POST") {
-          const activeBan = await env.DB.prepare(
+          const activeBan = await env.DB!.prepare(
             "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
           ).bind(roomId, user.id).first<{ user_id: string }>();
           if (activeBan) return json({ error: "room_banned", message: "أنت محظور من الكتابة في هذه الغرفة" }, 403, origin, env);
@@ -1834,11 +1834,11 @@ export default {
           if (!message && !imageUrl) return json({ error: "empty_message" }, 400, origin, env);
           const now = new Date().toISOString();
           const cutoff = new Date(Date.now() - 1000).toISOString();
-          const rate = await env.DB.prepare(
+          const rate = await env.DB!.prepare(
             "INSERT INTO room_chat_rate_limits (room_id, user_id, last_sent_at) VALUES (?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET last_sent_at = excluded.last_sent_at WHERE room_chat_rate_limits.last_sent_at <= ? RETURNING last_sent_at"
           ).bind(roomId, user.id, now, cutoff).first<{ last_sent_at: string }>();
           if (!rate) return json({ error: "chat_rate_limited", message: "انتظر ثانية قبل إرسال رسالة أخرى" }, 429, origin, env);
-          const senderProfile = await env.DB.prepare(
+          const senderProfile = await env.DB!.prepare(
             "SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1"
           ).bind(user.id).first<{ avatar_key: string | null }>();
           const id = crypto.randomUUID();
@@ -1876,13 +1876,13 @@ export default {
         const announcement = typeof body.announcement === "string" ? body.announcement.trim() : null;
         if (announcement === null) return json({ error: "invalid_announcement" }, 400, origin, env);
         if (announcement.length > 200) return json({ error: "announcement_too_long", message: "الإعلان يجب ألا يتجاوز 200 حرف" }, 400, origin, env);
-        const room = await env.DB.prepare(
+        const room = await env.DB!.prepare(
           "SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
         if (room.owner_user_id !== user.id) return json({ error: "room_owner_only", message: "تعديل الإعلان متاح لمالك الغرفة فقط" }, 403, origin, env);
         const updatedAt = new Date().toISOString();
-        await env.DB.prepare(
+        await env.DB!.prepare(
           "INSERT INTO room_announcements (room_id, announcement, updated_at) VALUES (?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET announcement = excluded.announcement, updated_at = excluded.updated_at"
         ).bind(roomId, announcement, updatedAt).run();
         const now = new Date().toISOString();
@@ -1911,7 +1911,7 @@ export default {
         if (tab === "country") {
           const user = await authenticatedUser(request, env.DB);
           if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-          const profile = await env.DB.prepare("SELECT country_code, country_name FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ country_code: string | null; country_name: string | null }>();
+          const profile = await env.DB!.prepare("SELECT country_code, country_name FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ country_code: string | null; country_name: string | null }>();
           const countryName = (profile?.country_name ?? "").trim().toUpperCase();
           countryCode = ["SOUTH_ARABIA", "SOUTH ARABIA", "الجنوب العربي"].includes(countryName)
             ? "SOUTH_ARABIA"
@@ -1919,7 +1919,7 @@ export default {
           if (!countryCode) return json({ ok: true, gifts: [], countryCode: null }, 200, origin, env);
         }
         const now = new Date().toISOString();
-        const rows = await env.DB.prepare(
+        const rows = await env.DB!.prepare(
           "SELECT id, name, icon_emoji AS iconEmoji, media_url AS mediaUrl, media_type AS mediaType, sound_url AS soundUrl, coin_price AS coinPrice, sort_order AS sortOrder, category, country_code AS countryCode, starts_at AS startsAt, ends_at AS endsAt " +
           "FROM gift_catalog WHERE is_active = 1 AND (starts_at IS NULL OR starts_at <= ?) AND (ends_at IS NULL OR ends_at >= ?) " +
           "AND (? IS NULL OR category = ?) AND (category <> 'country' OR country_code = ?) ORDER BY sort_order ASC, created_at ASC"
@@ -2083,10 +2083,10 @@ export default {
           }
         }
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const recent = await env.DB.prepare("SELECT COUNT(*) AS count FROM gift_custom_requests WHERE user_id = ? AND created_at >= ?").bind(user.id, since).first<{ count: number }>();
+        const recent = await env.DB!.prepare("SELECT COUNT(*) AS count FROM gift_custom_requests WHERE user_id = ? AND created_at >= ?").bind(user.id, since).first<{ count: number }>();
         if (Number(recent?.count ?? 0) >= 5) return json({ error: "custom_gift_request_limit" }, 429, origin, env);
         const id = crypto.randomUUID(), now = new Date().toISOString();
-        await env.DB.prepare("INSERT INTO gift_custom_requests (id, user_id, requested_name, description, media_url, media_type, media_duration_ms, media_file_id, sound_url, sound_file_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)")
+        await env.DB!.prepare("INSERT INTO gift_custom_requests (id, user_id, requested_name, description, media_url, media_type, media_duration_ms, media_file_id, sound_url, sound_file_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)")
           .bind(id, user.id, requestedName, description, hasMedia ? mediaUrl : null, hasMedia ? mediaType : null, hasMedia ? mediaDurationMs : null, hasMedia ? mediaFileId : null, soundUrl || null, soundFileId || null, now).run();
         return json({ ok: true, request: { id, requestedName, description, mediaUrl, mediaType, mediaDurationMs, mediaFileId, soundUrl: soundUrl || null, status: "pending", createdAt: now } }, 201, origin, env);
       } catch (error) {
@@ -2109,27 +2109,27 @@ export default {
         catch { return json({ error: "invalid_json" }, 400, origin, env); }
         const action = body.action;
         if (action !== "start" && action !== "end") return json({ error: "invalid_battle_action" }, 400, origin, env);
-        const room = await env.DB.prepare("SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
+        const room = await env.DB!.prepare("SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
           .bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
-        const moderator = await env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1")
+        const moderator = await env.DB!.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1")
           .bind(roomId, actor.id).first<{ user_id: string }>();
         if (room.owner_user_id !== actor.id && !moderator) return json({ error: "room_moderator_permission_required" }, 403, origin, env);
         const now = new Date().toISOString();
         if (action === "start") {
           const battleId = crypto.randomUUID();
-          const result = await env.DB.prepare(
+          const result = await env.DB!.prepare(
             "INSERT INTO room_battles (id, room_id, status, started_at, ended_at, created_by_user_id) " +
             "SELECT ?, ?, 'active', ?, NULL, ? WHERE NOT EXISTS (SELECT 1 FROM room_battles WHERE room_id = ? AND status = 'active')"
           ).bind(battleId, roomId, now, actor.id, roomId).run();
           if ((result.meta?.changes ?? 0) !== 1) {
-            const active = await env.DB.prepare("SELECT id, started_at AS startedAt FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1")
+            const active = await env.DB!.prepare("SELECT id, started_at AS startedAt FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1")
               .bind(roomId).first<Record<string, unknown>>();
             return json({ error: "battle_already_active", battle: active ?? null }, 409, origin, env);
           }
           return json({ ok: true, battle: { id: battleId, roomId, status: "active", startedAt: now } }, 201, origin, env);
         }
-        const ended = await env.DB.prepare(
+        const ended = await env.DB!.prepare(
           "UPDATE room_battles SET status = 'finished', ended_at = ? WHERE room_id = ? AND status = 'active'"
         ).bind(now, roomId).run();
         if ((ended.meta?.changes ?? 0) !== 1) return json({ error: "no_active_battle" }, 409, origin, env);
@@ -2164,7 +2164,7 @@ export default {
         }
         if (recipientUserId === user.id) return json({ error: "cannot_gift_self" }, 400, origin, env);
         const now = new Date().toISOString();
-        const existing = await env.DB.prepare(
+        const existing = await env.DB!.prepare(
           "SELECT id, status, coin_cost AS coinCost, experience_awarded AS experienceAwarded, recipient_coins AS recipientCoins " +
           "FROM gift_transactions WHERE sender_user_id = ? AND idempotency_key = ? LIMIT 1"
         ).bind(user.id, idempotencyKey).first<Record<string, unknown>>();
@@ -2172,12 +2172,12 @@ export default {
           if (existing.status === "succeeded") return json({ ok: true, duplicate: true, transaction: existing }, 200, origin, env);
           return json({ error: "gift_request_in_progress" }, 409, origin, env);
         }
-        await env.DB.prepare(
+        await env.DB!.prepare(
           "INSERT OR IGNORE INTO room_exp_daily (user_id, day_key, points) VALUES (?, ?, 0)"
         ).bind(user.id, now.slice(0, 10)).run();
         const transactionId = crypto.randomUUID();
         const statements = [
-          env.DB.prepare(
+          env.DB!.prepare(
             "INSERT OR IGNORE INTO gift_transactions " +
             "(id, sender_user_id, recipient_user_id, context_type, room_id, gift_id, quantity, coin_cost, " +
             "app_percent_snapshot, recipient_percent_snapshot, app_coins, recipient_coins, experience_awarded, " +
@@ -2200,14 +2200,14 @@ export default {
             "AND (g.category <> 'country' OR g.country_code = CASE WHEN UPPER(TRIM(COALESCE(sender_profile.country_name, ''))) IN ('SOUTH_ARABIA', 'SOUTH ARABIA', 'الجنوب العربي') THEN 'SOUTH_ARABIA' ELSE UPPER(TRIM(COALESCE(sender_profile.country_code, ''))) END)"
           ).bind(transactionId, user.id, recipientUserId, quantity, quantity, quantity, quantity, quantity, quantity,
             idempotencyKey, now, giftId, now, now, user.id, recipientUserId, user.id, quantity, user.id, now.slice(0, 10), roomId, user.id),
-          env.DB.prepare(
+          env.DB!.prepare(
             "UPDATE user_wallets SET balance = balance - (SELECT coin_cost FROM gift_transactions WHERE id = ? AND status = 'processing'), " +
             "updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM gift_transactions WHERE id = ? AND status = 'processing') " +
             "AND balance >= (SELECT coin_cost FROM gift_transactions WHERE id = ? AND status = 'processing')"
           ).bind(transactionId, now, user.id, transactionId, transactionId),
           // Gift-derived coins are ordinary spendable balance, but spending them
           // consumes their future withdrawal eligibility in FIFO order.
-          env.DB.prepare(
+          env.DB!.prepare(
             "WITH ordered AS (SELECT l.id, l.remaining_tagged_coins, COALESCE(SUM(l.remaining_tagged_coins) OVER (ORDER BY l.created_at, l.id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS prior " +
             "FROM gift_earning_lots l WHERE l.user_id = ? AND l.remaining_tagged_coins > 0), " +
             "consumption AS (SELECT id, MIN(remaining_tagged_coins, MAX(0, (SELECT coin_cost FROM gift_transactions WHERE id = ?) - prior)) AS used FROM ordered) " +
@@ -2215,67 +2215,67 @@ export default {
             "remaining_withdrawable_coins = MAX(0, remaining_withdrawable_coins - (SELECT used FROM consumption WHERE consumption.id = gift_earning_lots.id)) " +
             "WHERE id IN (SELECT id FROM consumption WHERE used > 0) AND EXISTS (SELECT 1 FROM gift_wallet_ledger WHERE gift_transaction_id = ? AND entry_type = 'sender_debit')"
           ).bind(user.id, transactionId, transactionId),
-          env.DB.prepare(
+          env.DB!.prepare(
             "INSERT INTO gift_wallet_ledger (id, gift_transaction_id, user_id, entry_type, amount, balance_after, created_at) " +
             "SELECT ?, t.id, t.sender_user_id, 'sender_debit', -t.coin_cost, w.balance, ? FROM gift_transactions t " +
             "JOIN user_wallets w ON w.user_id = t.sender_user_id WHERE t.id = ? AND t.status = 'processing' " +
             "AND w.balance = t.sender_balance_before - t.coin_cost " +
             "AND NOT EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
           ).bind(crypto.randomUUID(), now, transactionId),
-          env.DB.prepare(
+          env.DB!.prepare(
             "INSERT INTO user_wallets (user_id, balance, updated_at) " +
             "SELECT recipient_user_id, recipient_coins, ? FROM gift_transactions t WHERE t.id = ? AND t.status = 'processing' " +
             "AND EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit') " +
             "ON CONFLICT(user_id) DO UPDATE SET balance = user_wallets.balance + excluded.balance, updated_at = excluded.updated_at"
           ).bind(now, transactionId),
-          env.DB.prepare(
+          env.DB!.prepare(
             "INSERT INTO gift_earning_lots (id, gift_transaction_id, user_id, credited_coins, remaining_tagged_coins, remaining_withdrawable_coins, created_at) " +
             "SELECT ?, t.id, t.recipient_user_id, t.recipient_coins, t.recipient_coins, t.recipient_coins, ? FROM gift_transactions t " +
             "WHERE t.id = ? AND t.status = 'processing' AND EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
           ).bind(crypto.randomUUID(), now, transactionId),
-          env.DB.prepare(
+          env.DB!.prepare(
             "INSERT INTO gift_wallet_ledger (id, gift_transaction_id, user_id, entry_type, amount, balance_after, created_at) " +
             "SELECT ?, t.id, t.recipient_user_id, 'recipient_credit', t.recipient_coins, w.balance, ? FROM gift_transactions t " +
             "JOIN user_wallets w ON w.user_id = t.recipient_user_id WHERE t.id = ? AND t.status = 'processing' " +
             "AND EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
           ).bind(crypto.randomUUID(), now, transactionId),
-          env.DB.prepare(
+          env.DB!.prepare(
             "INSERT INTO room_exp_gift_awards (id, gift_transaction_id, room_id, user_id, day_key, points, created_at) " +
             "SELECT ?, t.id, t.room_id, t.sender_user_id, ?, t.experience_awarded, ? FROM gift_transactions t " +
             "WHERE t.id = ? AND t.status = 'processing' AND t.experience_awarded > 0 " +
             "AND EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
           ).bind(crypto.randomUUID(), now.slice(0, 10), now, transactionId),
-          env.DB.prepare(
+          env.DB!.prepare(
             "UPDATE room_exp_daily SET points = points + COALESCE((SELECT points FROM room_exp_gift_awards WHERE gift_transaction_id = ?), 0) " +
             "WHERE user_id = ? AND day_key = ? AND EXISTS (SELECT 1 FROM room_exp_gift_awards WHERE gift_transaction_id = ?)"
           ).bind(transactionId, user.id, now.slice(0, 10), transactionId),
-          env.DB.prepare(
+          env.DB!.prepare(
             "INSERT INTO room_experience (room_id, total_exp, updated_at) " +
             "SELECT room_id, points, ? FROM room_exp_gift_awards WHERE gift_transaction_id = ? " +
             "ON CONFLICT(room_id) DO UPDATE SET total_exp = room_experience.total_exp + excluded.total_exp, updated_at = excluded.updated_at"
           ).bind(now, transactionId),
-          env.DB.prepare(
+          env.DB!.prepare(
             "UPDATE gift_transactions SET status = 'succeeded' WHERE id = ? AND status = 'processing' " +
             "AND EXISTS (SELECT 1 FROM gift_wallet_ledger WHERE gift_transaction_id = ? AND entry_type = 'sender_debit')"
           ).bind(transactionId, transactionId),
-          env.DB.prepare("DELETE FROM gift_transactions WHERE id = ? AND status = 'processing'").bind(transactionId)
+          env.DB!.prepare("DELETE FROM gift_transactions WHERE id = ? AND status = 'processing'").bind(transactionId)
         ];
-        await env.DB.batch(statements);
-        const transaction = await env.DB.prepare(
+        await env.DB!.batch(statements);
+        const transaction = await env.DB!.prepare(
           "SELECT id, sender_user_id AS senderUserId, recipient_user_id AS recipientUserId, room_id AS roomId, gift_id AS giftId, quantity, coin_cost AS coinCost, app_coins AS appCoins, recipient_coins AS recipientCoins, experience_awarded AS experienceAwarded, experience_multiplier AS experienceMultiplier, status, created_at AS createdAt " +
           "FROM gift_transactions WHERE sender_user_id = ? AND idempotency_key = ? LIMIT 1"
         ).bind(user.id, idempotencyKey).first<Record<string, unknown>>();
         if (!transaction) {
-          const wallet = await env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>();
-          const gift = await env.DB.prepare(
+          const wallet = await env.DB!.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>();
+          const gift = await env.DB!.prepare(
             "SELECT g.coin_price FROM gift_catalog g LEFT JOIN profiles p ON p.user_id = ? " +
             "WHERE g.id = ? AND g.is_active = 1 AND (g.starts_at IS NULL OR g.starts_at <= ?) AND (g.ends_at IS NULL OR g.ends_at >= ?) " +
             "AND (g.category <> 'country' OR g.country_code = CASE WHEN UPPER(TRIM(COALESCE(p.country_name, ''))) IN ('SOUTH_ARABIA', 'SOUTH ARABIA', 'الجنوب العربي') THEN 'SOUTH_ARABIA' ELSE UPPER(TRIM(COALESCE(p.country_code, ''))) END)"
           ).bind(user.id, giftId, now, now).first<{ coin_price: number }>();
           if (!gift) return json({ error: "gift_not_available" }, 404, origin, env);
-          const room = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active'").bind(roomId).first<{ id: string }>();
+          const room = await env.DB!.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active'").bind(roomId).first<{ id: string }>();
           if (!room) return json({ error: "room_not_found" }, 404, origin, env);
-          const wasRoomParticipant = await env.DB.prepare("SELECT id FROM room_chat_visits WHERE room_id = ? AND user_id = ? LIMIT 1")
+          const wasRoomParticipant = await env.DB!.prepare("SELECT id FROM room_chat_visits WHERE room_id = ? AND user_id = ? LIMIT 1")
             .bind(roomId, recipientUserId).first<{ id: string }>();
           if (!wasRoomParticipant) return json({ error: "recipient_not_room_member" }, 409, origin, env);
           const needed = gift.coin_price * quantity;
@@ -2287,7 +2287,7 @@ export default {
         // Animation delivery is best-effort and must never undo a successful gift.
         let gift: Record<string, unknown> | null = null;
         try {
-          gift = await env.DB.prepare(
+          gift = await env.DB!.prepare(
             "SELECT g.name, g.icon_emoji AS iconEmoji, g.media_url AS mediaUrl, g.media_type AS mediaType, g.sound_url AS soundUrl, " +
             "COALESCE(sp.display_name, 'مستخدم') AS senderName, COALESCE(rp.display_name, 'مستخدم') AS recipientName, " +
             "COALESCE(sp.avatar_key, '') AS senderAvatar, COALESCE(rp.avatar_key, '') AS recipientAvatar " +
@@ -2320,7 +2320,7 @@ export default {
         }
         // A qualifying gift also produces one application-wide banner, including for users outside rooms.
         try {
-          const bannerSettings = await env.DB.prepare(
+          const bannerSettings = await env.DB!.prepare(
             "SELECT enabled, minimum_coins AS minimumCoins FROM gift_banner_settings WHERE id = 'current'"
           ).first<{ enabled: number; minimumCoins: number }>();
           const giftCoins = Number(transaction.coinCost ?? 0);
@@ -2367,16 +2367,16 @@ export default {
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        await env.DB.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(user.id, new Date().toISOString()).run();
+        await env.DB!.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(user.id, new Date().toISOString()).run();
         const [wallet, transactions, giftEarnings] = await Promise.all([
-          env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>(),
-          env.DB.prepare(
+          env.DB!.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>(),
+          env.DB!.prepare(
             "SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, reference_id AS referenceId, description, created_at AS createdAt FROM wallet_transactions WHERE user_id = ? " +
             "UNION ALL " +
             "SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, round_id AS referenceId, description, created_at AS createdAt FROM cat_greed_ledger WHERE user_id = ? " +
             "ORDER BY createdAt DESC LIMIT 30"
           ).bind(user.id, user.id).all(),
-          env.DB.prepare("SELECT COALESCE(SUM(credited_coins), 0) AS totalGiftCoins, COALESCE(SUM(remaining_tagged_coins), 0) AS remainingTaggedCoins, COALESCE(SUM(remaining_withdrawable_coins), 0) AS futureWithdrawableCoins FROM gift_earning_lots WHERE user_id = ?").bind(user.id).first<Record<string, number>>()
+          env.DB!.prepare("SELECT COALESCE(SUM(credited_coins), 0) AS totalGiftCoins, COALESCE(SUM(remaining_tagged_coins), 0) AS remainingTaggedCoins, COALESCE(SUM(remaining_withdrawable_coins), 0) AS futureWithdrawableCoins FROM gift_earning_lots WHERE user_id = ?").bind(user.id).first<Record<string, number>>()
         ]);
         return json({
           ok: true,
@@ -2408,37 +2408,37 @@ export default {
         const price = prices[targetLevel];
         if (!price) return json({ error: "level_price_unavailable", message: "سعر مستوى القصر لم يُحدد بعد" }, 409, origin, env);
         const roomId = roomUpgradeRoute[1];
-        const room = await env.DB.prepare("SELECT r.id, r.name, COALESCE(rl.level, 1) AS level FROM rooms r LEFT JOIN room_levels rl ON rl.room_id = r.id WHERE r.id = ? AND r.status <> 'deleted' LIMIT 1").bind(roomId).first<{ id: string; name: string; level: number }>();
+        const room = await env.DB!.prepare("SELECT r.id, r.name, COALESCE(rl.level, 1) AS level FROM rooms r LEFT JOIN room_levels rl ON rl.room_id = r.id WHERE r.id = ? AND r.status <> 'deleted' LIMIT 1").bind(roomId).first<{ id: string; name: string; level: number }>();
         if (!room) return json({ error: "room_not_found", message: "الغرفة غير موجودة" }, 404, origin, env);
         if (targetLevel <= room.level) return json({ error: "room_level_not_higher", message: "الغرفة وصلت إلى هذا المستوى أو أعلى" }, 409, origin, env);
         const now = new Date().toISOString();
         const transactionId = crypto.randomUUID();
-        await env.DB.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(user.id, now).run();
-        const results = await env.DB.batch([
-          env.DB.prepare("INSERT INTO wallet_transactions (id, user_id, amount, balance_after, transaction_type, reference_id, description, created_at) SELECT ?, w.user_id, ?, w.balance - ?, 'room_upgrade', ?, ?, ? FROM user_wallets w INNER JOIN rooms r ON r.id = ? LEFT JOIN room_levels rl ON rl.room_id = r.id WHERE w.user_id = ? AND w.balance >= ? AND COALESCE(rl.level, 1) < ? AND r.status <> 'deleted'").bind(transactionId, -price, price, roomId, "ترقية غرفة " + room.name, now, roomId, user.id, price, targetLevel),
-          env.DB.prepare("UPDATE user_wallets SET balance = balance - ?, updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade')").bind(price, now, user.id, transactionId),
-          env.DB.prepare(
+        await env.DB!.prepare("INSERT OR IGNORE INTO user_wallets (user_id, balance, updated_at) VALUES (?, 0, ?)").bind(user.id, now).run();
+        const results = await env.DB!.batch([
+          env.DB!.prepare("INSERT INTO wallet_transactions (id, user_id, amount, balance_after, transaction_type, reference_id, description, created_at) SELECT ?, w.user_id, ?, w.balance - ?, 'room_upgrade', ?, ?, ? FROM user_wallets w INNER JOIN rooms r ON r.id = ? LEFT JOIN room_levels rl ON rl.room_id = r.id WHERE w.user_id = ? AND w.balance >= ? AND COALESCE(rl.level, 1) < ? AND r.status <> 'deleted'").bind(transactionId, -price, price, roomId, "ترقية غرفة " + room.name, now, roomId, user.id, price, targetLevel),
+          env.DB!.prepare("UPDATE user_wallets SET balance = balance - ?, updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade')").bind(price, now, user.id, transactionId),
+          env.DB!.prepare(
             "WITH ordered AS (SELECT id, remaining_tagged_coins, COALESCE(SUM(remaining_tagged_coins) OVER (ORDER BY created_at, id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS prior FROM gift_earning_lots WHERE user_id = ? AND remaining_tagged_coins > 0), " +
             "consumption AS (SELECT id, MIN(remaining_tagged_coins, MAX(0, ? - prior)) AS used FROM ordered) " +
             "UPDATE gift_earning_lots SET remaining_tagged_coins = MAX(0, remaining_tagged_coins - (SELECT used FROM consumption WHERE consumption.id = gift_earning_lots.id)), " +
             "remaining_withdrawable_coins = MAX(0, remaining_withdrawable_coins - (SELECT used FROM consumption WHERE consumption.id = gift_earning_lots.id)) " +
             "WHERE id IN (SELECT id FROM consumption WHERE used > 0) AND EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade')"
           ).bind(user.id, price, transactionId),
-          env.DB.prepare("INSERT INTO room_levels (room_id, level, updated_at) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade') ON CONFLICT(room_id) DO UPDATE SET level = excluded.level, updated_at = excluded.updated_at WHERE room_levels.level < excluded.level").bind(roomId, targetLevel, now, transactionId)
+          env.DB!.prepare("INSERT INTO room_levels (room_id, level, updated_at) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM wallet_transactions WHERE id = ? AND transaction_type = 'room_upgrade') ON CONFLICT(room_id) DO UPDATE SET level = excluded.level, updated_at = excluded.updated_at WHERE room_levels.level < excluded.level").bind(roomId, targetLevel, now, transactionId)
         ]);
         // A wallet may contain no gift-derived lots at all. FIFO consumption is
         // intentionally allowed to update zero rows; only the purchase debit and
         // wallet balance mutation determine whether the upgrade succeeded.
         if ((results[0]?.meta?.changes ?? 0) !== 1 || (results[1]?.meta?.changes ?? 0) !== 1) {
           const [latestRoom, wallet] = await Promise.all([
-            env.DB.prepare("SELECT COALESCE(rl.level, 1) AS level FROM rooms r LEFT JOIN room_levels rl ON rl.room_id = r.id WHERE r.id = ? AND r.status <> 'deleted' LIMIT 1").bind(roomId).first<{ level: number }>(),
-            env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>()
+            env.DB!.prepare("SELECT COALESCE(rl.level, 1) AS level FROM rooms r LEFT JOIN room_levels rl ON rl.room_id = r.id WHERE r.id = ? AND r.status <> 'deleted' LIMIT 1").bind(roomId).first<{ level: number }>(),
+            env.DB!.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>()
           ]);
           if (!latestRoom) return json({ error: "room_not_found", message: "الغرفة غير موجودة" }, 404, origin, env);
           if (latestRoom.level >= targetLevel) return json({ error: "room_level_not_higher", message: "الغرفة وصلت إلى هذا المستوى أو أعلى", level: latestRoom.level }, 409, origin, env);
           return json({ error: "insufficient_funds", message: "رصيد العملات غير كافٍ", balance: wallet?.balance ?? 0, required: price }, 402, origin, env);
         }
-        const wallet = await env.DB.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>();
+        const wallet = await env.DB!.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>();
         return json({ ok: true, roomId, level: targetLevel, price, balance: wallet?.balance ?? 0 }, 200, origin, env);
       } catch (error) {
         console.error("[rooms.upgrade] failed", error instanceof Error ? error.message : "UnknownError");
@@ -2453,7 +2453,7 @@ export default {
         const actor = await authenticatedUser(request, env.DB);
         if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = decodeURIComponent(moderationRoute[1]);
-        const room = await env.DB.prepare(
+        const room = await env.DB!.prepare(
           "SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
@@ -2463,19 +2463,19 @@ export default {
         const action = String(body.action ?? "");
         const targetUserId = String(body.targetUserId ?? actor.id);
         const isOwner = room.owner_user_id === actor.id;
-        const moderator = await env.DB.prepare(
+        const moderator = await env.DB!.prepare(
           "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
         ).bind(roomId, actor.id).first<{ user_id: string }>();
         const canModerate = isOwner || !!moderator;
         if (action === "self_mic_toggle") {
-          const current = await env.DB.prepare(
+          const current = await env.DB!.prepare(
             "SELECT is_muted, muted_by FROM room_user_controls WHERE room_id = ? AND user_id = ?"
           ).bind(roomId, actor.id).first<{ is_muted: number; muted_by: string | null }>();
           if (current?.is_muted === 1 && current.muted_by && current.muted_by !== actor.id) {
             return json({ error: "moderator_muted", message: "تم كتم مايكك بواسطة إدارة الغرفة" }, 403, origin, env);
           }
           const nextMuted = current?.is_muted === 1 ? 0 : 1;
-          await env.DB.prepare(
+          await env.DB!.prepare(
             "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, NULL, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = NULL, updated_at = excluded.updated_at"
           ).bind(roomId, actor.id, nextMuted, new Date().toISOString()).run();
           const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
@@ -2490,10 +2490,10 @@ export default {
           if (!isOwner) return json({ error: "room_owner_required" }, 403, origin, env);
           if (!targetUserId || targetUserId === actor.id) return json({ error: "invalid_moderator" }, 400, origin, env);
           if (action === "assign_moderator") {
-            await env.DB.prepare("INSERT OR IGNORE INTO room_moderators (room_id, user_id, assigned_by, created_at) VALUES (?, ?, ?, ?)")
+            await env.DB!.prepare("INSERT OR IGNORE INTO room_moderators (room_id, user_id, assigned_by, created_at) VALUES (?, ?, ?, ?)")
               .bind(roomId, targetUserId, actor.id, new Date().toISOString()).run();
           } else {
-            await env.DB.prepare("DELETE FROM room_moderators WHERE room_id = ? AND user_id = ?")
+            await env.DB!.prepare("DELETE FROM room_moderators WHERE room_id = ? AND user_id = ?")
               .bind(roomId, targetUserId).run();
           }
           const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
@@ -2509,17 +2509,17 @@ export default {
         if (!["toggle_mute", "kick", "ban", "lower"].includes(action) || !targetUserId || targetUserId === room.owner_user_id) {
           return json({ error: "invalid_moderation_action" }, 400, origin, env);
         }
-        const targetModerator = await env.DB.prepare(
+        const targetModerator = await env.DB!.prepare(
           "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
         ).bind(roomId, targetUserId).first<{ user_id: string }>();
         if (targetModerator) return json({ error: "cannot_moderate_room_moderator", message: "لا يمكن تنفيذ الإجراء على مشرف الغرفة" }, 403, origin, env);
         const now = new Date().toISOString();
         if (action === "toggle_mute") {
-          const current = await env.DB.prepare(
+          const current = await env.DB!.prepare(
             "SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ?"
           ).bind(roomId, targetUserId).first<{ is_muted: number }>();
           const nextMuted = current?.is_muted === 1 ? 0 : 1;
-          await env.DB.prepare(
+          await env.DB!.prepare(
             "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = CASE WHEN excluded.is_muted = 1 THEN excluded.muted_by ELSE NULL END, updated_at = excluded.updated_at"
           ).bind(roomId, targetUserId, nextMuted, nextMuted === 1 ? actor.id : null, now).run();
           const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
@@ -2530,20 +2530,20 @@ export default {
           return json({ ok: true, isMuted: nextMuted === 1 }, 200, origin, env);
         }
         if (action === "kick" || action === "ban" || action === "lower") {
-          await env.DB.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId).run();
+          await env.DB!.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId).run();
           if (action === "kick") {
             const kickedUntil = new Date(Date.now() + 60000).toISOString();
-            await env.DB.prepare(
+            await env.DB!.prepare(
               "INSERT INTO room_kicks (room_id, user_id, kicked_by, kicked_until, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET kicked_by = excluded.kicked_by, kicked_until = excluded.kicked_until, created_at = excluded.created_at"
             ).bind(roomId, targetUserId, actor.id, kickedUntil, now).run();
           }
           if (action === "kick") {
-            await env.DB.prepare(
+            await env.DB!.prepare(
               "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
             ).bind(now, roomId, targetUserId).run();
           }
           if (action === "ban") {
-            await env.DB.prepare(
+            await env.DB!.prepare(
               "INSERT INTO room_bans (room_id, user_id, banned_by, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET banned_by = excluded.banned_by, created_at = excluded.created_at"
             ).bind(roomId, targetUserId, actor.id, now).run();
           }
@@ -2573,15 +2573,15 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = decodeURIComponent(agoraTokenRoute[1]);
-        const room = await env.DB.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
+        const room = await env.DB!.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
           .bind(roomId).first<{ id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
         const now = new Date().toISOString();
         const [ban, kick, controlKick, control] = await Promise.all([
-          env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
-          env.DB.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
-          env.DB.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
-          env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>()
+          env.DB!.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
+          env.DB!.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
+          env.DB!.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
+          env.DB!.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>()
         ]);
         if (ban || kick || controlKick) return json({ error: ban ? "room_banned" : "room_kicked" }, 403, origin, env);
         let requestedPublish = false;
@@ -2625,19 +2625,19 @@ export default {
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = decodeURIComponent(seatRoute[1]);
         const now = new Date().toISOString();
-        const room = await env.DB.prepare(
+        const room = await env.DB!.prepare(
           "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, COALESCE(rl.level, 1) AS level, COALESCE(rx.total_exp, 0) AS total_exp, p.display_name AS owner_name, p.avatar_key AS owner_avatar_url, p.country_name AS owner_country_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN room_levels rl ON rl.room_id = r.id LEFT JOIN room_experience rx ON rx.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; level: number; total_exp: number; owner_name: string | null; owner_avatar_url: string | null; owner_country_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
 
         const [voiceEnabled, activeBan, activeKick, controlKick, profile, myControl, roomModerator] = await Promise.all([
           isAgoraVoiceEnabled(env.DB, env),
-          env.DB.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
-          env.DB.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
-          env.DB.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
-          env.DB.prepare("SELECT avatar_key, country_name FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null; country_name: string | null }>(),
-          env.DB.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
-          env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
+          env.DB!.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
+          env.DB!.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
+          env.DB!.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
+          env.DB!.prepare("SELECT avatar_key, country_name FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null; country_name: string | null }>(),
+          env.DB!.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
+          env.DB!.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
         ]);
         if (activeKick || controlKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
 
@@ -2666,7 +2666,7 @@ export default {
             const heartbeat = await seatHub.fetch(new Request("https://room-seats.internal/heartbeat", {
               method: "POST", headers: heartbeatHeaders
             }));
-            await env.DB.prepare(
+            await env.DB!.prepare(
               "UPDATE room_chat_visits SET last_seen_at = ? WHERE room_id = ? AND user_id = ? AND exited_at IS NULL"
             ).bind(now, roomId, user.id).run();
             if (!heartbeat.ok) return json({ error: "seat_heartbeat_failed" }, 503, origin, env);
@@ -2731,7 +2731,7 @@ export default {
         }
         const [snapshotResponse, audience] = await Promise.all([
           seatHub.fetch(new Request("https://room-seats.internal/snapshot")),
-          env.DB.prepare(
+          env.DB!.prepare(
             "SELECT COUNT(DISTINCT v.user_id) AS count FROM room_chat_visits v WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ?"
           ).bind(roomId, new Date(Date.now() - 45000).toISOString()).first<{ count: number }>()
         ]);
@@ -2743,7 +2743,7 @@ export default {
         const profileByUserId = new Map<string, { display_name: string | null; avatar_key: string | null; country_name: string | null }>();
         if (activeSeatIds.length > 0) {
           const placeholders = activeSeatIds.map(() => "?").join(",");
-          const profileRows = await env.DB.prepare(
+          const profileRows = await env.DB!.prepare(
             "SELECT user_id, display_name, avatar_key, country_name FROM profiles WHERE user_id IN (" + placeholders + ")"
           ).bind(...activeSeatIds).all<{ user_id: string; display_name: string | null; avatar_key: string | null; country_name: string | null }>();
           for (const row of profileRows.results ?? []) {
@@ -2770,10 +2770,10 @@ export default {
         const mySeat = seats.find((seat) => seat.userId === user.id)?.seatNumber ?? null;
 
         const audienceCutoff = new Date(Date.now() - 45000).toISOString();
-        await env.DB.prepare(
+        await env.DB!.prepare(
           "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND exited_at IS NULL AND last_seen_at < ?"
         ).bind(now, roomId, audienceCutoff).run();
-        const audienceUsersResult = await env.DB.prepare(
+        const audienceUsersResult = await env.DB!.prepare(
           "SELECT p.user_id, p.display_name, p.happy_id, p.avatar_key, p.country_code, p.country_name, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? GROUP BY p.user_id, p.display_name, p.happy_id, p.avatar_key, p.country_code, p.country_name ORDER BY last_seen_at DESC LIMIT 100"
         ).bind(roomId, audienceCutoff).all<{ user_id: string; display_name: string | null; happy_id: string | null; avatar_key: string | null; country_code: string | null; country_name: string | null; last_seen_at: string }>();
         const seatedIds = new Set(seats.map((seat) => String(seat.userId)));
@@ -2788,7 +2788,7 @@ export default {
             countryCode: visitor.country_code ?? ""
           }));
         const experience = roomExperienceProgress(Number(room.total_exp ?? 0));
-        const dailyExperience = await env.DB.prepare(
+        const dailyExperience = await env.DB!.prepare(
           "SELECT points FROM room_exp_daily WHERE user_id = ? AND day_key = ? LIMIT 1"
         ).bind(user.id, now.slice(0, 10)).first<{ points: number }>();
         return json({
@@ -2819,7 +2819,7 @@ export default {
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        const rows = await env.DB.prepare(
+        const rows = await env.DB!.prepare(
           "SELECT p.id, p.user_id, p.content, p.image_url, p.visibility, p.created_at, pr.display_name, pr.happy_id, pr.avatar_key, " +
           "EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS liked, " +
           "(SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS likes_count, " +
@@ -2868,7 +2868,7 @@ export default {
         }
         const id = crypto.randomUUID();
         const createdAt = new Date().toISOString();
-        await env.DB.prepare("INSERT INTO posts (id, user_id, content, image_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
+        await env.DB!.prepare("INSERT INTO posts (id, user_id, content, image_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
           .bind(id, user.id, content, imageUrl || null, createdAt, createdAt).run();
         return json({ ok: true, post: { id, userId: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.happy_id, content, imageUrl: imageUrl || null, createdAt, liked: false, likesCount: 0, commentsCount: 0, followed: false, isMine: true } }, 201, origin, env);
       } catch (error) {
@@ -2886,17 +2886,17 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const postId = postActionRoute?.[1] ?? postVisibilityRoute?.[1];
-        const post = await env.DB.prepare("SELECT id, user_id FROM posts WHERE id = ? AND status = 'published'").bind(postId).first<{ id: string; user_id: string }>();
+        const post = await env.DB!.prepare("SELECT id, user_id FROM posts WHERE id = ? AND status = 'published'").bind(postId).first<{ id: string; user_id: string }>();
         if (!post) return json({ error: "post_not_found" }, 404, origin, env);
         if (post.user_id !== user.id) return json({ error: "not_post_owner" }, 403, origin, env);
         if (request.method === "DELETE") {
-          await env.DB.prepare("UPDATE posts SET status = 'deleted', updated_at = ? WHERE id = ? AND user_id = ?").bind(new Date().toISOString(), postId, user.id).run();
+          await env.DB!.prepare("UPDATE posts SET status = 'deleted', updated_at = ? WHERE id = ? AND user_id = ?").bind(new Date().toISOString(), postId, user.id).run();
           return json({ ok: true }, 200, origin, env);
         }
         const body = await request.json() as Record<string, unknown>;
         const visibility = typeof body.visibility === "string" ? body.visibility : "";
         if (!["public", "followers", "private"].includes(visibility)) return json({ error: "invalid_visibility" }, 400, origin, env);
-        await env.DB.prepare("UPDATE posts SET visibility = ?, updated_at = ? WHERE id = ? AND user_id = ?").bind(visibility, new Date().toISOString(), postId, user.id).run();
+        await env.DB!.prepare("UPDATE posts SET visibility = ?, updated_at = ? WHERE id = ? AND user_id = ?").bind(visibility, new Date().toISOString(), postId, user.id).run();
         return json({ ok: true, visibility }, 200, origin, env);
       } catch (error) {
         console.error("[posts.manage] failed", error instanceof Error ? error.message : "UnknownError");
@@ -2912,9 +2912,9 @@ export default {
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const targetId = hideUserRoute[1];
         if (targetId === user.id) return json({ error: "cannot_hide_self" }, 400, origin, env);
-        const target = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND status = 'active'").bind(targetId).first();
+        const target = await env.DB!.prepare("SELECT id FROM users WHERE id = ? AND status = 'active'").bind(targetId).first();
         if (!target) return json({ error: "user_not_found" }, 404, origin, env);
-        await env.DB.prepare("INSERT INTO user_hidden_users (user_id, hidden_user_id, created_at) VALUES (?, ?, ?) ON CONFLICT(user_id, hidden_user_id) DO NOTHING").bind(user.id, targetId, new Date().toISOString()).run();
+        await env.DB!.prepare("INSERT INTO user_hidden_users (user_id, hidden_user_id, created_at) VALUES (?, ?, ?) ON CONFLICT(user_id, hidden_user_id) DO NOTHING").bind(user.id, targetId, new Date().toISOString()).run();
         return json({ ok: true }, 200, origin, env);
       } catch (error) {
         console.error("[users.hide] failed", error instanceof Error ? error.message : "UnknownError");
@@ -2930,10 +2930,10 @@ export default {
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const body = await request.json() as Record<string, unknown>;
         const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 300) : "general";
-        const post = await env.DB.prepare("SELECT id, user_id FROM posts WHERE id = ? AND status = 'published'").bind(postReportRoute[1]).first<{ id: string; user_id: string }>();
+        const post = await env.DB!.prepare("SELECT id, user_id FROM posts WHERE id = ? AND status = 'published'").bind(postReportRoute[1]).first<{ id: string; user_id: string }>();
         if (!post) return json({ error: "post_not_found" }, 404, origin, env);
         if (post.user_id === user.id) return json({ error: "cannot_report_own_post" }, 400, origin, env);
-        await env.DB.prepare("INSERT INTO post_reports (id, post_id, reporter_id, reported_user_id, reason, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), post.id, user.id, post.user_id, reason || "general", new Date().toISOString()).run();
+        await env.DB!.prepare("INSERT INTO post_reports (id, post_id, reporter_id, reported_user_id, reason, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), post.id, user.id, post.user_id, reason || "general", new Date().toISOString()).run();
         return json({ ok: true }, 201, origin, env);
       } catch (error) {
         console.error("[posts.report] failed", error instanceof Error ? error.message : "UnknownError");
@@ -2947,12 +2947,12 @@ export default {
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        const post = await env.DB.prepare("SELECT id FROM posts WHERE id = ? AND status = 'published'").bind(postLikeRoute[1]).first();
+        const post = await env.DB!.prepare("SELECT id FROM posts WHERE id = ? AND status = 'published'").bind(postLikeRoute[1]).first();
         if (!post) return json({ error: "post_not_found" }, 404, origin, env);
-        const existing = await env.DB.prepare("SELECT 1 AS found FROM post_likes WHERE post_id = ? AND user_id = ?").bind(postLikeRoute[1], user.id).first();
-        if (existing) await env.DB.prepare("DELETE FROM post_likes WHERE post_id = ? AND user_id = ?").bind(postLikeRoute[1], user.id).run();
-        else await env.DB.prepare("INSERT INTO post_likes (post_id, user_id, created_at) VALUES (?, ?, ?)").bind(postLikeRoute[1], user.id, new Date().toISOString()).run();
-        const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM post_likes WHERE post_id = ?").bind(postLikeRoute[1]).first<{ total: number }>();
+        const existing = await env.DB!.prepare("SELECT 1 AS found FROM post_likes WHERE post_id = ? AND user_id = ?").bind(postLikeRoute[1], user.id).first();
+        if (existing) await env.DB!.prepare("DELETE FROM post_likes WHERE post_id = ? AND user_id = ?").bind(postLikeRoute[1], user.id).run();
+        else await env.DB!.prepare("INSERT INTO post_likes (post_id, user_id, created_at) VALUES (?, ?, ?)").bind(postLikeRoute[1], user.id, new Date().toISOString()).run();
+        const count = await env.DB!.prepare("SELECT COUNT(*) AS total FROM post_likes WHERE post_id = ?").bind(postLikeRoute[1]).first<{ total: number }>();
         return json({ ok: true, liked: !existing, likesCount: count?.total ?? 0 }, 200, origin, env);
       } catch (error) {
         console.error("[posts.like] failed", error instanceof Error ? error.message : "UnknownError");
@@ -2970,20 +2970,20 @@ export default {
         const content = typeof body.content === "string" ? body.content.trim() : "";
         const parentReplyId = typeof body.parentReplyId === "string" && body.parentReplyId.trim() ? body.parentReplyId.trim() : null;
         if (!content || content.length > 500) return json({ error: "invalid_reply", message: "اكتب رداً لا يتجاوز 500 حرف" }, 400, origin, env);
-        const parent = await env.DB.prepare(
+        const parent = await env.DB!.prepare(
           "SELECT c.id FROM post_comments c INNER JOIN posts p ON p.id = c.post_id WHERE c.id = ? AND c.post_id = ? AND p.status = 'published'"
         ).bind(commentRepliesRoute[2], commentRepliesRoute[1]).first();
         if (!parent) return json({ error: "comment_not_found" }, 404, origin, env);
         if (parentReplyId) {
-          const parentReply = await env.DB.prepare("SELECT id FROM post_comment_replies WHERE id = ? AND comment_id = ?")
+          const parentReply = await env.DB!.prepare("SELECT id FROM post_comment_replies WHERE id = ? AND comment_id = ?")
             .bind(parentReplyId, commentRepliesRoute[2]).first();
           if (!parentReply) return json({ error: "parent_reply_not_found" }, 404, origin, env);
         }
         const id = crypto.randomUUID();
         const createdAt = new Date().toISOString();
-        await env.DB.prepare("INSERT INTO post_comment_replies (id, comment_id, user_id, content, created_at, parent_reply_id) VALUES (?, ?, ?, ?, ?, ?)")
+        await env.DB!.prepare("INSERT INTO post_comment_replies (id, comment_id, user_id, content, created_at, parent_reply_id) VALUES (?, ?, ?, ?, ?, ?)")
           .bind(id, commentRepliesRoute[2], user.id, content, createdAt, parentReplyId).run();
-        const profile = await env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ?")
+        const profile = await env.DB!.prepare("SELECT avatar_key FROM profiles WHERE user_id = ?")
           .bind(user.id).first<{ avatar_key: string | null }>();
         return json({ ok: true, reply: { id, commentId: commentRepliesRoute[2], userId: user.id, content, createdAt, name: user.display_name?.trim() || "مستخدم", userCode: user.happy_id, avatarUrl: profile?.avatar_key ?? null } }, 201, origin, env);
       } catch (error) {
@@ -3004,7 +3004,7 @@ export default {
           return json({ error: "invalid_report_status" }, 400, origin, env);
         }
         const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 50), 1), 100);
-        const rows = await env.DB.prepare(
+        const rows = await env.DB!.prepare(
           "SELECT r.id, r.post_id, r.comment_id, r.reason, r.status, r.created_at, " +
           "reporter.id AS reporter_id, reporter_profile.display_name AS reporter_name, reporter_profile.happy_id AS reporter_code, " +
           "reported.id AS reported_user_id, reported_profile.display_name AS reported_name, reported_profile.happy_id AS reported_code, " +
@@ -3039,15 +3039,15 @@ export default {
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        const post = await env.DB.prepare("SELECT user_id FROM posts WHERE id = ? AND status = 'published'")
+        const post = await env.DB!.prepare("SELECT user_id FROM posts WHERE id = ? AND status = 'published'")
           .bind(commentActionRoute[1]).first<{ user_id: string }>();
         if (!post) return json({ error: "post_not_found" }, 404, origin, env);
         if (post.user_id !== user.id) return json({ error: "forbidden" }, 403, origin, env);
-        const comment = await env.DB.prepare("SELECT id FROM post_comments WHERE id = ? AND post_id = ?")
+        const comment = await env.DB!.prepare("SELECT id FROM post_comments WHERE id = ? AND post_id = ?")
           .bind(commentActionRoute[2], commentActionRoute[1]).first<{ id: string }>();
         if (!comment) return json({ error: "comment_not_found" }, 404, origin, env);
-        await env.DB.prepare("DELETE FROM post_comment_replies WHERE comment_id = ?").bind(comment.id).run();
-        await env.DB.prepare("DELETE FROM post_comments WHERE id = ? AND post_id = ?")
+        await env.DB!.prepare("DELETE FROM post_comment_replies WHERE comment_id = ?").bind(comment.id).run();
+        await env.DB!.prepare("DELETE FROM post_comments WHERE id = ? AND post_id = ?")
           .bind(comment.id, commentActionRoute[1]).run();
         return json({ ok: true }, 200, origin, env);
       } catch (error) {
@@ -3060,19 +3060,19 @@ export default {
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        const comment = await env.DB.prepare(
+        const comment = await env.DB!.prepare(
           "SELECT c.id, c.user_id FROM post_comments c INNER JOIN posts p ON p.id = c.post_id WHERE c.id = ? AND c.post_id = ? AND p.status = 'published'"
         ).bind(commentActionRoute[2], commentActionRoute[1]).first<{ id: string; user_id: string }>();
         if (!comment) return json({ error: "comment_not_found" }, 404, origin, env);
         if (comment.user_id === user.id) return json({ error: "cannot_report_own_comment" }, 400, origin, env);
-        const existing = await env.DB.prepare("SELECT id FROM post_comment_reports WHERE comment_id = ? AND reporter_id = ?")
+        const existing = await env.DB!.prepare("SELECT id FROM post_comment_reports WHERE comment_id = ? AND reporter_id = ?")
           .bind(comment.id, user.id).first();
         if (existing) return json({ error: "already_reported" }, 409, origin, env);
         const reportId = crypto.randomUUID();
         const reportedAt = new Date().toISOString();
-        await env.DB.prepare("INSERT INTO post_comment_reports (id, post_id, comment_id, reporter_id, reported_user_id, reason, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)")
+        await env.DB!.prepare("INSERT INTO post_comment_reports (id, post_id, comment_id, reporter_id, reported_user_id, reason, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)")
           .bind(reportId, commentActionRoute[1], comment.id, user.id, comment.user_id, "general", reportedAt).run();
-        await env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        await env.DB!.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
           .bind(crypto.randomUUID(), user.id, "post_comment_report.created", "post_comment_report", reportId, JSON.stringify({ postId: commentActionRoute[1], commentId: comment.id, reportedUserId: comment.user_id }), reportedAt).run();
         return json({ ok: true, reportId }, 201, origin, env);
       } catch (error) {
@@ -3087,11 +3087,11 @@ export default {
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        const rows = await env.DB.prepare(
+        const rows = await env.DB!.prepare(
           "SELECT c.id, c.user_id, c.content, c.created_at, p.display_name, p.happy_id, p.avatar_key FROM post_comments c LEFT JOIN profiles p ON p.user_id = c.user_id WHERE c.post_id = ? ORDER BY c.created_at ASC LIMIT 100"
         ).bind(postCommentsRoute[1]).all<{ id: string; user_id: string; content: string; created_at: string; display_name: string | null; happy_id: string | null; avatar_key: string | null }>();
         const comments = (rows.results ?? []).map(c => ({ id: c.id, userId: c.user_id, content: c.content, createdAt: c.created_at, name: c.display_name?.trim() || "مستخدم", userCode: c.happy_id, avatarUrl: c.avatar_key, replies: [] as Array<Record<string, unknown>> }));
-        const replies = await env.DB.prepare(
+        const replies = await env.DB!.prepare(
           "SELECT r.id, r.comment_id, r.parent_reply_id, r.user_id, r.content, r.created_at, p.display_name, p.happy_id, p.avatar_key FROM post_comment_replies r LEFT JOIN profiles p ON p.user_id = r.user_id INNER JOIN post_comments c ON c.id = r.comment_id WHERE c.post_id = ? ORDER BY r.created_at ASC"
         ).bind(postCommentsRoute[1]).all<{ id: string; comment_id: string; parent_reply_id: string | null; user_id: string; content: string; created_at: string; display_name: string | null; happy_id: string | null; avatar_key: string | null }>();
         const commentsById = new Map(comments.map(c => [c.id, c]));
@@ -3129,23 +3129,23 @@ export default {
         const body = await request.json() as Record<string, unknown>;
         const content = typeof body.content === "string" ? body.content.trim() : "";
         if (!content || content.length > 500) return json({ error: "invalid_comment", message: "اكتب تعليقاً لا يتجاوز 500 حرف" }, 400, origin, env);
-        const post = await env.DB.prepare("SELECT id FROM posts WHERE id = ? AND status = 'published'").bind(postCommentsRoute[1]).first();
+        const post = await env.DB!.prepare("SELECT id FROM posts WHERE id = ? AND status = 'published'").bind(postCommentsRoute[1]).first();
         if (!post) return json({ error: "post_not_found" }, 404, origin, env);
         const createdAt = new Date().toISOString();
-        const allowed = await env.DB.prepare(
+        const allowed = await env.DB!.prepare(
           "INSERT INTO post_comment_rate_limits (user_id, last_comment_at) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET last_comment_at = excluded.last_comment_at WHERE CAST(strftime('%s', excluded.last_comment_at) AS INTEGER) - CAST(strftime('%s', post_comment_rate_limits.last_comment_at) AS INTEGER) >= 30 RETURNING user_id"
         ).bind(user.id, createdAt).first<{ user_id: string }>();
         if (!allowed) {
-          const last = await env.DB.prepare("SELECT last_comment_at FROM post_comment_rate_limits WHERE user_id = ?")
+          const last = await env.DB!.prepare("SELECT last_comment_at FROM post_comment_rate_limits WHERE user_id = ?")
             .bind(user.id).first<{ last_comment_at: string }>();
           const elapsed = last ? Math.max(0, Math.floor((Date.now() - Date.parse(last.last_comment_at)) / 1000)) : 0;
           const retryAfter = Math.max(1, 30 - elapsed);
           return json({ error: "comment_cooldown", message: `انتظر ${retryAfter} ثانية قبل كتابة تعليق جديد`, retryAfterSeconds: retryAfter }, 429, origin, env);
         }
         const id = crypto.randomUUID();
-        await env.DB.prepare("INSERT INTO post_comments (id, post_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)")
+        await env.DB!.prepare("INSERT INTO post_comments (id, post_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)")
           .bind(id, postCommentsRoute[1], user.id, content, createdAt).run();
-        const commenterProfile = await env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ?")
+        const commenterProfile = await env.DB!.prepare("SELECT avatar_key FROM profiles WHERE user_id = ?")
           .bind(user.id).first<{ avatar_key: string | null }>();
         return json({ ok: true, comment: { id, userId: user.id, content, createdAt, name: user.display_name?.trim() || "مستخدم", userCode: user.happy_id, avatarUrl: commenterProfile?.avatar_key ?? null } }, 201, origin, env);
       } catch (error) {
@@ -3160,7 +3160,7 @@ export default {
       try {
         const viewer = await authenticatedUser(request, env.DB);
         if (!viewer) return json({ error: "authentication_required" }, 401, origin, env);
-        const target = await env.DB.prepare(
+        const target = await env.DB!.prepare(
           "SELECT u.id, p.display_name, p.happy_id, p.avatar_key FROM users u " +
           "INNER JOIN profiles p ON p.user_id = u.id " +
           "WHERE p.happy_id = ? AND u.status = 'active' LIMIT 1"
@@ -3186,7 +3186,7 @@ export default {
         const viewer = await authenticatedUser(request, env.DB);
         if (!viewer) return json({ error: "authentication_required" }, 401, origin, env);
         const targetId = publicProfileRoute[1];
-        const profile = await env.DB.prepare(
+        const profile = await env.DB!.prepare(
           "SELECT u.id, p.display_name, p.happy_id, p.avatar_key, p.cover_key, p.bio, p.country_name, p.gender, p.birthday, p.is_private, p.created_at " +
           "FROM users u INNER JOIN profiles p ON p.user_id = u.id WHERE u.id = ? AND u.status = 'active' LIMIT 1"
         ).bind(targetId).first<{
@@ -3196,12 +3196,12 @@ export default {
         }>();
         if (!profile) return json({ error: "user_not_found" }, 404, origin, env);
         const isMine = viewer.id === targetId;
-        const follow = isMine ? null : await env.DB.prepare(
+        const follow = isMine ? null : await env.DB!.prepare(
           "SELECT 1 AS found FROM user_follows WHERE follower_id = ? AND following_id = ? LIMIT 1"
         ).bind(viewer.id, targetId).first<{ found: number }>();
         const isFollowing = Boolean(follow);
         const canViewPosts = !profile.is_private || isMine || isFollowing;
-        const stats = await env.DB.prepare(
+        const stats = await env.DB!.prepare(
           "SELECT " +
           "(SELECT COUNT(*) FROM user_follows WHERE following_id = ?) AS followers, " +
           "(SELECT COUNT(*) FROM user_follows WHERE follower_id = ?) AS following, " +
@@ -3211,7 +3211,7 @@ export default {
         ).bind(targetId, targetId, targetId, targetId, targetId).first<{
           followers: number; following: number; posts: number; likes_received: number; active_rooms: number;
         }>();
-        const posts = canViewPosts ? await env.DB.prepare(
+        const posts = canViewPosts ? await env.DB!.prepare(
           "SELECT id, content, image_url, created_at, " +
           "(SELECT COUNT(*) FROM post_likes l WHERE l.post_id = posts.id) AS likes_count, " +
           "(SELECT COUNT(*) FROM post_comments c WHERE c.post_id = posts.id) AS comments_count, " +
@@ -3254,11 +3254,11 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         if (followRoute[1] === user.id) return json({ error: "cannot_follow_self" }, 400, origin, env);
-        const target = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND status = 'active'").bind(followRoute[1]).first();
+        const target = await env.DB!.prepare("SELECT id FROM users WHERE id = ? AND status = 'active'").bind(followRoute[1]).first();
         if (!target) return json({ error: "user_not_found" }, 404, origin, env);
-        const existing = await env.DB.prepare("SELECT 1 AS found FROM user_follows WHERE follower_id = ? AND following_id = ?").bind(user.id, followRoute[1]).first();
-        if (existing) await env.DB.prepare("DELETE FROM user_follows WHERE follower_id = ? AND following_id = ?").bind(user.id, followRoute[1]).run();
-        else await env.DB.prepare("INSERT INTO user_follows (follower_id, following_id, created_at) VALUES (?, ?, ?)").bind(user.id, followRoute[1], new Date().toISOString()).run();
+        const existing = await env.DB!.prepare("SELECT 1 AS found FROM user_follows WHERE follower_id = ? AND following_id = ?").bind(user.id, followRoute[1]).first();
+        if (existing) await env.DB!.prepare("DELETE FROM user_follows WHERE follower_id = ? AND following_id = ?").bind(user.id, followRoute[1]).run();
+        else await env.DB!.prepare("INSERT INTO user_follows (follower_id, following_id, created_at) VALUES (?, ?, ?)").bind(user.id, followRoute[1], new Date().toISOString()).run();
         return json({ ok: true, following: !existing }, 200, origin, env);
       } catch (error) {
         console.error("[users.follow] failed", error instanceof Error ? error.message : "UnknownError");
@@ -3282,12 +3282,12 @@ export default {
         if (!roomCode || !roomName || targets.length === 0 || targets.some((value) => !allowedTargets.has(value)) || !allowedViolations.has(violation)) {
           return json({ error: "invalid_room_report", message: "بيانات البلاغ غير مكتملة" }, 400, origin, env);
         }
-        const room = await env.DB.prepare("SELECT room_code, name FROM rooms WHERE room_code = ? OR id = ? LIMIT 1")
+        const room = await env.DB!.prepare("SELECT room_code, name FROM rooms WHERE room_code = ? OR id = ? LIMIT 1")
           .bind(roomCode, roomCode).first<{ room_code: string; name: string }>();
         if (!room) return json({ error: "room_not_found", message: "الغرفة غير موجودة" }, 404, origin, env);
         const id = crypto.randomUUID();
         const createdAt = new Date().toISOString();
-        await env.DB.prepare("INSERT INTO room_profile_reports (id, room_code, room_name, reporter_id, targets_json, violation, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)")
+        await env.DB!.prepare("INSERT INTO room_profile_reports (id, room_code, room_name, reporter_id, targets_json, violation, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)")
           .bind(id, room.room_code, room.name, user.id, JSON.stringify([...new Set(targets)]), violation, createdAt).run();
         return json({ ok: true, reportId: id, message: "تم إرسال البلاغ إلى إدارة Happy Live للمراجعة" }, 201, origin, env);
       } catch (error) {
@@ -3302,7 +3302,7 @@ export default {
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        const room = await env.DB.prepare(
+        const room = await env.DB!.prepare(
           "SELECT id, room_code, owner_user_id, name, description, image_url, visibility, status, created_at FROM rooms WHERE owner_user_id = ? ORDER BY created_at ASC LIMIT 1"
         ).bind(user.id).first<{
           id: string; room_code: string; owner_user_id: string; name: string;
@@ -3329,7 +3329,7 @@ export default {
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
-        const room = await env.DB.prepare(
+        const room = await env.DB!.prepare(
           "SELECT r.id, r.room_code, r.owner_user_id, r.name, r.description, r.image_url, r.visibility, r.status, r.created_at, p.display_name AS owner_name FROM rooms r LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.room_code = ? AND r.status = 'active' LIMIT 1"
         ).bind(roomCodeRoute[1]).first<{
           id: string; room_code: string; owner_user_id: string; name: string;
@@ -3354,7 +3354,7 @@ export default {
     if (url.pathname === "/api/v1/rooms" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
-        const result = await env.DB.prepare(
+        const result = await env.DB!.prepare(
           "SELECT id, room_code, owner_user_id, name, description, image_url, visibility, created_at FROM rooms WHERE status = 'active' AND visibility = 'public' ORDER BY created_at DESC LIMIT 100"
         ).all<{
           id: string;
@@ -3394,7 +3394,7 @@ export default {
 
         // A user owns one permanent room. Leaving it never deletes it, and
         // pressing create again returns the original room instead of duplicating it.
-        const existingRoom = await env.DB.prepare(
+        const existingRoom = await env.DB!.prepare(
           "SELECT id, room_code, owner_user_id, name, description, image_url, visibility, status, created_at FROM rooms WHERE owner_user_id = ? ORDER BY created_at ASC LIMIT 1"
         ).bind(user.id).first<{
           id: string; room_code: string; owner_user_id: string; name: string;
@@ -3445,7 +3445,7 @@ export default {
           const random = new Uint32Array(1);
           crypto.getRandomValues(random);
           roomCode = String(1000000 + (random[0] % 9000000));
-          const inserted = await env.DB.prepare(
+          const inserted = await env.DB!.prepare(
             "INSERT INTO rooms (id, room_code, owner_user_id, name, description, image_url, visibility, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?) ON CONFLICT DO NOTHING"
           ).bind(roomId, roomCode, user.id, name, description, imageUrl || null, isPrivate ? "private" : "public", createdAt, createdAt).run();
           if ((inserted.meta?.changes ?? 0) === 1) {
@@ -3456,7 +3456,7 @@ export default {
           // A concurrent request may have created this user's room after the
           // initial lookup. The unique owner index rejects the second insert;
           // return the winner's room instead of reporting a room-code failure.
-          const concurrentRoom = await env.DB.prepare(
+          const concurrentRoom = await env.DB!.prepare(
             "SELECT id, room_code, owner_user_id, name, description, image_url, visibility, status, created_at FROM rooms WHERE owner_user_id = ? ORDER BY created_at ASC, id ASC LIMIT 1"
           ).bind(user.id).first<{
             id: string; room_code: string; owner_user_id: string; name: string;
@@ -3505,7 +3505,7 @@ export default {
       const authorization = request.headers.get("Authorization") ?? "";
       const match = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
       if (match) {
-        await env.DB.prepare("UPDATE user_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL")
+        await env.DB!.prepare("UPDATE user_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL")
           .bind(new Date().toISOString(), await sha256(match[1])).run();
       }
       return json({ ok: true }, 200, origin, env);
@@ -3516,7 +3516,7 @@ export default {
 
       if (env.DB) {
         try {
-          await env.DB.prepare("SELECT 1 AS ok").first();
+          await env.DB!.prepare("SELECT 1 AS ok").first();
           database = "connected";
         } catch {
           database = "unavailable";
@@ -3548,7 +3548,7 @@ export default {
         try {
           const tokenHashBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(bearerMatch[1]));
           const tokenHash = Array.from(new Uint8Array(tokenHashBytes)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
-          const session = await env.DB.prepare(
+          const session = await env.DB!.prepare(
             "SELECT s.user_id FROM user_sessions s INNER JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
           ).bind(tokenHash, new Date().toISOString()).first<{ user_id: string }>();
           if (!session) return json({ error: "invalid_or_expired_session" }, 401, origin, env);
@@ -3561,7 +3561,7 @@ export default {
         const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
         const now = Math.floor(Date.now() / 1000);
         const windowStart = now - 60;
-        const rate = await env.DB.prepare(
+        const rate = await env.DB!.prepare(
           "INSERT INTO imagekit_auth_rate_limits (ip, window_start, request_count) VALUES (?, ?, 1) ON CONFLICT(ip) DO UPDATE SET window_start = CASE WHEN imagekit_auth_rate_limits.window_start <= ? THEN excluded.window_start ELSE imagekit_auth_rate_limits.window_start END, request_count = CASE WHEN imagekit_auth_rate_limits.window_start <= ? THEN 1 ELSE imagekit_auth_rate_limits.request_count + 1 END RETURNING request_count"
         ).bind(ip, now, windowStart, windowStart).first<{ request_count: number }>();
 
@@ -3643,14 +3643,14 @@ export default {
         if (q.length < 2) return json({ ok: true, users: [], groups: [] }, 200, origin, env);
         const pattern = "%" + q + "%";
         const [users, groups] = await Promise.all([
-          env.DB.prepare(
+          env.DB!.prepare(
             "SELECT u.id AS userId, p.display_name AS name, p.happy_id AS userCode, p.avatar_key AS avatarUrl " +
             "FROM users u INNER JOIN profiles p ON p.user_id = u.id " +
             "WHERE u.status = 'active' AND u.id <> ? AND (p.display_name LIKE ? OR p.happy_id LIKE ?) " +
             "AND NOT EXISTS (SELECT 1 FROM user_hidden_users h WHERE (h.user_id = ? AND h.hidden_user_id = u.id) OR (h.user_id = u.id AND h.hidden_user_id = ?)) " +
             "ORDER BY CASE WHEN p.happy_id = ? THEN 0 ELSE 1 END, p.display_name LIMIT 30"
           ).bind(viewer.id, pattern, pattern, viewer.id, viewer.id, q).all(),
-          env.DB.prepare(
+          env.DB!.prepare(
             "SELECT c.id AS conversationId, c.title, c.updated_at AS updatedAt, " +
             "(SELECT COUNT(*) FROM conversation_members m WHERE m.conversation_id = c.id) AS memberCount " +
             "FROM conversations c INNER JOIN conversation_members mine ON mine.conversation_id = c.id AND mine.user_id = ? " +
@@ -3670,7 +3670,7 @@ export default {
         const viewer = await authenticatedUser(request, env.DB);
         if (!viewer) return json({ error: "authentication_required" }, 401, origin, env);
         if (request.method === "GET") {
-          const rows = await env.DB.prepare(
+          const rows = await env.DB!.prepare(
             "SELECT c.id, c.kind, c.title, c.updated_at AS updatedAt, " +
             "last_message.content AS lastMessage, last_message.created_at AS lastMessageAt, " +
             "CASE WHEN c.kind = 'direct' THEN other.id ELSE NULL END AS otherUserId, " +
@@ -3699,30 +3699,30 @@ export default {
           if ((valid.results ?? []).length !== ids.length) return json({ error: "invalid_group_members" }, 400, origin, env);
           const conversationId = crypto.randomUUID();
           const statements: D1PreparedStatement[] = [
-            env.DB.prepare("INSERT INTO conversations (id, kind, title, created_by, direct_key, created_at, updated_at) VALUES (?, 'group', ?, ?, NULL, ?, ?)").bind(conversationId, title, viewer.id, now, now),
-            env.DB.prepare("INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES (?, ?, 'owner', ?)").bind(conversationId, viewer.id, now),
-            ...ids.map(id => env.DB.prepare("INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)").bind(conversationId, id, now))
+            env.DB!.prepare("INSERT INTO conversations (id, kind, title, created_by, direct_key, created_at, updated_at) VALUES (?, 'group', ?, ?, NULL, ?, ?)").bind(conversationId, title, viewer.id, now, now),
+            env.DB!.prepare("INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES (?, ?, 'owner', ?)").bind(conversationId, viewer.id, now),
+            ...ids.map(id => env.DB!.prepare("INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)").bind(conversationId, id, now))
           ];
-          await env.DB.batch(statements);
+          await env.DB!.batch(statements);
           return json({ ok: true, conversationId, kind: "group" }, 201, origin, env);
         }
         const recipientId = typeof body.recipientId === "string" ? body.recipientId : "";
         if (!/^[0-9a-f-]{36}$/i.test(recipientId) || recipientId === viewer.id) return json({ error: "invalid_recipient" }, 400, origin, env);
-        const recipient = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1").bind(recipientId).first();
+        const recipient = await env.DB!.prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1").bind(recipientId).first();
         if (!recipient) return json({ error: "user_not_found" }, 404, origin, env);
-        const hidden = await env.DB.prepare("SELECT 1 AS blocked FROM user_hidden_users WHERE (user_id = ? AND hidden_user_id = ?) OR (user_id = ? AND hidden_user_id = ?) LIMIT 1").bind(viewer.id, recipientId, recipientId, viewer.id).first();
+        const hidden = await env.DB!.prepare("SELECT 1 AS blocked FROM user_hidden_users WHERE (user_id = ? AND hidden_user_id = ?) OR (user_id = ? AND hidden_user_id = ?) LIMIT 1").bind(viewer.id, recipientId, recipientId, viewer.id).first();
         if (hidden) return json({ error: "conversation_unavailable", message: "لا يمكن بدء محادثة مع هذا المستخدم" }, 403, origin, env);
         const directKey = [viewer.id, recipientId].sort().join(":");
-        const existing = await env.DB.prepare("SELECT id FROM conversations WHERE direct_key = ? LIMIT 1").bind(directKey).first<{id:string}>();
+        const existing = await env.DB!.prepare("SELECT id FROM conversations WHERE direct_key = ? LIMIT 1").bind(directKey).first<{id:string}>();
         const conversationId = existing?.id ?? crypto.randomUUID();
         if (!existing) {
-          await env.DB.batch([
-            env.DB.prepare("INSERT OR IGNORE INTO conversations (id, kind, title, created_by, direct_key, created_at, updated_at) VALUES (?, 'direct', NULL, ?, ?, ?, ?)").bind(conversationId, viewer.id, directKey, now, now),
-            env.DB.prepare("INSERT OR IGNORE INTO conversation_members (conversation_id, user_id, role, joined_at) SELECT id, ?, 'member', ? FROM conversations WHERE direct_key = ?").bind(viewer.id, now, directKey),
-            env.DB.prepare("INSERT OR IGNORE INTO conversation_members (conversation_id, user_id, role, joined_at) SELECT id, ?, 'member', ? FROM conversations WHERE direct_key = ?").bind(recipientId, now, directKey)
+          await env.DB!.batch([
+            env.DB!.prepare("INSERT OR IGNORE INTO conversations (id, kind, title, created_by, direct_key, created_at, updated_at) VALUES (?, 'direct', NULL, ?, ?, ?, ?)").bind(conversationId, viewer.id, directKey, now, now),
+            env.DB!.prepare("INSERT OR IGNORE INTO conversation_members (conversation_id, user_id, role, joined_at) SELECT id, ?, 'member', ? FROM conversations WHERE direct_key = ?").bind(viewer.id, now, directKey),
+            env.DB!.prepare("INSERT OR IGNORE INTO conversation_members (conversation_id, user_id, role, joined_at) SELECT id, ?, 'member', ? FROM conversations WHERE direct_key = ?").bind(recipientId, now, directKey)
           ]);
         }
-        const actual = await env.DB.prepare("SELECT id FROM conversations WHERE direct_key = ? LIMIT 1").bind(directKey).first<{id:string}>();
+        const actual = await env.DB!.prepare("SELECT id FROM conversations WHERE direct_key = ? LIMIT 1").bind(directKey).first<{id:string}>();
         return json({ ok: true, conversationId: actual?.id ?? conversationId, kind: "direct" }, 200, origin, env);
       } catch (error) {
         console.error("[messages.conversations] failed", error instanceof Error ? error.message : "UnknownError");
@@ -3738,23 +3738,23 @@ export default {
         if (!viewer) return json({ error: "authentication_required" }, 401, origin, env);
         const conversationId = privateConversationRoute[1];
         const action = privateConversationRoute[2] ?? "";
-        const member = await env.DB.prepare("SELECT role, last_read_at FROM conversation_members WHERE conversation_id = ? AND user_id = ? LIMIT 1").bind(conversationId, viewer.id).first<{role:string;last_read_at:string|null}>();
+        const member = await env.DB!.prepare("SELECT role, last_read_at FROM conversation_members WHERE conversation_id = ? AND user_id = ? LIMIT 1").bind(conversationId, viewer.id).first<{role:string;last_read_at:string|null}>();
         if (!member) return json({ error: "conversation_not_found" }, 404, origin, env);
         if (action === "read" && request.method === "PATCH") {
           const now = new Date().toISOString();
-          await env.DB.prepare("UPDATE conversation_members SET last_read_at = ? WHERE conversation_id = ? AND user_id = ?").bind(now, conversationId, viewer.id).run();
+          await env.DB!.prepare("UPDATE conversation_members SET last_read_at = ? WHERE conversation_id = ? AND user_id = ?").bind(now, conversationId, viewer.id).run();
           return json({ ok: true, lastReadAt: now }, 200, origin, env);
         }
         if (action === "messages" && request.method === "GET") {
           const before = url.searchParams.get("before");
           const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 50), 1), 100);
-          const rows = await env.DB.prepare(
+          const rows = await env.DB!.prepare(
             "SELECT m.id, m.sender_id AS senderId, p.display_name AS senderName, p.avatar_key AS senderAvatar, m.content AS text, m.created_at AS createdAt " +
             "FROM private_messages m LEFT JOIN profiles p ON p.user_id = m.sender_id " +
             "WHERE m.conversation_id = ? AND m.deleted_at IS NULL AND (? IS NULL OR m.created_at < ?) " +
             "ORDER BY m.created_at DESC LIMIT ?"
           ).bind(conversationId, before, before, limit).all();
-          const participants = await env.DB.prepare(
+          const participants = await env.DB!.prepare(
             "SELECT u.id AS userId, p.display_name AS name, p.happy_id AS userCode, p.avatar_key AS avatarUrl, cm.role " +
             "FROM conversation_members cm INNER JOIN users u ON u.id = cm.user_id LEFT JOIN profiles p ON p.user_id = u.id " +
             "WHERE cm.conversation_id = ? ORDER BY cm.joined_at ASC"
@@ -3765,14 +3765,14 @@ export default {
           const body = await request.json() as Record<string, unknown>;
           const messageText = typeof body.text === "string" ? body.text.trim() : "";
           if (!messageText || messageText.length > 2000) return json({ error: "invalid_message", message: "الرسالة يجب أن تكون بين حرف واحد و2000 حرف" }, 400, origin, env);
-          const recent = await env.DB.prepare("SELECT COUNT(*) AS total FROM private_messages WHERE sender_id = ? AND created_at >= ? AND deleted_at IS NULL").bind(viewer.id, new Date(Date.now() - 60000).toISOString()).first<{total:number}>();
+          const recent = await env.DB!.prepare("SELECT COUNT(*) AS total FROM private_messages WHERE sender_id = ? AND created_at >= ? AND deleted_at IS NULL").bind(viewer.id, new Date(Date.now() - 60000).toISOString()).first<{total:number}>();
           if ((recent?.total ?? 0) >= 30) return json({ error: "message_rate_limited", message: "أرسلت رسائل كثيرة، انتظر قليلاً" }, 429, origin, env);
           const id = crypto.randomUUID();
           const now = new Date().toISOString();
-          await env.DB.batch([
-            env.DB.prepare("INSERT INTO private_messages (id, conversation_id, sender_id, content, created_at) VALUES (?, ?, ?, ?, ?)").bind(id, conversationId, viewer.id, messageText, now),
-            env.DB.prepare("UPDATE conversations SET updated_at = ? WHERE id = ?").bind(now, conversationId),
-            env.DB.prepare("UPDATE conversation_members SET last_read_at = ? WHERE conversation_id = ? AND user_id = ?").bind(now, conversationId, viewer.id)
+          await env.DB!.batch([
+            env.DB!.prepare("INSERT INTO private_messages (id, conversation_id, sender_id, content, created_at) VALUES (?, ?, ?, ?, ?)").bind(id, conversationId, viewer.id, messageText, now),
+            env.DB!.prepare("UPDATE conversations SET updated_at = ? WHERE id = ?").bind(now, conversationId),
+            env.DB!.prepare("UPDATE conversation_members SET last_read_at = ? WHERE conversation_id = ? AND user_id = ?").bind(now, conversationId, viewer.id)
           ]);
           return json({ ok: true, message: { id, senderId: viewer.id, senderName: viewer.display_name?.trim() || "مستخدم", senderAvatar: null, text: messageText, createdAt: now } }, 201, origin, env);
         }
