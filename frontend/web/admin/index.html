@@ -171,6 +171,7 @@ async function render(){
     else if(page==="users")users((await api("/admin/users")).users||[]);
     else if(page==="wallets")await walletsPage();
     else if(page==="gifts")await giftsPage();
+    else if(page==="games")await gamesPage();
     else if(page==="rooms")rooms((await api("/admin/rooms")).rooms||[]);
     else if(page==="reports")await roomReportsPage();
     else if(page==="moderators")await moderatorsPage();
@@ -491,6 +492,39 @@ async function loadRoomModeration(roomId,roomName,q=""){
     });
     root.scrollIntoView({behavior:"smooth",block:"start"});
   }catch(error){root.innerHTML='<div class="section"><p class="error">'+esc(error.message)+'</p></div>'}
+}
+
+async function gamesPage(){
+  if(admin.role!=="owner"&&admin.role!=="admin"){$("content").innerHTML='<div class="section"><p class="notice">إدارة الألعاب متاحة للمالك ومدير التطبيق فقط.</p></div>';return}
+  const data=await api("/admin/games"),games=data.games||[];
+  const rows=games.length?games.map(g=>'<tr><td>'+esc(g.name)+'</td><td><a href="'+esc(g.url)+'" target="_blank" rel="noopener noreferrer">فتح الرابط ↗</a></td><td>'+esc(g.category||"عام")+'</td><td><span class="badge '+(Number(g.enabled)?"good":"")+'">'+(Number(g.enabled)?"مفعّلة":"متوقفة")+'</span></td><td><button class="action" type="button" data-game-toggle="'+esc(g.id)+'" data-enabled="'+Number(g.enabled)+'">'+(Number(g.enabled)?"إيقاف":"تفعيل")+'</button></td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد ألعاب مضافة بعد.</td></tr>';
+  $("content").innerHTML=
+    '<div class="section"><div class="section-head"><div><h2>إضافة لعبة جديدة</h2><p class="muted">أضف رابط HTTPS للعبة. ستُحفظ في كتالوج Happy Live ويمكن تفعيلها أو إيقافها.</p></div><span class="badge">إدارة الألعاب</span></div>'+
+    '<form id="gameCreateForm" class="form-grid">'+
+    '<label>اسم اللعبة<input id="gameName" maxlength="80" required placeholder="مثال: عجلة الأطعمة"></label>'+
+    '<label>رابط اللعبة (HTTPS)<input id="gameUrl" type="url" maxlength="2048" required placeholder="https://game.example.com"></label>'+
+    '<label>رابط الأيقونة (اختياري)<input id="gameIcon" type="url" maxlength="2048" placeholder="https://..."></label>'+
+    '<label>التصنيف<input id="gameCategory" maxlength="40" value="عام" required></label>'+
+    '<label>ترتيب العرض<input id="gameSort" type="number" value="0" min="0" max="9999"></label>'+
+    '<label style="grid-column:1/-1">وصف مختصر<textarea id="gameDescription" maxlength="240" rows="2"></textarea></label>'+
+    '<div style="grid-column:1/-1"><button class="action primary" type="submit">حفظ وإضافة اللعبة</button> <span class="muted">تُضاف اللعبة متوقفة أولًا حتى تراجع الرابط ثم تفعّلها.</span></div></form></div>'+
+    '<div class="section"><div class="section-head"><h2>الألعاب المسجلة ('+games.length+')</h2><button class="action" id="gamesRefresh" type="button">↻ تحديث</button></div>'+
+    '<div class="table-wrap"><table><thead><tr><th>اللعبة</th><th>الرابط</th><th>التصنيف</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<p class="notice" style="margin-top:14px">تنبيه: الرابط الخارجي يفتح اللعبة فقط. ربط هوية اللاعب والمحفظة والرهانات يتطلب دعم اللعبة لبروتوكول تكامل Happy Live؛ لا يتم منح اللعبة وصولًا مباشرًا للأرصدة.</p></div>';
+  $("gamesRefresh").onclick=()=>gamesPage();
+  $("gameCreateForm").onsubmit=async e=>{
+    e.preventDefault();
+    const button=e.currentTarget.querySelector('button[type="submit"]');button.disabled=true;
+    try{
+      await api("/admin/games",{method:"POST",body:JSON.stringify({name:$("gameName").value.trim(),url:$("gameUrl").value.trim(),iconUrl:$("gameIcon").value.trim(),category:$("gameCategory").value.trim(),description:$("gameDescription").value.trim(),sortOrder:Number($("gameSort").value||0)})});
+      await gamesPage();
+    }catch(error){alert(error.message);button.disabled=false}
+  };
+  document.querySelectorAll("[data-game-toggle]").forEach(button=>button.onclick=async()=>{
+    button.disabled=true;
+    try{await api("/admin/games/"+encodeURIComponent(button.dataset.gameToggle),{method:"PATCH",body:JSON.stringify({enabled:button.dataset.enabled!=="1"})});await gamesPage()}
+    catch(error){alert(error.message);button.disabled=false}
+  });
 }
 
 function audit(a){$("content").innerHTML='<div class="section"><div class="section-head"><h2>آخر الإجراءات ('+a.length+')</h2></div><div class="table-wrap"><table><thead><tr><th>الإجراء</th><th>المدير</th><th>النوع</th><th>المعرف</th><th>التاريخ</th></tr></thead><tbody>'+(a.length?a.map(x=>'<tr><td>'+esc(x.action)+'</td><td>'+esc(x.actor_name||x.actor_email||"—")+'</td><td>'+esc(x.target_type)+'</td><td>'+esc(x.target_id)+'</td><td>'+esc(new Date(x.created_at).toLocaleString("ar"))+'</td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد إجراءات</td></tr>')+'</tbody></table></div></div>'}
