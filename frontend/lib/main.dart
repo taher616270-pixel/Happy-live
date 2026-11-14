@@ -1740,9 +1740,20 @@ class _HappyPlaceholderTab extends StatelessWidget {
     // The messages tab follows the same light palette as the home page.
     if (title == 'الرسائل') {
       return Container(
-        color: const Color(0xFFF6F7FB),
         width: double.infinity,
         height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFF7EBCB),
+              Color(0xFFFAF6EA),
+              Color(0xFFF6F7FB),
+            ],
+            stops: [0.0, 0.3, 0.55],
+          ),
+        ),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
           children: [
