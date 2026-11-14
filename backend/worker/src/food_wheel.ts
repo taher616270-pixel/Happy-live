@@ -358,9 +358,9 @@ export async function handleFoodWheelRequest(
       const clientPhase = nowMs < closesAtMs ? "betting" : nowMs < spinEndsAtMs ? "spinning" : "result";
       const phaseDeadlineMs = clientPhase === "betting" ? closesAtMs : clientPhase === "spinning" ? spinEndsAtMs : cycleEndsAtMs;
       const topWinners = outcomeReady
-        ? await db.prepare("SELECT COALESCE(NULLIF(TRIM(p.display_name),''),'لاعب') AS name, COALESCE(p.gabo_id,'') AS userCode, COALESCE(p.avatar_key,'') AS avatarUrl, cp.amount AS payout FROM cat_greed_payouts cp LEFT JOIN profiles p ON p.user_id=cp.user_id WHERE cp.round_id=? AND cp.paid_at IS NOT NULL ORDER BY cp.amount DESC, cp.created_at ASC LIMIT 3")
-            .bind(round.id).all<{name:string;userCode:string;avatarUrl:string;payout:number}>()
-        : {results:[] as Array<{name:string;userCode:string;avatarUrl:string;payout:number}>};
+        ? await db.prepare("SELECT COALESCE(NULLIF(TRIM(p.display_name),''),'لاعب') AS name, COALESCE(p.gabo_id,'') AS userCode, COALESCE(p.avatar_key,'') AS avatar, cp.amount AS amount, CASE WHEN cp.user_id=? THEN 1 ELSE 0 END AS is_me FROM cat_greed_payouts cp LEFT JOIN profiles p ON p.user_id=cp.user_id WHERE cp.round_id=? AND cp.paid_at IS NOT NULL ORDER BY cp.amount DESC, cp.created_at ASC LIMIT 3")
+            .bind(user.id,round.id).all<{name:string;userCode:string;avatar:string;amount:number;is_me:number}>()
+        : {results:[] as Array<{name:string;userCode:string;avatar:string;amount:number;is_me:number}>};
       const dayStart = saudiDayStartIso();
       const dailyRounds = await db.prepare(
         "SELECT COUNT(*) AS total FROM cat_greed_rounds WHERE starts_at >= ? AND starts_at <= ?"
@@ -374,7 +374,7 @@ export async function handleFoodWheelRequest(
         balance:wallet?.balance??0,myPayout:payout?.amount??0,myPayoutRoundId:payout?.round_id??null,
         resultSlot:outcomeReady?round.result_slot:null,special:outcomeReady?round.special:null,
         seedCommitment:round.seed_commitment,revealedSeed:outcomeReady?round.server_seed:null,configSnapshot:outcomeReady?round.config_snapshot:null,
-        topWinners:topWinners.results??[],symbols:config.symbols,odds,specialOdds:{saladWeightBp:config.saladWeightBp,pizzaWeightBp:config.pizzaWeightBp},
+        topWinners:topWinners.results??[],top_winners:topWinners.results??[],symbols:config.symbols,odds,specialOdds:{saladWeightBp:config.saladWeightBp,pizzaWeightBp:config.pizzaWeightBp},
         betReceipt,duplicateBet,
         history:(history.results??[]).map(x=>{const old=JSON.parse(x.config_snapshot) as FoodWheelSnapshot;return x.special==="salad"?"🥗":x.special==="pizza"?"🍕":old.symbols.find(s=>s.slot===x.result_slot)?.emoji??"—";})
       },200,origin,env);
