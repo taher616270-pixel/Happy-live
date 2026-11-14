@@ -37,7 +37,7 @@ test("game administration requires a verified admin session and excludes moderat
   assert.match(route, /request\.method === "POST"/);
   assert.match(route, /request\.method === "PATCH"/);
   assert.match(route, /isSafeExternalHttpsUrl\(gameUrl\)/);
-  assert.match(route, /enabled = COALESCE\(\?, enabled\)/);
+  assert.match(route, /enabled = COALESCE\(\?, enabled\)/);\n  assert.match(route, /games\\.create/);\n  assert.match(route, /games\\.update/);\n  assert.match(route, /admin_audit_logs/);
 });
 
 test("external game URLs reject unsafe schemes, IP literals and private host suffixes", () => {
@@ -66,6 +66,6 @@ test("web app loads published games dynamically without replacing the native Foo
   assert.match(appMain, /openFoodWheelGame\(context, accessToken: accessToken\)/);
   assert.match(appMain, /if \(kIsWeb\) const DynamicGamesList\(\)/);
   assert.match(gamesWidget, /\/api\/v1\/games\/catalog/);
-  assert.match(gamesWidget, /launchExternalGame\(url\)/);
+  assert.match(gamesWidget, /launchExternalGame\(url\)/);\n  assert.match(gamesWidget, /إعادة المحاولة/);
   assert.doesNotMatch(gamesWidget, /wallet|bet|reward|accessToken/i);
 });
