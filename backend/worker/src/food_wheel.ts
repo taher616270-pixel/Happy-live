@@ -1,4 +1,4 @@
-type FoodWheelUser = { id: string; gabo_id?: string | null };
+type FoodWheelUser = { id: string; happy_id?: string | null };
 type FoodWheelAdmin = { id: string; username: string; role: string };
 type FoodWheelEnv = { DB?: D1Database };
 type FoodWheelJson = (data: unknown, status: number, origin?: string, env?: any) => Response;
@@ -358,7 +358,7 @@ export async function handleFoodWheelRequest(
       const clientPhase = nowMs < closesAtMs ? "betting" : nowMs < spinEndsAtMs ? "spinning" : "result";
       const phaseDeadlineMs = clientPhase === "betting" ? closesAtMs : clientPhase === "spinning" ? spinEndsAtMs : cycleEndsAtMs;
       const topWinners = outcomeReady
-        ? await db.prepare("SELECT COALESCE(NULLIF(TRIM(p.display_name),''),'لاعب') AS name, COALESCE(p.gabo_id,'') AS userCode, COALESCE(p.avatar_key,'') AS avatar, cp.amount AS amount, CASE WHEN cp.user_id=? THEN 1 ELSE 0 END AS is_me FROM cat_greed_payouts cp LEFT JOIN profiles p ON p.user_id=cp.user_id WHERE cp.round_id=? AND cp.paid_at IS NOT NULL ORDER BY cp.amount DESC, cp.created_at ASC LIMIT 3")
+        ? await db.prepare("SELECT COALESCE(NULLIF(TRIM(p.display_name),''),'لاعب') AS name, COALESCE(p.happy_id,'') AS userCode, COALESCE(p.avatar_key,'') AS avatar, cp.amount AS amount, CASE WHEN cp.user_id=? THEN 1 ELSE 0 END AS is_me FROM cat_greed_payouts cp LEFT JOIN profiles p ON p.user_id=cp.user_id WHERE cp.round_id=? AND cp.paid_at IS NOT NULL ORDER BY cp.amount DESC, cp.created_at ASC LIMIT 3")
             .bind(user.id,round.id).all<{name:string;userCode:string;avatar:string;amount:number;is_me:number}>()
         : {results:[] as Array<{name:string;userCode:string;avatar:string;amount:number;is_me:number}>};
       const dayStart = saudiDayStartIso();
@@ -367,7 +367,7 @@ export async function handleFoodWheelRequest(
       ).bind(dayStart, isoNow()).first<{total:number}>();
       const dailyRoundNumber = Math.max(1, dailyRounds?.total ?? 0);
       return json({
-        enabled:settings.enabled===1,roundId:round.id,userCode:user.gabo_id??'',dailyRoundNumber,secondsLeft:Math.max(0,Math.ceil((phaseDeadlineMs-nowMs)/1000)),
+        enabled:settings.enabled===1,roundId:round.id,userCode:user.happy_id??'',dailyRoundNumber,secondsLeft:Math.max(0,Math.ceil((phaseDeadlineMs-nowMs)/1000)),
         phase:clientPhase,phaseDeadlineAt:new Date(phaseDeadlineMs).toISOString(),pools:Array.from({length:8},(_,i)=>pools.results?.find(x=>x.slot===i)?.total??0),
         myBets:Array.from({length:8},(_,i)=>mine.results?.find(x=>x.slot===i)?.total??0),
         myBetCount:myBetCountRow?.total??0,maxBetsPerRound:MAX_BETS_PER_ROUND,
@@ -390,7 +390,7 @@ export async function handleFoodWheelRequest(
       const [settings,symbols,rounds,players,totals] = await Promise.all([
         getSettings(db),getSymbols(db),
         db.prepare("SELECT r.id,r.phase,r.starts_at,r.closes_at,r.result_slot,r.special,r.seed_commitment,r.settled_at,COALESCE(b.wagered,0) AS wagered,COALESCE(b.players,0) AS players FROM cat_greed_rounds r LEFT JOIN (SELECT round_id,SUM(amount) AS wagered,COUNT(DISTINCT user_id) AS players FROM cat_greed_bets GROUP BY round_id) b ON b.round_id=r.id ORDER BY r.created_at DESC LIMIT 20").all(),
-        db.prepare("SELECT u.id,p.display_name AS name,p.gabo_id AS userCode,COALESCE(c.enabled,1) AS enabled,COALESCE(c.max_bet_per_round,1000000) AS maxBetPerRound,COALESCE(b.rounds,0) AS rounds,COALESCE(b.wagered,0) AS wagered,COALESCE(b.settledWagered,0) AS settledWagered,COALESCE(b.wins,0) AS wins,COALESCE(b.losses,0) AS losses,COALESCE(b.paid,0) AS paid FROM users u LEFT JOIN profiles p ON p.user_id=u.id LEFT JOIN cat_greed_player_controls c ON c.user_id=u.id LEFT JOIN (SELECT user_id,SUM(settled) AS rounds,SUM(wagered) AS wagered,SUM(CASE WHEN settled=1 THEN wagered ELSE 0 END) AS settledWagered,SUM(CASE WHEN settled=1 AND payout>0 THEN 1 ELSE 0 END) AS wins,SUM(CASE WHEN settled=1 AND payout=0 THEN 1 ELSE 0 END) AS losses,SUM(payout) AS paid FROM (SELECT b.user_id,b.round_id,SUM(b.amount) AS wagered,COALESCE(p.amount,0) AS payout,CASE WHEN r.phase='result' THEN 1 ELSE 0 END AS settled FROM cat_greed_bets b INNER JOIN cat_greed_rounds r ON r.id=b.round_id LEFT JOIN cat_greed_payouts p ON p.user_id=b.user_id AND p.round_id=b.round_id AND p.paid_at IS NOT NULL GROUP BY b.user_id,b.round_id) GROUP BY user_id) b ON b.user_id=u.id WHERE b.user_id IS NOT NULL ORDER BY wagered DESC LIMIT 50").all(),
+        db.prepare("SELECT u.id,p.display_name AS name,p.happy_id AS userCode,COALESCE(c.enabled,1) AS enabled,COALESCE(c.max_bet_per_round,1000000) AS maxBetPerRound,COALESCE(b.rounds,0) AS rounds,COALESCE(b.wagered,0) AS wagered,COALESCE(b.settledWagered,0) AS settledWagered,COALESCE(b.wins,0) AS wins,COALESCE(b.losses,0) AS losses,COALESCE(b.paid,0) AS paid FROM users u LEFT JOIN profiles p ON p.user_id=u.id LEFT JOIN cat_greed_player_controls c ON c.user_id=u.id LEFT JOIN (SELECT user_id,SUM(settled) AS rounds,SUM(wagered) AS wagered,SUM(CASE WHEN settled=1 THEN wagered ELSE 0 END) AS settledWagered,SUM(CASE WHEN settled=1 AND payout>0 THEN 1 ELSE 0 END) AS wins,SUM(CASE WHEN settled=1 AND payout=0 THEN 1 ELSE 0 END) AS losses,SUM(payout) AS paid FROM (SELECT b.user_id,b.round_id,SUM(b.amount) AS wagered,COALESCE(p.amount,0) AS payout,CASE WHEN r.phase='result' THEN 1 ELSE 0 END AS settled FROM cat_greed_bets b INNER JOIN cat_greed_rounds r ON r.id=b.round_id LEFT JOIN cat_greed_payouts p ON p.user_id=b.user_id AND p.round_id=b.round_id AND p.paid_at IS NOT NULL GROUP BY b.user_id,b.round_id) GROUP BY user_id) b ON b.user_id=u.id WHERE b.user_id IS NOT NULL ORDER BY wagered DESC LIMIT 50").all(),
         db.prepare("SELECT (SELECT COUNT(*) FROM cat_greed_rounds) AS rounds,COALESCE((SELECT SUM(amount) FROM cat_greed_bets),0) AS wagered,COALESCE((SELECT SUM(amount) FROM cat_greed_payouts WHERE paid_at IS NOT NULL),0) AS paid,COALESCE((SELECT SUM(b.amount) FROM cat_greed_bets b INNER JOIN cat_greed_rounds r ON r.id=b.round_id WHERE r.phase='result'),0)-COALESCE((SELECT SUM(amount) FROM cat_greed_payouts WHERE paid_at IS NOT NULL),0) AS net,(SELECT COUNT(DISTINCT user_id) FROM cat_greed_bets) AS players").first()
       ]);
       const snapshot=makeSnapshot(settings,symbols);
