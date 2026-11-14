@@ -43,7 +43,26 @@ class _DynamicGamesListState extends State<DynamicGamesList> {
             child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
           );
         }
-        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'تعذر تحميل الألعاب المضافة حاليًا.',
+                    style: TextStyle(color: Color(0xFF8B899A), fontSize: 11),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _games = _loadGames()),
+                  child: const Text('إعادة المحاولة'),
+                ),
+              ],
+            ),
+          );
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox.shrink();
         }
         return Column(
