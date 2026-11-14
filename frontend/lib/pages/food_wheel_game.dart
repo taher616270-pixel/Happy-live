@@ -123,7 +123,11 @@ class RoundState {
           userCode: winnerCode,
           avatarUrl: (item['avatar'] ?? item['avatarUrl'] ?? item['avatar_url'] ?? '').toString(),
           payout: ((item['amount'] ?? item['payout']) as num? ?? 0).toInt(),
-          isMe: isMeValue is bool ? isMeValue : winnerCode.isNotEmpty && winnerCode == currentUserCode,
+          isMe: isMeValue is bool
+              ? isMeValue
+              : isMeValue is num
+                  ? isMeValue.toInt() == 1
+                  : winnerCode.isNotEmpty && winnerCode == currentUserCode,
         );
       }).take(3).toList(),
       enabled: j['enabled'] == true,
