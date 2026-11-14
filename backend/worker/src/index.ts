@@ -417,7 +417,7 @@ export default {
       try {
         const rows = await env.DB.prepare(
           "SELECT id, name, game_url AS url, icon_url AS iconUrl, description, category, sort_order AS sortOrder " +
-          "FROM game_registry WHERE enabled = 1 ORDER BY sort_order ASC, created_at DESC"
+          "FROM game_registry WHERE status = 'active' AND enabled = 1 AND game_url <> 'https://pending-game.happylive.invalid' ORDER BY sort_order ASC, created_at DESC"
         ).all();
         return json({ ok: true, games: rows.results ?? [] }, 200, origin, env);
       } catch (error) {
@@ -436,7 +436,7 @@ export default {
         const gameId = adminGamesRoute[1];
         if (request.method === "GET") {
           const rows = await env.DB.prepare(
-            "SELECT id, name, game_url AS url, icon_url AS iconUrl, description, category, enabled, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt " +
+            "SELECT id, name, CASE WHEN game_url = 'https://pending-game.happylive.invalid' THEN '' ELSE game_url END AS url, icon_url AS iconUrl, description, category, status, enabled, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt " +
             "FROM game_registry ORDER BY sort_order ASC, created_at DESC"
           ).all();
           return json({ ok: true, games: rows.results ?? [] }, 200, origin, env);
@@ -446,52 +446,56 @@ export default {
         catch { return json({ error: "invalid_json" }, 400, origin, env); }
         if (request.method === "POST") {
           const name = typeof body.name === "string" ? body.name.trim() : "";
-          const gameUrl = typeof body.url === "string" ? body.url.trim() : "";
+          const requestedUrl = typeof body.url === "string" ? body.url.trim() : "";
+          const gameUrl = requestedUrl || "https://pending-game.happylive.invalid";
           const iconUrl = typeof body.iconUrl === "string" ? body.iconUrl.trim() : "";
           const description = typeof body.description === "string" ? body.description.trim() : "";
           const category = typeof body.category === "string" ? body.category.trim() : "عام";
+          const status = typeof body.status === "string" ? body.status : "development";
           const sortOrder = Number.isInteger(body.sortOrder) ? Number(body.sortOrder) : 0;
-          if (name.length < 2 || name.length > 80 || !isSafeExternalHttpsUrl(gameUrl) ||
+          if (name.length < 2 || name.length > 80 || (requestedUrl && !isSafeExternalHttpsUrl(gameUrl)) ||
+              !["development", "disabled", "active"].includes(status) || (status === "active" && !requestedUrl) ||
               description.length > 240 || category.length < 1 || category.length > 40 ||
               (iconUrl && !isSafeExternalHttpsUrl(iconUrl)) || sortOrder < 0 || sortOrder > 9999) {
-            return json({ error: "invalid_game_data", message: "تحقق من الاسم والرابط https والوصف والأيقونة." }, 400, origin, env);
+            return json({ error: "invalid_game_data", message: "تحقق من الاسم والرابط HTTPS وحالة اللعبة والوصف والأيقونة." }, 400, origin, env);
           }
           const now = new Date().toISOString();
           const id = crypto.randomUUID();
+          const enabled = status === "active" ? 1 : 0;
           await env.DB.batch([
-            env.DB.prepare(
-              "INSERT INTO game_registry (id, name, game_url, icon_url, description, category, enabled, sort_order, created_by_admin_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)"
-            ).bind(id, name, gameUrl, iconUrl || null, description, category, sortOrder, actor.id, now, now),
-            env.DB.prepare(
-              "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.create', 'game', ?, ?, ?)"
-            ).bind(crypto.randomUUID(), id, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, name, url: gameUrl }), now)
+            env.DB.prepare("INSERT INTO game_registry (id, name, game_url, icon_url, description, category, status, enabled, sort_order, created_by_admin_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(id, name, gameUrl, iconUrl || null, description, category, status, enabled, sortOrder, actor.id, now, now),
+            env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.create', 'game', ?, ?, ?)").bind(crypto.randomUUID(), id, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, name, status }), now)
           ]);
-          return json({ ok: true, game: { id, name, url: gameUrl, iconUrl: iconUrl || null, description, category, enabled: 0, sortOrder } }, 201, origin, env);
+          return json({ ok: true, game: { id, name, url: requestedUrl, iconUrl: iconUrl || null, description, category, status, enabled, sortOrder } }, 201, origin, env);
         }
         if (!gameId) return json({ error: "game_id_required" }, 400, origin, env);
-        const current = await env.DB.prepare("SELECT id FROM game_registry WHERE id = ? LIMIT 1").bind(gameId).first();
+        const current = await env.DB.prepare("SELECT id, game_url, status FROM game_registry WHERE id = ? LIMIT 1").bind(gameId).first<{ id: string; game_url: string; status: string }>();
         if (!current) return json({ error: "game_not_found" }, 404, origin, env);
         const name = typeof body.name === "string" ? body.name.trim() : null;
-        const gameUrl = typeof body.url === "string" ? body.url.trim() : null;
+        const requestedUrl = typeof body.url === "string" ? body.url.trim() : null;
+        const gameUrl = requestedUrl === null ? null : (requestedUrl || "https://pending-game.happylive.invalid");
         const iconUrl = typeof body.iconUrl === "string" ? body.iconUrl.trim() : null;
         const description = typeof body.description === "string" ? body.description.trim() : null;
         const category = typeof body.category === "string" ? body.category.trim() : null;
-        const enabled = typeof body.enabled === "boolean" ? (body.enabled ? 1 : 0) : null;
+        const requestedStatus = typeof body.status === "string" ? body.status : null;
+        const legacyEnabled = typeof body.enabled === "boolean" ? (body.enabled ? 1 : 0) : null;
+        const status = requestedStatus ?? (legacyEnabled === null ? null : (legacyEnabled ? "active" : "disabled"));
+        const effectiveStatus = status ?? current.status;
+        const effectiveUrl = gameUrl ?? current.game_url;
         const sortOrder = Number.isInteger(body.sortOrder) ? Number(body.sortOrder) : null;
         if (name !== null && (name.length < 2 || name.length > 80)) return json({ error: "invalid_game_name" }, 400, origin, env);
-        if (gameUrl !== null && !isSafeExternalHttpsUrl(gameUrl)) return json({ error: "invalid_game_url" }, 400, origin, env);
+        if (gameUrl !== null && gameUrl !== "https://pending-game.happylive.invalid" && !isSafeExternalHttpsUrl(gameUrl)) return json({ error: "invalid_game_url" }, 400, origin, env);
+        if (status !== null && !["development", "disabled", "active"].includes(status)) return json({ error: "invalid_game_status" }, 400, origin, env);
+        if (effectiveStatus === "active" && (effectiveUrl === "https://pending-game.happylive.invalid" || !isSafeExternalHttpsUrl(effectiveUrl))) return json({ error: "game_url_required_before_activation" }, 400, origin, env);
         if (iconUrl !== null && iconUrl && !isSafeExternalHttpsUrl(iconUrl)) return json({ error: "invalid_icon_url" }, 400, origin, env);
         if (sortOrder !== null && (sortOrder < 0 || sortOrder > 9999)) return json({ error: "invalid_sort_order" }, 400, origin, env);
         if (description !== null && description.length > 240) return json({ error: "invalid_description" }, 400, origin, env);
         if (category !== null && (category.length < 1 || category.length > 40)) return json({ error: "invalid_category" }, 400, origin, env);
         const updatedAt = new Date().toISOString();
+        const enabled = status === null ? null : (status === "active" ? 1 : 0);
         await env.DB.batch([
-          env.DB.prepare(
-            "UPDATE game_registry SET name = COALESCE(?, name), game_url = COALESCE(?, game_url), icon_url = COALESCE(?, icon_url), description = COALESCE(?, description), category = COALESCE(?, category), enabled = COALESCE(?, enabled), sort_order = COALESCE(?, sort_order), updated_at = ? WHERE id = ?"
-          ).bind(name, gameUrl, iconUrl, description, category, enabled, sortOrder, updatedAt, gameId),
-          env.DB.prepare(
-            "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.update', 'game', ?, ?, ?)"
-          ).bind(crypto.randomUUID(), gameId, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, changed: { name, url: gameUrl, iconUrl, description, category, enabled, sortOrder } }), updatedAt)
+          env.DB.prepare("UPDATE game_registry SET name = COALESCE(?, name), game_url = COALESCE(?, game_url), icon_url = COALESCE(?, icon_url), description = COALESCE(?, description), category = COALESCE(?, category), status = COALESCE(?, status), enabled = COALESCE(?, enabled), sort_order = COALESCE(?, sort_order), updated_at = ? WHERE id = ?").bind(name, gameUrl, iconUrl, description, category, status, enabled, sortOrder, updatedAt, gameId),
+          env.DB.prepare("INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.update', 'game', ?, ?, ?)").bind(crypto.randomUUID(), gameId, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, changed: { name, url: requestedUrl, iconUrl, description, category, status, sortOrder } }), updatedAt)
         ]);
         return json({ ok: true }, 200, origin, env);
       } catch (error) {
@@ -499,7 +503,6 @@ export default {
         return json({ error: "admin_games_unavailable" }, 503, origin, env);
       }
     }
-
     if (url.pathname === "/api/v1/admin/auth/setup-status" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       const state = await env.DB.prepare("SELECT id FROM admin_setup_state WHERE id = 'primary-owner' LIMIT 1").first();
