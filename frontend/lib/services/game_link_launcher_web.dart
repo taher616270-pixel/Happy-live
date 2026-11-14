@@ -10,6 +10,7 @@ Future<void> launchExternalGame(String url, Future<String> sessionToken) async {
   // Open synchronously during the user's tap so browser popup protection
   // does not block the game while the server issues its short-lived token.
   final target = html.window.open('about:blank', '_blank');
+  if (target == null) throw StateError('game_popup_blocked');
   try {
     final token = await sessionToken;
     if (token.isEmpty) throw StateError('empty_game_session_token');
