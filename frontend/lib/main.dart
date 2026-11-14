@@ -1962,6 +1962,23 @@ class _HappyConversationPageState extends State<_HappyConversationPage> {
     }
   }
 
+  String _chatTimestamp(Map<String, dynamic> message) {
+    final raw = message['createdAt'] ?? message['created_at'] ?? message['timestamp'] ?? message['sentAt'];
+    if (raw == null) return '';
+    DateTime? date;
+    if (raw is num) {
+      final value = raw.toInt();
+      final milliseconds = value.abs() < 1000000000000 ? value * 1000 : value;
+      date = DateTime.fromMillisecondsSinceEpoch(milliseconds, isUtc: true).toLocal();
+    } else {
+      date = DateTime.tryParse(raw.toString())?.toLocal();
+    }
+    if (date == null) return '';
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${date.year}-${two(date.month)}-${two(date.day)} '
+        '${two(date.hour)}:${two(date.minute)}:${two(date.second)}';
+  }
+
   Future<void> _send() async {
     final text = _input.text.trim();
     if (text.isEmpty || _sending) return;
@@ -2022,26 +2039,42 @@ class _HappyConversationPageState extends State<_HappyConversationPage> {
                 itemBuilder: (context, index) {
                   if (_error != null && index == 0) return Padding(padding: const EdgeInsets.all(12), child: Text(_error!, style: const TextStyle(color: Colors.redAccent)));
                   final message = _messages[index - (_error == null ? 0 : 1)];
+                  final messageIndex = index - (_error == null ? 0 : 1);
                   final mine = message['senderId'] == _currentUserId;
-                  return Align(
-                    alignment: mine ? Alignment.centerLeft : Alignment.centerRight,
-                    child: Container(
-                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * .78),
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: mine ? const Color(0xFFFFE8B1) : Colors.white,
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: const Color(0xFFECE3D1)),
+                  final timestamp = _chatTimestamp(message);
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (messageIndex > 0 && timestamp.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Center(
+                            child: Text(
+                              timestamp,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Color(0xFF9A98AD), fontSize: 10, fontWeight: FontWeight.w400),
+                            ),
+                          ),
+                        ),
+                    return Align(
+                      alignment: mine ? Alignment.centerLeft : Alignment.centerRight,
+                      child: Container(
+                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * .78),
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: mine ? const Color(0xFFFFE8B1) : Colors.white,
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(color: const Color(0xFFECE3D1)),
+                        ),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          if (widget.conversation['kind'] == 'group')
+                            Text((message['senderName'] ?? 'مستخدم').toString(), style: const TextStyle(color: Color(0xFFB0832E), fontSize: 10, fontWeight: FontWeight.w900)),
+                          Text((message['text'] ?? '').toString(), style: const TextStyle(color: Color(0xFF1E2233), fontSize: 14, height: 1.5)),
+                          const SizedBox(height: 3),
+                        ]),
                       ),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        if (widget.conversation['kind'] == 'group')
-                          Text((message['senderName'] ?? 'مستخدم').toString(), style: const TextStyle(color: Color(0xFFB0832E), fontSize: 10, fontWeight: FontWeight.w900)),
-                        Text((message['text'] ?? '').toString(), style: const TextStyle(color: Color(0xFF1E2233), fontSize: 14, height: 1.5)),
-                        const SizedBox(height: 3),
-                        Text((message['createdAt'] ?? '').toString().replaceFirst('T', ' ').split('.').first, style: const TextStyle(color: Color(0xFF9A98AD), fontSize: 9)),
-                      ]),
-                    ),
+                    );
                   );
                 },
               )),
