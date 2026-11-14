@@ -599,7 +599,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                     child: _err != null
                         ? _errorBox()
                         : const CircularProgressIndicator(color: Colors.white))
-                : SingleChildScrollView(
+                : Stack(children: [
+                    SingleChildScrollView(
                       child: Column(children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
@@ -613,6 +614,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                         _redFloor(s),
                       ]),
                     ),
+                    _resultOverlay(s),
+                  ]),
           ),
         ),
       ),
