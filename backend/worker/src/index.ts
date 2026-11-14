@@ -3633,6 +3633,156 @@ export default {
       }, ok ? 200 : 503, origin, env);
     }
 
+    // Private messaging: authenticated direct conversations and member-only group chats.
+    if (url.pathname === "/api/v1/messages/search" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const viewer = await authenticatedUser(request, env.DB);
+        if (!viewer) return json({ error: "authentication_required" }, 401, origin, env);
+        const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
+        if (q.length < 2) return json({ ok: true, users: [], groups: [] }, 200, origin, env);
+        const pattern = "%" + q.replace(/[\\%_]/g, "\\    if (url.pathname === "/api/v1" && request.method === "GET") {") + "%";
+        const [users, groups] = await Promise.all([
+          env.DB.prepare(
+            "SELECT u.id AS userId, p.display_name AS name, p.happy_id AS userCode, p.avatar_key AS avatarUrl " +
+            "FROM users u INNER JOIN profiles p ON p.user_id = u.id " +
+            "WHERE u.status = 'active' AND u.id <> ? AND (p.display_name LIKE ? ESCAPE '\\\\' OR p.happy_id LIKE ? ESCAPE '\\\\') " +
+            "AND NOT EXISTS (SELECT 1 FROM user_hidden_users h WHERE (h.user_id = ? AND h.hidden_user_id = u.id) OR (h.user_id = u.id AND h.hidden_user_id = ?)) " +
+            "ORDER BY CASE WHEN p.happy_id = ? THEN 0 ELSE 1 END, p.display_name LIMIT 30"
+          ).bind(viewer.id, pattern, pattern, viewer.id, viewer.id, q).all(),
+          env.DB.prepare(
+            "SELECT c.id AS conversationId, c.title, c.updated_at AS updatedAt, " +
+            "(SELECT COUNT(*) FROM conversation_members m WHERE m.conversation_id = c.id) AS memberCount " +
+            "FROM conversations c INNER JOIN conversation_members mine ON mine.conversation_id = c.id AND mine.user_id = ? " +
+            "WHERE c.kind = 'group' AND c.title LIKE ? ORDER BY c.updated_at DESC LIMIT 20"
+          ).bind(viewer.id, pattern).all()
+        ]);
+        return json({ ok: true, users: users.results ?? [], groups: groups.results ?? [] }, 200, origin, env);
+      } catch (error) {
+        console.error("[messages.search] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "message_search_failed" }, 500, origin, env);
+      }
+    }
+
+    if (url.pathname === "/api/v1/messages/conversations" && (request.method === "GET" || request.method === "POST")) {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const viewer = await authenticatedUser(request, env.DB);
+        if (!viewer) return json({ error: "authentication_required" }, 401, origin, env);
+        if (request.method === "GET") {
+          const rows = await env.DB.prepare(
+            "SELECT c.id, c.kind, c.title, c.updated_at AS updatedAt, " +
+            "last_message.content AS lastMessage, last_message.created_at AS lastMessageAt, " +
+            "CASE WHEN c.kind = 'direct' THEN other.id ELSE NULL END AS otherUserId, " +
+            "CASE WHEN c.kind = 'direct' THEN other_profile.display_name ELSE c.title END AS displayName, " +
+            "CASE WHEN c.kind = 'direct' THEN other_profile.happy_id ELSE NULL END AS userCode, " +
+            "CASE WHEN c.kind = 'direct' THEN other_profile.avatar_key ELSE NULL END AS avatarUrl, " +
+            "(SELECT COUNT(*) FROM private_messages unread WHERE unread.conversation_id = c.id AND unread.sender_id <> ? AND unread.deleted_at IS NULL AND (mine.last_read_at IS NULL OR unread.created_at > mine.last_read_at)) AS unreadCount " +
+            "FROM conversation_members mine INNER JOIN conversations c ON c.id = mine.conversation_id " +
+            "LEFT JOIN conversation_members other_member ON other_member.conversation_id = c.id AND other_member.user_id <> ? " +
+            "LEFT JOIN users other ON other.id = other_member.user_id AND c.kind = 'direct' " +
+            "LEFT JOIN profiles other_profile ON other_profile.user_id = other.id " +
+            "LEFT JOIN private_messages last_message ON last_message.id = (SELECT pm.id FROM private_messages pm WHERE pm.conversation_id = c.id AND pm.deleted_at IS NULL ORDER BY pm.created_at DESC LIMIT 1) " +
+            "ORDER BY COALESCE(last_message.created_at, c.updated_at) DESC LIMIT 100"
+          ).bind(viewer.id, viewer.id).all();
+          return json({ ok: true, conversations: rows.results ?? [] }, 200, origin, env);
+        }
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+        const now = new Date().toISOString();
+        if (body.kind === "group") {
+          const title = typeof body.title === "string" ? body.title.trim().slice(0, 80) : "";
+          const ids = Array.isArray(body.memberIds) ? Array.from(new Set(body.memberIds.filter((x): x is string => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x) && x !== viewer.id))).slice(0, 99) : [];
+          if (title.length < 2 || ids.length < 1) return json({ error: "invalid_group", message: "أدخل اسم المجموعة واختر عضواً واحداً على الأقل" }, 400, origin, env);
+          const placeholders = ids.map(() => "?").join(",");
+          const valid = await env.DB.prepare("SELECT id FROM users WHERE status = 'active' AND id IN (" + placeholders + ")").bind(...ids).all<{id:string}>();
+          if ((valid.results ?? []).length !== ids.length) return json({ error: "invalid_group_members" }, 400, origin, env);
+          const conversationId = crypto.randomUUID();
+          const statements: D1PreparedStatement[] = [
+            env.DB.prepare("INSERT INTO conversations (id, kind, title, created_by, direct_key, created_at, updated_at) VALUES (?, 'group', ?, ?, NULL, ?, ?)").bind(conversationId, title, viewer.id, now, now),
+            env.DB.prepare("INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES (?, ?, 'owner', ?)").bind(conversationId, viewer.id, now),
+            ...ids.map(id => env.DB.prepare("INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)").bind(conversationId, id, now))
+          ];
+          await env.DB.batch(statements);
+          return json({ ok: true, conversationId, kind: "group" }, 201, origin, env);
+        }
+        const recipientId = typeof body.recipientId === "string" ? body.recipientId : "";
+        if (!/^[0-9a-f-]{36}$/i.test(recipientId) || recipientId === viewer.id) return json({ error: "invalid_recipient" }, 400, origin, env);
+        const recipient = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1").bind(recipientId).first();
+        if (!recipient) return json({ error: "user_not_found" }, 404, origin, env);
+        const hidden = await env.DB.prepare("SELECT 1 AS blocked FROM user_hidden_users WHERE (user_id = ? AND hidden_user_id = ?) OR (user_id = ? AND hidden_user_id = ?) LIMIT 1").bind(viewer.id, recipientId, recipientId, viewer.id).first();
+        if (hidden) return json({ error: "conversation_unavailable", message: "لا يمكن بدء محادثة مع هذا المستخدم" }, 403, origin, env);
+        const directKey = [viewer.id, recipientId].sort().join(":");
+        const existing = await env.DB.prepare("SELECT id FROM conversations WHERE direct_key = ? LIMIT 1").bind(directKey).first<{id:string}>();
+        const conversationId = existing?.id ?? crypto.randomUUID();
+        if (!existing) {
+          await env.DB.batch([
+            env.DB.prepare("INSERT OR IGNORE INTO conversations (id, kind, title, created_by, direct_key, created_at, updated_at) VALUES (?, 'direct', NULL, ?, ?, ?, ?)").bind(conversationId, viewer.id, directKey, now, now),
+            env.DB.prepare("INSERT OR IGNORE INTO conversation_members (conversation_id, user_id, role, joined_at) SELECT id, ?, 'member', ? FROM conversations WHERE direct_key = ?").bind(viewer.id, now, directKey),
+            env.DB.prepare("INSERT OR IGNORE INTO conversation_members (conversation_id, user_id, role, joined_at) SELECT id, ?, 'member', ? FROM conversations WHERE direct_key = ?").bind(recipientId, now, directKey)
+          ]);
+        }
+        const actual = await env.DB.prepare("SELECT id FROM conversations WHERE direct_key = ? LIMIT 1").bind(directKey).first<{id:string}>();
+        return json({ ok: true, conversationId: actual?.id ?? conversationId, kind: "direct" }, 200, origin, env);
+      } catch (error) {
+        console.error("[messages.conversations] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "conversations_unavailable" }, 500, origin, env);
+      }
+    }
+
+    const privateConversationRoute = url.pathname.match(/^\\/api\\/v1\\/messages\\/conversations\\/([0-9a-f-]{36})(?:\\/(messages|read))?$/i);
+    if (privateConversationRoute && (request.method === "GET" || request.method === "POST" || request.method === "PATCH")) {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const viewer = await authenticatedUser(request, env.DB);
+        if (!viewer) return json({ error: "authentication_required" }, 401, origin, env);
+        const conversationId = privateConversationRoute[1];
+        const action = privateConversationRoute[2] ?? "";
+        const member = await env.DB.prepare("SELECT role, last_read_at FROM conversation_members WHERE conversation_id = ? AND user_id = ? LIMIT 1").bind(conversationId, viewer.id).first<{role:string;last_read_at:string|null}>();
+        if (!member) return json({ error: "conversation_not_found" }, 404, origin, env);
+        if (action === "read" && request.method === "PATCH") {
+          const now = new Date().toISOString();
+          await env.DB.prepare("UPDATE conversation_members SET last_read_at = ? WHERE conversation_id = ? AND user_id = ?").bind(now, conversationId, viewer.id).run();
+          return json({ ok: true, lastReadAt: now }, 200, origin, env);
+        }
+        if (action === "messages" && request.method === "GET") {
+          const before = url.searchParams.get("before");
+          const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 50), 1), 100);
+          const rows = await env.DB.prepare(
+            "SELECT m.id, m.sender_id AS senderId, p.display_name AS senderName, p.avatar_key AS senderAvatar, m.content AS text, m.created_at AS createdAt " +
+            "FROM private_messages m LEFT JOIN profiles p ON p.user_id = m.sender_id " +
+            "WHERE m.conversation_id = ? AND m.deleted_at IS NULL AND (? IS NULL OR m.created_at < ?) " +
+            "ORDER BY m.created_at DESC LIMIT ?"
+          ).bind(conversationId, before, before, limit).all();
+          const participants = await env.DB.prepare(
+            "SELECT u.id AS userId, p.display_name AS name, p.happy_id AS userCode, p.avatar_key AS avatarUrl, cm.role " +
+            "FROM conversation_members cm INNER JOIN users u ON u.id = cm.user_id LEFT JOIN profiles p ON p.user_id = u.id " +
+            "WHERE cm.conversation_id = ? ORDER BY cm.joined_at ASC"
+          ).bind(conversationId).all();
+          return json({ ok: true, messages: (rows.results ?? []).reverse(), participants: participants.results ?? [] }, 200, origin, env);
+        }
+        if (action === "messages" && request.method === "POST") {
+          const body = await request.json() as Record<string, unknown>;
+          const messageText = typeof body.text === "string" ? body.text.trim() : "";
+          if (!messageText || messageText.length > 2000) return json({ error: "invalid_message", message: "الرسالة يجب أن تكون بين حرف واحد و2000 حرف" }, 400, origin, env);
+          const recent = await env.DB.prepare("SELECT COUNT(*) AS total FROM private_messages WHERE sender_id = ? AND created_at >= ? AND deleted_at IS NULL").bind(viewer.id, new Date(Date.now() - 60000).toISOString()).first<{total:number}>();
+          if ((recent?.total ?? 0) >= 30) return json({ error: "message_rate_limited", message: "أرسلت رسائل كثيرة، انتظر قليلاً" }, 429, origin, env);
+          const id = crypto.randomUUID();
+          const now = new Date().toISOString();
+          await env.DB.batch([
+            env.DB.prepare("INSERT INTO private_messages (id, conversation_id, sender_id, content, created_at) VALUES (?, ?, ?, ?, ?)").bind(id, conversationId, viewer.id, messageText, now),
+            env.DB.prepare("UPDATE conversations SET updated_at = ? WHERE id = ?").bind(now, conversationId),
+            env.DB.prepare("UPDATE conversation_members SET last_read_at = ? WHERE conversation_id = ? AND user_id = ?").bind(now, conversationId, viewer.id)
+          ]);
+          return json({ ok: true, message: { id, senderId: viewer.id, senderName: viewer.display_name?.trim() || "مستخدم", senderAvatar: null, text: messageText, createdAt: now } }, 201, origin, env);
+        }
+        return json({ error: "method_not_allowed" }, 405, origin, env);
+      } catch (error) {
+        console.error("[messages.conversation] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "conversation_unavailable" }, 500, origin, env);
+      }
+    }
+
     if (url.pathname === "/api/v1" && request.method === "GET") {
       return json({
         name: "Happy Live API",
