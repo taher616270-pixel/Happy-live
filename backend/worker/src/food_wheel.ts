@@ -358,9 +358,9 @@ export async function handleFoodWheelRequest(
       const clientPhase = nowMs < closesAtMs ? "betting" : nowMs < spinEndsAtMs ? "spinning" : "result";
       const phaseDeadlineMs = clientPhase === "betting" ? closesAtMs : clientPhase === "spinning" ? spinEndsAtMs : cycleEndsAtMs;
       const topWinners = outcomeReady
-        ? await db.prepare("SELECT COALESCE(NULLIF(TRIM(p.display_name),''),'لاعب') AS name, COALESCE(p.gabo_id,'') AS userCode, cp.amount AS payout FROM cat_greed_payouts cp LEFT JOIN profiles p ON p.user_id=cp.user_id WHERE cp.round_id=? AND cp.paid_at IS NOT NULL ORDER BY cp.amount DESC, cp.created_at ASC LIMIT 3")
-            .bind(round.id).all<{name:string;userCode:string;payout:number}>()
-        : {results:[] as Array<{name:string;userCode:string;payout:number}>};
+        ? await db.prepare("SELECT COALESCE(NULLIF(TRIM(p.display_name),''),'لاعب') AS name, COALESCE(p.gabo_id,'') AS userCode, COALESCE(p.avatar_key,'') AS avatarUrl, cp.amount AS payout FROM cat_greed_payouts cp LEFT JOIN profiles p ON p.user_id=cp.user_id WHERE cp.round_id=? AND cp.paid_at IS NOT NULL ORDER BY cp.amount DESC, cp.created_at ASC LIMIT 3")
+            .bind(round.id).all<{name:string;userCode:string;avatarUrl:string;payout:number}>()
+        : {results:[] as Array<{name:string;userCode:string;avatarUrl:string;payout:number}>};
       const dayStart = saudiDayStartIso();
       const dailyRounds = await db.prepare(
         "SELECT COUNT(*) AS total FROM cat_greed_rounds WHERE starts_at >= ? AND starts_at <= ?"
