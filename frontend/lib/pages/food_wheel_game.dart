@@ -28,7 +28,14 @@ const kSlots = [
 ];
 const kChips = [10, 500, 6000, 30000, 100000];
 
-enum RoundPhase { betting, result }
+enum RoundPhase { betting, spinning, result }
+
+class FoodWheelWinner {
+  final String name;
+  final String userCode;
+  final int payout;
+  const FoodWheelWinner({required this.name, required this.userCode, required this.payout});
+}
 
 class RoundState {
   final String roundId;
@@ -42,6 +49,7 @@ class RoundState {
   final int? resultSlot;
   final String? special;
   final List<String> history;
+  final List<FoodWheelWinner> topWinners;
 
   const RoundState({
     required this.roundId,
@@ -60,6 +68,7 @@ class RoundState {
     this.resultSlot,
     this.special,
     this.history = const [],
+    this.topWinners = const [],
   });
 
   factory RoundState.fromJson(Map<String, dynamic> j) {
@@ -75,7 +84,9 @@ class RoundState {
       userCode: (j['userCode'] ?? '').toString(),
       dailyRoundNumber: (j['dailyRoundNumber'] as num? ?? 1).toInt(),
       secondsLeft: (j['secondsLeft'] as num? ?? 0).toInt(),
-      phase: j['phase'] == 'result' ? RoundPhase.result : RoundPhase.betting,
+      phase: j['phase'] == 'result'
+          ? RoundPhase.result
+          : j['phase'] == 'spinning' ? RoundPhase.spinning : RoundPhase.betting,
       pools: ((j['pools'] as List?) ?? List.filled(8, 0)).map((e) => (e as num).toInt()).toList(),
       myBets: ((j['myBets'] as List?) ?? List.filled(8, 0)).map((e) => (e as num).toInt()).toList(),
       balance: (j['balance'] as num? ?? 0).toInt(),
@@ -85,6 +96,14 @@ class RoundState {
       resultSlot: (j['resultSlot'] as num?)?.toInt(),
       special: j['special'] as String?,
       history: rawHistory.map((e) => '$e').toList(),
+      topWinners: ((j['topWinners'] as List?) ?? const []).map((e) {
+        final item = Map<String, dynamic>.from(e as Map);
+        return FoodWheelWinner(
+          name: (item['name'] ?? 'لاعب').toString(),
+          userCode: (item['userCode'] ?? '').toString(),
+          payout: (item['payout'] as num? ?? 0).toInt(),
+        );
+      }).toList(),
       enabled: j['enabled'] == true,
       symbols: symbols.length == 8 ? symbols : kSlots,
     );
@@ -357,7 +376,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       if (!mounted || _visibleSecondsLeft <= 0) return;
       setState(() => _visibleSecondsLeft--);
     });
-    _poll = Timer.periodic(const Duration(seconds: 2), (_) => _refresh());
+    _poll = Timer.periodic(const Duration(seconds: 1), (_) => _refresh());
   }
 
   @override
@@ -399,9 +418,12 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           _win = {}; _hit = -1; _lit = null; _msg = null;
         }
       });
-      if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
+      if (s.phase == RoundPhase.spinning && s.roundId != _animatedRound) {
         _animatedRound = s.roundId;
         _spin(s);
+      } else if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
+        _animatedRound = s.roundId;
+        _showSettledResult(s);
       }
     } catch (e) {
       if (mounted) setState(() => _err = '$e');
@@ -410,31 +432,72 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     }
   }
 
-  Future<void> _spin(RoundState s) async {
-    _spinning = true;
-    final target = s.resultSlot ?? _rnd.nextInt(8);
-    final start = _rnd.nextInt(8);
-    final steps = 25 + ((target - start + 8) % 8);
-    for (var k = 0; k < steps; k++) {
-      if (!mounted) return;
-      setState(() => _hit = (start + k) % 8);
-      await Future.delayed(Duration(milliseconds: 60 + (k * k * 0.3).round()));
+  int _visualTarget(RoundState s) {
+    if (s.resultSlot != null) return s.resultSlot!;
+    if (s.special == 'salad') {
+      final matches = [for (var i = 0; i < 8; i++) if (s.symbols[i].veg) i];
+      if (matches.isNotEmpty) return matches.first;
     }
-    if (!mounted) return;
+    if (s.special == 'pizza') {
+      final matches = [for (var i = 0; i < 8; i++) if (!s.symbols[i].veg) i];
+      if (matches.isNotEmpty) return matches.first;
+    }
+    return _rnd.nextInt(8);
+  }
+
+  void _applySettledState(RoundState s) {
     _spinning = false;
     setState(() {
       _hit = -1;
       _bal = s.balance;
       _lit = s.special;
       _win = s.special == null
-        ? {target}
-        : {for (var i = 0; i < 8; i++) if (s.symbols[i].veg == (s.special == 'salad')) i};
+          ? (s.resultSlot == null ? <int>{} : {s.resultSlot!})
+          : {for (var i = 0; i < 8; i++) if (s.symbols[i].veg == (s.special == 'salad')) i};
     });
     if (s.myPayout > 0) {
       _say('ربحت ${_fmt(s.myPayout)} 🎉');
     } else if (s.myBets.any((b) => b > 0)) {
       _say('حظ أوفر في الجولة القادمة');
     }
+  }
+
+  void _showSettledResult(RoundState s) {
+    _applySettledState(s);
+  }
+
+  Future<void> _spin(RoundState initial) async {
+    _spinning = true;
+    final seconds = initial.secondsLeft.clamp(1, 5);
+    final deadline = DateTime.now().add(Duration(seconds: seconds));
+    final randomUntil = deadline.subtract(const Duration(seconds: 1));
+
+    // Keep the wheel moving for the first part of the five-second phase.
+    // The server reveals the committed outcome during the final second.
+    while (mounted && DateTime.now().isBefore(randomUntil)) {
+      setState(() => _hit = _rnd.nextInt(8));
+      await Future.delayed(const Duration(milliseconds: 110));
+    }
+
+    while (mounted && DateTime.now().isBefore(deadline)) {
+      final latest = _s;
+      if (latest != null && latest.roundId == initial.roundId &&
+          (latest.resultSlot != null || latest.special != null)) {
+        break;
+      }
+      setState(() => _hit = _rnd.nextInt(8));
+      await Future.delayed(const Duration(milliseconds: 90));
+    }
+
+    if (!mounted) return;
+    final latest = _s != null && _s!.roundId == initial.roundId ? _s! : initial;
+    setState(() => _hit = _visualTarget(latest));
+    while (mounted && DateTime.now().isBefore(deadline)) {
+      await Future.delayed(const Duration(milliseconds: 40));
+    }
+    if (!mounted) return;
+    final finalState = _s != null && _s!.roundId == initial.roundId ? _s! : latest;
+    _applySettledState(finalState);
   }
 
   String _newBetIdempotencyKey() {
@@ -552,6 +615,54 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         ),
       );
 
+  Widget _topWinnersCorner(RoundState s) => Container(
+        padding: const EdgeInsets.all(7),
+        decoration: BoxDecoration(
+          color: const Color(0xA51A155D),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFFD978), width: 1.2),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('أفضل 3 لاعبين',
+                style: TextStyle(color: Color(0xFFFFD978), fontSize: 10,
+                    fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            if (s.topWinners.isEmpty)
+              const Text('لا يوجد فائزون',
+                  style: TextStyle(color: Colors.white70, fontSize: 9))
+            else
+              for (var i = 0; i < s.topWinners.length && i < 3; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Text(['🥇', '🥈', '🥉'][i],
+                          style: const TextStyle(fontSize: 12)),
+                      const SizedBox(width: 3),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(s.topWinners[i].name,
+                                maxLines: 1, overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.white,
+                                    fontSize: 9, fontWeight: FontWeight.bold)),
+                            Text(_fmt(s.topWinners[i].payout),
+                                style: const TextStyle(color: Color(0xFFFFD978),
+                                    fontSize: 8, fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+          ],
+        ),
+      );
+
   Widget _resultPanel(RoundState s) {
     final food = s.special == 'salad'
         ? '🥗'
@@ -572,86 +683,53 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         ),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: SingleChildScrollView(
-        child: Column(children: [
-          SizedBox(
-            height: 62,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CustomPaint(size: const Size(20, 54), painter: _CutleryPainter(true)),
-                const SizedBox(width: 14),
-                Text(food, style: const TextStyle(fontSize: 48)),
-                const SizedBox(width: 14),
-                CustomPaint(size: const Size(20, 54), painter: _CutleryPainter(false)),
-              ],
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 104),
+            child: SingleChildScrollView(
+              child: Column(children: [
+                SizedBox(
+                  height: 62,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CustomPaint(size: const Size(20, 54), painter: _CutleryPainter(true)),
+                      const SizedBox(width: 10),
+                      Text(food, style: const TextStyle(fontSize: 44)),
+                      const SizedBox(width: 10),
+                      CustomPaint(size: const Size(20, 54), painter: _CutleryPainter(false)),
+                    ],
+                  ),
+                ),
+                Container(
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    gradient: const LinearGradient(colors: [
+                      Color(0x00FFD400), Color(0xFFFFD400),
+                      Color(0xFFFFD400), Color(0x00FFD400)
+                    ], stops: [0, 0.15, 0.85, 1]),
+                  ),
+                ),
+                Text('نتيجة الجولة ${s.dailyRoundNumber} $food',
+                    textAlign: TextAlign.center, style: t),
+                Text('رهانك في هذه الجولة: ${_fmt(mine)}',
+                    textAlign: TextAlign.center, style: t),
+                Text('الفائز في هذه الجولة: ${_fmt(s.myPayout)}',
+                    textAlign: TextAlign.center, style: t),
+                const SizedBox(height: 6),
+                Text(s.myPayout > 0 ? '🥳' : '😿',
+                    style: const TextStyle(fontSize: 36)),
+              ]),
             ),
           ),
-          Container(
-            height: 6,
-            margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              gradient: const LinearGradient(colors: [
-                Color(0x00FFD400), Color(0xFFFFD400),
-                Color(0xFFFFD400), Color(0x00FFD400)
-              ], stops: [0, 0.15, 0.85, 1]),
-            ),
-          ),
-          Row(children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('نتيجة الجولة ${s.dailyRoundNumber} $food', style: t),
-                  Text('رهانك في هذه الجولة: ${_fmt(mine)}', style: t),
-                  Text('الفائز في هذه الجولة: ${_fmt(s.myPayout)}', style: t),
-                ],
-              ),
-            ),
-            Text(s.myPayout > 0 ? '🥳' : '😿', style: const TextStyle(fontSize: 44)),
-          ]),
-          const SizedBox(height: 8),
-          const Text('الفائز الأكبر لهذه الجولة',
-              style: TextStyle(color: Color(0xFFFFD400),
-                  fontWeight: FontWeight.w800, fontSize: 15)),
-          const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _resultPlace('🥈', 'المركز الثاني', 58),
-              _resultPlace('🥇', 'المركز الأول', 74),
-              _resultPlace('🥉', 'المركز الثالث', 48),
-            ],
-          ),
-          const SizedBox(height: 5),
-          const Text('تظهر بيانات الفائزين عند اعتمادها من الخادم',
-              style: TextStyle(color: Colors.white70, fontSize: 11)),
-        ]),
+          Positioned(left: 0, top: 0, width: 96, child: _topWinnersCorner(s)),
+        ],
       ),
     );
   }
-
-  Widget _resultPlace(String medal, String title, double height) => Expanded(
-        child: Column(children: [
-          Text(medal, style: const TextStyle(fontSize: 24)),
-          const SizedBox(height: 3),
-          Container(
-            height: height,
-            alignment: Alignment.center,
-            margin: const EdgeInsets.symmetric(horizontal: 3),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFD978), Color(0xFF9E672A)],
-                begin: Alignment.topCenter, end: Alignment.bottomCenter),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-              border: Border.all(color: const Color(0xFFFFE6A0))),
-            child: Text(title, textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF4A250B),
-                fontSize: 10, fontWeight: FontWeight.w900)),
-          ),
-        ]),
-      );
 
   Widget _errorBox() => Column(mainAxisSize: MainAxisSize.min, children: [
         const Text('تعذر الاتصال بالخادم', style: TextStyle(color: Colors.white)),
@@ -1082,9 +1160,12 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
             color: const Color(0xFF8A4B2A),
             border: Border.all(color: const Color(0xFF5A2F16), width: 4)),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(s.phase == RoundPhase.betting ? 'حدد الوقت' : 'النتيجة',
+            Text(
+              s.phase == RoundPhase.betting
+                  ? 'وقت الرهان'
+                  : s.phase == RoundPhase.spinning ? 'تحديد الفائز' : 'النتيجة',
               style: TextStyle(color: Colors.white, fontSize: d * 0.13)),
-            Text(s.phase == RoundPhase.betting ? '${_visibleSecondsLeft}s' : '🎡',
+            Text(s.phase == RoundPhase.result ? '🎡' : '${_visibleSecondsLeft}s',
               style: TextStyle(color: Colors.white, fontSize: d * 0.3,
                 fontWeight: FontWeight.w900)),
           ]),
@@ -1131,11 +1212,12 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         child: AlertDialog(
           backgroundColor: const Color(0xFF4A3DF0),
           content: const Text(
-            '1. اختر قيمة الرهان ثم اضغط على الوجبة.\n'
-            '2. مدة الجولة 30 ثانية ثم تظهر النتيجة.\n'
-            '3. الربح = رهانك × عدد الأضعاف.\n'
-            '4. يمكنك الرهان على أكثر من وجبة.\n'
-            '5. السلطة تربح كل الخضروات، والبيتزا تربح كل اللحوم.',
+            '1. اختر قيمة الرهان ثم اضغط على الوجبة خلال 30 ثانية.\n'
+            '2. بعد إغلاق الرهان تدور العجلة لمدة 5 ثوانٍ لتحديد الوجبة الفائزة.\n'
+            '3. تظهر نافذة النتيجة لمدة 3 ثوانٍ.\n'
+            '4. الربح = رهانك × عدد الأضعاف.\n'
+            '5. يمكنك الرهان على أكثر من وجبة.\n'
+            '6. السلطة تربح كل الخضروات، والبيتزا تربح كل اللحوم.',
             style: TextStyle(color: Colors.white, height: 1.8, fontSize: 13),
           ),
           actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('حسنًا'))],
