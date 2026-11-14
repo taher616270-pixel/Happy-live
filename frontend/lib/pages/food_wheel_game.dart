@@ -73,9 +73,14 @@ class RoundState {
   });
 
   factory RoundState.fromJson(Map<String, dynamic> j) {
-    final rawSymbols = (j['symbols'] as List?) ?? const [];
-    final symbols = rawSymbols.map((e) {
-      final item = Map<String, dynamic>.from(e as Map);
+    final rawSymbols = ((j['symbols'] as List?) ?? const [])
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList()
+      ..sort((a, b) => ((a['slot'] as num?)?.toInt() ?? 0)
+          .compareTo((b['slot'] as num?)?.toInt() ?? 0));
+    // The resultSlot is a database slot number, never an arbitrary array index.
+    // Normalize the server's symbol order before rendering the wheel/result.
+    final symbols = rawSymbols.map((item) {
       return WheelSlot((item['emoji'] ?? '❔').toString(),
         (item['multiplier'] as num? ?? 1).toInt(), item['isVegetable'] == true);
     }).toList();
@@ -229,6 +234,7 @@ class HttpFoodWheelApi implements FoodWheelApi {
   Map<String, dynamic> lastDiagnostics = <String, dynamic>{};
   int? lastStateStatus;
   int? lastWalletStatus;
+  String? _verifiedUserCode;
   HttpFoodWheelApi({required this.accessToken, http.Client? client}) : _client = client ?? http.Client();
   Map<String, String> get _headers => {'Content-Type':'application/json','Authorization':'Bearer $accessToken'};
   Future<Map<String, dynamic>> _request(String path, {Map<String, dynamic>? body}) async {
@@ -310,6 +316,7 @@ class HttpFoodWheelApi implements FoodWheelApi {
     if (walletBalance is! num || walletBalance < 0) {
       throw Exception('استجابة محفظة التطبيق لا تحتوي على رصيد صالح');
     }
+    _verifiedUserCode = gameCode;
     state['balance'] = walletBalance;
     return state;
   }
@@ -328,7 +335,15 @@ class HttpFoodWheelApi implements FoodWheelApi {
 
   @override Future<RoundState> placeBet(String roundId, int slot, int amount, String idempotencyKey) async {
     final result = await _request('/games/food-wheel/bet', body:{'roundId':roundId,'slot':slot,'amount':amount,'idempotencyKey':idempotencyKey});
-    return RoundState.fromJson(await _stateWithWallet(result));
+    // The bet endpoint already returns the balance read from the same wallet
+    // row after the atomic debit. Avoid a second /wallet round-trip on every tap.
+    final responseCode = (result['userCode'] ?? '').toString();
+    final responseBalance = result['balance'];
+    if (_verifiedUserCode == null || responseCode != _verifiedUserCode ||
+        responseBalance is! num || responseBalance < 0) {
+      throw Exception('تعذر التحقق من رصيد الرهان وحساب المستخدم');
+    }
+    return RoundState.fromJson(result);
   }
 }
 
@@ -371,6 +386,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   int _pendingBetCount = 0, _pendingBetAmount = 0, _localRoundBetCount = 0;
   String _localBetRoundId = '';
   bool _spinning = false, _refreshing = false;
+  final List<int> _displayBets = List<int>.filled(8, 0);
 
   @override
   void initState() {
@@ -419,6 +435,11 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           : null;
       setState(() {
         _s = s;
+        if (_pendingBetCount == 0) {
+          for (var i = 0; i < 8; i++) {
+            _displayBets[i] = i < s.myBets.length ? s.myBets[i] : 0;
+          }
+        }
         if (shouldSyncClock) {
           _countdownDeadline = DateTime.now().add(Duration(seconds: s.secondsLeft));
           _visibleSecondsLeft = s.secondsLeft;
@@ -559,7 +580,11 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     _localRoundBetCount++;
     _pendingBetCount++;
     _pendingBetAmount += amount;
-    setState(() { _bal -= amount; });
+    setState(() {
+      _bal -= amount;
+      // Reflect the chip on the selected food in this same frame.
+      _displayBets[i] += amount;
+    });
     var placed = false;
     try {
       await widget.api.placeBet(roundId, i, amount, key);
@@ -1153,7 +1178,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     final item = s.symbols[i];
     final selected = _hit == i;
     final won = _win.contains(i);
-    final amount = s.myBets[i];
+    final amount = i < _displayBets.length ? _displayBets[i] : s.myBets[i];
     final pool = i < s.pools.length ? s.pools[i] : 0;
     final canBet = s.enabled && s.phase == RoundPhase.betting &&
         _visibleSecondsLeft > 0 && !_spinning;
