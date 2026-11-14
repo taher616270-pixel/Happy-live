@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:convert';
+import 'dart:async';
 import 'widgets/custom_bottom_nav.dart';
 import 'widgets/purple_tech_background.dart';
 import 'services/session_token_store.dart';
@@ -1590,11 +1591,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
         accessToken: widget.accessToken,
         name: _name,
       ),
-      const _HappyPlaceholderTab(
-        title: 'الرسائل',
-        subtitle: 'محادثاتك الخاصة في مكان واحد',
-        icon: Icons.forum_outlined,
-      ),
+      _HappyMessagesTab(apiBase: _apiBase, accessToken: widget.accessToken),
       HappyProfilePage(
         name: _name,
         email: widget.email,
@@ -1643,6 +1640,394 @@ class _SessionHomePageState extends State<SessionHomePage> {
             onTap: _selectTab,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HappyMessagesTab extends StatefulWidget {
+  const _HappyMessagesTab({required this.apiBase, required this.accessToken});
+  final String apiBase;
+  final String accessToken;
+
+  @override
+  State<_HappyMessagesTab> createState() => _HappyMessagesTabState();
+}
+
+class _HappyMessagesTabState extends State<_HappyMessagesTab> {
+  final TextEditingController _search = TextEditingController();
+  Timer? _debounce;
+  bool _loading = true;
+  bool _searching = false;
+  String? _error;
+  List<Map<String, dynamic>> _conversations = [];
+  List<Map<String, dynamic>> _users = [];
+  List<Map<String, dynamic>> _groups = [];
+
+  Map<String, String> get _headers => {
+    'Authorization': 'Bearer ${widget.accessToken}',
+    'Content-Type': 'application/json',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConversations();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _search.dispose();
+    super.dispose();
+  }
+
+  Future<Map<String, dynamic>> _request(String path, {String method = 'GET', Map<String, dynamic>? body}) async {
+    final uri = Uri.parse('${widget.apiBase}$path');
+    late http.Response response;
+    if (method == 'POST') {
+      response = await http.post(uri, headers: _headers, body: jsonEncode(body ?? {})).timeout(const Duration(seconds: 20));
+    } else {
+      response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 20));
+    }
+    final decoded = jsonDecode(response.body);
+    final data = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    if (response.statusCode < 200 || response.statusCode >= 300 || data['ok'] != true) {
+      throw Exception((data['message'] ?? data['error'] ?? 'تعذر الاتصال بخدمة الرسائل').toString());
+    }
+    return data;
+  }
+
+  Future<void> _loadConversations() async {
+    if (mounted) setState(() { _loading = true; _error = null; });
+    try {
+      final data = await _request('/messages/conversations');
+      final rows = (data['conversations'] as List? ?? const [])
+          .whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      if (mounted) setState(() { _conversations = rows; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString().replaceFirst('Exception: ', ''); _loading = false; });
+    }
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    final q = value.trim();
+    if (q.length < 2) {
+      setState(() { _searching = false; _users = []; _groups = []; });
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 350), () => _searchPeople(q));
+  }
+
+  Future<void> _searchPeople(String q) async {
+    if (mounted) setState(() => _searching = true);
+    try {
+      final data = await _request('/messages/search?q=${Uri.encodeQueryComponent(q)}');
+      if (!mounted || _search.text.trim() != q) return;
+      setState(() {
+        _users = (data['users'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        _groups = (data['groups'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        _searching = false;
+      });
+    } catch (e) {
+      if (mounted) setState(() { _searching = false; _error = e.toString().replaceFirst('Exception: ', ''); });
+    }
+  }
+
+  Future<void> _startDirect(Map<String, dynamic> user) async {
+    try {
+      final data = await _request('/messages/conversations', method: 'POST', body: {'recipientId': user['userId']});
+      final id = (data['conversationId'] ?? '').toString();
+      if (id.isEmpty || !mounted) return;
+      _openConversation({'id': id, 'kind': 'direct', 'displayName': user['name'], 'avatarUrl': user['avatarUrl'], 'otherUserId': user['userId']});
+      await _loadConversations();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+    }
+  }
+
+  void _openConversation(Map<String, dynamic> item) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => _HappyConversationPage(
+        apiBase: widget.apiBase,
+        accessToken: widget.accessToken,
+        conversation: item,
+      ),
+    )).then((_) => _loadConversations());
+  }
+
+  Widget _avatar(String? url, {double size = 48}) {
+    final value = (url ?? '').trim();
+    return CircleAvatar(
+      radius: size / 2,
+      backgroundColor: const Color(0xFFFFF2D3),
+      backgroundImage: value.isNotEmpty ? NetworkImage(value) : null,
+      child: value.isEmpty ? const Icon(Icons.person_rounded, color: Color(0xFFD0A044)) : null,
+    );
+  }
+
+  Widget _personTile(Map<String, dynamic> user) => ListTile(
+    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    leading: _avatar(user['avatarUrl']?.toString()),
+    title: Text((user['name'] ?? 'مستخدم').toString(), style: const TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.w800)),
+    subtitle: Text('ID: ${user['userCode'] ?? '—'}', style: const TextStyle(color: Color(0xFF9291A0), fontSize: 11)),
+    trailing: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFFD9A93C)),
+    onTap: () => _startDirect(user),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final hasQuery = _search.text.trim().length >= 2;
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+          colors: [Color(0xFFF7EBCB), Color(0xFFFAF6EA), Color(0xFFF6F7FB)],
+          stops: [0.0, 0.3, 0.55],
+        ),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('الرسائل', style: TextStyle(color: Color(0xFF1E2233), fontSize: 25, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 5),
+              const Text('محادثاتك الخاصة ومجموعاتك في مكان واحد', style: TextStyle(color: Color(0xFF9A98AD), fontSize: 12)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _search,
+                onChanged: _onSearchChanged,
+                textDirection: TextDirection.rtl,
+                textInputAction: TextInputAction.search,
+                style: const TextStyle(color: Color(0xFF1E2233), fontSize: 14, fontWeight: FontWeight.w600),
+                decoration: InputDecoration(
+                  hintText: 'ابحث عن أصدقاء أو مجموعات الدردشة',
+                  hintStyle: const TextStyle(color: Color(0xFF777789), fontSize: 13),
+                  prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF9A98AD)),
+                  filled: true, fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(17), borderSide: const BorderSide(color: Color(0xFFE4E4EC))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(17), borderSide: const BorderSide(color: Color(0xFFD9A93C), width: 1.3)),
+                ),
+              ),
+            ]),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadConversations,
+              color: const Color(0xFFD9A93C),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 28),
+                children: [
+                  if (_error != null && !_loading)
+                    Padding(padding: const EdgeInsets.all(12), child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent))),
+                  if (hasQuery) ...[
+                    if (_searching) const Padding(padding: EdgeInsets.all(18), child: Center(child: CircularProgressIndicator(color: Color(0xFFD9A93C)))),
+                    if (!_searching && _users.isEmpty && _groups.isEmpty)
+                      const Padding(padding: EdgeInsets.all(24), child: Text('لا توجد نتائج مطابقة', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF9291A0)))),
+                    if (_users.isNotEmpty) ...[
+                      const Padding(padding: EdgeInsets.fromLTRB(6, 8, 6, 6), child: Text('الأشخاص', style: TextStyle(color: Color(0xFF8D6B2A), fontWeight: FontWeight.w900))),
+                      ..._users.map(_personTile),
+                    ],
+                    if (_groups.isNotEmpty) ...[
+                      const Padding(padding: EdgeInsets.fromLTRB(6, 14, 6, 6), child: Text('مجموعات أنت عضو فيها', style: TextStyle(color: Color(0xFF8D6B2A), fontWeight: FontWeight.w900))),
+                      ..._groups.map((group) => ListTile(
+                        leading: const CircleAvatar(backgroundColor: Color(0xFFFFF2D3), child: Icon(Icons.groups_rounded, color: Color(0xFFD0A044))),
+                        title: Text((group['title'] ?? 'مجموعة').toString(), style: const TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.w800)),
+                        subtitle: Text('${group['memberCount'] ?? 0} أعضاء', style: const TextStyle(color: Color(0xFF9291A0), fontSize: 11)),
+                        onTap: () => _openConversation({'id': group['conversationId'], 'kind': 'group', 'displayName': group['title']}),
+                      )),
+                    ],
+                  ] else ...[
+                    const Padding(padding: EdgeInsets.fromLTRB(6, 8, 6, 8), child: Text('محادثاتك', style: TextStyle(color: Color(0xFF8D6B2A), fontWeight: FontWeight.w900))),
+                    if (_loading) const Padding(padding: EdgeInsets.all(25), child: Center(child: CircularProgressIndicator(color: Color(0xFFD9A93C)))),
+                    if (!_loading && _conversations.isEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE4E4EC))),
+                        child: const Column(children: [
+                          Icon(Icons.forum_outlined, color: Color(0xFFD9A93C), size: 34),
+                          SizedBox(height: 12),
+                          Text('لا توجد محادثات بعد', style: TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.w900)),
+                          SizedBox(height: 6),
+                          Text('ابحث عن صديق وابدأ محادثتك الأولى.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF9A98AD), fontSize: 12)),
+                        ]),
+                      ),
+                    ..._conversations.map((item) {
+                      final group = item['kind'] == 'group';
+                      final title = (item['displayName'] ?? (group ? item['title'] : 'محادثة')).toString();
+                      return Card(
+                        elevation: 0, color: Colors.white,
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: const BorderSide(color: Color(0xFFECE7DB))),
+                        child: ListTile(
+                          leading: group
+                            ? const CircleAvatar(backgroundColor: Color(0xFFFFF2D3), child: Icon(Icons.groups_rounded, color: Color(0xFFD0A044)))
+                            : _avatar(item['avatarUrl']?.toString()),
+                          title: Text(title, style: const TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.w800)),
+                          subtitle: Text((item['lastMessage'] ?? 'ابدأ المحادثة').toString(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF9291A0), fontSize: 11)),
+                          trailing: (item['unreadCount'] as num? ?? 0) > 0
+                            ? CircleAvatar(radius: 12, backgroundColor: const Color(0xFFD9A93C), child: Text('${item['unreadCount']}', style: const TextStyle(color: Colors.white, fontSize: 10)))
+                            : const Icon(Icons.chevron_left_rounded, color: Color(0xFFC5A45D)),
+                          onTap: () => _openConversation({...item, 'displayName': title}),
+                        ),
+                      );
+                    }),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HappyConversationPage extends StatefulWidget {
+  const _HappyConversationPage({required this.apiBase, required this.accessToken, required this.conversation});
+  final String apiBase;
+  final String accessToken;
+  final Map<String, dynamic> conversation;
+
+  @override
+  State<_HappyConversationPage> createState() => _HappyConversationPageState();
+}
+
+class _HappyConversationPageState extends State<_HappyConversationPage> {
+  final TextEditingController _input = TextEditingController();
+  final ScrollController _scroll = ScrollController();
+  Timer? _refreshTimer;
+  bool _loading = true;
+  bool _sending = false;
+  String? _error;
+  List<Map<String, dynamic>> _messages = [];
+
+  Map<String, String> get _headers => {'Authorization': 'Bearer ${widget.accessToken}', 'Content-Type': 'application/json'};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) => _loadMessages(silent: true));
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    _input.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadMessages({bool silent = false}) async {
+    if (!silent && mounted) setState(() { _loading = true; _error = null; });
+    try {
+      final id = Uri.encodeComponent((widget.conversation['id'] ?? '').toString());
+      final response = await http.get(Uri.parse('${widget.apiBase}/messages/conversations/$id/messages?limit=100'), headers: _headers).timeout(const Duration(seconds: 20));
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode != 200 || data['ok'] != true) throw Exception((data['message'] ?? data['error'] ?? 'تعذر تحميل الرسائل').toString());
+      final rows = (data['messages'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      if (!mounted) return;
+      setState(() { _messages = rows; _loading = false; _error = null; });
+      await http.patch(Uri.parse('${widget.apiBase}/messages/conversations/$id/read'), headers: _headers).timeout(const Duration(seconds: 10));
+      if (!silent && _scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
+    } catch (e) {
+      if (mounted && !silent) setState(() { _loading = false; _error = e.toString().replaceFirst('Exception: ', ''); });
+    }
+  }
+
+  Future<void> _send() async {
+    final text = _input.text.trim();
+    if (text.isEmpty || _sending) return;
+    setState(() => _sending = true);
+    try {
+      final id = Uri.encodeComponent((widget.conversation['id'] ?? '').toString());
+      final response = await http.post(Uri.parse('${widget.apiBase}/messages/conversations/$id/messages'), headers: _headers, body: jsonEncode({'text': text})).timeout(const Duration(seconds: 20));
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode != 201 || data['ok'] != true) throw Exception((data['message'] ?? data['error'] ?? 'تعذر إرسال الرسالة').toString());
+      _input.clear();
+      await _loadMessages();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = (widget.conversation['displayName'] ?? widget.conversation['title'] ?? 'المحادثة').toString();
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F5EC),
+        appBar: AppBar(
+          backgroundColor: Colors.white, foregroundColor: const Color(0xFF1E2233), elevation: 0.5,
+          title: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+          actions: [IconButton(onPressed: _loadMessages, icon: const Icon(Icons.refresh_rounded, color: Color(0xFFD9A93C)))],
+        ),
+        body: Column(children: [
+          Expanded(child: _loading
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFFD9A93C)))
+            : ListView.builder(
+                controller: _scroll,
+                padding: const EdgeInsets.all(14),
+                itemCount: _messages.length + (_error == null ? 0 : 1),
+                itemBuilder: (context, index) {
+                  if (_error != null && index == 0) return Padding(padding: const EdgeInsets.all(12), child: Text(_error!, style: const TextStyle(color: Colors.redAccent)));
+                  final message = _messages[index - (_error == null ? 0 : 1)];
+                  final mine = message['senderId'] == null ? false : message['senderId'] == widget.conversation['currentUserId'];
+                  return Align(
+                    alignment: mine ? Alignment.centerLeft : Alignment.centerRight,
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * .78),
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: mine ? const Color(0xFFFFE8B1) : Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: const Color(0xFFECE3D1)),
+                      ),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        if (widget.conversation['kind'] == 'group')
+                          Text((message['senderName'] ?? 'مستخدم').toString(), style: const TextStyle(color: Color(0xFFB0832E), fontSize: 10, fontWeight: FontWeight.w900)),
+                        Text((message['text'] ?? '').toString(), style: const TextStyle(color: Color(0xFF1E2233), fontSize: 14, height: 1.5)),
+                        const SizedBox(height: 3),
+                        Text((message['createdAt'] ?? '').toString().replaceFirst('T', ' ').split('.').first, style: const TextStyle(color: Color(0xFF9A98AD), fontSize: 9)),
+                      ]),
+                    ),
+                  );
+                },
+              )),
+          SafeArea(top: false, child: Container(
+            padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
+            color: Colors.white,
+            child: Row(children: [
+              Expanded(child: TextField(
+                controller: _input, minLines: 1, maxLines: 4, textDirection: TextDirection.rtl,
+                style: const TextStyle(color: Color(0xFF1E2233), fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'اكتب رسالتك...',
+                  filled: true, fillColor: const Color(0xFFF7F5EF),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(22), borderSide: BorderSide.none),
+                ),
+                onSubmitted: (_) => _send(),
+              )),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _sending ? null : _send,
+                icon: _sending ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD9A93C))) : const Icon(Icons.send_rounded, color: Color(0xFFD9A93C)),
+              ),
+            ]),
+          )),
+        ]),
       ),
     );
   }
