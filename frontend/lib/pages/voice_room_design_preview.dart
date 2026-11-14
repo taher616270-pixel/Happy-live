@@ -422,9 +422,16 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         addRoomMember(user, fallbackRole: 'مستمع');
       }
 
-      final ownerProfile = ownerData['profile'] is Map
-          ? Map<String, dynamic>.from(ownerData['profile'] as Map)
-          : ownerData;
+      // The room payload often contains only the owner's ID, not their
+      // profile fields. Fetch the authenticated public profile so the room
+      // information sheet receives the saved country instead of an empty flag.
+      final fetchedOwnerProfile = await _loadAccountProfile(resolvedOwnerUserId);
+      final ownerProfile = <String, dynamic>{
+        ...ownerData,
+        if (ownerData['profile'] is Map)
+          ...Map<String, dynamic>.from(ownerData['profile'] as Map),
+        if (fetchedOwnerProfile != null) ...fetchedOwnerProfile,
+      };
       final ownerIndex = members.indexWhere((member) =>
           member.isOwner ||
           (resolvedOwnerUserId.isNotEmpty &&
