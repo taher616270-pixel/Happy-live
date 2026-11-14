@@ -777,7 +777,7 @@ class _RoomInfoSheet extends StatelessWidget {
     // Resolve the saved profile name first. South Arabia must never be
     // interpreted as Yemen or another ISO country.
     final savedProfileFlag = countryFlagForProfileName(value);
-    final normalized = value.toLowerCase().replaceAll(RegExp(r'[\\s_\\-]+'), ' ').trim();
+    final normalized = value.toLowerCase().replaceAll(RegExp(r'[\s_-]+'), ' ').trim();
     if (savedProfileFlag == 'SOUTH_ARABIA' ||
         normalized == 'south arabia' ||
         normalized == 'الجنوب العربي' ||
