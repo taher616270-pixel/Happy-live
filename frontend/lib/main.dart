@@ -5,6 +5,7 @@ import 'pages/profile_page.dart';
 import 'pages/posts_page.dart';
 import 'pages/edit_profile_page.dart';
 import 'pages/food_wheel_game.dart';
+import 'widgets/dynamic_games_list.dart';
 import 'pages/wallet_page.dart';
 import 'package:flutter/services.dart';
 import 'package:country_picker/country_picker.dart';
@@ -1832,6 +1833,7 @@ class _HappyCreateTab extends StatelessWidget {
         subtitle: 'العب واربح باستخدام رصيد محفظتك',
         onTap: () => openFoodWheelGame(context, accessToken: accessToken),
       ),
+      const DynamicGamesList(),
       const SizedBox(height: 23),
       const Padding(
         padding: EdgeInsets.only(right: 3, bottom: 12),
