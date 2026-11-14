@@ -1840,10 +1840,7 @@ class _HappyMessagesTabState extends State<_HappyMessagesTab> {
             ]),
           ),
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadConversations,
-              color: const Color(0xFFD9A93C),
-              child: ListView(
+            child: ListView(
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 28),
                 children: [
                   if (_error != null && !_loading)
@@ -1903,7 +1900,6 @@ class _HappyMessagesTabState extends State<_HappyMessagesTab> {
                     }),
                   ],
                 ],
-              ),
             ),
           ),
         ],
@@ -1975,8 +1971,29 @@ class _HappyConversationPageState extends State<_HappyConversationPage> {
       final response = await http.post(Uri.parse('${widget.apiBase}/messages/conversations/$id/messages'), headers: _headers, body: jsonEncode({'text': text})).timeout(const Duration(seconds: 20));
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode != 201 || data['ok'] != true) throw Exception((data['message'] ?? data['error'] ?? 'تعذر إرسال الرسالة').toString());
+      final sent = data['message'] is Map
+          ? Map<String, dynamic>.from(data['message'] as Map)
+          : <String, dynamic>{
+              'senderId': _currentUserId,
+              'senderName': 'أنا',
+              'text': text,
+              'createdAt': DateTime.now().toUtc().toIso8601String(),
+            };
       _input.clear();
-      await _loadMessages();
+      if (!mounted) return;
+      setState(() {
+        _messages.add(sent);
+        _error = null;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scroll.hasClients) {
+          _scroll.animateTo(
+            _scroll.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+          );
+        }
+      });
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
     } finally {
@@ -1994,7 +2011,6 @@ class _HappyConversationPageState extends State<_HappyConversationPage> {
         appBar: AppBar(
           backgroundColor: Colors.white, foregroundColor: const Color(0xFF1E2233), elevation: 0.5,
           title: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-          actions: [IconButton(onPressed: _loadMessages, icon: const Icon(Icons.refresh_rounded, color: Color(0xFFD9A93C)))],
         ),
         body: Column(children: [
           Expanded(child: _loading
