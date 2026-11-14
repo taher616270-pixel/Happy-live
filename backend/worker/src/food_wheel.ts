@@ -35,7 +35,7 @@ type FoodWheelRound = {
 const BET_CHIPS = new Set([10, 500, 6000, 30000, 100000]);
 // Each player may place at most six individual bets in one round.
 const MAX_BETS_PER_ROUND = 6;
-// Round flow: 30s betting, 5s wheel selection, then a 3s result panel.
+// Round flow: 30s betting, 4s wheel selection, then a 3s result panel.
 const SPIN_SECONDS = 4;
 const RESULT_DISPLAY_SECONDS = 3;
 const OUTCOME_REVEAL_OFFSET_SECONDS = 0;
