@@ -1612,18 +1612,36 @@ class _SessionHomePageState extends State<SessionHomePage> {
 
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Scaffold(
-        // Leave the area behind the system keyboard completely transparent.
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: IndexedStack(
-            index: _currentIndex,
-            children: pages,
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
+        // Keep the full screen painted while Scaffold resizes its body for
+        // the keyboard. This prevents the root dark background showing below
+        // the page whenever the search field gains or loses focus.
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFF7EBCB),
+              Color(0xFFFAF6EA),
+              Color(0xFFF6F7FB),
+            ],
+            stops: [0.0, 0.3, 0.55],
           ),
         ),
-        bottomNavigationBar: CustomBottomNav(
-          currentIndex: _currentIndex,
-          onTap: _selectTab,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: IndexedStack(
+              index: _currentIndex,
+              children: pages,
+            ),
+          ),
+          bottomNavigationBar: CustomBottomNav(
+            currentIndex: _currentIndex,
+            onTap: _selectTab,
+          ),
         ),
       ),
     );
