@@ -134,6 +134,8 @@ export async function handleGamesApiRequest(
     if (session.status !== "active" || session.enabled !== 1 || session.userStatus !== "active" || session.gameUrl === "https://pending-game.happylive.invalid") {
       return reply({ error: "game_or_player_unavailable" }, 403, origin, env);
     }
+    const currentGameOrigin = await gameOriginForId(db, session.gameId);
+    if (!currentGameOrigin || currentGameOrigin !== session.gameOrigin) return reply({ error: "game_origin_changed" }, 403, origin, env);
     if (origin && origin !== session.gameOrigin) return reply({ error: "game_origin_mismatch" }, 403, origin, env);
     const nowSeconds = Math.floor(Date.now() / 1000);
     const rate = await db.prepare(
