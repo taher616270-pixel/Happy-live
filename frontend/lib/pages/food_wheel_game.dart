@@ -116,7 +116,7 @@ abstract class FoodWheelApi {
 }
 
 class MockFoodWheelApi implements FoodWheelApi {
-  static const _betSecs = 30, _resSecs = 8;
+  static const _betSecs = 30, _spinSecs = 5, _resSecs = 3;
   final _rnd = math.Random();
   int _balance, _round = 330554;
   DateTime _start = DateTime.now();
@@ -138,7 +138,7 @@ class MockFoodWheelApi implements FoodWheelApi {
 
   void _tick() {
     final el = _elapsed;
-    if (el >= _betSecs + _resSecs) {
+    if (el >= _betSecs + _spinSecs + _resSecs) {
       _round++;
       _start = DateTime.now();
       _pools = _freshPools();
@@ -148,7 +148,7 @@ class MockFoodWheelApi implements FoodWheelApi {
       _special = null;
       _payout = 0;
       _settled = false;
-    } else if (el >= _betSecs && !_settled) {
+    } else if (el >= _betSecs + _spinSecs - 1 && !_settled) {
       _settle();
     } else if (el < _betSecs) {
       _pools[_rnd.nextInt(8)] += _rnd.nextInt(60000);
@@ -183,18 +183,21 @@ class MockFoodWheelApi implements FoodWheelApi {
   RoundState _state() {
     final el = _elapsed;
     final betting = el < _betSecs;
+    final spinning = el >= _betSecs && el < _betSecs + _spinSecs;
     return RoundState(
       roundId: '$_round',
-      secondsLeft: betting ? _betSecs - el : _betSecs + _resSecs - el,
-      phase: betting ? RoundPhase.betting : RoundPhase.result,
+      secondsLeft: betting
+          ? _betSecs - el
+          : spinning ? _betSecs + _spinSecs - el : _betSecs + _spinSecs + _resSecs - el,
+      phase: betting ? RoundPhase.betting : spinning ? RoundPhase.spinning : RoundPhase.result,
       pools: List.of(_pools),
       myBets: List.of(_bets),
       myBetCount: _betCount,
       maxBetsPerRound: 6,
       balance: _balance,
-      myPayout: betting ? 0 : _payout,
-      resultSlot: betting ? null : _slot,
-      special: betting ? null : _special,
+      myPayout: _settled ? _payout : 0,
+      resultSlot: _settled ? _slot : null,
+      special: _settled ? _special : null,
       history: List.of(_hist),
     );
   }
@@ -468,7 +471,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   Future<void> _spin(RoundState initial) async {
     _spinning = true;
-    final seconds = initial.secondsLeft.clamp(1, 5);
+    final seconds = initial.secondsLeft.clamp(1, 5).toInt();
     final deadline = DateTime.now().add(Duration(seconds: seconds));
     final randomUntil = deadline.subtract(const Duration(seconds: 1));
 
