@@ -3788,7 +3788,7 @@ export default {
         name: "Happy Live API",
         version: "v1",
         status: "scaffold",
-        endpoints: ["/api/v1/health", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/google", "/api/v1/auth/me", "/api/v1/auth/logout", "/api/v1/rooms", "/api/v1/imagekit/health", "/api/v1/imagekit/auth"]
+        endpoints: ["/api/v1/health", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/google", "/api/v1/auth/me", "/api/v1/auth/logout", "/api/v1/rooms", "/api/v1/messages/search", "/api/v1/messages/conversations", "/api/v1/messages/conversations/{id}/messages", "/api/v1/imagekit/health", "/api/v1/imagekit/auth"]
       }, 200, origin, env);
     }
 
