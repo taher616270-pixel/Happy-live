@@ -10,7 +10,7 @@ The Happy Live app calls this endpoint with the user's normal application access
 - Header: `Authorization: Bearer <application-access-token>`
 - JSON body: `{ "gameId": "<Game ID>" }`
 
-The Worker verifies the signed-in user session and checks that the requested game exists, is enabled, has lifecycle status `active`, and has a valid HTTPS URL. It then issues a cryptographically random game token that expires after 15 minutes.
+The Worker verifies the signed-in user session and active player account, then checks that the requested game exists, is enabled, has lifecycle status `active`, and has a valid HTTPS URL. It then issues a cryptographically random game token that expires after 15 minutes. The response includes a minimal public player object (public Happy Live ID, display name, avatar URL, country, and active account status); it does not expose the internal database user ID or the app access token.
 
 The token is stored only as a SHA-256 hash in D1. The raw token is returned once to the app and delivered to the game through an origin-locked `postMessage`; it is never placed in the game URL, query string, fragment, or referrer.
 
@@ -123,7 +123,7 @@ const wallet = await gameApi("wallet");
 | `/game/auth` | POST | App login required | Exchange app login for a game token |
 | `/game/session` | GET | `session.read` | Check game session and expiry |
 | `/game/session/refresh` | POST | Valid, unexpired game token | Extend the current token session by another 15 minutes |
-| `/game/profile` | GET | `profile.read` | Read public player profile |
+| `/game/profile` | GET | `profile.read` | Read public player identity, avatar, and account status |
 | `/game/wallet` | GET | `wallet.read` | Read the canonical coin balance |
 | `/game/session/revoke` | POST | Valid game token | Revoke the current game session |
 
@@ -141,3 +141,21 @@ The current game-token scopes are read-only: `session.read`, `profile.read`, and
 - Deactivating a game, disabling its registry entry, disabling a player, or changing the game's origin invalidates its active game sessions.
 - The Worker stores only token hashes; never log or persist raw tokens in game storage.
 - Do not pass the normal Happy Live application token to an external game.
+
+
+## 6. Player identity contract (phase 3)
+
+Both the successful `POST /game/auth` response and `GET /game/profile` return the same public identity fields under `player`:
+
+```json
+{
+  "id": "12345678",
+  "userCode": "12345678",
+  "displayName": "Player name",
+  "avatarUrl": "https://ik.imagekit.io/...",
+  "countryName": "Saudi Arabia",
+  "accountStatus": "active"
+}
+```
+
+`id` is the public Happy Live player code (`gabo_id`), not the internal database UUID. The profile endpoint rechecks the account status on every request and rejects a missing or non-active account. The older `profile` response key remains available for compatibility. The temporary game bearer token is the only credential sent to the game; never send the Happy Live app access token or private account fields to an external game.
