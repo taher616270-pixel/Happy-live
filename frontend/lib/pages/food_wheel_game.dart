@@ -650,7 +650,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Text('أفضل 3 لاعبين',
                 style: TextStyle(color: Color(0xFFFFD978), fontSize: 10,
@@ -670,7 +670,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                       const SizedBox(width: 3),
                       Expanded(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(s.topWinners[i].name,
                                 maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -709,50 +709,52 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         ),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 104),
-            child: SingleChildScrollView(
-              child: Column(children: [
-                SizedBox(
-                  height: 62,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CustomPaint(size: const Size(20, 54), painter: _CutleryPainter(true)),
-                      const SizedBox(width: 10),
-                      Text(food, style: const TextStyle(fontSize: 44)),
-                      const SizedBox(width: 10),
-                      CustomPaint(size: const Size(20, 54), painter: _CutleryPainter(false)),
-                    ],
-                  ),
-                ),
-                Container(
-                  height: 6,
-                  margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(4),
-                    gradient: const LinearGradient(colors: [
-                      Color(0x00FFD400), Color(0xFFFFD400),
-                      Color(0xFFFFD400), Color(0x00FFD400)
-                    ], stops: [0, 0.15, 0.85, 1]),
-                  ),
-                ),
-                Text('نتيجة الجولة ${s.dailyRoundNumber} $food',
-                    textAlign: TextAlign.center, style: t),
-                Text('رهانك في هذه الجولة: ${_fmt(mine)}',
-                    textAlign: TextAlign.center, style: t),
-                Text('الفائز في هذه الجولة: ${_fmt(s.myPayout)}',
-                    textAlign: TextAlign.center, style: t),
-                const SizedBox(height: 6),
-                Text(s.myPayout > 0 ? '🥳' : '😿',
-                    style: const TextStyle(fontSize: 36)),
-              ]),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 62,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CustomPaint(size: const Size(20, 54), painter: _CutleryPainter(true)),
+                  const SizedBox(width: 10),
+                  Text(food, style: const TextStyle(fontSize: 44)),
+                  const SizedBox(width: 10),
+                  CustomPaint(size: const Size(20, 54), painter: _CutleryPainter(false)),
+                ],
+              ),
             ),
-          ),
-          Positioned(left: 0, top: 0, width: 96, child: _topWinnersCorner(s)),
-        ],
+            Container(
+              height: 6,
+              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                gradient: const LinearGradient(colors: [
+                  Color(0x00FFD400), Color(0xFFFFD400),
+                  Color(0xFFFFD400), Color(0x00FFD400)
+                ], stops: [0, 0.15, 0.85, 1]),
+              ),
+            ),
+            Text('نتيجة الجولة ${s.dailyRoundNumber} $food',
+                textAlign: TextAlign.center, style: t),
+            Text('رهانك في هذه الجولة: ${_fmt(mine)}',
+                textAlign: TextAlign.center, style: t),
+            Text('الفائز في هذه الجولة: ${_fmt(s.myPayout)}',
+                textAlign: TextAlign.center, style: t),
+            const SizedBox(height: 6),
+            Text(s.myPayout > 0 ? '🥳' : '😿',
+                style: const TextStyle(fontSize: 36)),
+            const SizedBox(height: 8),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 280),
+                child: _topWinnersCorner(s),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
