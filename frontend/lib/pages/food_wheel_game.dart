@@ -608,7 +608,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                           padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
                           child: Column(children: [
                             _topBar(s),
-                            const SizedBox(height: 26),
+                            if (_err != null) _walletWarning(),
+                            const SizedBox(height: 12),
                             _wheel(s),
                           ]),
                         ),
@@ -919,7 +920,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
             _chips(),
             const SizedBox(height: 10),
             _history(s),
-            if (_err != null) _walletWarning(),
           ]),
         ]),
       );
