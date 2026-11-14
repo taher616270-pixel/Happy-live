@@ -214,12 +214,12 @@ async function ensurePublicUserId(db: D1Database, userId: string, currentId?: st
     const candidate = String(10000000 + crypto.getRandomValues(new Uint32Array(1))[0] % 90000000);
     try {
       const result = await db.prepare(
-        "UPDATE profiles SET gabo_id = ? WHERE user_id = ? AND (gabo_id IS NULL OR gabo_id = '')"
+        "UPDATE profiles SET happy_id = ? WHERE user_id = ? AND (happy_id IS NULL OR happy_id = '')"
       ).bind(candidate, userId).run();
       if ((result.meta?.changes ?? 0) > 0) return candidate;
-      const existing = await db.prepare("SELECT gabo_id FROM profiles WHERE user_id = ? LIMIT 1")
-        .bind(userId).first<{ gabo_id: string | null }>();
-      if (existing?.gabo_id) return existing.gabo_id;
+      const existing = await db.prepare("SELECT happy_id FROM profiles WHERE user_id = ? LIMIT 1")
+        .bind(userId).first<{ happy_id: string | null }>();
+      if (existing?.happy_id) return existing.happy_id;
     } catch {
       // A duplicate public ID is extremely unlikely; safely try another.
     }
@@ -232,10 +232,10 @@ async function authenticatedUser(request: Request, db: D1Database) {
   const match = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
   if (!match) return null;
   const row = await db.prepare(
-    "SELECT s.id AS session_id, u.id, u.email, p.display_name, p.gabo_id FROM user_sessions s INNER JOIN users u ON u.id = s.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
-  ).bind(await sha256(match[1]), new Date().toISOString()).first<{ session_id: string; id: string; email: string; display_name: string | null; gabo_id: string | null }>();
+    "SELECT s.id AS session_id, u.id, u.email, p.display_name, p.happy_id FROM user_sessions s INNER JOIN users u ON u.id = s.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
+  ).bind(await sha256(match[1]), new Date().toISOString()).first<{ session_id: string; id: string; email: string; display_name: string | null; happy_id: string | null }>();
   if (!row) return null;
-  row.gabo_id = await ensurePublicUserId(db, row.id, row.gabo_id);
+  row.happy_id = await ensurePublicUserId(db, row.id, row.happy_id);
   return row;
 }
 
@@ -595,7 +595,7 @@ export default {
         const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 50), 1), 100);
         const rows = await env.DB.prepare(
           "SELECT r.id, r.room_code, r.room_name, r.targets_json, r.violation, r.status, r.created_at, r.reviewed_at, " +
-          "p.display_name AS reporter_name, p.gabo_id AS reporter_code, a.display_name AS reviewer_name " +
+          "p.display_name AS reporter_name, p.happy_id AS reporter_code, a.display_name AS reviewer_name " +
           "FROM room_profile_reports r LEFT JOIN profiles p ON p.user_id = r.reporter_id LEFT JOIN admin_accounts a ON a.id = r.reviewed_by " +
           (status === "all" ? "" : "WHERE r.status = ? ") + "ORDER BY r.created_at DESC LIMIT ?"
         ).bind(...(status === "all" ? [limit] : [status, limit])).all();
@@ -784,7 +784,7 @@ export default {
           if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const requestRoute = url.pathname.match(/^\/api\/v1\/admin\/gifts\/custom-requests\/([0-9a-f-]{36})$/i);
           if (request.method === "GET" && !requestRoute) {
-            const rows = await env.DB.prepare("SELECT r.id, r.requested_name AS requestedName, r.description, r.media_url AS mediaUrl, r.media_type AS mediaType, r.media_duration_ms AS mediaDurationMs, r.media_file_id AS mediaFileId, r.sound_url AS soundUrl, r.status, r.admin_note AS adminNote, r.created_at AS createdAt, p.display_name AS displayName, p.gabo_id AS gaboId FROM gift_custom_requests r LEFT JOIN profiles p ON p.user_id = r.user_id ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, r.created_at DESC LIMIT 200").all();
+            const rows = await env.DB.prepare("SELECT r.id, r.requested_name AS requestedName, r.description, r.media_url AS mediaUrl, r.media_type AS mediaType, r.media_duration_ms AS mediaDurationMs, r.media_file_id AS mediaFileId, r.sound_url AS soundUrl, r.status, r.admin_note AS adminNote, r.created_at AS createdAt, p.display_name AS displayName, p.happy_id AS happyId FROM gift_custom_requests r LEFT JOIN profiles p ON p.user_id = r.user_id ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, r.created_at DESC LIMIT 200").all();
             return json({ ok: true, requests: rows.results ?? [] }, 200, origin, env);
           }
           if (request.method === "PATCH" && requestRoute) {
@@ -914,9 +914,9 @@ export default {
           const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
           const limit = Math.max(1, Math.min(100, Number(url.searchParams.get("limit") ?? 50) || 50));
           const result = await env.DB.prepare(
-            "SELECT u.id, u.email, u.status, u.auth_provider, u.created_at, p.display_name, p.gabo_id, ar.role AS admin_role " +
+            "SELECT u.id, u.email, u.status, u.auth_provider, u.created_at, p.display_name, p.happy_id, ar.role AS admin_role " +
             "FROM users u LEFT JOIN profiles p ON p.user_id = u.id LEFT JOIN admin_roles ar ON ar.user_id = u.id " +
-            "WHERE (? = '' OR u.email LIKE '%' || ? || '%' OR p.display_name LIKE '%' || ? || '%' OR p.gabo_id LIKE '%' || ? || '%') " +
+            "WHERE (? = '' OR u.email LIKE '%' || ? || '%' OR p.display_name LIKE '%' || ? || '%' OR p.happy_id LIKE '%' || ? || '%') " +
             "ORDER BY u.created_at DESC LIMIT ?"
           ).bind(q, q, q, q, limit).all();
           return json({ ok: true, users: result.results ?? [] }, 200, origin, env);
@@ -934,9 +934,9 @@ export default {
               "FROM users u LEFT JOIN user_wallets w ON w.user_id = u.id WHERE u.status = 'active'"
             ).first<{ users: number; totalBalance: number; fundedUsers: number }>(),
             env.DB.prepare(
-              "SELECT u.id, u.email, p.display_name, p.gabo_id, COALESCE(w.balance, 0) AS balance, w.updated_at " +
+              "SELECT u.id, u.email, p.display_name, p.happy_id, COALESCE(w.balance, 0) AS balance, w.updated_at " +
               "FROM users u LEFT JOIN profiles p ON p.user_id = u.id LEFT JOIN user_wallets w ON w.user_id = u.id " +
-              "WHERE u.status = 'active' AND (? = '' OR u.email LIKE '%' || ? || '%' OR p.display_name LIKE '%' || ? || '%' OR p.gabo_id LIKE '%' || ? || '%') " +
+              "WHERE u.status = 'active' AND (? = '' OR u.email LIKE '%' || ? || '%' OR p.display_name LIKE '%' || ? || '%' OR p.happy_id LIKE '%' || ? || '%') " +
               "ORDER BY balance DESC, u.created_at DESC LIMIT ?"
             ).bind(q, q, q, q, limit).all()
           ]);
@@ -945,7 +945,7 @@ export default {
           let transactions: unknown[] = [];
           if (userId) {
             selectedWallet = await env.DB.prepare(
-              "SELECT u.id, u.email, p.display_name, p.gabo_id, COALESCE(w.balance, 0) AS balance, w.updated_at " +
+              "SELECT u.id, u.email, p.display_name, p.happy_id, COALESCE(w.balance, 0) AS balance, w.updated_at " +
               "FROM users u LEFT JOIN profiles p ON p.user_id = u.id LEFT JOIN user_wallets w ON w.user_id = u.id " +
               "WHERE u.id = ? AND u.status = 'active' LIMIT 1"
             ).bind(userId).first<Record<string, unknown>>();
@@ -1008,7 +1008,7 @@ export default {
         }
         if (url.pathname === "/api/v1/admin/moderators" && request.method === "GET") {
           if (!hasAdminPermission(actor, "users.roles.manage")) return json({ error: "permission_denied" }, 403, origin, env);
-          const result = await env.DB.prepare("SELECT u.id, u.email, u.status, p.display_name, p.gabo_id, ar.role, ar.granted_at FROM admin_roles ar INNER JOIN users u ON u.id = ar.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE ar.role IN ('admin', 'moderator') ORDER BY ar.granted_at DESC LIMIT 200").all();
+          const result = await env.DB.prepare("SELECT u.id, u.email, u.status, p.display_name, p.happy_id, ar.role, ar.granted_at FROM admin_roles ar INNER JOIN users u ON u.id = ar.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE ar.role IN ('admin', 'moderator') ORDER BY ar.granted_at DESC LIMIT 200").all();
           return json({ ok: true, moderators: result.results ?? [] }, 200, origin, env);
         }
         const userRoleRoute = url.pathname.match(/^\/api\/v1\/admin\/users\/([0-9a-f-]{36})\/role$/i);
@@ -1089,7 +1089,7 @@ export default {
             const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
             const [members, moderators, bans, kicks] = await Promise.all([
               env.DB.prepare(
-                "SELECT s.user_id, s.seat_number, s.joined_at, u.email, p.display_name, p.gabo_id, " +
+                "SELECT s.user_id, s.seat_number, s.joined_at, u.email, p.display_name, p.happy_id, " +
                 "CASE WHEN rm.user_id IS NULL THEN 0 ELSE 1 END AS is_moderator, COALESCE(c.is_muted, 0) AS is_muted " +
                 "FROM room_seats s INNER JOIN users u ON u.id = s.user_id " +
                 "LEFT JOIN profiles p ON p.user_id = u.id " +
@@ -1098,17 +1098,17 @@ export default {
                 "WHERE s.room_id = ? AND s.expires_at > ? ORDER BY s.seat_number"
               ).bind(roomId, now).all(),
               env.DB.prepare(
-                "SELECT rm.user_id, rm.created_at, u.email, p.display_name, p.gabo_id " +
+                "SELECT rm.user_id, rm.created_at, u.email, p.display_name, p.happy_id " +
                 "FROM room_moderators rm INNER JOIN users u ON u.id = rm.user_id " +
                 "LEFT JOIN profiles p ON p.user_id = u.id WHERE rm.room_id = ? ORDER BY rm.created_at DESC"
               ).bind(roomId).all(),
               env.DB.prepare(
-                "SELECT b.user_id, b.created_at, u.email, p.display_name, p.gabo_id " +
+                "SELECT b.user_id, b.created_at, u.email, p.display_name, p.happy_id " +
                 "FROM room_bans b INNER JOIN users u ON u.id = b.user_id " +
                 "LEFT JOIN profiles p ON p.user_id = u.id WHERE b.room_id = ? ORDER BY b.created_at DESC"
               ).bind(roomId).all(),
               env.DB.prepare(
-                "SELECT k.user_id, k.kicked_until, k.created_at, u.email, p.display_name, p.gabo_id " +
+                "SELECT k.user_id, k.kicked_until, k.created_at, u.email, p.display_name, p.happy_id " +
                 "FROM room_kicks k INNER JOIN users u ON u.id = k.user_id " +
                 "LEFT JOIN profiles p ON p.user_id = u.id WHERE k.room_id = ? AND k.kicked_until > ? ORDER BY k.kicked_until DESC"
               ).bind(roomId, now).all()
@@ -1124,9 +1124,9 @@ export default {
               const ids = activeSeats.map((seat) => String(seat.userId ?? ""));
               const placeholders = ids.map(() => "?").join(",");
               const details = await env.DB.prepare(
-                "SELECT u.id, u.email, p.display_name, p.gabo_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id IN (" + placeholders + ")"
-              ).bind(...ids).all<{ id: string; email: string; display_name: string | null; gabo_id: string | null }>();
-              const detailsById = new Map<string, { id: string; email: string; display_name: string | null; gabo_id: string | null }>();
+                "SELECT u.id, u.email, p.display_name, p.happy_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id IN (" + placeholders + ")"
+              ).bind(...ids).all<{ id: string; email: string; display_name: string | null; happy_id: string | null }>();
+              const detailsById = new Map<string, { id: string; email: string; display_name: string | null; happy_id: string | null }>();
               for (const row of details.results ?? []) detailsById.set(row.id, row);
               roomMembers = activeSeats.map((seat) => {
                 const detail = detailsById.get(String(seat.userId ?? ""));
@@ -1136,7 +1136,7 @@ export default {
                   joined_at: seat.joinedAt ?? null,
                   email: detail?.email ?? "",
                   display_name: detail?.display_name ?? seat.name ?? "مستخدم",
-                  gabo_id: detail?.gabo_id ?? seat.userCode ?? "",
+                  happy_id: detail?.happy_id ?? seat.userCode ?? "",
                   is_moderator: seat.isRoomModerator === true ? 1 : 0,
                   is_muted: seat.isMuted === true ? 1 : 0
                 };
@@ -1145,7 +1145,7 @@ export default {
             let userResults: unknown[] = [];
             if (q.length >= 2) {
               const found = await env.DB.prepare(
-                "SELECT u.id AS user_id, u.email, p.display_name, p.gabo_id, " +
+                "SELECT u.id AS user_id, u.email, p.display_name, p.happy_id, " +
                 "CASE WHEN rm.user_id IS NULL THEN 0 ELSE 1 END AS is_moderator, " +
                 "CASE WHEN b.user_id IS NULL THEN 0 ELSE 1 END AS is_banned, " +
                 "CASE WHEN s.user_id IS NULL THEN 0 ELSE 1 END AS is_seated, COALESCE(c.is_muted, 0) AS is_muted " +
@@ -1155,7 +1155,7 @@ export default {
                 "LEFT JOIN room_seats s ON s.room_id = ? AND s.user_id = u.id AND s.expires_at > ? " +
                 "LEFT JOIN room_user_controls c ON c.room_id = ? AND c.user_id = u.id " +
                 "WHERE u.status = 'active' AND u.id <> ? AND " +
-                "(u.email LIKE '%' || ? || '%' OR p.display_name LIKE '%' || ? || '%' OR p.gabo_id LIKE '%' || ? || '%') " +
+                "(u.email LIKE '%' || ? || '%' OR p.display_name LIKE '%' || ? || '%' OR p.happy_id LIKE '%' || ? || '%') " +
                 "ORDER BY p.display_name COLLATE NOCASE LIMIT 20"
               ).bind(roomId, roomId, roomId, now, roomId, room.owner_user_id, q, q, q).all();
               userResults = (found.results ?? []).map((entry) => {
@@ -1378,8 +1378,8 @@ export default {
         }
 
         let user = await env.DB.prepare(
-          "SELECT u.id, u.email, u.status, p.display_name, p.gabo_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.auth_provider = 'google' AND u.auth_subject = ? LIMIT 1"
-        ).bind(subject).first<{ id: string; email: string; status: string; display_name: string | null; gabo_id: string | null }>();
+          "SELECT u.id, u.email, u.status, p.display_name, p.happy_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.auth_provider = 'google' AND u.auth_subject = ? LIMIT 1"
+        ).bind(subject).first<{ id: string; email: string; status: string; display_name: string | null; happy_id: string | null }>();
 
         let isNewUser = false;
         if (!user) {
@@ -1400,7 +1400,7 @@ export default {
           let publicId = "";
           for (let attempt = 0; attempt < 20; attempt++) {
             const candidate = String(10000000 + crypto.getRandomValues(new Uint32Array(1))[0] % 90000000);
-            const exists = await env.DB.prepare("SELECT 1 FROM profiles WHERE gabo_id = ? LIMIT 1").bind(candidate).first();
+            const exists = await env.DB.prepare("SELECT 1 FROM profiles WHERE happy_id = ? LIMIT 1").bind(candidate).first();
             if (!exists) { publicId = candidate; break; }
           }
           if (!publicId) throw new Error("public_id_generation_failed");
@@ -1412,31 +1412,31 @@ export default {
                 "INSERT INTO users (id, email, password_hash, auth_provider, auth_subject, status, email_verified_at, terms_accepted_at) VALUES (?, ?, NULL, 'google', ?, 'active', ?, ?)"
               ).bind(userId, email, subject, now, now),
               env.DB.prepare(
-                "INSERT INTO profiles (user_id, display_name, gabo_id) VALUES (?, ?, ?)"
+                "INSERT INTO profiles (user_id, display_name, happy_id) VALUES (?, ?, ?)"
               ).bind(userId, displayName || email.split("@")[0], publicId)
             ]);
           } catch (error) {
             const racedUser = await env.DB.prepare(
-              "SELECT u.id, u.email, u.status, p.display_name, p.gabo_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.auth_provider = 'google' AND u.auth_subject = ? LIMIT 1"
-            ).bind(subject).first<{ id: string; email: string; status: string; display_name: string | null; gabo_id: string | null }>();
+              "SELECT u.id, u.email, u.status, p.display_name, p.happy_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.auth_provider = 'google' AND u.auth_subject = ? LIMIT 1"
+            ).bind(subject).first<{ id: string; email: string; status: string; display_name: string | null; happy_id: string | null }>();
             if (!racedUser) throw error;
             user = racedUser;
           }
           if (!user) {
             user = {
               id: userId, email, status: "active",
-              display_name: displayName || email.split("@")[0], gabo_id: publicId
+              display_name: displayName || email.split("@")[0], happy_id: publicId
             };
             isNewUser = true;
           }
         }
 
         if (user.status !== "active") return json({ error: "account_unavailable", message: "هذا الحساب موقوف حاليًا" }, 403, origin, env);
-        user.gabo_id = await ensurePublicUserId(env.DB, user.id, user.gabo_id);
+        user.happy_id = await ensurePublicUserId(env.DB, user.id, user.happy_id);
         const session = await createSession(env.DB, user.id);
         return json({
           ok: true, ...session, isNewUser,
-          user: { id: user.id, gabo_id: user.gabo_id ?? "", email: user.email, name: user.display_name ?? displayName ?? "" }
+          user: { id: user.id, happy_id: user.happy_id ?? "", email: user.email, name: user.display_name ?? displayName ?? "" }
         }, 200, origin, env);
       } catch (error) {
         console.error("[auth.google] failed", error instanceof Error ? error.message : "UnknownError");
@@ -1466,7 +1466,7 @@ export default {
         let publicId = "";
         for (let attempt = 0; attempt < 10; attempt++) {
           const candidate = String(10000000 + crypto.getRandomValues(new Uint32Array(1))[0] % 90000000);
-          const existingId = await env.DB.prepare("SELECT 1 FROM profiles WHERE gabo_id = ? LIMIT 1").bind(candidate).first();
+          const existingId = await env.DB.prepare("SELECT 1 FROM profiles WHERE happy_id = ? LIMIT 1").bind(candidate).first();
           if (!existingId) {
             publicId = candidate;
             break;
@@ -1481,7 +1481,7 @@ export default {
         try {
           await env.DB.batch([
             env.DB.prepare("INSERT INTO users (id, email, password_hash, auth_provider, status, terms_accepted_at) VALUES (?, ?, ?, 'email', 'active', ?)").bind(userId, email, passwordHash, now),
-            env.DB.prepare("INSERT INTO profiles (user_id, display_name, birthday, gabo_id) VALUES (?, ?, ?, ?)").bind(userId, name, birthday, publicId),
+            env.DB.prepare("INSERT INTO profiles (user_id, display_name, birthday, happy_id) VALUES (?, ?, ?, ?)").bind(userId, name, birthday, publicId),
             env.DB.prepare("INSERT INTO user_sessions (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)").bind(crypto.randomUUID(), userId, tokenHash, expiresAt)
           ]);
         } catch (error) {
@@ -1489,7 +1489,7 @@ export default {
           if (existing) return json({ error: "email_already_registered", message: "هذا البريد مسجل بالفعل، سجّل الدخول بدلًا من ذلك" }, 409, origin, env);
           throw error;
         }
-        return json({ ok: true, accessToken: sessionToken, expiresAt, user: { id: userId, gabo_id: publicId, email, name } }, 201, origin, env);
+        return json({ ok: true, accessToken: sessionToken, expiresAt, user: { id: userId, happy_id: publicId, email, name } }, 201, origin, env);
       } catch (error) {
         // Diagnostic only: never log request bodies, email addresses, passwords, or session tokens.
         const diagnostic = error instanceof Error
@@ -1510,14 +1510,14 @@ export default {
         const password = typeof body.password === "string" ? body.password : "";
         if (!email || !password || password.length > 128) return json({ error: "invalid_credentials", message: "البريد أو كلمة المرور غير صحيحة" }, 401, origin, env);
         const user = await env.DB.prepare(
-          "SELECT u.id, u.email, u.password_hash, u.status, p.display_name, p.gabo_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.email = ? AND u.auth_provider = 'email' LIMIT 1"
-        ).bind(email).first<{ id: string; email: string; password_hash: string | null; status: string; display_name: string | null; gabo_id: string | null }>();
+          "SELECT u.id, u.email, u.password_hash, u.status, p.display_name, p.happy_id FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.email = ? AND u.auth_provider = 'email' LIMIT 1"
+        ).bind(email).first<{ id: string; email: string; password_hash: string | null; status: string; display_name: string | null; happy_id: string | null }>();
         if (!user || user.status !== "active" || !user.password_hash || !await verifyPassword(password, user.password_hash)) {
           return json({ error: "invalid_credentials", message: "البريد أو كلمة المرور غير صحيحة" }, 401, origin, env);
         }
-        user.gabo_id = await ensurePublicUserId(env.DB, user.id, user.gabo_id);
+        user.happy_id = await ensurePublicUserId(env.DB, user.id, user.happy_id);
         const session = await createSession(env.DB, user.id);
-        return json({ ok: true, ...session, user: { id: user.id, gabo_id: user.gabo_id ?? "", email: user.email, name: user.display_name ?? "" } }, 200, origin, env);
+        return json({ ok: true, ...session, user: { id: user.id, happy_id: user.happy_id ?? "", email: user.email, name: user.display_name ?? "" } }, 200, origin, env);
       } catch {
         return json({ error: "login_failed", message: "تعذر تسجيل الدخول حاليًا" }, 500, origin, env);
       }
@@ -1531,7 +1531,7 @@ export default {
         const profile = await env.DB.prepare("SELECT display_name, bio, avatar_key, birthday, gender, country_name FROM profiles WHERE user_id = ? LIMIT 1")
           .bind(user.id).first<{ display_name: string; bio: string; avatar_key: string | null; birthday: string | null; gender: string | null; country_name: string | null }>();
         return json({ ok: true, user: {
-          id: user.id, gabo_id: user.gabo_id ?? "", email: user.email,
+          id: user.id, happy_id: user.happy_id ?? "", email: user.email,
           name: profile?.display_name ?? user.display_name ?? "", bio: profile?.bio ?? "",
           avatar_url: profile?.avatar_key ?? null, birthday: profile?.birthday ?? "2000-01-01",
           gender: profile?.gender ?? "male", country_name: profile?.country_name ?? ""
@@ -1570,7 +1570,7 @@ export default {
         }
         await env.DB.prepare("UPDATE profiles SET display_name = ?, bio = ?, avatar_key = ?, birthday = ?, gender = ?, country_name = ?, updated_at = ? WHERE user_id = ?")
           .bind(name, bio, avatarUrl, birthday, gender, countryName, new Date().toISOString(), user.id).run();
-        return json({ ok: true, user: { id: user.id, gabo_id: user.gabo_id ?? "", email: user.email, name, bio, avatar_url: avatarUrl, birthday, gender, country_name: countryName } }, 200, origin, env);
+        return json({ ok: true, user: { id: user.id, happy_id: user.happy_id ?? "", email: user.email, name, bio, avatar_url: avatarUrl, birthday, gender, country_name: countryName } }, 200, origin, env);
       } catch (error) {
         console.error("[profile.update] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "profile_update_failed", message: "تعذر حفظ الملف الشخصي حاليًا" }, 500, origin, env);
@@ -1654,7 +1654,7 @@ export default {
           "x-room-id": roomId,
           "x-user-id": user.id,
           "x-user-name": user.display_name?.trim() || "مستخدم",
-          "x-user-code": user.gabo_id ?? "",
+          "x-user-code": user.happy_id ?? "",
           "x-avatar-url": profile?.avatar_key ?? "",
           "x-country-name": profile?.country_name ?? "",
           "x-is-muted": control?.is_muted === 1 ? "true" : "false",
@@ -2376,7 +2376,7 @@ export default {
         ]);
         return json({
           ok: true,
-          userCode: user.gabo_id ?? "",
+          userCode: user.happy_id ?? "",
           balance: wallet?.balance ?? 0,
           transactions: transactions.results ?? [],
           giftEarnings: giftEarnings ?? { totalGiftCoins: 0, remainingTaggedCoins: 0, futureWithdrawableCoins: 0 },
@@ -2592,7 +2592,7 @@ export default {
         const seatSnapshot = await seatSnapshotResponse.json() as { seats?: Array<{ userId: string; expiresAt: number }> };
         const hasSeat = (seatSnapshot.seats ?? []).some((entry) => entry.userId === user.id && entry.expiresAt > Date.now());
         const canPublish = requestedPublish && hasSeat && control?.is_muted !== 1;
-        const numericUid = Number(user.gabo_id);
+        const numericUid = Number(user.happy_id);
         if (!Number.isSafeInteger(numericUid) || numericUid < 1 || numericUid > 2147483647) {
           return json({ error: "invalid_user_id" }, 400, origin, env);
         }
@@ -2644,7 +2644,7 @@ export default {
         const identityHeaders = new Headers({
           "x-user-id": user.id,
           "x-user-name": user.display_name?.trim() || "مستخدم",
-          "x-user-code": user.gabo_id ?? "",
+          "x-user-code": user.happy_id ?? "",
           "x-avatar-url": profile?.avatar_key ?? "",
           "x-country-name": profile?.country_name ?? "",
           "x-is-muted": myControl?.is_muted === 1 ? "true" : "false",
@@ -2770,15 +2770,15 @@ export default {
           "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND exited_at IS NULL AND last_seen_at < ?"
         ).bind(now, roomId, audienceCutoff).run();
         const audienceUsersResult = await env.DB.prepare(
-          "SELECT p.user_id, p.display_name, p.gabo_id, p.avatar_key, p.country_code, p.country_name, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? GROUP BY p.user_id, p.display_name, p.gabo_id, p.avatar_key, p.country_code, p.country_name ORDER BY last_seen_at DESC LIMIT 100"
-        ).bind(roomId, audienceCutoff).all<{ user_id: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null; country_code: string | null; country_name: string | null; last_seen_at: string }>();
+          "SELECT p.user_id, p.display_name, p.happy_id, p.avatar_key, p.country_code, p.country_name, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? GROUP BY p.user_id, p.display_name, p.happy_id, p.avatar_key, p.country_code, p.country_name ORDER BY last_seen_at DESC LIMIT 100"
+        ).bind(roomId, audienceCutoff).all<{ user_id: string; display_name: string | null; happy_id: string | null; avatar_key: string | null; country_code: string | null; country_name: string | null; last_seen_at: string }>();
         const seatedIds = new Set(seats.map((seat) => String(seat.userId)));
         const audienceUsers = (audienceUsersResult.results ?? [])
           .filter((visitor) => !seatedIds.has(visitor.user_id))
           .map((visitor) => ({
             userId: visitor.user_id,
             name: visitor.display_name?.trim() || "مستخدم",
-            userCode: visitor.gabo_id ?? "",
+            userCode: visitor.happy_id ?? "",
             avatarUrl: visitor.avatar_key ?? "",
             countryName: visitor.country_name ?? "",
             countryCode: visitor.country_code ?? ""
@@ -2795,7 +2795,7 @@ export default {
           seatRevision: snapshot.revision ?? 0,
           room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code, level: room.level, palaceStatus: room.level >= 5 ? 'مفعّل' : 'غير مفعّل', experienceLevel: experience.level, experienceExp: experience.exp, experienceNextLevelExp: experience.nextLevelExp, experienceTotalExp: Number(room.total_exp ?? 0), dailyExperienceExp: Number(dailyExperience?.points ?? 0), dailyExperienceMax: ROOM_EXP_DAILY_USER_CAP, dailyResetInSeconds: Math.max(0, Math.ceil((Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate() + 1) - Date.parse(now)) / 1000)) },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة", avatarUrl: room.owner_avatar_url ?? "", countryName: room.owner_country_name ?? "" },
-          me: { id: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id ?? "", avatarUrl: profile?.avatar_key ?? "", countryName: profile?.country_name ?? "", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
+          me: { id: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.happy_id ?? "", avatarUrl: profile?.avatar_key ?? "", countryName: profile?.country_name ?? "", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
           isOwner: room.owner_user_id === user.id,
           isModerator: !!roomModerator,
           mySeat,
@@ -2816,7 +2816,7 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const rows = await env.DB.prepare(
-          "SELECT p.id, p.user_id, p.content, p.image_url, p.visibility, p.created_at, pr.display_name, pr.gabo_id, pr.avatar_key, " +
+          "SELECT p.id, p.user_id, p.content, p.image_url, p.visibility, p.created_at, pr.display_name, pr.happy_id, pr.avatar_key, " +
           "EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS liked, " +
           "(SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS likes_count, " +
           "(SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id) AS comments_count, " +
@@ -2828,12 +2828,12 @@ export default {
           "ORDER BY p.created_at DESC LIMIT 50"
         ).bind(user.id, user.id, user.id, user.id, user.id).all<{
           id: string; user_id: string; content: string; image_url: string | null; visibility: string; created_at: string;
-          display_name: string | null; gabo_id: string | null; avatar_key: string | null;
+          display_name: string | null; happy_id: string | null; avatar_key: string | null;
           liked: number; likes_count: number; comments_count: number; followed: number;
         }>();
         return json({ ok: true, posts: (rows.results ?? []).map(p => ({
           id: p.id, userId: p.user_id, name: p.display_name?.trim() || "مستخدم",
-          userCode: p.gabo_id, avatarUrl: p.avatar_key, content: p.content, imageUrl: p.image_url, createdAt: p.created_at,
+          userCode: p.happy_id, avatarUrl: p.avatar_key, content: p.content, imageUrl: p.image_url, createdAt: p.created_at,
           liked: Boolean(p.liked), likesCount: p.likes_count,
           commentsCount: p.comments_count, followed: Boolean(p.followed), visibility: p.visibility,
           isMine: p.user_id === user.id
@@ -2866,7 +2866,7 @@ export default {
         const createdAt = new Date().toISOString();
         await env.DB.prepare("INSERT INTO posts (id, user_id, content, image_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
           .bind(id, user.id, content, imageUrl || null, createdAt, createdAt).run();
-        return json({ ok: true, post: { id, userId: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id, content, imageUrl: imageUrl || null, createdAt, liked: false, likesCount: 0, commentsCount: 0, followed: false, isMine: true } }, 201, origin, env);
+        return json({ ok: true, post: { id, userId: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.happy_id, content, imageUrl: imageUrl || null, createdAt, liked: false, likesCount: 0, commentsCount: 0, followed: false, isMine: true } }, 201, origin, env);
       } catch (error) {
         console.error("[posts.create] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "post_creation_failed" }, 500, origin, env);
@@ -2981,7 +2981,7 @@ export default {
           .bind(id, commentRepliesRoute[2], user.id, content, createdAt, parentReplyId).run();
         const profile = await env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ?")
           .bind(user.id).first<{ avatar_key: string | null }>();
-        return json({ ok: true, reply: { id, commentId: commentRepliesRoute[2], userId: user.id, content, createdAt, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id, avatarUrl: profile?.avatar_key ?? null } }, 201, origin, env);
+        return json({ ok: true, reply: { id, commentId: commentRepliesRoute[2], userId: user.id, content, createdAt, name: user.display_name?.trim() || "مستخدم", userCode: user.happy_id, avatarUrl: profile?.avatar_key ?? null } }, 201, origin, env);
       } catch (error) {
         console.error("[posts.comments.reply] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "reply_creation_failed" }, 500, origin, env);
@@ -3002,8 +3002,8 @@ export default {
         const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 50), 1), 100);
         const rows = await env.DB.prepare(
           "SELECT r.id, r.post_id, r.comment_id, r.reason, r.status, r.created_at, " +
-          "reporter.id AS reporter_id, reporter_profile.display_name AS reporter_name, reporter_profile.gabo_id AS reporter_code, " +
-          "reported.id AS reported_user_id, reported_profile.display_name AS reported_name, reported_profile.gabo_id AS reported_code, " +
+          "reporter.id AS reporter_id, reporter_profile.display_name AS reporter_name, reporter_profile.happy_id AS reporter_code, " +
+          "reported.id AS reported_user_id, reported_profile.display_name AS reported_name, reported_profile.happy_id AS reported_code, " +
           "c.content AS comment_content, p.content AS post_content, p.image_url AS post_image_url, " +
           "reviewer_profile.display_name AS reviewer_name " +
           "FROM post_comment_reports r " +
@@ -3084,19 +3084,19 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const rows = await env.DB.prepare(
-          "SELECT c.id, c.user_id, c.content, c.created_at, p.display_name, p.gabo_id, p.avatar_key FROM post_comments c LEFT JOIN profiles p ON p.user_id = c.user_id WHERE c.post_id = ? ORDER BY c.created_at ASC LIMIT 100"
-        ).bind(postCommentsRoute[1]).all<{ id: string; user_id: string; content: string; created_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null }>();
-        const comments = (rows.results ?? []).map(c => ({ id: c.id, userId: c.user_id, content: c.content, createdAt: c.created_at, name: c.display_name?.trim() || "مستخدم", userCode: c.gabo_id, avatarUrl: c.avatar_key, replies: [] as Array<Record<string, unknown>> }));
+          "SELECT c.id, c.user_id, c.content, c.created_at, p.display_name, p.happy_id, p.avatar_key FROM post_comments c LEFT JOIN profiles p ON p.user_id = c.user_id WHERE c.post_id = ? ORDER BY c.created_at ASC LIMIT 100"
+        ).bind(postCommentsRoute[1]).all<{ id: string; user_id: string; content: string; created_at: string; display_name: string | null; happy_id: string | null; avatar_key: string | null }>();
+        const comments = (rows.results ?? []).map(c => ({ id: c.id, userId: c.user_id, content: c.content, createdAt: c.created_at, name: c.display_name?.trim() || "مستخدم", userCode: c.happy_id, avatarUrl: c.avatar_key, replies: [] as Array<Record<string, unknown>> }));
         const replies = await env.DB.prepare(
-          "SELECT r.id, r.comment_id, r.parent_reply_id, r.user_id, r.content, r.created_at, p.display_name, p.gabo_id, p.avatar_key FROM post_comment_replies r LEFT JOIN profiles p ON p.user_id = r.user_id INNER JOIN post_comments c ON c.id = r.comment_id WHERE c.post_id = ? ORDER BY r.created_at ASC"
-        ).bind(postCommentsRoute[1]).all<{ id: string; comment_id: string; parent_reply_id: string | null; user_id: string; content: string; created_at: string; display_name: string | null; gabo_id: string | null; avatar_key: string | null }>();
+          "SELECT r.id, r.comment_id, r.parent_reply_id, r.user_id, r.content, r.created_at, p.display_name, p.happy_id, p.avatar_key FROM post_comment_replies r LEFT JOIN profiles p ON p.user_id = r.user_id INNER JOIN post_comments c ON c.id = r.comment_id WHERE c.post_id = ? ORDER BY r.created_at ASC"
+        ).bind(postCommentsRoute[1]).all<{ id: string; comment_id: string; parent_reply_id: string | null; user_id: string; content: string; created_at: string; display_name: string | null; happy_id: string | null; avatar_key: string | null }>();
         const commentsById = new Map(comments.map(c => [c.id, c]));
         const repliesById = new Map<string, Record<string, unknown>>();
         for (const row of replies.results ?? []) {
           repliesById.set(row.id, {
             id: row.id, commentId: row.comment_id, parentReplyId: row.parent_reply_id,
             userId: row.user_id, content: row.content, createdAt: row.created_at,
-            name: row.display_name?.trim() || "مستخدم", userCode: row.gabo_id,
+            name: row.display_name?.trim() || "مستخدم", userCode: row.happy_id,
             avatarUrl: row.avatar_key, replies: [] as Array<Record<string, unknown>>
           });
         }
@@ -3143,7 +3143,7 @@ export default {
           .bind(id, postCommentsRoute[1], user.id, content, createdAt).run();
         const commenterProfile = await env.DB.prepare("SELECT avatar_key FROM profiles WHERE user_id = ?")
           .bind(user.id).first<{ avatar_key: string | null }>();
-        return json({ ok: true, comment: { id, userId: user.id, content, createdAt, name: user.display_name?.trim() || "مستخدم", userCode: user.gabo_id, avatarUrl: commenterProfile?.avatar_key ?? null } }, 201, origin, env);
+        return json({ ok: true, comment: { id, userId: user.id, content, createdAt, name: user.display_name?.trim() || "مستخدم", userCode: user.happy_id, avatarUrl: commenterProfile?.avatar_key ?? null } }, 201, origin, env);
       } catch (error) {
         console.error("[posts.comments.create] failed", error instanceof Error ? error.message : "UnknownError");
         return json({ error: "comment_creation_failed" }, 500, origin, env);
@@ -3157,17 +3157,17 @@ export default {
         const viewer = await authenticatedUser(request, env.DB);
         if (!viewer) return json({ error: "authentication_required" }, 401, origin, env);
         const target = await env.DB.prepare(
-          "SELECT u.id, p.display_name, p.gabo_id, p.avatar_key FROM users u " +
+          "SELECT u.id, p.display_name, p.happy_id, p.avatar_key FROM users u " +
           "INNER JOIN profiles p ON p.user_id = u.id " +
-          "WHERE p.gabo_id = ? AND u.status = 'active' LIMIT 1"
+          "WHERE p.happy_id = ? AND u.status = 'active' LIMIT 1"
         ).bind(userByCodeRoute[1]).first<{
-          id: string; display_name: string | null; gabo_id: string;
+          id: string; display_name: string | null; happy_id: string;
           avatar_key: string | null;
         }>();
         if (!target) return json({ error: "user_not_found", message: "لم يتم العثور على مستخدم بهذا ID" }, 404, origin, env);
         return json({ ok: true, user: {
           id: target.id, name: target.display_name?.trim() || "مستخدم",
-          userCode: target.gabo_id, avatarUrl: target.avatar_key
+          userCode: target.happy_id, avatarUrl: target.avatar_key
         } }, 200, origin, env);
       } catch (error) {
         console.error("[users.by-code] failed", error instanceof Error ? error.message : "UnknownError");
@@ -3183,10 +3183,10 @@ export default {
         if (!viewer) return json({ error: "authentication_required" }, 401, origin, env);
         const targetId = publicProfileRoute[1];
         const profile = await env.DB.prepare(
-          "SELECT u.id, p.display_name, p.gabo_id, p.avatar_key, p.cover_key, p.bio, p.country_name, p.gender, p.birthday, p.is_private, p.created_at " +
+          "SELECT u.id, p.display_name, p.happy_id, p.avatar_key, p.cover_key, p.bio, p.country_name, p.gender, p.birthday, p.is_private, p.created_at " +
           "FROM users u INNER JOIN profiles p ON p.user_id = u.id WHERE u.id = ? AND u.status = 'active' LIMIT 1"
         ).bind(targetId).first<{
-          id: string; display_name: string; gabo_id: string | null; avatar_key: string | null;
+          id: string; display_name: string; happy_id: string | null; avatar_key: string | null;
           cover_key: string | null; bio: string; country_name: string | null; gender: string | null;
           birthday: string | null; is_private: number; created_at: string;
         }>();
@@ -3221,7 +3221,7 @@ export default {
         }>() : { results: [] as Array<{id:string;content:string;image_url:string|null;created_at:string;likes_count:number;comments_count:number;liked:number}> };
         const age = profile.birthday ? calculateAge(profile.birthday) : null;
         return json({ ok: true, profile: {
-          userId: profile.id, name: profile.display_name, userCode: profile.gabo_id ?? "",
+          userId: profile.id, name: profile.display_name, userCode: profile.happy_id ?? "",
           avatarUrl: profile.avatar_key, coverUrl: profile.cover_key, bio: profile.bio ?? "",
           country: profile.country_name ?? "", gender: profile.gender ?? "",
           age, joinedAt: profile.created_at, isPrivate: Boolean(profile.is_private),
