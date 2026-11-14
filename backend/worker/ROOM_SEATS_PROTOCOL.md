@@ -118,7 +118,7 @@ Heartbeat response:
 
 Agora is joined once as broadcaster. The initial token contains join privilege only. When the DO confirms that the user owns a seat, the app requests a publisher token, renews the current Agora token and toggles microphone publication using `updateChannelMediaOptions(publishMicrophoneTrack: true)` on native or `publish()` on Web. Leaving the last seat renews a join-only token and disables publication. Moving between two occupied-by-self positions does not call leave or join and does not toggle the microphone.
 
-The stable Agora UID is the authenticated numeric user code (`gabo_id`), not the seat number. UI speaking indicators resolve that UID through the current seat snapshot, so the gold speaking ring follows the user's current seat.
+The stable Agora UID is the authenticated numeric user code (`happy_id`), not the seat number. UI speaking indicators resolve that UID through the current seat snapshot, so the gold speaking ring follows the user's current seat.
 
 ## Latency test
 
