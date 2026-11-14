@@ -645,10 +645,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   Widget _topWinnersCorner(RoundState s) {
     final winners = s.topWinners.take(3).toList();
-    // Podium order from left to right: 2nd, 1st, 3rd.
-    final podium = <int>[1, 0, 2]
-        .where((i) => i < winners.length)
-        .toList();
+    // Always keep the three podium positions visible: 2nd, 1st, 3rd.
+    const podium = <int>[1, 0, 2];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
@@ -663,59 +661,75 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
               style: TextStyle(color: Color(0xFFFFD978), fontSize: 11,
                   fontWeight: FontWeight.w900)),
           const SizedBox(height: 9),
-          if (podium.isEmpty)
-            const Text('لا يوجد فائزون',
-                style: TextStyle(color: Colors.white70, fontSize: 10))
-          else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (final rankIndex in podium)
-                  Expanded(
-                    child: _winnerPodiumItem(
-                      winners[rankIndex],
-                      rankIndex + 1,
-                      isFirst: rankIndex == 0,
-                    ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (final rankIndex in podium)
+                Expanded(
+                  child: _winnerPodiumItem(
+                    rankIndex < winners.length ? winners[rankIndex] : null,
+                    rankIndex + 1,
+                    isFirst: rankIndex == 0,
                   ),
-              ],
-            ),
+                ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _winnerPodiumItem(FoodWheelWinner winner, int rank,
+  Widget _winnerPodiumItem(FoodWheelWinner? winner, int rank,
       {required bool isFirst}) {
-    final avatar = winner.avatarUrl.trim();
+    final avatar = winner?.avatarUrl.trim() ?? '';
     final medal = rank == 1 ? '🥇' : rank == 2 ? '🥈' : '🥉';
+    final title = rank == 1 ? 'مركز الأول' :
+        rank == 2 ? 'مركز ثاني' : 'مركز ثالث';
     final radius = isFirst ? 27.0 : 22.0;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 3),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Text(title,
+              maxLines: 1, textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFFFFD978),
+                  fontSize: 9, fontWeight: FontWeight.w900)),
           Text(medal, style: TextStyle(fontSize: isFirst ? 19 : 16)),
-          CircleAvatar(
-            radius: radius,
-            backgroundColor: const Color(0xFFFFD978),
-            backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
-            child: avatar.isEmpty
-                ? const Icon(Icons.person, color: Color(0xFF3F2A76))
-                : null,
+          Container(
+            width: radius * 2,
+            height: radius * 2,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: winner == null
+                  ? const Color(0x335FFFFFFF)
+                  : const Color(0xFFFFD978),
+              border: Border.all(
+                color: const Color(0xFFFFD978),
+                width: isFirst ? 2.5 : 1.5,
+              ),
+              image: avatar.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(avatar), fit: BoxFit.cover)
+                  : null,
+            ),
           ),
           const SizedBox(height: 4),
-          Text(winner.name,
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white,
-                  fontSize: 9, fontWeight: FontWeight.bold)),
-          Text(_fmt(winner.payout),
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFFFFD978),
-                  fontSize: 8, fontWeight: FontWeight.w800)),
+          if (winner != null) ...[
+            Text(winner.name,
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white,
+                    fontSize: 9, fontWeight: FontWeight.bold)),
+            Text(_fmt(winner.payout),
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFFFFD978),
+                    fontSize: 8, fontWeight: FontWeight.w800)),
+          ] else ...[
+            const SizedBox(height: 11),
+          ],
         ],
       ),
     );
