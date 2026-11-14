@@ -81,7 +81,7 @@ test("web app loads published games dynamically without replacing the native Foo
   assert.match(appMain, /openFoodWheelGame\(context, accessToken: accessToken\)/);
   assert.match(appMain, /if \(kIsWeb\) const DynamicGamesList\(\)/);
   assert.match(gamesWidget, /\/api\/v1\/games\/catalog/);
-  assert.match(gamesWidget, /launchExternalGame\(url\)/);
+  assert.match(gamesWidget, /launchExternalGame\(url, _createGameSession\(gameId\)\)/);
   assert.match(gamesWidget, /إعادة المحاولة/);
   assert.doesNotMatch(gamesWidget, /wallet|bet|reward|accessToken/i);
 });
