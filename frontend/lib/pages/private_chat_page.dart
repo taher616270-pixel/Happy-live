@@ -149,8 +149,20 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
                 .toString()
             : 'تعذر إرسال الرسالة');
       }
+      final sent = decoded['message'] is Map
+          ? Map<String, dynamic>.from(decoded['message'] as Map)
+          : <String, dynamic>{
+              'senderId': _currentUserId,
+              'text': text,
+              'createdAt': DateTime.now().toUtc().toIso8601String(),
+            };
       _input.clear();
-      await _loadMessages();
+      if (!mounted) return;
+      setState(() {
+        _messages.add(sent);
+        _error = null;
+      });
+      _scrollToLatest();
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -259,13 +271,6 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
           ),
-          actions: [
-            IconButton(
-              onPressed: _loadMessages,
-              icon: const Icon(Icons.refresh_rounded,
-                  color: Color(0xFFD9A93C)),
-            ),
-          ],
         ),
         body: Column(
           children: [
