@@ -1657,6 +1657,8 @@ class _HappyMessagesTab extends StatefulWidget {
 class _HappyMessagesTabState extends State<_HappyMessagesTab> {
   final TextEditingController _search = TextEditingController();
   Timer? _debounce;
+  Timer? _conversationsRefreshTimer;
+  bool _isLoadingConversations = false;
   bool _loading = true;
   bool _searching = false;
   String? _error;
@@ -1673,10 +1675,20 @@ class _HappyMessagesTabState extends State<_HappyMessagesTab> {
   void initState() {
     super.initState();
     _loadConversations();
+    // Keep the inbox current while it is visible, without requiring a manual refresh.
+    _conversationsRefreshTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) {
+        if (mounted && _search.text.trim().length < 2) {
+          _loadConversations(silent: true);
+        }
+      },
+    );
   }
 
   @override
   void dispose() {
+    _conversationsRefreshTimer?.cancel();
     _debounce?.cancel();
     _search.dispose();
     super.dispose();
@@ -1698,8 +1710,10 @@ class _HappyMessagesTabState extends State<_HappyMessagesTab> {
     return data;
   }
 
-  Future<void> _loadConversations() async {
-    if (mounted) setState(() { _loading = true; _error = null; });
+  Future<void> _loadConversations({bool silent = false}) async {
+    if (_isLoadingConversations) return;
+    _isLoadingConversations = true;
+    if (!silent && mounted) setState(() { _loading = true; _error = null; });
     try {
       final data = await _request('/messages/conversations');
       final rows = (data['conversations'] as List? ?? const [])
@@ -1727,9 +1741,11 @@ class _HappyMessagesTabState extends State<_HappyMessagesTab> {
             : '$kind:$conversationId';
         if (seen.add(key)) uniqueRows.add(row);
       }
-      if (mounted) setState(() { _conversations = uniqueRows; _loading = false; });
+      if (mounted) setState(() { _conversations = uniqueRows; _loading = false; _error = null; });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString().replaceFirst('Exception: ', ''); _loading = false; });
+      if (mounted && !silent) setState(() { _error = e.toString().replaceFirst('Exception: ', ''); _loading = false; });
+    } finally {
+      _isLoadingConversations = false;
     }
   }
 
