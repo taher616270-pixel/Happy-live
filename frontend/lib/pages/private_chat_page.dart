@@ -186,16 +186,14 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
     if (date == null) return '';
     final now = DateTime.now();
     final time = TimeOfDay.fromDateTime(date).format(context);
-    final sameDay = date.year == now.year &&
-        date.month == now.month && date.day == now.day;
-    final yesterday = DateTime(now.year, now.month, now.day)
-        .difference(DateTime(date.year, date.month, date.day)).inDays == 1;
-    final dayLabel = sameDay
-        ? 'اليوم'
-        : yesterday
-            ? 'أمس'
-            : '${date.day}/${date.month}/${date.year}';
-    return '$dayLabel • $time';
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDay = DateTime(date.year, date.month, date.day);
+    final daysAgo = today.difference(messageDay).inDays;
+    if (daysAgo <= 0) return time;
+    if (daysAgo == 1) return 'قبل يوم • $time';
+    final dateLabel =
+        '${date.year}/${date.month}/${date.day}';
+    return '$dateLabel $time';
   }
 
   Widget _timeSeparator(int index) {
