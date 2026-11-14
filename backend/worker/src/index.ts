@@ -232,8 +232,8 @@ async function authenticatedUser(request: Request, db: D1Database) {
   const match = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
   if (!match) return null;
   const row = await db.prepare(
-    "SELECT u.id, u.email, p.display_name, p.gabo_id FROM user_sessions s INNER JOIN users u ON u.id = s.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
-  ).bind(await sha256(match[1]), new Date().toISOString()).first<{ id: string; email: string; display_name: string | null; gabo_id: string | null }>();
+    "SELECT s.id AS session_id, u.id, u.email, p.display_name, p.gabo_id FROM user_sessions s INNER JOIN users u ON u.id = s.user_id LEFT JOIN profiles p ON p.user_id = u.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND u.status = 'active' LIMIT 1"
+  ).bind(await sha256(match[1]), new Date().toISOString()).first<{ session_id: string; id: string; email: string; display_name: string | null; gabo_id: string | null }>();
   if (!row) return null;
   row.gabo_id = await ensurePublicUserId(db, row.id, row.gabo_id);
   return row;
