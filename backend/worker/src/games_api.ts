@@ -27,6 +27,27 @@ async function readBody(request: Request): Promise<Record<string, unknown> | nul
   }
 }
 
+function isSafeGameUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    const hostname = parsed.hostname.toLowerCase();
+    const labels = hostname.split(".");
+    const isIpv4Literal = labels.length === 4 && labels.every((part) =>
+      part.length > 0 && part.length <= 3 && [...part].every((char) => char >= "0" && char <= "9")
+    );
+    const blockedSuffix = [".localhost", ".local", ".internal", ".lan", ".home", ".test", ".invalid"];
+    return parsed.protocol === "https:" &&
+      parsed.username === "" && parsed.password === "" &&
+      (parsed.port === "" || parsed.port === "443") &&
+      !hostname.includes(":") && !isIpv4Literal &&
+      hostname.includes(".") && !hostname.endsWith(".") &&
+      hostname !== "localhost" &&
+      !blockedSuffix.some((suffix) => hostname.endsWith(suffix));
+  } catch {
+    return false;
+  }
+}
+
 async function gameOriginForId(db: D1Database, gameId: string): Promise<string | null> {
   const row = await db.prepare(
     "SELECT g.game_url AS gameUrl FROM game_registry g INNER JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE g.id = ? AND g.enabled = 1 AND l.status = 'active' LIMIT 1"
@@ -34,7 +55,7 @@ async function gameOriginForId(db: D1Database, gameId: string): Promise<string |
   if (!row?.gameUrl || row.gameUrl === "https://pending-game.happylive.invalid") return null;
   try {
     const parsed = new URL(row.gameUrl);
-    if (parsed.protocol !== "https:" || parsed.username || parsed.password) return null;
+    if (!isSafeGameUrl(row.gameUrl)) return null;
     return parsed.origin;
   } catch {
     return null;
@@ -49,7 +70,7 @@ export async function isRegisteredGameOrigin(db: D1Database, origin: string): Pr
       "SELECT g.game_url AS gameUrl FROM game_registry g INNER JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE g.enabled = 1 AND l.status = 'active'"
     ).all<{ gameUrl: string }>();
     return (rows.results ?? []).some((row) => {
-      try { return new URL(row.gameUrl).origin === origin; } catch { return false; }
+      return isSafeGameUrl(row.gameUrl) && new URL(row.gameUrl).origin === origin;
     });
   } catch {
     return false;
