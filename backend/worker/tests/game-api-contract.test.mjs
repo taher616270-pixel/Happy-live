@@ -80,3 +80,15 @@ test("web game launcher exchanges the app session and never puts the game token 
   assert.match(launcher, /parsed\.origin/);
   assert.doesNotMatch(launcher, /searchParams\.set|\.fragment\b|\.queryParameters\b/);
 });
+
+test("game auth and profile expose only the player's public identity and verify active account status", () => {
+  assert.match(api, /playerProfile = await db\.prepare/);
+  assert.match(api, /id: publicPlayerId/);
+  assert.match(api, /userCode: publicPlayerId/);
+  assert.match(api, /avatarUrl: playerProfile\?\.avatarUrl/);
+  assert.match(api, /accountStatus: "active"/);
+  assert.match(api, /u\.status AS accountStatus/);
+  assert.match(api, /profile\.accountStatus !== "active"/);
+  assert.match(api, /player_account_unavailable/);
+  assert.doesNotMatch(api, /id: user\.id/);
+});
