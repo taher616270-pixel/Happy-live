@@ -31,7 +31,7 @@ test("game tokens are bound to one player, one game, and the registered game ori
   assert.match(api, /u\.id = s\.user_id/);
   assert.match(api, /origin !== session\.gameOrigin/);
   assert.match(api, /game_origin/);
-  assert.match(api, /game_session_expired_or_invalid/);
+  assert.match(api, /INNER JOIN user_sessions app/);\n  assert.match(api, /app.revoked_at IS NULL/);\n  assert.match(api, /game_session_expired_or_invalid/);
   assert.match(api, /game_or_player_unavailable/);
 });
 
