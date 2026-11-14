@@ -29,7 +29,7 @@ test("public game catalogue is read-only and returns enabled games only", () => 
   assert.ok(start >= 0 && end > start);
   const route = worker.slice(start, end);
   assert.match(route, /url\.pathname === "\/api\/v1\/games\/catalog" && request\.method === "GET"/);
-  assert.match(route, /status = 'active' AND enabled = 1/);
+  assert.match(route, /l\.status = 'active' AND g\.enabled = 1/);
   assert.doesNotMatch(route, /INSERT INTO|UPDATE |DELETE FROM|wallet/i);
 });
 
@@ -41,7 +41,7 @@ test("game administration requires a verified admin session and excludes moderat
   assert.match(route, /authenticatedAdmin\(request, env\.DB\)/);
   assert.match(route, /actor\.role !== "owner" && actor\.role !== "admin"/);
   assert.match(route, /request\.method === "POST"/);
-  assert.match(route, /request\.method === "PATCH"/);
+  assert.match(route, /\["GET", "POST", "PATCH"\]\.includes\(request\.method\)/);
   assert.match(route, /isSafeExternalHttpsUrl\(gameUrl\)/);
   assert.match(route, /game_registry_lifecycle/);
   assert.match(route, /status = COALESCE\(\?, status\)/);
