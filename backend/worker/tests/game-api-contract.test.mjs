@@ -33,12 +33,12 @@ test("game token exchange requires a real authenticated player and an active reg
 test("game session refresh safely extends the existing token session", () => {
   assert.match(api, /\/api\/v1\/game\/session\/refresh/);
   assert.match(api, /if \(isRefresh\)/);
-  assert.match(api, /UPDATE game_sessions SET revoked_at = \?/);
-  assert.match(api, /INSERT INTO game_sessions .*SELECT \?, old\.game_id, old\.user_id/);
-  assert.match(api, /INSERT INTO game_session_app_bindings .*SELECT \?, app_session_id/);
+  assert.match(api, /UPDATE game_sessions SET expires_at = \?, last_seen_at = \?/);
   assert.match(api, /app\.revoked_at IS NULL AND app\.expires_at > \?/);
   assert.match(api, /game_session_refresh_denied/);
+  assert.match(api, /refreshed\.meta\?\.changes/);
   assert.match(api, /expiresIn: GAME_SESSION_TTL_SECONDS/);
+  assert.doesNotMatch(api, /INSERT INTO game_sessions .*SELECT \?, old\.game_id/);
 });
 
 test("game tokens are bound to one player, one game, and the registered game origin", () => {
