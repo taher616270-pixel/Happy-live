@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/game_link_launcher.dart';
+import '../services/session_token_store.dart';
 
 class DynamicGamesList extends StatefulWidget {
   const DynamicGamesList({super.key});
@@ -11,6 +12,28 @@ class DynamicGamesList extends StatefulWidget {
 }
 
 class _DynamicGamesListState extends State<DynamicGamesList> {
+  static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
+
+  Future<String> _createGameSession(String gameId) async {
+    final appToken = await SessionTokenStore.read();
+    if (appToken == null || appToken.isEmpty) {
+      throw Exception('authentication_required');
+    }
+    final response = await http.post(
+      Uri.parse('$_apiBase/game/auth'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $appToken',
+      },
+      body: jsonEncode({'gameId': gameId}),
+    ).timeout(const Duration(seconds: 12));
+    Map<String, dynamic> data = {};
+    try { data = jsonDecode(response.body) as Map<String, dynamic>; } catch (_) {}
+    if (response.statusCode != 201 || data['ok'] != true || data['sessionToken'] is! String) {
+      throw Exception((data['error'] ?? 'game_session_failed').toString());
+    }
+    return data['sessionToken'] as String;
+  }
   late Future<List<Map<String, dynamic>>> _games;
 
   @override
@@ -70,6 +93,7 @@ class _DynamicGamesListState extends State<DynamicGamesList> {
             final name = (game['name'] ?? 'لعبة').toString();
             final description = (game['description'] ?? 'اضغط لفتح اللعبة').toString();
             final url = (game['url'] ?? '').toString();
+            final gameId = (game['id'] ?? '').toString();
             final iconUrl = (game['iconUrl'] ?? '').toString();
             return Padding(
               padding: const EdgeInsets.only(top: 12),
@@ -79,7 +103,7 @@ class _DynamicGamesListState extends State<DynamicGamesList> {
                   borderRadius: BorderRadius.circular(18),
                   onTap: url.isEmpty ? null : () async {
                     try {
-                      await launchExternalGame(url);
+                      await launchExternalGame(url, _createGameSession(gameId));
                     } catch (_) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
