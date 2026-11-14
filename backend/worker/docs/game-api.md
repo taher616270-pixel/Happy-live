@@ -62,12 +62,11 @@ async function refreshGameToken() {
       headers: { Authorization: "Bearer " + gameSessionToken }
     });
     const data = await response.json();
-    if (!response.ok || typeof data.sessionToken !== "string") {
+    if (!response.ok || typeof data.expiresAt !== "string") {
       throw new Error(data.error || "game_session_refresh_failed");
     }
-    // The server rotates the token: the old token is revoked as the new one
-    // is issued, while the same player/game/app-login binding is preserved.
-    gameSessionToken = data.sessionToken;
+    // The same token remains valid; only its server-side expiry is extended.
+    // This makes retries safe if the response is lost on a weak connection.
     gameTokenExpiresAt = Date.parse(data.expiresAt);
     scheduleGameTokenRefresh();
     return gameSessionToken;
@@ -123,7 +122,7 @@ const wallet = await gameApi("wallet");
 | --- | --- | --- | --- |
 | `/game/auth` | POST | App login required | Exchange app login for a game token |
 | `/game/session` | GET | `session.read` | Check game session and expiry |
-| `/game/session/refresh` | POST | Valid, unexpired game token | Rotate the token and extend the session by another 15 minutes |
+| `/game/session/refresh` | POST | Valid, unexpired game token | Extend the current token session by another 15 minutes |
 | `/game/profile` | GET | `profile.read` | Read public player profile |
 | `/game/wallet` | GET | `wallet.read` | Read the canonical coin balance |
 | `/game/session/revoke` | POST | Valid game token | Revoke the current game session |
@@ -134,8 +133,8 @@ The current game-token scopes are read-only: `session.read`, `profile.read`, and
 
 - Tokens are bound to one game, one authenticated player, and the exact HTTPS origin registered for that game.
 - Tokens expire after 15 minutes and can be revoked.
-- Games must call `POST /game/session/refresh` automatically about 60 seconds before expiry. The endpoint rotates the token, revokes the old token, and returns a replacement valid for another 15 minutes.
-- The refresh endpoint preserves the original player, game, permissions, and parent Happy Live login-session binding. It refuses refresh after logout, app-session expiry, game deactivation, player disablement, token expiry, or token revocation.
+- Games must call `POST /game/session/refresh` automatically about 60 seconds before expiry. The endpoint safely extends the existing token expiry by another 15 minutes without changing the token value.
+- The refresh endpoint preserves the original player, game, permissions, and parent Happy Live login-session binding. It refuses refresh after logout, app-session expiry, game deactivation, player disablement, token expiry, or token revocation. Refreshing the same token is retry-safe if the response is lost.
 - The game client should also refresh on demand before API calls, because browsers may throttle timers in background tabs. A failed refresh must not be treated as a successful game action; pause protected requests and ask the player to reopen Happy Live if their app login has expired.
 - Each game token is bound to the exact Happy Live app login session that issued it; logging out or revoking that app session immediately invalidates the game token.
 - Requests are limited to 120 per game session per minute.
