@@ -93,8 +93,8 @@ test("wallet administration uses the server-backed wallet ledger and owner-only 
   assert.ok(worker.includes("UNION ALL"));
   assert.ok(worker.includes("FROM cat_greed_ledger WHERE user_id = ?"));
   assert.ok(worker.includes(".bind(userId, userId).all()"));
-  assert.match(worker, /\\.bind\\(userId, userId\\)\\.all\\(\\)/);
-  assert.match(worker, /actor\\.role !== "owner".*إضافة العملات متاحة لمالك التطبيق فقط/s);
+  assert.ok(worker.includes('actor.role !== "owner"'));
+  assert.ok(worker.includes("إضافة العملات متاحة لمالك التطبيق فقط"));
   assert.match(worker, /VALUES \(\?, NULL, 'wallet\.credit', 'user', \?, \?, \?\)/);
   assert.match(adminUi, /async function walletsPage\(/);
   assert.match(adminUi, /input\.focus\(\);input\.setSelectionRange\(value\.length,value\.length\)/);
