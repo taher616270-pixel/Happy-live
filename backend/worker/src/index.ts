@@ -458,9 +458,14 @@ export default {
           }
           const now = new Date().toISOString();
           const id = crypto.randomUUID();
-          await env.DB.prepare(
-            "INSERT INTO game_registry (id, name, game_url, icon_url, description, category, enabled, sort_order, created_by_admin_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)"
-          ).bind(id, name, gameUrl, iconUrl || null, description, category, sortOrder, actor.id, now, now).run();
+          await env.DB.batch([
+            env.DB.prepare(
+              "INSERT INTO game_registry (id, name, game_url, icon_url, description, category, enabled, sort_order, created_by_admin_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)"
+            ).bind(id, name, gameUrl, iconUrl || null, description, category, sortOrder, actor.id, now, now),
+            env.DB.prepare(
+              "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.create', 'game', ?, ?, ?)"
+            ).bind(crypto.randomUUID(), id, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, name, url: gameUrl }), now)
+          ]);
           return json({ ok: true, game: { id, name, url: gameUrl, iconUrl: iconUrl || null, description, category, enabled: 0, sortOrder } }, 201, origin, env);
         }
         if (!gameId) return json({ error: "game_id_required" }, 400, origin, env);
@@ -479,9 +484,15 @@ export default {
         if (sortOrder !== null && (sortOrder < 0 || sortOrder > 9999)) return json({ error: "invalid_sort_order" }, 400, origin, env);
         if (description !== null && description.length > 240) return json({ error: "invalid_description" }, 400, origin, env);
         if (category !== null && (category.length < 1 || category.length > 40)) return json({ error: "invalid_category" }, 400, origin, env);
-        await env.DB.prepare(
-          "UPDATE game_registry SET name = COALESCE(?, name), game_url = COALESCE(?, game_url), icon_url = COALESCE(?, icon_url), description = COALESCE(?, description), category = COALESCE(?, category), enabled = COALESCE(?, enabled), sort_order = COALESCE(?, sort_order), updated_at = ? WHERE id = ?"
-        ).bind(name, gameUrl, iconUrl, description, category, enabled, sortOrder, new Date().toISOString(), gameId).run();
+        const updatedAt = new Date().toISOString();
+        await env.DB.batch([
+          env.DB.prepare(
+            "UPDATE game_registry SET name = COALESCE(?, name), game_url = COALESCE(?, game_url), icon_url = COALESCE(?, icon_url), description = COALESCE(?, description), category = COALESCE(?, category), enabled = COALESCE(?, enabled), sort_order = COALESCE(?, sort_order), updated_at = ? WHERE id = ?"
+          ).bind(name, gameUrl, iconUrl, description, category, enabled, sortOrder, updatedAt, gameId),
+          env.DB.prepare(
+            "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'games.update', 'game', ?, ?, ?)"
+          ).bind(crypto.randomUUID(), gameId, JSON.stringify({ adminId: actor.id, adminUsername: actor.username, changed: { name, url: gameUrl, iconUrl, description, category, enabled, sortOrder } }), updatedAt)
+        ]);
         return json({ ok: true }, 200, origin, env);
       } catch (error) {
         console.error("[admin.games] failed", error instanceof Error ? error.message : "UnknownError");
