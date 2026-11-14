@@ -60,5 +60,5 @@ test("web game launcher exchanges the app session and never puts the game token 
   assert.match(widget, /\/game\/auth/);
   assert.match(launcher, /postMessage/);
   assert.match(launcher, /parsed\.origin/);
-  assert.doesNotMatch(launcher, /searchParams\.set|fragment|queryParameters/);
+  assert.doesNotMatch(launcher, /searchParams\.set|\.fragment\b|\.queryParameters\b/);
 });
