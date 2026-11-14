@@ -648,7 +648,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     // Podium order from left to right: 2nd, 1st, 3rd.
     final podium = <int>[1, 0, 2]
         .where((i) => i < winners.length)
-        .map((i) => winners[i])
         .toList();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
@@ -672,13 +671,12 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                for (var i = 0; i < podium.length; i++)
+                for (final rankIndex in podium)
                   Expanded(
                     child: _winnerPodiumItem(
-                      podium[i],
-                      podium[i].userCode == winners.first.userCode ? 1 :
-                        (winners.indexOf(podium[i]) + 1),
-                      isFirst: podium[i].userCode == winners.first.userCode,
+                      winners[rankIndex],
+                      rankIndex + 1,
+                      isFirst: rankIndex == 0,
                     ),
                   ),
               ],
