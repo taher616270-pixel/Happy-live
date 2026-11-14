@@ -742,12 +742,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   Widget _podium(RoundState s) {
     final winners = s.topWinners.take(3).toList();
-    final players = <Widget>[];
-
-    // RTL Row: second at the right, first in the center, third at the left.
-    if (winners.length > 1) players.add(_podiumPlayer(winners[1], 2, isFirst: false));
-    if (winners.isNotEmpty) players.add(_podiumPlayer(winners[0], 1, isFirst: true));
-    if (winners.length > 2) players.add(_podiumPlayer(winners[2], 3, isFirst: false));
+    // RTL Row: second at the right, first centered, third at the left.
+    // Missing places stay visually empty; no placeholder avatars are rendered.
 
     return Container(
       width: double.infinity,
@@ -765,15 +761,24 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
             textAlign: TextAlign.center,
             style: TextStyle(color: Color(0xFFFFD400), fontSize: 14, fontWeight: FontWeight.w900),
           ),
-          if (players.isNotEmpty) ...[
+          if (winners.isNotEmpty) ...[
             const SizedBox(height: 12),
             Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                for (final player in players)
-                  Flexible(fit: FlexFit.loose, child: SizedBox(width: 96, child: player)),
+                Expanded(
+                  child: winners.length > 1
+                      ? _podiumPlayer(winners[1], 2, isFirst: false)
+                      : const SizedBox.shrink(),
+                ),
+                Expanded(
+                  child: _podiumPlayer(winners[0], 1, isFirst: true),
+                ),
+                Expanded(
+                  child: winners.length > 2
+                      ? _podiumPlayer(winners[2], 3, isFirst: false)
+                      : const SizedBox.shrink(),
+                ),
               ],
             ),
           ],
