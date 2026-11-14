@@ -461,7 +461,7 @@ class _LoginPageState extends State<LoginPage> {
           builder: (_) => SessionHomePage(
             name: (user['name'] ?? account.displayName ?? '').toString(),
             email: (user['email'] ?? account.email).toString(),
-            userId: (user['gabo_id'] ?? user['id'] ?? '').toString(),
+            userId: (user['happy_id'] ?? user['id'] ?? '').toString(),
             accessToken: token,
           ),
         ),
@@ -810,7 +810,7 @@ class _LoginPageState extends State<LoginPage> {
               builder: (_) => SessionHomePage(
                 name: (user['name'] ?? '').toString(),
                 email: (user['email'] ?? '').toString(),
-                userId: (user['gabo_id'] ?? user['id'] ?? '').toString(),
+                userId: (user['happy_id'] ?? user['id'] ?? '').toString(),
                 accessToken: token,
                 initialIndex: selectedTab,
               ),
@@ -840,7 +840,7 @@ class _LoginPageState extends State<LoginPage> {
             builder: (_) => SessionHomePage(
               name: (user['name'] ?? '').toString(),
               email: (user['email'] ?? '').toString(),
-              userId: (user['gabo_id'] ?? user['id'] ?? '').toString(),
+              userId: (user['happy_id'] ?? user['id'] ?? '').toString(),
               accessToken: token,
               initialIndex: selectedTab,
             ),
@@ -929,7 +929,7 @@ class _LoginPageState extends State<LoginPage> {
           builder: (_) => SessionHomePage(
             name: (user['name'] ?? _name.text.trim()).toString(),
             email: (user['email'] ?? _email.text.trim()).toString(),
-            userId: (user['gabo_id'] ?? user['id'] ?? '').toString(),
+            userId: (user['happy_id'] ?? user['id'] ?? '').toString(),
             accessToken: token,
           ),
         ),
@@ -1462,7 +1462,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
       final payload = jsonDecode(response.body) as Map<String, dynamic>;
       final user = payload['user'] as Map<String, dynamic>? ?? <String, dynamic>{};
       final latestName = (user['name'] ?? user['display_name'] ?? '').toString().trim();
-      final latestId = (user['gabo_id'] ?? '').toString().trim();
+      final latestId = (user['happy_id'] ?? '').toString().trim();
       await SessionTokenStore.writeUser(jsonEncode(user));
       if (!mounted) return;
       setState(() {
@@ -1529,7 +1529,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
         final avatar = (user['avatar_url'] ?? data.avatarUrl ?? '').toString().trim();
         _profileAvatarUrl = avatar.isEmpty ? null : avatar;
       });
-      await SessionTokenStore.writeUser(jsonEncode({'name': _profileName, 'gabo_id': _profilePublicId,
+      await SessionTokenStore.writeUser(jsonEncode({'name': _profileName, 'happy_id': _profilePublicId,
         'bio': _profileBio, 'birthday': _profileBirthDate, 'gender': genderValue,
         'country_name': _profileCountry, 'avatar_url': _profileAvatarUrl}));
       if (mounted) {
