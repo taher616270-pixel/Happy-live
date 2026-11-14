@@ -1759,6 +1759,46 @@ class _HappyPlaceholderTab extends StatelessWidget {
               'محادثاتك الخاصة في مكان واحد',
               style: TextStyle(color: Color(0xFF9A98AD), fontSize: 12),
             ),
+            const SizedBox(height: 16),
+            TextField(
+              textDirection: TextDirection.rtl,
+              textInputAction: TextInputAction.search,
+              style: const TextStyle(
+                color: Color(0xFF1E2233),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: InputDecoration(
+                hintText: 'ابحث عن أصدقاء أو مجموعات الدردشة',
+                hintStyle: const TextStyle(
+                  color: Color(0xFF777789),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: Color(0xFF9A98AD),
+                  size: 22,
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 15,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(17),
+                  borderSide: const BorderSide(color: Color(0xFFE4E4EC)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(17),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFD9A93C),
+                    width: 1.3,
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 22),
             Container(
               width: double.infinity,
