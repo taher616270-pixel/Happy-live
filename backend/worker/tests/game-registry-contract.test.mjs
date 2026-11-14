@@ -48,7 +48,7 @@ test("game administration requires a verified admin session and excludes moderat
   assert.match(route, /game_url_required_before_activation/);
   assert.match(route, /development.*disabled.*active/);
   assert.match(route, /games\.create/);
-  assert.match(route, /games\\.update/);
+  assert.match(route, /games\.update/);
   assert.match(route, /admin_audit_logs/);
 });
 
