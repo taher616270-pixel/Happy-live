@@ -8,6 +8,7 @@ import 'edit_profile_page.dart' show countryFlagForProfileName;
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import 'package:country_picker/country_picker.dart';
+import 'private_chat_page.dart';
 
 class PublicProfilePage extends StatefulWidget {
   const PublicProfilePage({
@@ -163,6 +164,75 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           const SnackBar(content: Text('تعذر تحديث الملف الشخصي. حاول مرة أخرى.')),
         );
       }
+    }
+  }
+
+  Future<void> _openPrivateChat() async {
+    if (_isMine) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا يمكنك مراسلة نفسك')),
+      );
+      return;
+    }
+    final recipientId = widget.userId.trim();
+    if (recipientId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر تحديد حساب هذا المستخدم')),
+      );
+      return;
+    }
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/messages/conversations'),
+            headers: {
+              'Authorization': 'Bearer ${widget.accessToken}',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({'recipientId': recipientId}),
+          )
+          .timeout(const Duration(seconds: 20));
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map ||
+          response.statusCode < 200 ||
+          response.statusCode >= 300 ||
+          decoded['ok'] != true) {
+        throw Exception(decoded is Map
+            ? (decoded['message'] ?? decoded['error'] ?? 'تعذر بدء المحادثة')
+                .toString()
+            : 'تعذر بدء المحادثة');
+      }
+      final conversationId = (decoded['conversationId'] ?? '').toString();
+      if (conversationId.isEmpty) {
+        throw Exception('لم يُرجع الخادم معرّف المحادثة');
+      }
+      if (!mounted) return;
+
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PrivateChatPage(
+            accessToken: widget.accessToken,
+            conversationId: conversationId,
+            title: _firstText(
+              ['name', 'displayName', 'display_name'],
+              widget.name,
+            ),
+            avatarUrl: _firstText(
+              ['avatarUrl', 'avatar_url', 'photoUrl', 'photo_url'],
+            ),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
     }
   }
 
@@ -1761,10 +1831,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         fg: Colors.white,
         icon: Icons.chat_bubble_rounded,
         label: 'الرسائل',
-        onTap: widget.onChat ??
-            () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('المحادثات الخاصة قيد التجهيز')),
-                ),
+        onTap: widget.onChat ?? _openPrivateChat,
       ),
       const SizedBox(width: 9),
       circle(Icons.home_rounded, () => Navigator.of(context).popUntil((r) => r.isFirst)),
