@@ -19,7 +19,7 @@ Free allowances and product limits can change. This architecture is intended to 
 - Agora publisher privilege is issued only when the Durable Object confirms that the authenticated user owns a seat; the client renews the token and toggles publication without leaving the channel.
 - CORS allowlist for local development and the initial Pages hostname; additional deployed origins are configured with `ALLOWED_ORIGINS`.
 - D1 migrations retain account, session, profile, moderation and room metadata records.
-- Private messaging uses authenticated D1 conversations, member-scoped direct/group threads, bounded message history, and server-side send throttling. The Flutter messages tab searches active users and groups the signed-in user belongs to; conversation screens refresh messages every five seconds.
+- Private messaging uses authenticated D1 conversations, member-scoped direct/group threads, bounded message history, and server-side send throttling. The Flutter messages tab searches active users and groups the signed-in user belongs to; conversation screens refresh messages every five seconds. Migration `0044_private_messaging.sql` is deliberately applied separately from Worker deployment.
 
 See [ROOM_SEATS_PROTOCOL.md](./ROOM_SEATS_PROTOCOL.md) for the WebSocket JSON contract and latency test procedure.
 
@@ -32,7 +32,7 @@ See [ROOM_SEATS_PROTOCOL.md](./ROOM_SEATS_PROTOCOL.md) for the WebSocket JSON co
    - `npm run db:local`
    - `npm run db:remote`
 6. Run `npm run typecheck` and `npm run dev`.
-7. Deploy only after local checks pass with `npm run deploy`.
+7. Deploy only after local checks pass with `npm run deploy`. Worker deployment does not run or apply D1 SQL migrations.\n8. Apply only the private-messaging migration when explicitly approved with `npm run db:messaging:remote`; this command preflights the required tables, refuses a partial messaging schema, applies only `0044_private_messaging.sql`, records it in `d1_migrations`, and verifies all three messaging tables. Do not use `npm run db:remote` as part of a messaging-only release.
 
 Do not deploy while the D1 ID is a placeholder. Never commit API tokens, email-provider credentials, Agora certificates, or other secrets. Add secrets with Wrangler's secret management or the Cloudflare dashboard.
 
