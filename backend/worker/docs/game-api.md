@@ -77,6 +77,7 @@ The current game-token scopes are read-only: `session.read`, `profile.read`, and
 
 - Tokens are bound to one game, one authenticated player, and the exact HTTPS origin registered for that game.
 - Tokens expire after 15 minutes and can be revoked.
+- Each game token is bound to the exact Happy Live app login session that issued it; logging out or revoking that app session immediately invalidates the game token.
 - Requests are limited to 120 per game session per minute.
 - Deactivating a game, disabling its registry entry, disabling a player, or changing the game's origin invalidates its active game sessions.
 - The Worker stores only token hashes; never log or persist raw tokens in game storage.
