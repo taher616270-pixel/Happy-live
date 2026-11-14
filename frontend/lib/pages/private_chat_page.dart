@@ -196,23 +196,24 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
     return '$dateLabel $time';
   }
 
-  Widget _timeSeparator(int index) {
+  Widget _timeSeparator(int index, {required bool mine}) {
     final label = _timeGroupLabel(index);
     if (label.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(top: 12, bottom: 14),
-      child: Center(
+      padding: const EdgeInsets.only(top: 10, bottom: 5),
+      child: Align(
+        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
           decoration: BoxDecoration(
             color: const Color(0xFFECE7DC),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Text(
             label,
             style: const TextStyle(
               color: Color(0xFF777064),
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -285,7 +286,7 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     if (_startsTimeGroup(index))
-                                      _timeSeparator(index),
+                                      _timeSeparator(index, mine: mine),
                                     Align(
                                       alignment: mine
                                           ? Alignment.centerRight
