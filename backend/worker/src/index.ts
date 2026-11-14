@@ -402,7 +402,7 @@ export default {
       }
     }
 
-    const adminGamesRoute = url.pathname.match(/^\\/api\\/v1\\/admin\\/games(?:\\/([0-9a-f-]{36}))?$/i);
+    const adminGamesRoute = url.pathname.match(/^\/api\/v1\/admin\/games(?:\/([0-9a-f-]{36}))?$/i);
     if (adminGamesRoute && ["GET", "POST", "PATCH"].includes(request.method)) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
@@ -432,7 +432,7 @@ export default {
           if (name.length < 2 || name.length > 80 || gameUrl.length > 2048 || parsedUrl.protocol !== "https:" || parsedUrl.username || parsedUrl.password ||
               ["localhost", "127.0.0.1", "::1"].includes(parsedUrl.hostname) ||
               description.length > 240 || category.length < 1 || category.length > 40 ||
-              (iconUrl && (!/^https:\\/\\//i.test(iconUrl) || iconUrl.length > 2048))) {
+              (iconUrl && (!/^https:\/\//i.test(iconUrl) || iconUrl.length > 2048))) {
             return json({ error: "invalid_game_data", message: "تحقق من الاسم والرابط https والوصف والأيقونة." }, 400, origin, env);
           }
           const now = new Date().toISOString();
@@ -457,11 +457,11 @@ export default {
           try { const parsed = new URL(gameUrl); if (parsed.protocol !== "https:" || parsed.username || parsed.password || ["localhost","127.0.0.1","::1"].includes(parsed.hostname)) throw new Error(); }
           catch { return json({ error: "invalid_game_url" }, 400, origin, env); }
         }
-        if (iconUrl !== null && iconUrl && (!/^https:\\/\\//i.test(iconUrl) || iconUrl.length > 2048)) return json({ error: "invalid_icon_url" }, 400, origin, env);
+        if (iconUrl !== null && iconUrl && (!/^https:\/\//i.test(iconUrl) || iconUrl.length > 2048)) return json({ error: "invalid_icon_url" }, 400, origin, env);
         if (description !== null && description.length > 240) return json({ error: "invalid_description" }, 400, origin, env);
         if (category !== null && (category.length < 1 || category.length > 40)) return json({ error: "invalid_category" }, 400, origin, env);
         await env.DB.prepare(
-          "UPDATE game_registry SET name = COALESCE(?, name), game_url = COALESCE(?, game_url), icon_url = ?, description = COALESCE(?, description), category = COALESCE(?, category), enabled = COALESCE(?, enabled), sort_order = COALESCE(?, sort_order), updated_at = ? WHERE id = ?"
+          "UPDATE game_registry SET name = COALESCE(?, name), game_url = COALESCE(?, game_url), icon_url = COALESCE(?, icon_url), description = COALESCE(?, description), category = COALESCE(?, category), enabled = COALESCE(?, enabled), sort_order = COALESCE(?, sort_order), updated_at = ? WHERE id = ?"
         ).bind(name, gameUrl, iconUrl, description, category, enabled, sortOrder, new Date().toISOString(), gameId).run();
         return json({ ok: true }, 200, origin, env);
       } catch (error) {
