@@ -322,6 +322,26 @@ function allowedOrigins(env: Env): Set<string> {
   return new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
 }
 
+function isSafeExternalHttpsUrl(value: string): boolean {
+  if (!value || value.length > 2048) return false;
+  try {
+    const parsed = new URL(value);
+    const hostname = parsed.hostname.toLowerCase().replace(/^\\[|\\]$/g, "");
+    const isIpLiteral = hostname.includes(":") || /^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(hostname);
+    const blockedSuffix = [".localhost", ".local", ".internal", ".lan", ".home", ".test", ".invalid"];
+    return parsed.protocol === "https:" &&
+      parsed.username === "" && parsed.password === "" &&
+      (parsed.port === "" || parsed.port === "443") &&
+      !isIpLiteral &&
+      hostname.includes(".") &&
+      !blockedSuffix.some((suffix) => hostname.endsWith(suffix)) &&
+      hostname !== "localhost" &&
+      !hostname.endsWith(".");
+  } catch {
+    return false;
+  }
+}
+
 function isValidGiftSoundUrl(value: string | null): boolean {
   if (value === null) return true;
   if (value.length > 2048) return false;
@@ -427,12 +447,9 @@ export default {
           const description = typeof body.description === "string" ? body.description.trim() : "";
           const category = typeof body.category === "string" ? body.category.trim() : "عام";
           const sortOrder = Number.isInteger(body.sortOrder) ? Number(body.sortOrder) : 0;
-          let parsedUrl: URL;
-          try { parsedUrl = new URL(gameUrl); } catch { return json({ error: "invalid_game_url", message: "رابط اللعبة غير صالح." }, 400, origin, env); }
-          if (name.length < 2 || name.length > 80 || gameUrl.length > 2048 || parsedUrl.protocol !== "https:" || parsedUrl.username || parsedUrl.password ||
-              ["localhost", "127.0.0.1", "::1"].includes(parsedUrl.hostname) ||
+          if (name.length < 2 || name.length > 80 || !isSafeExternalHttpsUrl(gameUrl) ||
               description.length > 240 || category.length < 1 || category.length > 40 ||
-              (iconUrl && (!/^https:\/\//i.test(iconUrl) || iconUrl.length > 2048))) {
+              (iconUrl && !isSafeExternalHttpsUrl(iconUrl)) || sortOrder < 0 || sortOrder > 9999) {
             return json({ error: "invalid_game_data", message: "تحقق من الاسم والرابط https والوصف والأيقونة." }, 400, origin, env);
           }
           const now = new Date().toISOString();
@@ -453,11 +470,9 @@ export default {
         const enabled = typeof body.enabled === "boolean" ? (body.enabled ? 1 : 0) : null;
         const sortOrder = Number.isInteger(body.sortOrder) ? Number(body.sortOrder) : null;
         if (name !== null && (name.length < 2 || name.length > 80)) return json({ error: "invalid_game_name" }, 400, origin, env);
-        if (gameUrl !== null) {
-          try { const parsed = new URL(gameUrl); if (parsed.protocol !== "https:" || parsed.username || parsed.password || ["localhost","127.0.0.1","::1"].includes(parsed.hostname)) throw new Error(); }
-          catch { return json({ error: "invalid_game_url" }, 400, origin, env); }
-        }
-        if (iconUrl !== null && iconUrl && (!/^https:\/\//i.test(iconUrl) || iconUrl.length > 2048)) return json({ error: "invalid_icon_url" }, 400, origin, env);
+        if (gameUrl !== null && !isSafeExternalHttpsUrl(gameUrl)) return json({ error: "invalid_game_url" }, 400, origin, env);
+        if (iconUrl !== null && iconUrl && !isSafeExternalHttpsUrl(iconUrl)) return json({ error: "invalid_icon_url" }, 400, origin, env);
+        if (sortOrder !== null && (sortOrder < 0 || sortOrder > 9999)) return json({ error: "invalid_sort_order" }, 400, origin, env);
         if (description !== null && description.length > 240) return json({ error: "invalid_description" }, 400, origin, env);
         if (category !== null && (category.length < 1 || category.length > 40)) return json({ error: "invalid_category" }, 400, origin, env);
         await env.DB.prepare(
