@@ -497,7 +497,7 @@ async function loadRoomModeration(roomId,roomName,q=""){
 async function gamesPage(){
   if(admin.role!=="owner"&&admin.role!=="admin"){$("content").innerHTML='<div class="section"><p class="notice">إدارة الألعاب متاحة للمالك ومدير التطبيق فقط.</p></div>';return}
   const data=await api("/admin/games"),games=data.games||[];
-  const rows=games.length?games.map(g=>'<tr><td>'+esc(g.name)+'</td><td><a href="'+esc(g.url)+'" target="_blank" rel="noopener noreferrer">فتح الرابط ↗</a></td><td>'+esc(g.category||"عام")+'</td><td><span class="badge '+(Number(g.enabled)?"good":"")+'">'+(Number(g.enabled)?"مفعّلة":"متوقفة")+'</span></td><td><button class="action" type="button" data-game-toggle="'+esc(g.id)+'" data-enabled="'+Number(g.enabled)+'">'+(Number(g.enabled)?"إيقاف":"تفعيل")+'</button></td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد ألعاب مضافة بعد.</td></tr>';
+  const rows=games.length?games.map(g=>'<tr><td>'+esc(g.name)+'</td><td><a href="'+esc(g.url)+'" target="_blank" rel="noopener noreferrer">فتح الرابط ↗</a></td><td>'+esc(g.category||"عام")+'</td><td><span class="badge '+(Number(g.enabled)?"good":"")+'">'+(Number(g.enabled)?"مفعّلة":"متوقفة")+'</span></td><td><button class="action" type="button" data-game-edit="'+esc(g.id)+'">تعديل</button> <button class="action" type="button" data-game-toggle="'+esc(g.id)+'" data-enabled="'+Number(g.enabled)+'">'+(Number(g.enabled)?"إيقاف":"تفعيل")+'</button></td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد ألعاب مضافة بعد.</td></tr>';
   $("content").innerHTML=
     '<div class="section"><div class="section-head"><div><h2>إضافة لعبة جديدة</h2><p class="muted">أضف رابط HTTPS للعبة. ستُحفظ في كتالوج Happy Live ويمكن تفعيلها أو إيقافها.</p></div><span class="badge">إدارة الألعاب</span></div>'+
     '<form id="gameCreateForm" class="form-grid">'+
@@ -520,6 +520,19 @@ async function gamesPage(){
       await gamesPage();
     }catch(error){alert(error.message);button.disabled=false}
   };
+  document.querySelectorAll("[data-game-edit]").forEach(button=>button.onclick=async()=>{
+    const game=games.find(item=>item.id===button.dataset.gameEdit);if(!game)return;
+    const name=window.prompt("اسم اللعبة",game.name);if(name===null)return;
+    const url=window.prompt("رابط اللعبة HTTPS",game.url);if(url===null)return;
+    const category=window.prompt("التصنيف",game.category||"عام");if(category===null)return;
+    const description=window.prompt("وصف مختصر",game.description||"");if(description===null)return;
+    const iconUrl=window.prompt("رابط الأيقونة HTTPS (اتركه فارغًا لإزالة الأيقونة)",game.iconUrl||"");if(iconUrl===null)return;
+    const sortText=window.prompt("ترتيب العرض",String(game.sortOrder??0));if(sortText===null)return;
+    const sortOrder=Number(sortText);if(!Number.isInteger(sortOrder)||sortOrder<0||sortOrder>9999){alert("ترتيب العرض يجب أن يكون من 0 إلى 9999.");return}
+    button.disabled=true;
+    try{await api("/admin/games/"+encodeURIComponent(game.id),{method:"PATCH",body:JSON.stringify({name:name.trim(),url:url.trim(),category:category.trim(),description:description.trim(),iconUrl:iconUrl.trim(),sortOrder})});await gamesPage()}
+    catch(error){alert(error.message);button.disabled=false}
+  });
   document.querySelectorAll("[data-game-toggle]").forEach(button=>button.onclick=async()=>{
     button.disabled=true;
     try{await api("/admin/games/"+encodeURIComponent(button.dataset.gameToggle),{method:"PATCH",body:JSON.stringify({enabled:button.dataset.enabled!=="1"})});await gamesPage()}
