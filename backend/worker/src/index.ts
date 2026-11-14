@@ -1,5 +1,6 @@
 import { RtcTokenBuilder } from "agora-token";
 import { handleFoodWheelRequest } from "./food_wheel";
+import { handleGamesApiRequest, isRegisteredGameOrigin } from "./games_api";
 export { RoomSeatsHub } from "./room_seats_hub";
 export { GlobalGiftHub } from "./global_gift_hub";
 import type { GlobalGiftHub } from "./global_gift_hub";
@@ -392,7 +393,8 @@ export default {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") ?? undefined;
 
-    if (origin && !isAllowedOrigin(origin, env)) {
+    const registeredGameOrigin = Boolean(origin && env.DB && await isRegisteredGameOrigin(env.DB, origin));
+    if (origin && !isAllowedOrigin(origin, env) && !registeredGameOrigin) {
       return json({ error: "origin_not_allowed" }, 403);
     }
 
@@ -407,6 +409,9 @@ export default {
       }
       return new Response(null, { status: 204, headers });
     }
+
+    const gamesApiResponse = await handleGamesApiRequest(request, env, origin, authenticatedUser, json);
+    if (gamesApiResponse) return gamesApiResponse;
 
     const foodWheelResponse = await handleFoodWheelRequest(request, env, origin, authenticatedUser, authenticatedAdmin, json);
     if (foodWheelResponse) return foodWheelResponse;
