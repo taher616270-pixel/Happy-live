@@ -952,8 +952,12 @@ export default {
             if (selectedWallet) {
               const history = await env.DB.prepare(
                 "SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, reference_id AS referenceId, description, created_at AS createdAt " +
-                "FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 50"
-              ).bind(userId).all();
+                "FROM wallet_transactions WHERE user_id = ? " +
+                "UNION ALL " +
+                "SELECT id, amount, balance_after AS balanceAfter, transaction_type AS type, round_id AS referenceId, description, created_at AS createdAt " +
+                "FROM cat_greed_ledger WHERE user_id = ? " +
+                "ORDER BY createdAt DESC LIMIT 50"
+              ).bind(userId, userId).all();
               transactions = history.results ?? [];
             }
           }
