@@ -1,4 +1,4 @@
-type GameApiUser = { id: string; session_id: string; display_name: string | null; gabo_id: string | null };
+type GameApiUser = { id: string; session_id: string; display_name: string | null; happy_id: string | null };
 type GameApiEnv = { DB?: D1Database };
 type GameApiJson = (data: unknown, status?: number, origin?: string, env?: any) => Response;
 const GAME_SESSION_TTL_SECONDS = 15 * 60;
@@ -140,7 +140,7 @@ export async function handleGamesApiRequest(
       const playerProfile = await db.prepare(
         "SELECT avatar_key AS avatarUrl, country_name AS countryName FROM profiles WHERE user_id = ? LIMIT 1"
       ).bind(user.id).first<{ avatarUrl: string | null; countryName: string | null }>();
-      const publicPlayerId = user.gabo_id ?? "";
+      const publicPlayerId = user.happy_id ?? "";
       return reply({
         ok: true,
         tokenType: "Bearer",
@@ -212,7 +212,7 @@ export async function handleGamesApiRequest(
     if (isProfile) {
       if (!has("profile.read")) return reply({ error: "permission_denied" }, 403, origin, env);
       const profile = await db.prepare(
-        "SELECT u.status AS accountStatus, p.display_name AS displayName, p.gabo_id AS userCode, p.avatar_key AS avatarUrl, p.country_name AS countryName FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id = ? LIMIT 1"
+        "SELECT u.status AS accountStatus, p.display_name AS displayName, p.happy_id AS userCode, p.avatar_key AS avatarUrl, p.country_name AS countryName FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id = ? LIMIT 1"
       ).bind(session.userId).first<{
         accountStatus: string;
         displayName: string | null;
