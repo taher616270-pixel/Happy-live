@@ -326,13 +326,17 @@ function isSafeExternalHttpsUrl(value: string): boolean {
   if (!value || value.length > 2048) return false;
   try {
     const parsed = new URL(value);
-    const hostname = parsed.hostname.toLowerCase().replace(/^\\[|\\]$/g, "");
-    const isIpLiteral = hostname.includes(":") || /^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(hostname);
+    const rawHostname = parsed.hostname.toLowerCase();
+    const hostname = rawHostname.startsWith("[") ? rawHostname.slice(1, -1) : rawHostname;
+    const labels = hostname.split(".");
+    const isIpv4Literal = labels.length === 4 && labels.every((part) =>
+      part.length > 0 && part.length <= 3 && [...part].every((char) => char >= "0" && char <= "9")
+    );
     const blockedSuffix = [".localhost", ".local", ".internal", ".lan", ".home", ".test", ".invalid"];
     return parsed.protocol === "https:" &&
       parsed.username === "" && parsed.password === "" &&
       (parsed.port === "" || parsed.port === "443") &&
-      !isIpLiteral &&
+      !hostname.includes(":") && !isIpv4Literal &&
       hostname.includes(".") &&
       !blockedSuffix.some((suffix) => hostname.endsWith(suffix)) &&
       hostname !== "localhost" &&
