@@ -3695,7 +3695,7 @@ export default {
           const ids = Array.isArray(body.memberIds) ? Array.from(new Set(body.memberIds.filter((x): x is string => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x) && x !== viewer.id))).slice(0, 99) : [];
           if (title.length < 2 || ids.length < 1) return json({ error: "invalid_group", message: "أدخل اسم المجموعة واختر عضواً واحداً على الأقل" }, 400, origin, env);
           const placeholders = ids.map(() => "?").join(",");
-          const valid = await env.DB.prepare("SELECT id FROM users WHERE status = 'active' AND id IN (" + placeholders + ")").bind(...ids).all<{id:string}>();
+          const valid = await env.DB!.prepare("SELECT id FROM users WHERE status = 'active' AND id IN (" + placeholders + ")").bind(...ids).all<{id:string}>();
           if ((valid.results ?? []).length !== ids.length) return json({ error: "invalid_group_members" }, 400, origin, env);
           const conversationId = crypto.randomUUID();
           const statements: D1PreparedStatement[] = [
