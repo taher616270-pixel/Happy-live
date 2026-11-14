@@ -375,10 +375,12 @@ class FoodWheelGame extends StatefulWidget {
 
 class _FoodWheelGameState extends State<FoodWheelGame> {
   final _rnd = math.Random();
-  Timer? _poll, _msgTimer, _clock;
+  Timer? _poll, _msgTimer, _clock, _resultTimer;
   int _visibleSecondsLeft = 0;
   DateTime? _countdownDeadline;
-  RoundState? _s;
+  RoundState? _s, _resultState;
+  bool _resultVisible = false;
+  String _resultRoundId = '';
   int _bal = 0, _chip = 500, _hit = -1;
   String _animatedRound = '';
   Set<int> _win = {};
@@ -406,13 +408,35 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   }
 
   @override
-  void dispose() { _poll?.cancel(); _msgTimer?.cancel(); _clock?.cancel(); super.dispose(); }
+  void dispose() { _poll?.cancel(); _msgTimer?.cancel(); _clock?.cancel(); _resultTimer?.cancel(); super.dispose(); }
 
   void _say(String m) {
     _msgTimer?.cancel();
     setState(() => _msg = m);
     _msgTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) setState(() => _msg = null);
+    });
+  }
+
+  void _presentResult(RoundState state) {
+    // The server may expose the settled outcome while the client is still in
+    // the spinning phase. Latch that result locally so a missed/late poll
+    // cannot make the three-second result panel disappear.
+    if (state.resultSlot == null && state.special == null) return;
+    if (_resultRoundId == state.roundId && _resultVisible) {
+      if (mounted) setState(() => _resultState = state);
+      return;
+    }
+    _resultTimer?.cancel();
+    _resultRoundId = state.roundId;
+    if (!mounted) return;
+    setState(() {
+      _resultState = state;
+      _resultVisible = true;
+    });
+    _resultTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted || _resultRoundId != state.roundId) return;
+      setState(() => _resultVisible = false);
     });
   }
 
@@ -425,6 +449,12 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       final s = await widget.api.fetchState();
       if (!mounted) return;
       final newRound = _s != null && _s!.roundId != s.roundId;
+      if (newRound) {
+        _resultTimer?.cancel();
+        _resultVisible = false;
+        _resultState = null;
+        _resultRoundId = '';
+      }
       final phaseChanged = _s == null || _s!.phase != s.phase;
       final shouldSyncClock = newRound || phaseChanged || _countdownDeadline == null ||
           ((_countdownDeadline!.difference(DateTime.now()).inSeconds - s.secondsLeft).abs() > 1);
@@ -462,6 +492,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         _animatedRound = s.roundId;
         _showSettledResult(s);
       }
+      // Do not tie panel visibility to a single phase poll or animation flag.
+      if (s.phase == RoundPhase.result) _presentResult(s);
     } catch (e) {
       if (mounted) setState(() => _err = '$e');
     } finally {
@@ -547,6 +579,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     if (remaining > 0) await Future.delayed(Duration(milliseconds: remaining));
     if (!mounted) return;
     _applySettledState(finalState);
+    _presentResult(finalState);
   }
 
   String _newBetIdempotencyKey() {
@@ -650,24 +683,28 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     );
   }
 
-  Widget _resultOverlay(RoundState s) => Align(
+  Widget _resultOverlay(RoundState s) {
+    final result = _resultState ?? s;
+    final visible = _resultVisible;
+    return Align(
         alignment: Alignment.bottomCenter,
         child: FractionallySizedBox(
           heightFactor: 0.6,
           widthFactor: 1,
           child: IgnorePointer(
-            ignoring: s.phase != RoundPhase.result,
+            ignoring: !visible,
             child: AnimatedSlide(
-              offset: s.phase == RoundPhase.result
+              offset: visible
                   ? Offset.zero
                   : const Offset(0, 1.05),
               duration: const Duration(milliseconds: 500),
               curve: Curves.easeOutCubic,
-              child: _resultPanel(s),
+              child: _resultPanel(result),
             ),
           ),
         ),
       );
+  }
 
   Widget _topWinnersCorner(RoundState s) {
     final winners = s.topWinners.take(3).toList();
