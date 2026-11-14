@@ -37,7 +37,7 @@ class ProfileData {
     int toInt(dynamic v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
     return ProfileData(
       displayName: '${j['name'] ?? j['display_name'] ?? ''}',
-      userId: '${j['happy_id'] ?? j['id'] ?? j['user_id'] ?? ''}',
+      userId: '${j['happy_id'] ?? j['gabo_id'] ?? j['id'] ?? j['user_id'] ?? ''}',
       photoUrl: (j['avatar'] ?? j['photo_url']) as String?,
       isMale: (j['gender'] ?? 'male') != 'female',
       viewersCount: toInt(j['viewers_count']),
