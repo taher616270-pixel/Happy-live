@@ -411,7 +411,7 @@ export default {
     const foodWheelResponse = await handleFoodWheelRequest(request, env, origin, authenticatedUser, authenticatedAdmin, json);
     if (foodWheelResponse) return foodWheelResponse;
 
-    // Public, read-only catalogue. External games are links only; they do not receive wallet access.
+    // Public, read-only catalogue. Only approved active game links are listed.
     if (url.pathname === "/api/v1/games/catalog" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
