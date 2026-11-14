@@ -19,6 +19,7 @@ Free allowances and product limits can change. This architecture is intended to 
 - Agora publisher privilege is issued only when the Durable Object confirms that the authenticated user owns a seat; the client renews the token and toggles publication without leaving the channel.
 - CORS allowlist for local development and the initial Pages hostname; additional deployed origins are configured with `ALLOWED_ORIGINS`.
 - D1 migrations retain account, session, profile, moderation and room metadata records.
+- Private messaging uses authenticated D1 conversations, member-scoped direct/group threads, bounded message history, and server-side send throttling. The Flutter messages tab searches active users and groups the signed-in user belongs to; conversation screens refresh messages every five seconds.
 
 See [ROOM_SEATS_PROTOCOL.md](./ROOM_SEATS_PROTOCOL.md) for the WebSocket JSON contract and latency test procedure.
 
