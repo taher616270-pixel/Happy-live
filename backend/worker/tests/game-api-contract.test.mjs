@@ -30,7 +30,7 @@ test("game token exchange requires a real authenticated player and an active reg
   assert.match(api, /sessionToken,/);
 });
 
-test("game session refresh rotates tokens without changing player, game, or parent app-session binding", () => {
+test("game session refresh safely extends the existing token session", () => {
   assert.match(api, /\/api\/v1\/game\/session\/refresh/);
   assert.match(api, /if \(isRefresh\)/);
   assert.match(api, /UPDATE game_sessions SET revoked_at = \?/);
