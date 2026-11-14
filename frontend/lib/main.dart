@@ -2056,25 +2056,25 @@ class _HappyConversationPageState extends State<_HappyConversationPage> {
                             ),
                           ),
                         ),
-                    return Align(
-                      alignment: mine ? Alignment.centerLeft : Alignment.centerRight,
-                      child: Container(
-                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * .78),
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: mine ? const Color(0xFFFFE8B1) : Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: const Color(0xFFECE3D1)),
+                      Align(
+                        alignment: mine ? Alignment.centerLeft : Alignment.centerRight,
+                        child: Container(
+                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * .78),
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: mine ? const Color(0xFFFFE8B1) : Colors.white,
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(color: const Color(0xFFECE3D1)),
+                          ),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            if (widget.conversation['kind'] == 'group')
+                              Text((message['senderName'] ?? 'مستخدم').toString(), style: const TextStyle(color: Color(0xFFB0832E), fontSize: 10, fontWeight: FontWeight.w900)),
+                            Text((message['text'] ?? '').toString(), style: const TextStyle(color: Color(0xFF1E2233), fontSize: 14, height: 1.5)),
+                          ]),
                         ),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          if (widget.conversation['kind'] == 'group')
-                            Text((message['senderName'] ?? 'مستخدم').toString(), style: const TextStyle(color: Color(0xFFB0832E), fontSize: 10, fontWeight: FontWeight.w900)),
-                          Text((message['text'] ?? '').toString(), style: const TextStyle(color: Color(0xFF1E2233), fontSize: 14, height: 1.5)),
-                          const SizedBox(height: 3),
-                        ]),
                       ),
-                    );
+                    ],
                   );
                 },
               )),
