@@ -1734,15 +1734,37 @@ class _HappyEmptyState extends StatelessWidget {
 class _HappyPlaceholderTab extends StatelessWidget {
   const _HappyPlaceholderTab({required this.title, required this.subtitle, required this.icon, this.onSoon});
   final String title, subtitle; final IconData icon; final ValueChanged<String>? onSoon;
+
   @override
-  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 18, 18, 28), children: [
-    Text(title, style: const TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900)),
-    const SizedBox(height: 5), Text(subtitle, style: const TextStyle(color: HappyLiveApp.muted, fontSize: 12)),
-    const SizedBox(height: 22),
-    _HappyEmptyState(icon: icon, title: title == 'الرسائل' ? 'لا توجد محادثات بعد' : 'هذه المساحة قيد التجهيز',
-      message: title == 'الرسائل' ? 'ستظهر محادثاتك هنا عند تفعيل نظام الرسائل الخاصة.' : 'نعمل على تجهيز هذه المساحة لتكون جاهزة للاستخدام.'),
-    if (onSoon != null) ...[const SizedBox(height: 15), OutlinedButton(onPressed: () => onSoon!(title), child: const Text('معرفة المزيد'))],
-  ]);
+  Widget build(BuildContext context) {
+    return PurpleTechBackground(
+      child: SizedBox.expand(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+          children: [
+            Text(title, style: const TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 5),
+            Text(subtitle, style: const TextStyle(color: HappyLiveApp.muted, fontSize: 12)),
+            const SizedBox(height: 22),
+            _HappyEmptyState(
+              icon: icon,
+              title: title == 'الرسائل' ? 'لا توجد محادثات بعد' : 'هذه المساحة قيد التجهيز',
+              message: title == 'الرسائل'
+                  ? 'ستظهر محادثاتك هنا عند تفعيل نظام الرسائل الخاصة.'
+                  : 'نعمل على تجهيز هذه المساحة لتكون جاهزة للاستخدام.',
+            ),
+            if (onSoon != null) ...[
+              const SizedBox(height: 15),
+              OutlinedButton(
+                onPressed: () => onSoon!(title),
+                child: const Text('معرفة المزيد'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _HappyCreateTab extends StatelessWidget {
