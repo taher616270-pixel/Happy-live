@@ -470,7 +470,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   Widget _heroStack(BuildContext context, double topPad) {
     final covers = _coverList();
     final name = _firstText(['name', 'displayName', 'display_name'], widget.name);
-    final code = _firstText(['userCode', 'user_code', 'gabo_id'], widget.userCode);
+    final code = _firstText(['userCode', 'user_code', 'happy_id'], widget.userCode);
     final avatar = _firstText(['avatarUrl', 'avatar', 'photo_url'], widget.photoUrl ?? '');
     final badge = _firstText(['badgeName', 'badge', 'titleBadge']);
     final level = _firstText(['levelName', 'level', 'userLevel']);
