@@ -80,11 +80,11 @@ export async function handleGamesApiRequest(
   const isProfile = path === "/api/v1/game/profile" && request.method === "GET";
   const isWallet = path === "/api/v1/game/wallet" && request.method === "GET";
   if (!isAuth && !isSession && !isRevoke && !isProfile && !isWallet) return null;
-  if (!env.DB) return reply({ error: "database_unavailable" }, 503, origin, env);
-  const db = env.DB;
-  const reply = (data: unknown, status = 200) => origin
+  const reply = (data: unknown, status = 200, _origin?: string, _env?: any) => origin
     ? withGameCors(json(data, status, undefined, env), origin, origin)
     : json(data, status, undefined, env);
+  if (!env.DB) return reply({ error: "database_unavailable" }, 503, origin, env);
+  const db = env.DB;
   try {
     if (isAuth) {
       const user = await authenticateUser(request, db);
