@@ -1704,7 +1704,30 @@ class _HappyMessagesTabState extends State<_HappyMessagesTab> {
       final data = await _request('/messages/conversations');
       final rows = (data['conversations'] as List? ?? const [])
           .whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-      if (mounted) setState(() { _conversations = rows; _loading = false; });
+
+      // Legacy direct chats may contain more than one conversation for the
+      // same pair of users. Keep the most recently active one in the inbox;
+      // retain group conversations independently and do not delete history.
+      rows.sort((a, b) {
+        DateTime activity(Map<String, dynamic> item) {
+          final value = item['lastMessageAt'] ?? item['updatedAt'];
+          return DateTime.tryParse((value ?? '').toString()) ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+        }
+        return activity(b).compareTo(activity(a));
+      });
+      final seen = <String>{};
+      final uniqueRows = <Map<String, dynamic>>[];
+      for (final row in rows) {
+        final kind = (row['kind'] ?? 'direct').toString();
+        final conversationId = (row['id'] ?? '').toString();
+        final otherUserId = (row['otherUserId'] ?? '').toString();
+        final key = kind == 'direct' && otherUserId.isNotEmpty
+            ? 'direct:$otherUserId'
+            : '$kind:$conversationId';
+        if (seen.add(key)) uniqueRows.add(row);
+      }
+      if (mounted) setState(() { _conversations = uniqueRows; _loading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString().replaceFirst('Exception: ', ''); _loading = false; });
     }
