@@ -27,8 +27,8 @@ test("game token exchange requires a real authenticated player and an active reg
 });
 
 test("game tokens are bound to one player, one game, and the registered game origin", () => {
-  assert.match(api, /s\.game_id = g\.id/);
-  assert.match(api, /s\.user_id = u\.id/);
+  assert.match(api, /g\.id = s\.game_id/);
+  assert.match(api, /u\.id = s\.user_id/);
   assert.match(api, /origin !== session\.gameOrigin/);
   assert.match(api, /game_origin/);
   assert.match(api, /game_session_expired_or_invalid/);
