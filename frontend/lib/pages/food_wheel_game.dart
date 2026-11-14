@@ -490,12 +490,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     const steps = 30;
     final weights = List<double>.generate(steps, (i) => (i + 1) * (i + 1).toDouble());
     final totalWeight = weights.fold<double>(0, (a, b) => a + b);
-    var elapsedMs = 0;
     for (var k = 0; k < steps; k++) {
       if (!mounted) return;
       setState(() => _hit = (start + k) % 8);
       final sliceMs = (seconds * 1000 * weights[k] / totalWeight).round();
-      elapsedMs += sliceMs;
       final remaining = deadline.difference(DateTime.now()).inMilliseconds;
       if (remaining > 0 && k < steps - 1) {
         await Future.delayed(Duration(milliseconds: math.min(sliceMs, remaining)));
@@ -613,8 +611,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                         _redFloor(s),
                       ]),
                     ),
-
-                  ]),
           ),
         ),
       ),
