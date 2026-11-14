@@ -476,12 +476,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
       final ownerCountryName = _profileValue(
         ownerProfile,
-        ['countryName', 'country_name', 'country', 'countryDisplayName', 'country_display_name'],
+        ['countryName', 'country_name', 'country', 'countryDisplayName', 'country_display_name', 'countryCode', 'country_code', 'countryIso', 'country_iso', 'flag'],
       ).isNotEmpty
           ? _profileValue(ownerProfile, [
               'countryName', 'country_name', 'country', 'countryDisplayName', 'country_display_name'
             ])
-          : _roomInfoString(['ownerCountryName', 'owner_country_name']);
+          : _roomInfoString(['ownerCountryName', 'owner_country_name', 'ownerCountryCode', 'owner_country_code']);
       if (!context.mounted) return;
   
       final info = RoomInfo(
