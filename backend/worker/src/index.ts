@@ -3641,7 +3641,7 @@ export default {
         if (!viewer) return json({ error: "authentication_required" }, 401, origin, env);
         const q = (url.searchParams.get("q") ?? "").trim().slice(0, 80);
         if (q.length < 2) return json({ ok: true, users: [], groups: [] }, 200, origin, env);
-        const pattern = "%" + q.replace(/[\\%_]/g, "\\    if (url.pathname === "/api/v1" && request.method === "GET") {") + "%";
+        const pattern = "%" + q + "%";
         const [users, groups] = await Promise.all([
           env.DB.prepare(
             "SELECT u.id AS userId, p.display_name AS name, p.happy_id AS userCode, p.avatar_key AS avatarUrl " +
