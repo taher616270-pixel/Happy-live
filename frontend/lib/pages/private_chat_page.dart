@@ -49,7 +49,7 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
     super.initState();
     _loadMessages();
     _refreshTimer = Timer.periodic(
-      const Duration(seconds: 5),
+      const Duration(seconds: 1),
       (_) => _loadMessages(silent: true),
     );
   }
