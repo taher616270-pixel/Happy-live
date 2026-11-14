@@ -360,6 +360,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   final _rnd = math.Random();
   Timer? _poll, _msgTimer, _clock;
   int _visibleSecondsLeft = 0;
+  DateTime? _countdownDeadline;
   RoundState? _s;
   int _bal = 0, _chip = 500, _hit = -1;
   String _animatedRound = '';
@@ -375,9 +376,13 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     _refresh();
     // Keep the visible countdown moving locally; server polling is only for
     // authoritative phase, bets, pools and wallet synchronization.
-    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted || _visibleSecondsLeft <= 0) return;
-      setState(() => _visibleSecondsLeft--);
+    _clock = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      if (!mounted || _countdownDeadline == null) return;
+      final left = _countdownDeadline!.difference(DateTime.now()).inMilliseconds;
+      final seconds = left <= 0 ? 0 : (left / 1000).ceil();
+      if (seconds != _visibleSecondsLeft) {
+        setState(() => _visibleSecondsLeft = seconds);
+      }
     });
     _poll = Timer.periodic(const Duration(seconds: 1), (_) => _refresh());
   }
@@ -402,6 +407,9 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       final s = await widget.api.fetchState();
       if (!mounted) return;
       final newRound = _s != null && _s!.roundId != s.roundId;
+      final phaseChanged = _s == null || _s!.phase != s.phase;
+      final shouldSyncClock = newRound || phaseChanged || _countdownDeadline == null ||
+          ((_countdownDeadline!.difference(DateTime.now()).inSeconds - s.secondsLeft).abs() > 1);
       final api = widget.api;
       final diagnostic = api is HttpFoodWheelApi ? api.lastDiagnostics : const <String, dynamic>{};
       final zeroBalanceWarning = s.balance == 0
@@ -409,7 +417,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           : null;
       setState(() {
         _s = s;
-        _visibleSecondsLeft = s.secondsLeft;
+        if (shouldSyncClock) {
+          _countdownDeadline = DateTime.now().add(Duration(seconds: s.secondsLeft));
+          _visibleSecondsLeft = s.secondsLeft;
+        }
         _err = zeroBalanceWarning;
         // Keep in-flight taps reserved locally so a poll cannot briefly
         // restore their coins or make a sixth bet look available twice.
@@ -471,35 +482,47 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   Future<void> _spin(RoundState initial) async {
     _spinning = true;
+    // Use the phase deadline, not a fresh five seconds from the first poll.
+    // This keeps the wheel synchronized even if the client joins mid-countdown.
     final seconds = initial.secondsLeft.clamp(1, 5).toInt();
     final deadline = DateTime.now().add(Duration(seconds: seconds));
-    final randomUntil = deadline.subtract(const Duration(seconds: 1));
-
-    // Keep the wheel moving for the first part of the five-second phase.
-    // The server reveals the committed outcome during the final second.
-    while (mounted && DateTime.now().isBefore(randomUntil)) {
-      setState(() => _hit = _rnd.nextInt(8));
-      await Future.delayed(const Duration(milliseconds: 110));
-    }
-
-    while (mounted && DateTime.now().isBefore(deadline)) {
-      final latest = _s;
-      if (latest != null && latest.roundId == initial.roundId &&
-          (latest.resultSlot != null || latest.special != null)) {
-        break;
+    final start = _rnd.nextInt(8);
+    const steps = 30;
+    final weights = List<double>.generate(steps, (i) => (i + 1) * (i + 1).toDouble());
+    final totalWeight = weights.fold<double>(0, (a, b) => a + b);
+    var elapsedMs = 0;
+    for (var k = 0; k < steps; k++) {
+      if (!mounted) return;
+      setState(() => _hit = (start + k) % 8);
+      final sliceMs = (seconds * 1000 * weights[k] / totalWeight).round();
+      elapsedMs += sliceMs;
+      final remaining = deadline.difference(DateTime.now()).inMilliseconds;
+      if (remaining > 0 && k < steps - 1) {
+        await Future.delayed(Duration(milliseconds: math.min(sliceMs, remaining)));
       }
-      setState(() => _hit = _rnd.nextInt(8));
-      await Future.delayed(const Duration(milliseconds: 90));
     }
 
-    if (!mounted) return;
-    final latest = _s != null && _s!.roundId == initial.roundId ? _s! : initial;
-    setState(() => _hit = _visualTarget(latest));
-    while (mounted && DateTime.now().isBefore(deadline)) {
-      await Future.delayed(const Duration(milliseconds: 40));
+    // The final slot is always taken from the server's settled result.
+    // Never guess a winning food locally.
+    var finalState = _s != null && _s!.roundId == initial.roundId ? _s! : initial;
+    while (mounted &&
+        finalState.roundId == initial.roundId &&
+        finalState.resultSlot == null &&
+        finalState.special == null &&
+        DateTime.now().isBefore(deadline.add(const Duration(seconds: 2)))) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      finalState = _s != null && _s!.roundId == initial.roundId ? _s! : finalState;
     }
     if (!mounted) return;
-    final finalState = _s != null && _s!.roundId == initial.roundId ? _s! : latest;
+    if (finalState.resultSlot == null && finalState.special == null) {
+      _spinning = false;
+      await _refresh();
+      return;
+    }
+    setState(() => _hit = _visualTarget(finalState));
+    final remaining = deadline.difference(DateTime.now()).inMilliseconds;
+    if (remaining > 0) await Future.delayed(Duration(milliseconds: remaining));
+    if (!mounted) return;
     _applySettledState(finalState);
   }
 
@@ -576,8 +599,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                     child: _err != null
                         ? _errorBox()
                         : const CircularProgressIndicator(color: Colors.white))
-                : Stack(children: [
-                    SingleChildScrollView(
+                : SingleChildScrollView(
                       child: Column(children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
@@ -591,7 +613,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                         _redFloor(s),
                       ]),
                     ),
-                    _resultOverlay(s),
+
                   ]),
           ),
         ),
