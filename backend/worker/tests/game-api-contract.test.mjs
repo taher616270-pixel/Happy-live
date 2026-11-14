@@ -12,7 +12,9 @@ test("temporary game sessions are isolated, expiring, revocable, and indexed", (
   assert.match(migration, /CREATE TABLE IF NOT EXISTS game_sessions/);
   assert.match(migration, /game_id TEXT NOT NULL REFERENCES game_registry\(id\)/);
   assert.match(migration, /user_id TEXT NOT NULL REFERENCES users\(id\)/);
-  assert.match(migration, /app_session_id TEXT NOT NULL REFERENCES user_sessions\(id\)/);
+  assert.match(bindingMigration, /CREATE TABLE IF NOT EXISTS game_session_app_bindings/);
+  assert.match(bindingMigration, /app_session_id TEXT NOT NULL REFERENCES user_sessions\(id\)/);
+  assert.match(bindingMigration, /game_session_id TEXT PRIMARY KEY REFERENCES game_sessions\(id\)/);
   assert.match(migration, /token_hash TEXT NOT NULL UNIQUE/);
   assert.match(migration, /expires_at TEXT NOT NULL/);
   assert.match(migration, /revoked_at TEXT/);
