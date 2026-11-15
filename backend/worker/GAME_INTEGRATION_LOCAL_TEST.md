@@ -9,7 +9,7 @@ This runbook is for testing the unified in-app games integration without deployi
 - Do not run `npm run deploy`: the existing deploy script applies migrations with `--remote` and deploys the production Worker.
 - Do not run any Wrangler command with `--remote`.
 - Do not build Android for this test.
-- The existing Food Wheel implementation is outside this integration test and must remain unchanged.
+- The legacy Food Wheel game has been removed; this integration test covers only the unified game registry.
 
 ## Worker checks
 
