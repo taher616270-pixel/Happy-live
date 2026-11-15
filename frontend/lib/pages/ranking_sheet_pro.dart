@@ -1,6 +1,5 @@
-// ranking_sheet_pro.dart
-// نسخة Flutter مطوّرة (مستوى تطبيق عالمي) من شيت "تصنيف المساهمين في الغرفة"
-// انسخ هذا الملف داخل مشروع Flutter (مثلاً lib/main.dart) وشغّله مباشرة.
+// ranking_sheet.dart
+// نسخة Flutter مطوّرة من شيت "تصنيف المساهمين في الغرفة"
 // لا يحتاج أي package خارجي — فقط Flutter SDK الأساسي.
 
 import 'dart:async';
@@ -23,7 +22,6 @@ class RankingDemoApp extends StatelessWidget {
   }
 }
 
-/// ===================== شاشة الخلفية (غرفة البث) =====================
 class LiveRoomMock extends StatelessWidget {
   const LiveRoomMock({super.key});
 
@@ -79,7 +77,6 @@ class LiveRoomMock extends StatelessWidget {
   }
 }
 
-/// ===================== الشيت الرئيسي =====================
 class RankingSheet extends StatefulWidget {
   const RankingSheet({super.key});
 
@@ -95,11 +92,9 @@ class _RankingSheetState extends State<RankingSheet> with TickerProviderStateMix
   static const Color sheetMid = Color(0xFF1B281F);
   static const Color sheetBottom = Color(0xFF111A14);
 
-  // تحكم النبض المستمر (النقطة الخضراء + توهج الذهبي + البريق)
   late final AnimationController _pulseCtrl =
       AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
 
-  // مفاتيح إعادة التشغيل للدخول المتدرج لكل تبويب
   Key _entranceKey = UniqueKey();
 
   @override
@@ -112,7 +107,7 @@ class _RankingSheetState extends State<RankingSheet> with TickerProviderStateMix
     if (i == _selectedTab) return;
     setState(() {
       _selectedTab = i;
-      _entranceKey = UniqueKey(); // يعيد تشغيل أنيميشن الدخول عند تغيير التبويب
+      _entranceKey = UniqueKey();
     });
   }
 
@@ -139,9 +134,7 @@ class _RankingSheetState extends State<RankingSheet> with TickerProviderStateMix
           ),
           child: Stack(
             children: [
-              // توهجات خلفية متحركة (Aurora) بسيطة
               Positioned.fill(child: _AuroraBackground(controller: _pulseCtrl)),
-
               CustomScrollView(
                 slivers: [
                   const SliverToBoxAdapter(
@@ -157,7 +150,8 @@ class _RankingSheetState extends State<RankingSheet> with TickerProviderStateMix
                       selectedIndex: _selectedTab,
                       onTabTap: _selectTab,
                       pulse: _pulseCtrl,
-                      backgroundColorBuilder: (shrink) => Color.lerp(const Color(0xFF304235), const Color(0xFF1D2B21), shrink)!,
+                      backgroundColorBuilder: (shrink) =>
+                          Color.lerp(const Color(0xFF304235), const Color(0xFF1D2B21), shrink)!,
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -193,7 +187,6 @@ class _RankingSheetState extends State<RankingSheet> with TickerProviderStateMix
   }
 }
 
-/// توهجات خلفية ناعمة متحركة خلف الشيت بالكامل
 class _AuroraBackground extends StatelessWidget {
   final Animation<double> controller;
   const _AuroraBackground({required this.controller});
@@ -207,9 +200,9 @@ class _AuroraBackground extends StatelessWidget {
           final t = controller.value;
           return Stack(
             children: [
-              _blob(-60, null, 10 + t * 14, const Color(0x333F8B62), top: -60, right: -40),
-              _blob(null, -60, 10 - t * 10, const Color(0x333C7950), top: 40, left: -60),
-              _blob(30, null, 8 + t * 10, const Color(0x333FA878), bottom: 60, right: 30, size: 160),
+              _blob(const Color(0x333F8B62), top: -60, right: -40, dy: 10 + t * 14),
+              _blob(const Color(0x333C7950), top: 40, left: -60, dy: 10 - t * 10),
+              _blob(const Color(0x333FA878), bottom: 60, right: 30, dy: 8 + t * 10, size: 160),
             ],
           );
         },
@@ -217,8 +210,8 @@ class _AuroraBackground extends StatelessWidget {
     );
   }
 
-  Widget _blob(double? r, double? l, double dy, Color color,
-      {double? top, double? bottom, double? right, double? left, double size = 220}) {
+  Widget _blob(Color color,
+      {double? top, double? bottom, double? right, double? left, double dy = 0, double size = 220}) {
     return Positioned(
       top: top,
       bottom: bottom,
@@ -238,17 +231,20 @@ class _AuroraBackground extends StatelessWidget {
 
 class _Grabber extends StatelessWidget {
   const _Grabber();
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 38,
       height: 4,
-      decoration: BoxDecoration(color: Colors.white.withOpacity(.35), borderRadius: BorderRadius.circular(4)),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.35),
+        borderRadius: BorderRadius.circular(4),
+      ),
     );
   }
 }
 
-/// ===================== الهيدر الثابت (عنوان + شارة مباشر + تبويبات) =====================
 class _HeaderDelegate extends SliverPersistentHeaderDelegate {
   final List<String> tabs;
   final int selectedIndex;
@@ -269,6 +265,7 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   double get maxExtent => _maxExtentVal;
+
   @override
   double get minExtent => _minExtentVal;
 
@@ -297,7 +294,9 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _HeaderDelegate oldDelegate) {
-    return oldDelegate.selectedIndex != selectedIndex || oldDelegate.tabs != tabs;
+    return oldDelegate.selectedIndex != selectedIndex ||
+        oldDelegate.tabs != tabs ||
+        oldDelegate.pulse != pulse;
   }
 }
 
@@ -309,7 +308,10 @@ class _LivePill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 3, 10, 3),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(.1), borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -335,14 +337,16 @@ class _LivePill extends StatelessWidget {
             },
           ),
           const SizedBox(width: 5),
-          Text('تحديث مباشر', style: TextStyle(color: Colors.white.withOpacity(.65), fontSize: 10.5, fontWeight: FontWeight.w600)),
+          Text(
+            'تحديث مباشر',
+            style: TextStyle(color: Colors.white.withOpacity(.65), fontSize: 10.5, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );
   }
 }
 
-/// تبويبات مع مؤشر أبيض ينزلق بسلاسة بين الخيارات
 class _SlidingTabs extends StatelessWidget {
   final List<String> tabs;
   final int selectedIndex;
@@ -353,18 +357,20 @@ class _SlidingTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
-      final totalWidth = constraints.maxWidth - 8; // padding 4 على كل جهة
+      final totalWidth = constraints.maxWidth - 8;
       final tabWidth = totalWidth / tabs.length;
       return Container(
         height: 40,
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(color: Colors.white.withOpacity(.14), borderRadius: BorderRadius.circular(999)),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(.14),
+          borderRadius: BorderRadius.circular(999),
+        ),
         child: Stack(
           children: [
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOutCubic,
-              // في RTL أول عنصر (index 0) يكون أقصى اليمين، لذا نحسب من اليمين
               right: selectedIndex * tabWidth,
               top: 0,
               bottom: 0,
@@ -373,7 +379,13 @@ class _SlidingTabs extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(999),
-                  boxShadow: [BoxShadow(color: const Color(0xFF7EDBFF).withOpacity(.20), blurRadius: 14, offset: const Offset(0, 4))],
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF7EDBFF).withOpacity(.20),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -405,7 +417,6 @@ class _SlidingTabs extends StatelessWidget {
   }
 }
 
-/// ===================== منصة أفضل 3 (مع دخول متدرج + درجات 3D) =====================
 class _Podium extends StatelessWidget {
   final Animation<double> pulse;
   const _Podium({super.key, required this.pulse});
@@ -421,14 +432,13 @@ class _Podium extends StatelessWidget {
           _EnteringCrest(
             delayMs: 350,
             child: _Crest(
-              rank: 2,
+              rank: 3,
               width: 96,
               stepHeight: 50,
-              colors: const [Color(0xFFF4F8FF), Color(0xFFC8D8EB), Color(0xFF829BB8), Color(0xFF354B67)],
-              nameColor: const Color(0xFF263A52),
+              colors: const [Color(0xFFFFD6B0), Color(0xFFCF8254), Color(0xFF98502F), Color(0xFF542719)],
+              nameColor: const Color(0xFF492316),
             ),
           ),
-          const SizedBox(width: 8),
           _EnteringCrest(
             delayMs: 50,
             child: _Crest(
@@ -441,15 +451,14 @@ class _Podium extends StatelessWidget {
               nameColor: const Color(0xFF583707),
             ),
           ),
-          const SizedBox(width: 8),
           _EnteringCrest(
             delayMs: 200,
             child: _Crest(
-              rank: 3,
+              rank: 2,
               width: 96,
               stepHeight: 40,
-              colors: const [Color(0xFFFFD6B0), Color(0xFFCF8254), Color(0xFF98502F), Color(0xFF542719)],
-              nameColor: const Color(0xFF492316),
+              colors: const [Color(0xFFF4F8FF), Color(0xFFC8D8EB), Color(0xFF829BB8), Color(0xFF354B67)],
+              nameColor: const Color(0xFF263A52),
             ),
           ),
         ],
@@ -458,7 +467,6 @@ class _Podium extends StatelessWidget {
   }
 }
 
-/// غلاف يتحكم بأنيميشن الدخول المتدرج (ظهور + تكبير بسيط) لكل عمود
 class _EnteringCrest extends StatefulWidget {
   final Widget child;
   final int delayMs;
@@ -495,13 +503,12 @@ class _EnteringCrestState extends State<_EnteringCrest> {
   }
 }
 
-/// بطاقة الدرع + الدرجة ثلاثية الأبعاد تحتها
 class _Crest extends StatelessWidget {
   final int rank;
   final double width;
   final double stepHeight;
   final bool isFirst;
-  final List<Color> colors; // [فاتح جدًا, فاتح, غامق, غامق جدًا]
+  final List<Color> colors;
   final Color nameColor;
   final Animation<double>? pulse;
 
@@ -529,10 +536,7 @@ class _Crest extends StatelessWidget {
             alignment: Alignment.bottomCenter,
             children: [
               if (isFirst)
-                const Positioned(
-                  top: 0,
-                  child: _CrownPop(),
-                ),
+                const Positioned(top: 0, child: _CrownPop()),
               if (isFirst) ...[
                 const Positioned(top: 10, left: 2, child: _Sparkle(delayMs: 200)),
                 const Positioned(top: 34, right: -6, child: _Sparkle(delayMs: 800)),
@@ -558,8 +562,10 @@ class _Crest extends StatelessWidget {
                         children: [
                           _Avatar(isFirst: isFirst, size: width * 0.56, pulse: pulse),
                           SizedBox(height: height * 0.07),
-                          Text('سيتم تحديده',
-                              style: TextStyle(color: nameColor, fontWeight: FontWeight.w800, fontSize: 9.5)),
+                          Text(
+                            'سيتم تحديده',
+                            style: TextStyle(color: nameColor, fontWeight: FontWeight.w800, fontSize: 9.5),
+                          ),
                         ],
                       ),
                     ),
@@ -569,7 +575,6 @@ class _Crest extends StatelessWidget {
             ],
           ),
         ),
-        // مربعات الأرقام متلاصقة بلون أخضر هادئ من نفس عائلة الخلفية
         Transform.translate(
           offset: const Offset(0, -4),
           child: Container(
@@ -596,7 +601,9 @@ class _Crest extends StatelessWidget {
               alignment: Alignment.center,
               children: [
                 Positioned(
-                  top: 0, left: 0, right: 0,
+                  top: 0,
+                  left: 0,
+                  right: 0,
                   child: Container(
                     height: stepHeight * 0.45,
                     decoration: BoxDecoration(
@@ -609,10 +616,17 @@ class _Crest extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text('$rank',
-                    style: const TextStyle(color: Color(0xFFE0E9E1), fontWeight: FontWeight.w900, fontSize: 19, shadows: [
+                Text(
+                  '$rank',
+                  style: const TextStyle(
+                    color: Color(0xFFE0E9E1),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 19,
+                    shadows: [
                       Shadow(color: Colors.black38, blurRadius: 3, offset: Offset(0, 1)),
-                    ])),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -624,12 +638,14 @@ class _Crest extends StatelessWidget {
 
 class _CrownPop extends StatefulWidget {
   const _CrownPop();
+
   @override
   State<_CrownPop> createState() => _CrownPopState();
 }
 
 class _CrownPopState extends State<_CrownPop> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
   late final Animation<double> _scale = CurvedAnimation(parent: _c, curve: Curves.elasticOut);
 
   @override
@@ -658,14 +674,14 @@ class _CrownPopState extends State<_CrownPop> with SingleTickerProviderStateMixi
 class _Sparkle extends StatefulWidget {
   final int delayMs;
   const _Sparkle({required this.delayMs});
+
   @override
   State<_Sparkle> createState() => _SparkleState();
 }
 
 class _SparkleState extends State<_Sparkle> with SingleTickerProviderStateMixin {
   late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))
-        ..repeat();
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
   late final Animation<double> _opacity = TweenSequence([
     TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 1),
     TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 1),
@@ -708,7 +724,10 @@ class _Avatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF272727),
         shape: BoxShape.circle,
-        border: Border.all(color: isFirst ? const Color(0xFFFFF3CF) : Colors.white.withOpacity(.6), width: 3),
+        border: Border.all(
+          color: isFirst ? const Color(0xFFFFF3CF) : Colors.white.withOpacity(.6),
+          width: 3,
+        ),
       ),
       child: const Icon(Icons.person, color: Colors.white38, size: 20),
     );
@@ -730,7 +749,10 @@ class _Avatar extends StatelessWidget {
                 height: size + 14 * v,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFFFE696).withOpacity(1 - v), width: 1.4),
+                  border: Border.all(
+                    color: const Color(0xFFFFE696).withOpacity(1 - v),
+                    width: 1.4,
+                  ),
                 ),
               );
             },
@@ -742,7 +764,6 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-/// شكل الدرع (Shield)
 class _ShieldClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -765,7 +786,6 @@ class _ShieldClipper extends CustomClipper<Path> {
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
 
-/// ===================== صف واحد في باقي القائمة =====================
 class _RankRow extends StatelessWidget {
   final int rank;
   final String name;
@@ -784,9 +804,11 @@ class _RankRow extends StatelessWidget {
             children: [
               SizedBox(
                 width: 22,
-                child: Text('$rank',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white.withOpacity(.8), fontWeight: FontWeight.bold, fontSize: 13.5)),
+                child: Text(
+                  '$rank',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white.withOpacity(.8), fontWeight: FontWeight.bold, fontSize: 13.5),
+                ),
               ),
               const SizedBox(width: 10),
               Container(
@@ -800,9 +822,11 @@ class _RankRow extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(name,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                child: Text(
+                  name,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                ),
               ),
             ],
           ),
