@@ -419,13 +419,13 @@ class _Podium extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           _EnteringCrest(
-            delayMs: 200,
+            delayMs: 350,
             child: _Crest(
-              rank: 3,
+              rank: 2,
               width: 96,
-              stepHeight: 40,
-              colors: const [Color(0xFFFFD6B0), Color(0xFFCF8254), Color(0xFF98502F), Color(0xFF542719)],
-              nameColor: const Color(0xFF492316),
+              stepHeight: 50,
+              colors: const [Color(0xFFF4F8FF), Color(0xFFC8D8EB), Color(0xFF829BB8), Color(0xFF354B67)],
+              nameColor: const Color(0xFF263A52),
             ),
           ),
           const SizedBox(width: 8),
@@ -443,13 +443,13 @@ class _Podium extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _EnteringCrest(
-            delayMs: 350,
+            delayMs: 200,
             child: _Crest(
-              rank: 2,
+              rank: 3,
               width: 96,
-              stepHeight: 50,
-              colors: const [Color(0xFFF4F8FF), Color(0xFFC8D8EB), Color(0xFF829BB8), Color(0xFF354B67)],
-              nameColor: const Color(0xFF263A52),
+              stepHeight: 40,
+              colors: const [Color(0xFFFFD6B0), Color(0xFFCF8254), Color(0xFF98502F), Color(0xFF542719)],
+              nameColor: const Color(0xFF492316),
             ),
           ),
         ],
