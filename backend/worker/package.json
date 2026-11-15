@@ -10,7 +10,7 @@
     "db:local": "wrangler d1 migrations apply happy-live-db --local",
     "db:remote": "wrangler d1 migrations apply happy-live-db --remote",
     "test": "node --test tests/*.test.mjs",
-    "test:games": "node --test tests/game-api-contract.test.mjs tests/game-economy-sql.test.mjs",
+    "test:games": "node --test tests/game-api-contract.test.mjs tests/game-registry-contract.test.mjs tests/game-economy-sql.test.mjs",
     "dev:local": "wrangler dev --local --config wrangler.toml",
     "db:games:local": "wrangler d1 migrations apply happy-live-db --local --config wrangler.toml",
     "db:messaging:remote": "node scripts/apply-private-messaging.mjs"
