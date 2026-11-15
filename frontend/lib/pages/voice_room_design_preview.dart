@@ -789,6 +789,15 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Text(
+                trophies,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(width: 5),
               Container(
                 width: 28,
                 height: 28,
@@ -798,15 +807,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   borderRadius: BorderRadius.circular(7),
                 ),
                 child: const Text('🏆', style: TextStyle(fontSize: 16)),
-              ),
-              const SizedBox(width: 5),
-              Text(
-                trophies,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
               ),
             ],
           ),
