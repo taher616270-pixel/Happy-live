@@ -2393,7 +2393,7 @@ class _HappyCreateTab extends StatelessWidget {
   const _HappyCreateTab({required this.onSoon, required this.accessToken, required this.onGameClosed});
   final ValueChanged<String> onSoon;
   final String accessToken;
-  final VoidCallback onGameClosed;
+  final Future<void> Function() onGameClosed;
 
   @override
   Widget build(BuildContext context) => Container(
