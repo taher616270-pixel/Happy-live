@@ -76,9 +76,8 @@ test("admin dashboard can create, edit, enable and disable registry entries", ()
   assert.match(adminUi, /esc\(g\.name\)/);
 });
 
-test("web app loads published games dynamically without replacing the native Food Wheel", () => {
-  assert.match(appMain, /import 'pages\/food_wheel_game\.dart';/);
-  assert.match(appMain, /openFoodWheelGame\(context, accessToken: accessToken\)/);
+test("web app loads published games dynamically with no legacy Food Wheel entry", () => {
+  assert.doesNotMatch(appMain, /food_wheel_game|openFoodWheelGame|عجلة الأطعمة/);
   assert.match(appMain, /if \(kIsWeb\) DynamicGamesList\(onGameClosed: _refreshWalletBalance\)/);
   assert.match(gamesWidget, /\/api\/v1\/games\/catalog/);
   assert.match(gamesWidget, /launchExternalGame\(context, url, _createGameSession\(gameId\)\)/);
