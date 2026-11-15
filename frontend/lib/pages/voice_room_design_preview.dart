@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:happy_live/models/seat_state.dart';
 import 'edit_profile_page.dart';
+import 'ranking_sheet_pro.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
   static final Set<String> _openingRoomInfo = <String>{};
@@ -786,29 +787,50 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ),
           const Spacer(),
           const SizedBox(width: 10),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                trophies,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+          InkWell(
+            onTap: () => showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              barrierColor: Colors.black.withOpacity(.55),
+              builder: (sheetContext) => SizedBox(
+                height: MediaQuery.sizeOf(sheetContext).height,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: const [RankingSheet()],
                 ),
               ),
-              const SizedBox(width: 5),
-              Container(
-                width: 28,
-                height: 28,
+            ),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 38,
+              height: 30,
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(.3),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Stack(
                 alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(.3),
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: const Text('🏆', style: TextStyle(fontSize: 16)),
+                children: [
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: Text('🏆', style: TextStyle(fontSize: 16)),
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      trophies,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
           const SizedBox(width: 10),
           _headerAction(Icons.close_rounded, () => _showSaveLeaveDialog(context), 28),
