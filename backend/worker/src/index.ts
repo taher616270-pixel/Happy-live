@@ -410,7 +410,7 @@ export default {
       return new Response(null, { status: 204, headers });
     }
 
-    const gamesApiResponse = await handleGamesApiRequest(request, env, origin, authenticatedUser, json);
+    const gamesApiResponse = await handleGamesApiRequest(request, env, origin, authenticatedUser, json, authenticatedAdmin);
     if (gamesApiResponse) return gamesApiResponse;
 
     const foodWheelResponse = await handleFoodWheelRequest(request, env, origin, authenticatedUser, authenticatedAdmin, json);

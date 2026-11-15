@@ -125,7 +125,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isRestoringSession = true;
   String? _sessionRestoreError;
 
-  static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
+  static const String _apiBase = const String.fromEnvironment('HAPPY_LIVE_API_BASE', defaultValue: 'https://happy-live-api.taher616270.workers.dev/api/v1');
   static const String _googleClientId = '999298541545-5i0kn2d1emj2rohuvruj4o8ej49ho9kg.apps.googleusercontent.com';
   static const _registeredDeviceKey = 'happy_live_registered_on_device';
   final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -1422,7 +1422,7 @@ class SessionHomePage extends StatefulWidget {
 }
 
 class _SessionHomePageState extends State<SessionHomePage> {
-  static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
+  static const String _apiBase = const String.fromEnvironment('HAPPY_LIVE_API_BASE', defaultValue: 'https://happy-live-api.taher616270.workers.dev/api/v1');
   late String _profileName = widget.name.trim().isEmpty ? 'عضو Happy Live' : widget.name.trim();
   late String _profilePublicId = widget.userId;
   String _profileBio = '';
@@ -2477,7 +2477,7 @@ class _HappyCreateTab extends StatelessWidget {
         subtitle: 'العب واربح باستخدام رصيد محفظتك',
         onTap: () => openFoodWheelGame(context, accessToken: accessToken),
       ),
-      if (kIsWeb) const DynamicGamesList(),
+      if (kIsWeb) DynamicGamesList(onGameClosed: _refreshWalletBalance),
       const SizedBox(height: 23),
       const Padding(
         padding: EdgeInsets.only(right: 3, bottom: 12),
