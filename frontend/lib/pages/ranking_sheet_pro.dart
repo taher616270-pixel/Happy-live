@@ -569,20 +569,28 @@ class _Crest extends StatelessWidget {
             ],
           ),
         ),
-        // الدرجة (step) أسفل الدرع مباشرة
+        // مربعات الأرقام متلاصقة بلون أخضر هادئ من نفس عائلة الخلفية
         Transform.translate(
           offset: const Offset(0, -4),
           child: Container(
-            width: width * 0.88,
+            width: width + 8,
             height: stepHeight,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12), bottom: Radius.circular(5)),
-              gradient: LinearGradient(
+              borderRadius: BorderRadius.circular(4),
+              gradient: const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [colors[1], colors[3]],
+                colors: [Color(0xFF405747), Color(0xFF2B3D31)],
               ),
+              border: Border.all(color: const Color(0xFF718B78).withOpacity(.42), width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF9BB5A0).withOpacity(.10),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
             child: Stack(
               alignment: Alignment.center,
@@ -592,17 +600,17 @@ class _Crest extends StatelessWidget {
                   child: Container(
                     height: stepHeight * 0.45,
                     decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.white.withOpacity(.38), Colors.white.withOpacity(0)],
+                        colors: [Colors.white.withOpacity(.12), Colors.white.withOpacity(0)],
                       ),
                     ),
                   ),
                 ),
                 Text('$rank',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 19, shadows: [
+                    style: const TextStyle(color: Color(0xFFE0E9E1), fontWeight: FontWeight.w900, fontSize: 19, shadows: [
                       Shadow(color: Colors.black38, blurRadius: 3, offset: Offset(0, 1)),
                     ])),
               ],
