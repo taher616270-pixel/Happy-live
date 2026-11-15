@@ -87,12 +87,10 @@ test("wallet administration uses the server-backed wallet ledger and owner-only 
   assert.match(worker, /url\.pathname === "\/api\/v1\/admin\/wallets"/);
   assert.match(worker, /url\.pathname === "\/api\/v1\/wallet"/);
   assert.match(worker, /wallet_transactions/);
-  // Admin wallet history must include Food Wheel bets and payouts, not only
-  // the generic wallet_transactions table.
+  // Wallet history now reads only the shared application wallet ledger.
   assert.ok(worker.includes("FROM wallet_transactions WHERE user_id = ?"));
-  assert.ok(worker.includes("UNION ALL"));
-  assert.ok(worker.includes("FROM cat_greed_ledger WHERE user_id = ?"));
-  assert.ok(worker.includes(".bind(userId, userId).all()"));
+  assert.doesNotMatch(worker, /cat_greed_ledger|UNION ALL/);
+  assert.ok(worker.includes(".bind(userId).all()"));
   assert.ok(worker.includes('actor.role !== "owner"'));
   assert.ok(worker.includes("إضافة العملات متاحة لمالك التطبيق فقط"));
   assert.match(worker, /VALUES \(\?, NULL, 'wallet\.credit', 'user', \?, \?, \?\)/);
