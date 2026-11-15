@@ -77,7 +77,7 @@ class LiveRoomMock extends StatelessWidget {
                             const CircleAvatar(radius: 16, backgroundColor: Colors.white12,
                                 child: Icon(Icons.chat_bubble_outline, color: Colors.white54, size: 15)),
                             const SizedBox(height: 2),
-                            Text('\${5 - i}', style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                            Text('${5 - i}', style: const TextStyle(color: Colors.white54, fontSize: 10)),
                           ]),
                         );
                       })),
