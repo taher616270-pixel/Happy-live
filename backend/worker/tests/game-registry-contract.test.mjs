@@ -75,8 +75,10 @@ test("admin dashboard can create, edit, enable and disable registry entries", ()
   assert.match(adminUi, /esc\(g\.name\)/);
 });
 
-test("web app loads published games dynamically", () => {
-  assert.match(gamesWidget, /\/api\/v1\/games\/catalog/);
+test("web app loads published games dynamically from the configured unified API base", () => {
+  assert.match(gamesWidget, /HAPPY_LIVE_API_BASE/);
+  assert.match(gamesWidget, /Uri\.parse\('\$_apiBase\/games\/catalog'\)/);
+  assert.match(gamesWidget, /Uri\.parse\('\$_apiBase\/game\/auth'\)/);
   assert.match(gamesWidget, /launchExternalGame\(context, url, _createGameSession\(gameId\)\)/);
   assert.match(gamesWidget, /إعادة المحاولة/);
   assert.doesNotMatch(gamesWidget, /wallet|bet|reward|accessToken/i);
