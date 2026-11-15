@@ -1,8 +1,8 @@
 // ranking_sheet.dart
-// نسخة Flutter مطوّرة من شيت "تصنيف المساهمين في الغرفة"
-// لا يحتاج أي package خارجي — فقط Flutter SDK الأساسي.
+// نسخة Flutter من شيت "تصنيف المساهمين في الغرفة"
+// انسخ هذا الملف داخل مشروع Flutter (مثلاً lib/main.dart) وشغّله مباشرة.
+// يحتاج فقط لحزمة Flutter الأساسية (ما يحتاج أي package خارجي).
 
-import 'dart:async';
 import 'package:flutter/material.dart';
 
 void main() => runApp(const RankingDemoApp());
@@ -14,7 +14,9 @@ class RankingDemoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      locale: const Locale('ar'),
       builder: (context, child) {
+        // نفرض اتجاه RTL للنصوص العربية
         return Directionality(textDirection: TextDirection.rtl, child: child!);
       },
       home: const LiveRoomMock(),
@@ -22,6 +24,8 @@ class RankingDemoApp extends StatelessWidget {
   }
 }
 
+/// ===================== شاشة الخلفية (غرفة البث) =====================
+/// خلفية مبسطة تمثل شاشة البث خلف الشيت، فوقها الشيت نفسه.
 class LiveRoomMock extends StatelessWidget {
   const LiveRoomMock({super.key});
 
@@ -31,6 +35,7 @@ class LiveRoomMock extends StatelessWidget {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
+          // خلفية الغرفة (تمثيل مبسط لمشهد البث المظلم)
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
@@ -64,12 +69,26 @@ class LiveRoomMock extends StatelessWidget {
                           ]),
                         ],
                       ),
+                      const SizedBox(height: 10),
+                      Row(children: List.generate(4, (i) {
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 10),
+                          child: Column(children: [
+                            const CircleAvatar(radius: 16, backgroundColor: Colors.white12,
+                                child: Icon(Icons.chat_bubble_outline, color: Colors.white54, size: 15)),
+                            const SizedBox(height: 2),
+                            Text('\${5 - i}', style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                          ]),
+                        );
+                      })),
                     ],
                   ),
                 ),
               ),
             ),
           ),
+
+          // الشيت نفسه فوق الخلفية
           const RankingSheet(),
         ],
       ),
@@ -77,6 +96,7 @@ class LiveRoomMock extends StatelessWidget {
   }
 }
 
+/// ===================== الشيت الرئيسي =====================
 class RankingSheet extends StatefulWidget {
   const RankingSheet({super.key});
 
@@ -84,145 +104,90 @@ class RankingSheet extends StatefulWidget {
   State<RankingSheet> createState() => _RankingSheetState();
 }
 
-class _RankingSheetState extends State<RankingSheet> with TickerProviderStateMixin {
-  int _selectedTab = 0;
+class _RankingSheetState extends State<RankingSheet> {
+  int _selectedTab = 0; // 0 = اليومي, 1 = أسبوعي, 2 = شهريا
   final List<String> _tabs = const ['اليومي', 'أسبوعي', 'شهريا'];
 
-  static const Color sheetTop = Color(0xFF26352B);
-  static const Color sheetMid = Color(0xFF1B281F);
-  static const Color sheetBottom = Color(0xFF111A14);
-
-  late final AnimationController _pulseCtrl =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
-
-  Key _entranceKey = UniqueKey();
-
-  @override
-  void dispose() {
-    _pulseCtrl.dispose();
-    super.dispose();
-  }
-
-  void _selectTab(int i) {
-    if (i == _selectedTab) return;
-    setState(() {
-      _selectedTab = i;
-      _entranceKey = UniqueKey();
-    });
-  }
+  // ألوان الخلفية (مأخوذة من تدرج التصميم الأصلي)
+  static const Color sheetTop = Color(0xFF0C8A30);
+  static const Color sheetMid = Color(0xFF0A3D24);
+  static const Color sheetBottom = Color(0xFF04140F);
 
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
-    final sheetTopOffset = mq.size.height * 0.30;
+    final sheetTopOffset = mq.size.height * 0.30; // نفس موقع بداية الشيت تقريبًا
 
     return Positioned(
       top: sheetTopOffset,
       left: 0,
       right: 0,
       bottom: 0,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF304235), Color(0xFF1D2B21), Color(0xFF111A14)],
-              stops: [0.0, 0.38, 1.0],
-            ),
-          ),
-          child: Stack(
-            children: [
-              Positioned.fill(child: _AuroraBackground(controller: _pulseCtrl)),
-              CustomScrollView(
-                slivers: [
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.only(top: 10, bottom: 2),
-                      child: Center(child: _Grabber()),
-                    ),
-                  ),
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _HeaderDelegate(
-                      tabs: _tabs,
-                      selectedIndex: _selectedTab,
-                      onTabTap: _selectTab,
-                      pulse: _pulseCtrl,
-                      backgroundColorBuilder: (shrink) =>
-                          Color.lerp(const Color(0xFF304235), const Color(0xFF1D2B21), shrink)!,
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: _Podium(key: _entranceKey, pulse: _pulseCtrl),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Container(
-                      margin: const EdgeInsets.fromLTRB(16, 16, 16, 2),
-                      height: 1,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [
-                          Colors.white.withOpacity(0),
-                          Colors.white.withOpacity(.14),
-                          Colors.white.withOpacity(0),
-                        ]),
-                      ),
-                    ),
-                  ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => _RankRow(rank: index + 4, name: 'سيتم تحديده'),
-                      childCount: 23,
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                ],
-              ),
-            ],
+      child: Container(
+        decoration: const BoxDecoration(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [sheetTop, sheetMid, sheetBottom],
+            stops: [0.0, 0.32, 0.65],
           ),
         ),
-      ),
-    );
-  }
-}
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          child: CustomScrollView(
+            slivers: [
+              // شريط صغير للسحب
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 10, bottom: 4),
+                  child: Center(
+                    child: _Grabber(),
+                  ),
+                ),
+              ),
 
-class _AuroraBackground extends StatelessWidget {
-  final Animation<double> controller;
-  const _AuroraBackground({required this.controller});
+              // الهيدر الثابت (العنوان + التبويبات)
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _HeaderDelegate(
+                  tabs: _tabs,
+                  selectedIndex: _selectedTab,
+                  onTabTap: (i) => setState(() => _selectedTab = i),
+                  backgroundColorBuilder: (shrink) {
+                    // عند التمرير تختفي الخلفية الخضراء الفاتحة ويبقى اللون الغامق
+                    return Color.lerp(sheetTop, sheetMid, shrink)!;
+                  },
+                ),
+              ),
 
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (context, _) {
-          final t = controller.value;
-          return Stack(
-            children: [
-              _blob(const Color(0x333F8B62), top: -60, right: -40, dy: 10 + t * 14),
-              _blob(const Color(0x333C7950), top: 40, left: -60, dy: 10 - t * 10),
-              _blob(const Color(0x333FA878), bottom: 60, right: 30, dy: 8 + t * 10, size: 160),
+              // المنصة (أفضل 3)
+              SliverToBoxAdapter(
+                child: _Podium(key: ValueKey(_selectedTab)),
+              ),
+
+              SliverToBoxAdapter(
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+                  height: 1,
+                  color: Colors.white.withOpacity(.08),
+                ),
+              ),
+
+              // بقية القائمة من 4 إلى 26
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final rank = index + 4;
+                    return _RankRow(rank: rank, name: 'سيتم تحديده');
+                  },
+                  childCount: 23, // من 4 إلى 26
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
             ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _blob(Color color,
-      {double? top, double? bottom, double? right, double? left, double dy = 0, double size = 220}) {
-    return Positioned(
-      top: top,
-      bottom: bottom,
-      right: right,
-      left: left,
-      child: Transform.translate(
-        offset: Offset(0, dy),
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+          ),
         ),
       ),
     );
@@ -231,11 +196,10 @@ class _AuroraBackground extends StatelessWidget {
 
 class _Grabber extends StatelessWidget {
   const _Grabber();
-
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 38,
+      width: 40,
       height: 4,
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(.35),
@@ -245,23 +209,22 @@ class _Grabber extends StatelessWidget {
   }
 }
 
+/// ===================== الهيدر الثابت (عنوان + تبويبات) =====================
 class _HeaderDelegate extends SliverPersistentHeaderDelegate {
   final List<String> tabs;
   final int selectedIndex;
   final ValueChanged<int> onTabTap;
   final Color Function(double shrinkRatio) backgroundColorBuilder;
-  final Animation<double> pulse;
 
   _HeaderDelegate({
     required this.tabs,
     required this.selectedIndex,
     required this.onTabTap,
     required this.backgroundColorBuilder,
-    required this.pulse,
   });
 
-  static const double _maxExtentVal = 112;
-  static const double _minExtentVal = 96;
+  static const double _maxExtentVal = 92;
+  static const double _minExtentVal = 76;
 
   @override
   double get maxExtent => _maxExtentVal;
@@ -281,127 +244,38 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
           const Text(
             'تصنيف المساهمين في الغرفة',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15),
-          ),
-          const SizedBox(height: 6),
-          _LivePill(pulse: pulse),
-          const SizedBox(height: 10),
-          _SlidingTabs(tabs: tabs, selectedIndex: selectedIndex, onTabTap: onTabTap),
-        ],
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _HeaderDelegate oldDelegate) {
-    return oldDelegate.selectedIndex != selectedIndex ||
-        oldDelegate.tabs != tabs ||
-        oldDelegate.pulse != pulse;
-  }
-}
-
-class _LivePill extends StatelessWidget {
-  final Animation<double> pulse;
-  const _LivePill({required this.pulse});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 3, 10, 3),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.1),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedBuilder(
-            animation: pulse,
-            builder: (context, _) {
-              final v = pulse.value;
-              return Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF38E07A),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF38E07A).withOpacity((1 - v) * .6),
-                      blurRadius: 6 * v,
-                      spreadRadius: 4 * v,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 5),
-          Text(
-            'تحديث مباشر',
-            style: TextStyle(color: Colors.white.withOpacity(.65), fontSize: 10.5, fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SlidingTabs extends StatelessWidget {
-  final List<String> tabs;
-  final int selectedIndex;
-  final ValueChanged<int> onTabTap;
-
-  const _SlidingTabs({required this.tabs, required this.selectedIndex, required this.onTabTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final totalWidth = constraints.maxWidth - 8;
-      final tabWidth = totalWidth / tabs.length;
-      return Container(
-        height: 40,
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(.14),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Stack(
-          children: [
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              right: selectedIndex * tabWidth,
-              top: 0,
-              bottom: 0,
-              width: tabWidth,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(999),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF7EDBFF).withOpacity(.20),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-              ),
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
             ),
-            Row(
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(.14),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
               children: List.generate(tabs.length, (i) {
                 final selected = i == selectedIndex;
                 return Expanded(
                   child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
                     onTap: () => onTabTap(i),
-                    child: Center(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        color: selected ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      alignment: Alignment.center,
                       child: Text(
                         tabs[i],
                         style: TextStyle(
                           color: selected ? const Color(0xFF163A22) : Colors.white.withOpacity(.75),
-                          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                           fontSize: 13,
                         ),
                       ),
@@ -410,225 +284,67 @@ class _SlidingTabs extends StatelessWidget {
                 );
               }),
             ),
-          ],
-        ),
-      );
-    });
-  }
-}
-
-class _Podium extends StatelessWidget {
-  final Animation<double> pulse;
-  const _Podium({super.key, required this.pulse});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 20, 14, 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          _EnteringCrest(
-            delayMs: 350,
-            child: _Crest(
-              rank: 3,
-              width: 96,
-              stepHeight: 50,
-              colors: const [Color(0xFFFFD6B0), Color(0xFFCF8254), Color(0xFF98502F), Color(0xFF542719)],
-              nameColor: const Color(0xFF492316),
-            ),
-          ),
-          _EnteringCrest(
-            delayMs: 50,
-            child: _Crest(
-              rank: 1,
-              width: 112,
-              stepHeight: 66,
-              isFirst: true,
-              pulse: pulse,
-              colors: const [Color(0xFFFFF7D9), Color(0xFFFFD66E), Color(0xFFD99A28), Color(0xFF765016)],
-              nameColor: const Color(0xFF583707),
-            ),
-          ),
-          _EnteringCrest(
-            delayMs: 200,
-            child: _Crest(
-              rank: 2,
-              width: 96,
-              stepHeight: 40,
-              colors: const [Color(0xFFF4F8FF), Color(0xFFC8D8EB), Color(0xFF829BB8), Color(0xFF354B67)],
-              nameColor: const Color(0xFF263A52),
-            ),
           ),
         ],
       ),
     );
   }
-}
-
-class _EnteringCrest extends StatefulWidget {
-  final Widget child;
-  final int delayMs;
-  const _EnteringCrest({required this.child, required this.delayMs});
 
   @override
-  State<_EnteringCrest> createState() => _EnteringCrestState();
-}
-
-class _EnteringCrestState extends State<_EnteringCrest> {
-  bool _visible = false;
-
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(Duration(milliseconds: widget.delayMs), () {
-      if (mounted) setState(() => _visible = true);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedOpacity(
-      opacity: _visible ? 1 : 0,
-      duration: const Duration(milliseconds: 420),
-      curve: Curves.easeOut,
-      child: AnimatedSlide(
-        offset: _visible ? Offset.zero : const Offset(0, .12),
-        duration: const Duration(milliseconds: 420),
-        curve: Curves.easeOutCubic,
-        child: widget.child,
-      ),
-    );
+  bool shouldRebuild(covariant _HeaderDelegate oldDelegate) {
+    return oldDelegate.selectedIndex != selectedIndex || oldDelegate.tabs != tabs;
   }
 }
 
-class _Crest extends StatelessWidget {
-  final int rank;
-  final double width;
-  final double stepHeight;
-  final bool isFirst;
-  final List<Color> colors;
-  final Color nameColor;
-  final Animation<double>? pulse;
-
-  const _Crest({
-    required this.rank,
-    required this.width,
-    required this.stepHeight,
-    required this.colors,
-    required this.nameColor,
-    this.isFirst = false,
-    this.pulse,
-  });
+/// ===================== منصة أفضل 3 =====================
+class _Podium extends StatelessWidget {
+  const _Podium({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final height = width * 1.28;
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          width: width,
-          height: height + (isFirst ? 26 : 0),
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.bottomCenter,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 18, 14, 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (isFirst)
-                const Positioned(top: 0, child: _CrownPop()),
-              if (isFirst) ...[
-                const Positioned(top: 10, left: 2, child: _Sparkle(delayMs: 200)),
-                const Positioned(top: 34, right: -6, child: _Sparkle(delayMs: 800)),
-              ],
-              Positioned(
-                bottom: 0,
-                child: ClipPath(
-                  clipper: _ShieldClipper(),
-                  child: Container(
-                    width: width,
-                    height: height,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: colors,
-                        stops: const [0.0, 0.45, 0.78, 1.0],
-                      ),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.only(top: height * 0.13),
-                      child: Column(
-                        children: [
-                          _Avatar(isFirst: isFirst, size: width * 0.56, pulse: pulse),
-                          SizedBox(height: height * 0.07),
-                          Text(
-                            'سيتم تحديده',
-                            style: TextStyle(color: nameColor, fontWeight: FontWeight.w800, fontSize: 9.5),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+              _Crest(
+                rank: 3,
+                size: 96,
+                colors: const [Color(0xFFF3C9B7), Color(0xFFC07A5F), Color(0xFF5A372C)],
+                nameColor: const Color(0xFF5A3A2C),
+              ),
+              const SizedBox(width: 10),
+              _Crest(
+                rank: 1,
+                size: 110,
+                isFirst: true,
+                colors: const [Color(0xFFFFE9A8), Color(0xFFD98A4A), Color(0xFF8A5A2A)],
+                nameColor: const Color(0xFF7A4A1E),
+              ),
+              const SizedBox(width: 10),
+              _Crest(
+                rank: 2,
+                size: 96,
+                colors: const [Color(0xFFDFE6F5), Color(0xFF7EA3C4), Color(0xFF3A4A5A)],
+                nameColor: const Color(0xFF2F4152),
               ),
             ],
           ),
         ),
-        Transform.translate(
-          offset: const Offset(0, -4),
-          child: Container(
-            width: width + 8,
-            height: stepHeight,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF405747), Color(0xFF2B3D31)],
-              ),
-              border: Border.all(color: const Color(0xFF718B78).withOpacity(.42), width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF9BB5A0).withOpacity(.10),
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    height: stepHeight * 0.45,
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.white.withOpacity(.12), Colors.white.withOpacity(0)],
-                      ),
-                    ),
-                  ),
-                ),
-                Text(
-                  '$rank',
-                  style: const TextStyle(
-                    color: Color(0xFFE0E9E1),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 19,
-                    shadows: [
-                      Shadow(color: Colors.black38, blurRadius: 3, offset: Offset(0, 1)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+        Padding(
+          padding: const EdgeInsets.only(top: 6, bottom: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('3', style: TextStyle(color: Colors.white.withOpacity(.55), fontWeight: FontWeight.bold, fontSize: 14)),
+              const SizedBox(width: 46),
+              const Text('1', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+              const SizedBox(width: 46),
+              Text('2', style: TextStyle(color: Colors.white.withOpacity(.55), fontWeight: FontWeight.bold, fontSize: 14)),
+            ],
           ),
         ),
       ],
@@ -636,134 +352,108 @@ class _Crest extends StatelessWidget {
   }
 }
 
-class _CrownPop extends StatefulWidget {
-  const _CrownPop();
-
-  @override
-  State<_CrownPop> createState() => _CrownPopState();
-}
-
-class _CrownPopState extends State<_CrownPop> with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
-  late final Animation<double> _scale = CurvedAnimation(parent: _c, curve: Curves.elasticOut);
-
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) _c.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scale,
-      child: const Text('👑', style: TextStyle(fontSize: 27)),
-    );
-  }
-}
-
-class _Sparkle extends StatefulWidget {
-  final int delayMs;
-  const _Sparkle({required this.delayMs});
-
-  @override
-  State<_Sparkle> createState() => _SparkleState();
-}
-
-class _SparkleState extends State<_Sparkle> with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
-  late final Animation<double> _opacity = TweenSequence([
-    TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 1),
-    TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 1),
-  ]).animate(_c);
-
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(Duration(milliseconds: widget.delayMs), () {
-      if (mounted) _c.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacity,
-      child: const Text('✨', style: TextStyle(fontSize: 11)),
-    );
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  final bool isFirst;
+/// بطاقة الدرع لكل مركز من المراكز الثلاثة الأولى
+class _Crest extends StatelessWidget {
+  final int rank;
   final double size;
-  final Animation<double>? pulse;
-  const _Avatar({required this.isFirst, required this.size, this.pulse});
+  final bool isFirst;
+  final List<Color> colors; // [فاتح, وسط, غامق]
+  final Color nameColor;
+
+  const _Crest({
+    required this.rank,
+    required this.size,
+    required this.colors,
+    required this.nameColor,
+    this.isFirst = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final core = Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: const Color(0xFF272727),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isFirst ? const Color(0xFFFFF3CF) : Colors.white.withOpacity(.6),
-          width: 3,
-        ),
-      ),
-      child: const Icon(Icons.person, color: Colors.white38, size: 20),
-    );
-
-    if (!isFirst || pulse == null) return core;
-
+    final height = size * 1.3;
     return SizedBox(
-      width: size + 16,
-      height: size + 16,
+      width: size,
+      height: height + 28,
       child: Stack(
-        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
         children: [
-          AnimatedBuilder(
-            animation: pulse!,
-            builder: (context, _) {
-              final v = pulse!.value;
-              return Container(
-                width: size + 14 * v,
-                height: size + 14 * v,
+          if (isFirst)
+            const Positioned(
+              top: -4,
+              child: Text('👑', style: TextStyle(fontSize: 26)),
+            ),
+          Positioned(
+            top: isFirst ? 22 : 0,
+            child: ClipPath(
+              clipper: _ShieldClipper(),
+              child: Container(
+                width: size,
+                height: height,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: const Color(0xFFFFE696).withOpacity(1 - v),
-                    width: 1.4,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: colors,
+                    stops: const [0.0, 0.55, 1.0],
                   ),
                 ),
-              );
-            },
+                child: Padding(
+                  padding: EdgeInsets.only(top: height * 0.13),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: size * 0.58,
+                        height: size * 0.58,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2B2B2B),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isFirst ? const Color(0xFFFFE9A8) : Colors.white.withOpacity(.55),
+                            width: 3,
+                          ),
+                        ),
+                        child: const Icon(Icons.person, color: Colors.white38, size: 22),
+                      ),
+                      SizedBox(height: height * 0.08),
+                      Text(
+                        'سيتم تحديده',
+                        style: TextStyle(
+                          color: nameColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 9.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
-          core,
+          Positioned(
+            bottom: 0,
+            child: Container(
+              width: 24,
+              height: 24,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(.8), width: 2),
+                gradient: LinearGradient(colors: [colors[0], colors[1]]),
+              ),
+              child: Text(
+                '$rank',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
+/// شكل الدرع (Shield) المستخدم في بطاقات المراكز الثلاثة
 class _ShieldClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -786,51 +476,43 @@ class _ShieldClipper extends CustomClipper<Path> {
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
 
+/// ===================== صف واحد في باقي القائمة (من 4 إلى 26) =====================
 class _RankRow extends StatelessWidget {
   final int rank;
   final String name;
+
   const _RankRow({required this.rank, required this.name});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        splashColor: Colors.white.withOpacity(.06),
-        highlightColor: Colors.white.withOpacity(.04),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 22,
-                child: Text(
-                  '$rank',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white.withOpacity(.8), fontWeight: FontWeight.bold, fontSize: 13.5),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                width: 34,
-                height: 34,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(colors: [Color(0xFF454B48), Color(0xFF2A2E2C)]),
-                ),
-                child: const Icon(Icons.person, color: Colors.white54, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  name,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 20,
+            child: Text(
+              '$rank',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white.withOpacity(.85), fontWeight: FontWeight.bold, fontSize: 14),
+            ),
           ),
-        ),
+          const SizedBox(width: 10),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: const BoxDecoration(color: Color(0xFF3A3F3D), shape: BoxShape.circle),
+            child: const Icon(Icons.person, color: Colors.white54, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              name,
+              textAlign: TextAlign.right,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+          ),
+        ],
       ),
     );
   }
