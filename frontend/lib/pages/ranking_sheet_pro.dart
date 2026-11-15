@@ -91,9 +91,9 @@ class _RankingSheetState extends State<RankingSheet> with TickerProviderStateMix
   int _selectedTab = 0;
   final List<String> _tabs = const ['اليومي', 'أسبوعي', 'شهريا'];
 
-  static const Color sheetTop = Color(0xFF172B55);
-  static const Color sheetMid = Color(0xFF101A38);
-  static const Color sheetBottom = Color(0xFF080D20);
+  static const Color sheetTop = Color(0xFF080808);
+  static const Color sheetMid = Color(0xFF030303);
+  static const Color sheetBottom = Color(0xFF000000);
 
   // تحكم النبض المستمر (النقطة الخضراء + توهج الذهبي + البريق)
   late final AnimationController _pulseCtrl =
@@ -133,7 +133,7 @@ class _RankingSheetState extends State<RankingSheet> with TickerProviderStateMix
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF243F78), Color(0xFF17264D), Color(0xFF0B1028)],
+              colors: [Color(0xFF101010), Color(0xFF050505), Color(0xFF000000)],
               stops: [0.0, 0.38, 1.0],
             ),
           ),
@@ -157,7 +157,7 @@ class _RankingSheetState extends State<RankingSheet> with TickerProviderStateMix
                       selectedIndex: _selectedTab,
                       onTabTap: _selectTab,
                       pulse: _pulseCtrl,
-                      backgroundColorBuilder: (shrink) => Color.lerp(const Color(0xFF243F78), const Color(0xFF17264D), shrink)!,
+                      backgroundColorBuilder: (shrink) => Color.lerp(const Color(0xFF101010), const Color(0xFF050505), shrink)!,
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -207,9 +207,9 @@ class _AuroraBackground extends StatelessWidget {
           final t = controller.value;
           return Stack(
             children: [
-              _blob(-60, null, 10 + t * 14, const Color(0x6659C7FF), top: -60, right: -40),
-              _blob(null, -60, 10 - t * 10, const Color(0x665F68FF), top: 40, left: -60),
-              _blob(30, null, 8 + t * 10, const Color(0x5545E0C1), bottom: 60, right: 30, size: 160),
+              _blob(-60, null, 10 + t * 14, const Color(0x443F8BFF), top: -60, right: -40),
+              _blob(null, -60, 10 - t * 10, const Color(0x444C4CFF), top: 40, left: -60),
+              _blob(30, null, 8 + t * 10, const Color(0x3338C9B8), bottom: 60, right: 30, size: 160),
             ],
           );
         },
