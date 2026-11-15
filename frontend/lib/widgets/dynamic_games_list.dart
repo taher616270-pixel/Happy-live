@@ -5,14 +5,16 @@ import '../services/game_link_launcher.dart';
 import '../services/session_token_store.dart';
 
 class DynamicGamesList extends StatefulWidget {
-  const DynamicGamesList({super.key});
+  const DynamicGamesList({super.key, this.onGameClosed});
+
+  final Future<void> Function()? onGameClosed;
 
   @override
   State<DynamicGamesList> createState() => _DynamicGamesListState();
 }
 
 class _DynamicGamesListState extends State<DynamicGamesList> {
-  static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
+  static const String _apiBase = const String.fromEnvironment('HAPPY_LIVE_API_BASE', defaultValue: 'https://happy-live-api.taher616270.workers.dev/api/v1');
 
   Future<String> _createGameSession(String gameId) async {
     final appToken = await SessionTokenStore.read();
@@ -44,7 +46,7 @@ class _DynamicGamesListState extends State<DynamicGamesList> {
 
   Future<List<Map<String, dynamic>>> _loadGames() async {
     final response = await http.get(Uri.parse(
-      'https://happy-live-api.taher616270.workers.dev/api/v1/games/catalog',
+      '/games/catalog', // /api/v1/games/catalog
     )).timeout(const Duration(seconds: 12));
     if (response.statusCode != 200) {
       throw Exception('تعذر تحميل الألعاب');
@@ -103,11 +105,12 @@ class _DynamicGamesListState extends State<DynamicGamesList> {
                   borderRadius: BorderRadius.circular(18),
                   onTap: url.isEmpty ? null : () async {
                     try {
-                      await launchExternalGame(url, _createGameSession(gameId));
+                      await launchExternalGame(context, url, _createGameSession(gameId));
+                      await widget.onGameClosed?.call();
                     } catch (_) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('تعذر فتح اللعبة على هذا الجهاز.')),
+                          const SnackBar(content: Text('تعذر فتح اللعبة داخل التطبيق.')),
                         );
                       }
                     }

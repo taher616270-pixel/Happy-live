@@ -452,7 +452,7 @@ function users(a){
 }
 function rooms(a){
   const canManage=admin.role==="owner"||admin.role==="admin";
-  $("content").innerHTML='<div class="section"><div class="section-head"><h2>الغرف ('+a.length+')</h2></div><div class="table-wrap"><table><thead><tr><th>الغرفة</th><th>رقمها</th><th>المالك</th><th>الخصوصية</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>'+
+  $("content").innerHTML='<div class="section"><div class="section-head"><h2>الغرف ('+a.length+')</h2></div><div class="table-wrap"><table><thead><tr><th>الغرفة</th><th>رقمها</th><th>المالك</th><th>الخصوصية</th><th>الحالة</th><th>الإجراء</th><th>المحفظة والرهانات</th></tr></thead><tbody>'+
     (a.length?a.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.room_code)+'</td><td>'+esc(r.owner_name||"—")+'</td><td>'+(r.visibility==="private"?"خاصة":"عامة")+'</td><td><span class="badge '+(r.status==="active"?"good":"bad")+'">'+(r.status==="active"?"نشطة":"مغلقة")+'</span></td><td><div class="room-tools"><button class="action" data-room-open="'+esc(r.id)+'" data-room-name="'+esc(r.name)+'">إدارة الغرفة</button>'+
     (canManage?'<button class="action '+(r.status==="active"?"danger":"")+'" data-room-status="'+esc(r.id)+'" data-next="'+(r.status==="active"?"closed":"active")+'">'+(r.status==="active"?"إغلاق":"فتح")+'</button>':'<span class="muted">قراءة فقط</span>')+
     '</div></td></tr>').join(""):'<tr><td colspan="6" class="empty">لا توجد غرف</td></tr>')+
@@ -519,7 +519,7 @@ async function gamesPage(){
   if(admin.role!=="owner"&&admin.role!=="admin"){$("content").innerHTML='<div class="section"><p class="notice">إدارة الألعاب متاحة للمالك ومدير التطبيق فقط.</p></div>';return}
   const data=await api("/admin/games"),games=data.games||[];
   const statusLabel={development:"قيد التطوير",disabled:"متوقفة",active:"مفعّلة"};
-  const rows=games.length?games.map(g=>'<tr><td>'+esc(g.name)+'</td><td>'+(g.url?'<a href="'+esc(g.url)+'" target="_blank" rel="noopener noreferrer">فتح الرابط ↗</a>':'<span class="muted">لم يحدد بعد</span>')+'</td><td>'+esc(g.category||"عام")+'</td><td><span class="badge '+(g.status==="active"?"good":"")+'">'+esc(statusLabel[g.status]||"متوقفة")+'</span></td><td><button class="action" type="button" data-game-edit="'+esc(g.id)+'">تعديل</button> <select data-game-status="'+esc(g.id)+'" aria-label="حالة اللعبة" style="max-width:140px"><option value="development" '+(g.status==="development"?"selected":"")+'>قيد التطوير</option><option value="disabled" '+(g.status==="disabled"?"selected":"")+'>متوقفة</option><option value="active" '+(g.status==="active"?"selected":"")+'>مفعّلة</option></select></td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد ألعاب مضافة بعد.</td></tr>';
+  const rows=games.length?games.map(g=>'<tr><td>'+esc(g.name)+'</td><td>'+(g.url?'<a href="'+esc(g.url)+'" target="_blank" rel="noopener noreferrer">فتح الرابط ↗</a>':'<span class="muted">لم يحدد بعد</span>')+'</td><td>'+esc(g.category||"عام")+'</td><td><span class="badge '+(g.status==="active"?"good":"")+'">'+esc(statusLabel[g.status]||"متوقفة")+'</span></td><td><button class="action" type="button" data-game-edit="'+esc(g.id)+'">تعديل</button> <select data-game-status="'+esc(g.id)+'" aria-label="حالة اللعبة" style="max-width:140px"><option value="development" '+(g.status==="development"?"selected":"")+'>قيد التطوير</option><option value="disabled" '+(g.status==="disabled"?"selected":"")+'>متوقفة</option><option value="active" '+(g.status==="active"?"selected":"")+'>مفعّلة</option></select></td><td><button class="action" type="button" data-game-connect="'+esc(g.id)+'">بيانات الربط</button> <button class="action" type="button" data-game-rounds="'+esc(g.id)+'">سجل الجولات</button> <button class="action" type="button" data-game-economy="'+esc(g.id)+'">إعداد الرهانات</button> <button class="action" type="button" data-game-key="'+esc(g.id)+'">مفتاح الخادم</button></td></tr>').join(""):'<tr><td colspan="6" class="empty">لا توجد ألعاب مضافة بعد.</td></tr>';
   $("content").innerHTML=
     '<div class="section"><div class="section-head"><div><h2>كتالوج الألعاب الداخلي</h2><p class="muted">تسجيل ألعاب Happy Live قبل برمجتها أو نشر رابطها.</p></div><button class="action primary" id="showGameCreate" type="button" style="width:auto">＋ إضافة لعبة</button></div></div>'+
     '<div class="section hidden" id="gameCreatePanel"><div class="section-head"><div><h2>إضافة لعبة جديدة</h2><p class="muted">يمكنك تسجيل اللعبة الآن دون رابط. ستُحفظ بحالة قيد التطوير ولن تظهر للاعبين.</p></div><span class="badge">إضافة جديدة</span></div>'+
@@ -533,8 +533,8 @@ async function gamesPage(){
     '<label class="form-wide">وصف مختصر<textarea id="gameDescription" maxlength="240" rows="2" placeholder="اكتب وصفًا مختصرًا للعبة (اختياري)"></textarea></label>'+
     '<div class="form-actions form-wide"><button class="action primary" type="submit">حفظ وإضافة اللعبة</button><button class="action" id="cancelGameCreate" type="button">إلغاء</button><span class="muted">لن تظهر اللعبة للاعبين إلا بعد إضافة رابطها وتفعيلها.</span></div></form></div>'+
     '<div class="section"><div class="section-head"><h2>الألعاب المسجلة ('+games.length+')</h2><button class="action" id="gamesRefresh" type="button">↻ تحديث</button></div>'+
-    '<div class="table-wrap"><table><thead><tr><th>اللعبة</th><th>الرابط</th><th>التصنيف</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
-    '<p class="notice" style="margin-top:14px">هذه المرحلة تسجل الألعاب وتدير هويتها وحالتها فقط. ربط اللاعب والمحفظة والرهانات سيُنفذ في المراحل التالية.</p></div>';
+    '<div class="table-wrap"><table><thead><tr><th>اللعبة</th><th>الرابط</th><th>التصنيف</th><th>الحالة</th><th>الإجراء</th><th>المحفظة والرهانات</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<p class="notice" style="margin-top:14px">أنشئ مفتاح الخادم أولًا واحفظه في أسرار خادم اللعبة، ثم اضبط حدود الرهان وفعّل الاقتصاد. لا تضع مفتاح الخادم في كود المتصفح.</p></div>';
   const createPanel=$("gameCreatePanel");
   $("showGameCreate").onclick=()=>{createPanel.classList.remove("hidden");$("gameName").focus();createPanel.scrollIntoView({behavior:"smooth",block:"start"})};
   $("cancelGameCreate").onclick=()=>{createPanel.classList.add("hidden");$("gameCreateForm").reset();$("gameCategory").value="عام";$("gameSort").value="0";$("gameStatus").value="development"};
@@ -567,6 +567,51 @@ async function gamesPage(){
     try{await api("/admin/games/"+encodeURIComponent(game.id),{method:"PATCH",body:JSON.stringify({name:name.trim(),url:url.trim(),category:category.trim(),description:description.trim(),iconUrl:iconUrl.trim(),sortOrder})});await gamesPage()}
     catch(error){alert(error.message);button.disabled=false}
   });
+
+  document.querySelectorAll("[data-game-rounds]").forEach(button=>button.onclick=async()=>{
+    button.disabled=true;
+    try{
+      const result=await api("/admin/games/"+encodeURIComponent(button.dataset.gameRounds)+"/rounds");
+      const rows=result.rounds||[];
+      const summary=rows.map(r=>[r.createdAt,r.userCode||r.playerName,r.status,"رهان: "+r.totalStake,"دفع: "+r.totalPayout,r.id].join(" | ")).join("\n");
+      window.prompt("آخر "+rows.length+" جولة لهذه اللعبة:",summary||"لا توجد جولات مسجلة.");
+    }catch(error){alert(error.message)}
+    finally{button.disabled=false}
+  });
+  document.querySelectorAll("[data-game-connect]").forEach(button=>{
+    button.onclick=()=>{
+      const game=games.find(item=>item.id===button.dataset.gameConnect);if(!game)return;
+      const details="Game ID: "+game.id+"\nAPI Base: "+API+"\nAuth: POST "+API+"/game/auth\nSession token: 15 minutes, refreshed by the game client\nGame server settlement: POST "+API+"/game/server/rounds/{roundId}/settle\nUse the documented API contract; never place the server key in browser code.";
+      window.prompt("انسخ بيانات ربط هذه اللعبة:",details);
+    };
+  });
+  document.querySelectorAll("[data-game-key]").forEach(button=>button.onclick=async()=>{
+    if(!confirm("سيتم إنشاء مفتاح خادم جديد وإبطال المفتاح السابق فورًا. هل تريد المتابعة؟"))return;
+    button.disabled=true;
+    try{
+      const result=await api("/admin/games/"+encodeURIComponent(button.dataset.gameKey)+"/server-key",{method:"POST",body:"{}"});
+      window.prompt("انسخ المفتاح واحفظه في أسرار خادم اللعبة فقط. لن يظهر مرة أخرى:",result.serverKey);
+      alert("تم إنشاء مفتاح الخادم. لا تضعه في المتصفح أو داخل رابط اللعبة.");
+    }catch(error){alert(error.message)}
+    finally{button.disabled=false}
+  });
+  document.querySelectorAll("[data-game-economy]").forEach(button=>button.onclick=async()=>{
+    button.disabled=true;
+    try{
+      const gameId=button.dataset.gameEconomy;
+      const current=(await api("/admin/games/"+encodeURIComponent(gameId)+"/economy")).settings||{};
+      const minBet=Number(prompt("أقل رهان بالعملات",String(current.minBet??1)));if(!Number.isFinite(minBet))return;
+      const maxBet=Number(prompt("أعلى رهان",String(current.maxBet??100000)));if(!Number.isFinite(maxBet))return;
+      const maxBetsPerRound=Number(prompt("أقصى عدد رهانات في الجولة",String(current.maxBetsPerRound??6)));if(!Number.isFinite(maxBetsPerRound))return;
+      const maxTotalBet=Number(prompt("أقصى مجموع رهانات الجولة",String(current.maxTotalBet??600000)));if(!Number.isFinite(maxTotalBet))return;
+      const maxPayoutMultiplierBp=Number(prompt("أقصى مضاعف للأرباح بوحدة basis points (10000 = 1x)",String(current.maxPayoutMultiplierBp??100000)));if(!Number.isFinite(maxPayoutMultiplierBp))return;
+      const enabled=confirm("هل تريد تفعيل اقتصاد اللعبة الآن؟ يجب أن تكون اللعبة مفعّلة وأن يكون مفتاح الخادم موجودًا.");
+      await api("/admin/games/"+encodeURIComponent(gameId)+"/economy",{method:"PATCH",body:JSON.stringify({enabled,minBet,maxBet,maxBetsPerRound,maxTotalBet,maxPayoutMultiplierBp})});
+      alert("تم حفظ إعدادات اقتصاد اللعبة.");
+    }catch(error){alert(error.message)}
+    finally{button.disabled=false}
+  });
+
   document.querySelectorAll("[data-game-status]").forEach(select=>select.onchange=async()=>{
     const game=games.find(item=>item.id===select.dataset.gameStatus);if(!game)return;
     const nextStatus=select.value;

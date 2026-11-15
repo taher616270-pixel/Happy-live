@@ -27,7 +27,8 @@ let gameTokenRefreshPromise = null;
 
 function receiveHappyLiveSession(event) {
   if (event.origin !== HAPPY_LIVE_APP_ORIGIN) return;
-  if (event.source !== window.opener) return;
+  const expectedHost = window.parent !== window ? window.parent : window.opener;
+  if (event.source !== expectedHost) return;
   if (event.data?.type !== "happy-live-game-session") return;
   if (typeof event.data.sessionToken !== "string") return;
 
@@ -35,13 +36,13 @@ function receiveHappyLiveSession(event) {
   gameTokenExpiresAt = Date.now() + 15 * 60 * 1000;
   scheduleGameTokenRefresh();
   window.removeEventListener("message", receiveHappyLiveSession);
-  window.opener = null;
+  if (window.opener) window.opener = null;
 }
 
 window.addEventListener("message", receiveHappyLiveSession);
 ```
 
-The app retries delivery briefly while the game loads. The game must accept the first valid message only.
+The app embeds the game in a full-screen in-app frame and retries delivery briefly while the game loads. The game must accept the first valid message only. Its hosting response must permit framing by `https://happy-live.pages.dev` (for example, an appropriate CSP `frame-ancestors` directive); do not send `X-Frame-Options: DENY` or `SAMEORIGIN`.
 
 ## 3. Call the unified API
 
@@ -125,9 +126,52 @@ const wallet = await gameApi("wallet");
 | `/game/session/refresh` | POST | Valid, unexpired game token | Extend the current token session by another 15 minutes |
 | `/game/profile` | GET | `profile.read` | Read public player identity, avatar, and account status |
 | `/game/wallet` | GET | `wallet.read` | Read the canonical coin balance |
+| `/game/rounds` | POST | `round.create` | Create an idempotent game round |
+| `/game/rounds` | GET | `round.read` | List the player's latest 50 rounds |
+| `/game/rounds/{roundId}/bets` | POST | `bets.place` | Validate and debit a wager |
+| `/game/rounds/{roundId}` | GET | `round.read` | Read the player's round and bets |
+| `/game/server/rounds/{roundId}/settle` | POST | Trusted game server key | Settle results and credit approved payouts |
+| `/game/server/rounds/{roundId}/cancel` | POST | Trusted game server key | Cancel an aborted round and refund its accepted stakes |
 | `/game/session/revoke` | POST | Valid game token | Revoke the current game session |
 
-The current game-token scopes are read-only: `session.read`, `profile.read`, and `wallet.read`. A game cannot debit, credit, transfer, or otherwise mutate a wallet through this token. Wallet-changing operations must be implemented and validated server-side per game, with idempotency and server-authoritative settlement.
+The browser game token carries these scopes: `session.read`, `profile.read`, `wallet.read`, `round.create`, `round.read`, and `bets.place`. It can place a wager only through the server-validated bet endpoint; it cannot choose or submit a winning result and cannot credit a wallet.
+
+### Round and bet lifecycle
+
+1. Create a round with `POST /game/rounds` and a caller-generated `idempotencyKey` (8–128 safe characters).
+2. Place each wager with `POST /game/rounds/{roundId}/bets`, including a unique `idempotencyKey`, integer `stake`, and optional JSON `selection`.
+3. The Worker checks the game's active economy settings, minimum/maximum wager, maximum bets per round, maximum total stake, player balance, and round ownership. It debits `user_wallets` and appends a separate `game_wallet_ledger` entry in one D1 batch. Replaying the same idempotency key does not debit twice.
+4. Read the player's latest 50 rounds with `GET /game/rounds`, or one round with `GET /game/rounds/{roundId}`.
+5. A trusted game backend settles the round using its server-only credential. The browser game token cannot call this settlement operation.
+
+### Trusted game backend settlement
+
+An owner/admin first provisions a game server key:
+
+- `POST /api/v1/admin/games/{gameId}/server-key`
+- The raw key is returned once. Store it only as a secret in the game's trusted backend. Never include it in browser JavaScript, a mobile app, a game URL, or a client bundle.
+- Rotate the key by calling the same endpoint again. The previous key is invalidated immediately.
+
+Administrators can inspect the latest 100 rounds for a game with `GET /api/v1/admin/games/{gameId}/rounds`; the response includes public player IDs, round status, stake, payout, and timestamps, but not internal user IDs.
+
+Configure economy limits using:
+
+- `GET /api/v1/admin/games/{gameId}/economy`
+- `PATCH /api/v1/admin/games/{gameId}/economy`
+
+The PATCH body must include `enabled`, `minBet`, `maxBet`, `maxBetsPerRound`, `maxTotalBet`, and `maxPayoutMultiplierBp`. Economy activation is refused until the game is active and a server key exists. New games remain economy-disabled by default.
+
+The trusted backend calls:
+
+- `POST /api/v1/game/server/rounds/{roundId}/settle`
+- Header: `X-Happy-Live-Game-Key: <server-only-key>`
+- JSON body: `{ "result": { ... }, "payouts": [{ "betId": "...", "payout": 250 }] }`
+
+The payout list must include every accepted bet exactly once. Payouts are non-negative integer coins and their aggregate cannot exceed the configured maximum payout multiplier. The Worker atomically marks the round settled, updates each bet, credits the canonical wallet once, and records the credit in the separate game ledger. A second settlement attempt cannot credit the wallet again. The game backend—not the browser—must calculate and verify the result from its own authoritative game logic.
+
+If a trusted game backend determines that a round was aborted before a result, it can call `POST /api/v1/game/server/rounds/{roundId}/cancel` with the same server-key header. The Worker verifies the round stake against its accepted bets, refunds the exact amount once, marks the round and bets cancelled, and writes a `refund_credit` ledger entry. Browser sessions cannot cancel or refund a round.
+
+The existing app wallet and Food Wheel ledger routes are not reused or modified by this integration. Game wagers are tracked in the additive `game_wallet_ledger` table.
 
 ## 5. Security rules
 
