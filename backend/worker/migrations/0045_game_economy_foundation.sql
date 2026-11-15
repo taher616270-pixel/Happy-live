@@ -1,4 +1,4 @@
--- Unified game economy foundation. Additive only; does not modify existing app or Food Wheel wallets.
+-- Unified game economy foundation. Additive only; does not modify the existing application wallet.
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS game_economy_settings (
