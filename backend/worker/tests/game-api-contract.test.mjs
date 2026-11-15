@@ -109,7 +109,7 @@ test("public player identifier is renamed to happy_id without changing existing 
 });
 
 
-test("game economy schema is additive and isolated from the legacy Food Wheel ledger", () => {
+test("game economy schema is additive and isolated from the application wallet", () => {
   assert.match(economyMigration, /CREATE TABLE IF NOT EXISTS game_economy_settings/);
   assert.match(economyMigration, /CREATE TABLE IF NOT EXISTS game_rounds/);
   assert.match(economyMigration, /CREATE TABLE IF NOT EXISTS game_bets/);
