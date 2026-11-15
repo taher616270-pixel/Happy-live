@@ -91,9 +91,9 @@ class _RankingSheetState extends State<RankingSheet> with TickerProviderStateMix
   int _selectedTab = 0;
   final List<String> _tabs = const ['اليومي', 'أسبوعي', 'شهريا'];
 
-  static const Color sheetTop = Color(0xFF0EA648);
-  static const Color sheetMid = Color(0xFF0A3D24);
-  static const Color sheetBottom = Color(0xFF03110D);
+  static const Color sheetTop = Color(0xFF172B55);
+  static const Color sheetMid = Color(0xFF101A38);
+  static const Color sheetBottom = Color(0xFF080D20);
 
   // تحكم النبض المستمر (النقطة الخضراء + توهج الذهبي + البريق)
   late final AnimationController _pulseCtrl =
@@ -133,8 +133,8 @@ class _RankingSheetState extends State<RankingSheet> with TickerProviderStateMix
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [sheetTop, sheetMid, sheetBottom],
-              stops: [0.0, 0.32, 0.65],
+              colors: [Color(0xFF243F78), Color(0xFF17264D), Color(0xFF0B1028)],
+              stops: [0.0, 0.38, 1.0],
             ),
           ),
           child: Stack(
@@ -157,7 +157,7 @@ class _RankingSheetState extends State<RankingSheet> with TickerProviderStateMix
                       selectedIndex: _selectedTab,
                       onTabTap: _selectTab,
                       pulse: _pulseCtrl,
-                      backgroundColorBuilder: (shrink) => Color.lerp(sheetTop, sheetMid, shrink)!,
+                      backgroundColorBuilder: (shrink) => Color.lerp(const Color(0xFF243F78), const Color(0xFF17264D), shrink)!,
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -207,9 +207,9 @@ class _AuroraBackground extends StatelessWidget {
           final t = controller.value;
           return Stack(
             children: [
-              _blob(-60, null, 10 + t * 14, const Color(0x552BD37B), top: -60, right: -40),
-              _blob(null, -60, 10 - t * 10, const Color(0x55FFD36B), top: 40, left: -60),
-              _blob(30, null, 8 + t * 10, const Color(0x4458C6FF), bottom: 60, right: 30, size: 160),
+              _blob(-60, null, 10 + t * 14, const Color(0x6659C7FF), top: -60, right: -40),
+              _blob(null, -60, 10 - t * 10, const Color(0x665F68FF), top: 40, left: -60),
+              _blob(30, null, 8 + t * 10, const Color(0x5545E0C1), bottom: 60, right: 30, size: 160),
             ],
           );
         },
@@ -373,7 +373,7 @@ class _SlidingTabs extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(999),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(.25), blurRadius: 10, offset: const Offset(0, 3))],
+                  boxShadow: [BoxShadow(color: const Color(0xFF7EDBFF).withOpacity(.20), blurRadius: 14, offset: const Offset(0, 4))],
                 ),
               ),
             ),
@@ -424,8 +424,8 @@ class _Podium extends StatelessWidget {
               rank: 3,
               width: 96,
               stepHeight: 40,
-              colors: const [Color(0xFFFFD9C2), Color(0xFFE08A5F), Color(0xFF8A4A2C), Color(0xFF4A2518)],
-              nameColor: const Color(0xFF4A2A1D),
+              colors: const [Color(0xFFFFD6B0), Color(0xFFCF8254), Color(0xFF98502F), Color(0xFF542719)],
+              nameColor: const Color(0xFF492316),
             ),
           ),
           const SizedBox(width: 8),
@@ -433,12 +433,12 @@ class _Podium extends StatelessWidget {
             delayMs: 50,
             child: _Crest(
               rank: 1,
-              width: 110,
-              stepHeight: 60,
+              width: 112,
+              stepHeight: 66,
               isFirst: true,
               pulse: pulse,
-              colors: const [Color(0xFFFFF3CF), Color(0xFFFFCF6B), Color(0xFFB87A21), Color(0xFF6B4512)],
-              nameColor: const Color(0xFF5E3A10),
+              colors: const [Color(0xFFFFF7D9), Color(0xFFFFD66E), Color(0xFFD99A28), Color(0xFF765016)],
+              nameColor: const Color(0xFF583707),
             ),
           ),
           const SizedBox(width: 8),
@@ -448,8 +448,8 @@ class _Podium extends StatelessWidget {
               rank: 2,
               width: 96,
               stepHeight: 50,
-              colors: const [Color(0xFFF2F6FF), Color(0xFFAECBE8), Color(0xFF5C7C99), Color(0xFF2B3C4A)],
-              nameColor: const Color(0xFF22323F),
+              colors: const [Color(0xFFF4F8FF), Color(0xFFC8D8EB), Color(0xFF829BB8), Color(0xFF354B67)],
+              nameColor: const Color(0xFF263A52),
             ),
           ),
         ],
@@ -577,7 +577,7 @@ class _Crest extends StatelessWidget {
             height: stepHeight,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(8), bottom: Radius.circular(3)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12), bottom: Radius.circular(5)),
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
