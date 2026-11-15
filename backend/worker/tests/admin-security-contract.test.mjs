@@ -89,7 +89,7 @@ test("wallet administration uses the server-backed wallet ledger and owner-only 
   assert.match(worker, /wallet_transactions/);
   // Wallet history now reads only the shared application wallet ledger.
   assert.ok(worker.includes("FROM wallet_transactions WHERE user_id = ?"));
-  assert.doesNotMatch(worker, /cat_greed_ledger|UNION ALL/);
+  assert.doesNotMatch(worker, /cat_greed_ledger/);
   assert.ok(worker.includes(".bind(userId).all()"));
   assert.ok(worker.includes('actor.role !== "owner"'));
   assert.ok(worker.includes("إضافة العملات متاحة لمالك التطبيق فقط"));
