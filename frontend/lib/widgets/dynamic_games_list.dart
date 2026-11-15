@@ -45,9 +45,9 @@ class _DynamicGamesListState extends State<DynamicGamesList> {
   }
 
   Future<List<Map<String, dynamic>>> _loadGames() async {
-    final response = await http.get(Uri.parse(
-      '/games/catalog', // /api/v1/games/catalog
-    )).timeout(const Duration(seconds: 12));
+    final response = await http.get(
+      Uri.parse('$_apiBase/games/catalog'),
+    ).timeout(const Duration(seconds: 12));
     if (response.statusCode != 200) {
       throw Exception('تعذر تحميل الألعاب');
     }
