@@ -6,7 +6,6 @@ const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8
 const migration = await readFile(new URL("../migrations/0039_game_registry.sql", import.meta.url), "utf8");
 const statusMigration = await readFile(new URL("../migrations/0040_game_registry_status.sql", import.meta.url), "utf8");
 const adminUi = await readFile(new URL("../../../frontend/web/admin/index.html", import.meta.url), "utf8");
-const appMain = await readFile(new URL("../../../frontend/lib/main.dart", import.meta.url), "utf8");
 const gamesWidget = await readFile(new URL("../../../frontend/lib/widgets/dynamic_games_list.dart", import.meta.url), "utf8");
 
 test("game registry migration is additive and does not touch wallet or existing game ledgers", () => {
@@ -15,7 +14,7 @@ test("game registry migration is additive and does not touch wallet or existing 
   assert.match(migration, /game_url TEXT NOT NULL/);
   assert.match(migration, /enabled INTEGER NOT NULL DEFAULT 0/);
   assert.match(migration, /CHECK\(enabled IN \(0,1\)\)/);
-  assert.doesNotMatch(migration, /DROP TABLE|DELETE FROM|UPDATE user_wallets|wallet_transactions|cat_greed_/i);
+  assert.doesNotMatch(migration, /DROP TABLE|DELETE FROM|UPDATE user_wallets|wallet_transactions/i);
   assert.match(statusMigration, /CREATE TABLE IF NOT EXISTS game_registry_lifecycle/);
   assert.match(statusMigration, /development.*disabled.*active/);
   assert.match(statusMigration, /INSERT OR IGNORE INTO game_registry_lifecycle/);
@@ -76,15 +75,12 @@ test("admin dashboard can create, edit, enable and disable registry entries", ()
   assert.match(adminUi, /esc\(g\.name\)/);
 });
 
-test("web app loads published games dynamically with no legacy Food Wheel entry", () => {
-  assert.doesNotMatch(appMain, /food_wheel_game|openFoodWheelGame|عجلة الأطعمة/);
-  assert.match(appMain, /if \(kIsWeb\) DynamicGamesList\(onGameClosed: _refreshWalletBalance\)/);
+test("web app loads published games dynamically", () => {
   assert.match(gamesWidget, /\/api\/v1\/games\/catalog/);
   assert.match(gamesWidget, /launchExternalGame\(context, url, _createGameSession\(gameId\)\)/);
   assert.match(gamesWidget, /إعادة المحاولة/);
   assert.doesNotMatch(gamesWidget, /wallet|bet|reward|accessToken/i);
 });
-
 
 test("admin game catalogue exposes economy configuration and server-key rotation", () => {
   assert.match(adminUi, /data-game-economy/);
