@@ -171,7 +171,7 @@ The payout list must include every accepted bet exactly once. Payouts are non-ne
 
 If a trusted game backend determines that a round was aborted before a result, it can call `POST /api/v1/game/server/rounds/{roundId}/cancel` with the same server-key header. The Worker verifies the round stake against its accepted bets, refunds the exact amount once, marks the round and bets cancelled, and writes a `refund_credit` ledger entry. Browser sessions cannot cancel or refund a round.
 
-The existing app wallet and Food Wheel ledger routes are not reused or modified by this integration. Game wagers are tracked in the additive `game_wallet_ledger` table.
+The existing application wallet routes are not reused or modified by this integration. Game wagers are tracked in the additive `game_wallet_ledger` table.
 
 ## 5. Security rules
 
