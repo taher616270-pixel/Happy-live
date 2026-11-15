@@ -1580,7 +1580,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      _HappyCreateTab(onSoon: _soon, accessToken: widget.accessToken),
+      _HappyCreateTab(onSoon: _soon, accessToken: widget.accessToken, onGameClosed: _refreshWalletBalance),
       HappyHomeTab(
         name: _name,
         accessToken: widget.accessToken,
@@ -2390,9 +2390,10 @@ class _HappyPlaceholderTab extends StatelessWidget {
 }
 
 class _HappyCreateTab extends StatelessWidget {
-  const _HappyCreateTab({required this.onSoon, required this.accessToken});
+  const _HappyCreateTab({required this.onSoon, required this.accessToken, required this.onGameClosed});
   final ValueChanged<String> onSoon;
   final String accessToken;
+  final VoidCallback onGameClosed;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -2477,7 +2478,7 @@ class _HappyCreateTab extends StatelessWidget {
         subtitle: 'العب واربح باستخدام رصيد محفظتك',
         onTap: () => openFoodWheelGame(context, accessToken: accessToken),
       ),
-      if (kIsWeb) DynamicGamesList(onGameClosed: _refreshWalletBalance),
+      if (kIsWeb) DynamicGamesList(onGameClosed: onGameClosed),
       const SizedBox(height: 23),
       const Padding(
         padding: EdgeInsets.only(right: 3, bottom: 12),
