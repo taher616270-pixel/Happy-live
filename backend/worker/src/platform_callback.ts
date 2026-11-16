@@ -31,10 +31,10 @@ export async function handlePlatformCallbackRequest(
   if (!db) return reply({ error: "database_unavailable" }, 503);
 
   const authorization = request.headers.get("Authorization") ?? "";
-  const tokenMatch = authorization.match(/^Bearer\\s+(\\S{24,4096})$/i);
+  const tokenMatch = authorization.match(/^Bearer\s+(\S{24,4096})$/i);
   if (!tokenMatch) return reply({ error: "authentication_required" }, 401);
   const apiToken = tokenMatch[1];
-  if (/\\s/.test(apiToken)) return reply({ error: "authentication_required" }, 401);
+  if (/\s/.test(apiToken)) return reply({ error: "authentication_required" }, 401);
 
   if (!(request.headers.get("Content-Type") ?? "").toLowerCase().includes("application/json")) {
     return reply({ error: "application_json_required" }, 415);
