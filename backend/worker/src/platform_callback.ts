@@ -67,14 +67,31 @@ export async function handlePlatformCallbackRequest(
       db.prepare("SELECT setting_value FROM platform_settings WHERE setting_key = 'happy_food_wheel_token_hash' LIMIT 1")
         .first<{ setting_value: string }>()
     ]);
-    if (!savedAppId?.setting_value || !savedTokenHash?.setting_value) {
+    if (!savedTokenHash?.setting_value) {
       return reply({ error: "integration_not_configured" }, 503);
     }
     if (!constantTimeEqual(await sha256(apiToken), savedTokenHash.setting_value)) {
       return reply({ error: "invalid_application_token" }, 401);
     }
-    if (!constantTimeEqual(appId, savedAppId.setting_value)) {
-      return reply({ error: "app_id_mismatch" }, 403);
+
+    // If the platform App ID is not known yet, bind it to the first valid
+    // handshake authenticated with the owner-issued token. Later handshakes
+    // must present the same App ID.
+    if (savedAppId?.setting_value) {
+      if (!constantTimeEqual(appId, savedAppId.setting_value)) {
+        return reply({ error: "app_id_mismatch" }, 403);
+      }
+    } else {
+      const now = new Date().toISOString();
+      await db.prepare(
+        "INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('happy_food_wheel_app_id', ?, ?) ON CONFLICT(setting_key) DO NOTHING"
+      ).bind(appId, now).run();
+      const boundAppId = await db.prepare(
+        "SELECT setting_value FROM platform_settings WHERE setting_key = 'happy_food_wheel_app_id' LIMIT 1"
+      ).first<{ setting_value: string }>();
+      if (!boundAppId?.setting_value || !constantTimeEqual(appId, boundAppId.setting_value)) {
+        return reply({ error: "app_id_mismatch" }, 403);
+      }
     }
     return reply({ ok: true, appId, apiVersion: "v1", challenge }, 200);
   } catch {
