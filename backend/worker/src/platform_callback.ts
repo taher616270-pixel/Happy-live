@@ -1,5 +1,4 @@
 type JsonReply = (data: unknown, status?: number) => Response;
-type AuthenticatedCallbackUser = { happy_id: string | null };
 
 function constantTimeEqual(left: string, right: string): boolean {
   if (left.length !== right.length) return false;
@@ -10,15 +9,20 @@ function constantTimeEqual(left: string, right: string): boolean {
   return difference === 0;
 }
 
+async function sha256(value: string): Promise<string> {
+  return Array.from(
+    new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)))
+  ).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 /**
- * Validates the onboarding callback used by the Happy Food Wheel owner portal.
- * The supplied test token must be a live Happy Live application login token.
- * The existing application-session authenticator validates the token without exposing it.
+ * Server-to-server onboarding handshake for Happy Food Wheel.
+ * The credential is issued by Happy Live, stored only as a SHA-256 hash,
+ * and shown to the owner only once by the authenticated admin endpoint.
  */
 export async function handlePlatformCallbackRequest(
   request: Request,
   db: D1Database | undefined,
-  authenticateUser: (request: Request, db: D1Database) => Promise<AuthenticatedCallbackUser | null>,
   reply: JsonReply
 ): Promise<Response | null> {
   const url = new URL(request.url);
@@ -26,9 +30,11 @@ export async function handlePlatformCallbackRequest(
   if (request.method !== "POST") return reply({ error: "method_not_allowed" }, 405);
   if (!db) return reply({ error: "database_unavailable" }, 503);
 
-  if (!request.headers.has("Authorization")) {
-    return reply({ error: "authentication_required" }, 401);
-  }
+  const authorization = request.headers.get("Authorization") ?? "";
+  const tokenMatch = authorization.match(/^Bearer\\s+(\\S{24,4096})$/i);
+  if (!tokenMatch) return reply({ error: "authentication_required" }, 401);
+  const apiToken = tokenMatch[1];
+  if (/\\s/.test(apiToken)) return reply({ error: "authentication_required" }, 401);
 
   if (!(request.headers.get("Content-Type") ?? "").toLowerCase().includes("application/json")) {
     return reply({ error: "application_json_required" }, 415);
@@ -45,33 +51,33 @@ export async function handlePlatformCallbackRequest(
     return reply({ error: "invalid_handshake_payload" }, 400);
   }
 
-  const platform = body.platform;
   const appId = body.appId;
-  const apiVersion = body.apiVersion;
-  const uid = body.uid;
   const challenge = body.challenge;
-
-  if (platform !== "Happy Food Wheel" ||
+  if (body.platform !== "Happy Food Wheel" ||
       typeof appId !== "string" || !/^app_[A-Za-z0-9_-]{8,128}$/.test(appId) ||
-      apiVersion !== "v1" ||
-      typeof uid !== "string" || uid.length < 1 || uid.length > 80 ||
+      body.apiVersion !== "v1" ||
       typeof challenge !== "string" || challenge.length < 16 || challenge.length > 256) {
     return reply({ error: "invalid_handshake_payload" }, 400);
   }
 
-  let account: AuthenticatedCallbackUser | null;
   try {
-    account = await authenticateUser(request, db);
+    const [savedAppId, savedTokenHash] = await Promise.all([
+      db.prepare("SELECT setting_value FROM platform_settings WHERE setting_key = 'happy_food_wheel_app_id' LIMIT 1")
+        .first<{ setting_value: string }>(),
+      db.prepare("SELECT setting_value FROM platform_settings WHERE setting_key = 'happy_food_wheel_token_hash' LIMIT 1")
+        .first<{ setting_value: string }>()
+    ]);
+    if (!savedAppId?.setting_value || !savedTokenHash?.setting_value) {
+      return reply({ error: "integration_not_configured" }, 503);
+    }
+    if (!constantTimeEqual(await sha256(apiToken), savedTokenHash.setting_value)) {
+      return reply({ error: "invalid_application_token" }, 401);
+    }
+    if (!constantTimeEqual(appId, savedAppId.setting_value)) {
+      return reply({ error: "app_id_mismatch" }, 403);
+    }
+    return reply({ ok: true, appId, apiVersion: "v1", challenge }, 200);
   } catch {
     return reply({ error: "callback_validation_unavailable" }, 503);
   }
-
-  if (!account) {
-    return reply({ error: "invalid_test_account_token" }, 401);
-  }
-  if (!account.happy_id || !constantTimeEqual(account.happy_id, uid)) {
-    return reply({ error: "test_account_uid_mismatch" }, 403);
-  }
-
-  return reply({ ok: true, appId, apiVersion: "v1", uid, challenge }, 200);
 }
