@@ -748,7 +748,7 @@ async function gamesPage(){
       const create=$("createGameServerKey");create.disabled=true;
       try{
         const result=await api("/admin/games/"+encodeURIComponent(game.id)+"/server-key",{method:"POST",body:"{}"});
-        $("gameKeyResult").innerHTML='<div class="game-key-result"><strong>تم إنشاء المفتاح — انسخه الآن</strong><textarea id="newGameServerKey" readonly rows="4"></textarea><p class="muted">لن نعرض المفتاح مرة أخرى بعد إغلاق النافذة.</p><button class="action" id="copyGameServerKey" type="button">تحديد المفتاح لنسخه</button></div>';
+        $("gameKeyResult").innerHTML='<div class="game-key-result"><strong>تم إنشاء المفتاح — انسخه الآن</strong><textarea id="newGameServerKey" readonly rows="4"></textarea><p class="muted">لا تضعه في المتصفح أو في كود الواجهة؛ خزّنه في الخادم فقط. لن نعرض المفتاح مرة أخرى بعد إغلاق النافذة.</p><button class="action" id="copyGameServerKey" type="button">تحديد المفتاح لنسخه</button></div>';
         $("newGameServerKey").value=result.serverKey||"";
         $("copyGameServerKey").onclick=()=>{$("newGameServerKey").focus();$("newGameServerKey").select()};
       }catch(error){$("gameKeyResult").innerHTML='<p class="error">'+esc(error.message)+'</p>';create.disabled=false}
