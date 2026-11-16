@@ -1,5 +1,6 @@
 import { RtcTokenBuilder } from "agora-token";
 import { handleGamesApiRequest, isRegisteredGameOrigin } from "./games_api";
+import { handlePlatformCallbackRequest } from "./platform_callback";
 export { RoomSeatsHub } from "./room_seats_hub";
 export { GlobalGiftHub } from "./global_gift_hub";
 import type { GlobalGiftHub } from "./global_gift_hub";
@@ -408,6 +409,13 @@ export default {
       }
       return new Response(null, { status: 204, headers });
     }
+
+    const platformCallbackResponse = await handlePlatformCallbackRequest(
+      request,
+      env.DB,
+      (data, status = 200) => json(data, status, undefined, env)
+    );
+    if (platformCallbackResponse) return platformCallbackResponse;
 
     const gamesApiResponse = await handleGamesApiRequest(request, env, origin, authenticatedUser, json, authenticatedAdmin);
     if (gamesApiResponse) return gamesApiResponse;
