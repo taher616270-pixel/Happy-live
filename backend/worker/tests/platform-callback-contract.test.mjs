@@ -13,12 +13,11 @@ test("Happy Food Wheel onboarding callback validates the exact public endpoint a
 });
 
 test("callback authenticates an active, unexpired Happy Live app session and matches the public player UID", () => {
-  assert.match(callback, /Bearer\\s\+/);
-  assert.match(callback, /crypto\.subtle\.digest\("SHA-256"/);
-  assert.match(callback, /FROM user_sessions s INNER JOIN users u/);
-  assert.match(callback, /s\.revoked_at IS NULL AND s\.expires_at > \?/);
-  assert.match(callback, /u\.status/);
-  assert.match(callback, /constantTimeEqual\(account\.publicUid, uid\)/);
+  assert.match(callback, /authenticateUser\(request, db\)/);
+  assert.match(callback, /constantTimeEqual\(account\.happy_id, uid\)/);
+  assert.match(worker, /function authenticatedUser\(request: Request, db: D1Database\)/);
+  assert.match(worker, /s\.revoked_at IS NULL AND s\.expires_at > \?/);
+  assert.match(worker, /u\.status = 'active'/);
 });
 
 test("callback returns the exact challenge-bound handshake response and does not touch wallets", () => {
