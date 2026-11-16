@@ -413,7 +413,6 @@ export default {
     const platformCallbackResponse = await handlePlatformCallbackRequest(
       request,
       env.DB,
-      authenticatedUser,
       (data, status = 200) => json(data, status, undefined, env)
     );
     if (platformCallbackResponse) return platformCallbackResponse;
