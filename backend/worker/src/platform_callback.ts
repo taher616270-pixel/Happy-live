@@ -13,7 +13,7 @@ function constantTimeEqual(left: string, right: string): boolean {
 /**
  * Validates the onboarding callback used by the Happy Food Wheel owner portal.
  * The supplied test token must be a live Happy Live application login token.
- * Only its SHA-256 hash is queried; the raw token is never stored or logged.
+ * The existing application-session authenticator validates the token without exposing it.
  */
 export async function handlePlatformCallbackRequest(
   request: Request,
@@ -69,7 +69,7 @@ export async function handlePlatformCallbackRequest(
   if (!account) {
     return reply({ error: "invalid_test_account_token" }, 401);
   }
-  if (!account.happy_id || !constantTimeEqual(account.publicUid, uid)) {
+  if (!account.happy_id || !constantTimeEqual(account.happy_id, uid)) {
     return reply({ error: "test_account_uid_mismatch" }, 403);
   }
 
