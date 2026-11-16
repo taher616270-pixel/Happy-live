@@ -25,7 +25,7 @@ export async function handlePlatformCallbackRequest(
   if (!db) return reply({ error: "database_unavailable" }, 503);
 
   const authorization = request.headers.get("Authorization") ?? "";
-  const tokenMatch = authorization.match(/^Bearer\\s+([A-Za-z0-9._~-]{32,512})$/i);
+  const tokenMatch = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
   if (!tokenMatch) return reply({ error: "authentication_required" }, 401);
 
   if (!(request.headers.get("Content-Type") ?? "").toLowerCase().includes("application/json")) {
