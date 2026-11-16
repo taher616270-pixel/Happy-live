@@ -670,9 +670,12 @@ export default {
             const appId = settings.get("happy_food_wheel_app_id") ?? "";
             const tokenPrefix = settings.get("happy_food_wheel_token_prefix") ?? "";
             const createdAt = settings.get("happy_food_wheel_created_at") ?? "";
+            const tokenConfigured = settings.has("happy_food_wheel_token_hash");
             return json({
               ok: true,
-              configured: Boolean(appId && settings.has("happy_food_wheel_token_hash")),
+              configured: tokenConfigured,
+              tokenConfigured,
+              appIdBound: Boolean(appId),
               appId,
               tokenPrefix,
               createdAt,
@@ -684,23 +687,21 @@ export default {
             let body: Record<string, unknown>;
             try { body = await request.json() as Record<string, unknown>; }
             catch { return json({ error: "invalid_json" }, 400, origin, env); }
-            const appId = typeof body.appId === "string" ? body.appId.trim() : "";
-            if (!/^app_[A-Za-z0-9_-]{8,128}$/.test(appId)) {
-              return json({ error: "invalid_app_id", message: "أدخل App ID الصحيح المنسوخ من منصة Happy Food Wheel." }, 400, origin, env);
-            }
+            // Issue the credential before the external platform has assigned its App ID.
+            // The first authenticated handshake will bind the App ID to this token.
             const apiToken = "hfw_live_" + crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
             const tokenHash = await sha256(apiToken);
             const tokenPrefix = apiToken.slice(0, 17);
             const now = new Date().toISOString();
             await env.DB!.batch([
-              env.DB!.prepare("INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('happy_food_wheel_app_id', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at").bind(appId, now),
+              env.DB!.prepare("DELETE FROM platform_settings WHERE setting_key = 'happy_food_wheel_app_id'"),
               env.DB!.prepare("INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('happy_food_wheel_token_hash', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at").bind(tokenHash, now),
               env.DB!.prepare("INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('happy_food_wheel_token_prefix', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at").bind(tokenPrefix, now),
               env.DB!.prepare("INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('happy_food_wheel_created_at', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at").bind(now, now)
             ]);
             return json({
               ok: true,
-              appId,
+              appId: "",
               apiToken,
               tokenPrefix,
               createdAt: now,
