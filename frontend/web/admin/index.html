@@ -423,6 +423,54 @@ async function agoraPage(){
       await agoraPage();
     }
   };
+  await happyFoodWheelIntegrationPage();
+}
+async function happyFoodWheelIntegrationPage(){
+  if(admin.role!=="owner"){
+    $("content").insertAdjacentHTML("beforeend",'<div class="section"><h2>ربط خارجي — Happy Food Wheel</h2><p class="notice">إعداد مفاتيح الربط متاح لحساب مالك التطبيق فقط.</p></div>');
+    return;
+  }
+  const data=await api("/admin/integrations/happy-food-wheel");
+  const configured=data.configured===true;
+  $("content").insertAdjacentHTML("beforeend",
+    '<div class="section"><div class="section-head"><div><h2>ربط خارجي — Happy Food Wheel</h2><p class="muted">أنشئ مفتاحًا خاصًا بـ Happy Live ثم انسخ بيانات الاتصال إلى منصة Happy Food Wheel.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'مفتاح الربط محفوظ':'لم يتم إنشاء مفتاح')+'</span></div>'+
+    '<div class="form-grid">'+
+      '<label>عنوان API الأساسي<input id="hfwApiBase" value="'+esc(data.apiBaseUrl)+'" readonly></label>'+
+      '<label>عنوان Callback الأساسي<input id="hfwCallbackBase" value="'+esc(data.callbackBaseUrl)+'" readonly></label>'+
+      '<label>App ID من منصة Happy Food Wheel<input id="hfwAppId" value="'+esc(data.appId||"")+'" placeholder="app_..." autocomplete="off"></label>'+
+      '<label>مسار Callback الذي ستستخدمه المنصة<input value="/v1/platform/handshake" readonly></label>'+
+    '</div>'+
+    '<div class="notice" style="margin-top:14px">أنشئ التطبيق أولاً في منصة Happy Food Wheel، ثم انسخ App ID والصقه هنا. بعد إنشاء المفتاح انسخ API Base URL وAPI Token إلى إعدادات الربط في المنصة. المنصة تضيف مسار Callback تلقائيًا.</div>'+
+    (configured?'<p class="muted" style="margin-top:12px">المفتاح الحالي: '+esc(data.tokenPrefix||"")+'… · آخر إنشاء: '+esc(data.createdAt||"")+'</p><p class="muted">إنشاء مفتاح جديد يلغي المفتاح السابق فورًا.</p>':'')+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px"><button class="primary" id="hfwGenerate">'+(configured?'تجديد مفتاح الربط':'إنشاء مفتاح الربط')+'</button>'+(configured?'<button class="action" id="hfwRevoke">إلغاء الربط</button>':'')+'</div>'+
+    '<div id="hfwNewTokenBox"></div>'
+  );
+  const generate=$("hfwGenerate");
+  generate.onclick=async()=>{
+    const appId=$("hfwAppId").value.trim();
+    if(!appId){alert("الصق App ID المنسوخ من منصة Happy Food Wheel أولاً.");return}
+    if(configured&&!confirm("سيتم إلغاء المفتاح السابق فورًا. هل تريد إنشاء مفتاح جديد؟"))return;
+    generate.disabled=true;
+    try{
+      const result=await api("/admin/integrations/happy-food-wheel",{method:"POST",body:JSON.stringify({appId})});
+      $("hfwNewTokenBox").innerHTML=
+        '<div class="notice" style="margin-top:16px"><strong>تم إنشاء المفتاح.</strong> انسخه الآن والصقه في منصة Happy Food Wheel. لن يظهر مرة أخرى بعد مغادرة هذه الصفحة.</div>'+
+        '<label class="field" style="margin-top:12px">API Token<input id="hfwNewToken" type="text" readonly value="'+esc(result.apiToken)+'"></label>'+
+        '<button class="action" id="hfwCopyToken" type="button">نسخ API Token</button>'+
+        '<p class="muted" style="margin-top:10px">لا ترسل هذا المفتاح في المحادثات ولا تضعه داخل كود التطبيق أو المتصفح.</p>';
+      $("hfwCopyToken").onclick=async()=>{
+        const input=$("hfwNewToken");
+        try{await navigator.clipboard.writeText(input.value);alert("تم نسخ API Token.");}
+        catch(e){input.select();document.execCommand("copy");alert("تم تحديد المفتاح ونسخه إن كان النسخ مسموحًا في المتصفح.");}
+      };
+      generate.textContent="تم إنشاء المفتاح";
+    }catch(error){alert(error.message);generate.disabled=false}
+  };
+  $("hfwRevoke")?.addEventListener("click",async()=>{
+    if(!confirm("سيتم إلغاء مفتاح Happy Food Wheel الحالي وحذف إعداد الربط. هل تريد المتابعة؟"))return;
+    try{await api("/admin/integrations/happy-food-wheel",{method:"DELETE"});await agoraPage();}
+    catch(error){alert(error.message)}
+  });
 }
 function statsPage(s){
   const x=s.summary||{},d=s.daily||{},rows=a=>a&&a.length?a.map(v=>'<tr><td>'+esc(v.day)+'</td><td>'+Number(v.total||0).toLocaleString("en-US")+'</td></tr>').join(""):'<tr><td colspan="2" class="empty">لا توجد بيانات خلال الفترة</td></tr>';
