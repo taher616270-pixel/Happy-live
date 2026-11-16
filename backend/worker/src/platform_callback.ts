@@ -1,4 +1,5 @@
 type JsonReply = (data: unknown, status?: number) => Response;
+type AuthenticatedCallbackUser = { happy_id: string | null };
 
 function constantTimeEqual(left: string, right: string): boolean {
   if (left.length !== right.length) return false;
@@ -17,6 +18,7 @@ function constantTimeEqual(left: string, right: string): boolean {
 export async function handlePlatformCallbackRequest(
   request: Request,
   db: D1Database | undefined,
+  authenticateUser: (request: Request, db: D1Database) => Promise<AuthenticatedCallbackUser | null>,
   reply: JsonReply
 ): Promise<Response | null> {
   const url = new URL(request.url);
@@ -24,9 +26,9 @@ export async function handlePlatformCallbackRequest(
   if (request.method !== "POST") return reply({ error: "method_not_allowed" }, 405);
   if (!db) return reply({ error: "database_unavailable" }, 503);
 
-  const authorization = request.headers.get("Authorization") ?? "";
-  const tokenMatch = authorization.match(/^Bearer\s+([A-Za-z0-9._~-]{32,512})$/i);
-  if (!tokenMatch) return reply({ error: "authentication_required" }, 401);
+  if (!request.headers.has("Authorization")) {
+    return reply({ error: "authentication_required" }, 401);
+  }
 
   if (!(request.headers.get("Content-Type") ?? "").toLowerCase().includes("application/json")) {
     return reply({ error: "application_json_required" }, 415);
@@ -57,28 +59,17 @@ export async function handlePlatformCallbackRequest(
     return reply({ error: "invalid_handshake_payload" }, 400);
   }
 
-  const token = tokenMatch[1];
-  const tokenHash = Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))
-  ).map((byte) => byte.toString(16).padStart(2, "0")).join("");
-  const now = new Date().toISOString();
-
-  let account: { status: string; publicUid: string | null } | null;
+  let account: AuthenticatedCallbackUser | null;
   try {
-    account = await db.prepare(
-      "SELECT u.status, COALESCE(NULLIF(p.happy_id, ''), NULLIF(p.gabo_id, '')) AS publicUid " +
-      "FROM user_sessions s INNER JOIN users u ON u.id = s.user_id " +
-      "LEFT JOIN profiles p ON p.user_id = u.id " +
-      "WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? LIMIT 1"
-    ).bind(tokenHash, now).first<{ status: string; publicUid: string | null }>();
+    account = await authenticateUser(request, db);
   } catch {
     return reply({ error: "callback_validation_unavailable" }, 503);
   }
 
-  if (!account || account.status !== "active") {
+  if (!account) {
     return reply({ error: "invalid_test_account_token" }, 401);
   }
-  if (!account.publicUid || !constantTimeEqual(account.publicUid, uid)) {
+  if (!account.happy_id || !constantTimeEqual(account.publicUid, uid)) {
     return reply({ error: "test_account_uid_mismatch" }, 403);
   }
 
