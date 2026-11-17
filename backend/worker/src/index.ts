@@ -42,6 +42,19 @@ const ROOM_EXP_PER_LEVEL_GROUP = 3_300_000;
 const ROOM_EXP_DAILY_USER_CAP = 3_000_000;
 const ROOM_EXP_DAILY_ROOM_CAP = 14_000_000;
 
+const SAUDI_UTC_OFFSET_MS = 3 * 60 * 60 * 1000;
+function saudiDayKey(value: string): string {
+  return new Date(Date.parse(value) + SAUDI_UTC_OFFSET_MS).toISOString().slice(0, 10);
+}
+function secondsUntilSaudiMidnight(value: string): number {
+  const nowMs = Date.parse(value);
+  const saudiNow = new Date(nowMs + SAUDI_UTC_OFFSET_MS);
+  const nextMidnightUtcMs = Date.UTC(
+    saudiNow.getUTCFullYear(), saudiNow.getUTCMonth(), saudiNow.getUTCDate() + 1
+  ) - SAUDI_UTC_OFFSET_MS;
+  return Math.max(0, Math.min(86400, Math.ceil((nextMidnightUtcMs - nowMs) / 1000)));
+}
+
 function roomExperienceProgress(totalExperience: number) {
   let level = 1;
   let remaining = Number.isFinite(totalExperience)
@@ -80,7 +93,7 @@ async function awardRoomSeatExperience(
   now: string
 ): Promise<void> {
   const nowMs = Date.parse(now);
-  const dayKey = now.slice(0, 10);
+  const dayKey = saudiDayKey(now);
   await db.prepare(
     "INSERT OR IGNORE INTO room_exp_activity (room_id, user_id, last_awarded_at) VALUES (?, ?, ?)"
   ).bind(roomId, userId, now).run();
@@ -2267,6 +2280,7 @@ export default {
         }
         if (recipientUserId === user.id) return json({ error: "cannot_gift_self" }, 400, origin, env);
         const now = new Date().toISOString();
+        const dayKey = saudiDayKey(now);
         const existing = await env.DB!.prepare(
           "SELECT id, status, coin_cost AS coinCost, experience_awarded AS experienceAwarded, recipient_coins AS recipientCoins " +
           "FROM gift_transactions WHERE sender_user_id = ? AND idempotency_key = ? LIMIT 1"
@@ -2277,7 +2291,7 @@ export default {
         }
         await env.DB!.prepare(
           "INSERT OR IGNORE INTO room_exp_daily (user_id, day_key, points) VALUES (?, ?, 0)"
-        ).bind(user.id, now.slice(0, 10)).run();
+        ).bind(user.id, dayKey).run();
         const transactionId = crypto.randomUUID();
         const statements = [
           env.DB!.prepare(
@@ -2304,7 +2318,7 @@ export default {
             "AND EXISTS (SELECT 1 FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = recipient.id) " +
             "AND (g.category <> 'country' OR g.country_code = CASE WHEN UPPER(TRIM(COALESCE(sender_profile.country_name, ''))) IN ('SOUTH_ARABIA', 'SOUTH ARABIA', 'الجنوب العربي') THEN 'SOUTH_ARABIA' ELSE UPPER(TRIM(COALESCE(sender_profile.country_code, ''))) END)"
           ).bind(transactionId, user.id, recipientUserId, quantity, quantity, quantity, quantity, quantity, quantity,
-            now.slice(0, 10), now.slice(0, 10), now.slice(0, 10), idempotencyKey, now, giftId, now, now, user.id, recipientUserId, user.id, quantity, user.id, now.slice(0, 10), roomId, user.id),
+            dayKey, dayKey, dayKey, idempotencyKey, now, giftId, now, now, user.id, recipientUserId, user.id, quantity, user.id, dayKey, roomId, user.id),
           env.DB!.prepare(
             "UPDATE user_wallets SET balance = balance - (SELECT coin_cost FROM gift_transactions WHERE id = ? AND status = 'processing'), " +
             "updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM gift_transactions WHERE id = ? AND status = 'processing') " +
@@ -2349,11 +2363,11 @@ export default {
             "SELECT ?, t.id, t.room_id, t.sender_user_id, ?, t.experience_awarded, ? FROM gift_transactions t " +
             "WHERE t.id = ? AND t.status = 'processing' AND t.experience_awarded > 0 " +
             "AND EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
-          ).bind(crypto.randomUUID(), now.slice(0, 10), now, transactionId),
+          ).bind(crypto.randomUUID(), dayKey, now, transactionId),
           env.DB!.prepare(
             "UPDATE room_exp_daily SET points = points + COALESCE((SELECT points FROM room_exp_gift_awards WHERE gift_transaction_id = ?), 0) " +
             "WHERE user_id = ? AND day_key = ? AND EXISTS (SELECT 1 FROM room_exp_gift_awards WHERE gift_transaction_id = ?)"
-          ).bind(transactionId, user.id, now.slice(0, 10), transactionId),
+          ).bind(transactionId, user.id, dayKey, transactionId),
           env.DB!.prepare(
             "INSERT INTO room_experience (room_id, total_exp, updated_at) " +
             "SELECT room_id, points, ? FROM room_exp_gift_awards WHERE gift_transaction_id = ? " +
@@ -2727,6 +2741,7 @@ export default {
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = decodeURIComponent(seatRoute[1]);
         const now = new Date().toISOString();
+        const dayKey = saudiDayKey(now);
         const room = await env.DB!.prepare(
           "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, COALESCE(rl.level, 1) AS level, COALESCE(rx.total_exp, 0) AS total_exp, p.display_name AS owner_name, p.avatar_key AS owner_avatar_url, p.country_name AS owner_country_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN room_levels rl ON rl.room_id = r.id LEFT JOIN room_experience rx ON rx.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; level: number; total_exp: number; owner_name: string | null; owner_avatar_url: string | null; owner_country_name: string | null }>();
@@ -2893,13 +2908,13 @@ export default {
         const [dailyExperience, dailyMicExperience, dailyGiftExperience] = await Promise.all([
           env.DB!.prepare(
             "SELECT COALESCE((SELECT SUM(points) FROM room_exp_awards WHERE room_id = ? AND day_key = ?), 0) + COALESCE((SELECT SUM(points) FROM room_exp_gift_awards WHERE room_id = ? AND day_key = ?), 0) AS points"
-          ).bind(room.id, now.slice(0, 10), room.id, now.slice(0, 10)).first<{ points: number }>(),
+          ).bind(room.id, dayKey, room.id, dayKey).first<{ points: number }>(),
           env.DB!.prepare(
             "SELECT COALESCE(SUM(points), 0) AS points FROM room_exp_awards WHERE room_id = ? AND day_key = ?"
-          ).bind(room.id, now.slice(0, 10)).first<{ points: number }>(),
+          ).bind(room.id, dayKey).first<{ points: number }>(),
           env.DB!.prepare(
             "SELECT COALESCE(SUM(points), 0) AS points FROM room_exp_gift_awards WHERE room_id = ? AND day_key = ?"
-          ).bind(room.id, now.slice(0, 10)).first<{ points: number }>()
+          ).bind(room.id, dayKey).first<{ points: number }>()
         ]);
         return json({
           ok: true,
@@ -2907,7 +2922,7 @@ export default {
           audienceUsers,
           voiceEnabled,
           seatRevision: snapshot.revision ?? 0,
-          room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code, level: room.level, palaceStatus: room.level >= 5 ? 'مفعّل' : 'غير مفعّل', experienceLevel: experience.level, experienceExp: experience.exp, experienceNextLevelExp: experience.nextLevelExp, experienceTotalExp: Number(room.total_exp ?? 0), dailyExperienceExp: Number(dailyExperience?.points ?? 0), dailyMicExperienceExp: Number(dailyMicExperience?.points ?? 0), dailyGiftExperienceExp: Number(dailyGiftExperience?.points ?? 0), dailyExperienceMax: ROOM_EXP_DAILY_ROOM_CAP, dailyResetInSeconds: Math.max(0, Math.ceil((Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate() + 1) - Date.parse(now)) / 1000)) },
+          room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code, level: room.level, palaceStatus: room.level >= 5 ? 'مفعّل' : 'غير مفعّل', experienceLevel: experience.level, experienceExp: experience.exp, experienceNextLevelExp: experience.nextLevelExp, experienceTotalExp: Number(room.total_exp ?? 0), dailyExperienceExp: Number(dailyExperience?.points ?? 0), dailyMicExperienceExp: Number(dailyMicExperience?.points ?? 0), dailyGiftExperienceExp: Number(dailyGiftExperience?.points ?? 0), dailyExperienceMax: ROOM_EXP_DAILY_ROOM_CAP, dailyResetInSeconds: secondsUntilSaudiMidnight(now) },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة", avatarUrl: room.owner_avatar_url ?? "", countryName: room.owner_country_name ?? "" },
           me: { id: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.happy_id ?? "", avatarUrl: profile?.avatar_key ?? "", countryName: profile?.country_name ?? "", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
           isOwner: room.owner_user_id === user.id,
