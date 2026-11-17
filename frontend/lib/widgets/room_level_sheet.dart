@@ -246,7 +246,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     Text('${d.dailyExpCurrent}/${d.dailyExpMax}', style: const TextStyle(color: _muted, fontSize: 11)),
   ]));
   Widget _taskCard(ExpTask t) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5.5), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: _cardBorder)), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Icon(t.icon, color: Colors.white70, size: 34),
+    Icon(t.icon, color: Colors.white70, size: 17),
     const SizedBox(width: 12),
     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(t.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
