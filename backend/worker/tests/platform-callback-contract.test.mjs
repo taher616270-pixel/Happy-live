@@ -36,8 +36,8 @@ test("callback echoes App ID, API version, UID when supplied, and one-time chall
 });
 
 test("Happy Food Wheel exposes authenticated player and idempotent wallet callbacks", () => {
-  assert.match(callback, /"\\/v1\\/platform\\/player"/);
-  assert.match(callback, /"\\/v1\\/platform\\/wallet\\/adjust"/);
+  assert.ok(callback.includes('"/v1/platform/player"'));
+  assert.ok(callback.includes('"/v1/platform/wallet/adjust"'));
   assert.match(callback, /happyFoodWheelCredential/);
   assert.match(callback, /invalid_application_credential/);
   assert.match(callback, /idempotency_conflict/);
