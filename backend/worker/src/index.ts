@@ -424,6 +424,37 @@ export default {
     );
     if (platformCallbackResponse) return platformCallbackResponse;
 
+    // Owner-only, short-lived token accepted exclusively by UTD callbacks.
+    if (url.pathname === "/api/v1/admin/utd/test-session" && request.method === "POST") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const actor = await authenticatedAdmin(request, env.DB);
+        if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
+        if (actor.role !== "owner") return json({ error: "permission_denied" }, 403, origin, env);
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; }
+        catch { return json({ error: "invalid_json" }, 400, origin, env); }
+        const uid = typeof body.uid === "string" ? body.uid.trim() : "";
+        if (!uid || uid.length > 128) return json({ error: "invalid_uid" }, 400, origin, env);
+        const user = await env.DB.prepare(
+          "SELECT u.id FROM users u LEFT JOIN profiles p ON p.user_id=u.id WHERE u.status='active' AND (p.happy_id=? OR u.id=?) LIMIT 1"
+        ).bind(uid, uid).first<{id:string}>();
+        if (!user) return json({ error: "user_not_found" }, 404, origin, env);
+
+        const accessToken = `utdtest.${crypto.randomUUID()}.${crypto.randomUUID()}`;
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        const tokenHash = await sha256(accessToken);
+        const saved = JSON.stringify({ user_id: user.id, token_hash: tokenHash, expires_at: expiresAt });
+        await env.DB.prepare(
+          "INSERT INTO platform_settings (setting_key,setting_value,updated_at) VALUES ('utd_test_session',?,?) ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value, updated_at=excluded.updated_at"
+        ).bind(saved, new Date().toISOString()).run();
+        return json({ ok: true, uid, test_token: accessToken, expires_at: expiresAt, scope: "UTD callbacks only" }, 200, origin, env);
+      } catch (error) {
+        console.error("[utd.test-session] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "utd_test_session_unavailable" }, 503, origin, env);
+      }
+    }
+
     const gamesApiResponse = await handleGamesApiRequest(request, env, origin, authenticatedUser, json, authenticatedAdmin);
     if (gamesApiResponse) return gamesApiResponse;
 
