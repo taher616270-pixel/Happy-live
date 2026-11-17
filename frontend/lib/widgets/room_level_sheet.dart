@@ -333,15 +333,18 @@ class _LevelRing extends StatelessWidget {
             fit: BoxFit.contain,
           ),
         ),
-        Text(
-          '$level',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 27,
+        Transform.translate(
+          offset: const Offset(-2, 0),
+          child: Text(
+            '$level',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
             fontWeight: FontWeight.w800,
             fontStyle: FontStyle.italic,
-            shadows: [Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1))],
+              shadows: [Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1))],
+            ),
           ),
         ),
       ],
