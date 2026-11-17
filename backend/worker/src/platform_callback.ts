@@ -217,14 +217,6 @@ async function handleUtdCallback(
     if (delta<0 && Number(latest?.balance ?? 0)+delta<0) return utdFail(4004,"Insufficient game coins",reply);
     return utdFail(4005,"wallet settlement failed",reply);
 
-    const settled=await db.prepare(
-      "SELECT o.applied,o.user_id,w.balance FROM utd_game_callback_orders o JOIN user_wallets w ON w.user_id=o.user_id WHERE o.order_id=? AND o.claim_id=? LIMIT 1"
-    ).bind(orderId,claimId).first<{applied:number;user_id:string;balance:number}>();
-    if (!settled || settled.applied!==1) return utdFail(4005,"wallet settlement failed",reply);
-    const balance=Number(settled.balance)||0;
-    return path.endsWith("/make-up-orders")
-      ? utdOk({coin:balance},reply)
-      : utdOk({coins:balance,coin:balance},reply);
   } catch (error) {
     console.error("[utd.callback] failed",error instanceof Error?error.message:"unknown");
     return utdFail(4005,"callback processing failed",reply);
