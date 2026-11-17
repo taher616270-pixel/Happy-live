@@ -246,13 +246,14 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     Text('${d.dailyExpCurrent}/${d.dailyExpMax}', style: const TextStyle(color: _muted, fontSize: 11)),
   ]));
   Widget _taskCard(ExpTask t) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11.5), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: _cardBorder)), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Icon(t.icon, color: Colors.white70, size: 34),
+    const SizedBox(width: 12),
     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(t.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
       const SizedBox(height: 6), Text(t.desc, style: const TextStyle(color: _muted, fontSize: 11, height: 1.5)),
       const SizedBox(height: 10), _bar(t.ratio), const SizedBox(height: 6),
       Text('${t.current}/${t.max}', style: const TextStyle(color: _muted, fontSize: 11)),
     ])),
-    const SizedBox(width: 12), Icon(t.icon, color: Colors.white70, size: 34),
   ]));
   Widget _bar(double ratio) => ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: ratio.clamp(0.0, 1.0).toDouble(), minHeight: 4, color: _green, backgroundColor: _track));
   Widget _perksTab(RoomLevelData d) => ListView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24), children: [
