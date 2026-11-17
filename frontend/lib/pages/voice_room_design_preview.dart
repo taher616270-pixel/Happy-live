@@ -280,9 +280,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       ['experienceNextLevelExp', 'experience_next_level_exp'],
       roomLevelRequiredExpForLevel(level + 1),
     ).clamp(1, 2147483647).toInt();
+    final dailyExpMaxValue = _roomInfoInt(
+      ['dailyExperienceMax', 'daily_experience_max'], 14000000,
+    ).clamp(1, 14000000).toInt();
     final dailyExp = _roomInfoInt(
       ['dailyExperienceExp', 'daily_experience_exp'], 0,
-    ).clamp(0, 3000000).toInt();
+    ).clamp(0, dailyExpMaxValue).toInt();
     final dailyResetSeconds = _roomInfoInt(
       ['dailyResetInSeconds', 'daily_reset_in_seconds'], 0,
     ).clamp(0, 86400).toInt();
@@ -297,8 +300,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       exp: exp,
       nextLevelExp: nextExp,
       dailyExpCurrent: dailyExp.toString(),
-      dailyExpMax: '3.0m',
-      dailyRatio: dailyExp / 3000000,
+      dailyExpMax: '14m',
+      dailyRatio: dailyExp / dailyExpMaxValue,
       dailyResetIn: dailyResetSeconds > 0
           ? Duration(seconds: dailyResetSeconds)
           : null,
