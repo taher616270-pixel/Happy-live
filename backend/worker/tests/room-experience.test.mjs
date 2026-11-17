@@ -32,9 +32,10 @@ function extractTypedAsyncFunction(source, name) {
     .replaceAll(".first<{ created_at: string }>()", ".first()");
   return new Function(
     "ROOM_EXP_DAILY_USER_CAP",
+    "ROOM_EXP_DAILY_ROOM_CAP",
     "crypto",
     `${javascript}; return ${name};`
-  )(3_000_000, globalThis.crypto);
+  )(3_000_000, 14_000_000, globalThis.crypto);
 }
 
 class SqliteD1Statement {
@@ -217,6 +218,9 @@ test("daily contribution cap and persistent room experience tables are enforced"
   assert.match(migration, /points <= 3000000/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS room_exp_awards/);
   assert.match(seatHub, /ROOM_EXP_DAILY_USER_CAP = 3_000_000/);
+  assert.match(seatHub, /ROOM_EXP_DAILY_ROOM_CAP = 14_000_000/);
+  assert.match(worker, /ROOM_EXP_DAILY_ROOM_CAP = 14_000_000/);
+  assert.match(worker, /SUM\(points\) FROM room_exp_awards WHERE room_id = \? AND day_key = \?/);
   assert.match(worker, /nowMs - accountCreatedAt < 15 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(seatHub, /nowMs - accountCreatedAt < 15 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(migration, /points <= 1200/);
@@ -228,6 +232,8 @@ test("room UI reads server experience separately from paid room tier", () => {
   assert.match(roomPage, /_roomExperienceLevel = nextExperienceLevel/);
   assert.match(roomPreview, /\['experienceLevel', 'experience_level'\]/);
   assert.match(roomPreview, /\['experienceExp', 'experience_exp'\]/);
+  assert.match(roomPreview, /dailyExpMax: '14m'/);
+  assert.match(roomPreview, /dailyExpMaxValue/);
   assert.match(roomPage, /'level': _roomLevel, 'experienceLevel': _roomExperienceLevel/);
 });
 
