@@ -388,38 +388,371 @@ async function roomReportsPage(status="pending"){
   });
 }
 async function agoraPage(){
-  $("content").innerHTML='<nav class="dashboard-tabs" aria-label="تبويبات الإعدادات"><button type="button" class="active" data-agora-tab="voice">إعدادات الصوت</button><button type="button" data-agora-tab="external">ربط خارجي</button></nav><div id="agoraSettingsPanel"></div>';
-  const panel=$("agoraSettingsPanel");
-  async function showVoice(){
-    const a=(await api("/admin/agora/status")).agora,configured=a.enabled&&a.certificateConfigured&&!!a.appId,voiceOn=a.voiceEnabled===true&&configured,safeId=esc(a.appId||"غير مضبوط");
-    panel.innerHTML=
-      '<div class="section"><div class="section-head"><h2>التحكم العام بالصوت</h2><span class="badge '+(voiceOn?'good':'bad')+'">'+(voiceOn?'الصوت يعمل في التطبيق':'الصوت متوقف في التطبيق')+'</span></div><p class="muted">هذا المفتاح يتحكم في Agora داخل جميع الغرف الصوتية، وليس غرفة واحدة فقط.</p><div class="notice">'+(voiceOn?'الخدمة تعمل الآن ويمكن للمستخدمين دخول مقاعد المايك والتحدث.':'الخدمة متوقفة؛ لا يمكن لأي مستخدم تشغيل المايك أو الحصول على اتصال صوتي.')+'</div><button class="primary" id="agoraVoiceToggle" style="margin-top:18px;background:'+(voiceOn?'linear-gradient(100deg,#8c3547,#572333)':'linear-gradient(100deg,#73d7a8,#398f70)')+';color:#101018" '+(!configured&&!voiceOn?'disabled':'')+'>'+(voiceOn?'إيقاف الصوت في التطبيق بالكامل':'تشغيل الصوت في التطبيق بالكامل')+'</button><p class="muted" style="font-size:12px;margin-top:14px">عند الإيقاف: يتم فصل المستخدمين عن الصوت عند تحديث حالة الغرفة خلال ثوانٍ، وتحرير جميع مقاعد المايك، ومنع حجز مقاعد جديدة. تبقى الدردشة النصية والغرف متاحة.</p><p class="muted" style="font-size:12px">لا تُسجّل مدة استخدام المايك أثناء التوقف. لا يوجد حاليًا نظام فوترة أو عدّاد دقائق مدفوع في المشروع.</p></div>'+
-      '<div class="section"><div class="section-head"><h2>اتصال Agora</h2><span class="badge '+(configured?'good':'bad')+'">'+(configured?'مهيأ على الخادم':'غير مكتمل')+'</span></div><p class="muted">إعدادات الصوت تُقرأ من أسرار Cloudflare Worker. شهادة App Certificate لا تُرسل إلى المتصفح ولا تظهر في لوحة الإدارة حفاظًا على أمان المشروع.</p><label class="field">Agora App ID<input value="'+safeId+'" readonly></label><label class="field">Agora App Certificate<input type="password" value="'+(a.certificateConfigured?'••••••••••••••••':'')+'" placeholder="لم يتم ضبط الشهادة" readonly></label><div class="notice">'+(configured?'تم العثور على App ID والشهادة في أسرار الخادم.':'يلزم ضبط App ID وApp Certificate في Cloudflare Worker قبل تشغيل الصوت.')+'</div><p class="muted" style="font-size:12px;margin-top:14px">إعداد الخادم: '+(a.enabled?'مسموح':'متوقف')+' · حالة الشهادة: '+(a.certificateConfigured?'موجودة':'غير موجودة')+'</p><button class="action" id="agoraRefresh">تحديث الحالة</button></div><div class="section"><h2>حماية الصوت</h2><p class="muted">يصدر الخادم رمز اتصال مؤقتًا بعد التحقق من جلسة المستخدم والغرفة ومقعد المايك. لا يتم تخزين الشهادة داخل ملفات الموقع.</p></div>';
-    $("agoraRefresh").onclick=showVoice;
-    $("agoraVoiceToggle").onclick=async()=>{const next=!voiceOn;if(!confirm(next?"تشغيل الصوت في جميع الغرف؟":"إيقاف الصوت في جميع الغرف وفصل كل مقاعد المايك؟"))return;const button=$("agoraVoiceToggle");button.disabled=true;button.textContent="جارٍ تنفيذ التغيير…";try{await api("/admin/agora/voice",{method:"PATCH",body:JSON.stringify({enabled:next})});await showVoice()}catch(error){alert(error.message);await showVoice()}};
+  const a=(await api("/admin/agora/status")).agora;
+  const configured=a.enabled&&a.certificateConfigured&&!!a.appId;
+  const voiceOn=a.voiceEnabled===true&&configured;
+  const safeId=esc(a.appId||"غير مضبوط");
+  $("content").innerHTML=
+    '<div class="section"><div class="section-head"><h2>التحكم العام بالصوت</h2><span class="badge '+(voiceOn?'good':'bad')+'">'+(voiceOn?'الصوت يعمل في التطبيق':'الصوت متوقف في التطبيق')+'</span></div>'+
+    '<p class="muted">هذا المفتاح يتحكم في Agora داخل جميع الغرف الصوتية، وليس غرفة واحدة فقط.</p>'+
+    '<div class="notice">'+(voiceOn?'الخدمة تعمل الآن ويمكن للمستخدمين دخول مقاعد المايك والتحدث.':'الخدمة متوقفة؛ لا يمكن لأي مستخدم تشغيل المايك أو الحصول على اتصال صوتي.')+'</div>'+
+    '<button class="primary" id="agoraVoiceToggle" style="margin-top:18px;background:'+(voiceOn?'linear-gradient(100deg,#8c3547,#572333)':'linear-gradient(100deg,#73d7a8,#398f70)')+';color:#101018" '+(!configured&&!voiceOn?'disabled':'')+'>'+(voiceOn?'إيقاف الصوت في التطبيق بالكامل':'تشغيل الصوت في التطبيق بالكامل')+'</button>'+
+    '<p class="muted" style="font-size:12px;margin-top:14px">عند الإيقاف: يتم فصل المستخدمين عن الصوت عند تحديث حالة الغرفة خلال ثوانٍ، وتحرير جميع مقاعد المايك، ومنع حجز مقاعد جديدة. تبقى الدردشة النصية والغرف متاحة.</p>'+
+    '<p class="muted" style="font-size:12px">لا تُسجّل مدة استخدام المايك أثناء التوقف. لا يوجد حاليًا نظام فوترة أو عدّاد دقائق مدفوع في المشروع.</p></div>'+
+    '<div class="section"><div class="section-head"><h2>اتصال Agora</h2><span class="badge '+(configured?'good':'bad')+'">'+(configured?'مهيأ على الخادم':'غير مكتمل')+'</span></div>'+
+    '<p class="muted">إعدادات الصوت تُقرأ من أسرار Cloudflare Worker. شهادة App Certificate لا تُرسل إلى المتصفح ولا تظهر في لوحة الإدارة حفاظًا على أمان المشروع.</p>'+
+    '<label class="field">Agora App ID<input value="'+safeId+'" readonly></label>'+
+    '<label class="field">Agora App Certificate<input type="password" value="'+(a.certificateConfigured?'••••••••••••••••':'')+'" placeholder="لم يتم ضبط الشهادة" readonly></label>'+
+    '<div class="notice">'+(configured?'تم العثور على App ID والشهادة في أسرار الخادم.':'يلزم ضبط App ID وApp Certificate في Cloudflare Worker قبل تشغيل الصوت.')+'</div>'+
+    '<p class="muted" style="font-size:12px;margin-top:14px">إعداد الخادم: '+(a.enabled?'مسموح':'متوقف')+' · حالة الشهادة: '+(a.certificateConfigured?'موجودة':'غير موجودة')+'</p>'+
+    '<button class="action" id="agoraRefresh">تحديث الحالة</button></div>'+
+    '<div class="section"><h2>حماية الصوت</h2><p class="muted">يصدر الخادم رمز اتصال مؤقتًا بعد التحقق من جلسة المستخدم والغرفة ومقعد المايك. لا يتم تخزين الشهادة داخل ملفات الموقع.</p></div>';
+  $("agoraRefresh").onclick=()=>render();
+  const toggle=$("agoraVoiceToggle");
+  toggle.onclick=async()=>{
+    const next=!voiceOn;
+    const prompt=next?"تشغيل الصوت في جميع الغرف؟":"إيقاف الصوت في جميع الغرف وفصل كل مقاعد المايك؟";
+    if(!confirm(prompt))return;
+    toggle.disabled=true;
+    toggle.textContent="جارٍ تنفيذ التغيير…";
+    try{
+      await api("/admin/agora/voice",{method:"PATCH",body:JSON.stringify({enabled:next})});
+      await agoraPage();
+    }catch(error){
+      alert(error.message);
+      await agoraPage();
+    }
+  };
+  await happyFoodWheelIntegrationPage();
+}
+async function happyFoodWheelIntegrationPage(){
+  if(admin.role!=="owner"){
+    $("content").insertAdjacentHTML("beforeend",'<div class="section"><h2>ربط خارجي — Happy Food Wheel</h2><p class="notice">إعداد مفاتيح الربط متاح لحساب مالك التطبيق فقط.</p></div>');
+    return;
   }
+  const data=await api("/admin/integrations/happy-food-wheel");
+  const configured=data.tokenConfigured===true||data.configured===true;
+  const callback=(data.callbackBaseUrl||"").replace(/\\/$/,"")+"/v1/platform/handshake";
+  $("content").insertAdjacentHTML("beforeend",
+    '<div class="section"><div class="section-head"><div><h2>ربط خارجي — Happy Food Wheel</h2><p class="muted">انسخ بيانات Happy Live والصقها في نموذج الربط داخل منصة Happy Food Wheel.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'Token محفوظ':'بانتظار إصدار Token')+'</span></div>'+
+    '<div class="form-grid">'+
+      '<label>روابط التطبيق<input id="hfwAppLink" value="https://happy-live.pages.dev" readonly></label>'+
+      '<label>عنوان الـ Callback الأساسي<input id="hfwCallback" value="'+esc(callback)+'" readonly></label>'+
+      '<label class="form-wide">Token الاختبار<input id="hfwTestToken" value="" placeholder="أصدر Token الاختبار من هنا أولاً" readonly></label>'+
+    '</div>'+
+    '<div class="notice" style="margin-top:14px">أصدر Token الاختبار هنا أولاً، ثم انسخه إلى منصة Happy Food Wheel مع رابط التطبيق وعنوان Callback. لا تحتاج إلى App ID مسبقًا؛ سيرتبط App ID تلقائيًا عند أول اتصال موثّق من المنصة. إصدار Token جديد يبطل السابق فورًا.</div>'+
+    (configured?'<p class="muted" style="margin-top:12px">بادئة Token الحالي: '+esc(data.tokenPrefix||"")+'… · آخر إصدار: '+esc(data.createdAt||"")+'</p>':'')+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px"><button class="primary" id="hfwGenerate">'+(configured?'إصدار Token اختبار جديد':'إصدار Token الاختبار')+'</button><button class="action" type="button" data-hfw-copy="hfwAppLink">نسخ رابط التطبيق</button><button class="action" type="button" data-hfw-copy="hfwCallback">نسخ Callback</button><button class="action" type="button" id="hfwCopyToken">نسخ Token الاختبار</button></div>'+
+    '<p class="muted" style="margin-top:12px">احتفظ بالـ Token داخل إعدادات المنصة فقط، ولا تشاركه في المحادثات أو تضعه داخل كود التطبيق.</p>'+
+    '<div id="hfwTokenNotice" class="muted" style="margin-top:10px"></div>'+
+    (configured?'<button class="action danger" id="hfwRevoke" style="margin-top:12px">إلغاء Token الحالي</button>':'')
+  );
   async function copyField(id){
-    const input=$(id),value=input?.value||"";if(!value){alert("لا توجد قيمة لنسخها بعد.");return}
-    try{await navigator.clipboard.writeText(value);alert("تم النسخ.")}catch(e){input.focus();input.select();document.execCommand("copy");alert("تم تحديد النص ونسخه إذا كان النسخ مسموحًا في المتصفح.")}
+    const input=$(id);
+    if(!input||!input.value){$("hfwTokenNotice").textContent="لا توجد قيمة لنسخها بعد.";return}
+    try{await navigator.clipboard.writeText(input.value);$("hfwTokenNotice").textContent="تم النسخ."}
+    catch(e){input.focus();input.select();document.execCommand("copy");$("hfwTokenNotice").textContent="تم تحديد النص؛ انسخه من المتصفح."}
   }
-  async function showExternal(){
-    if(admin.role!=="owner"){panel.innerHTML='<div class="section"><h2>ربط خارجي</h2><p class="notice">إعداد مفاتيح الربط متاح لحساب مالك التطبيق فقط.</p></div>';return}
-    const data=await api("/admin/integrations/happy-food-wheel"),configured=data.configured===true;
-    const appUrl="https://happy-live.pages.dev",callbackUrl="https://happy-live-api.taher616270.workers.dev/v1/platform/handshake";
-    panel.innerHTML=
-      '<div class="section"><div class="section-head"><div><h2>ربط خارجي — Happy Food Wheel</h2><p class="muted">انسخ بيانات Happy Live والصقها في نموذج الربط داخل منصة Happy Food Wheel.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'الربط مُعدّ':'بانتظار إعداد المفتاح')+'</span></div>'+
-      '<div class="form-grid"><label>روابط التطبيق *<div style="display:flex;gap:8px"><input id="hfwAppLink" value="'+appUrl+'" readonly><button class="action" type="button" id="copyHfwAppLink">نسخ</button></div></label>'+
-      '<label>عنوان الـ Callback الأساسي *<div style="display:flex;gap:8px"><input id="hfwCallbackLink" value="'+callbackUrl+'" readonly dir="ltr"><button class="action" type="button" id="copyHfwCallbackLink">نسخ</button></div></label>'+
-      '<label class="form-wide">Token الاختبار *<div style="display:flex;gap:8px"><input id="hfwTestToken" value="" readonly placeholder="'+(configured?'تم إصدار Token سابقًا؛ يمكنك إصدار واحد جديد':'اضغط إصدار Token الاختبار')+'" dir="ltr"><button class="action" type="button" id="copyHfwTestToken">نسخ</button></div></label></div>'+
-      '<div class="notice" style="margin-top:14px">أصدر Token الاختبار من هنا أولاً، ثم انسخه إلى منصة Happy Food Wheel مع رابط التطبيق وعنوان Callback. لا تحتاج إلى App ID مسبقًا؛ سيُربط App ID تلقائيًا عند أول اتصال صحيح من المنصة. إصدار Token جديد يُبطل السابق فورًا.</div>'+
-      (configured?'<p class="muted" style="margin-top:12px">المفتاح المسجل: '+esc(data.tokenPrefix||"")+'… · آخر إصدار: '+esc(data.createdAt||"")+(data.appIdBound?' · App ID مربوط':' · بانتظار أول اتصال من المنصة')+'</p>':'')+
-      '<div class="form-actions" style="margin-top:16px"><button class="primary" id="hfwGenerate">'+(configured?'إصدار Token اختبار جديد':'إصدار Token الاختبار')+'</button>'+(configured?'<button class="action danger" id="hfwRevoke">إلغاء الربط</button>':'')+'</div><div id="hfwTokenNotice" class="muted" style="margin-top:12px" role="status"></div><p class="muted" style="font-size:12px;margin-top:14px">احتفظ بالـ Token داخل إعدادات المنصة فقط، ولا تشاركه في المحادثات أو تضعه داخل كود التطبيق.</p></div>';
-    $("copyHfwAppLink").onclick=()=>copyField("hfwAppLink");$("copyHfwCallbackLink").onclick=()=>copyField("hfwCallbackLink");$("copyHfwTestToken").onclick=()=>copyField("hfwTestToken");
-    $("hfwGenerate").onclick=async()=>{if(configured&&!confirm("سيتم إبطال Token السابق فورًا. هل تريد إصدار Token اختبار جديد؟"))return;const button=$("hfwGenerate");button.disabled=true;try{const result=await api("/admin/integrations/happy-food-wheel",{method:"POST",body:JSON.stringify({})});$("hfwTestToken").value=result.apiToken||"";$("hfwTokenNotice").textContent="تم إصدار Token الاختبار. انسخه الآن؛ لن يظهر مرة أخرى بعد مغادرة هذه الصفحة.";button.textContent="تم إصدار Token — انسخه الآن";button.disabled=false}catch(error){$("hfwTokenNotice").textContent=error.message;button.disabled=false}};
-    $("hfwRevoke")?.addEventListener("click",async()=>{if(!confirm("سيتم إلغاء Token الربط الحالي وحذف إعداد Happy Food Wheel. هل تريد المتابعة؟"))return;try{await api("/admin/integrations/happy-food-wheel",{method:"DELETE"});await showExternal()}catch(error){alert(error.message)}});
+  document.querySelectorAll("[data-hfw-copy]").forEach(button=>button.onclick=()=>copyField(button.dataset.hfwCopy));
+  $("hfwCopyToken").onclick=()=>copyField("hfwTestToken");
+  $("hfwGenerate").onclick=async()=>{
+    if(configured&&!confirm("سيتم إبطال Token السابق فورًا. هل تريد إصدار Token اختبار جديد؟"))return;
+    const button=$("hfwGenerate");button.disabled=true;
+    try{
+      const result=await api("/admin/integrations/happy-food-wheel",{method:"POST",body:JSON.stringify({})});
+      $("hfwTestToken").value=result.apiToken||"";
+      $("hfwTokenNotice").textContent="تم إصدار Token الاختبار. انسخه الآن؛ لن يظهر مرة أخرى بعد مغادرة هذه الصفحة.";
+      button.textContent="تم إصدار Token — انسخه الآن";button.disabled=false;
+    }catch(error){$("hfwTokenNotice").textContent=error.message;button.disabled=false}
+  };
+  $("hfwRevoke")?.addEventListener("click",async()=>{
+    if(!confirm("سيتم إلغاء Token الربط الحالي. هل تريد المتابعة؟"))return;
+    try{await api("/admin/integrations/happy-food-wheel",{method:"DELETE"});await agoraPage()}
+    catch(error){alert(error.message)}
+  });
+}
+function statsPage(s){
+  const x=s.summary||{},d=s.daily||{},rows=a=>a&&a.length?a.map(v=>'<tr><td>'+esc(v.day)+'</td><td>'+Number(v.total||0).toLocaleString("en-US")+'</td></tr>').join(""):'<tr><td colspan="2" class="empty">لا توجد بيانات خلال الفترة</td></tr>';
+  $("content").innerHTML='<div class="cards">'+metric("إجمالي المستخدمين",x.users?.total)+metric("الحسابات النشطة",x.users?.active)+metric("الحسابات المحظورة",x.users?.suspended)+metric("الغرف النشطة",x.rooms?.active)+metric("المنشورات المنشورة",x.publishedPosts)+metric("رسائل الغرف آخر 7 أيام",x.roomMessagesLast7Days)+'</div>'+
+  '<div class="section"><h2>التسجيلات اليومية — آخر 7 أيام (UTC)</h2><div class="table-wrap"><table><thead><tr><th>اليوم</th><th>عدد الحسابات</th></tr></thead><tbody>'+rows(d.users)+'</tbody></table></div></div>'+
+  '<div class="section"><h2>رسائل الغرف اليومية — آخر 7 أيام (UTC)</h2><div class="table-wrap"><table><thead><tr><th>اليوم</th><th>عدد الرسائل</th></tr></thead><tbody>'+rows(d.messages)+'</tbody></table></div></div><p class="muted">الأرقام محسوبة مباشرة من جداول D1 الحالية.</p>';
+}
+async function moderatorsPage(){
+  if(admin.role!=="owner"){$("content").innerHTML='<div class="section"><p class="notice">إدارة أدوار مشرفي التطبيق متاحة لحساب المالك فقط.</p></div>';return}
+  const current=(await api("/admin/moderators")).moderators||[];
+  $("content").innerHTML='<div class="section"><h2>المشرفون الحاليون ('+current.length+')</h2><p class="muted">هذه أدوار داخل التطبيق للمستخدمين المسجلين، وليست حسابات دخول لوحة الإدارة.</p><div class="table-wrap"><table><thead><tr><th>الاسم</th><th>البريد</th><th>ID</th><th>الدور</th><th>الحالة</th></tr></thead><tbody>'+
+  (current.length?current.map(u=>'<tr><td>'+esc(u.display_name||"—")+'</td><td>'+esc(u.email)+'</td><td>'+esc(u.happy_id||u.gabo_id||"—")+'</td><td>'+(u.role==="admin"?"مدير تطبيق":"مشرف")+'</td><td>'+(u.status==="active"?"نشط":"غير نشط")+'</td></tr>').join(""):'<tr><td colspan="5" class="empty">لا يوجد مشرفون معيّنون حاليًا</td></tr>')+'</tbody></table></div></div>'+
+  '<div class="section"><div class="section-head"><div><h2>إدارة صلاحيات المستخدمين</h2><p class="muted">ابحث عن مستخدم ثم عيّنه مشرفًا أو مدير تطبيق. لا يمكن تغيير دور المالك.</p></div><input id="moderatorSearch" class="search" placeholder="ابحث بالاسم أو البريد أو ID"></div><div class="table-wrap"><table><thead><tr><th>الاسم</th><th>البريد</th><th>ID</th><th>الدور الحالي</th><th>الإجراء</th></tr></thead><tbody id="moderatorCandidates"></tbody></table></div></div>';
+  const draw=list=>{
+    $("moderatorCandidates").innerHTML=list.length?list.map(u=>{
+      const label=u.admin_role==="owner"?"مالك":u.admin_role==="admin"?"مدير تطبيق":u.admin_role==="moderator"?"مشرف":"مستخدم";
+      let action="";if(u.status==="active"&&u.admin_role!=="owner")action=u.admin_role?'<button class="action danger" data-role-user="'+esc(u.id)+'" data-next-role="null">إزالة الدور</button>':'<button class="action" data-role-user="'+esc(u.id)+'" data-next-role="moderator">مشرف</button> <button class="action" data-role-user="'+esc(u.id)+'" data-next-role="admin">مدير</button>';
+      return '<tr><td>'+esc(u.display_name||"—")+'</td><td>'+esc(u.email)+'</td><td>'+esc(u.happy_id||u.gabo_id||"—")+'</td><td>'+label+'</td><td>'+action+'</td></tr>';
+    }).join(""):'<tr><td colspan="5" class="empty">لا توجد نتائج</td></tr>';
+    document.querySelectorAll("[data-role-user]").forEach(b=>b.onclick=async()=>{const next=b.dataset.nextRole==="null"?null:b.dataset.nextRole;if(!confirm(next?"تأكيد تعيين هذا الدور؟":"تأكيد إزالة دور الإدارة عن المستخدم؟"))return;b.disabled=true;try{await api("/admin/users/"+b.dataset.roleUser+"/role",{method:"PATCH",body:JSON.stringify({role:next})});await render()}catch(e){alert(e.message);b.disabled=false}});
+  };
+  draw((await api("/admin/users?limit=100")).users||[]);
+  let timer;$("moderatorSearch").oninput=e=>{clearTimeout(timer);const q=e.target.value.trim();timer=setTimeout(async()=>{try{draw((await api("/admin/users?q="+encodeURIComponent(q)+"&limit=100")).users||[])}catch(err){$("moderatorCandidates").innerHTML='<tr><td colspan="5" class="empty">'+esc(err.message)+'</td></tr>'}},250)};
+}
+function users(a){
+  $("content").innerHTML='<div class="section"><div class="section-head"><h2>المستخدمون ('+a.length+')</h2><input id="search" class="search" placeholder="ابحث بالاسم أو البريد أو ID"></div><div class="table-wrap"><table><thead><tr><th>الاسم</th><th>البريد</th><th>ID</th><th>الحالة</th><th>الدور</th><th>الإجراءات</th></tr></thead><tbody id="rows"></tbody></table></div><p class="muted">إيقاف الحساب يمنع استخدامه ويلغي جلساته. الطرد ينهي الجلسات الحالية فقط ولا يمنع تسجيل الدخول مجددًا.</p></div>';
+  const canManage=admin.role==="owner"||admin.role==="admin";
+  const draw=list=>{
+    $("rows").innerHTML=list.length?list.map(u=>{
+      const protectedRole=!!u.admin_role&&admin.role!=="owner",canAct=canManage&&!protectedRole&&u.status!=="deleted";
+      const label=u.status==="active"?"نشط":u.status==="suspended"?"محظور":"محذوف";
+      const actions=canAct?'<button class="action '+(u.status==="active"?"danger":"")+'" data-status-id="'+esc(u.id)+'" data-status-next="'+(u.status==="active"?"suspended":"active")+'">'+(u.status==="active"?"حظر الحساب":"رفع الحظر")+'</button> <button class="action" data-kick-id="'+esc(u.id)+'">طرد الجلسات</button>':"—";
+      return '<tr><td>'+esc(u.display_name||"—")+'</td><td>'+esc(u.email)+'</td><td>'+esc(u.happy_id||u.gabo_id||"—")+'</td><td><span class="badge '+(u.status==="active"?"good":"bad")+'">'+label+'</span></td><td>'+esc(u.admin_role||"مستخدم")+'</td><td>'+actions+'</td></tr>';
+    }).join(""):'<tr><td colspan="6" class="empty">لا توجد نتائج</td></tr>';
+    document.querySelectorAll("[data-status-id]").forEach(b=>b.onclick=async()=>{const next=b.dataset.statusNext;if(!confirm(next==="suspended"?"سيتم حظر الحساب وإنهاء جلساته وإخراجه من الغرف. متابعة؟":"تأكيد رفع الحظر عن الحساب؟"))return;b.disabled=true;try{await api("/admin/users/"+b.dataset.statusId+"/status",{method:"PATCH",body:JSON.stringify({status:next})});await render()}catch(e){alert(e.message);b.disabled=false}});
+    document.querySelectorAll("[data-kick-id]").forEach(b=>b.onclick=async()=>{if(!confirm("سيتم إنهاء جميع جلسات المستخدم الحالية وإخراجه من الغرف. يمكنه تسجيل الدخول مجددًا. متابعة؟"))return;b.disabled=true;try{const r=await api("/admin/users/"+b.dataset.kickId+"/kick",{method:"POST"});alert("تم إنهاء الجلسات الحالية: "+Number(r.revokedSessions||0));await render()}catch(e){alert(e.message);b.disabled=false}});
+  };
+  draw(a);let timer;$("search").oninput=e=>{clearTimeout(timer);const q=e.target.value.trim();timer=setTimeout(async()=>{try{draw((await api("/admin/users?q="+encodeURIComponent(q)+"&limit=100")).users||[])}catch(err){$("rows").innerHTML='<tr><td colspan="6" class="empty">'+esc(err.message)+'</td></tr>'}},250)};
+}
+function rooms(a){
+  const canManage=admin.role==="owner"||admin.role==="admin";
+  $("content").innerHTML='<div class="section"><div class="section-head"><h2>الغرف ('+a.length+')</h2></div><div class="table-wrap"><table><thead><tr><th>الغرفة</th><th>رقمها</th><th>المالك</th><th>الخصوصية</th><th>الحالة</th><th>الإجراء</th><th>المحفظة والرهانات</th></tr></thead><tbody>'+
+    (a.length?a.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.room_code)+'</td><td>'+esc(r.owner_name||"—")+'</td><td>'+(r.visibility==="private"?"خاصة":"عامة")+'</td><td><span class="badge '+(r.status==="active"?"good":"bad")+'">'+(r.status==="active"?"نشطة":"مغلقة")+'</span></td><td><div class="room-tools"><button class="action" data-room-open="'+esc(r.id)+'" data-room-name="'+esc(r.name)+'">إدارة الغرفة</button>'+
+    (canManage?'<button class="action '+(r.status==="active"?"danger":"")+'" data-room-status="'+esc(r.id)+'" data-next="'+(r.status==="active"?"closed":"active")+'">'+(r.status==="active"?"إغلاق":"فتح")+'</button>':'<span class="muted">قراءة فقط</span>')+
+    '</div></td></tr>').join(""):'<tr><td colspan="6" class="empty">لا توجد غرف</td></tr>')+
+    '</tbody></table></div></div><div id="roomModeration"></div>';
+  document.querySelectorAll("[data-room-open]").forEach(b=>b.onclick=()=>loadRoomModeration(b.dataset.roomOpen,b.dataset.roomName||"الغرفة"));
+  document.querySelectorAll("[data-room-status]").forEach(b=>b.onclick=async()=>{
+    if(!confirm("تأكيد تغيير حالة الغرفة؟"))return;
+    try{await api("/admin/rooms/"+b.dataset.roomStatus+"/status",{method:"PATCH",body:JSON.stringify({status:b.dataset.next})});render()}
+    catch(e){alert(e.message)}
+  });
+}
+async function loadRoomModeration(roomId,roomName,q=""){
+  const root=$("roomModeration");if(!root)return;
+  root.innerHTML='<div class="section"><div class="loading">جارٍ تحميل إدارة الغرفة…</div></div>';
+  try{
+    const endpoint="/admin/rooms/"+encodeURIComponent(roomId)+"/moderation"+(q?"?q="+encodeURIComponent(q):"");
+    const data=await api(endpoint);
+    const canManage=admin.role==="owner"||admin.role==="admin";
+    const actionButton=(action,user,label,danger=false)=>'<button class="action '+(danger?"danger":"")+'" data-room-action="'+action+'" data-user-id="'+esc(user.user_id)+'">'+label+'</button>';
+    const userActions=user=>{
+      if(!canManage||user.user_id===data.room.ownerUserId)return '<span class="muted">محمي</span>';
+      const isModerator=Number(user.is_moderator)===1;
+      const isBanned=Number(user.is_banned)===1;
+      if(isBanned)return actionButton("unban",user,"رفع الحظر");
+      let html=actionButton(isModerator?"remove_moderator":"assign_moderator",user,isModerator?"إزالة المشرف":"تعيين مشرف");
+      if(!isModerator){
+        if(Number(user.is_seated)===1)html+=actionButton(Number(user.is_muted)===1?"unmute":"mute",user,Number(user.is_muted)===1?"إلغاء الكتم":"كتم");
+        html+=actionButton("kick",user,"طرد دقيقة",true)+actionButton("ban",user,"حظر دائم",true);
+      }
+      return '<div class="room-tools">'+html+'</div>';
+    };
+    const userName=user=>esc(user.display_name||user.email||user.user_id);
+    const memberRows=data.members.length?data.members.map(user=>'<tr><td>'+esc(user.seat_number)+'</td><td>'+userName(user)+'</td><td>'+esc(user.happy_id||"—")+'</td><td>'+(Number(user.is_muted)===1?'<span class="badge bad">مكتوم</span>':'<span class="badge good">مفتوح</span>')+'</td><td>'+userActions({...user,is_seated:1})+'</td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد مقاعد مايك نشطة حاليًا</td></tr>';
+    const moderatorRows=data.moderators.length?data.moderators.map(user=>'<tr><td>'+userName(user)+'</td><td>'+esc(user.happy_id||"—")+'</td><td>'+esc(user.created_at||"—")+'</td><td>'+(canManage?actionButton("remove_moderator",user,"إزالة المشرف",true):"—")+'</td></tr>').join(""):'<tr><td colspan="4" class="empty">لا يوجد مشرفون لهذه الغرفة</td></tr>';
+    const banRows=data.bans.length?data.bans.map(user=>'<tr><td>'+userName(user)+'</td><td>'+esc(user.happy_id||"—")+'</td><td>'+esc(user.created_at||"—")+'</td><td>'+(canManage?actionButton("unban",user,"رفع الحظر"):"—")+'</td></tr>').join(""):'<tr><td colspan="4" class="empty">لا توجد حسابات محظورة من هذه الغرفة</td></tr>';
+    const kickRows=data.kicks.length?data.kicks.map(user=>'<tr><td>'+userName(user)+'</td><td>'+esc(user.happy_id||"—")+'</td><td>'+esc(user.kicked_until||"—")+'</td></tr>').join(""):'<tr><td colspan="3" class="empty">لا يوجد طرد مؤقت نشط</td></tr>';
+    const searchRows=(data.userResults||[]).length?data.userResults.map(user=>'<tr><td>'+userName(user)+'</td><td>'+esc(user.happy_id||"—")+'</td><td>'+userActions(user)+'</td></tr>').join(""):'<tr><td colspan="3" class="empty">'+(q.length>=2?"لا توجد نتائج مطابقة":"اكتب حرفين على الأقل للبحث عن مستخدم")+'</td></tr>';
+    root.innerHTML=
+      '<div class="section"><div class="section-head"><h2>إدارة الغرفة: '+esc(data.room.name||roomName)+'</h2><button class="action" id="closeRoomModeration">إغلاق</button></div>'+
+      '<p class="muted">الإدارة تشمل مقاعد المايك النشطة والبحث عن حسابات المنصة. الطرد مؤقت لمدة دقيقة، والحظر يستمر حتى رفعه يدويًا.</p>'+
+      '<div class="notice">قائمة الأعضاء أدناه تعرض أصحاب مقاعد المايك النشطة. استخدم البحث للوصول إلى حساب آخر وإدارة دخوله لهذه الغرفة.</div></div>'+
+      '<div class="section"><h2>مقاعد المايك النشطة ('+data.members.length+')</h2><div class="table-wrap"><table><thead><tr><th>المقعد</th><th>المستخدم</th><th>المعرف</th><th>الصوت</th><th>الإجراءات</th></tr></thead><tbody>'+memberRows+'</tbody></table></div></div>'+
+      '<div class="section"><h2>مشرفو الغرفة ('+data.moderators.length+')</h2><div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>المعرف</th><th>تاريخ التعيين</th><th>الإجراء</th></tr></thead><tbody>'+moderatorRows+'</tbody></table></div></div>'+
+      '<div class="section"><h2>الحظر ('+data.bans.length+')</h2><div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>المعرف</th><th>تاريخ الحظر</th><th>الإجراء</th></tr></thead><tbody>'+banRows+'</tbody></table></div></div>'+
+      '<div class="section"><h2>الطرد المؤقت ('+data.kicks.length+')</h2><div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>المعرف</th><th>ينتهي في</th></tr></thead><tbody>'+kickRows+'</tbody></table></div></div>'+
+      '<div class="section"><h2>البحث عن مستخدم وإدارته</h2><form id="roomUserSearchForm" class="room-tools" style="margin:14px 0"><input class="search" id="roomUserQuery" value="'+esc(q)+'" placeholder="الاسم أو البريد أو معرف Happy Live" style="max-width:360px"><button class="action" type="submit">بحث</button></form><div class="table-wrap"><table><thead><tr><th>المستخدم</th><th>المعرف</th><th>الإجراءات</th></tr></thead><tbody>'+searchRows+'</tbody></table></div></div>';
+    $("closeRoomModeration").onclick=()=>{root.innerHTML=""};
+    $("roomUserSearchForm").onsubmit=e=>{e.preventDefault();loadRoomModeration(roomId,roomName,$("roomUserQuery").value.trim())};
+    document.querySelectorAll("[data-room-action]").forEach(button=>button.onclick=async()=>{
+      const action=button.dataset.roomAction,targetUserId=button.dataset.userId;
+      const labels={assign_moderator:"تعيين مشرف الغرفة",remove_moderator:"إزالة مشرف الغرفة",kick:"طرد المستخدم لمدة دقيقة",ban:"حظر المستخدم من الغرفة",unban:"رفع الحظر",mute:"كتم مايك المستخدم",unmute:"إلغاء كتم المايك"};
+      if(!confirm("تأكيد: "+(labels[action]||"تنفيذ الإجراء")+"؟"))return;
+      const reason=action==="ban"?(window.prompt("سبب الحظر (اختياري)")||"").trim():"";
+      try{
+        await api("/admin/rooms/"+encodeURIComponent(roomId)+"/moderation",{method:"POST",body:JSON.stringify({action,targetUserId,reason})});
+        await loadRoomModeration(roomId,roomName,q);
+      }catch(error){alert(error.message)}
+    });
+    root.scrollIntoView({behavior:"smooth",block:"start"});
+  }catch(error){root.innerHTML='<div class="section"><p class="error">'+esc(error.message)+'</p></div>'}
+}
+
+async function gamesPage(){
+  if(admin.role!=="owner"&&admin.role!=="admin"){$("content").innerHTML='<div class="section"><p class="notice">إدارة الألعاب متاحة للمالك ومدير التطبيق فقط.</p></div>';return}
+  const data=await api("/admin/games"),games=data.games||[];
+  const statusLabel={development:"قيد التطوير",disabled:"متوقفة",active:"مفعّلة"};
+  const statusClass={development:"",disabled:"bad",active:"good"};
+  const modalRoot=()=> $("gameModalRoot");
+  function closeGameModal(){const root=modalRoot();if(root)root.innerHTML=""}
+  function openGameModal(title,subtitle,body,wide){
+    const root=modalRoot();
+    root.innerHTML='<div class="game-modal-backdrop" data-game-modal-close><section class="game-modal '+(wide?"game-modal-wide":"")+'" role="dialog" aria-modal="true" aria-labelledby="gameModalTitle"><header class="game-modal-head"><div><h2 id="gameModalTitle">'+esc(title)+'</h2><p>'+esc(subtitle||"")+'</p></div><button type="button" class="game-modal-x" id="gameModalX" aria-label="إغلاق">×</button></header><div class="game-modal-body">'+body+'</div></section></div>';
+    root.querySelector("[data-game-modal-close]").addEventListener("click",e=>{if(e.target===e.currentTarget)closeGameModal()});
+    $("gameModalX").onclick=closeGameModal;
+    root.querySelectorAll("[data-modal-cancel]").forEach(b=>b.onclick=closeGameModal);
+    const first=root.querySelector("input:not([type=file]),select,textarea,button");if(first)first.focus();
   }
-  document.querySelectorAll("[data-agora-tab]").forEach(button=>button.onclick=async()=>{document.querySelectorAll("[data-agora-tab]").forEach(item=>item.classList.toggle("active",item===button));try{if(button.dataset.agoraTab==="external")await showExternal();else await showVoice()}catch(error){panel.innerHTML='<div class="section"><p class="error">'+esc(error.message)+'</p></div>'}});
-  await showVoice();
+  function field(label,id,control,wide){return '<label class="game-field '+(wide?"game-field-wide":"")+'"><span>'+label+'</span>'+control+'</label>'}
+  function section(title,help,fields){return '<fieldset class="game-form-section"><legend>'+title+'</legend>'+(help?'<p class="game-form-help">'+help+'</p>':"")+'<div class="game-form-grid">'+fields+'</div></fieldset>'}
+  const rows=games.length?games.map(g=>
+    '<article class="game-admin-card"><div class="game-admin-card-main">'+
+    (g.iconUrl?'<img class="game-admin-icon" src="'+esc(g.iconUrl)+'" alt="">':'<div class="game-admin-icon game-admin-icon-empty">♟</div>')+
+    '<div class="game-admin-copy"><h3>'+esc(g.name)+'</h3><p>'+esc(g.category||"عام")+' · '+esc(g.id)+'</p><span class="badge '+(statusClass[g.status]||"")+'">'+esc(statusLabel[g.status]||"متوقفة")+'</span></div></div>'+
+    '<div class="game-admin-link">'+(g.url?'<a href="'+esc(g.url)+'" target="_blank" rel="noopener noreferrer">فتح رابط اللعبة ↗</a>':'<span class="muted">لم يحدد رابط اللعبة بعد</span>')+'</div>'+
+    '<div class="game-admin-actions">'+
+    '<button class="action" type="button" data-game-edit="'+esc(g.id)+'">✎ تعديل البيانات</button>'+
+    '<button class="action" type="button" data-game-status="'+esc(g.id)+'">◉ تغيير الحالة</button>'+
+    '<button class="action" type="button" data-game-connect="'+esc(g.id)+'">⌁ بيانات الربط</button>'+
+    '<button class="action" type="button" data-game-rounds="'+esc(g.id)+'">▤ سجل الجولات</button>'+
+    '<button class="action" type="button" data-game-economy="'+esc(g.id)+'">◈ إعداد الرهانات</button>'+
+    '<button class="action" type="button" data-game-key="'+esc(g.id)+'">⚿ مفتاح الخادم</button>'+
+    '</div></article>'
+  ).join(""):'<div class="game-empty-state"><div>♟</div><h3>لا توجد ألعاب مسجلة</h3><p>أضف اللعبة أولاً، ثم أكمل بيانات الربط والاقتصاد من أزرار إدارة اللعبة.</p><button class="primary" id="showGameCreateEmpty" type="button">＋ إضافة أول لعبة</button></div>';
+  $("content").innerHTML=
+    '<div class="game-admin-intro"><div><span class="game-eyebrow">GAME MANAGEMENT</span><h2>إدارة الألعاب</h2><p>إضافة الألعاب وتنظيم بياناتها وربطها وإعدادات الرهان من نوافذ مستقلة.</p></div><button class="primary game-add-button" id="showGameCreate" type="button">＋ إضافة لعبة</button></div>'+
+    '<div class="game-admin-summary"><div><strong>'+games.length+'</strong><span>ألعاب مسجلة</span></div><div><strong>'+games.filter(g=>g.status==="active").length+'</strong><span>مفعّلة</span></div><div><strong>'+games.filter(g=>g.status==="development").length+'</strong><span>قيد التطوير</span></div><div><strong>'+games.filter(g=>g.status==="disabled").length+'</strong><span>متوقفة</span></div></div>'+
+    '<div class="game-admin-list-head"><div><h2>قائمة الألعاب</h2><p class="muted">اختر الإجراء المطلوب؛ كل إجراء يفتح نافذة مستقلة.</p></div><button class="action" id="gamesRefresh" type="button">↻ تحديث القائمة</button></div>'+
+    '<div class="game-admin-list">'+rows+'</div>'+
+    '<div class="game-admin-footnote">تنبيه أمني: مفتاح الخادم سري ويُحفظ في أسرار خادم اللعبة فقط، ولا يوضع في المتصفح أو داخل رابط اللعبة.</div>'+
+    '<div id="gameModalRoot"></div>';
+  function showCreate(){
+    const body='<form id="gameCreateForm">'+
+      section("١. المعلومات الأساسية","اسم واضح وتصنيف يساعدان على تنظيم كتالوج الألعاب.",
+        field("اسم اللعبة","gameName",'<input id="gameName" maxlength="80" required placeholder="اكتب اسم اللعبة">')+
+        field("التصنيف","gameCategory",'<input id="gameCategory" maxlength="40" value="عام" required placeholder="مثال: ألعاب ترفيهية">')+
+        field("معرّف داخلي (يُنشأ تلقائياً)","gameIdInfo",'<input value="سيتم إنشاؤه تلقائياً عند الحفظ" disabled>'))+
+      section("٢. النشر والظهور","يمكنك حفظ اللعبة قيد التطوير دون رابط. لا تفعّلها قبل تجهيز رابط HTTPS.",
+        field("رابط اللعبة (اختياري)","gameUrl",'<input id="gameUrl" type="url" maxlength="2048" placeholder="https://example.com/game">',true)+
+        field("حالة اللعبة","gameStatus",'<select id="gameStatus"><option value="development" selected>قيد التطوير</option><option value="disabled">متوقفة</option><option value="active">مفعّلة</option></select>')+
+        field("ترتيب العرض","gameSort",'<input id="gameSort" type="number" value="0" min="0" max="9999">'))+
+      section("٣. الهوية والوصف","الأيقونة اختيارية ويمكن إضافتها أو تغييرها لاحقاً.",
+        field("أيقونة اللعبة","gameIconFile",'<input id="gameIconFile" type="file" accept="image/png,image/jpeg,image/webp"><small>PNG أو JPG أو WEBP، بحد أقصى 5MB.</small><img id="gameIconPreview" class="game-icon-preview hidden" alt="معاينة أيقونة اللعبة">')+
+        field("وصف اللعبة","gameDescription",'<textarea id="gameDescription" maxlength="240" rows="3" placeholder="وصف مختصر يظهر في إدارة اللعبة"></textarea>',true))+
+      '<div class="game-modal-actions"><span id="gameCreateError" class="error" role="alert"></span><button class="primary" type="submit">حفظ وإضافة اللعبة</button><button class="action" type="button" data-modal-cancel>إلغاء</button></div></form>';
+    openGameModal("إضافة لعبة جديدة","أدخل بيانات اللعبة في الأقسام المرتبة التالية.",body,true);
+    $("gameIconFile").onchange=()=>{
+      const file=$("gameIconFile").files&&$("gameIconFile").files[0],preview=$("gameIconPreview");
+      if(!file){preview.classList.add("hidden");preview.removeAttribute("src");return}
+      if(!["image/png","image/jpeg","image/webp"].includes(file.type)||file.size>5*1024*1024){$("gameIconFile").value="";preview.classList.add("hidden");alert("اختر صورة PNG أو JPG أو WEBP، وبحجم لا يتجاوز 5MB.");return}
+      preview.src=URL.createObjectURL(file);preview.classList.remove("hidden");
+    };
+    $("gameCreateForm").onsubmit=async e=>{
+      e.preventDefault();const button=e.currentTarget.querySelector('button[type="submit"]');button.disabled=true;
+      $("gameCreateError").textContent="";
+      try{
+        const iconFile=$("gameIconFile").files&&$("gameIconFile").files[0],iconUrl=iconFile?await uploadGameIcon(iconFile):"";
+        const url=$("gameUrl").value.trim(),status=$("gameStatus").value;
+        if(status==="active"&&!url)throw Error("أضف رابط اللعبة HTTPS قبل تفعيلها.");
+        if(url&&!/^https:\/\//i.test(url))throw Error("يجب أن يبدأ رابط اللعبة بـ HTTPS.");
+        await api("/admin/games",{method:"POST",body:JSON.stringify({name:$("gameName").value.trim(),url,status,iconUrl,category:$("gameCategory").value.trim(),description:$("gameDescription").value.trim(),sortOrder:Number($("gameSort").value||0)})});
+        await gamesPage();
+      }catch(error){$("gameCreateError").textContent=error.message;button.disabled=false}
+    };
+  }
+  $("showGameCreate")?.addEventListener("click",showCreate);
+  $("showGameCreateEmpty")?.addEventListener("click",showCreate);
+  $("gamesRefresh").onclick=()=>gamesPage();
+  document.querySelectorAll("[data-game-edit]").forEach(button=>button.onclick=()=>{
+    const game=games.find(item=>item.id===button.dataset.gameEdit);if(!game)return;
+    const body='<form id="gameEditForm">'+
+      section("١. المعلومات الأساسية","تعديل اسم اللعبة وتصنيفها.",
+        field("اسم اللعبة","editName",'<input id="editName" maxlength="80" required value="'+esc(game.name)+'">')+
+        field("التصنيف","editCategory",'<input id="editCategory" maxlength="40" required value="'+esc(game.category||"عام")+'">'))+
+      section("٢. الرابط والحالة","لا يمكن تفعيل لعبة من دون رابط HTTPS.",
+        field("رابط اللعبة","editUrl",'<input id="editUrl" type="url" maxlength="2048" value="'+esc(game.url||"")+'" placeholder="https://example.com/game">',true)+
+        field("الحالة الحالية","editStatus",'<select id="editStatus"><option value="development" '+(game.status==="development"?"selected":"")+'>قيد التطوير</option><option value="disabled" '+(game.status==="disabled"?"selected":"")+'>متوقفة</option><option value="active" '+(game.status==="active"?"selected":"")+'>مفعّلة</option></select>')+
+        field("ترتيب العرض","editSort",'<input id="editSort" type="number" min="0" max="9999" value="'+Number(game.sortOrder||0)+'">'))+
+      section("٣. الأيقونة والوصف","اترك رابط الأيقونة فارغاً لإزالتها.",
+        field("رابط الأيقونة","editIcon",'<input id="editIcon" type="url" maxlength="2048" value="'+esc(game.iconUrl||"")+'" placeholder="https://...">',true)+
+        field("الوصف","editDescription",'<textarea id="editDescription" maxlength="240" rows="3">'+esc(game.description||"")+'</textarea>',true))+
+      '<div class="game-modal-actions"><span id="gameEditError" class="error" role="alert"></span><button class="primary" type="submit">حفظ التعديلات</button><button class="action" type="button" data-modal-cancel>إلغاء</button></div></form>';
+    openGameModal("تعديل بيانات اللعبة","المعرّف: "+game.id,body,true);
+    $("gameEditForm").onsubmit=async e=>{
+      e.preventDefault();const submit=e.currentTarget.querySelector('button[type="submit"]');submit.disabled=true;
+      try{
+        const url=$("editUrl").value.trim(),status=$("editStatus").value,sortOrder=Number($("editSort").value);
+        if(status==="active"&&!url)throw Error("أضف رابط اللعبة قبل تفعيلها.");
+        if(url&&!/^https:\/\//i.test(url))throw Error("يجب أن يبدأ رابط اللعبة بـ HTTPS.");
+        if(!Number.isInteger(sortOrder)||sortOrder<0||sortOrder>9999)throw Error("ترتيب العرض يجب أن يكون من 0 إلى 9999.");
+        await api("/admin/games/"+encodeURIComponent(game.id),{method:"PATCH",body:JSON.stringify({name:$("editName").value.trim(),url,category:$("editCategory").value.trim(),description:$("editDescription").value.trim(),iconUrl:$("editIcon").value.trim(),sortOrder,status})});
+        await gamesPage();
+      }catch(error){$("gameEditError").textContent=error.message;submit.disabled=false}
+    };
+  });
+  document.querySelectorAll("[data-game-status]").forEach(button=>button.onclick=()=>{
+    const game=games.find(item=>item.id===button.dataset.gameStatus);if(!game)return;
+    const body='<form id="gameStatusForm">'+section("حالة اللعبة","اختر الحالة المناسبة. التفعيل يتطلب وجود رابط HTTPS.",
+      field("الحالة","nextGameStatus",'<select id="nextGameStatus"><option value="development" '+(game.status==="development"?"selected":"")+'>قيد التطوير</option><option value="disabled" '+(game.status==="disabled"?"selected":"")+'>متوقفة</option><option value="active" '+(game.status==="active"?"selected":"")+'>مفعّلة</option></select>'))+
+      '<div class="game-modal-actions"><span id="gameStatusError" class="error" role="alert"></span><button class="primary" type="submit">حفظ الحالة</button><button class="action" type="button" data-modal-cancel>إلغاء</button></div></form>';
+    openGameModal("تغيير حالة اللعبة",game.name,body,false);
+    $("gameStatusForm").onsubmit=async e=>{
+      e.preventDefault();const submit=e.currentTarget.querySelector('button[type="submit"]');submit.disabled=true;
+      try{const status=$("nextGameStatus").value;if(status==="active"&&(!game.url||!/^https:\/\//i.test(game.url)))throw Error("أضف رابط HTTPS من نافذة تعديل البيانات أولاً.");await api("/admin/games/"+encodeURIComponent(game.id),{method:"PATCH",body:JSON.stringify({status})});await gamesPage()}
+      catch(error){$("gameStatusError").textContent=error.message;submit.disabled=false}
+    };
+  });
+  document.querySelectorAll("[data-game-connect]").forEach(button=>button.onclick=()=>{
+    const game=games.find(item=>item.id===button.dataset.gameConnect);if(!game)return;
+    const details="Game ID: "+game.id+"\nAPI Base: "+API+"\nAuth: POST "+API+"/game/auth\nSession token: 15 minutes\nSettlement: POST "+API+"/game/server/rounds/{roundId}/settle\nلا تضع مفتاح الخادم في كود المتصفح.";
+    const body=section("بيانات تعريف اللعبة","استخدم هذه القيم عند إعداد عميل اللعبة وخادمها.",
+      field("Game ID","connectGameId",'<input readonly value="'+esc(game.id)+'">')+
+      field("API Base","connectApi",'<input readonly value="'+esc(API)+'">',true)+
+      field("مسار المصادقة","connectAuth",'<input readonly value="/game/auth">')+
+      field("مدة الجلسة","connectSession",'<input readonly value="15 دقيقة">')+
+      field("مسار تسوية الجولة","connectSettlement",'<input readonly value="/game/server/rounds/{roundId}/settle">',true)+
+      field("ملخص قابل للنسخ","connectAll",'<textarea id="connectAll" readonly rows="5">'+esc(details)+'</textarea>',true))+
+      '<div class="game-modal-actions"><button class="action" type="button" data-modal-cancel>إغلاق</button></div>';
+    openGameModal("بيانات ربط اللعبة",game.name,body,true);
+  });
+  document.querySelectorAll("[data-game-rounds]").forEach(button=>button.onclick=async()=>{
+    button.disabled=true;
+    try{
+      const result=await api("/admin/games/"+encodeURIComponent(button.dataset.gameRounds)+"/rounds"),rounds=result.rounds||[];
+      const table=rounds.length?'<div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>اللاعب</th><th>الحالة</th><th>إجمالي الرهان</th><th>إجمالي الدفع</th><th>معرّف الجولة</th></tr></thead><tbody>'+rounds.map(r=>'<tr><td>'+esc(r.createdAt||"—")+'</td><td>'+esc(r.userCode||r.playerName||"—")+'</td><td>'+esc(r.status||"—")+'</td><td>'+esc(r.totalStake??0)+'</td><td>'+esc(r.totalPayout??0)+'</td><td>'+esc(r.id||"—")+'</td></tr>').join("")+'</tbody></table></div>':'<div class="empty">لا توجد جولات مسجلة لهذه اللعبة حتى الآن.</div>';
+      openGameModal("سجل الجولات","عدد الجولات المعروضة: "+rounds.length,table+'<div class="game-modal-actions"><button class="action" type="button" data-modal-cancel>إغلاق</button></div>',true);
+    }catch(error){alert(error.message)}
+    finally{button.disabled=false}
+  });
+  document.querySelectorAll("[data-game-economy]").forEach(button=>button.onclick=async()=>{
+    button.disabled=true;
+    try{
+      const gameId=button.dataset.gameEconomy,current=(await api("/admin/games/"+encodeURIComponent(gameId)+"/economy")).settings||{};
+      const body='<form id="gameEconomyForm">'+
+        section("١. حدود الرهان","القيم بالعملات. اضبط الحدود بما يتوافق مع قواعد اللعبة.",
+          field("أقل رهان","minBet",'<input id="minBet" type="number" min="1" step="1" required value="'+Number(current.minBet??1)+'">')+
+          field("أعلى رهان","maxBet",'<input id="maxBet" type="number" min="1" step="1" required value="'+Number(current.maxBet??100000)+'">')+
+          field("أقصى عدد رهانات في الجولة","maxBetsPerRound",'<input id="maxBetsPerRound" type="number" min="1" max="100" step="1" required value="'+Number(current.maxBetsPerRound??6)+'">')+
+          field("أقصى مجموع رهانات الجولة","maxTotalBet",'<input id="maxTotalBet" type="number" min="1" step="1" required value="'+Number(current.maxTotalBet??600000)+'">'))+
+        section("٢. حماية الأرباح","المضاعف بوحدة basis points؛ القيمة 10000 تعني 1x.",
+          field("أقصى مضاعف دفع (Basis Points)","maxPayoutMultiplierBp",'<input id="maxPayoutMultiplierBp" type="number" min="1" step="1" required value="'+Number(current.maxPayoutMultiplierBp??100000)+'">')+
+          field("حالة اقتصاد اللعبة","economyEnabled",'<select id="economyEnabled"><option value="false" '+(current.enabled?"":"selected")+'>غير مفعّل</option><option value="true" '+(current.enabled?"selected":"")+'>مفعّل</option></select>'))+
+        '<div class="game-modal-actions"><span id="gameEconomyError" class="error" role="alert"></span><button class="primary" type="submit">حفظ إعدادات الرهان</button><button class="action" type="button" data-modal-cancel>إلغاء</button></div></form>';
+      openGameModal("إعدادات الرهان والاقتصاد","اللعبة: "+(games.find(g=>g.id===gameId)?.name||gameId),body,true);
+      $("gameEconomyForm").onsubmit=async e=>{
+        e.preventDefault();const submit=e.currentTarget.querySelector('button[type="submit"]');submit.disabled=true;
+        try{
+          const minBet=Number($("minBet").value),maxBet=Number($("maxBet").value),maxBetsPerRound=Number($("maxBetsPerRound").value),maxTotalBet=Number($("maxTotalBet").value),maxPayoutMultiplierBp=Number($("maxPayoutMultiplierBp").value),enabled=$("economyEnabled").value==="true";
+          if(![minBet,maxBet,maxBetsPerRound,maxTotalBet,maxPayoutMultiplierBp].every(Number.isSafeInteger)||minBet<1||maxBet<minBet||maxBetsPerRound<1||maxBetsPerRound>100||maxTotalBet<minBet||maxPayoutMultiplierBp<1)throw Error("تحقق من الحدود: يجب أن تكون أرقاماً صحيحة موجبة، والحد الأعلى لا يقل عن الحد الأدنى.");
+          if(enabled&&games.find(g=>g.id===gameId)?.status!=="active")throw Error("فعّل اللعبة أولاً قبل تفعيل اقتصادها.");
+          await api("/admin/games/"+encodeURIComponent(gameId)+"/economy",{method:"PATCH",body:JSON.stringify({enabled,minBet,maxBet,maxBetsPerRound,maxTotalBet,maxPayoutMultiplierBp})});
+          closeGameModal();alert("تم حفظ إعدادات اقتصاد اللعبة.");
+        }catch(error){$("gameEconomyError").textContent=error.message;submit.disabled=false}
+      };
+    }catch(error){alert(error.message)}
+    finally{button.disabled=false}
+  });
+  document.querySelectorAll("[data-game-key]").forEach(button=>button.onclick=()=>{
+    const game=games.find(item=>item.id===button.dataset.gameKey);if(!game)return;
+    const body='<div class="notice">سيؤدي إنشاء مفتاح جديد إلى إبطال المفتاح السابق فوراً. انسخ المفتاح واحفظه في أسرار خادم اللعبة مباشرة؛ لن يظهر مرة أخرى بعد إغلاق النافذة.</div>'+
+      '<div class="game-modal-actions"><button class="action danger" id="createGameServerKey" type="button">إنشاء مفتاح جديد وإبطال السابق</button><button class="action" type="button" data-modal-cancel>إلغاء</button></div><div id="gameKeyResult"></div>';
+    openGameModal("مفتاح خادم اللعبة",game.name,body,false);
+    $("createGameServerKey").onclick=async()=>{
+      const create=$("createGameServerKey");create.disabled=true;
+      try{
+        const result=await api("/admin/games/"+encodeURIComponent(game.id)+"/server-key",{method:"POST",body:"{}"});
+        $("gameKeyResult").innerHTML='<div class="game-key-result"><strong>تم إنشاء المفتاح — انسخه الآن</strong><textarea id="newGameServerKey" readonly rows="4"></textarea><p class="muted">لا تضعه في المتصفح أو في كود الواجهة؛ خزّنه في الخادم فقط. لن نعرض المفتاح مرة أخرى بعد إغلاق النافذة.</p><button class="action" id="copyGameServerKey" type="button">تحديد المفتاح لنسخه</button></div>';
+        $("newGameServerKey").value=result.serverKey||"";
+        $("copyGameServerKey").onclick=()=>{$("newGameServerKey").focus();$("newGameServerKey").select()};
+      }catch(error){$("gameKeyResult").innerHTML='<p class="error">'+esc(error.message)+'</p>';create.disabled=false}
+    };
+  });
 }
 function audit(a){$("content").innerHTML='<div class="section"><div class="section-head"><h2>آخر الإجراءات ('+a.length+')</h2></div><div class="table-wrap"><table><thead><tr><th>الإجراء</th><th>المدير</th><th>النوع</th><th>المعرف</th><th>التاريخ</th></tr></thead><tbody>'+(a.length?a.map(x=>'<tr><td>'+esc(x.action)+'</td><td>'+esc(x.actor_name||x.actor_email||"—")+'</td><td>'+esc(x.target_type)+'</td><td>'+esc(x.target_id)+'</td><td>'+esc(new Date(x.created_at).toLocaleString("ar"))+'</td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد إجراءات</td></tr>')+'</tbody></table></div></div>'}
 startup();
