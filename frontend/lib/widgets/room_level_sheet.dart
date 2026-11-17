@@ -53,7 +53,7 @@ class RoomLevelData {
     this.dailyExpCurrent = '0', this.dailyExpMax = '9.9m',
     this.dailyRatio = 0, this.dailyResetIn, this.tasks = const [],
     this.perkGroups = const [],
-    this.note = 'تحتسب 600 نقطة خبرة كل 5 دقائق متواصلة على المايك، وترتفع إلى 1200 نقطة للحسابات خلال أول 15 يومًا من التسجيل. الحد اليومي لمساهمة المستخدم 3,000,000 نقطة في جميع الغرف.',
+    this.note = 'يمكن لكل مستخدم المساهمة بما يصل إلى 3،000،000 من نقاط الخبرة يوميًا في جميع الغرف.',
   });
   final int level, exp, nextLevelExp;
   final String roomName, roomId, dailyExpCurrent, dailyExpMax, note;
