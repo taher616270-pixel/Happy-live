@@ -43,7 +43,7 @@ test("Happy Food Wheel exposes authenticated player and idempotent wallet callba
   assert.match(callback, /idempotency_conflict/);
   assert.match(callback, /insufficient_balance/);
   assert.ok(callback.includes('"happy-food-wheel:" + appId + ":" + gameId'));
-  assert.match(callback, /user_wallets SET balance=balance\\+\\?/);
+  assert.ok(callback.includes("user_wallets SET balance=balance+?"));
 });
 
 test("owner-only credential management returns the raw token only on creation", () => {
