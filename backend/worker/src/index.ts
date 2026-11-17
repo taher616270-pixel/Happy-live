@@ -708,7 +708,7 @@ export default {
       /^\/api\/v1\/admin\/gifts\/catalog\/[a-z0-9-]{1,80}$/i.test(url.pathname) ||
       url.pathname === "/api/v1/admin/moderators" ||
       url.pathname === "/api/v1/admin/rooms" ||
-      /^\\/api\\/v1\\/admin\\/rooms\\/[0-9a-f-]{36}\\/level$/i.test(url.pathname) ||
+      /^\/api\/v1\/admin\/rooms\/[0-9a-f-]{36}\/level$/i.test(url.pathname) ||
       url.pathname === "/api/v1/admin/audit" ||
       url.pathname === "/api/v1/admin/agora/status" ||
       url.pathname === "/api/v1/admin/agora/voice" ||
@@ -1110,7 +1110,7 @@ export default {
           }));
           return json({ ok: true, rooms }, 200, origin, env);
         }
-        const adminRoomLevelRoute = url.pathname.match(/^\\/api\\/v1\\/admin\\/rooms\\/([0-9a-f-]{36})\\/level$/i);
+        const adminRoomLevelRoute = url.pathname.match(/^\/api\/v1\/admin\/rooms\/([0-9a-f-]{36})\/level$/i);
         if (adminRoomLevelRoute && request.method === "PATCH") {
           if (!hasAdminPermission(actor, "rooms.manage")) return json({ error: "permission_denied" }, 403, origin, env);
           let body: Record<string, unknown>;
