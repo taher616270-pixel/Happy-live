@@ -180,45 +180,42 @@ async function handleUtdCallback(
     }
 
     const claimId=crypto.randomUUID();
-    const insert=await db.prepare(
-      "INSERT OR IGNORE INTO utd_game_callback_orders (order_id,user_id,game_id,round_id,delta,claim_id,applied,created_at) " +
-      "SELECT ?,?,?,?,?,?,0,? WHERE EXISTS (SELECT 1 FROM user_wallets WHERE user_id=? AND balance + ? >= 0)"
-    ).bind(orderId,user.id,gameId,roundId,delta,claimId,now,user.id,delta).run();
-
-    const claimed=await db.prepare(
-      "SELECT order_id FROM utd_game_callback_orders WHERE order_id=? AND claim_id=? AND applied=0 LIMIT 1"
-    ).bind(orderId,claimId).first<{order_id:string}>();
-    if (!claimed) {
-      const existing=await db.prepare(
-        "SELECT user_id,applied FROM utd_game_callback_orders WHERE order_id=? LIMIT 1"
-      ).bind(orderId).first<{user_id:string;applied:number}>();
-      if (existing?.user_id===user.id && existing.applied===1) {
-        const current=await db.prepare("SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1").bind(user.id).first<{balance:number}>();
-        const balance=Number(current?.balance)||0;
-        return path.endsWith("/make-up-orders") ? utdOk({coin:balance},reply) : utdOk({coins:balance,coin:balance},reply);
-      }
-      const current=await db.prepare("SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1").bind(user.id).first<{balance:number}>();
-      if (delta<0 && Number(current?.balance||0)+delta<0) return utdFail(4004,"Insufficient game coins",reply);
-      return utdFail(4005,"order id conflict",reply);
-    }
-
-    if (delta!==0) {
-      const walletUpdate=await db.prepare(
-        "UPDATE user_wallets SET balance=balance+?, updated_at=? WHERE user_id=? AND balance+?>=0 " +
+    // D1 batch is transactional. changes() gates the wallet update on a newly
+    // inserted order, so concurrent retries cannot apply the same order twice.
+    await db.batch([
+      db.prepare(
+        "INSERT OR IGNORE INTO utd_game_callback_orders (order_id,user_id,game_id,round_id,delta,claim_id,applied,created_at) " +
+        "SELECT ?,?,?,?,?,?,0,? WHERE EXISTS (SELECT 1 FROM user_wallets WHERE user_id=? AND balance + ? >= 0)"
+      ).bind(orderId,user.id,gameId,roundId,delta,claimId,now,user.id,delta),
+      db.prepare(
+        "UPDATE user_wallets SET balance=balance+?, updated_at=? WHERE user_id=? AND ?<>0 AND changes()=1 " +
         "AND EXISTS (SELECT 1 FROM utd_game_callback_orders WHERE order_id=? AND claim_id=? AND applied=0)"
-      ).bind(delta,now,user.id,delta,orderId,claimId).run();
-      if ((walletUpdate.meta?.changes ?? 0)!==1) {
-        await db.prepare("DELETE FROM utd_game_callback_orders WHERE order_id=? AND claim_id=? AND applied=0")
-          .bind(orderId,claimId).run();
-        const latest=await db.prepare("SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1")
-          .bind(user.id).first<{balance:number}>();
-        if (delta<0 && Number(latest?.balance ?? 0)+delta<0) return utdFail(4004,"Insufficient game coins",reply);
-        return utdFail(4005,"wallet settlement failed",reply);
-      }
+      ).bind(delta,now,user.id,delta,orderId,claimId),
+      db.prepare(
+        "UPDATE utd_game_callback_orders SET applied=1 WHERE order_id=? AND claim_id=? AND applied=0 " +
+        "AND (delta=0 OR changes()=1)"
+      ).bind(orderId,claimId),
+      db.prepare(
+        "DELETE FROM utd_game_callback_orders WHERE order_id=? AND claim_id=? AND applied=0"
+      ).bind(orderId,claimId)
+    ]);
+
+    const order=await db.prepare(
+      "SELECT user_id,claim_id,applied FROM utd_game_callback_orders WHERE order_id=? LIMIT 1"
+    ).bind(orderId).first<{user_id:string;claim_id:string;applied:number}>();
+    if (order?.user_id===user.id && order.applied===1) {
+      const current=await db.prepare("SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1")
+        .bind(user.id).first<{balance:number}>();
+      const balance=Number(current?.balance)||0;
+      return path.endsWith("/make-up-orders")
+        ? utdOk({coin:balance},reply)
+        : utdOk({coins:balance,coin:balance},reply);
     }
-    await db.prepare(
-      "UPDATE utd_game_callback_orders SET applied=1 WHERE order_id=? AND claim_id=? AND applied=0"
-    ).bind(orderId,claimId).run();
+    if (order && order.user_id!==user.id) return utdFail(4005,"order id conflict",reply);
+    const latest=await db.prepare("SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1")
+      .bind(user.id).first<{balance:number}>();
+    if (delta<0 && Number(latest?.balance ?? 0)+delta<0) return utdFail(4004,"Insufficient game coins",reply);
+    return utdFail(4005,"wallet settlement failed",reply);
 
     const settled=await db.prepare(
       "SELECT o.applied,o.user_id,w.balance FROM utd_game_callback_orders o JOIN user_wallets w ON w.user_id=o.user_id WHERE o.order_id=? AND o.claim_id=? LIMIT 1"
