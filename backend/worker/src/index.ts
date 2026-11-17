@@ -29,6 +29,7 @@ export interface Env {
   AGORA_APP_CERTIFICATE?: string;
   AGORA_ENABLED?: string;
   GOOGLE_CLIENT_ID?: string;
+  UTD_APP_KEY?: string;
 }
 
 
@@ -413,6 +414,7 @@ export default {
     const platformCallbackResponse = await handlePlatformCallbackRequest(
       request,
       env.DB,
+      env.UTD_APP_KEY,
       (data, status = 200) => json(data, status, undefined, env)
     );
     if (platformCallbackResponse) return platformCallbackResponse;
