@@ -286,16 +286,17 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     final dailyExp = _roomInfoInt(
       ['dailyExperienceExp', 'daily_experience_exp'], 0,
     ).clamp(0, dailyExpMaxValue).toInt();
+    final dailyMicExp = _roomInfoInt(
+      ['dailyMicExperienceExp', 'daily_mic_experience_exp'], 0,
+    ).clamp(0, 1000000).toInt();
+    final dailyGiftExp = _roomInfoInt(
+      ['dailyGiftExperienceExp', 'daily_gift_experience_exp'], 0,
+    ).clamp(0, 13000000).toInt();
     final dailyResetSeconds = _roomInfoInt(
       ['dailyResetInSeconds', 'daily_reset_in_seconds'], 0,
     ).clamp(0, 86400).toInt();
     // Mic awards are the room's current daily experience contribution.
     // The 1m mic target is part of (not additional to) the room-wide 14m cap.
-    final micCurrent = dailyExp >= 1000000
-        ? '${(dailyExp / 1000000).toStringAsFixed(1)}m'
-        : dailyExp >= 1000
-            ? '${(dailyExp / 1000).toStringAsFixed(1)}k'
-            : dailyExp.toString();
     final roomImage = _roomInfoString(
       ['imageUrl', 'image_url', 'coverUrl', 'cover_url'],
     );
@@ -316,12 +317,19 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         ExpTask(
           title: 'اخذ المقعد',
           desc: 'تُحتسب خبرة المايك تلقائيًا كل 5 دقائق',
-          current: micCurrent,
+          current: dailyMicExp.toString(),
           max: '1m',
           icon: Icons.mic,
-          ratio: dailyExp / 1000000,
+          ratio: dailyMicExp / 1000000,
         ),
-        kSampleTasks[1],
+        ExpTask(
+          title: 'ارسل الهدايا في الغرفة',
+          desc: '+1 نقاط خبرة الغرفة / 1 عملة ذهبية (خلال المبارزة: +2 نقاط خبرة الغرفة / 1 عملة ذهبية)',
+          current: dailyGiftExp.toString(),
+          max: '13m',
+          icon: Icons.card_giftcard,
+          ratio: dailyGiftExp / 13000000,
+        ),
       ],
       perkGroups: kSamplePerks,
     );
