@@ -240,7 +240,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     Row(children: [
       const Text('نقاط خبرة الغرفة اليوم:', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
       const Spacer(),
-      if (_left != null) ...[Text(_fmt(_left!), style: const TextStyle(color: _muted, fontSize: 12)), const SizedBox(width: 4), const Icon(Icons.schedule, color: _muted, size: 14)],
+      if (_left != null) ...[Text(_fmt(_left!), style: const TextStyle(color: _muted, fontSize: 12)), const SizedBox(width: 4), const Icon(Icons.schedule, color: _muted, size: 12)],
     ]),
     const SizedBox(height: 10), _bar(d.dailyRatio), const SizedBox(height: 6),
     Text('${d.dailyExpCurrent}/${d.dailyExpMax}', style: const TextStyle(color: _muted, fontSize: 11)),
