@@ -320,14 +320,23 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     final dailyMax = _roomInfoIntFrom(
       levelRoom, ['dailyExperienceMax', 'daily_experience_max'], 14000000,
     ).clamp(1, 14000000).toInt();
+    final breakdown = levelRoom['dailyExperienceBreakdown'] is Map
+        ? Map<String, dynamic>.from(levelRoom['dailyExperienceBreakdown'] as Map)
+        : <String, dynamic>{};
     final dailyMicExp = _roomInfoIntFrom(
-      levelRoom, ['dailyMicExperienceExp', 'daily_mic_experience_exp'], 0,
+      levelRoom, ['dailyMicExperienceExp', 'daily_mic_experience_exp'],
+      _roomInfoIntFrom(breakdown, ['microphone'], 0),
     ).clamp(0, 1000000).toInt();
     final dailyGiftExp = _roomInfoIntFrom(
-      levelRoom, ['dailyGiftExperienceExp', 'daily_gift_experience_exp'], 0,
+      levelRoom, ['dailyGiftExperienceExp', 'daily_gift_experience_exp'],
+      _roomInfoIntFrom(breakdown, ['gifts'], 0),
     ).clamp(0, 13000000).toInt();
     // The daily total is explicitly the sum of the two active earning tasks.
     final dailyExp = (dailyMicExp + dailyGiftExp).clamp(0, dailyMax).toInt();
+    final serverDailyExp = _roomInfoIntFrom(
+      levelRoom, ['dailyExperienceExp', 'daily_experience_exp'],
+      _roomInfoIntFrom(breakdown, ['total'], dailyExp),
+    ).clamp(0, dailyMax).toInt();
     final resetSeconds = _roomInfoIntFrom(
       levelRoom, ['dailyResetInSeconds', 'daily_reset_in_seconds'], 0,
     ).clamp(0, 86400).toInt();
@@ -341,9 +350,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         roomAvatar: image.startsWith('http') ? NetworkImage(image) : null,
         exp: exp,
         nextLevelExp: nextExp,
-        dailyExpCurrent: dailyExp.toString(),
+        dailyExpCurrent: serverDailyExp.toString(),
         dailyExpMax: '14m',
-        dailyRatio: dailyExp / dailyMax,
+        dailyRatio: serverDailyExp / dailyMax,
         dailyResetIn: resetSeconds > 0 ? Duration(seconds: resetSeconds) : null,
         tasks: [
           ExpTask(
