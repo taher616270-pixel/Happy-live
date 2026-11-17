@@ -264,7 +264,14 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
   ]));
   Widget _taskCard(ExpTask t) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 1.5), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: _cardBorder)), child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
     if (t.title == 'اخذ المقعد')
-      const _MicrophoneIllustration()
+      SizedBox(
+        width: 42,
+        height: 48,
+        child: Image.asset(
+          'assets/images/microphone.PNG',
+          fit: BoxFit.contain,
+        ),
+      )
     else
       Icon(t.icon, color: Colors.white70, size: 34),
     const SizedBox(width: 12),
@@ -294,69 +301,6 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     const SizedBox(width: 12),
     Container(width: 44, height: 44, decoration: BoxDecoration(color: (p.iconColor ?? _green).withOpacity(.15), borderRadius: BorderRadius.circular(12)), child: Icon(p.icon, color: p.iconColor ?? _green, size: 26)),
   ]));
-}
-
-class _MicrophoneIllustration extends StatelessWidget {
-  const _MicrophoneIllustration();
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 42,
-    height: 48,
-    child: CustomPaint(painter: _MicrophoneIllustrationPainter()),
-  );
-}
-
-class _MicrophoneIllustrationPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final centerX = size.width / 2;
-    final mic = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(centerX, 17), width: 15, height: 27),
-      const Radius.circular(8),
-    );
-    final bodyPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFFFFFFFF), Color(0xFFBFC8D4), Color(0xFF697887)],
-      ).createShader(Rect.fromLTWH(centerX - 9, 3, 18, 29));
-    canvas.drawRRect(mic, bodyPaint);
-
-    final grille = Paint()
-      ..color = const Color(0xFF596675)
-      ..strokeWidth = 1.1
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 5; i++) {
-      final y = 8.0 + i * 4;
-      canvas.drawLine(Offset(centerX - 4.2, y), Offset(centerX + 4.2, y), grille);
-    }
-
-    final arcPaint = Paint()
-      ..color = const Color(0xFFCFD8E2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-    canvas.drawArc(
-      Rect.fromCenter(center: Offset(centerX, 18), width: 25, height: 29),
-      0,
-      math.pi,
-      false,
-      arcPaint,
-    );
-    canvas.drawLine(Offset(centerX, 32), Offset(centerX, 40), arcPaint);
-    canvas.drawLine(Offset(centerX - 7, 40), Offset(centerX + 7, 40), arcPaint);
-    canvas.drawLine(Offset(centerX - 4, 44), Offset(centerX + 4, 44), arcPaint);
-
-    final shine = Paint()
-      ..color = Colors.white.withOpacity(.72)
-      ..strokeWidth = 1.4
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(centerX - 4.5, 7), Offset(centerX - 4.5, 25), shine);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _LevelRing extends StatelessWidget {
