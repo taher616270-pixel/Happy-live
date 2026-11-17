@@ -123,12 +123,13 @@ const kSamplePerks = <LevelPerksGroup>[
 
 /// شارة المستوى في الغرفة؛ تحافظ على شكل الشارة الحالية وتفتح نافذة المستوى.
 class RoomLevelChip extends StatelessWidget {
-  const RoomLevelChip({super.key, required this.data});
+  const RoomLevelChip({super.key, required this.data, this.onTap});
   final RoomLevelData data;
+  final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) => GestureDetector(
     behavior: HitTestBehavior.opaque,
-    onTap: () => showRoomLevelSheet(context, data),
+    onTap: onTap ?? () => showRoomLevelSheet(context, data),
     child: Container(
       height: 20,
       padding: const EdgeInsets.only(left: 4, right: 9),
