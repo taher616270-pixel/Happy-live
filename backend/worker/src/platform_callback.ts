@@ -203,10 +203,18 @@ async function handleUtdCallback(
     }
 
     if (delta!==0) {
-      await db.prepare(
+      const walletUpdate=await db.prepare(
         "UPDATE user_wallets SET balance=balance+?, updated_at=? WHERE user_id=? AND balance+?>=0 " +
         "AND EXISTS (SELECT 1 FROM utd_game_callback_orders WHERE order_id=? AND claim_id=? AND applied=0)"
       ).bind(delta,now,user.id,delta,orderId,claimId).run();
+      if ((walletUpdate.meta?.changes ?? 0)!==1) {
+        await db.prepare("DELETE FROM utd_game_callback_orders WHERE order_id=? AND claim_id=? AND applied=0")
+          .bind(orderId,claimId).run();
+        const latest=await db.prepare("SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1")
+          .bind(user.id).first<{balance:number}>();
+        if (delta<0 && Number(latest?.balance ?? 0)+delta<0) return utdFail(4004,"Insufficient game coins",reply);
+        return utdFail(4005,"wallet settlement failed",reply);
+      }
     }
     await db.prepare(
       "UPDATE utd_game_callback_orders SET applied=1 WHERE order_id=? AND claim_id=? AND applied=0"
