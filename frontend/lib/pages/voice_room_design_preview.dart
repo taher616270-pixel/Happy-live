@@ -289,6 +289,13 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     final dailyResetSeconds = _roomInfoInt(
       ['dailyResetInSeconds', 'daily_reset_in_seconds'], 0,
     ).clamp(0, 86400).toInt();
+    // Mic awards are the room's current daily experience contribution.
+    // The 1m mic target is part of (not additional to) the room-wide 14m cap.
+    final micCurrent = dailyExp >= 1000000
+        ? '${(dailyExp / 1000000).toStringAsFixed(1)}m'
+        : dailyExp >= 1000
+            ? '${(dailyExp / 1000).toStringAsFixed(1)}k'
+            : dailyExp.toString();
     final roomImage = _roomInfoString(
       ['imageUrl', 'image_url', 'coverUrl', 'cover_url'],
     );
@@ -305,7 +312,17 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       dailyResetIn: dailyResetSeconds > 0
           ? Duration(seconds: dailyResetSeconds)
           : null,
-      tasks: kSampleTasks,
+      tasks: [
+        ExpTask(
+          title: 'اخذ المقعد',
+          desc: 'تُحتسب خبرة المايك تلقائيًا كل 5 دقائق',
+          current: micCurrent,
+          max: '1m',
+          icon: Icons.mic,
+          ratio: dailyExp / 1000000,
+        ),
+        kSampleTasks[1],
+      ],
       perkGroups: kSamplePerks,
     );
   }
