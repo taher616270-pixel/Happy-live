@@ -560,12 +560,26 @@ function users(a){
 }
 function rooms(a){
   const canManage=admin.role==="owner"||admin.role==="admin";
-  $("content").innerHTML='<div class="section"><div class="section-head"><h2>الغرف ('+a.length+')</h2></div><div class="table-wrap"><table><thead><tr><th>الغرفة</th><th>رقمها</th><th>المالك</th><th>الخصوصية</th><th>الحالة</th><th>الإجراء</th><th>المحفظة والرهانات</th></tr></thead><tbody>'+
-    (a.length?a.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.room_code)+'</td><td>'+esc(r.owner_name||"—")+'</td><td>'+(r.visibility==="private"?"خاصة":"عامة")+'</td><td><span class="badge '+(r.status==="active"?"good":"bad")+'">'+(r.status==="active"?"نشطة":"مغلقة")+'</span></td><td><div class="room-tools"><button class="action" data-room-open="'+esc(r.id)+'" data-room-name="'+esc(r.name)+'">إدارة الغرفة</button>'+
-    (canManage?'<button class="action '+(r.status==="active"?"danger":"")+'" data-room-status="'+esc(r.id)+'" data-next="'+(r.status==="active"?"closed":"active")+'">'+(r.status==="active"?"إغلاق":"فتح")+'</button>':'<span class="muted">قراءة فقط</span>')+
-    '</div></td></tr>').join(""):'<tr><td colspan="6" class="empty">لا توجد غرف</td></tr>')+
+  $("content").innerHTML='<div class="section"><div class="section-head"><h2>الغرف ('+a.length+')</h2></div><p class="muted">يمكن للمالك أو مدير التطبيق ضبط مستوى خبرة الغرفة مباشرة من هنا، حتى المستوى 150. لا يتم خصم عملات من محفظة المستخدم عند استخدام هذا الإجراء الإداري.</p><div class="table-wrap"><table><thead><tr><th>الغرفة</th><th>رقمها</th><th>المالك</th><th>مستوى الخبرة</th><th>الخصوصية</th><th>الحالة</th><th>الإجراء</th></tr></thead><tbody>'+
+    (a.length?a.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.room_code)+'</td><td>'+esc(r.owner_name||"—")+'</td><td><strong>Lv.'+Number(r.experience_level||1)+'</strong></td><td>'+(r.visibility==="private"?"خاصة":"عامة")+'</td><td><span class="badge '+(r.status==="active"?"good":"bad")+'">'+(r.status==="active"?"نشطة":"مغلقة")+'</span></td><td><div class="room-tools"><button class="action" data-room-open="'+esc(r.id)+'" data-room-name="'+esc(r.name)+'">إدارة الغرفة</button>'+
+    (canManage?'<button class="action" data-room-level="'+esc(r.id)+'" data-current-level="'+Number(r.experience_level||1)+'">رفع المستوى</button><button class="action '+(r.status==="active"?"danger":"")+'" data-room-status="'+esc(r.id)+'" data-next="'+(r.status==="active"?"closed":"active")+'">'+(r.status==="active"?"إغلاق":"فتح")+'</button>':'<span class="muted">قراءة فقط</span>')+
+    '</div></td></tr>').join(""):'<tr><td colspan="7" class="empty">لا توجد غرف</td></tr>')+
     '</tbody></table></div></div><div id="roomModeration"></div>';
   document.querySelectorAll("[data-room-open]").forEach(b=>b.onclick=()=>loadRoomModeration(b.dataset.roomOpen,b.dataset.roomName||"الغرفة"));
+  document.querySelectorAll("[data-room-level]").forEach(b=>b.onclick=async()=>{
+    const current=Number(b.dataset.currentLevel||1);
+    const raw=window.prompt("أدخل مستوى خبرة الغرفة المطلوب (1 إلى 150). المستوى الحالي: "+current,String(Math.min(150,current+1)));
+    if(raw===null)return;
+    const level=Number(raw);
+    if(!Number.isInteger(level)||level<1||level>150){alert("المستوى يجب أن يكون رقمًا صحيحًا من 1 إلى 150.");return}
+    if(level<=current){alert("يمكن رفع المستوى فقط. المستوى الحالي هو "+current+".");return}
+    if(!confirm("تأكيد رفع مستوى الغرفة من "+current+" إلى "+level+"؟"))return;
+    try{
+      const result=await api("/admin/rooms/"+encodeURIComponent(b.dataset.roomLevel)+"/level",{method:"PATCH",body:JSON.stringify({level})});
+      alert("تم تحديث مستوى الغرفة إلى Lv."+result.level+" بنجاح.");
+      render();
+    }catch(e){alert(e.message||"تعذر تحديث مستوى الغرفة.")}
+  });
   document.querySelectorAll("[data-room-status]").forEach(b=>b.onclick=async()=>{
     if(!confirm("تأكيد تغيير حالة الغرفة؟"))return;
     try{await api("/admin/rooms/"+b.dataset.roomStatus+"/status",{method:"PATCH",body:JSON.stringify({status:b.dataset.next})});render()}
