@@ -232,6 +232,16 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     return fallback;
   }
 
+  int _roomInfoIntFrom(Map<String, dynamic> source, List<String> keys, [int fallback = 0]) {
+    for (final key in keys) {
+      final value = source[key];
+      if (value is num) return value.toInt();
+      final parsed = int.tryParse(value?.toString() ?? '');
+      if (parsed != null) return parsed;
+    }
+    return fallback;
+  }
+
   int _roomInfoInt(List<String> keys, [int fallback = 0]) {
     for (final key in keys) {
       final value = room[key];
@@ -552,10 +562,83 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       await showRoomInfoSheet(
         context,
         info,
-        onLevelTap: () => showRoomLevelSheet(
-          context,
-          _roomLevelData(),
-        ),
+        onLevelTap: () async {
+          // Fetch a fresh room snapshot when the level sheet opens. The parent
+          // room map can lag behind successful gift transactions, which made
+          // total room XP update while the gift-task counter stayed stale.
+          var levelRoom = Map<String, dynamic>.from(room);
+          final roomId = (room['id'] ?? '').toString().trim();
+          if (roomId.isNotEmpty && accessToken.trim().isNotEmpty) {
+            try {
+              final response = await http.get(
+                Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/rooms/${Uri.encodeComponent(roomId)}/seats'),
+                headers: {'Authorization': 'Bearer $accessToken'},
+              ).timeout(const Duration(seconds: 12));
+              if (response.statusCode == 200) {
+                final payload = jsonDecode(response.body);
+                if (payload is Map && payload['room'] is Map) {
+                  levelRoom.addAll(Map<String, dynamic>.from(payload['room'] as Map));
+                }
+              }
+            } catch (error) {
+              debugPrint('[room-level] fresh experience snapshot failed: $error');
+            }
+          }
+          if (!context.mounted) return;
+          final exp = _roomInfoIntFrom(levelRoom, ['experienceExp', 'experience_exp'], 0);
+          final level = _roomInfoIntFrom(levelRoom, ['experienceLevel', 'experience_level'], 1)
+              .clamp(1, 2147483647).toInt();
+          final nextExp = _roomInfoIntFrom(
+            levelRoom,
+            ['experienceNextLevelExp', 'experience_next_level_exp'],
+            roomLevelRequiredExpForLevel(level + 1),
+          ).clamp(1, 2147483647).toInt();
+          final dailyMax = _roomInfoIntFrom(levelRoom, ['dailyExperienceMax', 'daily_experience_max'], 14000000)
+              .clamp(1, 14000000).toInt();
+          final dailyExp = _roomInfoIntFrom(levelRoom, ['dailyExperienceExp', 'daily_experience_exp'], 0)
+              .clamp(0, dailyMax).toInt();
+          final dailyMicExp = _roomInfoIntFrom(levelRoom, ['dailyMicExperienceExp', 'daily_mic_experience_exp'], 0)
+              .clamp(0, 1000000).toInt();
+          final dailyGiftExp = _roomInfoIntFrom(levelRoom, ['dailyGiftExperienceExp', 'daily_gift_experience_exp'], 0)
+              .clamp(0, 13000000).toInt();
+          final resetSeconds = _roomInfoIntFrom(levelRoom, ['dailyResetInSeconds', 'daily_reset_in_seconds'], 0)
+              .clamp(0, 86400).toInt();
+          final image = (levelRoom['imageUrl'] ?? '').toString();
+          await showRoomLevelSheet(
+            context,
+            RoomLevelData(
+              level: level,
+              roomName: _name,
+              roomId: _id,
+              roomAvatar: image.startsWith('http') ? NetworkImage(image) : null,
+              exp: exp,
+              nextLevelExp: nextExp,
+              dailyExpCurrent: dailyExp.toString(),
+              dailyExpMax: '14m',
+              dailyRatio: dailyExp / dailyMax,
+              dailyResetIn: resetSeconds > 0 ? Duration(seconds: resetSeconds) : null,
+              tasks: [
+                ExpTask(
+                  title: 'اخذ المقعد',
+                  desc: '+600 نقاط خبرة الغرفة/5 دقائق المستخدمين الجدد: +1200 نقاط خبرة الغرفة/5 دقائق)',
+                  current: dailyMicExp.toString(),
+                  max: '1m',
+                  icon: Icons.mic,
+                  ratio: dailyMicExp / 1000000,
+                ),
+                ExpTask(
+                  title: 'ارسل الهدايا في الغرفة',
+                  desc: '+1 نقاط خبرة الغرفة / 1 عملة ذهبية (خلال المبارزة: +2 نقاط خبرة الغرفة / 1 عملة ذهبية)',
+                  current: dailyGiftExp.toString(),
+                  max: '13m',
+                  icon: Icons.card_giftcard,
+                  ratio: dailyGiftExp / 13000000,
+                ),
+              ],
+              perkGroups: kSamplePerks,
+            ),
+          );
+        },
         onUpgrade: () {
           Navigator.of(context).pop();
           final roomId = (room['id'] ?? '').toString().trim();
