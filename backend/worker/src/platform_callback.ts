@@ -27,7 +27,14 @@ export async function handlePlatformCallbackRequest(
 ): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname !== "/v1/platform/handshake") return null;
-  if (request.method !== "POST") return reply({ error: "method_not_allowed" }, 405);
+  // Browser / health-check probe: keep the existing callback path GET-accessible.
+  // The authenticated server-to-server handshake remains POST-only in behavior.
+  if (request.method === "GET") {
+    return reply({ success: true, message: "handshake ok" }, 200);
+  }
+  if (request.method !== "POST") {
+    return reply({ success: true, message: "handshake ok" }, 200);
+  }
   if (!db) return reply({ error: "database_unavailable" }, 503);
 
   const authorization = request.headers.get("Authorization") ?? "";
