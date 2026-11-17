@@ -255,7 +255,8 @@ async function handleHappyFoodWheelHandshake(
     body = parsed as Record<string, unknown>;
   } catch { return reply({ error: "invalid_handshake_payload" }, 400); }
   const appId=body.appId, challenge=body.challenge;
-  if (body.platform !== "Happy Food Wheel" || typeof appId!=="string" || !/^app_[A-Za-z0-9_-]{8,128}$/.test(appId) || body.apiVersion !== "v1" || typeof challenge!=="string" || challenge.length<16 || challenge.length>256) return reply({ error: "invalid_handshake_payload" }, 400);
+  const uid = body.uid === undefined || body.uid === null ? "" : String(body.uid);
+  if (body.platform !== "Happy Food Wheel" || typeof appId!=="string" || !/^app_[A-Za-z0-9_-]{8,128}$/.test(appId) || body.apiVersion !== "v1" || typeof challenge!=="string" || challenge.length<16 || challenge.length>256 || uid.length>128) return reply({ error: "invalid_handshake_payload" }, 400);
   try {
     const [savedAppId,savedTokenHash]=await Promise.all([
       db.prepare("SELECT setting_value FROM platform_settings WHERE setting_key='happy_food_wheel_app_id' LIMIT 1").first<{setting_value:string}>(),
@@ -270,6 +271,16 @@ async function handleHappyFoodWheelHandshake(
       await db.prepare("INSERT INTO platform_settings (setting_key,setting_value,updated_at) VALUES ('happy_food_wheel_app_id',?,?) ON CONFLICT(setting_key) DO NOTHING").bind(appId,now).run();
       const bound=await db.prepare("SELECT setting_value FROM platform_settings WHERE setting_key='happy_food_wheel_app_id' LIMIT 1").first<{setting_value:string}>();
       if (!bound?.setting_value || !constantTimeEqual(appId,bound.setting_value)) return reply({error:"app_id_mismatch"},403);
+    }
+    // Project-profile verification may include a real test UID. When present,
+    // prove that it belongs to an active Happy Live account and echo it exactly.
+    // The generic app integration handshake omits UID and remains compatible.
+    if (uid) {
+      const player = await db.prepare(
+        "SELECT u.id FROM users u LEFT JOIN profiles p ON p.user_id=u.id WHERE (p.happy_id=? OR u.id=?) AND u.status='active' LIMIT 1"
+      ).bind(uid, uid).first<{ id: string }>();
+      if (!player) return reply({ error: "test_player_not_found_or_inactive" }, 403);
+      return reply({ ok: true, appId, apiVersion: "v1", uid, challenge }, 200);
     }
     return reply({ ok: true, appId, apiVersion: "v1", challenge }, 200);
   } catch { return reply({error:"callback_validation_unavailable"},503); }
