@@ -161,16 +161,15 @@ test("room experience follows the cost band of the level being entered", () => {
   assert.deepEqual(roomExperienceProgress(Number.NaN), { level: 1, exp: 0, nextLevelExp: 3_300_000 });
 });
 
-test("experience progression continues beyond level 120 with the next band's cost", () => {
-  assert.deepEqual(roomExperienceProgress(4_946_700_000), {
-    level: 120,
+test("room experience progression is capped at level 150", () => {
+  const requiredForLevel150 = Array.from({ length: 149 }, (_, index) =>
+    (Math.floor((index + 1) / 5) + 1) * 3_300_000
+  ).reduce((total, value) => total + value, 0);
+  assert.equal(roomExperienceProgress(requiredForLevel150).level, 150);
+  assert.deepEqual(roomExperienceProgress(requiredForLevel150 + 100_000_000), {
+    level: 150,
     exp: 0,
-    nextLevelExp: 82_500_000,
-  });
-  assert.deepEqual(roomExperienceProgress(4_950_000_000), {
-    level: 120,
-    exp: 3_300_000,
-    nextLevelExp: 82_500_000,
+    nextLevelExp: 0,
   });
 });
 
@@ -180,7 +179,7 @@ test("Flutter level sheet uses the same target-level cost bands as the Worker", 
   const requiredExp = new Function(
     `${helperSource.replace("int roomLevelRequiredExpForLevel", "function roomLevelRequiredExpForLevel").replace("(int targetLevel)", "(targetLevel)").replaceAll("final ", "const ").replace("((safeLevel - 1) ~/ 5)", "Math.floor((safeLevel - 1) / 5)")}; return roomLevelRequiredExpForLevel;`
   )();
-  for (const targetLevel of [2, 5, 6, 10, 11, 15, 16, 120, 121]) {
+  for (const targetLevel of [2, 5, 6, 10, 11, 15, 16, 120, 121, 150]) {
     const expected = (Math.floor((targetLevel - 1) / 5) + 1) * 3_300_000;
     assert.equal(requiredExp(targetLevel), expected, `wrong cost for target level ${targetLevel}`);
   }
