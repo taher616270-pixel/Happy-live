@@ -14,7 +14,7 @@ const roomSeatSocket = await readFile(new URL("../../../frontend/lib/services/ro
 const progressSource = worker.match(/function roomExperienceProgress\(totalExperience: number\) \{[\s\S]*?\n\}/)?.[0];
 assert.ok(progressSource, "room experience progression function must exist");
 const roomExperienceProgress = new Function(
-  `const ROOM_EXP_PER_LEVEL_GROUP = 3_300_000; ${progressSource.replace("(totalExperience: number)", "(totalExperience)")}; return roomExperienceProgress;`
+  `const ROOM_EXP_PER_LEVEL_GROUP = 3_300_000; const MAX_ROOM_EXPERIENCE_LEVEL = 150; ${progressSource.replace("(totalExperience: number)", "(totalExperience)")}; return roomExperienceProgress;`
 )();
 
 
