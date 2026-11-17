@@ -40,6 +40,7 @@ const AUTH_RATE_MAX_ATTEMPTS = 8;
 
 const ROOM_EXP_PER_LEVEL_GROUP = 3_300_000;
 const ROOM_EXP_DAILY_USER_CAP = 3_000_000;
+const ROOM_EXP_DAILY_ROOM_CAP = 14_000_000;
 
 function roomExperienceProgress(totalExperience: number) {
   let level = 1;
@@ -109,8 +110,8 @@ async function awardRoomSeatExperience(
     const awardId = crypto.randomUUID();
     await db.batch([
       db.prepare(
-        "INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) SELECT ?, ?, ?, ?, MIN(?, ? - points), ? FROM room_exp_daily WHERE user_id = ? AND day_key = ? AND points < ?"
-      ).bind(awardId, roomId, userId, dayKey, awardPoints, ROOM_EXP_DAILY_USER_CAP, now, userId, dayKey, ROOM_EXP_DAILY_USER_CAP),
+        "INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) SELECT ?, ?, ?, ?, MIN(?, ? - points, ? - COALESCE((SELECT SUM(points) FROM room_exp_awards WHERE room_id = ? AND day_key = ?), 0)), ? FROM room_exp_daily WHERE user_id = ? AND day_key = ? AND points < ?"
+      ).bind(awardId, roomId, userId, dayKey, awardPoints, ROOM_EXP_DAILY_USER_CAP, ROOM_EXP_DAILY_ROOM_CAP, roomId, dayKey, now, userId, dayKey, ROOM_EXP_DAILY_USER_CAP),
       db.prepare(
         "UPDATE room_exp_daily SET points = points + COALESCE((SELECT points FROM room_exp_awards WHERE id = ?), 0) WHERE user_id = ? AND day_key = ?"
       ).bind(awardId, userId, dayKey),
@@ -2888,15 +2889,15 @@ export default {
           }));
         const experience = roomExperienceProgress(Number(room.total_exp ?? 0));
         const dailyExperience = await env.DB!.prepare(
-          "SELECT points FROM room_exp_daily WHERE user_id = ? AND day_key = ? LIMIT 1"
-        ).bind(user.id, now.slice(0, 10)).first<{ points: number }>();
+          "SELECT COALESCE(SUM(points), 0) AS points FROM room_exp_awards WHERE room_id = ? AND day_key = ?"
+        ).bind(room.id, now.slice(0, 10)).first<{ points: number }>();
         return json({
           ok: true,
           audienceCount: Math.max(0, (audience?.count ?? 0) - seatedIds.size),
           audienceUsers,
           voiceEnabled,
           seatRevision: snapshot.revision ?? 0,
-          room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code, level: room.level, palaceStatus: room.level >= 5 ? 'مفعّل' : 'غير مفعّل', experienceLevel: experience.level, experienceExp: experience.exp, experienceNextLevelExp: experience.nextLevelExp, experienceTotalExp: Number(room.total_exp ?? 0), dailyExperienceExp: Number(dailyExperience?.points ?? 0), dailyExperienceMax: ROOM_EXP_DAILY_USER_CAP, dailyResetInSeconds: Math.max(0, Math.ceil((Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate() + 1) - Date.parse(now)) / 1000)) },
+          room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code, level: room.level, palaceStatus: room.level >= 5 ? 'مفعّل' : 'غير مفعّل', experienceLevel: experience.level, experienceExp: experience.exp, experienceNextLevelExp: experience.nextLevelExp, experienceTotalExp: Number(room.total_exp ?? 0), dailyExperienceExp: Number(dailyExperience?.points ?? 0), dailyExperienceMax: ROOM_EXP_DAILY_ROOM_CAP, dailyResetInSeconds: Math.max(0, Math.ceil((Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate() + 1) - Date.parse(now)) / 1000)) },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة", avatarUrl: room.owner_avatar_url ?? "", countryName: room.owner_country_name ?? "" },
           me: { id: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.happy_id ?? "", avatarUrl: profile?.avatar_key ?? "", countryName: profile?.country_name ?? "", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
           isOwner: room.owner_user_id === user.id,
