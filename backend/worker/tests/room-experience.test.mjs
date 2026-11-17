@@ -336,6 +336,46 @@ test("D1-backed award logic resets continuous time, caps contributions across ro
   }
 });
 
+test("a room can collect at most 14 million experience per day across all contributors", async () => {
+  for (const implementation of experienceImplementations) {
+    const db = new SqliteD1();
+    try {
+      db.exec("INSERT INTO users (id) VALUES ('existing-user'), ('new-user')");
+      db.exec("INSERT INTO rooms (id) VALUES ('shared-room')");
+      db.exec("INSERT INTO room_exp_daily (user_id, day_key, points) VALUES ('new-user', '2026-11-12', 0)");
+      const start = Date.parse("2026-11-12T13:00:00.000Z");
+      const at = (offset) => new Date(start + offset).toISOString();
+      const insert = db.sqlite.prepare(
+        "INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) VALUES (?, 'shared-room', 'existing-user', '2026-11-12', ?, ?)"
+      );
+      for (let i = 0; i < 11666; i++) {
+        insert.run(`existing-${i}`, 1200, at(0));
+      }
+      insert.run("existing-remainder", 500, at(0));
+      await implementation.reset(db, "shared-room", "new-user", at(0));
+      await implementation.award(db, "shared-room", "new-user", at(300_000));
+
+      assert.equal(
+        db.get("SELECT SUM(points) AS points FROM room_exp_awards WHERE room_id = 'shared-room' AND day_key = '2026-11-12'").points,
+        14_000_000,
+        implementation.name
+      );
+      assert.equal(
+        db.get("SELECT points FROM room_exp_awards WHERE user_id = 'new-user'").points,
+        300,
+        implementation.name
+      );
+      assert.equal(
+        db.get("SELECT points FROM room_exp_daily WHERE user_id = 'new-user' AND day_key = '2026-11-12'").points,
+        300,
+        implementation.name
+      );
+    } finally {
+      db.close();
+    }
+  }
+});
+
 test("D1 award failure restores the previous timer so the five-minute award can retry", async () => {
   for (const implementation of experienceImplementations) {
     const db = new SqliteD1();
