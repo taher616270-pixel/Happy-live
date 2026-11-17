@@ -480,7 +480,7 @@ async function happyFoodWheelIntegrationPage(){
   }
   const data=await api("/admin/integrations/happy-food-wheel");
   const configured=data.tokenConfigured===true||data.configured===true;
-  const callback=(data.callbackBaseUrl||"").replace(/\\/$/,"")+"/v1/platform/handshake";
+  const callback=(data.callbackBaseUrl||"").replace(/\/$/,"")+"/v1/platform/handshake";
   $("content").insertAdjacentHTML("beforeend",
     '<div class="section"><div class="section-head"><div><h2>ربط خارجي — Happy Food Wheel</h2><p class="muted">انسخ بيانات Happy Live والصقها في نموذج الربط داخل منصة Happy Food Wheel.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'Token محفوظ':'بانتظار إصدار Token')+'</span></div>'+
     '<div class="form-grid">'+
