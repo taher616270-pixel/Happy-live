@@ -261,13 +261,13 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     const SizedBox(height: 10), _bar(d.dailyRatio), const SizedBox(height: 6),
     Text('${d.dailyExpCurrent}/${d.dailyExpMax}', style: const TextStyle(color: _muted, fontSize: 11)),
   ]));
-  Widget _taskCard(ExpTask t) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: -0.5), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: _cardBorder)), child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+  Widget _taskCard(ExpTask t) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 1.5), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: _cardBorder)), child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
     Icon(t.icon, color: Colors.white70, size: 34),
     const SizedBox(width: 12),
     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(t.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
       const SizedBox(height: 6), Text(t.desc, style: const TextStyle(color: _muted, fontSize: 11, height: 1.5)),
-      const SizedBox(height: 10), _bar(t.ratio), const SizedBox(height: 6),
+      const SizedBox(height: 6), _bar(t.ratio), const SizedBox(height: 6),
       Text('${t.current}/${t.max}', style: const TextStyle(color: _muted, fontSize: 11)),
     ])),
   ]));
