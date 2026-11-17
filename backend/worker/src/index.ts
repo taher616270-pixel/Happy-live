@@ -39,7 +39,17 @@ const AUTH_RATE_WINDOW_SECONDS = 900;
 const AUTH_RATE_MAX_ATTEMPTS = 8;
 
 const ROOM_EXP_PER_LEVEL_GROUP = 3_300_000;
+const MAX_ROOM_EXPERIENCE_LEVEL = 150;
 const ROOM_EXP_DAILY_USER_CAP = 3_000_000;
+
+function roomExperienceRequiredForLevel(targetLevel: number): number {
+  let total = 0;
+  for (let nextLevel = 2; nextLevel <= targetLevel; nextLevel++) {
+    const group = Math.floor((nextLevel - 1) / 5) + 1;
+    total += group * ROOM_EXP_PER_LEVEL_GROUP;
+  }
+  return total;
+}
 const ROOM_EXP_DAILY_ROOM_CAP = 14_000_000;
 
 const SAUDI_UTC_OFFSET_MS = 3 * 60 * 60 * 1000;
@@ -63,7 +73,7 @@ function roomExperienceProgress(totalExperience: number) {
 
   // The cost is determined by the level being entered:
   // levels 2-5 cost 3.3m each, 6-10 cost 6.6m each, etc.
-  while (true) {
+  while (level < MAX_ROOM_EXPERIENCE_LEVEL) {
     const nextLevel = level + 1;
     const group = Math.floor((nextLevel - 1) / 5) + 1;
     const nextLevelExp = group * ROOM_EXP_PER_LEVEL_GROUP;
@@ -73,6 +83,7 @@ function roomExperienceProgress(totalExperience: number) {
     remaining -= nextLevelExp;
     level = nextLevel;
   }
+  return { level: MAX_ROOM_EXPERIENCE_LEVEL, exp: 0, nextLevelExp: 0 };
 }
 
 async function resetRoomSeatExperienceTimer(
@@ -697,6 +708,7 @@ export default {
       /^\/api\/v1\/admin\/gifts\/catalog\/[a-z0-9-]{1,80}$/i.test(url.pathname) ||
       url.pathname === "/api/v1/admin/moderators" ||
       url.pathname === "/api/v1/admin/rooms" ||
+      /^\\/api\\/v1\\/admin\\/rooms\\/[0-9a-f-]{36}\\/level$/i.test(url.pathname) ||
       url.pathname === "/api/v1/admin/audit" ||
       url.pathname === "/api/v1/admin/agora/status" ||
       url.pathname === "/api/v1/admin/agora/voice" ||
@@ -1088,11 +1100,39 @@ export default {
         if (url.pathname === "/api/v1/admin/rooms" && request.method === "GET") {
           if (!hasAdminPermission(actor, "rooms.read")) return json({ error: "permission_denied" }, 403, origin, env);
           const result = await env.DB!.prepare(
-            "SELECT r.id, r.room_code, r.name, r.status, r.visibility, r.created_at, u.id AS owner_id, p.display_name AS owner_name " +
-            "FROM rooms r INNER JOIN users u ON u.id = r.owner_user_id LEFT JOIN profiles p ON p.user_id = u.id " +
+            "SELECT r.id, r.room_code, r.name, r.status, r.visibility, r.created_at, u.id AS owner_id, p.display_name AS owner_name, COALESCE(rx.total_exp, 0) AS total_exp " +
+            "FROM rooms r INNER JOIN users u ON u.id = r.owner_user_id LEFT JOIN profiles p ON p.user_id = u.id LEFT JOIN room_experience rx ON rx.room_id = r.id " +
             "ORDER BY r.created_at DESC LIMIT 100"
-          ).all();
-          return json({ ok: true, rooms: result.results ?? [] }, 200, origin, env);
+          ).all<{ id: string; total_exp: number }>();
+          const rooms = (result.results ?? []).map((room) => ({
+            ...room,
+            experience_level: roomExperienceProgress(Number(room.total_exp ?? 0)).level
+          }));
+          return json({ ok: true, rooms }, 200, origin, env);
+        }
+        const adminRoomLevelRoute = url.pathname.match(/^\\/api\\/v1\\/admin\\/rooms\\/([0-9a-f-]{36})\\/level$/i);
+        if (adminRoomLevelRoute && request.method === "PATCH") {
+          if (!hasAdminPermission(actor, "rooms.manage")) return json({ error: "permission_denied" }, 403, origin, env);
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; }
+          catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const targetLevel = Number(body.level);
+          if (!Number.isInteger(targetLevel) || targetLevel < 1 || targetLevel > MAX_ROOM_EXPERIENCE_LEVEL) {
+            return json({ error: "invalid_room_experience_level", message: "مستوى الغرفة يجب أن يكون بين 1 و150" }, 400, origin, env);
+          }
+          const roomId = adminRoomLevelRoute[1];
+          const existing = await env.DB!.prepare(
+            "SELECT r.id, r.name, COALESCE(rx.total_exp, 0) AS total_exp FROM rooms r LEFT JOIN room_experience rx ON rx.room_id = r.id WHERE r.id = ? AND r.status <> 'deleted' LIMIT 1"
+          ).bind(roomId).first<{ id: string; name: string; total_exp: number }>();
+          if (!existing) return json({ error: "room_not_found", message: "الغرفة غير موجودة" }, 404, origin, env);
+          const requiredExp = roomExperienceRequiredForLevel(targetLevel);
+          const nextTotalExp = Math.max(Number(existing.total_exp ?? 0), requiredExp);
+          const now = new Date().toISOString();
+          await env.DB!.prepare(
+            "INSERT INTO room_experience (room_id, total_exp, updated_at) VALUES (?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET total_exp = excluded.total_exp, updated_at = excluded.updated_at"
+          ).bind(roomId, nextTotalExp, now).run();
+          const progress = roomExperienceProgress(nextTotalExp);
+          return json({ ok: true, roomId, roomName: existing.name, level: progress.level, totalExperience: nextTotalExp, requiredExperience: requiredExp }, 200, origin, env);
         }
         if (url.pathname === "/api/v1/admin/audit" && request.method === "GET") {
           if (!hasAdminPermission(actor, "audit.read")) return json({ error: "permission_denied" }, 403, origin, env);
