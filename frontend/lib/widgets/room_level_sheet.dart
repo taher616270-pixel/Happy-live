@@ -65,7 +65,7 @@ class RoomLevelData {
 }
 
 const kSampleTasks = <ExpTask>[
-  ExpTask(title: 'اخذ المقعد', desc: '+600 نقطة، أو +1200 للحسابات خلال أول 15 يومًا، مقابل كل 5 دقائق متواصلة على المايك', current: 'تُحتسب تلقائيًا', max: '600 / 1200 كل 5 دقائق', icon: Icons.mic),
+  ExpTask(title: 'اخذ المقعد', desc: '+600 نقاط خبرة الغرفة/5 دقائق المستخدمين الجدد: +1200 نقاط خبرة الغرفة/5 دقائق', current: 'تُحتسب تلقائيًا', max: '600 / 1200 كل 5 دقائق', icon: Icons.mic),
   ExpTask(title: 'ارسل الهدايا في الغرفة', desc: 'سيتم احتساب خبرة الهدايا بعد ربط خدمة إرسال الهدايا بالخادم', current: 'قريبًا', max: 'غير مفعّل', icon: Icons.card_giftcard),
 ];
 const kSamplePerks = <LevelPerksGroup>[
