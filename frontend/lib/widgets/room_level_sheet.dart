@@ -50,7 +50,7 @@ class RoomLevelData {
   const RoomLevelData({
     required this.level, required this.roomName, required this.roomId,
     this.roomAvatar, required this.exp, required this.nextLevelExp,
-    this.dailyExpCurrent = '0', this.dailyExpMax = '9.9m',
+    this.dailyExpCurrent = '0', this.dailyExpMax = '14m',
     this.dailyRatio = 0, this.dailyResetIn, this.tasks = const [],
     this.perkGroups = const [],
     this.note = 'يمكن لكل مستخدم المساهمة بما يصل إلى 3،000،000 من نقاط الخبرة يوميا في جميع الغرف.',
