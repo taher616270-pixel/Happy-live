@@ -21,9 +21,12 @@ test("callback authenticates the app-issued token by hash and binds it to the sa
   assert.match(worker, /happy_food_wheel_token_hash/);
 });
 
-test("callback echoes the exact App ID, API version, and one-time challenge", () => {
+test("callback echoes App ID, API version, UID when supplied, and one-time challenge", () => {
   assert.match(callback, /platform !== "Happy Food Wheel"/);
   assert.match(callback, /apiVersion !== "v1"/);
+  assert.match(callback, /body\.uid === undefined/);
+  assert.match(callback, /test_player_not_found_or_inactive/);
+  assert.match(callback, /return reply\(\{ ok: true, appId, apiVersion: "v1", uid, challenge \}, 200\)/);
   assert.match(callback, /return reply\(\{ ok: true, appId, apiVersion: "v1", challenge \}, 200\)/);
   const handshakeStart = callback.indexOf("async function handleHappyFoodWheelHandshake(");
   const handshakeEnd = callback.indexOf("\nexport async function handlePlatformCallbackRequest", handshakeStart);
