@@ -316,7 +316,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       tasks: [
         ExpTask(
           title: 'اخذ المقعد',
-          desc: 'تُحتسب خبرة المايك تلقائيًا كل 5 دقائق',
+          desc: '+600 نقاط خبرة الغرفة/5 دقائق المستخدمين الجدد: +1200 نقاط خبرة الغرفة/5 دقائق)',
           current: dailyMicExp.toString(),
           max: '1m',
           icon: Icons.mic,
