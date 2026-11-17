@@ -60,7 +60,7 @@ async function awardRoomSeatExperience(
   ).bind(roomId, userId).first<{ last_awarded_at: string }>();
   if (!previous?.last_awarded_at || Date.parse(now) - Date.parse(previous.last_awarded_at) < 300_000) return;
 
-  const dayKey = now.slice(0, 10);
+  const dayKey = new Date(Date.parse(now) + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const nowMs = Date.parse(now);
   const account = await db.prepare(
     "SELECT created_at FROM users WHERE id = ? LIMIT 1"
