@@ -229,6 +229,14 @@ test("daily contribution cap and persistent room experience tables are enforced"
   assert.match(seatHub, /ROOM_EXP_DAILY_USER_CAP = 3_000_000/);
   assert.match(seatHub, /ROOM_EXP_DAILY_ROOM_CAP = 14_000_000/);
   assert.match(worker, /ROOM_EXP_DAILY_ROOM_CAP = 14_000_000/);
+  assert.match(worker, /13000000 - COALESCE\(\(SELECT SUM\(points\) FROM room_exp_gift_awards/);
+  assert.match(worker, /14000000 - COALESCE\(\(SELECT SUM\(points\) FROM room_exp_awards/);
+  assert.match(worker, /dailyGiftExperienceExp: Number\(dailyGiftExperience\?\.points \?\? 0\)/);
+  assert.match(seatHub, /1_000_000/);
+  assert.match(seatHub, /SUM\(points\) FROM room_exp_gift_awards WHERE room_id = \? AND day_key = \?/);
+  assert.match(roomPreview, /dailyGiftExperienceExp/);
+  assert.match(roomPreview, /max: '13m'/);
+  assert.match(roomPreview, /max: '1m'/);
   assert.match(worker, /SUM\(points\) FROM room_exp_awards WHERE room_id = \? AND day_key = \?/);
   assert.match(worker, /nowMs - accountCreatedAt < 15 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(seatHub, /nowMs - accountCreatedAt < 15 \* 24 \* 60 \* 60 \* 1000/);
