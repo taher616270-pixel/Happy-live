@@ -12,6 +12,26 @@ async function sha256(value: string): Promise<string> {
     .map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+async function validUtdPlayerToken(db: D1Database, userId: string, token: string): Promise<boolean> {
+  const tokenHash = await sha256(token);
+  const session = await db.prepare(
+    "SELECT id FROM user_sessions WHERE user_id=? AND token_hash=? AND revoked_at IS NULL AND expires_at>? LIMIT 1"
+  ).bind(userId, tokenHash, new Date().toISOString()).first<{id:string}>();
+  if (session) return true;
+
+  // Temporary UTD-only test tokens are never accepted by normal Happy Live APIs.
+  const saved = await db.prepare(
+    "SELECT setting_value FROM platform_settings WHERE setting_key='utd_test_session' LIMIT 1"
+  ).first<{setting_value:string}>();
+  if (!saved?.setting_value) return false;
+  try {
+    const test = JSON.parse(saved.setting_value) as { user_id?: string; token_hash?: string; expires_at?: string };
+    return test.user_id === userId &&
+      typeof test.token_hash === "string" && constantTimeEqual(test.token_hash, tokenHash) &&
+      typeof test.expires_at === "string" && test.expires_at > new Date().toISOString();
+  } catch { return false; }
+}
+
 function md5(value: string): string {
   const bytes = new TextEncoder().encode(value);
   const bitLength = bytes.length * 8;
@@ -130,10 +150,7 @@ async function handleUtdCallback(
     if (path.endsWith("/get-user-info")) {
       const token=field(body,"token");
       if (!token || token.length>4096) return utdFail(10003,"user not found",reply);
-      const session=await db.prepare(
-        "SELECT id FROM user_sessions WHERE user_id=? AND token_hash=? AND revoked_at IS NULL AND expires_at>? LIMIT 1"
-      ).bind(user.id,await sha256(token),new Date().toISOString()).first<{id:string}>();
-      if (!session) return utdFail(10003,"user not found",reply);
+      if (!(await validUtdPlayerToken(db, user.id, token))) return utdFail(10003,"user not found",reply);
       return utdOk({
         uid, nickname:user.display_name?.trim() || "مستخدم", avatar:user.avatar_key || "",
         coin:Number(user.balance)||0, vipLevel:0, water:0
@@ -151,10 +168,7 @@ async function handleUtdCallback(
     if (path.endsWith("/change-balance")) {
       const token=field(body,"token");
       if (!token || token.length>4096) return utdFail(10003,"user not found",reply);
-      const session=await db.prepare(
-        "SELECT id FROM user_sessions WHERE user_id=? AND token_hash=? AND revoked_at IS NULL AND expires_at>? LIMIT 1"
-      ).bind(user.id,await sha256(token),new Date().toISOString()).first<{id:string}>();
-      if (!session) return utdFail(10003,"user not found",reply);
+      if (!(await validUtdPlayerToken(db, user.id, token))) return utdFail(10003,"user not found",reply);
     }
 
     let delta=amount;
