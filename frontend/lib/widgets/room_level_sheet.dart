@@ -176,7 +176,12 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     if (_left != null) {
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (!mounted) return;
-        setState(() { final n = _left! - const Duration(seconds: 1); _left = n.isNegative ? Duration.zero : n; });
+        setState(() {
+          final n = _left! - const Duration(seconds: 1);
+          _left = n.isNegative || n == Duration.zero
+              ? const Duration(hours: 24) - const Duration(seconds: 1)
+              : n;
+        });
       });
     }
   }
