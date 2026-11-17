@@ -29,7 +29,7 @@ test("callback echoes App ID, API version, UID when supplied, and one-time chall
   assert.match(callback, /return reply\(\{ ok: true, appId, apiVersion: "v1", uid, challenge \}, 200\)/);
   assert.match(callback, /return reply\(\{ ok: true, appId, apiVersion: "v1", challenge \}, 200\)/);
   const handshakeStart = callback.indexOf("async function handleHappyFoodWheelHandshake(");
-  const handshakeEnd = callback.indexOf("\nexport async function handlePlatformCallbackRequest", handshakeStart);
+  const handshakeEnd = callback.indexOf("\nasync function happyFoodWheelCredential", handshakeStart);
   assert.ok(handshakeStart >= 0 && handshakeEnd > handshakeStart, "Happy Food Wheel handshake handler must remain present");
   const handshake = callback.slice(handshakeStart, handshakeEnd);
   assert.doesNotMatch(handshake, /user_wallets|wallet_transactions|game_wallet_ledger/);
@@ -42,7 +42,7 @@ test("Happy Food Wheel exposes authenticated player and idempotent wallet callba
   assert.match(callback, /invalid_application_credential/);
   assert.match(callback, /idempotency_conflict/);
   assert.match(callback, /insufficient_balance/);
-  assert.match(callback, /happy-food-wheel:\\" \\+ appId/);
+  assert.ok(callback.includes('"happy-food-wheel:" + appId + ":" + gameId'));
   assert.match(callback, /user_wallets SET balance=balance\\+\\?/);
 });
 
