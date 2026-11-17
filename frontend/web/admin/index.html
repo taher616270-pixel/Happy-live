@@ -135,8 +135,46 @@ function app(){
   const m=document.querySelector('[data-page="moderators"]');if(m)m.classList.toggle("hidden",admin.role!=="owner");
   const a=document.querySelector('[data-page="agora"]');if(a)a.classList.toggle("hidden",admin.role==="moderator");
 }
-async function verify(){if(!token)return login();try{admin=(await api("/admin/me")).admin;app();await render()}catch(e){token="";sessionStorage.removeItem("happy_live_admin_token");login(e.message)}}
-$("loginForm").onsubmit=async e=>{e.preventDefault();$("loginBtn").disabled=true;try{let r=await fetch(API+"/admin/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:$("username").value.trim(),password:$("password").value})});let d=await r.json();if(!r.ok)throw Error(d.message||"بيانات الدخول غير صحيحة");token=d.accessToken;sessionStorage.setItem("happy_live_admin_token",token);admin=(await api("/admin/me")).admin;app();await render()}catch(x){token="";sessionStorage.removeItem("happy_live_admin_token");login(x.message)}finally{$("loginBtn").disabled=false}};
+async function verify(){
+  if(!token)return login();
+  try{
+    const me=await api("/admin/me");
+    admin=me.admin;
+  }catch(error){
+    token="";
+    sessionStorage.removeItem("happy_live_admin_token");
+    return login(error.message);
+  }
+  app();
+  try{await render()}
+  catch(error){
+    $("content").innerHTML='<div class="section"><h2>تم تسجيل الدخول</h2><p class="error">تعذر تحميل محتوى لوحة الإدارة: '+esc(error.message)+'</p><button class="action" type="button" onclick="render()">إعادة المحاولة</button></div>';
+  }
+}
+$("loginForm").onsubmit=async e=>{
+  e.preventDefault();
+  const button=$("loginBtn");button.disabled=true;$("loginError").textContent="";
+  try{
+    const response=await fetch(API+"/admin/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:$("username").value.trim(),password:$("password").value})});
+    const data=await response.json();
+    if(!response.ok||!data.accessToken)throw Error(data.message||data.error||"بيانات الدخول غير صحيحة");
+    token=data.accessToken;
+    sessionStorage.setItem("happy_live_admin_token",token);
+  }catch(error){
+    token="";sessionStorage.removeItem("happy_live_admin_token");login(error.message);button.disabled=false;return;
+  }
+  try{
+    admin=(await api("/admin/me")).admin;
+  }catch(error){
+    token="";sessionStorage.removeItem("happy_live_admin_token");login(error.message);button.disabled=false;return;
+  }
+  app();
+  try{await render()}
+  catch(error){
+    $("content").innerHTML='<div class="section"><h2>تم تسجيل الدخول</h2><p class="error">تم التحقق من حسابك، لكن تعذر تحميل محتوى لوحة الإدارة: '+esc(error.message)+'</p><button class="action" type="button" onclick="render()">إعادة المحاولة</button></div>';
+  }
+  button.disabled=false;
+};
 $("logoutBtn").onclick=async()=>{try{await api("/admin/auth/logout",{method:"POST"})}catch(e){}token="";sessionStorage.removeItem("happy_live_admin_token");login()};
 const drawer=$("adminDrawer"),drawerOverlay=$("drawerOverlay"),menuToggle=$("menuToggle");function setDrawer(open){if(!drawer||!drawerOverlay||!menuToggle)return;const mobile=window.matchMedia("(max-width:700px)").matches;if(!mobile){drawer.classList.remove("drawer-open");drawerOverlay.classList.remove("visible");menuToggle.setAttribute("aria-expanded","false");return}drawer.classList.toggle("drawer-open",open);drawerOverlay.classList.toggle("visible",open);drawerOverlay.setAttribute("aria-hidden",String(!open));menuToggle.setAttribute("aria-expanded",String(open));menuToggle.setAttribute("aria-label",open?"إغلاق القائمة":"فتح القائمة");menuToggle.innerHTML=open?'<span aria-hidden="true">×</span>':'<span aria-hidden="true">☰</span>';document.body.style.overflow=open?"hidden":""}menuToggle?.addEventListener("click",()=>setDrawer(!drawer.classList.contains("drawer-open")));drawerOverlay?.addEventListener("click",()=>setDrawer(false));document.addEventListener("keydown",e=>{if(e.key==="Escape")setDrawer(false)});window.addEventListener("resize",()=>{if(!window.matchMedia("(max-width:700px)").matches)setDrawer(false)});document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x===b));page=b.dataset.page;render();setDrawer(false)});setDrawer(false);
 function metric(label,n){return '<div class="card"><span>'+label+'</span><strong>'+Number(n||0).toLocaleString("en-US")+'</strong></div>'}
