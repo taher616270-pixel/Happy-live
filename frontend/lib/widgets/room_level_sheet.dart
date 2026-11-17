@@ -272,6 +272,15 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
           fit: BoxFit.contain,
         ),
       )
+    else if (t.title == 'ارسل الهدايا في الغرفة')
+      SizedBox(
+        width: 42,
+        height: 48,
+        child: Image.asset(
+          'assets/images/gift.PNG',
+          fit: BoxFit.contain,
+        ),
+      )
     else
       Icon(t.icon, color: Colors.white70, size: 34),
     const SizedBox(width: 12),
