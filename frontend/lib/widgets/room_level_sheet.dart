@@ -317,12 +317,34 @@ class _LevelRing extends StatelessWidget {
   final int level;
   final double size;
   final List<Color> colors;
+
   @override
-  Widget build(BuildContext context) => SizedBox(width: size, height: size, child: CustomPaint(painter: _RingPainter(colors), child: Center(child: Container(
-    width: size * .5, height: size * .5, alignment: Alignment.center,
-    decoration: const BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [Color(0xFF5BD18A), Color(0xFF1E6B3C)])),
-    child: Text('$level', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic)),
-  ))));
+  Widget build(BuildContext context) => SizedBox(
+    width: size,
+    height: size,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/user_level_frame.PNG',
+            fit: BoxFit.contain,
+          ),
+        ),
+        Text(
+          '$level',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            fontStyle: FontStyle.italic,
+            shadows: [Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1))],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 class _RingPainter extends CustomPainter {
   const _RingPainter(this.colors);
