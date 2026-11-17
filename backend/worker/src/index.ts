@@ -411,6 +411,11 @@ export default {
       return new Response(null, { status: 204, headers });
     }
 
+    // Public health check for the Worker root URL.
+    if (url.pathname === "/" && request.method === "GET") {
+      return json({ success: true }, 200, origin, env);
+    }
+
     const platformCallbackResponse = await handlePlatformCallbackRequest(
       request,
       env.DB,
