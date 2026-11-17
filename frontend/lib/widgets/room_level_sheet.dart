@@ -169,21 +169,32 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
   int _tab = 0;
   Timer? _timer;
   Duration? _left;
+  Duration _secondsUntilSaudiMidnight() {
+    const saudiOffset = Duration(hours: 3);
+    final saudiNow = DateTime.now().toUtc().add(saudiOffset);
+    final nextSaudiMidnight = DateTime.utc(
+      saudiNow.year, saudiNow.month, saudiNow.day + 1,
+    );
+    final remaining = nextSaudiMidnight.difference(saudiNow);
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
   @override
   void initState() {
     super.initState();
-    _left = widget.data.dailyResetIn;
-    if (_left != null) {
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (!mounted) return;
-        setState(() {
-          final n = _left! - const Duration(seconds: 1);
-          _left = n.isNegative || n == Duration.zero
-              ? const Duration(hours: 24) - const Duration(seconds: 1)
-              : n;
-        });
+    final serverValue = widget.data.dailyResetIn;
+    _left = serverValue != null && serverValue > Duration.zero
+        ? serverValue
+        : _secondsUntilSaudiMidnight();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        final n = _left! - const Duration(seconds: 1);
+        _left = n <= Duration.zero
+            ? _secondsUntilSaudiMidnight()
+            : n;
       });
-    }
+    });
   }
   @override
   void dispose() { _timer?.cancel(); super.dispose(); }
@@ -245,7 +256,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     Row(children: [
       const Text('نقاط خبرة الغرفة اليوم:', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
       const Spacer(),
-      if (_left != null) ...[Text(_fmt(_left!), style: const TextStyle(color: _muted, fontSize: 12)), const SizedBox(width: 4), const Icon(Icons.schedule, color: _muted, size: 12)],
+      Text(_fmt(_left ?? _secondsUntilSaudiMidnight()), style: const TextStyle(color: _muted, fontSize: 12)), const SizedBox(width: 4), const Icon(Icons.schedule, color: _muted, size: 12),
     ]),
     const SizedBox(height: 10), _bar(d.dailyRatio), const SizedBox(height: 6),
     Text('${d.dailyExpCurrent}/${d.dailyExpMax}', style: const TextStyle(color: _muted, fontSize: 11)),
