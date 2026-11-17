@@ -254,7 +254,7 @@ async function handleHappyFoodWheelHandshake(
     if (!savedTokenHash?.setting_value) return reply({ error: "integration_not_configured" },503);
     if (!constantTimeEqual(await sha256(apiToken),savedTokenHash.setting_value)) return reply({ error:"invalid_application_token" },401);
     if (savedAppId?.setting_value) {
-      if (!constantTimeEqual(appId,savedAppId.setting_value)) return reply({error:"app_id_mismatch"},403);
+      if (!constantTimeEqual(appId, savedAppId.setting_value)) return reply({error:"app_id_mismatch"},403);
     } else {
       const now=new Date().toISOString();
       await db.prepare("INSERT INTO platform_settings (setting_key,setting_value,updated_at) VALUES ('happy_food_wheel_app_id',?,?) ON CONFLICT(setting_key) DO NOTHING").bind(appId,now).run();
