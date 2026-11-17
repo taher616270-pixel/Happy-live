@@ -2304,7 +2304,7 @@ export default {
             "AND EXISTS (SELECT 1 FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = recipient.id) " +
             "AND (g.category <> 'country' OR g.country_code = CASE WHEN UPPER(TRIM(COALESCE(sender_profile.country_name, ''))) IN ('SOUTH_ARABIA', 'SOUTH ARABIA', 'الجنوب العربي') THEN 'SOUTH_ARABIA' ELSE UPPER(TRIM(COALESCE(sender_profile.country_code, ''))) END)"
           ).bind(transactionId, user.id, recipientUserId, quantity, quantity, quantity, quantity, quantity, quantity,
-            idempotencyKey, now, giftId, now, now, user.id, recipientUserId, user.id, quantity, user.id, now.slice(0, 10), now.slice(0, 10), now.slice(0, 10), roomId, user.id),
+            now.slice(0, 10), now.slice(0, 10), now.slice(0, 10), idempotencyKey, now, giftId, now, now, user.id, recipientUserId, user.id, quantity, user.id, now.slice(0, 10), roomId, user.id),
           env.DB!.prepare(
             "UPDATE user_wallets SET balance = balance - (SELECT coin_cost FROM gift_transactions WHERE id = ? AND status = 'processing'), " +
             "updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM gift_transactions WHERE id = ? AND status = 'processing') " +
