@@ -174,9 +174,7 @@ async function handleUtdCallback(
       if (prior.user_id!==user.id || prior.applied!==1) return utdFail(4005,"order id conflict",reply);
       const current=await db.prepare("SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1").bind(user.id).first<{balance:number}>();
       const balance=Number(current?.balance)||0;
-      return path.endsWith("/make-up-orders")
-        ? utdOk({coin:balance},reply)
-        : utdOk({coins:balance,coin:balance},reply);
+      return utdOk({coins:balance,coin:balance},reply);
     }
 
     const claimId=crypto.randomUUID();
@@ -207,9 +205,7 @@ async function handleUtdCallback(
       const current=await db.prepare("SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1")
         .bind(user.id).first<{balance:number}>();
       const balance=Number(current?.balance)||0;
-      return path.endsWith("/make-up-orders")
-        ? utdOk({coin:balance},reply)
-        : utdOk({coins:balance,coin:balance},reply);
+      return utdOk({coins:balance,coin:balance},reply);
     }
     if (order && order.user_id!==user.id) return utdFail(4005,"order id conflict",reply);
     const latest=await db.prepare("SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1")
