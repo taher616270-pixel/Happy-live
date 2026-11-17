@@ -35,6 +35,17 @@ test("callback echoes App ID, API version, UID when supplied, and one-time chall
   assert.doesNotMatch(handshake, /user_wallets|wallet_transactions|game_wallet_ledger/);
 });
 
+test("Happy Food Wheel exposes authenticated player and idempotent wallet callbacks", () => {
+  assert.match(callback, /"\\/v1\\/platform\\/player"/);
+  assert.match(callback, /"\\/v1\\/platform\\/wallet\\/adjust"/);
+  assert.match(callback, /happyFoodWheelCredential/);
+  assert.match(callback, /invalid_application_credential/);
+  assert.match(callback, /idempotency_conflict/);
+  assert.match(callback, /insufficient_balance/);
+  assert.match(callback, /happy-food-wheel:\\" \\+ appId/);
+  assert.match(callback, /user_wallets SET balance=balance\\+\\?/);
+});
+
 test("owner-only credential management returns the raw token only on creation", () => {
   assert.match(worker, /actor\.role !== "owner"/);
   assert.match(worker, /const apiToken = "hfw_live_"/);
