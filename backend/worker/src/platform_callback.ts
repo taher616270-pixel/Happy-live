@@ -245,7 +245,7 @@ async function handleHappyFoodWheelHandshake(
     body = parsed as Record<string, unknown>;
   } catch { return reply({ error: "invalid_handshake_payload" }, 400); }
   const appId=body.appId, challenge=body.challenge;
-  if (body.platform!=="Happy Food Wheel" || typeof appId!=="string" || !/^app_[A-Za-z0-9_-]{8,128}$/.test(appId) || body.apiVersion!=="v1" || typeof challenge!=="string" || challenge.length<16 || challenge.length>256) return reply({ error: "invalid_handshake_payload" }, 400);
+  if (body.platform !== "Happy Food Wheel" || typeof appId!=="string" || !/^app_[A-Za-z0-9_-]{8,128}$/.test(appId) || body.apiVersion !== "v1" || typeof challenge!=="string" || challenge.length<16 || challenge.length>256) return reply({ error: "invalid_handshake_payload" }, 400);
   try {
     const [savedAppId,savedTokenHash]=await Promise.all([
       db.prepare("SELECT setting_value FROM platform_settings WHERE setting_key='happy_food_wheel_app_id' LIMIT 1").first<{setting_value:string}>(),
@@ -261,7 +261,7 @@ async function handleHappyFoodWheelHandshake(
       const bound=await db.prepare("SELECT setting_value FROM platform_settings WHERE setting_key='happy_food_wheel_app_id' LIMIT 1").first<{setting_value:string}>();
       if (!bound?.setting_value || !constantTimeEqual(appId,bound.setting_value)) return reply({error:"app_id_mismatch"},403);
     }
-    return reply({ok:true,appId,apiVersion:"v1",challenge},200);
+    return reply({ ok: true, appId, apiVersion: "v1", challenge }, 200);
   } catch { return reply({error:"callback_validation_unavailable"},503); }
 }
 
