@@ -34,8 +34,9 @@ function extractTypedAsyncFunction(source, name) {
     "ROOM_EXP_DAILY_USER_CAP",
     "ROOM_EXP_DAILY_ROOM_CAP",
     "crypto",
+    "saudiDayKey",
     `${javascript}; return ${name};`
-  )(3_000_000, 14_000_000, globalThis.crypto);
+  )(3_000_000, 14_000_000, globalThis.crypto, (value) => new Date(Date.parse(value) + 3 * 60 * 60 * 1000).toISOString().slice(0, 10));
 }
 
 class SqliteD1Statement {
@@ -363,7 +364,8 @@ test("daily room experience is split into 13m gift XP and 1m mic XP within the s
       const start = Date.parse("2026-11-12T13:00:00.000Z");
       const at = (offset) => new Date(start + offset).toISOString();
       db.exec("INSERT INTO room_exp_gift_awards (id, room_id, user_id, day_key, points, created_at) VALUES ('gift-cap', 'shared-room', 'existing-user', '2026-11-12', 13000000, '2026-11-12T12:00:00.000Z')");
-      db.exec("INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) VALUES ('mic-almost-cap', 'shared-room', 'existing-user', '2026-11-12', 999700, '2026-11-12T12:00:00.000Z')");
+      for (let i = 0; i < 833; i++) db.exec("INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) VALUES ('mic-cap-" + i + "', 'shared-room', 'existing-user', '2026-11-12', 1200, '2026-11-12T12:00:00.000Z')");
+      db.exec("INSERT INTO room_exp_awards (id, room_id, user_id, day_key, points, created_at) VALUES ('mic-cap-tail', 'shared-room', 'existing-user', '2026-11-12', 100, '2026-11-12T12:00:00.000Z')");
       await implementation.reset(db, "shared-room", "new-user", at(0));
       await implementation.award(db, "shared-room", "new-user", at(300_000));
 
