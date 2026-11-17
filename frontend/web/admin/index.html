@@ -65,7 +65,7 @@ td,th{padding:14px 13px;text-align:right;border-bottom:1px solid #30263c;font-si
 <script>
 const API="https://happy-live-api.taher616270.workers.dev/api/v1";let token=sessionStorage.getItem("happy_live_admin_token")||"",admin=null,page="overview";
 const $=id=>document.getElementById(id);function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-async function api(path,opt){opt=opt||{};let r=await fetch(API+path,{method:opt.method||"GET",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:opt.body});let d={};try{d=await r.json()}catch(e){}if(!r.ok)throw Error(d.message||d.error||"تعذر تنفيذ الطلب");return d}
+async function api(path,opt){opt=opt||{};let r=await fetch(API+path,{method:opt.method||"GET",cache:"no-store",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:opt.body});let d={};try{d=await r.json()}catch(e){}if(!r.ok){const error=Error(d.message||d.error||"تعذر تنفيذ الطلب");error.status=r.status;error.code=d.error||"http_error";error.endpoint=path;throw error}return d}
 async function uploadGiftSound(file){
   if(!file)return null;
   const ext=(file.name.split(".").pop()||"").toLowerCase();
@@ -92,6 +92,14 @@ function chooseGiftSoundFile(){
   return new Promise(resolve=>{const input=document.createElement("input");input.type="file";input.accept=".mp3,audio/mpeg";input.onchange=()=>resolve(input.files&&input.files[0]||null);input.click()});
 }
 function login(msg){$("loginView").classList.remove("hidden");$("appView").classList.add("hidden");$("loginError").textContent=msg||""}
+function showAuthDiagnostic(error,phase){
+  $("loginView").classList.add("hidden");
+  $("appView").classList.remove("hidden");
+  $("pageTitle").textContent="تعذر التحقق من جلسة الإدارة";
+  $("content").innerHTML='<div class="section"><h2>تم إرسال بيانات الدخول إلى الخادم</h2><p class="error">فشل التحقق من جلسة المدير في خطوة '+esc(phase)+'.</p><p>رمز HTTP: '+esc(error.status||"غير متاح")+'</p><p>رمز الخطأ: '+esc(error.code||"network_error")+'</p><p>التفاصيل: '+esc(error.message||"تعذر الاتصال بالخادم")+'</p><p class="muted">لم نحذف رمز الجلسة تلقائياً. أعد المحاولة لمعرفة نتيجة التحقق.</p><button class="action" id="retryAdminAuth" type="button">إعادة التحقق من الجلسة</button><button class="action" id="backToAdminLogin" type="button">العودة إلى تسجيل الدخول</button></div>';
+  $("retryAdminAuth").onclick=()=>verify();
+  $("backToAdminLogin").onclick=()=>{token="";sessionStorage.removeItem("happy_live_admin_token");login("تم إنهاء محاولة الجلسة. أعد تسجيل الدخول.")};
+}
 
 async function startup(){
   try{
@@ -141,9 +149,7 @@ async function verify(){
     const me=await api("/admin/me");
     admin=me.admin;
   }catch(error){
-    token="";
-    sessionStorage.removeItem("happy_live_admin_token");
-    return login(error.message);
+    return showAuthDiagnostic(error,"GET /admin/me");
   }
   app();
   try{await render()}
@@ -155,23 +161,27 @@ $("loginForm").onsubmit=async e=>{
   e.preventDefault();
   const button=$("loginBtn");button.disabled=true;$("loginError").textContent="";
   try{
-    const response=await fetch(API+"/admin/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:$("username").value.trim(),password:$("password").value})});
-    const data=await response.json();
-    if(!response.ok||!data.accessToken)throw Error(data.message||data.error||"بيانات الدخول غير صحيحة");
+    const response=await fetch(API+"/admin/auth/login",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:$("username").value.trim(),password:$("password").value})});
+    let data={};try{data=await response.json()}catch(_){}
+    if(!response.ok||!data.accessToken){const error=Error(data.message||data.error||"فشل تسجيل الدخول");error.status=response.status;error.code=data.error||"login_failed";throw error}
     token=data.accessToken;
     sessionStorage.setItem("happy_live_admin_token",token);
   }catch(error){
-    token="";sessionStorage.removeItem("happy_live_admin_token");login(error.message);button.disabled=false;return;
+    token="";sessionStorage.removeItem("happy_live_admin_token");
+    $("loginError").textContent="فشل طلب تسجيل الدخول ("+(error.status||"اتصال")+") — "+(error.code||"network_error")+" — "+error.message;
+    button.disabled=false;return;
   }
   try{
-    admin=(await api("/admin/me")).admin;
+    const me=await api("/admin/me");
+    admin=me.admin;
   }catch(error){
-    token="";sessionStorage.removeItem("happy_live_admin_token");login(error.message);button.disabled=false;return;
+    showAuthDiagnostic(error,"POST /admin/auth/login نجح، ثم GET /admin/me فشل");
+    button.disabled=false;return;
   }
   app();
   try{await render()}
   catch(error){
-    $("content").innerHTML='<div class="section"><h2>تم تسجيل الدخول</h2><p class="error">تم التحقق من حسابك، لكن تعذر تحميل محتوى لوحة الإدارة: '+esc(error.message)+'</p><button class="action" type="button" onclick="render()">إعادة المحاولة</button></div>';
+    $("content").innerHTML='<div class="section"><h2>تم تسجيل الدخول بنجاح</h2><p class="error">تعذر تحميل محتوى لوحة الإدارة: '+esc(error.message)+'</p><button class="action" type="button" onclick="render()">إعادة المحاولة</button></div>';
   }
   button.disabled=false;
 };
