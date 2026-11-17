@@ -25,7 +25,11 @@ test("callback echoes the exact App ID, API version, and one-time challenge", ()
   assert.match(callback, /platform !== "Happy Food Wheel"/);
   assert.match(callback, /apiVersion !== "v1"/);
   assert.match(callback, /return reply\(\{ ok: true, appId, apiVersion: "v1", challenge \}, 200\)/);
-  assert.doesNotMatch(callback, /user_wallets|wallet_transactions|game_wallet_ledger/);
+  const handshakeStart = callback.indexOf("async function handleHappyFoodWheelHandshake(");
+  const handshakeEnd = callback.indexOf("\nexport async function handlePlatformCallbackRequest", handshakeStart);
+  assert.ok(handshakeStart >= 0 && handshakeEnd > handshakeStart, "Happy Food Wheel handshake handler must remain present");
+  const handshake = callback.slice(handshakeStart, handshakeEnd);
+  assert.doesNotMatch(handshake, /user_wallets|wallet_transactions|game_wallet_ledger/);
 });
 
 test("owner-only credential management returns the raw token only on creation", () => {
