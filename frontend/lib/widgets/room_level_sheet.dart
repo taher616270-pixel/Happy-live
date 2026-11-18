@@ -170,10 +170,11 @@ class _RoomLevelSheet extends StatefulWidget {
 }
 class _RoomLevelSheetState extends State<_RoomLevelSheet> {
   int _tab = 0;
+  bool get _isRoseTheme => widget.data.level >= 90 && widget.data.level <= 104;
   bool get _isPurpleTheme => widget.data.level >= 70 && widget.data.level <= 89;
   bool get _isBlueTheme => widget.data.level >= 40 && widget.data.level <= 69;
   bool get _isTealTheme => widget.data.level >= 10 && widget.data.level <= 39;
-  Color get _accentColor => _isPurpleTheme ? const Color(0xFF3FC8F0) : _isBlueTheme ? _blueAccent : _isTealTheme ? _tealAccent : _green;
+  Color get _accentColor => _isRoseTheme || _isPurpleTheme ? const Color(0xFF3FC8F0) : _isBlueTheme ? _blueAccent : _isTealTheme ? _tealAccent : _green;
   Timer? _timer;
   Duration? _left;
   Duration _secondsUntilSaudiMidnight() {
@@ -216,7 +217,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
         decoration: BoxDecoration(
           color: _sheetBg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-          border: _isPurpleTheme ? const Border(top: BorderSide(color: Color(0xFFA56BDB), width: 1.2)) : null,
+          border: _isRoseTheme ? const Border(top: BorderSide(color: Color(0xFFD27BD6), width: 1.2)) : _isPurpleTheme ? const Border(top: BorderSide(color: Color(0xFFA56BDB), width: 1.2)) : null,
         ),
         child: Stack(
           fit: StackFit.expand,
@@ -227,7 +228,9 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: _isPurpleTheme
+                    colors: _isRoseTheme
+                        ? const [Color(0xFF9A4A9E), Color(0xFF6A2F72), Color(0xFF2E1F3F), Color(0xFF14161F)]
+                        : _isPurpleTheme
                         ? const [Color(0xFF7B3FA8), Color(0xFF4F2A78), Color(0xFF2A2144), Color(0xFF14161F)]
                         : _isBlueTheme
                         ? const [Color(0xFF2F5E9E), Color(0xFF1D3E6E), Color(0xFF172439), Color(0xFF14161F)]
@@ -260,7 +263,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
                       left: 0,
                       right: 0,
                       height: 1.2,
-                      child: ColoredBox(color: _isPurpleTheme ? const Color(0xFFA56BDB) : _isBlueTheme ? const Color(0xFF4F8BD6) : _isTealTheme ? const Color(0xFF3FC1B5) : const Color(0xFF6BAF6A)),
+                      child: ColoredBox(color: _isRoseTheme ? const Color(0xFFD27BD6) : _isPurpleTheme ? const Color(0xFFA56BDB) : _isBlueTheme ? const Color(0xFF4F8BD6) : _isTealTheme ? const Color(0xFF3FC1B5) : const Color(0xFF6BAF6A)),
                     ),
                   ],
                 ),
@@ -317,7 +320,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     const SizedBox(height: 8),
     Text(d.note, style: const TextStyle(color: _muted, fontSize: 12, height: 1.5)),
   ]);
-  Widget _dailyCard(RoomLevelData d) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: _isPurpleTheme ? const Color(0xFF231D3A) : _isBlueTheme ? const Color(0xFF18253A) : _isTealTheme ? const Color(0xFF15333A) : const Color(0xFF1F3A2B), borderRadius: BorderRadius.circular(22), border: Border.all(color: _isPurpleTheme ? const Color(0xFF3A2F5C) : _isBlueTheme ? const Color(0xFF243B5A) : _isTealTheme ? const Color(0xFF1F4B50) : const Color(0xFF2F4A38))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _dailyCard(RoomLevelData d) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: _isRoseTheme ? const Color(0xFF2A1F3A) : _isPurpleTheme ? const Color(0xFF231D3A) : _isBlueTheme ? const Color(0xFF18253A) : _isTealTheme ? const Color(0xFF15333A) : const Color(0xFF1F3A2B), borderRadius: BorderRadius.circular(22), border: Border.all(color: _isRoseTheme ? const Color(0xFF46325A) : _isPurpleTheme ? const Color(0xFF3A2F5C) : _isBlueTheme ? const Color(0xFF243B5A) : _isTealTheme ? const Color(0xFF1F4B50) : const Color(0xFF2F4A38))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Row(children: [
       const Text('نقاط خبرة الغرفة اليوم:', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
       const Spacer(),
