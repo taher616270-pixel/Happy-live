@@ -206,6 +206,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     final d = widget.data;
     return SizedBox(height: MediaQuery.of(context).size.height * .68 + 44, child: Stack(clipBehavior: Clip.none, children: [
       Positioned.fill(top: 44, child: Container(
+        clipBehavior: Clip.antiAlias,
         decoration: const BoxDecoration(color: _sheetBg, borderRadius: BorderRadius.vertical(top: Radius.circular(40))),
         child: Stack(
           fit: StackFit.expand,
