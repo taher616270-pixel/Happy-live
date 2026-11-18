@@ -518,7 +518,9 @@ class _LevelRing extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Positioned.fill(
-            child: Image.asset(
+            child: Transform.translate(
+              offset: isDesigned ? const Offset(0, 5) : Offset.zero,
+              child: Image.asset(
               level >= 105 && level <= 119
                   ? 'assets/images/room_level_105_119.png'
                   : level >= 90 && level <= 104
@@ -531,13 +533,14 @@ class _LevelRing extends StatelessWidget {
                                   ? 'assets/images/room_level_10_40.PNG'
                                   : 'assets/images/user_level_frame.PNG',
               fit: BoxFit.contain,
+              ),
             ),
           ),
           Transform.translate(
             offset: const Offset(-2, 1),
             child: isDesigned
                 ? Transform.translate(
-                    offset: const Offset(0, -15),
+                    offset: const Offset(0, -10),
                     child: number,
                   )
                 : number,
