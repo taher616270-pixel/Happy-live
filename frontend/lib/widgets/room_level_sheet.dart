@@ -217,7 +217,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
   }
   Widget _header(RoomLevelData d) => Container(
     height: 74, padding: const EdgeInsets.symmetric(horizontal: 14),
-    decoration: const BoxDecoration(borderRadius: BorderRadius.vertical(top: Radius.circular(24)), gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_greenDeep, _sheetBg])),
+    decoration: const BoxDecoration(borderRadius: BorderRadius.vertical(top: Radius.circular(24)), gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_greenDeep, _greenDeep, Color(0xFF1B5835), _sheetBg])),
     child: Row(children: [
       CircleAvatar(radius: 24, backgroundColor: Colors.white12, backgroundImage: d.roomAvatar),
       const SizedBox(width: 10),
