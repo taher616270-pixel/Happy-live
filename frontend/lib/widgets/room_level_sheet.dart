@@ -216,7 +216,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
   bool get _isPurpleTheme => widget.data.level >= 70 && widget.data.level <= 89;
   bool get _isBlueTheme => widget.data.level >= 40 && widget.data.level <= 69;
   bool get _isTealTheme => widget.data.level >= 10 && widget.data.level <= 39;
-  Color get _accentColor => _isBurgundyTheme || _isRoseTheme || _isPurpleTheme ? const Color(0xFF3FC8F0) : _isBlueTheme ? _blueAccent : _isTealTheme ? _tealAccent : _green;
+  Color get _accentColor => const Color(0xFF3FC8F0);
   Timer? _timer;
   Duration? _left;
   Duration _secondsUntilSaudiMidnight() {
@@ -270,17 +270,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: _isBurgundyTheme
-                        ? const [Color(0xFF8E2A52), Color(0xFF5F1F3F), Color(0xFF2B1A2E), Color(0xFF14161F)]
-                        : _isRoseTheme
-                            ? const [Color(0xFF9A4A9E), Color(0xFF6A2F72), Color(0xFF2E1F3F), Color(0xFF14161F)]
-                            : _isPurpleTheme
-                        ? const [Color(0xFF7B3FA8), Color(0xFF4F2A78), Color(0xFF2A2144), Color(0xFF14161F)]
-                        : _isBlueTheme
-                        ? const [Color(0xFF2F5E9E), Color(0xFF1D3E6E), Color(0xFF172439), Color(0xFF14161F)]
-                        : _isTealTheme
-                            ? const [Color(0xFF1F9C94), Color(0xFF17605F), Color(0xFF1B2A38), Color(0xFF14161F)]
-                            : const [Color(0xFF3E7D45), Color(0xFF24502F), Color(0xFF1B2230), Color(0xFF14161F)],
+                    colors: const [Color(0xFF78471D), Color(0xFF4F2E12), Color(0xFF2A1E18), Color(0xFF14161F)],
                     stops: const [0.0, 0.25, 0.5, 1.0],
                   ),
                 ),
@@ -296,7 +286,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
                           gradient: RadialGradient(
                             center: const Alignment(0, -1),
                             radius: 0.8,
-                            colors: [Colors.white.withOpacity(0.07), Colors.white.withOpacity(0)],
+                            colors: [const Color(0xFFFDE7C3).withOpacity(0.07), const Color(0xFFFDE7C3).withOpacity(0)],
                           ),
                         ),
                       ),
@@ -307,7 +297,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
                       left: 0,
                       right: 0,
                       height: 1.2,
-                      child: ColoredBox(color: _isBurgundyTheme ? const Color(0xFFD6567F) : _isRoseTheme ? const Color(0xFFD27BD6) : _isPurpleTheme ? const Color(0xFFA56BDB) : _isBlueTheme ? const Color(0xFF4F8BD6) : _isTealTheme ? const Color(0xFF3FC1B5) : const Color(0xFF6BAF6A)),
+                      child: const ColoredBox(color: Color(0xFFD8A871)),
                     ),
                   ],
                 ),
@@ -364,7 +354,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     const SizedBox(height: 8),
     Text(d.note, style: const TextStyle(color: _muted, fontSize: 12, height: 1.5)),
   ]);
-  Widget _dailyCard(RoomLevelData d) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: _isBurgundyTheme ? const Color(0xFF2A1824) : _isRoseTheme ? const Color(0xFF2A1F3A) : _isPurpleTheme ? const Color(0xFF231D3A) : _isBlueTheme ? const Color(0xFF18253A) : _isTealTheme ? const Color(0xFF15333A) : const Color(0xFF1F3A2B), borderRadius: BorderRadius.circular(22), border: Border.all(color: _isBurgundyTheme ? const Color(0xFF4A2538) : _isRoseTheme ? const Color(0xFF46325A) : _isPurpleTheme ? const Color(0xFF3A2F5C) : _isBlueTheme ? const Color(0xFF243B5A) : _isTealTheme ? const Color(0xFF1F4B50) : const Color(0xFF2F4A38))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _dailyCard(RoomLevelData d) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: const Color(0xFF2A2016), borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFF4A3420))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Row(children: [
       const Text('نقاط خبرة الغرفة اليوم:', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
       const Spacer(),
