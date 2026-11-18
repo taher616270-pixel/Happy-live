@@ -295,7 +295,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     return Padding(padding: const EdgeInsets.fromLTRB(14, 4, 14, 6), child: Column(children: [
       Container(
         decoration: BoxDecoration(boxShadow: [BoxShadow(color: _accentColor.withOpacity(.22), blurRadius: 5, spreadRadius: .3)]),
-        child: ClipRRect(borderRadius: BorderRadius.circular(100), child: Directionality(textDirection: TextDirection.rtl, child: LinearProgressIndicator(value: ratio, minHeight: 8, color: _accentColor, backgroundColor: _track))),
+        child: ClipRRect(borderRadius: BorderRadius.circular(8), child: Directionality(textDirection: TextDirection.rtl, child: LinearProgressIndicator(value: ratio, minHeight: 6, color: _accentColor, backgroundColor: _track))),
       ),
       const SizedBox(height: 6),
       Row(children: [
@@ -355,7 +355,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
       Text('${t.current}/${t.max}', style: const TextStyle(color: _muted, fontSize: 11)),
     ])),
   ]));
-  Widget _bar(double ratio) => Container(decoration: BoxDecoration(boxShadow: [BoxShadow(color: _accentColor.withOpacity(.18), blurRadius: 5, spreadRadius: .2)]), child: ClipRRect(borderRadius: BorderRadius.circular(100), child: LinearProgressIndicator(value: ratio.clamp(0.0, 1.0).toDouble(), minHeight: 7, color: _accentColor, backgroundColor: _track)));
+  Widget _bar(double ratio) => Container(decoration: BoxDecoration(boxShadow: [BoxShadow(color: _accentColor.withOpacity(.18), blurRadius: 5, spreadRadius: .2)]), child: ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: ratio.clamp(0.0, 1.0).toDouble(), minHeight: 6, color: _accentColor, backgroundColor: _track)));
   Widget _perksTab(RoomLevelData d) => ListView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24), children: [
     for (final group in d.perkGroups) ...[
       Padding(padding: const EdgeInsets.fromLTRB(2, 14, 2, 10), child: Row(children: [
