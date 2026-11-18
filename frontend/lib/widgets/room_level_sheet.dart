@@ -452,7 +452,7 @@ class _LevelRing extends StatelessWidget {
           ),
         ),
         Transform.translate(
-          offset: const Offset(-2, -4),
+          offset: const Offset(-2, 1),
           child: level >= 1 && level <= 9
               ? Stack(
                   alignment: Alignment.center,
@@ -463,7 +463,7 @@ class _LevelRing extends StatelessWidget {
                         '$level',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.montserrat(
-                          fontSize: 32,
+                          fontSize: 28,
                           fontWeight: FontWeight.w900,
                           fontStyle: FontStyle.italic,
                           color: const Color(0xFF2F6F63),
@@ -480,7 +480,7 @@ class _LevelRing extends StatelessWidget {
                         '$level',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.montserrat(
-                          fontSize: 32,
+                          fontSize: 28,
                           fontWeight: FontWeight.w900,
                           fontStyle: FontStyle.italic,
                           color: Colors.white,
