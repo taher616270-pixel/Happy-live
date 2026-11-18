@@ -212,7 +212,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
           Expanded(child: _tab == 0 ? _levelUpTab(d) : _perksTab(d)),
         ]),
       )),
-      PositionedDirectional(end: 10, top: 0, child: _LevelRing(level: d.level, size: 112, colors: roomLevelBadgeColors(d.level))),
+      PositionedDirectional(end: -5, top: 0, child: _LevelRing(level: d.level, size: 112, colors: roomLevelBadgeColors(d.level))),
     ]));
   }
   Widget _header(RoomLevelData d) => Container(
@@ -340,7 +340,7 @@ class _LevelRing extends StatelessWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 22,
+              fontSize: 20,
             fontWeight: FontWeight.w800,
             fontStyle: FontStyle.italic,
               shadows: [Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1))],
