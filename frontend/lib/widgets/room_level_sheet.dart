@@ -429,7 +429,7 @@ class _LevelRing extends StatelessWidget {
         : isTeal
             ? const Color(0xFF2B6C9E)
             : level >= 120
-                ? const Color(0xFF1E6B3A)
+                ? const Color(0xFF78471D)
                 : level >= 105 && level <= 119
                 ? const Color(0xFF5F1F3F)
                 : level >= 90 && level <= 104
@@ -442,7 +442,7 @@ class _LevelRing extends StatelessWidget {
         : isTeal
             ? const [Color(0xFFEAF8FF), Color(0xFF7CC4EC)]
             : level >= 120
-                ? const [Color(0xFF3CB35F), Color(0xFF8FD176)]
+                ? const [Color(0xFFFDE7C3), Color(0xFFD8A871)]
                 : level >= 105 && level <= 119
                 ? const [Color(0xFFFFEAF1), Color(0xFFD6567F)]
                 : level >= 90 && level <= 104
@@ -458,13 +458,13 @@ class _LevelRing extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Transform.translate(
-            offset: const Offset(2.5, 3),
+            offset: level >= 120 ? const Offset(2, 2.5) : const Offset(2.5, 3),
             child: Text(
               '$level',
               textAlign: TextAlign.center,
               style: GoogleFonts.montserrat(
                 fontSize: fontSize,
-                fontWeight: FontWeight.w900,
+                fontWeight: level >= 120 ? FontWeight.w800 : FontWeight.w900,
                 fontStyle: FontStyle.italic,
                 color: shadowColor,
               ),
@@ -481,7 +481,7 @@ class _LevelRing extends StatelessWidget {
               textAlign: TextAlign.center,
               style: GoogleFonts.montserrat(
                 fontSize: fontSize,
-                fontWeight: FontWeight.w900,
+                fontWeight: level >= 120 ? FontWeight.w800 : FontWeight.w900,
                 fontStyle: FontStyle.italic,
                 color: Colors.white,
               ),
