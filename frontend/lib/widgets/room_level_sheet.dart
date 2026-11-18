@@ -525,20 +525,57 @@ class _LevelRing extends StatelessWidget {
                         ),
                       ],
                     )
-                  : Text(
-                  '$level',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: colors[2],
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.2,
-                    shadows: [
-                      Shadow(color: colors[2].withOpacity(0.55), blurRadius: 8),
-                      const Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1)),
-                    ],
-                  ),
-                ),
+                  : Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Transform.translate(
+                          offset: const Offset(2.5, 3),
+                          child: Text(
+                            '$level',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.montserrat(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              fontStyle: FontStyle.italic,
+                              color: level >= 105 && level <= 119
+                                  ? const Color(0xFF5F1F3F)
+                                  : level >= 90 && level <= 104
+                                      ? const Color(0xFF6A2F72)
+                                      : level >= 70 && level <= 89
+                                          ? const Color(0xFF4F2A78)
+                                          : level >= 40 && level <= 69
+                                              ? const Color(0xFF1D3E6E)
+                                              : const Color(0xFF2F6F63),
+                            ),
+                          ),
+                        ),
+                        ShaderMask(
+                          shaderCallback: (r) => LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: level >= 105 && level <= 119
+                                ? const [Color(0xFFFFEAF1), Color(0xFFD6567F)]
+                                : level >= 90 && level <= 104
+                                    ? const [Color(0xFFFCEBFF), Color(0xFFD27BD6)]
+                                    : level >= 70 && level <= 89
+                                        ? const [Color(0xFFF2E8FF), Color(0xFFA56BDB)]
+                                        : level >= 40 && level <= 69
+                                            ? const [Color(0xFFEAF4FF), Color(0xFF69B9F0)]
+                                            : const [Color(0xFFE6FBF1), Color(0xFF8FD3B8)],
+                          ).createShader(r),
+                          child: Text(
+                            '$level',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.montserrat(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
         ),
       ],
     ),
