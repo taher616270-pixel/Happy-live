@@ -433,12 +433,14 @@ class _LevelRing extends StatelessWidget {
   Widget build(BuildContext context) {
     final isBasic = level >= 1 && level <= 9;
     final isTeal = level >= 10 && level <= 39;
-    final isDesigned = level >= 40 && level <= 120;
+    final isDesigned = level >= 40;
     final Color shadowColor = isBasic
         ? const Color(0xFF2F6F63)
         : isTeal
             ? const Color(0xFF2B6C9E)
-            : level >= 105 && level <= 119
+            : level >= 120
+                ? const Color(0xFF1E6B3A)
+                : level >= 105 && level <= 119
                 ? const Color(0xFF5F1F3F)
                 : level >= 90 && level <= 104
                     ? const Color(0xFF6A2F72)
@@ -449,7 +451,9 @@ class _LevelRing extends StatelessWidget {
         ? const [Color(0xFFE6FBF1), Color(0xFF8FD3B8)]
         : isTeal
             ? const [Color(0xFFEAF8FF), Color(0xFF7CC4EC)]
-            : level >= 105 && level <= 119
+            : level >= 120
+                ? const [Color(0xFFE9FFE8), Color(0xFF8FD176)]
+                : level >= 105 && level <= 119
                 ? const [Color(0xFFFFEAF1), Color(0xFFD6567F)]
                 : level >= 90 && level <= 104
                     ? const [Color(0xFFFCEBFF), Color(0xFFD27BD6)]
@@ -522,7 +526,10 @@ class _LevelRing extends StatelessWidget {
             child: Transform.translate(
               offset: isDesigned ? const Offset(0, 10) : Offset.zero,
               child: RoomLevelBadge120Plus.appliesTo(level)
-                  ? const RoomLevelBadge120Plus()
+                  ? Transform.scale(
+                      scale: 1.2,
+                      child: const RoomLevelBadge120Plus(),
+                    )
                   : Image.asset(
                       level >= 105 && level <= 119
                           ? 'assets/images/room_level_105_119.png'
