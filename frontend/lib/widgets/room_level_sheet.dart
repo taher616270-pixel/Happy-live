@@ -489,7 +489,43 @@ class _LevelRing extends StatelessWidget {
                     ),
                   ],
                 )
-              : Text(
+              : level >= 10 && level <= 39
+                  ? Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Transform.translate(
+                          offset: const Offset(2.5, 3),
+                          child: Text(
+                            '$level',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.montserrat(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              fontStyle: FontStyle.italic,
+                              color: const Color(0xFF2B6C9E),
+                            ),
+                          ),
+                        ),
+                        ShaderMask(
+                          shaderCallback: (r) => const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0xFFEAF8FF), Color(0xFF7CC4EC)],
+                          ).createShader(r),
+                          child: Text(
+                            '$level',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.montserrat(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
                   '$level',
                   textAlign: TextAlign.center,
                   style: TextStyle(
