@@ -4,6 +4,119 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'room_level_badge_120_plus.dart';
 
+class GemLevelNumber extends StatefulWidget {
+  const GemLevelNumber({
+    super.key,
+    required this.level,
+    required this.fontSize,
+    this.glowLift = 0.9,
+  });
+
+  final int level;
+  final double fontSize;
+  final double glowLift;
+
+  @override
+  State<GemLevelNumber> createState() => _GemLevelNumberState();
+}
+
+class _GemLevelNumberState extends State<GemLevelNumber>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2800),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  TextStyle get _base => GoogleFonts.montserrat(
+        fontSize: widget.fontSize,
+        fontWeight: FontWeight.w800,
+        fontStyle: FontStyle.italic,
+        height: 1,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final label = '${widget.level}';
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        final p = (_c.value / 0.6).clamp(0.0, 1.0);
+        final pos = -0.3 + p * 1.6;
+        final flare = math.sin(p * math.pi);
+
+        return Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Text(
+              label,
+              style: _base.copyWith(
+                foreground: Paint()
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = widget.fontSize * 0.07
+                  ..color = const Color(0xFFA67240),
+              ),
+            ),
+            ShaderMask(
+              blendMode: BlendMode.srcIn,
+              shaderCallback: (r) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFFFF8EA), Color(0xFFE9C79B)],
+              ).createShader(r),
+              child: Text(label, style: _base.copyWith(color: Colors.white)),
+            ),
+            ShaderMask(
+              blendMode: BlendMode.srcIn,
+              shaderCallback: (r) => LinearGradient(
+                begin: const Alignment(-1, -0.4),
+                end: const Alignment(1, 0.4),
+                colors: [
+                  Colors.white.withOpacity(0),
+                  Colors.white,
+                  Colors.white.withOpacity(0),
+                ],
+                stops: [
+                  (pos - 0.18).clamp(0.0, 1.0),
+                  pos.clamp(0.0, 1.0),
+                  (pos + 0.18).clamp(0.0, 1.0),
+                ],
+              ).createShader(r),
+              child: Text(label, style: _base.copyWith(color: Colors.white)),
+            ),
+            IgnorePointer(
+              child: Transform.translate(
+                offset: Offset(0, -widget.fontSize * widget.glowLift),
+                child: Opacity(
+                  opacity: flare * 0.9,
+                  child: Container(
+                    width: widget.fontSize * 2.6,
+                    height: widget.fontSize * 1.4,
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        colors: [
+                          Colors.white,
+                          Colors.white.withOpacity(0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 const _sheetBg = Color(0xFF14161F);
 const _cardBg = Color(0xFF1E202B);
 const _cardBorder = Color(0xFF303440);
@@ -454,41 +567,43 @@ class _LevelRing extends StatelessWidget {
     Widget number;
     if (isBasic || isTeal || isDesigned) {
       final fontSize = isDesigned ? 20.0 : 26.0;
-      number = Stack(
-        alignment: Alignment.center,
-        children: [
-          Transform.translate(
-            offset: level >= 120 ? const Offset(2, 2.5) : const Offset(2.5, 3),
-            child: Text(
-              '$level',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
-                fontSize: fontSize,
-                fontWeight: level >= 120 ? FontWeight.w800 : FontWeight.w900,
-                fontStyle: FontStyle.italic,
-                color: shadowColor,
-              ),
-            ),
-          ),
-          ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: numberGradient,
-            ).createShader(bounds),
-            child: Text(
-              '$level',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
-                fontSize: fontSize,
-                fontWeight: level >= 120 ? FontWeight.w800 : FontWeight.w900,
-                fontStyle: FontStyle.italic,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      );
+      number = level >= 120
+          ? GemLevelNumber(level: level, fontSize: fontSize)
+          : Stack(
+              alignment: Alignment.center,
+              children: [
+                Transform.translate(
+                  offset: const Offset(2.5, 3),
+                  child: Text(
+                    '$level',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w900,
+                      fontStyle: FontStyle.italic,
+                      color: shadowColor,
+                    ),
+                  ),
+                ),
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: numberGradient,
+                  ).createShader(bounds),
+                  child: Text(
+                    '$level',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w900,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            );
     } else {
       number = Text(
         '$level',
