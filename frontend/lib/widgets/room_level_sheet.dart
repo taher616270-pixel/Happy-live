@@ -2,13 +2,13 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-const _sheetBg = Color(0xFF15131B);
-const _cardBg = Color(0xFF1C1A23);
-const _cardBorder = Color(0xFF2A2733);
-const _green = Color(0xFF6BE675);
-const _greenDeep = Color(0xFF1E6B3C);
-const _muted = Color(0xFF8A8794);
-const _track = Color(0xFF3A3842);
+const _sheetBg = Color(0xFF14161F);
+const _cardBg = Color(0xFF1E202B);
+const _cardBorder = Color(0xFF303440);
+const _green = Color(0xFF86E26B);
+const _greenDeep = Color(0xFF3E7D45);
+const _muted = Color(0xFF8E919B);
+const _track = Color(0xFF3A3D47);
 
 /// الخبرة المطلوبة للوصول إلى المستوى المحدد.
 /// كل خمسة مستويات تزيد الخبرة المطلوبة بمقدار 3.3 مليون، بلا حد أقصى.
@@ -206,23 +206,46 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     final d = widget.data;
     return SizedBox(height: MediaQuery.of(context).size.height * .68 + 44, child: Stack(clipBehavior: Clip.none, children: [
       Positioned.fill(top: 44, child: Container(
-        decoration: const BoxDecoration(color: _sheetBg, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        decoration: const BoxDecoration(color: _sheetBg, borderRadius: BorderRadius.vertical(top: Radius.circular(40))),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 270,
+            Positioned.fill(
               child: DecoratedBox(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [_greenDeep, _greenDeep, Color(0xFF1B5835), _sheetBg],
-                    stops: [0.0, 0.48, 0.78, 1.0],
+                    colors: [Color(0xFF3E7D45), Color(0xFF24502F), Color(0xFF1B2230), Color(0xFF14161F)],
+                    stops: [0.0, 0.25, 0.5, 1.0],
                   ),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            center: const Alignment(0, -1),
+                            radius: 0.8,
+                            colors: [Colors.white.withOpacity(0.07), Colors.white.withOpacity(0)],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned.fill(child: CustomPaint(painter: _RoomHeaderArcsPainter())),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 1.2,
+                      child: ColoredBox(color: Color(0xFF6BAF6A)),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -238,7 +261,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
   }
   Widget _header(RoomLevelData d) => Container(
     height: 74, padding: const EdgeInsets.symmetric(horizontal: 14),
-    decoration: const BoxDecoration(borderRadius: BorderRadius.vertical(top: Radius.circular(24)), color: Colors.transparent),
+    decoration: const BoxDecoration(borderRadius: BorderRadius.vertical(top: Radius.circular(40)), color: Colors.transparent),
     child: Row(children: [
       CircleAvatar(radius: 24, backgroundColor: Colors.white12, backgroundImage: d.roomAvatar),
       const SizedBox(width: 10),
@@ -253,7 +276,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     final ratio = d.nextLevelExp == 0 ? 0.0 : (d.exp / d.nextLevelExp).clamp(0.0, 1.0).toDouble();
     String short(int n) => n >= 1000000 ? '${(n / 1000000).toStringAsFixed(1)}m' : n >= 1000 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n';
     return Padding(padding: const EdgeInsets.fromLTRB(14, 4, 14, 6), child: Column(children: [
-      ClipRRect(borderRadius: BorderRadius.circular(3), child: Directionality(textDirection: TextDirection.rtl, child: LinearProgressIndicator(value: ratio, minHeight: 5, color: _green, backgroundColor: _track))),
+      ClipRRect(borderRadius: BorderRadius.circular(100), child: Directionality(textDirection: TextDirection.rtl, child: LinearProgressIndicator(value: ratio, minHeight: 8, color: _green, backgroundColor: _track))),
       const SizedBox(height: 6),
       Row(children: [
         Text('نقاط خبرة الغرفة: ${short(d.exp)}/${short(d.nextLevelExp)}', style: const TextStyle(color: _muted, fontSize: 11)),
@@ -274,7 +297,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     const SizedBox(height: 8),
     Text(d.note, style: const TextStyle(color: _muted, fontSize: 12, height: 1.5)),
   ]);
-  Widget _dailyCard(RoomLevelData d) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: const Color(0xFF16201C), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF22362C))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _dailyCard(RoomLevelData d) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: const Color(0xFF1F3A2B), borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFF2F4A38))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Row(children: [
       const Text('نقاط خبرة الغرفة اليوم:', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
       const Spacer(),
@@ -283,23 +306,23 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     const SizedBox(height: 10), _bar(d.dailyRatio), const SizedBox(height: 6),
     Text('${d.dailyExpCurrent}/${d.dailyExpMax}', style: const TextStyle(color: _muted, fontSize: 11)),
   ]));
-  Widget _taskCard(ExpTask t) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 1.5), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: _cardBorder)), child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+  Widget _taskCard(ExpTask t) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 1.5), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(22), border: Border.all(color: _cardBorder)), child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
     if (t.title == 'اخذ المقعد')
       SizedBox(
         width: 42,
         height: 48,
-        child: Image.asset(
-          'assets/images/microphone.PNG',
-          fit: BoxFit.contain,
+        child: ColorFiltered(
+          colorFilter: const ColorFilter.mode(Color(0xFFC4CAD4), BlendMode.srcIn),
+          child: Image.asset('assets/images/microphone.PNG', fit: BoxFit.contain),
         ),
       )
     else if (t.title == 'ارسل الهدايا في الغرفة')
       SizedBox(
         width: 42,
         height: 48,
-        child: Image.asset(
-          'assets/images/gift.PNG',
-          fit: BoxFit.contain,
+        child: ColorFiltered(
+          colorFilter: const ColorFilter.mode(Color(0xFFC4CAD4), BlendMode.srcIn),
+          child: Image.asset('assets/images/gift.PNG', fit: BoxFit.contain),
         ),
       )
     else
@@ -312,7 +335,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
       Text('${t.current}/${t.max}', style: const TextStyle(color: _muted, fontSize: 11)),
     ])),
   ]));
-  Widget _bar(double ratio) => ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: ratio.clamp(0.0, 1.0).toDouble(), minHeight: 4, color: _green, backgroundColor: _track));
+  Widget _bar(double ratio) => ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: ratio.clamp(0.0, 1.0).toDouble(), minHeight: 8, color: _green, backgroundColor: _track));
   Widget _perksTab(RoomLevelData d) => ListView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24), children: [
     for (final group in d.perkGroups) ...[
       Padding(padding: const EdgeInsets.fromLTRB(2, 14, 2, 10), child: Row(children: [
@@ -323,7 +346,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
       for (final perk in group.perks) ...[_perkCard(perk), const SizedBox(height: 8)],
     ],
   ]);
-  Widget _perkCard(LevelPerk p) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(14)), child: Row(children: [
+  Widget _perkCard(LevelPerk p) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14), decoration: BoxDecoration(color: _cardBg, borderRadius: BorderRadius.circular(22)), child: Row(children: [
     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(p.title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
       if (p.subtitle != null) ...[const SizedBox(height: 4), Text(p.subtitle!, style: const TextStyle(color: _muted, fontSize: 11))],
@@ -372,6 +395,29 @@ class _LevelRing extends StatelessWidget {
     ),
   );
 }
+
+class _RoomHeaderArcsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = Colors.white.withOpacity(0.08);
+    final center = Offset(size.width / 2, -size.width * 0.12);
+    for (var i = 0; i < 5; i++) {
+      final inset = i * 18.0;
+      final rect = Rect.fromCircle(
+        center: center,
+        radius: size.width * 0.48 - inset,
+      );
+      canvas.drawArc(rect, 0.18, math.pi - 0.36, false, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class _RingPainter extends CustomPainter {
   const _RingPainter(this.colors);
   final List<Color> colors;
