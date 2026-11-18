@@ -380,9 +380,11 @@ class _LevelRing extends StatelessWidget {
       children: [
         Positioned.fill(
           child: Image.asset(
-            level >= 10 && level <= 39
-                ? 'assets/images/room_level_10_40.PNG'
-                : 'assets/images/user_level_frame.PNG',
+            level >= 40 && level <= 69
+                ? 'assets/images/room_level_40_69.png'
+                : level >= 10 && level <= 39
+                    ? 'assets/images/room_level_10_40.PNG'
+                    : 'assets/images/user_level_frame.PNG',
             fit: BoxFit.contain,
           ),
         ),
