@@ -8,6 +8,7 @@ const _cardBorder = Color(0xFF303440);
 const _green = Color(0xFF86E26B);
 const _greenDeep = Color(0xFF3E7D45);
 const _tealAccent = Color(0xFF2DD4C4);
+const _blueAccent = Color(0xFF3FB8F5);
 const _muted = Color(0xFF8E919B);
 const _track = Color(0xFF3A3D47);
 
@@ -169,8 +170,9 @@ class _RoomLevelSheet extends StatefulWidget {
 }
 class _RoomLevelSheetState extends State<_RoomLevelSheet> {
   int _tab = 0;
+  bool get _isBlueTheme => widget.data.level >= 40 && widget.data.level <= 69;
   bool get _isTealTheme => widget.data.level >= 10 && widget.data.level <= 39;
-  Color get _accentColor => _isTealTheme ? _tealAccent : _green;
+  Color get _accentColor => _isBlueTheme ? _blueAccent : _isTealTheme ? _tealAccent : _green;
   Timer? _timer;
   Duration? _left;
   Duration _secondsUntilSaudiMidnight() {
@@ -220,9 +222,11 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: _isTealTheme
-                        ? const [Color(0xFF1F9C94), Color(0xFF17605F), Color(0xFF1B2A38), Color(0xFF14161F)]
-                        : const [Color(0xFF3E7D45), Color(0xFF24502F), Color(0xFF1B2230), Color(0xFF14161F)],
+                    colors: _isBlueTheme
+                        ? const [Color(0xFF2F5E9E), Color(0xFF1D3E6E), Color(0xFF172439), Color(0xFF14161F)]
+                        : _isTealTheme
+                            ? const [Color(0xFF1F9C94), Color(0xFF17605F), Color(0xFF1B2A38), Color(0xFF14161F)]
+                            : const [Color(0xFF3E7D45), Color(0xFF24502F), Color(0xFF1B2230), Color(0xFF14161F)],
                     stops: const [0.0, 0.25, 0.5, 1.0],
                   ),
                 ),
@@ -249,7 +253,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
                       left: 0,
                       right: 0,
                       height: 1.2,
-                      child: ColoredBox(color: _isTealTheme ? const Color(0xFF3FC1B5) : const Color(0xFF6BAF6A)),
+                      child: ColoredBox(color: _isBlueTheme ? const Color(0xFF4F8BD6) : _isTealTheme ? const Color(0xFF3FC1B5) : const Color(0xFF6BAF6A)),
                     ),
                   ],
                 ),
@@ -306,7 +310,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     const SizedBox(height: 8),
     Text(d.note, style: const TextStyle(color: _muted, fontSize: 12, height: 1.5)),
   ]);
-  Widget _dailyCard(RoomLevelData d) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: _isTealTheme ? const Color(0xFF15333A) : const Color(0xFF1F3A2B), borderRadius: BorderRadius.circular(22), border: Border.all(color: _isTealTheme ? const Color(0xFF1F4B50) : const Color(0xFF2F4A38))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _dailyCard(RoomLevelData d) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: _isBlueTheme ? const Color(0xFF18253A) : _isTealTheme ? const Color(0xFF15333A) : const Color(0xFF1F3A2B), borderRadius: BorderRadius.circular(22), border: Border.all(color: _isBlueTheme ? const Color(0xFF243B5A) : _isTealTheme ? const Color(0xFF1F4B50) : const Color(0xFF2F4A38))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Row(children: [
       const Text('نقاط خبرة الغرفة اليوم:', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
       const Spacer(),
@@ -344,7 +348,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
       Text('${t.current}/${t.max}', style: const TextStyle(color: _muted, fontSize: 11)),
     ])),
   ]));
-  Widget _bar(double ratio) => ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: ratio.clamp(0.0, 1.0).toDouble(), minHeight: 8, color: _green, backgroundColor: _track));
+  Widget _bar(double ratio) => Container(decoration: BoxDecoration(boxShadow: [BoxShadow(color: _accentColor.withOpacity(.18), blurRadius: 5, spreadRadius: .2)]), child: ClipRRect(borderRadius: BorderRadius.circular(100), child: LinearProgressIndicator(value: ratio.clamp(0.0, 1.0).toDouble(), minHeight: 7, color: _accentColor, backgroundColor: _track)));
   Widget _perksTab(RoomLevelData d) => ListView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24), children: [
     for (final group in d.perkGroups) ...[
       Padding(padding: const EdgeInsets.fromLTRB(2, 14, 2, 10), child: Row(children: [
