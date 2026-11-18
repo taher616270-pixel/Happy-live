@@ -527,7 +527,7 @@ class _LevelRing extends StatelessWidget {
               offset: isDesigned ? const Offset(0, 10) : Offset.zero,
               child: RoomLevelBadge120Plus.appliesTo(level)
                   ? Transform.scale(
-                      scale: 1.45,
+                      scale: 1.6,
                       child: const RoomLevelBadge120Plus(),
                     )
                   : Image.asset(
