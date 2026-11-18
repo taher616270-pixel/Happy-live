@@ -259,7 +259,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
         decoration: BoxDecoration(
           color: _sheetBg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-          border: _isBurgundyTheme ? const Border(top: BorderSide(color: Color(0xFFD6567F), width: 1.2)) : _isRoseTheme ? const Border(top: BorderSide(color: Color(0xFFD27BD6), width: 1.2)) : _isPurpleTheme ? const Border(top: BorderSide(color: Color(0xFFA56BDB), width: 1.2)) : null,
+          border: null,
         ),
         child: Stack(
           fit: StackFit.expand,
