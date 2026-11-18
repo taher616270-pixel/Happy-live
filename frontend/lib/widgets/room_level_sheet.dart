@@ -537,7 +537,7 @@ class _LevelRing extends StatelessWidget {
             offset: const Offset(-2, 1),
             child: isDesigned
                 ? Transform.translate(
-                    offset: const Offset(0, -8),
+                    offset: const Offset(0, -12),
                     child: number,
                   )
                 : number,
