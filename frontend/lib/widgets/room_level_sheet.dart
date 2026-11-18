@@ -454,7 +454,7 @@ class _LevelRing extends StatelessWidget {
           ),
         ),
         Transform.translate(
-          offset: const Offset(-2, 0),
+          offset: const Offset(-2, -12),
           child: Text(
             '$level',
             textAlign: TextAlign.center,
