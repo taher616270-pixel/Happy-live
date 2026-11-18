@@ -393,10 +393,12 @@ class _LevelRing extends StatelessWidget {
           child: Transform.translate(
             offset: Offset(0, level >= 40 && level <= 69 ? 5 : 0),
             child: Image.asset(
-              level >= 70 && level <= 89
-                  ? 'assets/images/room_level_70_89.png'
-                  : level >= 40 && level <= 69
-                      ? 'assets/images/room_level_40_69.png'
+              level >= 90 && level <= 104
+                  ? 'assets/images/room_level_90_104.png'
+                  : level >= 70 && level <= 89
+                      ? 'assets/images/room_level_70_89.png'
+                      : level >= 40 && level <= 69
+                          ? 'assets/images/room_level_40_69.png'
                       : level >= 10 && level <= 39
                           ? 'assets/images/room_level_10_40.PNG'
                           : 'assets/images/user_level_frame.PNG',
