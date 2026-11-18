@@ -429,177 +429,123 @@ class _LevelRing extends StatelessWidget {
   final List<Color> colors;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: size,
-    height: size,
-    child: Stack(
-      alignment: Alignment.center,
-      children: [
-        Positioned.fill(
-          child: Image.asset(
-            level >= 105 && level <= 119
-                ? 'assets/images/room_level_105_119.png'
+  Widget build(BuildContext context) {
+    final isBasic = level >= 1 && level <= 9;
+    final isTeal = level >= 10 && level <= 39;
+    final isDesigned = level >= 40 && level <= 120;
+    final Color shadowColor = isBasic
+        ? const Color(0xFF2F6F63)
+        : isTeal
+            ? const Color(0xFF2B6C9E)
+            : level >= 105 && level <= 119
+                ? const Color(0xFF5F1F3F)
                 : level >= 90 && level <= 104
-                    ? 'assets/images/room_level_90_104.png'
+                    ? const Color(0xFF6A2F72)
                     : level >= 70 && level <= 89
-                        ? 'assets/images/room_level_70_89.png'
-                        : level >= 40 && level <= 69
-                            ? 'assets/images/room_level_40_69.png'
-                            : level >= 10 && level <= 39
-                                ? 'assets/images/room_level_10_40.PNG'
-                                : 'assets/images/user_level_frame.PNG',
-            fit: BoxFit.contain,
+                        ? const Color(0xFF4F2A78)
+                        : const Color(0xFF1D3E6E);
+    final List<Color> numberGradient = isBasic
+        ? const [Color(0xFFE6FBF1), Color(0xFF8FD3B8)]
+        : isTeal
+            ? const [Color(0xFFEAF8FF), Color(0xFF7CC4EC)]
+            : level >= 105 && level <= 119
+                ? const [Color(0xFFFFEAF1), Color(0xFFD6567F)]
+                : level >= 90 && level <= 104
+                    ? const [Color(0xFFFCEBFF), Color(0xFFD27BD6)]
+                    : level >= 70 && level <= 89
+                        ? const [Color(0xFFF2E8FF), Color(0xFFA56BDB)]
+                        : const [Color(0xFFEAF4FF), Color(0xFF69B9F0)];
+
+    Widget number;
+    if (isBasic || isTeal || isDesigned) {
+      final fontSize = isDesigned ? 24.0 : 26.0;
+      number = Stack(
+        alignment: Alignment.center,
+        children: [
+          Transform.translate(
+            offset: const Offset(2.5, 3),
+            child: Text(
+              '$level',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.montserrat(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w900,
+                fontStyle: FontStyle.italic,
+                color: shadowColor,
+              ),
+            ),
           ),
+          ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: numberGradient,
+            ).createShader(bounds),
+            child: Text(
+              '$level',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.montserrat(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w900,
+                fontStyle: FontStyle.italic,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      );
+    } else {
+      number = Text(
+        '$level',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: colors[2],
+          fontSize: 26,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.2,
+          shadows: [
+            Shadow(color: colors[2].withOpacity(0.55), blurRadius: 8),
+            const Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1)),
+          ],
         ),
-        Transform.translate(
-          offset: const Offset(-2, 1),
-          child: level >= 1 && level <= 9
-              ? Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Transform.translate(
-                      offset: const Offset(2.5, 3),
-                      child: Text(
-                        '$level',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.montserrat(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          fontStyle: FontStyle.italic,
-                          color: const Color(0xFF2F6F63),
-                        ),
-                      ),
-                    ),
-                    ShaderMask(
-                      shaderCallback: (r) => const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFFE6FBF1), Color(0xFF8FD3B8)],
-                      ).createShader(r),
-                      child: Text(
-                        '$level',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.montserrat(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          fontStyle: FontStyle.italic,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              : level >= 10 && level <= 39
-                  ? Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Transform.translate(
-                          offset: const Offset(2.5, 3),
-                          child: Text(
-                            '$level',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.montserrat(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              fontStyle: FontStyle.italic,
-                              color: const Color(0xFF2B6C9E),
-                            ),
-                          ),
-                        ),
-                        ShaderMask(
-                          shaderCallback: (r) => const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xFFEAF8FF), Color(0xFF7CC4EC)],
-                          ).createShader(r),
-                          child: Text(
-                            '$level',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.montserrat(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              fontStyle: FontStyle.italic,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : level >= 40 && level <= 120
-                      ? Transform.translate(
-                          offset: const Offset(0, -7),
-                          child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Transform.translate(
-                          offset: const Offset(2.5, 3),
-                          child: Text(
-                            '$level',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.montserrat(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                              fontStyle: FontStyle.italic,
-                              color: level >= 105 && level <= 119
-                                  ? const Color(0xFF5F1F3F)
-                                  : level >= 90 && level <= 104
-                                      ? const Color(0xFF6A2F72)
-                                      : level >= 70 && level <= 89
-                                          ? const Color(0xFF4F2A78)
-                                          : level >= 40 && level <= 69
-                                              ? const Color(0xFF1D3E6E)
-                                              : const Color(0xFF2F6F63),
-                            ),
-                          ),
-                        ),
-                        ShaderMask(
-                          shaderCallback: (r) => LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: level >= 105 && level <= 119
-                                ? const [Color(0xFFFFEAF1), Color(0xFFD6567F)]
-                                : level >= 90 && level <= 104
-                                    ? const [Color(0xFFFCEBFF), Color(0xFFD27BD6)]
-                                    : level >= 70 && level <= 89
-                                        ? const [Color(0xFFF2E8FF), Color(0xFFA56BDB)]
-                                        : level >= 40 && level <= 69
-                                            ? const [Color(0xFFEAF4FF), Color(0xFF69B9F0)]
-                                            : const [Color(0xFFE6FBF1), Color(0xFF8FD3B8)],
-                          ).createShader(r),
-                          child: Text(
-                            '$level',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.montserrat(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                              fontStyle: FontStyle.italic,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+      );
+    }
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              level >= 105 && level <= 119
+                  ? 'assets/images/room_level_105_119.png'
+                  : level >= 90 && level <= 104
+                      ? 'assets/images/room_level_90_104.png'
+                      : level >= 70 && level <= 89
+                          ? 'assets/images/room_level_70_89.png'
+                          : level >= 40 && level <= 69
+                              ? 'assets/images/room_level_40_69.png'
+                              : level >= 10 && level <= 39
+                                  ? 'assets/images/room_level_10_40.PNG'
+                                  : 'assets/images/user_level_frame.PNG',
+              fit: BoxFit.contain,
+            ),
+          ),
+          Transform.translate(
+            offset: const Offset(-2, 1),
+            child: isDesigned
+                ? Transform.translate(
+                    offset: const Offset(0, -7),
+                    child: number,
                   )
-                      : Text(
-                          '$level',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: colors[2],
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.2,
-                            shadows: [
-                              Shadow(color: colors[2].withOpacity(0.55), blurRadius: 8),
-                              const Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-        ),
-      ],
-    ),
-  );
+                : number,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _RoomHeaderArcsPainter extends CustomPainter {
