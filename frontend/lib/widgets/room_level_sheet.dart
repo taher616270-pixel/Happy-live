@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'room_level_badge_120_plus.dart';
 
 const _sheetBg = Color(0xFF14161F);
 const _cardBg = Color(0xFF1E202B);
@@ -520,22 +521,22 @@ class _LevelRing extends StatelessWidget {
           Positioned.fill(
             child: Transform.translate(
               offset: isDesigned ? const Offset(0, 10) : Offset.zero,
-              child: Image.asset(
-              level >= 120
-                  ? 'assets/images/room_level_120_plus.gif'
-                  : level >= 105 && level <= 119
-                      ? 'assets/images/room_level_105_119.png'
-                      : level >= 90 && level <= 104
-                      ? 'assets/images/room_level_90_104.png'
-                      : level >= 70 && level <= 89
-                          ? 'assets/images/room_level_70_89.png'
-                          : level >= 40 && level <= 69
-                              ? 'assets/images/room_level_40_69.png'
-                              : level >= 10 && level <= 39
-                                  ? 'assets/images/room_level_10_40.PNG'
-                                  : 'assets/images/user_level_frame.PNG',
-              fit: BoxFit.contain,
-              ),
+              child: RoomLevelBadge120Plus.appliesTo(level)
+                  ? const RoomLevelBadge120Plus()
+                  : Image.asset(
+                      level >= 105 && level <= 119
+                          ? 'assets/images/room_level_105_119.png'
+                          : level >= 90 && level <= 104
+                              ? 'assets/images/room_level_90_104.png'
+                              : level >= 70 && level <= 89
+                                  ? 'assets/images/room_level_70_89.png'
+                                  : level >= 40 && level <= 69
+                                      ? 'assets/images/room_level_40_69.png'
+                                      : level >= 10 && level <= 39
+                                          ? 'assets/images/room_level_10_40.PNG'
+                                          : 'assets/images/user_level_frame.PNG',
+                      fit: BoxFit.contain,
+                    ),
             ),
           ),
           Transform.translate(
