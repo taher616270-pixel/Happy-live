@@ -536,15 +536,21 @@ class _LevelRing extends StatelessWidget {
                     ),
             ),
           ),
-          Transform.translate(
-            offset: const Offset(-2, 1),
-            child: isDesigned
-                ? Transform.translate(
-                    offset: const Offset(0, -5),
-                    child: number,
-                  )
-                : number,
-          ),
+          if (level >= 120)
+            Align(
+              alignment: Alignment.center,
+              child: number,
+            )
+          else
+            Transform.translate(
+              offset: const Offset(-2, 1),
+              child: isDesigned
+                  ? Transform.translate(
+                      offset: const Offset(0, -5),
+                      child: number,
+                    )
+                  : number,
+            ),
         ],
       ),
     );
