@@ -15,12 +15,12 @@ const _track = Color(0xFF3A3D47);
 /// الخبرة المطلوبة للوصول إلى المستوى المحدد.
 /// كل خمسة مستويات تزيد الخبرة المطلوبة بمقدار 3.3 مليون، بلا حد أقصى.
 List<Color> roomLevelBadgeColors(int level) {
-  if (level >= 120) return const [Color(0xFF167FA8), Color(0xFF49D7F2), Color(0xFFD4FAFF)];
-  if (level >= 105) return const [Color(0xFF171717), Color(0xFF514633), Color(0xFFE0C987)];
-  if (level >= 90) return const [Color(0xFF7D1830), Color(0xFFD63F65), Color(0xFFFFA0B2)];
-  if (level >= 70) return const [Color(0xFF80520B), Color(0xFFD9A62B), Color(0xFFFFE08A)];
-  if (level >= 40) return const [Color(0xFF493080), Color(0xFF8E7CFF), Color(0xFFC9BFFF)];
-  if (level >= 10) return const [Color(0xFF145E83), Color(0xFF29C5D6), Color(0xFFA6F1FF)];
+  if (level >= 120) return const [Color(0xFF1E6B3A), Color(0xFF3CB35F), Color(0xFF8FD176)];
+  if (level >= 105) return const [Color(0xFF8E2A52), Color(0xFF5F1F3F), Color(0xFFD6567F)];
+  if (level >= 90) return const [Color(0xFF9A4A9E), Color(0xFF6A2F72), Color(0xFFD27BD6)];
+  if (level >= 70) return const [Color(0xFF7B3FA8), Color(0xFF4F2A78), Color(0xFFA56BDB)];
+  if (level >= 40) return const [Color(0xFF2F5E9E), Color(0xFF1D3E6E), Color(0xFF69B9F0)];
+  if (level >= 10) return const [Color(0xFF2DD4C4), Color(0xFF167F83), Color(0xFF86E26B)];
   return const [Color(0xFF1E6B3A), Color(0xFF3CB35F), Color(0xFF8FD176)];
 }
 
@@ -129,29 +129,68 @@ class RoomLevelChip extends StatelessWidget {
   final RoomLevelData data;
   final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: onTap ?? () => showRoomLevelSheet(context, data),
-    child: Container(
-      height: 20,
-      padding: const EdgeInsets.only(left: 4, right: 9),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(100),
-        gradient: LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: roomLevelBadgeColors(data.level)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.15), blurRadius: 6, offset: const Offset(0, 2))],
+  Widget build(BuildContext context) {
+    final colors = roomLevelBadgeColors(data.level);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap ?? () => showRoomLevelSheet(context, data),
+      child: Container(
+        width: 88,
+        height: 24,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xE9161922),
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: colors.last.withOpacity(.85), width: 1),
+          boxShadow: [
+            BoxShadow(color: colors[1].withOpacity(.24), blurRadius: 8, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Center(
+                child: ShaderMask(
+                  blendMode: BlendMode.srcIn,
+                  shaderCallback: (bounds) => LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: colors,
+                  ).createShader(bounds),
+                  child: Text(
+                    'Lv. ${data.level}',
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.clip,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .15,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: Container(
+                  width: 13,
+                  height: 13,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(colors: [colors.last, colors.first]),
+                    border: Border.all(color: colors.last.withOpacity(.9), width: 1),
+                    boxShadow: [BoxShadow(color: colors.last.withOpacity(.45), blurRadius: 4)],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text('Lv. ${data.level}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: .2)),
-        const SizedBox(width: 5),
-        Container(width: 12, height: 12, decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(colors: [Colors.white.withOpacity(.95), ...roomLevelBadgeColors(data.level).reversed]),
-          border: Border.all(color: Colors.white.withOpacity(.6)),
-          boxShadow: [BoxShadow(color: Colors.white.withOpacity(.5), blurRadius: 3)],
-        )),
-      ]),
-    ),
-  );
+    );
+  }
 }
 
 Future<void> showRoomLevelSheet(BuildContext context, RoomLevelData data) {
