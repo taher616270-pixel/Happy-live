@@ -463,7 +463,7 @@ class _LevelRing extends StatelessWidget {
                         '$level',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.montserrat(
-                          fontSize: 28,
+                          fontSize: 26,
                           fontWeight: FontWeight.w900,
                           fontStyle: FontStyle.italic,
                           color: const Color(0xFF2F6F63),
@@ -480,7 +480,7 @@ class _LevelRing extends StatelessWidget {
                         '$level',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.montserrat(
-                          fontSize: 28,
+                          fontSize: 26,
                           fontWeight: FontWeight.w900,
                           fontStyle: FontStyle.italic,
                           color: Colors.white,
