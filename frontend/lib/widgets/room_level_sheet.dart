@@ -207,17 +207,38 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     return SizedBox(height: MediaQuery.of(context).size.height * .68 + 44, child: Stack(clipBehavior: Clip.none, children: [
       Positioned.fill(top: 44, child: Container(
         decoration: const BoxDecoration(color: _sheetBg, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-        child: Column(children: [
-          _header(d), _progress(d), _tabs(),
-          Expanded(child: _tab == 0 ? _levelUpTab(d) : _perksTab(d)),
-        ]),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 270,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [_greenDeep, _greenDeep, Color(0xFF1B5835), _sheetBg],
+                    stops: [0.0, 0.48, 0.78, 1.0],
+                  ),
+                ),
+              ),
+            ),
+            Column(children: [
+              _header(d), _progress(d), _tabs(),
+              Expanded(child: _tab == 0 ? _levelUpTab(d) : _perksTab(d)),
+            ]),
+          ],
+        ),
       )),
       PositionedDirectional(end: 35, top: 0, child: _LevelRing(level: d.level, size: 112, colors: roomLevelBadgeColors(d.level))),
     ]));
   }
   Widget _header(RoomLevelData d) => Container(
     height: 74, padding: const EdgeInsets.symmetric(horizontal: 14),
-    decoration: const BoxDecoration(borderRadius: BorderRadius.vertical(top: Radius.circular(24)), gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_greenDeep, _greenDeep, Color(0xFF1B5835), _sheetBg])),
+    decoration: const BoxDecoration(borderRadius: BorderRadius.vertical(top: Radius.circular(24)), color: Colors.transparent),
     child: Row(children: [
       CircleAvatar(radius: 24, backgroundColor: Colors.white12, backgroundImage: d.roomAvatar),
       const SizedBox(width: 10),
