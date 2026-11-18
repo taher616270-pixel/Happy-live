@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 const _sheetBg = Color(0xFF14161F);
 const _cardBg = Color(0xFF1E202B);
@@ -452,20 +453,56 @@ class _LevelRing extends StatelessWidget {
         ),
         Transform.translate(
           offset: const Offset(-2, -14),
-          child: Text(
-            '$level',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: colors[2],
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.2,
-              shadows: [
-                Shadow(color: colors[2].withOpacity(0.55), blurRadius: 8),
-                const Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1)),
-              ],
-            ),
-          ),
+          child: level >= 1 && level <= 9
+              ? Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Transform.translate(
+                      offset: const Offset(2.5, 3),
+                      child: Text(
+                        '$level',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 56,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          color: const Color(0xFF2F6F63),
+                        ),
+                      ),
+                    ),
+                    ShaderMask(
+                      shaderCallback: (r) => const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFFE6FBF1), Color(0xFF8FD3B8)],
+                      ).createShader(r),
+                      child: Text(
+                        '$level',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 56,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Text(
+                  '$level',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: colors[2],
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.2,
+                    shadows: [
+                      Shadow(color: colors[2].withOpacity(0.55), blurRadius: 8),
+                      const Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1)),
+                    ],
+                  ),
+                ),
         ),
       ],
     ),
