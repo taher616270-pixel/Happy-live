@@ -576,8 +576,10 @@ class _LevelRing extends StatelessWidget {
                               color: Colors.white,
                             ),
                           ),
-                              ),
-                        )
+                        ),
+                      ],
+                    ),
+                  )
                       : Text(
                           '$level',
                           textAlign: TextAlign.center,
