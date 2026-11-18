@@ -435,35 +435,35 @@ class _LevelRing extends StatelessWidget {
       alignment: Alignment.center,
       children: [
         Positioned.fill(
-          child: Transform.translate(
-            offset: Offset(0, level >= 40 && level <= 69 ? 5 : 0),
-            child: Image.asset(
-              level >= 105 && level <= 119
-                  ? 'assets/images/room_level_105_119.png'
-                  : level >= 90 && level <= 104
-                      ? 'assets/images/room_level_90_104.png'
-                      : level >= 70 && level <= 89
-                      ? 'assets/images/room_level_70_89.png'
-                      : level >= 40 && level <= 69
-                          ? 'assets/images/room_level_40_69.png'
-                      : level >= 10 && level <= 39
-                          ? 'assets/images/room_level_10_40.PNG'
-                          : 'assets/images/user_level_frame.PNG',
-              fit: BoxFit.contain,
-            ),
+          child: Image.asset(
+            level >= 105 && level <= 119
+                ? 'assets/images/room_level_105_119.png'
+                : level >= 90 && level <= 104
+                    ? 'assets/images/room_level_90_104.png'
+                    : level >= 70 && level <= 89
+                        ? 'assets/images/room_level_70_89.png'
+                        : level >= 40 && level <= 69
+                            ? 'assets/images/room_level_40_69.png'
+                            : level >= 10 && level <= 39
+                                ? 'assets/images/room_level_10_40.PNG'
+                                : 'assets/images/user_level_frame.PNG',
+            fit: BoxFit.contain,
           ),
         ),
         Transform.translate(
-          offset: const Offset(-2, -12),
+          offset: const Offset(-2, -14),
           child: Text(
             '$level',
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-            fontWeight: FontWeight.w800,
-            fontStyle: FontStyle.italic,
-              shadows: [Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1))],
+            style: TextStyle(
+              color: colors[2],
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.2,
+              shadows: [
+                Shadow(color: colors[2].withOpacity(0.55), blurRadius: 8),
+                const Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1)),
+              ],
             ),
           ),
         ),
