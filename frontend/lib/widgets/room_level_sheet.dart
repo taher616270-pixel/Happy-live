@@ -458,7 +458,7 @@ class _LevelRing extends StatelessWidget {
 
     Widget number;
     if (isBasic || isTeal || isDesigned) {
-      final fontSize = isDesigned ? 22.0 : 26.0;
+      final fontSize = isDesigned ? 20.0 : 26.0;
       number = Stack(
         alignment: Alignment.center,
         children: [
@@ -519,7 +519,7 @@ class _LevelRing extends StatelessWidget {
         children: [
           Positioned.fill(
             child: Transform.translate(
-              offset: isDesigned ? const Offset(0, 5) : Offset.zero,
+              offset: isDesigned ? const Offset(0, 10) : Offset.zero,
               child: Image.asset(
               level >= 105 && level <= 119
                   ? 'assets/images/room_level_105_119.png'
@@ -540,7 +540,7 @@ class _LevelRing extends StatelessWidget {
             offset: const Offset(-2, 1),
             child: isDesigned
                 ? Transform.translate(
-                    offset: const Offset(0, -10),
+                    offset: const Offset(0, -5),
                     child: number,
                   )
                 : number,
