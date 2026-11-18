@@ -1155,24 +1155,14 @@ Widget _roomActionButton({
     ),
   );
 
-  Widget _subHeader(BuildContext context) => Transform.translate(
-    offset: Theme.of(context).platform == TargetPlatform.android
-        ? const Offset(0, -10)
-        : Offset.zero,
-    child: Padding(
+  Widget _subHeader(BuildContext context) => Padding(
     padding: const EdgeInsetsDirectional.fromSTEB(12, 9, 12, 0),
     child: Align(
       alignment: AlignmentDirectional.centerStart,
-      child: Transform.translate(
-        offset: Theme.of(context).platform == TargetPlatform.android
-            ? const Offset(0, -10)
-            : Offset.zero,
-        child: RoomLevelChip(
-           data: _roomLevelData(),
-           onTap: () => _openRoomLevelSheet(context, room),
-         ),
+      child: RoomLevelChip(
+        data: _roomLevelData(),
+        onTap: () => _openRoomLevelSheet(context, room),
       ),
-    ),
     ),
   );
 
