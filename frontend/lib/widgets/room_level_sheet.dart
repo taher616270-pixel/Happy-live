@@ -458,7 +458,7 @@ class _LevelRing extends StatelessWidget {
 
     Widget number;
     if (isBasic || isTeal || isDesigned) {
-      final fontSize = isDesigned ? 24.0 : 26.0;
+      final fontSize = isDesigned ? 22.0 : 26.0;
       number = Stack(
         alignment: Alignment.center,
         children: [
