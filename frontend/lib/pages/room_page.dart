@@ -12,6 +12,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:happy_live/models/message.dart';
 import 'package:happy_live/models/seat_state.dart';
 import 'package:happy_live/pages/voice_room_design_preview.dart';
+import 'package:happy_live/widgets/room_level_sheet.dart';
 import 'package:happy_live/services/agora_room_bridge.dart';
 import 'package:happy_live/services/room_seat_socket.dart';
 import 'package:happy_live/pages/wallet_page.dart';
@@ -2465,14 +2466,14 @@ class _RoomPageState extends State<RoomPage> {
         const SizedBox(width: 8),
         Expanded(child: Align(alignment: Alignment.centerRight, child: _profileHeader())),
         const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          decoration: BoxDecoration(color: const Color(0x88213D43), borderRadius: BorderRadius.circular(20)),
-          child: const Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFC66D), size: 17),
-            SizedBox(width: 4),
-            Text('Lv.1', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
-          ]),
+        RoomLevelChip(
+          data: RoomLevelData(
+            level: _roomExperienceLevel,
+            roomName: (widget.room['name'] ?? widget.room['roomName'] ?? '').toString(),
+            roomId: (widget.room['room_code'] ?? widget.room['roomId'] ?? widget.room['id'] ?? '').toString(),
+            exp: _roomExperienceExp,
+            nextLevelExp: _roomExperienceNextLevelExp,
+          ),
         ),
       ],
     );
