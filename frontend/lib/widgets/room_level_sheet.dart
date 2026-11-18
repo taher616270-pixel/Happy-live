@@ -525,7 +525,10 @@ class _LevelRing extends StatelessWidget {
                         ),
                       ],
                     )
-                  : Stack(
+                  : level >= 40 && level <= 120
+                      ? Transform.translate(
+                          offset: const Offset(0, -7),
+                          child: Stack(
                       alignment: Alignment.center,
                       children: [
                         Transform.translate(
@@ -534,7 +537,7 @@ class _LevelRing extends StatelessWidget {
                             '$level',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.montserrat(
-                              fontSize: 26,
+                              fontSize: 24,
                               fontWeight: FontWeight.w900,
                               fontStyle: FontStyle.italic,
                               color: level >= 105 && level <= 119
@@ -567,11 +570,26 @@ class _LevelRing extends StatelessWidget {
                             '$level',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.montserrat(
-                              fontSize: 26,
+                              fontSize: 24,
                               fontWeight: FontWeight.w900,
                               fontStyle: FontStyle.italic,
                               color: Colors.white,
                             ),
+                          ),
+                              ),
+                        )
+                      : Text(
+                          '$level',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: colors[2],
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.2,
+                            shadows: [
+                              Shadow(color: colors[2].withOpacity(0.55), blurRadius: 8),
+                              const Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1)),
+                            ],
                           ),
                         ),
                       ],
