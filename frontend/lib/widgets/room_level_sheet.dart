@@ -452,7 +452,7 @@ class _LevelRing extends StatelessWidget {
         : isTeal
             ? const [Color(0xFFEAF8FF), Color(0xFF7CC4EC)]
             : level >= 120
-                ? const [Color(0xFFE9FFE8), Color(0xFF8FD176)]
+                ? const [Color(0xFF3CB35F), Color(0xFF8FD176)]
                 : level >= 105 && level <= 119
                 ? const [Color(0xFFFFEAF1), Color(0xFFD6567F)]
                 : level >= 90 && level <= 104
