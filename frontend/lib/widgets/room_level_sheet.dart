@@ -7,6 +7,7 @@ const _cardBg = Color(0xFF1E202B);
 const _cardBorder = Color(0xFF303440);
 const _green = Color(0xFF86E26B);
 const _greenDeep = Color(0xFF3E7D45);
+const _tealAccent = Color(0xFF2DD4C4);
 const _muted = Color(0xFF8E919B);
 const _track = Color(0xFF3A3D47);
 
@@ -168,6 +169,8 @@ class _RoomLevelSheet extends StatefulWidget {
 }
 class _RoomLevelSheetState extends State<_RoomLevelSheet> {
   int _tab = 0;
+  bool get _isTealTheme => widget.data.level >= 10 && widget.data.level <= 39;
+  Color get _accentColor => _isTealTheme ? _tealAccent : _green;
   Timer? _timer;
   Duration? _left;
   Duration _secondsUntilSaudiMidnight() {
@@ -217,7 +220,9 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFF3E7D45), Color(0xFF24502F), Color(0xFF1B2230), Color(0xFF14161F)],
+                    colors: _isTealTheme
+                        ? [const Color(0xFF1F9C94), const Color(0xFF17605F), const Color(0xFF1B2A38), const Color(0xFF14161F)]
+                        : [const Color(0xFF3E7D45), const Color(0xFF24502F), const Color(0xFF1B2230), const Color(0xFF14161F)],
                     stops: [0.0, 0.25, 0.5, 1.0],
                   ),
                 ),
@@ -244,7 +249,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
                       left: 0,
                       right: 0,
                       height: 1.2,
-                      child: ColoredBox(color: Color(0xFF6BAF6A)),
+                      child: ColoredBox(color: _isTealTheme ? const Color(0xFF3FC1B5) : const Color(0xFF6BAF6A)),
                     ),
                   ],
                 ),
@@ -277,7 +282,10 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     final ratio = d.nextLevelExp == 0 ? 0.0 : (d.exp / d.nextLevelExp).clamp(0.0, 1.0).toDouble();
     String short(int n) => n >= 1000000 ? '${(n / 1000000).toStringAsFixed(1)}m' : n >= 1000 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n';
     return Padding(padding: const EdgeInsets.fromLTRB(14, 4, 14, 6), child: Column(children: [
-      ClipRRect(borderRadius: BorderRadius.circular(100), child: Directionality(textDirection: TextDirection.rtl, child: LinearProgressIndicator(value: ratio, minHeight: 8, color: _green, backgroundColor: _track))),
+      Container(
+        decoration: BoxDecoration(boxShadow: [BoxShadow(color: _accentColor.withOpacity(.22), blurRadius: 5, spreadRadius: .3)]),
+        child: ClipRRect(borderRadius: BorderRadius.circular(100), child: Directionality(textDirection: TextDirection.rtl, child: LinearProgressIndicator(value: ratio, minHeight: 8, color: _accentColor, backgroundColor: _track))),
+      ),
       const SizedBox(height: 6),
       Row(children: [
         Text('نقاط خبرة الغرفة: ${short(d.exp)}/${short(d.nextLevelExp)}', style: const TextStyle(color: _muted, fontSize: 11)),
@@ -298,7 +306,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
     const SizedBox(height: 8),
     Text(d.note, style: const TextStyle(color: _muted, fontSize: 12, height: 1.5)),
   ]);
-  Widget _dailyCard(RoomLevelData d) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: const Color(0xFF1F3A2B), borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFF2F4A38))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _dailyCard(RoomLevelData d) => Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: _isTealTheme ? const Color(0xFF15333A) : const Color(0xFF1F3A2B), borderRadius: BorderRadius.circular(22), border: Border.all(color: _isTealTheme ? const Color(0xFF1F4B50) : const Color(0xFF2F4A38))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Row(children: [
       const Text('نقاط خبرة الغرفة اليوم:', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
       const Spacer(),
