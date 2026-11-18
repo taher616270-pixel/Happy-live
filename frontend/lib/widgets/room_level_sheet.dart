@@ -216,14 +216,14 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
           children: [
             Positioned.fill(
               child: DecoratedBox(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: _isTealTheme
-                        ? [const Color(0xFF1F9C94), const Color(0xFF17605F), const Color(0xFF1B2A38), const Color(0xFF14161F)]
-                        : [const Color(0xFF3E7D45), const Color(0xFF24502F), const Color(0xFF1B2230), const Color(0xFF14161F)],
-                    stops: [0.0, 0.25, 0.5, 1.0],
+                        ? const [Color(0xFF1F9C94), Color(0xFF17605F), Color(0xFF1B2A38), Color(0xFF14161F)]
+                        : const [Color(0xFF3E7D45), Color(0xFF24502F), Color(0xFF1B2230), Color(0xFF14161F)],
+                    stops: const [0.0, 0.25, 0.5, 1.0],
                   ),
                 ),
               ),
