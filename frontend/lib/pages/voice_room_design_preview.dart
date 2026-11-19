@@ -148,7 +148,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 curve: Curves.easeOutCubic,
                                 transform: Matrix4.translationValues(
                                   0,
-                                  -MediaQuery.viewInsetsOf(context).bottom,
+                                  -25 - MediaQuery.viewInsetsOf(context).bottom,
                                   0,
                                 ),
                                 child: Container(
