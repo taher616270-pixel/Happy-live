@@ -2328,6 +2328,20 @@ export default {
           return json({ error: "invalid_gift_request" }, 400, origin, env);
         }
         if (recipientUserId === user.id) return json({ error: "cannot_gift_self" }, 400, origin, env);
+        const [giftPolicy, roomPolicy] = await Promise.all([
+          env.DB!.prepare("SELECT category FROM gift_catalog WHERE id = ? AND is_active = 1 LIMIT 1").bind(giftId).first<{ category: string }>(),
+          env.DB!.prepare("SELECT r.owner_user_id, rs.settings_json FROM rooms r LEFT JOIN room_settings rs ON rs.room_id = r.id WHERE r.id = ? AND r.status = 'active' LIMIT 1").bind(roomId).first<{ owner_user_id: string; settings_json: string | null }>()
+        ]);
+        if (!giftPolicy || !roomPolicy) return json({ error: "gift_or_room_not_found" }, 404, origin, env);
+        let roomGiftSettings: Record<string, unknown> = {};
+        try { roomGiftSettings = roomPolicy.settings_json ? JSON.parse(roomPolicy.settings_json) as Record<string, unknown> : {}; } catch { roomGiftSettings = {}; }
+        if (giftPolicy.category === "lucky" && String(roomGiftSettings.whoLuck ?? "everyone") === "ownerAndAdmins") {
+          const roomModerator = await env.DB!.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1")
+            .bind(roomId, user.id).first();
+          if (roomPolicy.owner_user_id !== user.id && !roomModerator) {
+            return json({ error: "room_lucky_gift_restricted", message: "إرسال حقيبة الحظ متاح للمالك والمشرفين فقط" }, 403, origin, env);
+          }
+        }
         const now = new Date().toISOString();
         const dayKey = saudiDayKey(now);
         const existing = await env.DB!.prepare(
