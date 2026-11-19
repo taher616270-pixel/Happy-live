@@ -2172,7 +2172,9 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _referenceRoomHeader() {
-    final ownerAvatar = (widget.room['ownerAvatar'] ?? widget.room['ownerAvatarUrl'] ?? _imageUrl ?? '').toString();
+    final ownerAvatar = (_ownerAvatarUrl.trim().isNotEmpty
+        ? _ownerAvatarUrl.trim()
+        : (widget.room['ownerAvatar'] ?? widget.room['ownerAvatarUrl'] ?? '').toString().trim());
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 9, 12, 0),
       child: Row(
