@@ -124,13 +124,14 @@ class RoomSettingsController extends ChangeNotifier {
         final actor = (row['actor_name'] ?? 'مشرف').toString();
         final target = (row['target_name'] ?? 'مستخدم').toString();
         final category = switch (action) {
-          'kick' || 'ban' || 'unban' => 'طرد',
+          'kick' || 'unkick' || 'ban' || 'unban' => 'طرد',
           'mute' || 'unmute' => 'كتم',
           'assign_moderator' || 'remove_moderator' => 'تعيين الأدوار',
           _ => 'عمليات أخرى',
         };
         final text = switch (action) {
           'kick' => 'تم طرد $target مؤقتًا',
+          'unkick' => 'تم إلغاء الطرد المؤقت عن $target',
           'ban' => 'تم حظر $target من الغرفة',
           'unban' => 'تم رفع الحظر عن $target',
           'mute' => 'تم كتم $target',
