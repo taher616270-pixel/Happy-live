@@ -72,7 +72,7 @@ function prizeFor(prizes: CannonPrizeConfig[], share: number): CannonPrizeConfig
 }
 async function ensureCannonRoom(db: D1Database, roomId: string, day: string) {
   await db.prepare(
-    "INSERT OR IGNORE INTO cannon_rooms (room_id, day, level, progress, launching_until, updated_at) SELECT id, ?, 1, 0, 0, ? FROM rooms WHERE id=? AND status='active'"
+    "INSERT OR IGNORE INTO cannon_rooms (room_id, day, level, progress, launching_until, updated_at) SELECT id, ?, 1, 0, 0, ? FROM rooms WHERE id=?"
   ).bind(day, new Date().toISOString(), roomId).run();
 }
 async function tryLaunches(db: D1Database, roomId: string, day: string, levels: CannonLevelConfig[]) {
