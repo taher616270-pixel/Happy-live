@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models.dart';
 import '../room_settings_controller.dart';
 import '../sheets/choice_sheet.dart';
@@ -9,6 +10,7 @@ import 'admin_log_page.dart';
 import 'admin_permissions_page.dart';
 import 'blacklist_page.dart';
 import 'edit_text_page.dart';
+import 'muted_users_page.dart';
 
 class RoomSettingsPage extends StatefulWidget {
   final RoomSettingsController c;
@@ -19,14 +21,49 @@ class RoomSettingsPage extends StatefulWidget {
 
 class _RoomSettingsPageState extends State<RoomSettingsPage> {
   RoomSettingsController get c => widget.c;
-  @override
-  void initState() { super.initState(); c.load(); }
+  final ImagePicker _imagePicker = ImagePicker();
+  bool _uploadingCover = false;
 
-  List<MapEntry<Audience, String>> _opts(List<Audience> l) => l.map((a) => MapEntry(a, audienceLabel(a))).toList();
+  @override
+  void initState() {
+    super.initState();
+    c.load();
+  }
+
+  List<MapEntry<Audience, String>> _opts(List<Audience> values) =>
+      values.map((a) => MapEntry(a, audienceLabel(a))).toList();
 
   Future<void> _run(Future<void> Function() action) async {
-    try { await action(); }
-    catch (e) { if (mounted) showRsToast(context, e.toString().replaceFirst('Exception: ', '')); }
+    try {
+      await action();
+    } catch (e) {
+      if (mounted) showRsToast(context, e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _pickCover() async {
+    if (_uploadingCover) return;
+    try {
+      final image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 88,
+        maxWidth: 1600,
+        maxHeight: 1600,
+      );
+      if (image == null || !mounted) return;
+      final bytes = await image.readAsBytes();
+      if (bytes.isEmpty || bytes.length > 5 * 1024 * 1024) {
+        showRsToast(context, 'حجم الصورة يجب ألا يتجاوز 5 ميجابايت');
+        return;
+      }
+      setState(() => _uploadingCover = true);
+      await c.setCoverBytes(bytes, image.name.isEmpty ? 'room-cover.jpg' : image.name);
+      if (mounted) showRsToast(context, 'تم تحديث غلاف الغرفة');
+    } catch (e) {
+      if (mounted) showRsToast(context, e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _uploadingCover = false);
+    }
   }
 
   @override
@@ -43,23 +80,110 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
             : Container(
                 color: Colors.white,
                 child: ListView(padding: EdgeInsets.zero, children: [
-          if (c.error != null) HintBar(c.error!),
-          SettingsTile(title: 'الغلاف', trailing: ClipRRect(borderRadius: BorderRadius.circular(3), child: Container(width: 44, height: 44, color: const Color(0xFFB9C4D6), child: c.coverUrl == null || c.coverUrl!.isEmpty ? const Icon(Icons.image, color: Colors.white) : Image.network(c.coverUrl!, fit: BoxFit.cover))), onTap: () => showRsToast(context, 'رفع الغلاف غير مربوط بالخادم بعد')),
-          SettingsTile(title: 'الإسم', value: c.name, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإسم', initial: c.name, maxLength: 30, onSave: c.setName)))),
-          SettingsTile(title: 'الإعلان', value: c.announcement, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإعلان', initial: c.announcement, maxLength: 200, onSave: c.setAnnouncement)))),
-          SettingsTile(title: 'مكافأة الغرفة', onTap: () => showRsToast(context, 'قريبًا')),
-          SettingsTile(title: 'عدد المقاعد', value: '${c.seats}', onTap: () async { final v = await showSeatsSheet(context, current: c.seats); if (v != null) await _run(() => c.setSeats(v)); }),
-          SettingsTile(title: 'أخذ مايك يتطلب تقديم طلب', value: c.micRequestMode, onTap: () async { final v = await showChoiceSheet<String>(context, title: 'أخذ مايك يتطلب تقديم طلب', options: const [MapEntry('إغلاق', 'إغلاق'), MapEntry('تفعيل', 'تفعيل')], selected: c.micRequestMode); if (v != null) await _run(() => c.setMicRequestMode(v)); }),
-          SwitchTile(title: 'إطلاق الألعاب النارية في الغرفة تلقائيًا', value: c.autoGames, onChanged: (v) => _run(() => c.setAutoGames(v))),
-          SettingsTile(title: 'من يمكنه دخول الغرفة', value: audienceLabel(c.whoEnter), onTap: () async { final v = await showChoiceSheet<Audience>(context, title: 'من يمكنه دخول الغرفة', options: _opts(two), selected: c.whoEnter); if (v != null) await _run(() => c.setWhoEnter(v)); }),
-          SettingsTile(title: 'من يمكنه التحدث بالميكروفون', value: audienceLabel(c.whoMic), onTap: () async { final v = await showChoiceSheet<Audience>(context, title: 'من يمكنه التحدث بالميكروفون', options: _opts(three), selected: c.whoMic); if (v != null) await _run(() => c.setWhoMic(v)); }),
-          SettingsTile(title: 'من يمكنه الدردشة', value: audienceLabel(c.whoChat), onTap: () async { final v = await showChoiceSheet<Audience>(context, title: 'من يمكنه الدردشة', options: _opts(three), selected: c.whoChat); if (v != null) await _run(() => c.setWhoChat(v)); }),
-          SettingsTile(title: 'من يمكنه ارسال حقيبة الحظ', value: audienceLabel(c.whoLuck), onTap: () async { final v = await showChoiceSheet<Audience>(context, title: 'من يمكنه ارسال حقيبة الحظ', options: _opts(three), selected: c.whoLuck); if (v != null) await _run(() => c.setWhoLuck(v)); }),
-          SettingsTile(title: 'قائمة الكتم', onTap: () => showRsToast(context, 'قائمة الكتم غير مربوطة بالخادم بعد')),
-          SettingsTile(title: 'القائمة السوداء', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BlacklistPage()))),
-          SettingsTile(title: 'سجل عمليات المشرف', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AdminLogPage(c: c)))),
-          SettingsTile(title: 'اعدادات صلاحيات المشرفين', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AdminPermissionsPage(c: c)))),
-          const SizedBox(height: 24),
+                  if (c.error != null) HintBar(c.error!),
+                  SettingsTile(
+                    title: 'الغلاف',
+                    trailing: _uploadingCover
+                        ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2, color: RS.primary))
+                        : ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: c.coverUrl == null || c.coverUrl!.isEmpty
+                                  ? const ColoredBox(color: Color(0xFFE9EEF2), child: Icon(Icons.add_photo_alternate_outlined, color: RS.gray))
+                                  : Image.network(c.coverUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFE9EEF2), child: Icon(Icons.broken_image_outlined, color: RS.gray))),
+                            ),
+                          ),
+                    onTap: _pickCover,
+                  ),
+                  SettingsTile(
+                    title: 'الإسم',
+                    value: c.name,
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإسم', initial: c.name, maxLength: 30, onSave: c.setName))),
+                  ),
+                  SettingsTile(
+                    title: 'الإعلان',
+                    value: c.announcement,
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإعلان', initial: c.announcement, maxLength: 200, onSave: c.setAnnouncement))),
+                  ),
+                  SettingsTile(
+                    title: 'عدد المقاعد',
+                    value: '${c.seats}',
+                    onTap: () async {
+                      final value = await showSeatsSheet(context, current: c.seats);
+                      if (value != null) await _run(() => c.setSeats(value));
+                    },
+                  ),
+                  SettingsTile(
+                    title: 'أخذ مايك يتطلب تقديم طلب',
+                    value: c.micRequestMode,
+                    onTap: () async {
+                      final value = await showChoiceSheet<String>(
+                        context,
+                        title: 'أخذ مايك يتطلب تقديم طلب',
+                        options: const [MapEntry('إغلاق', 'إغلاق'), MapEntry('تفعيل', 'تفعيل')],
+                        selected: c.micRequestMode,
+                      );
+                      if (value != null) await _run(() => c.setMicRequestMode(value));
+                    },
+                  ),
+                  SwitchTile(
+                    title: 'إطلاق الألعاب النارية في الغرفة تلقائيًا',
+                    value: c.autoGames,
+                    onChanged: (value) => _run(() => c.setAutoGames(value)),
+                  ),
+                  SettingsTile(
+                    title: 'من يمكنه دخول الغرفة',
+                    value: audienceLabel(c.whoEnter),
+                    onTap: () async {
+                      final value = await showChoiceSheet<Audience>(context, title: 'من يمكنه دخول الغرفة', options: _opts(two), selected: c.whoEnter);
+                      if (value != null) await _run(() => c.setWhoEnter(value));
+                    },
+                  ),
+                  SettingsTile(
+                    title: 'من يمكنه التحدث بالميكروفون',
+                    value: audienceLabel(c.whoMic),
+                    onTap: () async {
+                      final value = await showChoiceSheet<Audience>(context, title: 'من يمكنه التحدث بالميكروفون', options: _opts(three), selected: c.whoMic);
+                      if (value != null) await _run(() => c.setWhoMic(value));
+                    },
+                  ),
+                  SettingsTile(
+                    title: 'من يمكنه الدردشة',
+                    value: audienceLabel(c.whoChat),
+                    onTap: () async {
+                      final value = await showChoiceSheet<Audience>(context, title: 'من يمكنه الدردشة', options: _opts(three), selected: c.whoChat);
+                      if (value != null) await _run(() => c.setWhoChat(value));
+                    },
+                  ),
+                  SettingsTile(
+                    title: 'من يمكنه إرسال حقيبة الحظ',
+                    value: audienceLabel(c.whoLuck),
+                    onTap: () async {
+                      final value = await showChoiceSheet<Audience>(context, title: 'من يمكنه إرسال حقيبة الحظ', options: _opts(three), selected: c.whoLuck);
+                      if (value != null) await _run(() => c.setWhoLuck(value));
+                    },
+                  ),
+                  SettingsTile(
+                    title: 'قائمة الكتم',
+                    value: c.muted.length.toString(),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MutedUsersPage(c: c))),
+                  ),
+                  SettingsTile(
+                    title: 'القائمة السوداء',
+                    value: (c.bans.length + c.kicks.length).toString(),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BlacklistPage(c: c))),
+                  ),
+                  SettingsTile(
+                    title: 'سجل عمليات المشرف',
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AdminLogPage(c: c))),
+                  ),
+                  SettingsTile(
+                    title: 'إعدادات صلاحيات المشرفين',
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AdminPermissionsPage(c: c))),
+                  ),
+                  const SizedBox(height: 24),
                 ]),
               ),
       ),
