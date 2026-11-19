@@ -1235,8 +1235,13 @@ Widget _roomActionButton({
                 : number >= 7
                     ? -3.0
                     : 0.0;
-        final verticalOffset = baseVerticalOffset +
-            (layout.id == 'm20' && number >= 1 && number <= 18 ? -7.0 : 0.0);
+        // The 15-seat layout must keep every seat level within its row.
+        final verticalOffset = layout.id == 'm15'
+            ? 0.0
+            : baseVerticalOffset +
+                (layout.id == 'm20' && number >= 1 && number <= 18
+                    ? -7.0
+                    : 0.0);
         return FittedBox(
           fit: BoxFit.scaleDown,
           child: Selector<SeatStateStore, SeatState>(
