@@ -73,7 +73,16 @@ class _CannonSheetState extends State<CannonSheet> {
         builder: (context, _) {
           final st = _svc.state;
           if (st == null || st.levels.isEmpty) {
-            return const Center(child: CircularProgressIndicator(color: Color(0xFF3AA8FF)));
+            return Center(
+              child: _svc.isUnavailable
+                ? const Padding(
+                    padding: EdgeInsets.all(28),
+                    child: Text('مدفع الغرفة متوقف مؤقتًا أو تعذر الاتصال بالخادم.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  )
+                : const CircularProgressIndicator(color: Color(0xFF3AA8FF)),
+            );
           }
           if (st.pending.isNotEmpty) _showPendingClaim(st.pending.first);
           return _content(context, st);
