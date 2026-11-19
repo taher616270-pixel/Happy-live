@@ -2603,7 +2603,7 @@ export default {
     }
 
     // Owner-only room settings API. Settings and moderator permission rules are stored per room.
-    const roomSettingsRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/([0-9a-f-]{36})\\/settings$/i);
+    const roomSettingsRoute = url.pathname.match(/^\/api\/v1\/rooms\/([0-9a-f-]{36})\/settings$/i);
     if (roomSettingsRoute && (request.method === "GET" || request.method === "PATCH")) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
@@ -2628,7 +2628,7 @@ export default {
           const [announcement, moderators] = await Promise.all([
             env.DB.prepare("SELECT announcement FROM room_announcements WHERE room_id = ? LIMIT 1").bind(roomId).first<{ announcement: string }>(),
             env.DB.prepare(
-              "SELECT m.user_id, COALESCE(p.display_name, '') AS display_name, COALESCE(p.gabo_id, '') AS public_id FROM room_moderators m LEFT JOIN profiles p ON p.user_id = m.user_id WHERE m.room_id = ? ORDER BY m.created_at ASC"
+              "SELECT m.user_id, COALESCE(p.display_name, '') AS display_name, COALESCE(p.happy_id, '') AS public_id FROM room_moderators m LEFT JOIN profiles p ON p.user_id = m.user_id WHERE m.room_id = ? ORDER BY m.created_at ASC"
             ).bind(roomId).all<{ user_id: string; display_name: string; public_id: string }>()
           ]);
           return json({
