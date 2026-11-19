@@ -64,8 +64,8 @@ class _CannonSheetState extends State<CannonSheet> {
     final h = MediaQuery.of(context).size.height;
     return Container(
       height: h * 0.88,
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         border: Border.all(color: Color(0xFF56E5D2), width: 1.2),
         boxShadow: [BoxShadow(color: Color(0x6635D6C6), blurRadius: 28, spreadRadius: -8)],
         gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomRight,
