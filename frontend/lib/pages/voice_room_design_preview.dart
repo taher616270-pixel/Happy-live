@@ -175,8 +175,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       Positioned(
                         left: 12,
                         bottom: Theme.of(context).platform == TargetPlatform.android
-                            ? 21
-                            : 53,
+                            ? -4
+                            : 28,
                         child: Column(
                           children: const [
                             _RoomGameTile(
