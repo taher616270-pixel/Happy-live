@@ -34,6 +34,8 @@ class CannonApi {
       if (r.statusCode != 200) return null;
       final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
       if (j['ok'] != true) return null;
+      CannonConfig.bannerImageUrl = (j['bannerImageUrl'] ?? '').toString();
+      CannonConfig.frameImageUrl = (j['frameImageUrl'] ?? '').toString();
       return ((j['banners'] as List?) ?? [])
         .whereType<Map>()
         .map((e) => CannonBanner.fromJson(Map<String, dynamic>.from(e)))
