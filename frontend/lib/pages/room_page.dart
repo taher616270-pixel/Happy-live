@@ -2120,7 +2120,22 @@ class _RoomPageState extends State<RoomPage> {
         ChangeNotifierProvider<SeatStateStore>.value(
           value: _seatStateStore,
           child: VoiceRoomDesignPreview(
-      room: {...widget.room, 'ownerId': _ownerId, 'level': _roomLevel, 'experienceLevel': _roomExperienceLevel, 'experienceExp': _roomExperienceExp, 'experienceNextLevelExp': _roomExperienceNextLevelExp, 'dailyExperienceExp': _roomDailyExperienceExp, 'palaceStatus': _roomLevel >= 5 ? 'مفعّل' : 'غير مفعّل'},
+      room: {
+        ...widget.room,
+        'ownerId': _ownerId,
+        'owner': {
+          'id': _ownerId,
+          'name': _ownerName,
+          'avatarUrl': _ownerAvatarUrl,
+          'countryName': _ownerCountryName,
+        },
+        'level': _roomLevel,
+        'experienceLevel': _roomExperienceLevel,
+        'experienceExp': _roomExperienceExp,
+        'experienceNextLevelExp': _roomExperienceNextLevelExp,
+        'dailyExperienceExp': _roomDailyExperienceExp,
+        'palaceStatus': _roomLevel >= 5 ? 'مفعّل' : 'غير مفعّل',
+      },
       chatMessagesPanel: _roomMessagesPanel(),
       chatController: _messageController,
       chatFocusNode: _roomChatFocusNode,
