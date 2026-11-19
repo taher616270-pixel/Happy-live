@@ -145,7 +145,7 @@ class SeatStateStore extends ChangeNotifier {
 
   void applySnapshot(List<dynamic> rawSeats, {int? mySeat}) {
     final next = <int, SeatState>{
-      for (var number = 1; number <= 8; number++) number: SeatState.empty(number),
+      for (var number = 1; number <= 24; number++) number: SeatState.empty(number),
     };
     for (final raw in rawSeats) {
       if (raw is! Map) continue;
@@ -255,7 +255,7 @@ class SeatStateStore extends ChangeNotifier {
     final optimisticSeat = _mySeat;
     final optimisticMine = optimisticSeat == null ? null : _seats[optimisticSeat];
     final next = <int, SeatState>{
-      for (var number = 1; number <= 8; number++) number: SeatState.empty(number),
+      for (var number = 1; number <= 24; number++) number: SeatState.empty(number),
     };
     for (final raw in rawSeats) {
       if (raw is! Map) continue;
