@@ -1202,7 +1202,8 @@ Widget _roomActionButton({
     // Use the same fixed-height viewport correction that makes the 24-seat
     // layout's row translations visible; the 20-seat layout also has four rows.
     final needsFixedMicViewport = layout.count == 24 || layout.id == 'm20';
-    const micRowGap = 3.0;
+    final micRowGap = layout.id == 'm15' ? 2.0 : 3.0;
+    final micColumnGap = layout.id == 'm15' ? 2.0 : 3.0;
     final gridHeight = (layout.rows.length * 88.0) +
         ((layout.rows.length - 1) * micRowGap);
     return Padding(
@@ -1217,7 +1218,7 @@ Widget _roomActionButton({
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
             mainAxisSpacing: micRowGap,
-            crossAxisSpacing: 3,
+            crossAxisSpacing: micColumnGap,
             mainAxisExtent: 88,
           ),
       itemBuilder: (context, index) {
