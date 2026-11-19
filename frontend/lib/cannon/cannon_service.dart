@@ -108,11 +108,9 @@ class CannonService extends ChangeNotifier {
       final result = await CannonApi.fetchBanners();
       if (result == null) return;
       banners = result;
-      final eligibleKeys = <String>{};
       for (final banner in result) {
         if (!banner.launching && banner.percent < 80) continue;
         final key = '${banner.roomId}:${banner.cannonLevel}';
-        eligibleKeys.add(key);
         if (_seenBannerKeys.add(key)) {
           _bannerQueue.add(banner);
         }
