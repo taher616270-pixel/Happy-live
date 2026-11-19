@@ -33,10 +33,17 @@ class MyWorkersApi implements RoomSettingsApi {
 
   @override
   Future<void> updateSetting(String key, Object value) async {
+    final isAnnouncement = key == 'announcement';
+    final uri = isAnnouncement
+        ? Uri.parse('$_base/rooms/${Uri.encodeComponent(roomId)}/announcement')
+        : _uri;
+    final body = isAnnouncement
+        ? jsonEncode({'announcement': value})
+        : jsonEncode({'key': key, 'value': value});
     final response = await _client.patch(
-      _uri,
+      uri,
       headers: _headers,
-      body: jsonEncode({'key': key, 'value': value}),
+      body: body,
     ).timeout(const Duration(seconds: 15));
     final data = _decode(response);
     if (response.statusCode != 200 || data['ok'] != true) {
