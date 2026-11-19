@@ -1990,8 +1990,8 @@ export default {
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = decodeURIComponent(chatRoute[1]);
         const room = await env.DB!.prepare(
-          "SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
-        ).bind(roomId).first<{ id: string }>();
+          "SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
         const visit = await env.DB!.prepare(
           "SELECT entered_at FROM room_chat_visits WHERE room_id = ? AND user_id = ? AND exited_at IS NULL ORDER BY entered_at DESC LIMIT 1"
