@@ -3114,8 +3114,8 @@ export default {
               }));
               return json({
                 ok: false,
-                error: moveData.code === "seat_occupied" ? "seat_occupied" : "seat_move_failed",
-                message: moveData.code === "seat_occupied" ? "هذا المايك مشغول" : "تعذر تغيير المايك",
+                error: moveData.code === "seat_occupied" ? "seat_occupied" : moveData.code === "mic_restricted" ? "mic_restricted" : "seat_move_failed",
+                message: moveData.code === "seat_occupied" ? "هذا المايك مشغول" : moveData.code === "mic_restricted" ? "استخدام المايك متاح للمالك والمشرفين فقط" : "تعذر تغيير المايك",
                 mySeat: failedSeats.find((seat) => seat.userId === user.id)?.seatNumber ?? null,
                 seats: failedSeats
               }, moveResponse.status, origin, env);
