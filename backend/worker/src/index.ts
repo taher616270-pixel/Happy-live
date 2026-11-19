@@ -1,6 +1,7 @@
 import { RtcTokenBuilder } from "agora-token";
 import { handleGamesApiRequest, isRegisteredGameOrigin } from "./games_api";
 import { handlePlatformCallbackRequest } from "./platform_callback";
+import { addCannonEnergy, handleCannonRequest } from "./cannon_api";
 export { RoomSeatsHub } from "./room_seats_hub";
 export { GlobalGiftHub } from "./global_gift_hub";
 import type { GlobalGiftHub } from "./global_gift_hub";
@@ -482,6 +483,12 @@ export default {
 
     const gamesApiResponse = await handleGamesApiRequest(request, env, origin, authenticatedUser, json, authenticatedAdmin);
     if (gamesApiResponse) return gamesApiResponse;
+
+    const cannonApiResponse = await handleCannonRequest(
+      request, env, origin, authenticatedUser, authenticatedAdmin,
+      (actor, permission) => hasAdminPermission(actor as AdminActor, permission), json
+    );
+    if (cannonApiResponse) return cannonApiResponse;
 
     // Public, read-only catalogue. Only approved active game links are listed.
     if (url.pathname === "/api/v1/games/catalog" && request.method === "GET") {
@@ -2382,7 +2389,11 @@ export default {
           "FROM gift_transactions WHERE sender_user_id = ? AND idempotency_key = ? LIMIT 1"
         ).bind(user.id, idempotencyKey).first<Record<string, unknown>>();
         if (existing) {
-          if (existing.status === "succeeded") return json({ ok: true, duplicate: true, transaction: existing }, 200, origin, env);
+          if (existing.status === "succeeded") {
+            try { await addCannonEnergy(env.DB!, String(existing.id), roomId, user.id, Number(existing.coinCost ?? 0)); }
+            catch (cannonError) { console.warn("[cannon.gift-energy] skipped", cannonError instanceof Error ? cannonError.message : "UnknownError"); }
+            return json({ ok: true, duplicate: true, transaction: existing }, 200, origin, env);
+          }
           return json({ error: "gift_request_in_progress" }, 409, origin, env);
         }
         await env.DB!.prepare(
@@ -2498,6 +2509,10 @@ export default {
           return json({ error: "gift_not_processed" }, 409, origin, env);
         }
         if (transaction.status !== "succeeded") return json({ error: "gift_not_processed" }, 409, origin, env);
+        // Cannon energy is derived only from the committed, server-priced gift transaction.
+        // The transaction id is unique in cannon_energy_transactions, so retries cannot double-credit.
+        try { await addCannonEnergy(env.DB!, String(transaction.id), roomId, user.id, Number(transaction.coinCost ?? 0)); }
+        catch (cannonError) { console.warn("[cannon.gift-energy] skipped", cannonError instanceof Error ? cannonError.message : "UnknownError"); }
         // Notify every connected room member after the wallet transaction is committed.
         // Animation delivery is best-effort and must never undo a successful gift.
         let gift: Record<string, unknown> | null = null;
