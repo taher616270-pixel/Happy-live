@@ -2758,6 +2758,13 @@ export default {
           await env.DB.prepare(
             "INSERT INTO room_settings (room_id, settings_json, permissions_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at"
           ).bind(roomId, JSON.stringify(settings), JSON.stringify(permissions), now).run();
+          if ((key === "micLayoutId" || key === "seats") && env.ROOM_SEATS) {
+            const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+            await seatHub.fetch(new Request("https://room-seats.internal/set-seat-count", {
+              method: "POST",
+              headers: { "x-seat-count": String(settings.seats ?? 8) }
+            }));
+          }
           if (key === "whoMic" && env.ROOM_SEATS) {
             const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
             await seatHub.fetch(new Request("https://room-seats.internal/set-mic-policy", {
