@@ -3200,7 +3200,9 @@ export default {
           "SELECT p.user_id, p.display_name, p.happy_id, p.avatar_key, p.country_code, p.country_name, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? GROUP BY p.user_id, p.display_name, p.happy_id, p.avatar_key, p.country_code, p.country_name ORDER BY last_seen_at DESC LIMIT 100"
         ).bind(roomId, audienceCutoff).all<{ user_id: string; display_name: string | null; happy_id: string | null; avatar_key: string | null; country_code: string | null; country_name: string | null; last_seen_at: string }>();
         const seatedIds = new Set(seats.map((seat) => String(seat.userId)));
-        const audienceUsers = (audienceUsersResult.results ?? [])
+        const audienceRows = audienceUsersResult.results ?? [];
+        const seatedVisitorCount = audienceRows.filter((visitor) => seatedIds.has(visitor.user_id)).length;
+        const audienceUsers = audienceRows
           .filter((visitor) => !seatedIds.has(visitor.user_id))
           .map((visitor) => ({
             userId: visitor.user_id,
@@ -3224,7 +3226,7 @@ export default {
         ]);
         return json({
           ok: true,
-          audienceCount: Math.max(0, (audience?.count ?? 0) - seatedIds.size),
+          audienceCount: Math.max(0, (audience?.count ?? 0) - seatedVisitorCount),
           audienceUsers,
           voiceEnabled,
           seatRevision: snapshot.revision ?? 0,
