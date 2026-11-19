@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models.dart';
 import '../room_settings_controller.dart';
-import '../sheets/choice_sheet.dart';
-import '../sheets/seats_sheet.dart';
 import '../theme.dart';
 import '../widgets/common_widgets.dart';
 import 'admin_log_page.dart';
@@ -107,32 +105,12 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                     value: c.announcement,
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإعلان', initial: c.announcement, maxLength: 200, onSave: c.setAnnouncement))),
                   ),
-                  SettingsTile(
+                  const SettingsTile(
                     title: 'عدد المقاعد',
-                    value: '${c.seats}',
-                    onTap: () async {
-                      final value = await showSeatsSheet(context, current: c.seats);
-                      if (value != null) await _run(() => c.setSeats(value));
-                    },
+                    value: '8',
+                    chevron: false,
                   ),
-                  SettingsTile(
-                    title: 'أخذ مايك يتطلب تقديم طلب',
-                    value: c.micRequestMode,
-                    onTap: () async {
-                      final value = await showChoiceSheet<String>(
-                        context,
-                        title: 'أخذ مايك يتطلب تقديم طلب',
-                        options: const [MapEntry('إغلاق', 'إغلاق'), MapEntry('تفعيل', 'تفعيل')],
-                        selected: c.micRequestMode,
-                      );
-                      if (value != null) await _run(() => c.setMicRequestMode(value));
-                    },
-                  ),
-                  SwitchTile(
-                    title: 'إطلاق الألعاب النارية في الغرفة تلقائيًا',
-                    value: c.autoGames,
-                    onChanged: (value) => _run(() => c.setAutoGames(value)),
-                  ),
+
                   SettingsTile(
                     title: 'من يمكنه دخول الغرفة',
                     value: audienceLabel(c.whoEnter),
