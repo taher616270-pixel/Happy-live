@@ -36,10 +36,13 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
     return AnimatedBuilder(
       animation: c,
       builder: (context, _) => Scaffold(
+        backgroundColor: Colors.white,
         appBar: const RsAppBar(title: 'الإعدادات'),
         body: c.loading
             ? const Center(child: CircularProgressIndicator(color: RS.primary))
-            : ListView(padding: EdgeInsets.zero, children: [
+            : Container(
+                color: Colors.white,
+                child: ListView(padding: EdgeInsets.zero, children: [
           if (c.error != null) HintBar(c.error!),
           SettingsTile(title: 'الغلاف', trailing: ClipRRect(borderRadius: BorderRadius.circular(3), child: Container(width: 44, height: 44, color: const Color(0xFFB9C4D6), child: c.coverUrl == null || c.coverUrl!.isEmpty ? const Icon(Icons.image, color: Colors.white) : Image.network(c.coverUrl!, fit: BoxFit.cover))), onTap: () => showRsToast(context, 'رفع الغلاف غير مربوط بالخادم بعد')),
           SettingsTile(title: 'الإسم', value: c.name, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإسم', initial: c.name, maxLength: 30, onSave: c.setName)))),
@@ -57,7 +60,8 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
           SettingsTile(title: 'سجل عمليات المشرف', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AdminLogPage(c: c)))),
           SettingsTile(title: 'اعدادات صلاحيات المشرفين', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AdminPermissionsPage(c: c)))),
           const SizedBox(height: 24),
-        ]),
+                ]),
+              ),
       ),
     );
   }
