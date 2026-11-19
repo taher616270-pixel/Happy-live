@@ -1195,20 +1195,27 @@ Widget _roomActionButton({
       arrangedCells.addAll(row);
       arrangedCells.addAll(List<MicSeat?>.filled(columns - row.length, null));
     }
+    // A 24-seat grid has four 88px rows and three 12px gaps:
+    // its real extent is 388px. The previous 376px viewport clipped the
+    // bottom row and made the row repositioning appear ineffective.
+    final is24SeatLayout = layout.count == 24;
+    final gridHeight = (layout.rows.length * 88.0) +
+        ((layout.rows.length - 1) * 12.0);
     return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    child: SizedBox(
-      height: layout.id == 'm24' ? 376 : null,
-      child: GridView.builder(
-      shrinkWrap: layout.id != 'm24',
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: arrangedCells.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: columns,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        mainAxisExtent: 88,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: SizedBox(
+        height: is24SeatLayout ? gridHeight : null,
+        child: GridView.builder(
+          shrinkWrap: !is24SeatLayout,
+          physics: const NeverScrollableScrollPhysics(),
+          clipBehavior: Clip.none,
+          itemCount: arrangedCells.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            mainAxisExtent: 88,
+          ),
       itemBuilder: (context, index) {
         final slot = arrangedCells[index];
         if (slot == null) return const SizedBox.shrink();
@@ -1216,7 +1223,7 @@ Widget _roomActionButton({
         final rowIndex = index ~/ columns;
         // Raise each lower row independently in the 24-mic layout:
         // seats 7–12 by 3px, 13–18 by 6px, and 19–24 by 12px.
-        final verticalOffset = layout.id != 'm24'
+        final verticalOffset = !is24SeatLayout
             ? 0.0
             : rowIndex == 1
                 ? -3.0
@@ -1247,8 +1254,8 @@ Widget _roomActionButton({
             (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
         final seatDiameter = slot.big ? 62.0 : 54.0;
         final seatBoxWidth = slot.big ? 82.0 : 72.0;
-        // Every seat occupies the same fixed-height grid cell. Do not
-        // apply per-seat offsets: they made some microphones look staggered.
+        // The row offset is applied by the parent Transform above;
+        // the seat itself keeps its original 88px hit target and visuals.
         return Align(
           alignment: Alignment.topCenter,
           child: GestureDetector(
