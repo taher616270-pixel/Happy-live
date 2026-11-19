@@ -1410,8 +1410,7 @@ Widget _roomActionButton({
                     ),
                   ),
                 ),
-          ),
-        );
+          );
           },
           ),
           ),
