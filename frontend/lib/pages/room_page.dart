@@ -293,6 +293,8 @@ class _RoomPageState extends State<RoomPage> {
         );
         if (!accepted && event['code'] == 'seat_occupied') {
           _showMessage('هذا المايك مشغول، اختر مايكًا آخر');
+        } else if (!accepted && event['code'] == 'mic_restricted') {
+          _showMessage('استخدام المايك متاح للمالك والمشرفين فقط');
         } else if (!accepted) {
           _showMessage('تعذر تغيير المايك، تمت استعادة المقعد السابق');
         }
@@ -1679,9 +1681,11 @@ class _RoomPageState extends State<RoomPage> {
         );
       }
       if (!accepted) {
-        _showMessage(response.statusCode == 409
-            ? 'هذا المايك مشغول، اختر مايكًا آخر'
-            : 'تعذر تغيير المايك، تمت استعادة الحالة السابقة');
+        _showMessage(data is Map && data['error'] == 'mic_restricted'
+            ? 'استخدام المايك متاح للمالك والمشرفين فقط'
+            : response.statusCode == 409
+                ? 'هذا المايك مشغول، اختر مايكًا آخر'
+                : 'تعذر تغيير المايك، تمت استعادة الحالة السابقة');
       }
     } catch (_) {
       _seatMoveTimers.remove(command.version);
