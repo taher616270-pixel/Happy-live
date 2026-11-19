@@ -128,7 +128,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 _seats(context),
                 const SizedBox(height: 1),
                 Transform.translate(
-                  offset: const Offset(0, -9),
+                  offset: const Offset(0, -16),
                   child: _listeners(context),
                 ),
                 const SizedBox(height: 2),
