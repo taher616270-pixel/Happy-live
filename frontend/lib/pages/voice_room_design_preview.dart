@@ -1217,15 +1217,14 @@ Widget _roomActionButton({
         if (slot == null) return const SizedBox.shrink();
         final number = layout.seatNumber(slot);
         final rowIndex = index ~/ columns;
-        final verticalOffset = layout.count != 24 || rowIndex == 0
-            ? 0.0
-            : rowIndex == 1
-                ? -3.0
-                : rowIndex == 2
-                    ? -6.0
-                    : -12.0;
-        return FittedBox(
-          fit: BoxFit.scaleDown,
+        // Isolate this test to seats 7–12: move their entire grid cell
+        // upward by exactly 3 logical pixels, after FittedBox scaling.
+        final verticalOffset =
+            layout.count == 24 && rowIndex == 1 ? -3.0 : 0.0;
+        return Transform.translate(
+          offset: Offset(0, verticalOffset),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
           child: Selector<SeatStateStore, SeatState>(
           selector: (context, store) => store.seats[number] ?? SeatState.empty(number),
           builder: (context, seatState, child) {
@@ -1246,9 +1245,7 @@ Widget _roomActionButton({
         final seatBoxWidth = slot.big ? 82.0 : 72.0;
         // Every seat occupies the same fixed-height grid cell. Do not
         // apply per-seat offsets: they made some microphones look staggered.
-        return Transform.translate(
-          offset: Offset(0, verticalOffset),
-          child: Align(
+        return Align(
           alignment: Alignment.topCenter,
           child: GestureDetector(
                 // Do not let the full seat rectangle block taps on listener
@@ -1416,7 +1413,7 @@ Widget _roomActionButton({
           ),
         );
           },
-        ),
+          ),
         );
       },
     ),
