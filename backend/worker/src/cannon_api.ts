@@ -147,13 +147,15 @@ export async function addCannonEnergy(
     db.prepare(
       "INSERT INTO cannon_contrib (room_id, day, user_id, level, amount) " +
       "SELECT room_id, day, ?, level, ? FROM cannon_rooms WHERE room_id=? AND day=? " +
-      "AND EXISTS (SELECT 1 FROM cannon_energy_transactions WHERE transaction_id=?) " +
+      "AND EXISTS (SELECT 1 FROM cannon_energy_transactions WHERE transaction_id=? AND applied_at IS NULL) " +
       "ON CONFLICT(room_id,day,user_id,level) DO UPDATE SET amount=cannon_contrib.amount+excluded.amount"
     ).bind(senderUserId, coinCost, roomId, day, transactionId),
     db.prepare(
       "UPDATE cannon_rooms SET progress=progress+?, updated_at=? WHERE room_id=? AND day=? " +
-      "AND EXISTS (SELECT 1 FROM cannon_energy_transactions WHERE transaction_id=?)"
-    ).bind(coinCost, now, roomId, day, transactionId)
+      "AND EXISTS (SELECT 1 FROM cannon_energy_transactions WHERE transaction_id=? AND applied_at IS NULL)"
+    ).bind(coinCost, now, roomId, day, transactionId),
+    db.prepare("UPDATE cannon_energy_transactions SET applied_at=? WHERE transaction_id=? AND applied_at IS NULL")
+      .bind(now, transactionId)
   ]);
   if ((results[0]?.meta?.changes ?? 0) !== 1) return;
   await tryLaunches(db, roomId, day, settings.levels);
@@ -274,7 +276,7 @@ export async function handleCannonRequest(
     }
 
     if (url.pathname === "/api/cannon/banners" && request.method === "GET") {
-      if (!settings.bannerEnabled) return json({ ok: true, banners: [] }, 200, origin, env);
+      if (!settings.enabled || !settings.bannerEnabled) return json({ ok: true, banners: [] }, 200, origin, env);
       const day = saudiDay();
       const rows = await db.prepare(
         "SELECT c.room_id AS roomId, c.level AS cannonLevel, c.progress, c.launching_until AS launchingUntil, r.name AS title, COALESCE(p.avatar_key,'') AS avatar " +
