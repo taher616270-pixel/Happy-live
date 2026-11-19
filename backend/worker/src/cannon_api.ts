@@ -203,19 +203,32 @@ export async function handleCannonRequest(
         }
         let levelsJson: string | undefined;
         if (levels !== undefined) {
-          if (!Array.isArray(levels) || levels.length < 1 || levels.length > 20) return json({ error: "invalid_cannon_levels" }, 400, origin, env);
+          if (!Array.isArray(levels) || levels.length !== 4) return json({ error: "invalid_cannon_levels" }, 400, origin, env);
+          const levelIds = new Set<number>();
           for (const level of levels as any[]) {
-            if (!Number.isSafeInteger(Number(level?.level)) || Number(level.level) < 1 || !Number.isSafeInteger(Number(level?.need)) || Number(level.need) < 1 ||
-                !Array.isArray(level?.prizes) || level.prizes.length > 40) return json({ error: "invalid_cannon_levels" }, 400, origin, env);
+            const levelId = Number(level?.level);
+            if (!Number.isSafeInteger(levelId) || levelId < 1 || levelId > 4 || levelIds.has(levelId) ||
+                !Number.isSafeInteger(Number(level?.need)) || Number(level.need) < 1 || Number(level.need) > 1000000000000 ||
+                !Array.isArray(level?.prizes) || level.prizes.length < 1 || level.prizes.length > 40) {
+              return json({ error: "invalid_cannon_levels" }, 400, origin, env);
+            }
+            levelIds.add(levelId);
             for (const prize of level.prizes) {
+              const weight = prize?.weight === undefined ? 0 : Number(prize.weight);
               if (!prize || typeof prize.key !== "string" || !/^[a-z0-9_-]{1,80}$/i.test(prize.key) ||
-                  typeof prize.name !== "string" || prize.name.length > 100 || typeof prize.type !== "string" ||
-                  typeof prize.value !== "string" || prize.value.length > 120 || typeof prize.icon !== "string" ||
-                  prize.icon.length > 2048 || (prize.icon && !/^https:\/\//i.test(prize.icon)) ||
-                  !["coins","frame","bubble","entry","gift","badge","wave","item"].includes(prize.type)) {
+                  typeof prize.name !== "string" || prize.name.trim().length < 1 || prize.name.length > 100 ||
+                  typeof prize.type !== "string" || typeof prize.value !== "string" || prize.value.length > 120 ||
+                  typeof prize.icon !== "string" || prize.icon.length > 2048 ||
+                  (prize.icon && !/^https:\/\//i.test(prize.icon)) ||
+                  !["coins","frame","bubble","entry","gift","badge","wave","item"].includes(prize.type) ||
+                  !Number.isFinite(weight) || weight < 0 || weight > 100000 ||
+                  typeof prize.top1 !== "boolean" || (prize.rare !== undefined && typeof prize.rare !== "boolean")) {
                 return json({ error: "invalid_cannon_prize" }, 400, origin, env);
               }
             }
+          }
+          if (levelIds.size !== 4 || [1,2,3,4].some(id => !levelIds.has(id))) {
+            return json({ error: "invalid_cannon_levels" }, 400, origin, env);
           }
           levelsJson = JSON.stringify(levels);
         }
