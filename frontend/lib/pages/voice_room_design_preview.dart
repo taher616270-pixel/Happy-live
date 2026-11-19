@@ -126,7 +126,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 // below it in normal vertical flow. The listener strip now
                 // follows the actual measured grid height for every layout.
                 _seats(context),
-                SizedBox(height: _is24MicLayout ? 1 : 8),
+                const SizedBox(height: 1),
                 _listeners(context),
                 Expanded(
                   child: Stack(
@@ -139,7 +139,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             // Chat and the room announcement begin below the
                             // microphone grid and listener strip; no fixed
                             // negative offsets or Positioned coordinates.
-                            padding: EdgeInsets.only(left: 98, top: _is24MicLayout ? 2 : 8),
+                            padding: const EdgeInsets.only(left: 98, top: 2),
                             child: SizedBox(
                               width: MediaQuery.sizeOf(context).width * 0.75,
                               child: AnimatedContainer(
