@@ -105,7 +105,7 @@ class SeatMoveCommand {
 class SeatStateStore extends ChangeNotifier {
   SeatStateStore() {
     _version = DateTime.now().microsecondsSinceEpoch;
-    for (var number = 1; number <= 8; number++) {
+    for (var number = 1; number <= 24; number++) {
       _seats[number] = SeatState.empty(number);
     }
   }
@@ -151,7 +151,7 @@ class SeatStateStore extends ChangeNotifier {
       if (raw is! Map) continue;
       final map = Map<String, dynamic>.from(raw);
       final number = map['seatNumber'];
-      if (number is! num || number < 1 || number > 8) continue;
+      if (number is! num || number < 1 || number > 24) continue;
       final seatNumber = number.toInt();
       final ownerId = (map['userId'] ?? '').toString();
       final isMine = mySeat == seatNumber ||
@@ -168,7 +168,7 @@ class SeatStateStore extends ChangeNotifier {
   }
 
   SeatMoveCommand? beginOptimisticMove(int target) {
-    if (target < 1 || target > 8 || _pendingTargets.contains(target)) return null;
+    if (target < 1 || target > 24 || _pendingTargets.contains(target)) return null;
     final destination = _seats[target]!;
     if (destination.isLocked || (destination.occupied && !destination.isMe)) return null;
     if (_mySeat == target) return null;
@@ -261,7 +261,7 @@ class SeatStateStore extends ChangeNotifier {
       if (raw is! Map) continue;
       final map = Map<String, dynamic>.from(raw);
       final number = map['seatNumber'];
-      if (number is! num || number < 1 || number > 8) continue;
+      if (number is! num || number < 1 || number > 24) continue;
       final seatNumber = number.toInt();
       final ownerId = (map['userId'] ?? '').toString();
       if (currentUserId.isNotEmpty && ownerId == currentUserId) continue;
