@@ -1875,8 +1875,8 @@ export default {
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = decodeURIComponent(chatSessionRoute[1]);
         const room = await env.DB!.prepare(
-          "SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
-        ).bind(roomId).first<{ id: string }>();
+          "SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
         const activeBan = await env.DB!.prepare(
           "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
@@ -1967,6 +1967,15 @@ export default {
         if (!visit) return json({ error: "chat_session_not_active" }, 409, origin, env);
 
         if (request.method === "POST") {
+          const [settingsRow, roomModerator] = await Promise.all([
+            env.DB!.prepare("SELECT settings_json FROM room_settings WHERE room_id = ? LIMIT 1").bind(roomId).first<{ settings_json: string }>(),
+            env.DB!.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
+          ]);
+          let roomSettings: Record<string, unknown> = {};
+          try { roomSettings = settingsRow?.settings_json ? JSON.parse(settingsRow.settings_json) as Record<string, unknown> : {}; } catch { roomSettings = {}; }
+          if (String(roomSettings.whoChat ?? "everyone") === "ownerAndAdmins" && room.owner_user_id !== user.id && !roomModerator) {
+            return json({ error: "room_chat_restricted", message: "الدردشة متاحة للمالك والمشرفين فقط" }, 403, origin, env);
+          }
           const activeBan = await env.DB!.prepare(
             "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
           ).bind(roomId, user.id).first<{ user_id: string }>();
@@ -2976,6 +2985,15 @@ export default {
           env.DB!.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
         ]);
         if (activeKick || controlKick) return json({ error: "room_kicked", message: "تم طردك مؤقتاً من الغرفة" }, 403, origin, env);
+        const savedRoomSettings = await env.DB!.prepare("SELECT settings_json FROM room_settings WHERE room_id = ? LIMIT 1")
+          .bind(roomId).first<{ settings_json: string }>();
+        let roomSettings: Record<string, unknown> = {};
+        try { roomSettings = savedRoomSettings?.settings_json ? JSON.parse(savedRoomSettings.settings_json) as Record<string, unknown> : {}; } catch { roomSettings = {}; }
+        const isRoomOwner = room.owner_user_id === user.id;
+        const isRoomModerator = !!roomModerator;
+        if (String(roomSettings.whoEnter ?? "everyone") === "ownerAndAdmins" && !isRoomOwner && !isRoomModerator) {
+          return json({ error: "room_entry_restricted", message: "دخول هذه الغرفة متاح للمالك والمشرفين فقط" }, 403, origin, env);
+        }
 
         const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
         if (voiceEnabled) {
@@ -3019,6 +3037,9 @@ export default {
             if (!voiceEnabled) return json({ error: "agora_voice_disabled", message: "الميكروفونات متوقفة حاليًا من إدارة التطبيق" }, 503, origin, env);
             if (activeBan) return json({ error: "room_banned", message: "أنت محظور من استخدام المايك في هذه الغرفة" }, 403, origin, env);
             const to = body.seatNumber === null ? null : Number(body.seatNumber);
+            if (to !== null && String(roomSettings.whoMic ?? "membersOnly") === "ownerAndAdmins" && !isRoomOwner && !isRoomModerator) {
+              return json({ error: "room_mic_restricted", message: "استخدام المايك متاح للمالك والمشرفين فقط" }, 403, origin, env);
+            }
             if (to !== null && (!Number.isInteger(to) || to < 1 || to > 8)) {
               return json({ error: "invalid_seat_number" }, 400, origin, env);
             }
