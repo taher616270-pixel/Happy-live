@@ -27,11 +27,15 @@ class MicLayout {
 List<MicSeat?> _seats(int from, int to, {bool big = false}) =>
     [for (var i = from; i <= to; i++) MicSeat('$i', big: big)];
 
-const _s1 = MicSeat('S1');
-const _s2 = MicSeat('S2');
+const _s1 = MicSeat('S1', big: true);
+const _s2 = MicSeat('S2', big: true);
 
 /// Layouts are mirrored in the live room; labels map to actual seat numbers.
 final List<MicLayout> kMicLayouts = [
+  // A compact, centered pair for intimate two-speaker rooms.
+  MicLayout(id: 'm2', count: 2, rows: [
+    [null, MicSeat('1', big: true), MicSeat('2', big: true), null],
+  ]),
   MicLayout(id: 'm8', count: 8, rows: [_seats(1, 4), _seats(5, 8)]),
   MicLayout(id: 'm10', count: 10, rows: [
     [null, _s1, _s2, null], _seats(1, 4), _seats(5, 8),
