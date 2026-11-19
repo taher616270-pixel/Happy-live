@@ -76,6 +76,7 @@ class _RoomPageState extends State<RoomPage> {
   DateTime _lastHeartbeat = DateTime.fromMillisecondsSinceEpoch(0);
   bool _isLoading = true;
   bool _isRefreshing = false;
+  bool _refreshSeatsQueued = false;
   bool _isMinimized = false;
   bool _showRoomActions = false;
   bool _isClosingRoom = false;
@@ -420,7 +421,10 @@ class _RoomPageState extends State<RoomPage> {
       if (mounted) setState(() { _isLoading = false; _loadError = 'بيانات الغرفة أو جلسة الدخول غير مكتملة'; });
       return;
     }
-    if (_isRefreshing) return;
+    if (_isRefreshing) {
+      _refreshSeatsQueued = true;
+      return;
+    }
     _isRefreshing = true;
     try {
       final response = await http.get(_seatsUri, headers: _headers).timeout(const Duration(seconds: 8));
@@ -443,6 +447,10 @@ class _RoomPageState extends State<RoomPage> {
       if (_isLoading) setState(() { _isLoading = false; _loadError = 'تعذر الاتصال بالغرفة، تحقق من الإنترنت'; });
     } finally {
       _isRefreshing = false;
+      if (_refreshSeatsQueued && mounted) {
+        _refreshSeatsQueued = false;
+        scheduleMicrotask(() => _refreshSeats());
+      }
     }
   }
 
