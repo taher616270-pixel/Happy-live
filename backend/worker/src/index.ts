@@ -2754,6 +2754,32 @@ export default {
           return json({ ok: true, isMuted: nextMuted === 1 }, 200, origin, env);
         }
         if (!canModerate) return json({ error: "room_moderator_required", message: "هذه الصلاحية لمالك الغرفة ومشرفيها فقط" }, 403, origin, env);
+        if (!isOwner) {
+          const permissionId = action === "toggle_mute" ? "mute"
+            : action === "kick" ? "kick"
+            : action === "ban" ? "blacklist"
+            : action === "lower" ? "super"
+            : null;
+          if (permissionId) {
+            const savedPermissions = await env.DB!.prepare(
+              "SELECT permissions_json FROM room_settings WHERE room_id = ? LIMIT 1"
+            ).bind(roomId).first<{ permissions_json: string }>();
+            let permissionRules: Record<string, { level?: string; adminIds?: string[] }> = {};
+            try {
+              permissionRules = savedPermissions?.permissions_json
+                ? JSON.parse(savedPermissions.permissions_json) as Record<string, { level?: string; adminIds?: string[] }>
+                : {};
+            } catch { permissionRules = {}; }
+            const rule = permissionRules[permissionId];
+            const level = rule?.level ?? "allAdmins";
+            const selected = Array.isArray(rule?.adminIds) ? rule.adminIds : [];
+            const permitted = level === "allAdmins" ||
+              (level === "selectedAdmins" && selected.includes(actor.id));
+            if (!permitted) {
+              return json({ error: "room_permission_denied", message: "لا تملك صلاحية تنفيذ هذا الإجراء في الغرفة" }, 403, origin, env);
+            }
+          }
+        }
         if (action === "assign_moderator" || action === "remove_moderator") {
           if (!isOwner) return json({ error: "room_owner_required" }, 403, origin, env);
           if (!targetUserId || targetUserId === actor.id) return json({ error: "invalid_moderator" }, 400, origin, env);
