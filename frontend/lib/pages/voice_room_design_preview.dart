@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import '../widgets/square_country_flag.dart';
 import 'package:happy_live/widgets/room_info_sheet.dart';
 import 'package:happy_live/widgets/room_level_sheet.dart';
+import 'package:happy_live/room_settings/my_workers_api.dart';
+import 'package:happy_live/room_settings/room_settings_controller.dart';
+import 'package:happy_live/room_settings/pages/room_settings_page.dart';
 import 'room_upgrade_page.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:flutter/services.dart';
@@ -714,7 +717,22 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         },
         onSettings: () {
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('إعدادات الغرفة قريبًا')));
+          final roomId = (room['id'] ?? room['roomId'] ?? room['room_id'] ?? '').toString().trim();
+          if (roomId.isEmpty || accessToken.trim().isEmpty || !info.isRoomOwner) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('تعذر فتح إعدادات الغرفة: تحقق من صلاحية المالك واتصال الحساب')),
+            );
+            return;
+          }
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => RoomSettingsPage(
+                c: RoomSettingsController(
+                  api: MyWorkersApi(roomId: roomId, accessToken: accessToken),
+                ),
+              ),
+            ),
+          );
         },
         onInvite: () {
           Navigator.of(context).pop();
