@@ -37,7 +37,7 @@ class _CannonPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size s) {
     final w = s.width;
-    final pal = _palettes[(level - 1).clamp(0, 3)];
+    final pal = _palettes[(level - 1).clamp(0, 3).toInt()];
     final goldPaint = (Rect r) => Paint()
       ..shader = const LinearGradient(colors: _gold, begin: Alignment.topLeft, end: Alignment.bottomRight).createShader(r);
 
