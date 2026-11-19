@@ -1227,13 +1227,15 @@ Widget _roomActionButton({
         final rowIndex = index ~/ columns;
         // Raise microphone groups by their seat numbers in every layout:
         // seats 7–12 by 3px, 13–18 by 6px, and 19–24 by 12px.
-        final verticalOffset = number >= 19
+        final baseVerticalOffset = number >= 19
             ? -18.0
             : number >= 13
                 ? -12.0
                 : number >= 7
                     ? -3.0
                     : 0.0;
+        final verticalOffset = baseVerticalOffset +
+            (layout.id == 'm20' && number >= 1 && number <= 18 ? -7.0 : 0.0);
         return Transform.translate(
           offset: Offset(0, verticalOffset),
           child: FittedBox(
