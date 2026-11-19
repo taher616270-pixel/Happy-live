@@ -11,9 +11,13 @@ class CannonService extends ChangeNotifier {
   String? currentRoomId;
   CannonState? state;
   List<CannonBanner> banners = [];
+  CannonBanner? activeBanner;
 
   Timer? _roomTimer;
   Timer? _bannerTimer;
+  Timer? _bannerDisplayTimer;
+  final List<CannonBanner> _bannerQueue = <CannonBanner>[];
+  final Set<String> _seenBannerKeys = <String>{};
   String _lastLaunchId = '';
   bool _firstLoad = true;
   bool _roomRequestInFlight = false;
@@ -89,18 +93,46 @@ class CannonService extends ChangeNotifier {
   void stopBanners() {
     _bannerTimer?.cancel();
     _bannerTimer = null;
+    _bannerDisplayTimer?.cancel();
+    _bannerDisplayTimer = null;
+    _bannerQueue.clear();
+    activeBanner = null;
+    _seenBannerKeys.clear();
+    notifyListeners();
   }
 
   Future<void> _refreshBanners() async {
     if (_bannerRequestInFlight) return;
     _bannerRequestInFlight = true;
     try {
-      final b = await CannonApi.fetchBanners();
-      if (b == null) return;
-      banners = b;
-      notifyListeners();
+      final result = await CannonApi.fetchBanners();
+      if (result == null) return;
+      banners = result;
+      final eligibleKeys = <String>{};
+      for (final banner in result) {
+        if (!banner.launching && banner.percent < 80) continue;
+        final key = '${banner.roomId}:${banner.cannonLevel}';
+        eligibleKeys.add(key);
+        if (_seenBannerKeys.add(key)) {
+          _bannerQueue.add(banner);
+        }
+      }
+      _seenBannerKeys.removeWhere((key) => !eligibleKeys.contains(key));
+      _showNextBanner();
     } finally {
       _bannerRequestInFlight = false;
     }
+  }
+
+  void _showNextBanner() {
+    if (activeBanner != null || _bannerQueue.isEmpty) return;
+    activeBanner = _bannerQueue.removeAt(0);
+    notifyListeners();
+    _bannerDisplayTimer?.cancel();
+    _bannerDisplayTimer = Timer(const Duration(seconds: 3), () {
+      activeBanner = null;
+      notifyListeners();
+      _showNextBanner();
+    });
   }
 }
