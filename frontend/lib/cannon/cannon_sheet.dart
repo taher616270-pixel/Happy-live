@@ -39,7 +39,7 @@ class _CannonSheetState extends State<CannonSheet> {
   @override
   void initState() {
     super.initState();
-    _page = ((_svc.state?.level ?? 1) - 1).clamp(0, 3);
+    _page = ((_svc.state?.level ?? 1) - 1).clamp(0, 3).toInt();
     _pc = PageController(initialPage: _page);
     _svc.refreshNow();
   }
@@ -93,7 +93,7 @@ class _CannonSheetState extends State<CannonSheet> {
 
   Widget _content(BuildContext context, CannonState st) {
     final levels = st.levels;
-    final pageIdx = _page.clamp(0, levels.length - 1);
+    final pageIdx = _page.clamp(0, levels.length - 1).toInt();
     final lv = levels[pageIdx];
     final isCurrent = lv.level == st.level;
     final locked = lv.level > st.level;
