@@ -214,7 +214,7 @@ export class RoomSeatsHub {
 
     if (url.pathname === "/set-seat-count" && request.method === "POST") {
       const count = Number(request.headers.get("x-seat-count"));
-      if (![8, 10, 12, 14, 16, 20, 24].includes(count)) {
+      if (![8, 10, 12, 14, 15, 16, 20, 24].includes(count)) {
         return Response.json({ error: "invalid_seat_count" }, { status: 400 });
       }
       await this.enqueue(async () => {
