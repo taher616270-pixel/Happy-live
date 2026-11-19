@@ -138,7 +138,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 const SizedBox(height: 1),
                 Transform.translate(
                   // Move the listener strip down 4px only in the 2-mic layout.
-                  offset: Offset(0, _is2MicLayout ? -14 : (_is8MicLayout ? -23 : -28)),
+                  offset: Offset(0, _is2MicLayout ? -14 : (_is8MicLayout ? -23 : (_micLayoutId == 'm14' ? -33 : -28))),
                   child: _listeners(context),
                 ),
                 const SizedBox(height: 2),
@@ -158,7 +158,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 curve: Curves.easeOutCubic,
                                 transform: Matrix4.translationValues(
                                   0,
-                                  (_is2MicLayout ? -11 : (_is8MicLayout ? -20 : -25)) -
+                                  (_is2MicLayout ? -11 : (_is8MicLayout ? -20 : (_micLayoutId == 'm14' ? -29 : -25))) -
                                       MediaQuery.viewInsetsOf(context).bottom,
                                   0,
                                 ),
