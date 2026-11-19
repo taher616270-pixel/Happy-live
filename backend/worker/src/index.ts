@@ -3856,7 +3856,14 @@ export default {
         const name = typeof body.name === "string" ? body.name.trim() : "";
         const description = typeof body.description === "string" ? body.description.trim() : "";
         const isPrivate = body.isPrivate === true;
-        const imageUrl = typeof body.imageUrl === "string" ? body.imageUrl.trim() : "";
+        const requestedImageUrl = typeof body.imageUrl === "string" ? body.imageUrl.trim() : "";
+        // If the creator skips choosing a room image, copy the current profile
+        // avatar once as the initial room cover. The stored room image remains
+        // independent and can later be replaced from Room Settings > Cover.
+        const ownerProfile = await env.DB!.prepare(
+          "SELECT avatar_key FROM profiles WHERE user_id = ? LIMIT 1"
+        ).bind(user.id).first<{ avatar_key: string | null }>();
+        const imageUrl = requestedImageUrl || (ownerProfile?.avatar_key ?? "").trim();
         if (imageUrl) {
           try {
             const parsedImageUrl = new URL(imageUrl);
