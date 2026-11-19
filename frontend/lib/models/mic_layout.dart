@@ -31,7 +31,7 @@ const _s1 = MicSeat('S1');
 const _s2 = MicSeat('S2');
 
 /// Layouts are mirrored in the live room; labels map to actual seat numbers.
-const List<MicLayout> kMicLayouts = [
+final List<MicLayout> kMicLayouts = [
   MicLayout(id: 'm8', count: 8, rows: [_seats(1, 4), _seats(5, 8)]),
   MicLayout(id: 'm10', count: 10, rows: [
     [null, _s1, _s2, null], _seats(1, 4), _seats(5, 8),
