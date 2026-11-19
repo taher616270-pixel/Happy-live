@@ -37,8 +37,10 @@ final List<MicLayout> kMicLayouts = [
     [null, MicSeat('1', big: true), MicSeat('2', big: true), null],
   ]),
   MicLayout(id: 'm8', count: 8, rows: [_seats(1, 4), _seats(5, 8)]),
+  // Ten microphones in two straight rows of five, matching the 15-seat grid.
   MicLayout(id: 'm10', count: 10, rows: [
-    [null, _s1, _s2, null], _seats(1, 4), _seats(5, 8),
+    _seats(1, 5),
+    _seats(6, 10),
   ]),
   MicLayout(id: 'm12', count: 12, rows: [_seats(1, 4), _seats(5, 8), _seats(9, 12)]),
   MicLayout(id: 'm14', count: 14, rows: [
