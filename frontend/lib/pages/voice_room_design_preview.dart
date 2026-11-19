@@ -183,8 +183,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               color1: Color(0xFF3FA7D6),
                               color2: Color(0xFFE8A04A),
                               badge: '',
-                              timer: '19s',
                               backgroundOpacity: 0.35,
+                              showContent: false,
                             ),
                             SizedBox(height: 8),
                             _RoomGameTile(
@@ -1954,6 +1954,7 @@ class _RoomGameTile extends StatelessWidget {
     required this.badge,
     this.timer,
     this.backgroundOpacity = 1,
+    this.showContent = true,
   });
 
   final Color color1;
@@ -1961,6 +1962,7 @@ class _RoomGameTile extends StatelessWidget {
   final String badge;
   final String? timer;
   final double backgroundOpacity;
+  final bool showContent;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1979,27 +1981,28 @@ class _RoomGameTile extends StatelessWidget {
     ),
     child: Stack(
       children: [
-        if (timer != null)
+        if (showContent && timer != null)
           Positioned(
             top: 3,
             right: 6,
             child: Text(timer!, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
           ),
-        Positioned(
-          bottom: 4,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: timer != null ? const Color(0xFF3B8DEB) : Colors.black26,
-                borderRadius: BorderRadius.circular(10),
+        if (showContent)
+          Positioned(
+            bottom: 4,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: timer != null ? const Color(0xFF3B8DEB) : Colors.black26,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(badge, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
               ),
-              child: Text(badge, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
             ),
           ),
-        ),
       ],
     ),
   );
