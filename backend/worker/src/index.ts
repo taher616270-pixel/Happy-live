@@ -2775,7 +2775,7 @@ export default {
         if (!canModerate) return json({ error: "room_moderator_required", message: "هذه الصلاحية لمالك الغرفة ومشرفيها فقط" }, 403, origin, env);
         if (!isOwner) {
           const permissionId = action === "toggle_mute" || action === "unmute" ? "mute"
-            : action === "kick" ? "kick"
+            : action === "kick" || action === "unkick" ? "kick"
             : action === "ban" || action === "unban" ? "blacklist"
             : action === "lower" ? "super"
             : null;
@@ -2817,9 +2817,11 @@ export default {
               "x-is-moderator": action === "assign_moderator" ? "true" : "false"
             }
           }));
+          await env.DB!.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, target_user_id, action, details_json, created_at) VALUES (?, ?, ?, ?, ?, '{}', ?)")
+            .bind(crypto.randomUUID(), roomId, actor.id, targetUserId, action, new Date().toISOString()).run();
           return json({ ok: true }, 200, origin, env);
         }
-        if (!["toggle_mute", "kick", "ban", "lower", "unmute", "unban"].includes(action) || !targetUserId || targetUserId === room.owner_user_id) {
+        if (!["toggle_mute", "kick", "unkick", "ban", "lower", "unmute", "unban"].includes(action) || !targetUserId || targetUserId === room.owner_user_id) {
           return json({ error: "invalid_moderation_action" }, 400, origin, env);
         }
         const targetModerator = await env.DB!.prepare(
@@ -2843,6 +2845,12 @@ export default {
           await env.DB!.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, target_user_id, action, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
             .bind(crypto.randomUUID(), roomId, actor.id, targetUserId, nextMuted === 1 ? "mute" : "unmute", "{}", now).run();
           return json({ ok: true, isMuted: nextMuted === 1 }, 200, origin, env);
+        }
+        if (action === "unkick") {
+          await env.DB!.prepare("DELETE FROM room_kicks WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId).run();
+          await env.DB!.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, target_user_id, action, details_json, created_at) VALUES (?, ?, ?, ?, 'unkick', '{}', ?)")
+            .bind(crypto.randomUUID(), roomId, actor.id, targetUserId, now).run();
+          return json({ ok: true }, 200, origin, env);
         }
         if (action === "unban") {
           await env.DB!.prepare("DELETE FROM room_bans WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId).run();
