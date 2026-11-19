@@ -65,9 +65,11 @@ class _CannonSheetState extends State<CannonSheet> {
     return Container(
       height: h * 0.88,
       decoration: const BoxDecoration(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          colors: [Color(0xFF0A0A8A), Color(0xFF05053F), Color(0xFF030330)]),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        border: Border.all(color: Color(0xFF56E5D2), width: 1.2),
+        boxShadow: [BoxShadow(color: Color(0x6635D6C6), blurRadius: 28, spreadRadius: -8)],
+        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomRight,
+          colors: [Color(0xFF123B48), Color(0xFF08252F), Color(0xFF06151F)]),
       ),
       child: ListenableBuilder(
         listenable: _svc,
@@ -82,7 +84,7 @@ class _CannonSheetState extends State<CannonSheet> {
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.white70, fontSize: 14)),
                   )
-                : const CircularProgressIndicator(color: Color(0xFF3AA8FF)),
+                : const CircularProgressIndicator(color: Color(0xFF63E7D4)),
             );
           }
           if (_syncedLevel != st.level) {
@@ -119,7 +121,7 @@ class _CannonSheetState extends State<CannonSheet> {
         Align(alignment: Alignment.centerLeft, child: IconButton(
           onPressed: () => showCannonRulesSheet(context),
           icon: Container(width: 28, height: 28,
-            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF3AA8FF), width: 1.6)),
+            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF63E7D4), width: 1.6)),
             child: const Icon(Icons.question_mark_rounded, size: 17, color: Color(0xFF3AA8FF)),
           ),
         )),
@@ -138,8 +140,8 @@ class _CannonSheetState extends State<CannonSheet> {
           )),
           Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
             ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
-              value: ratio, minHeight: 7, backgroundColor: const Color(0xFF1A2A7A),
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF2BE3A0)),
+              value: ratio, minHeight: 7, backgroundColor: const Color(0xFF244954),
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF62E7C5)),
             )),
             const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -169,8 +171,8 @@ class _CannonSheetState extends State<CannonSheet> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
                   gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                    colors: [Color(0xFF39B6FF), Color(0xFF1458E8)]),
-                  border: Border.all(color: const Color(0xFF9FE0FF), width: 1.4),
+                    colors: [Color(0xFF42D9C1), Color(0xFF168C91)]),
+                  border: Border.all(color: const Color(0xFFB5FFF0), width: 1.4),
                 ),
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Text(done ? 'تم الإنجاز' : (locked ? 'مقفل' : 'إرسال هدية'),
@@ -231,7 +233,7 @@ class _LevelPage extends StatelessWidget {
       const SizedBox(width: 10),
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-        decoration: BoxDecoration(color: const Color(0xFF1FD27A), borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(color: const Color(0xFF53DDBA), borderRadius: BorderRadius.circular(6)),
         child: const Text('يحتاج', style: TextStyle(color: Color(0xFF05301C), fontSize: 12, fontWeight: FontWeight.w800)),
       ),
     ]),
@@ -315,8 +317,8 @@ class _PrizeCard extends StatelessWidget {
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(10),
       gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: wide ? const [Color(0xFF4A3410), Color(0xFF2A1C08)] : const [Color(0xFF0E2A8C), Color(0xFF0A1A5E)]),
-      border: Border.all(color: wide ? const Color(0xFFB8862B) : const Color(0xFF2D6BFF), width: 1.3),
+        colors: wide ? const [Color(0xFF4A3410), Color(0xFF2A1C08)] : const [Color(0xFF164451), Color(0xFF0B2934)]),
+      border: Border.all(color: wide ? const Color(0xFFB8862B) : const Color(0xFF3C9D9B), width: 1.3),
     ),
     child: wide ? Row(children: [
       Expanded(child: _icon()),
