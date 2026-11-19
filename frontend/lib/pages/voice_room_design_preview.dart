@@ -1216,32 +1216,21 @@ Widget _roomActionButton({
         final isDefaultEight = layout.id == 'm8';
         final seatDiameter = slot.big ? 62.0 : 54.0;
         final seatBoxWidth = slot.big ? 82.0 : 72.0;
-        final seatOffset = !isDefaultEight
-            ? 0.0
-            : isAndroid
-                ? (number <= 4 ? 2.0 : -12.0)
-                : (number <= 4 ? -5.0 : -21.0);
-        return Transform.translate(
-          offset: Offset(0, seatOffset + (isAndroid ? 0 : 5)),
-          child: Transform.translate(
-            offset: Offset(0, seatOffset + (number <= 4 ? 1 : 3)),
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Transform.translate(
-                offset: isDefaultEight && number == 5 ? const Offset(5, 0) : Offset.zero,
-                child: GestureDetector(
+        // Every seat occupies the same fixed-height grid cell. Do not
+        // apply per-seat offsets: they made some microphones look staggered.
+        return Align(
+          alignment: Alignment.topCenter,
+          child: GestureDetector(
                 // Do not let the full seat rectangle block taps on listener
                 // avatars painted underneath the transparent/empty seat area.
                 behavior: HitTestBehavior.deferToChild,
                 onTap: null,
                 child: SizedBox(
                   width: seatBoxWidth,
-                  height: number == 5 ? 82 : (slot.big ? 86 : 72),
-                  child: Transform.translate(
-                    offset: Offset(isDefaultEight && number == 5 ? -5 : 0, isDefaultEight && number > 4 ? 5 : 0),
-                    transformHitTests: false,
-                    child: Column(
+                  height: 88,
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
               Stack(
                 clipBehavior: Clip.none,
@@ -1394,9 +1383,6 @@ Widget _roomActionButton({
                     ),
                   ),
                 ),
-                ),
-              ),
-            ),
           ),
         );
           },
