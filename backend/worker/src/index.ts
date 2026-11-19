@@ -2695,6 +2695,7 @@ export default {
               coverUrl: room.image_url ?? "",
               announcement: announcement?.announcement ?? "",
               seats: Number(settings.seats ?? 8),
+              micLayoutId: String(settings.micLayoutId ?? ("m" + Number(settings.seats ?? 8))),
               micRequestMode: String(settings.micRequestMode ?? "إغلاق"),
               autoGames: settings.autoGames !== false,
               whoEnter: String(settings.whoEnter ?? "everyone"),
@@ -2726,10 +2727,20 @@ export default {
             await env.DB.prepare(
               "INSERT INTO room_announcements (room_id, announcement, updated_at) VALUES (?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET announcement = excluded.announcement, updated_at = excluded.updated_at"
             ).bind(roomId, announcement, now).run();
+          } else if (key === "micLayoutId") {
+            const layoutCounts: Record<string, number> = { m8: 8, m10: 10, m12: 12, m14: 14, m16: 16, m20: 20, m24: 24, m10b: 10, m10c: 10 };
+            const layoutId = String(value ?? "");
+            if (!Object.prototype.hasOwnProperty.call(layoutCounts, layoutId)) return json({ error: "invalid_mic_layout" }, 400, origin, env);
+            settings.micLayoutId = layoutId;
+            settings.seats = layoutCounts[layoutId];
           } else {
             const allowedKeys = new Set(["seats", "micRequestMode", "autoGames", "whoEnter", "whoMic", "whoChat", "whoLuck", "coverUrl"]);
             if (!allowedKeys.has(key)) return json({ error: "unsupported_room_setting" }, 400, origin, env);
-            if (key === "seats" && Number(value) !== 8) return json({ error: "invalid_seat_count", message: "نظام المايك الحالي يدعم 8 مقاعد فقط" }, 400, origin, env);
+            if (key === "seats") {
+              const count = Number(value);
+              if (![8, 10, 12, 14, 16, 20, 24].includes(count)) return json({ error: "invalid_seat_count", message: "عدد المايكات غير مدعوم" }, 400, origin, env);
+              settings.micLayoutId = "m" + count;
+            }
             if (key === "micRequestMode" && !["إغلاق", "تفعيل"].includes(String(value))) return json({ error: "invalid_mic_request_mode" }, 400, origin, env);
             if (key === "autoGames" && typeof value !== "boolean") return json({ error: "invalid_boolean_setting" }, 400, origin, env);
             if (["whoEnter", "whoMic", "whoChat", "whoLuck"].includes(key) && !["everyone", "membersOnly", "ownerAndAdmins"].includes(String(value))) return json({ error: "invalid_audience" }, 400, origin, env);
@@ -3106,7 +3117,7 @@ export default {
             if (to !== null && String(roomSettings.whoMic ?? "membersOnly") === "ownerAndAdmins" && !isRoomOwner && !isRoomModerator) {
               return json({ error: "room_mic_restricted", message: "استخدام المايك متاح للمالك والمشرفين فقط" }, 403, origin, env);
             }
-            if (to !== null && (!Number.isInteger(to) || to < 1 || to > 8)) {
+            if (to !== null && (!Number.isInteger(to) || to < 1 || to > Number(roomSettings.seats ?? 8))) {
               return json({ error: "invalid_seat_number" }, 400, origin, env);
             }
             const moveHeaders = new Headers(identityHeaders);
@@ -3232,7 +3243,7 @@ export default {
           audienceUsers,
           voiceEnabled,
           seatRevision: snapshot.revision ?? 0,
-          room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code, level: room.level, palaceStatus: room.level >= 5 ? 'مفعّل' : 'غير مفعّل', experienceLevel: experience.level, experienceExp: experience.exp, experienceNextLevelExp: experience.nextLevelExp, experienceTotalExp: Number(room.total_exp ?? 0), dailyExperienceExp: Number(dailyExperience?.points ?? 0), dailyMicExperienceExp: Number(dailyMicExperience?.points ?? 0), dailyGiftExperienceExp: Number(dailyGiftExperience?.points ?? 0), dailyExperienceMax: ROOM_EXP_DAILY_ROOM_CAP, dailyResetInSeconds: secondsUntilSaudiMidnight(now), dailyExperienceUpdatedAt: now, dailyExperienceBreakdown: { total: Number(dailyExperience?.points ?? 0), microphone: Number(dailyMicExperience?.points ?? 0), gifts: Number(dailyGiftExperience?.points ?? 0) } },
+          room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code, level: room.level, palaceStatus: room.level >= 5 ? 'مفعّل' : 'غير مفعّل', experienceLevel: experience.level, experienceExp: experience.exp, experienceNextLevelExp: experience.nextLevelExp, experienceTotalExp: Number(room.total_exp ?? 0), micCount: Number(roomSettings.seats ?? 8), micLayoutId: String(roomSettings.micLayoutId ?? ("m" + Number(roomSettings.seats ?? 8))), dailyExperienceExp: Number(dailyExperience?.points ?? 0), dailyMicExperienceExp: Number(dailyMicExperience?.points ?? 0), dailyGiftExperienceExp: Number(dailyGiftExperience?.points ?? 0), dailyExperienceMax: ROOM_EXP_DAILY_ROOM_CAP, dailyResetInSeconds: secondsUntilSaudiMidnight(now), dailyExperienceUpdatedAt: now, dailyExperienceBreakdown: { total: Number(dailyExperience?.points ?? 0), microphone: Number(dailyMicExperience?.points ?? 0), gifts: Number(dailyGiftExperience?.points ?? 0) } },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة", avatarUrl: room.owner_avatar_url ?? "", countryName: room.owner_country_name ?? "" },
           me: { id: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.happy_id ?? "", avatarUrl: profile?.avatar_key ?? "", countryName: profile?.country_name ?? "", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
           isOwner: room.owner_user_id === user.id,
