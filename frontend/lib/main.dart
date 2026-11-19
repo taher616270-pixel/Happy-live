@@ -20,6 +20,31 @@ import 'widgets/purple_tech_background.dart';
 import 'services/session_token_store.dart';
 import 'services/global_gift_events.dart';
 import 'widgets/global_gift_banner.dart';
+import 'cannon/cannon_config.dart';
+import 'cannon/cannon_top_banner.dart';
+import 'pages/room_page.dart';
+
+Future<void> _openGlobalCannonRoom(BuildContext context, String targetRoomId) async {
+  final id = targetRoomId.trim();
+  final token = CannonConfig.authToken();
+  if (id.isEmpty || token.isEmpty) return;
+  try {
+    final response = await http.get(
+      Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/rooms/${Uri.encodeComponent(id)}/seats'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+    ).timeout(const Duration(seconds: 12));
+    final payload = jsonDecode(response.body);
+    if (response.statusCode != 200 || payload is! Map || payload['room'] is! Map) return;
+    final room = Map<String, dynamic>.from(payload['room'] as Map);
+    room['id'] ??= id;
+    if (!context.mounted) return;
+    await Navigator.of(context, rootNavigator: true).push<void>(
+      MaterialPageRoute<void>(builder: (_) => RoomPage(room: room, accessToken: token)),
+    );
+  } catch (_) {
+    // Keep the banner non-blocking if the target room is temporarily unavailable.
+  }
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,15 +92,19 @@ class HappyLiveApp extends StatelessWidget {
         CountryLocalizations.delegate,
         ...GlobalMaterialLocalizations.delegates,
       ],
-      builder: (context, child) => Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned.fill(child: PurpleTechBackground()),
-          if (child != null) child,
-          Positioned.fill(
-            child: GiftBannerHost(stream: GlobalGiftEvents.instance.events),
-          ),
-        ],
+      builder: (context, child) => CannonGlobalBannerHost(
+        accessToken: CannonConfig.authToken(),
+        onOpenRoom: (roomId) => _openGlobalCannonRoom(context, roomId),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(child: PurpleTechBackground()),
+            if (child != null) child,
+            Positioned.fill(
+              child: GiftBannerHost(stream: GlobalGiftEvents.instance.events),
+            ),
+          ],
+        ),
       ),
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -1437,6 +1466,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
   @override
   void initState() {
     super.initState();
+    CannonConfig.setAuthToken(widget.accessToken);
     GlobalGiftEvents.instance.connect(widget.accessToken);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshProfile();
