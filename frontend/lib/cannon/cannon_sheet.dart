@@ -35,6 +35,7 @@ class _CannonSheetState extends State<CannonSheet> {
   late final PageController _pc;
   late int _page;
   final Set<String> _shownClaims = <String>{};
+  int _syncedLevel = 0;
 
   @override
   void initState() {
@@ -83,6 +84,16 @@ class _CannonSheetState extends State<CannonSheet> {
                   )
                 : const CircularProgressIndicator(color: Color(0xFF3AA8FF)),
             );
+          }
+          if (_syncedLevel != st.level) {
+            _syncedLevel = st.level;
+            final targetPage = (st.level - 1).clamp(0, st.levels.length - 1).toInt();
+            if (targetPage != _page) {
+              _page = targetPage;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && _pc.hasClients) _pc.jumpToPage(targetPage);
+              });
+            }
           }
           if (st.pending.isNotEmpty) _showPendingClaim(st.pending.first);
           return _content(context, st);
