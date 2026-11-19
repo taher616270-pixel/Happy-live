@@ -2673,7 +2673,7 @@ export default {
           } else {
             const allowedKeys = new Set(["seats", "micRequestMode", "autoGames", "whoEnter", "whoMic", "whoChat", "whoLuck", "coverUrl"]);
             if (!allowedKeys.has(key)) return json({ error: "unsupported_room_setting" }, 400, origin, env);
-            if (key === "seats" && ![8, 10, 12, 14, 16, 20, 24].includes(Number(value))) return json({ error: "invalid_seat_count" }, 400, origin, env);
+            if (key === "seats" && Number(value) !== 8) return json({ error: "invalid_seat_count", message: "نظام المايك الحالي يدعم 8 مقاعد فقط" }, 400, origin, env);
             if (key === "micRequestMode" && !["إغلاق", "تفعيل"].includes(String(value))) return json({ error: "invalid_mic_request_mode" }, 400, origin, env);
             if (key === "autoGames" && typeof value !== "boolean") return json({ error: "invalid_boolean_setting" }, 400, origin, env);
             if (["whoEnter", "whoMic", "whoChat", "whoLuck"].includes(key) && !["everyone", "membersOnly", "ownerAndAdmins"].includes(String(value))) return json({ error: "invalid_audience" }, 400, origin, env);
