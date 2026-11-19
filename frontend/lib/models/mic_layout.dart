@@ -44,14 +44,11 @@ final List<MicLayout> kMicLayouts = [
   MicLayout(id: 'm14', count: 14, rows: [
     [null, _s1, _s2, null], _seats(1, 4), _seats(5, 8), _seats(9, 12),
   ]),
-  // Fifteen microphones: keep five level rows, with seat 15 centered above.
-  // Five columns provide balanced spacing without vertical per-seat offsets.
+  // Fifteen microphones in three rows of five, numbered left to right.
   MicLayout(id: 'm15', count: 15, rows: [
-    [null, null, MicSeat('15'), null, null],
-    [MicSeat('1'), null, MicSeat('2'), null, MicSeat('3')],
-    [MicSeat('4'), MicSeat('5'), null, MicSeat('6'), MicSeat('7')],
-    [MicSeat('8'), null, MicSeat('9'), null, MicSeat('10')],
-    [MicSeat('11'), MicSeat('12'), null, MicSeat('13'), MicSeat('14')],
+    _seats(1, 5),
+    _seats(6, 10),
+    _seats(11, 15),
   ]),
   MicLayout(id: 'm20', count: 20, rows: [
     [null, null, _s1, _s2, null, null],
