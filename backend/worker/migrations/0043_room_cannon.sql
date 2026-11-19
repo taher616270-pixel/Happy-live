@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS cannon_energy_transactions (
   room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   coin_cost INTEGER NOT NULL CHECK (coin_cost > 0),
+  applied_at TEXT,
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_cannon_energy_room_created ON cannon_energy_transactions(room_id, created_at DESC);
