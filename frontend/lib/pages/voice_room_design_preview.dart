@@ -1259,8 +1259,8 @@ Widget _roomActionButton({
         final voiceLevel = speakerUid == null ? 0.0 : (speakerLevels[speakerUid] ?? 0.0);
         final isSpeaking = occupied && !muted && voiceLevel >=
             (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
-        final seatDiameter = slot.big ? 62.0 : 54.0;
-        final seatBoxWidth = slot.big ? 82.0 : 72.0;
+        final seatDiameter = slot.big ? 56.0 : 49.0;
+        final seatBoxWidth = slot.big ? 74.0 : 65.0;
         // The row offset is applied by the parent Transform above;
         // the seat itself keeps its original 88px hit target and visuals.
         return Align(
@@ -1362,7 +1362,7 @@ Widget _roomActionButton({
                           : Icon(
                               occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
                               color: Colors.white.withOpacity(.92),
-                              size: slot.big ? 27 : 23,
+                              size: slot.big ? 24 : 21,
                             ),
                       ),
                     ),
