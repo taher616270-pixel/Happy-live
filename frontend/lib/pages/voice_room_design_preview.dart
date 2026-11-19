@@ -1260,8 +1260,10 @@ Widget _roomActionButton({
                             : baseVerticalOffset)
                     : layout.id == 'm14'
                         ? (number >= 9 && number <= 12
-                            ? -9.0
-                            : baseVerticalOffset)
+                            ? -15.0
+                            : number >= 5 && number <= 8
+                                ? -6.0
+                                : baseVerticalOffset)
                 : layout.id == 'm15'
                 ? (number >= 11 && number <= 15
                     ? -13.0
