@@ -117,7 +117,7 @@ export class RoomSeatsHub {
         .bind(this.roomId).first<{ settings_json: string }>();
       const settings = row?.settings_json ? JSON.parse(row.settings_json) as Record<string, unknown> : {};
       const value = Number(settings.seats ?? 8);
-      return [2, 8, 10, 12, 14, 16, 20, 24].includes(value) ? value : 8;
+      return [2, 8, 10, 12, 14, 15, 16, 20, 24].includes(value) ? value : 8;
     } catch {
       return 8;
     }
