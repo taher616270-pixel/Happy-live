@@ -2765,7 +2765,7 @@ export default {
           if (current?.is_muted === 1 && current.muted_by && current.muted_by !== actor.id) {
             return json({ error: "moderator_muted", message: "تم كتم مايكك بواسطة إدارة الغرفة" }, 403, origin, env);
           }
-          const nextMuted = action === "unmute" ? 0 : (current?.is_muted === 1 ? 0 : 1);
+          const nextMuted = current?.is_muted === 1 ? 0 : 1;
           await env.DB!.prepare(
             "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, NULL, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = NULL, updated_at = excluded.updated_at"
           ).bind(roomId, actor.id, nextMuted, new Date().toISOString()).run();
