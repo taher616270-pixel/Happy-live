@@ -109,6 +109,7 @@ export class RoomSeatsHub {
   private roomId = '';
   private readonly sockets = new Map<WebSocket, SocketIdentity>();
   private mutationQueue: Promise<void> = Promise.resolve();
+  private whoMicMode = "membersOnly";
   private readonly ready: Promise<void>;
 
   constructor(private readonly state: DurableObjectState, private readonly env: RoomSeatsEnv) {
@@ -119,6 +120,7 @@ export class RoomSeatsHub {
       if (!this.snapshot.versions) this.snapshot.versions = {};
       if (!Number.isFinite(this.snapshot.revision)) this.snapshot.revision = 0;
       if (typeof this.snapshot.voiceEnabled !== "boolean") this.snapshot.voiceEnabled = true;
+      this.whoMicMode = (await this.state.storage.get<string>("room-who-mic-mode")) ?? "membersOnly";
       await this.expireSeats(false);
     });
   }
@@ -205,6 +207,16 @@ export class RoomSeatsHub {
         await this.persist();
       });
       return Response.json({ ok: true, ...this.publicSnapshot() });
+    }
+
+    if (url.pathname === "/set-mic-policy" && request.method === "POST") {
+      const mode = request.headers.get("x-who-mic") ?? "membersOnly";
+      if (!["everyone", "membersOnly", "ownerAndAdmins"].includes(mode)) {
+        return Response.json({ error: "invalid_mic_policy" }, { status: 400 });
+      }
+      this.whoMicMode = mode;
+      await this.state.storage.put("room-who-mic-mode", mode);
+      return Response.json({ ok: true, whoMic: mode });
     }
 
     if (url.pathname === "/remove-user" && request.method === "POST") {
@@ -418,6 +430,9 @@ export class RoomSeatsHub {
   private async applyMove(identity: SocketIdentity, to: number | null, version: number): Promise<Record<string, unknown>> {
     if (!this.snapshot.voiceEnabled) {
       return { type: "ack", ok: false, code: "voice_disabled", version, ...this.publicSnapshot() };
+    }
+    if (to !== null && this.whoMicMode === "ownerAndAdmins" && !identity.isRoomOwner && !identity.isRoomModerator) {
+      return { type: "ack", ok: false, code: "mic_restricted", version, mySeat: Object.values(this.snapshot.seats).find((seat) => seat.userId === identity.userId)?.seatNumber ?? null, ...this.publicSnapshot() };
     }
     const lastVersion = Math.max(identity.lastVersion, this.snapshot.versions[identity.userId] ?? 0);
     if (version <= lastVersion) {
