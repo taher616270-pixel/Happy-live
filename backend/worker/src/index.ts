@@ -1950,9 +1950,8 @@ export default {
             createdAt: now,
             isMe: false
           };
-          // Chat is live-only: clear any legacy persisted chat rows and
-          // broadcast this join event only to users currently connected.
-          await env.DB!.prepare("DELETE FROM room_messages").run();
+          // Chat is live-only; preserve legacy message rows in every room.
+          // Broadcast this join event only to users currently connected.
           await broadcastRoomChat(env, roomId, {
             type: "system",
             message: entryMessage
