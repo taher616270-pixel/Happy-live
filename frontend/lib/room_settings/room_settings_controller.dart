@@ -45,22 +45,30 @@ class RoomSettingsController extends ChangeNotifier {
   List<AdminLogEntry> logs = [];
 
   late final List<AdminPermission> permissions = [
-    AdminPermission(id: 'bg', group: 0, title: 'تغيير الخلفية/إعلان الغرفة', hint: 'من يمكنه تغيير الخلفية/إعلان الغرفة', level: PermissionLevel.selectedAdmins),
-    AdminPermission(id: 'chat_delete', group: 0, title: 'حذف الدردشة', hint: 'من يمكنه حذف الدردشة'),
-    AdminPermission(id: 'room_lock', group: 0, title: 'قفل/فتح الغرفة', hint: 'من يمكنه قفل/فتح الغرفة', level: PermissionLevel.selectedAdmins),
-    AdminPermission(id: 'seat_count', group: 1, title: 'ضبط عدد المقاعد', hint: 'من يمكنه ضبط عدد المقاعد', level: PermissionLevel.selectedAdmins),
-    AdminPermission(id: 'mic_lock', group: 1, title: 'فتح/قفل المايك', hint: 'من يمكنه فتح/قفل المايك'),
-    AdminPermission(id: 'others_mic', group: 1, title: 'تشغيل/إيقاف ميكروفون الاخرين', hint: 'من يمكنه تشغيل/إيقاف ميكروفون الاخرين'),
-    AdminPermission(id: 'invite_seat', group: 1, title: 'دعوة شخص للمقعد/ ازالة شخص من المقعد', hint: 'من يمكنه دعوة شخص للمقعد/ إزالته'),
-    AdminPermission(id: 'mic_requests', group: 1, title: 'إدارة تقدم طلبات المستخدمين لأخذ المايك', hint: 'من يمكنه إدارة طلبات أخذ المايك'),
-    AdminPermission(id: 'features', group: 2, title: 'تشغيل/إيقاف الألعاب والميزات', hint: 'من يمكنه فتح/قفل الألعاب والميزات'),
-    AdminPermission(id: 'events', group: 2, title: 'إنشاء فعالية', hint: 'من يمكنه إنشاء الفعاليات'),
-    AdminPermission(id: 'fireworks', group: 2, title: 'إطلاق الألعاب النارية', hint: 'من يمكنه إطلاق الألعاب النارية'),
-    AdminPermission(id: 'mute', group: 3, title: 'كتم الصوت/الغاء كتم الصوت للاخرين', hint: 'من يمكنه كتم الصوت/الغاء كتم الصوت للاخرين'),
-    AdminPermission(id: 'kick', group: 3, title: 'طرد شخص ما من الغرفة', hint: 'من يمكنه طرد شخص ما من الغرفة'),
-    AdminPermission(id: 'blacklist', group: 3, title: 'ادارة القائمة السوداء للغرفة', hint: 'من يمكنه ادارة القائمة السوداء للغرفة'),
-    AdminPermission(id: 'members', group: 3, title: 'إدارة الأعضاء', hint: 'من يمكنه إدارة الأعضاء'),
-    AdminPermission(id: 'super', group: 3, title: 'المشرف السوبر', hint: 'من يمكنه إغلاق مايك المشرفين وطردهم', level: PermissionLevel.selectedAdmins),
+    AdminPermission(
+      id: 'mute',
+      group: 0,
+      title: 'كتم صوت المستخدمين وإلغاء الكتم',
+      hint: 'حدد المشرفين الذين يمكنهم كتم المستخدمين وإلغاء كتمهم',
+    ),
+    AdminPermission(
+      id: 'kick',
+      group: 0,
+      title: 'الطرد المؤقت من الغرفة',
+      hint: 'حدد المشرفين الذين يمكنهم طرد المستخدم مؤقتًا وإلغاء الطرد',
+    ),
+    AdminPermission(
+      id: 'blacklist',
+      group: 0,
+      title: 'إدارة الحظر الدائم',
+      hint: 'حدد المشرفين الذين يمكنهم حظر المستخدمين ورفع الحظر',
+    ),
+    AdminPermission(
+      id: 'super',
+      group: 0,
+      title: 'إزالة المستخدم من المقعد',
+      hint: 'حدد المشرفين الذين يمكنهم إزالة المستخدم من المايك',
+    ),
   ];
 
   Future<void> load() async {
