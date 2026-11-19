@@ -14,6 +14,7 @@ import 'package:country_picker/country_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:happy_live/models/seat_state.dart';
+import 'package:happy_live/models/mic_layout.dart';
 import 'edit_profile_page.dart';
 import 'ranking_sheet_pro.dart';
 
@@ -123,9 +124,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     // The audience strip is painted first so the microphone
                     // seats remain the top hit-test layer where they overlap.
                     final isAndroid = Theme.of(context).platform == TargetPlatform.android;
-                    final micCount = _roomInfoInt(['micCount', 'mic_count'], 8).clamp(8, 24).toInt();
-                    final columns = micCount <= 16 ? 4 : 6;
-                    final rows = (micCount / columns).ceil();
+                    final micLayout = micLayoutById(_roomInfoString(['micLayoutId', 'mic_layout_id'], 'm8'));
+                    final columns = micLayout.maxCols;
+                    final rows = micLayout.rows.length;
                     final tileWidth = (constraints.maxWidth - (columns - 1) * 12) / columns;
                     final seatsHeight = (tileWidth / .88) * rows + 12 * (rows - 1);
                     return SizedBox(
@@ -1207,14 +1208,25 @@ Widget _roomActionButton({
   );
 
   Widget _seats(BuildContext context) {
-    final micCount = _roomInfoInt(['micCount', 'mic_count'], 8).clamp(8, 24).toInt();
-    final columns = micCount <= 16 ? 4 : 6;
+    final layout = micLayoutById(_roomInfoString(['micLayoutId', 'mic_layout_id'], 'm8'));
+    final columns = layout.maxCols;
+    final cells = <MicSeat?>[
+      for (final row in layout.rows) ...row,
+      for (final row in layout.rows)
+        ...List<MicSeat?>.filled(columns - row.length, null),
+    ];
+    // Preserve each row's own alignment by building a padded row-major list.
+    final arrangedCells = <MicSeat?>[];
+    for (final row in layout.rows) {
+      arrangedCells.addAll(row);
+      arrangedCells.addAll(List<MicSeat?>.filled(columns - row.length, null));
+    }
     return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 12),
     child: GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: micCount,
+      itemCount: arrangedCells.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
         mainAxisSpacing: 12,
@@ -1222,8 +1234,12 @@ Widget _roomActionButton({
         childAspectRatio: .88,
       ),
       itemBuilder: (context, index) {
-        final number = index + 1;
-        return Selector<SeatStateStore, SeatState>(
+        final slot = arrangedCells[index];
+        if (slot == null) return const SizedBox.shrink();
+        final number = layout.seatNumber(slot);
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Selector<SeatStateStore, SeatState>(
           selector: (context, store) => store.seats[number]!,
           builder: (context, seatState, child) {
         final seat = seatState.occupied ? seatState.toMap() : null;
@@ -1416,7 +1432,7 @@ Widget _roomActionButton({
           ),
         );
           },
-        );
+        ));
       },
     ),
   );
