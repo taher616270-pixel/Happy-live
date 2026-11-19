@@ -127,7 +127,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 // follows the actual measured grid height for every layout.
                 _seats(context),
                 const SizedBox(height: 1),
-                _listeners(context),
+                Transform.translate(
+                  offset: const Offset(0, -3),
+                  child: _listeners(context),
+                ),
                 const SizedBox(height: 2),
                 Expanded(
                   child: Stack(
