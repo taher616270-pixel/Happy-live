@@ -27,6 +27,7 @@ class RoomSettingsController extends ChangeNotifier {
   String announcement = '';
   String? coverUrl;
   int seats = 8;
+  String micLayoutId = 'm8';
   String micRequestMode = 'إغلاق';
   bool autoGames = true;
   Audience whoEnter = Audience.everyone;
@@ -82,6 +83,7 @@ class RoomSettingsController extends ChangeNotifier {
       announcement = (s['announcement'] ?? announcement).toString();
       coverUrl = s['coverUrl']?.toString();
       seats = int.tryParse((s['seats'] ?? seats).toString()) ?? seats;
+      micLayoutId = (s['micLayoutId'] ?? 'm$seats').toString();
       micRequestMode = (s['micRequestMode'] ?? micRequestMode).toString();
       autoGames = s['autoGames'] is bool ? s['autoGames'] as bool : autoGames;
       whoEnter = audienceFromValue(s['whoEnter'], whoEnter);
@@ -218,6 +220,8 @@ class RoomSettingsController extends ChangeNotifier {
   Future<void> setName(String v) => _set('name', v, () => name = v);
   Future<void> setAnnouncement(String v) => _set('announcement', v, () => announcement = v);
   Future<void> setSeats(int v) => _set('seats', v, () => seats = v);
+  Future<void> setMicLayout(String id, int count) =>
+      _set('micLayoutId', id, () { micLayoutId = id; seats = count; });
   Future<void> setMicRequestMode(String v) => _set('micRequestMode', v, () => micRequestMode = v);
   Future<void> setAutoGames(bool v) => _set('autoGames', v, () => autoGames = v);
   Future<void> setWhoEnter(Audience v) => _set('whoEnter', v.name, () => whoEnter = v);
