@@ -68,7 +68,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    const two = [Audience.everyone, Audience.membersOnly];
+    const entryOptions = [Audience.everyone, Audience.membersOnly, Audience.ownerAndAdmins];
     const three = [Audience.everyone, Audience.membersOnly, Audience.ownerAndAdmins];
     return AnimatedBuilder(
       animation: c,
@@ -137,7 +137,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                     title: 'من يمكنه دخول الغرفة',
                     value: audienceLabel(c.whoEnter),
                     onTap: () async {
-                      final value = await showChoiceSheet<Audience>(context, title: 'من يمكنه دخول الغرفة', options: _opts(two), selected: c.whoEnter);
+                      final value = await showChoiceSheet<Audience>(context, title: 'من يمكنه دخول الغرفة', options: _opts(entryOptions), selected: c.whoEnter);
                       if (value != null) await _run(() => c.setWhoEnter(value));
                     },
                   ),
