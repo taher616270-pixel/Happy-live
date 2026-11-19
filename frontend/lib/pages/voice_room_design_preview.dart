@@ -90,13 +90,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
   String get _name => (room['name'] ?? 'غرفة صوتية').toString();
   String get _id => (room['roomCode'] ?? room['id'] ?? '').toString();
-  bool get _is24MicLayout {
-    final layoutId = _roomInfoString(['micLayoutId', 'mic_layout_id'], 'm8')
-        .trim()
-        .toLowerCase();
-    final micCount = int.tryParse(_roomInfoString(['micCount', 'mic_count'], '0'));
-    return layoutId == 'm24' || micCount == 24;
-  }
+  bool get _is24MicLayout =>
+      _roomInfoString(['micLayoutId', 'mic_layout_id'])
+          .trim()
+          .toLowerCase() == 'm24';
   String? get _cover {
     final value = room['imageUrl']?.toString();
     return value != null && value.startsWith('https://') ? value : null;
@@ -1178,19 +1175,19 @@ Widget _roomActionButton({
 
   Widget _seats(BuildContext context) {
     final configuredLayoutId =
-        _roomInfoString(['micLayoutId', 'mic_layout_id'], '').trim().toLowerCase();
+        _roomInfoString(['micLayoutId', 'mic_layout_id']).trim().toLowerCase();
     final configuredMicCount =
         int.tryParse(_roomInfoString(['micCount', 'mic_count'], '0')) ?? 0;
-    // Some room snapshots send the seat count but omit/retain an older layout ID.
-    // Resolve the 24-seat grid from its count as well, so row offsets are applied
-    // to the actual 24-microphone layout instead of silently falling back to m8.
-    final layout = micLayoutById(
-      configuredLayoutId == 'm24' || configuredMicCount == 24
-          ? 'm24'
-          : configuredLayoutId.isEmpty
-              ? 'm8'
-              : configuredLayoutId,
-    );
+
+    // Each room layout is selected by its own layout ID. The seat count is
+    // only a compatibility fallback for older room snapshots that lack an ID;
+    // it must never override an explicitly selected layout.
+    final resolvedLayoutId = configuredLayoutId.isNotEmpty
+        ? configuredLayoutId
+        : configuredMicCount > 0
+            ? 'm$configuredMicCount'
+            : 'm8';
+    final layout = micLayoutById(resolvedLayoutId);
     final columns = layout.maxCols;
     // Preserve each row's own alignment by building a padded row-major list.
     final arrangedCells = <MicSeat?>[];
@@ -1220,7 +1217,7 @@ Widget _roomActionButton({
         // Isolate this test to seats 7–12: move their entire grid cell
         // upward by exactly 3 logical pixels, after FittedBox scaling.
         final verticalOffset =
-            layout.count == 24 && rowIndex == 1 ? -3.0 : 0.0;
+            layout.id == 'm24' && rowIndex == 1 ? -3.0 : 0.0;
         return Transform.translate(
           offset: Offset(0, verticalOffset),
           child: FittedBox(
