@@ -50,13 +50,13 @@ final List<MicLayout> kMicLayouts = [
   MicLayout(id: 'm24', count: 24, rows: [
     _seats(1, 6), _seats(7, 12), _seats(13, 18), _seats(19, 24),
   ]),
-  MicLayout(id: 'm10b', count: 10, rows: [
-    _seats(1, 2, big: true), _seats(3, 4, big: true), _seats(5, 10),
-  ]),
-  MicLayout(id: 'm10c', count: 10, rows: [
-    _seats(1, 2, big: true), _seats(3, 6), _seats(7, 10),
-  ]),
 ];
 
-MicLayout micLayoutById(String id) =>
-    kMicLayouts.firstWhere((layout) => layout.id == id, orElse: () => kMicLayouts.first);
+MicLayout micLayoutById(String id) {
+  // Older room settings may still contain either experimental 10-seat ID.
+  final normalizedId = (id == 'm10b' || id == 'm10c') ? 'm10' : id;
+  return kMicLayouts.firstWhere(
+    (layout) => layout.id == normalizedId,
+    orElse: () => kMicLayouts.first,
+  );
+}
