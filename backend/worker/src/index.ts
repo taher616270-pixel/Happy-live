@@ -2833,7 +2833,7 @@ export default {
           const current = await env.DB!.prepare(
             "SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ?"
           ).bind(roomId, targetUserId).first<{ is_muted: number }>();
-          const nextMuted = current?.is_muted === 1 ? 0 : 1;
+          const nextMuted = action === "unmute" ? 0 : (current?.is_muted === 1 ? 0 : 1);
           await env.DB!.prepare(
             "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = CASE WHEN excluded.is_muted = 1 THEN excluded.muted_by ELSE NULL END, updated_at = excluded.updated_at"
           ).bind(roomId, targetUserId, nextMuted, nextMuted === 1 ? actor.id : null, now).run();
