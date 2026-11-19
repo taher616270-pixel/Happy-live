@@ -139,7 +139,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             // Chat and the room announcement begin below the
                             // microphone grid and listener strip; no fixed
                             // negative offsets or Positioned coordinates.
-                            padding: EdgeInsets.only(left: 98, top: _is24MicLayout ? 1 : 8),
+                            padding: EdgeInsets.only(left: 98, top: _is24MicLayout ? 2 : 8),
                             child: SizedBox(
                               width: MediaQuery.sizeOf(context).width * 0.75,
                               child: AnimatedContainer(
