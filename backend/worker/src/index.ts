@@ -3033,7 +3033,7 @@ export default {
         const now = new Date().toISOString();
         const dayKey = saudiDayKey(now);
         const room = await env.DB!.prepare(
-          "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, COALESCE(rl.level, 1) AS level, COALESCE(rx.total_exp, 0) AS total_exp, p.display_name AS owner_name, p.avatar_key AS owner_avatar_url, p.country_name AS owner_country_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN room_levels rl ON rl.room_id = r.id LEFT JOIN room_experience rx ON rx.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
+          "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, COALESCE(rl.level, 1) AS level, COALESCE(rx.total_exp, 0) AS total_exp, COALESCE(NULLIF(TRIM(p.display_name), ''), u.display_name) AS owner_name, p.avatar_key AS owner_avatar_url, p.country_name AS owner_country_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN room_levels rl ON rl.room_id = r.id LEFT JOIN room_experience rx ON rx.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id LEFT JOIN users u ON u.id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; level: number; total_exp: number; owner_name: string | null; owner_avatar_url: string | null; owner_country_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
 
@@ -3197,8 +3197,8 @@ export default {
           "UPDATE room_chat_visits SET exited_at = ? WHERE room_id = ? AND exited_at IS NULL AND last_seen_at < ?"
         ).bind(now, roomId, audienceCutoff).run();
         const audienceUsersResult = await env.DB!.prepare(
-          "SELECT p.user_id, p.display_name, p.happy_id, p.avatar_key, p.country_code, p.country_name, MAX(v.last_seen_at) AS last_seen_at FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? GROUP BY p.user_id, p.display_name, p.happy_id, p.avatar_key, p.country_code, p.country_name ORDER BY last_seen_at DESC LIMIT 100"
-        ).bind(roomId, audienceCutoff).all<{ user_id: string; display_name: string | null; happy_id: string | null; avatar_key: string | null; country_code: string | null; country_name: string | null; last_seen_at: string }>();
+          "SELECT v.user_id, p.display_name, p.happy_id, p.avatar_key, p.country_code, p.country_name, MAX(v.last_seen_at) AS last_seen_at, MAX(CASE WHEN v.user_id = ? THEN 1 ELSE 0 END) AS is_room_owner, EXISTS(SELECT 1 FROM room_moderators rm WHERE rm.room_id = v.room_id AND rm.user_id = v.user_id) AS is_room_moderator FROM room_chat_visits v LEFT JOIN profiles p ON p.user_id = v.user_id WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ? GROUP BY v.user_id, p.display_name, p.happy_id, p.avatar_key, p.country_code, p.country_name ORDER BY last_seen_at DESC LIMIT 100"
+        ).bind(room.owner_user_id, roomId, audienceCutoff).all<{ user_id: string; display_name: string | null; happy_id: string | null; avatar_key: string | null; country_code: string | null; country_name: string | null; last_seen_at: string; is_room_owner: number; is_room_moderator: number }>();
         const seatedIds = new Set(seats.map((seat) => String(seat.userId)));
         const audienceRows = audienceUsersResult.results ?? [];
         const seatedVisitorCount = audienceRows.filter((visitor) => seatedIds.has(visitor.user_id)).length;
@@ -3210,7 +3210,9 @@ export default {
             userCode: visitor.happy_id ?? "",
             avatarUrl: visitor.avatar_key ?? "",
             countryName: visitor.country_name ?? "",
-            countryCode: visitor.country_code ?? ""
+            countryCode: visitor.country_code ?? "",
+            isRoomOwner: visitor.is_room_owner === 1,
+            isRoomModerator: visitor.is_room_moderator === 1
           }));
         const experience = roomExperienceProgress(Number(room.total_exp ?? 0));
         const [dailyExperience, dailyMicExperience, dailyGiftExperience] = await Promise.all([
