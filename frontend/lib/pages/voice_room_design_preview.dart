@@ -101,6 +101,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     return micCount > 0 ? 'm$micCount' : 'm8';
   }
   bool get _is2MicLayout => _micLayoutId == 'm2';
+  bool get _is8MicLayout => _micLayoutId == 'm8';
   bool get _is24MicLayout => _micLayoutId == 'm24';
   String? get _cover {
     final value = room['imageUrl']?.toString();
@@ -137,7 +138,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 const SizedBox(height: 1),
                 Transform.translate(
                   // Move the listener strip down 4px only in the 2-mic layout.
-                  offset: Offset(0, _is2MicLayout ? -14 : -28),
+                  offset: Offset(0, _is2MicLayout ? -14 : (_is8MicLayout ? -23 : -28)),
                   child: _listeners(context),
                 ),
                 const SizedBox(height: 2),
@@ -157,7 +158,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 curve: Curves.easeOutCubic,
                                 transform: Matrix4.translationValues(
                                   0,
-                                  (_is2MicLayout ? -11 : -25) -
+                                  (_is2MicLayout ? -11 : (_is8MicLayout ? -20 : -25)) -
                                       MediaQuery.viewInsetsOf(context).bottom,
                                   0,
                                 ),
@@ -1243,16 +1244,18 @@ Widget _roomActionButton({
                     ? -3.0
                     : 0.0;
         // The 15-seat layout must keep every seat level within its row.
-        final verticalOffset = layout.id == 'm15'
-            ? (number >= 11 && number <= 15
-                ? -13.0
-                : number >= 6 && number <= 10
-                    ? -7.0
-                    : 0.0)
-            : baseVerticalOffset +
-                (layout.id == 'm20' && number >= 1 && number <= 18
-                    ? -7.0
-                    : 0.0);
+        final verticalOffset = layout.id == 'm8'
+            ? 0.0
+            : layout.id == 'm15'
+                ? (number >= 11 && number <= 15
+                    ? -13.0
+                    : number >= 6 && number <= 10
+                        ? -7.0
+                        : 0.0)
+                : baseVerticalOffset +
+                    (layout.id == 'm20' && number >= 1 && number <= 18
+                        ? -7.0
+                        : 0.0);
         return FittedBox(
           fit: BoxFit.scaleDown,
           child: Selector<SeatStateStore, SeatState>(
