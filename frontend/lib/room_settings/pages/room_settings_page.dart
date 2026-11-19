@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models.dart';
 import '../room_settings_controller.dart';
+import '../sheets/choice_sheet.dart';
 import '../theme.dart';
 import '../widgets/common_widgets.dart';
 import 'admin_log_page.dart';
