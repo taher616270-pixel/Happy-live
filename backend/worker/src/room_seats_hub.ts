@@ -212,6 +212,33 @@ export class RoomSeatsHub {
       return Response.json(result, { status: result.ok === true ? 200 : result.code === "seat_occupied" ? 409 : 409 });
     }
 
+    if (url.pathname === "/set-seat-count" && request.method === "POST") {
+      const count = Number(request.headers.get("x-seat-count"));
+      if (![8, 10, 12, 14, 16, 20, 24].includes(count)) {
+        return Response.json({ error: "invalid_seat_count" }, { status: 400 });
+      }
+      await this.enqueue(async () => {
+        const removed = Object.values(this.snapshot.seats).filter((seat) => seat.seatNumber > count);
+        for (const member of removed) {
+          delete this.snapshot.seats[String(member.seatNumber)];
+          if (this.roomId) {
+            try {
+              await resetRoomSeatExperienceTimer(this.env.DB, this.roomId, member.userId, new Date().toISOString());
+            } catch (error) {
+              console.error("[room-seats.experience] seat-count timer reset failed", error instanceof Error ? error.message : "UnknownError");
+            }
+          }
+        }
+        if (removed.length > 0) {
+          this.snapshot.revision++;
+          await this.persist();
+          await this.scheduleExpiry();
+          this.broadcast({ type: "seat_updated", ...this.publicSnapshot() });
+        }
+      });
+      return Response.json({ ok: true, ...this.publicSnapshot() });
+    }
+
     if (url.pathname === "/enable" && request.method === "POST") {
       await this.enqueue(async () => {
         this.snapshot.voiceEnabled = true;
@@ -426,7 +453,7 @@ export class RoomSeatsHub {
     const to = message.to === null ? null : Number(message.to);
     const version = Number(message.version);
     if ((from !== null && (!Number.isInteger(from) || from < 1 || from > 24)) ||
-        (to !== null && (!Number.isInteger(to) || to < 1 || to > 8)) ||
+        (to !== null && (!Number.isInteger(to) || to < 1 || to > 24)) ||
         !Number.isSafeInteger(version) || version < 1) {
       this.send(socket, { type: "ack", ok: false, code: "invalid_move", version, ...this.publicSnapshot() });
       return;
