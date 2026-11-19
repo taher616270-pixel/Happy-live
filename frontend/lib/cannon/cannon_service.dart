@@ -117,7 +117,6 @@ class CannonService extends ChangeNotifier {
           _bannerQueue.add(banner);
         }
       }
-      _seenBannerKeys.removeWhere((key) => !eligibleKeys.contains(key));
       _showNextBanner();
     } finally {
       _bannerRequestInFlight = false;
