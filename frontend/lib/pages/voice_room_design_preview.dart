@@ -90,6 +90,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
   String get _name => (room['name'] ?? 'غرفة صوتية').toString();
   String get _id => (room['roomCode'] ?? room['id'] ?? '').toString();
+  bool get _is24MicLayout =>
+      _roomInfoString(['micLayoutId', 'mic_layout_id'], 'm8') == 'm24';
   String? get _cover {
     final value = room['imageUrl']?.toString();
     return value != null && value.startsWith('https://') ? value : null;
@@ -122,7 +124,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 // below it in normal vertical flow. The listener strip now
                 // follows the actual measured grid height for every layout.
                 _seats(context),
-                const SizedBox(height: 8),
+                SizedBox(height: _is24MicLayout ? 1 : 8),
                 _listeners(context),
                 Expanded(
                   child: Stack(
@@ -135,7 +137,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             // Chat and the room announcement begin below the
                             // microphone grid and listener strip; no fixed
                             // negative offsets or Positioned coordinates.
-                            padding: const EdgeInsets.only(left: 98, top: 8),
+                            padding: EdgeInsets.only(left: 98, top: _is24MicLayout ? 1 : 8),
                             child: SizedBox(
                               width: MediaQuery.sizeOf(context).width * 0.75,
                               child: AnimatedContainer(
@@ -1194,7 +1196,17 @@ Widget _roomActionButton({
         final slot = arrangedCells[index];
         if (slot == null) return const SizedBox.shrink();
         final number = layout.seatNumber(slot);
-        return FittedBox(
+        final rowIndex = index ~/ columns;
+        final verticalOffset = layout.id != 'm24' || rowIndex == 0
+            ? 0.0
+            : rowIndex == 1
+                ? -3.0
+                : rowIndex == 2
+                    ? -6.0
+                    : -12.0;
+        return Transform.translate(
+          offset: Offset(0, verticalOffset),
+          child: FittedBox(
           fit: BoxFit.scaleDown,
           child: Selector<SeatStateStore, SeatState>(
           selector: (context, store) => store.seats[number] ?? SeatState.empty(number),
@@ -1384,6 +1396,7 @@ Widget _roomActionButton({
         );
           },
         ));
+        );
       },
     ),
   );
