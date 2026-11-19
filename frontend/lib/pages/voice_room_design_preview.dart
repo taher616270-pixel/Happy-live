@@ -127,15 +127,17 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     final micLayout = micLayoutById(_roomInfoString(['micLayoutId', 'mic_layout_id'], 'm8'));
                     final columns = micLayout.maxCols;
                     final rows = micLayout.rows.length;
-                    final tileWidth = (constraints.maxWidth - (columns - 1) * 12) / columns;
-                    final seatsHeight = (tileWidth / .88) * rows + 12 * (rows - 1);
+                    // Give every microphone row a stable height so the
+                    // seat widgets cannot be squeezed into square grid cells.
+                    const seatRowHeight = 88.0;
+                    final seatsHeight = seatRowHeight * rows + 12 * (rows - 1);
                     return SizedBox(
                       height: seatsHeight + 43,
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
                           Positioned(
-                            top: seatsHeight + 3,
+                            top: seatsHeight + 8,
                             left: 0,
                             right: 0,
                             child: _listeners(context),
@@ -1226,7 +1228,7 @@ Widget _roomActionButton({
         crossAxisCount: columns,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: .88,
+        mainAxisExtent: 88,
       ),
       itemBuilder: (context, index) {
         final slot = arrangedCells[index];
@@ -1537,11 +1539,7 @@ Widget _roomActionButton({
     );
   }
 
-  Widget _listeners(BuildContext context) => Transform.translate(
-    offset: Theme.of(context).platform == TargetPlatform.android
-        ? const Offset(0, -112)
-        : const Offset(0, -65),
-    child: Container(
+  Widget _listeners(BuildContext context) => Container(
     height: 30,
     margin: const EdgeInsets.symmetric(horizontal: 12),
     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1607,7 +1605,7 @@ Widget _roomActionButton({
         const Icon(Icons.person_outline, color: Colors.white, size: 19),
       ],
     ),
-  ));
+  );
 
   void _openChatComposer(BuildContext context) {
     showGeneralDialog<void>(
