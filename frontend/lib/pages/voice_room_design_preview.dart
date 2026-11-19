@@ -45,6 +45,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.onCloseRoom,
     this.onUpgradeRoom,
     this.onOpenGifts,
+    this.onRoomSettingsChanged,
     required this.chatController,
     required this.chatFocusNode,
     required this.onSendChat,
@@ -73,6 +74,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final VoidCallback? onCloseRoom;
   final Future<void> Function(String roomId, int level)? onUpgradeRoom;
   final VoidCallback? onOpenGifts;
+  final VoidCallback? onRoomSettingsChanged;
   final TextEditingController chatController;
   final FocusNode chatFocusNode;
   final Future<void> Function() onSendChat;
@@ -121,8 +123,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     // The audience strip is painted first so the microphone
                     // seats remain the top hit-test layer where they overlap.
                     final isAndroid = Theme.of(context).platform == TargetPlatform.android;
-                    final tileWidth = (constraints.maxWidth - 36) / 4;
-                    final seatsHeight = (tileWidth / .88) * 2 + 7;
+                    final micCount = _roomInfoInt(['micCount', 'mic_count'], 8).clamp(8, 24).toInt();
+                    final columns = micCount <= 16 ? 4 : 6;
+                    final rows = (micCount / columns).ceil();
+                    final tileWidth = (constraints.maxWidth - (columns - 1) * 12) / columns;
+                    final seatsHeight = (tileWidth / .88) * rows + 12 * (rows - 1);
                     return SizedBox(
                       height: seatsHeight + 43,
                       child: Stack(
@@ -741,7 +746,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 ),
               ),
             ),
-          );
+          ).then((_) => onRoomSettingsChanged?.call());
         },
         onInvite: () {
           Navigator.of(context).pop();
@@ -1201,14 +1206,17 @@ Widget _roomActionButton({
     ),
   );
 
-  Widget _seats(BuildContext context) => Padding(
+  Widget _seats(BuildContext context) {
+    final micCount = _roomInfoInt(['micCount', 'mic_count'], 8).clamp(8, 24).toInt();
+    final columns = micCount <= 16 ? 4 : 6;
+    return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 12),
     child: GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: 8,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
+      itemCount: micCount,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
         childAspectRatio: .88,
@@ -1412,6 +1420,7 @@ Widget _roomActionButton({
       },
     ),
   );
+  }
 
   void _showEmptySeatActions(BuildContext context, int seatNumber) {
     showModalBottomSheet<void>(
