@@ -3037,6 +3037,10 @@ export default {
         }
 
         const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+        await seatHub.fetch(new Request("https://room-seats.internal/set-mic-policy", {
+          method: "POST",
+          headers: { "x-who-mic": String(roomSettings.whoMic ?? "membersOnly") }
+        }));
         if (voiceEnabled) {
           await seatHub.fetch(new Request("https://room-seats.internal/enable", { method: "POST" }));
         }
