@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'models.dart';
+import 'room_settings_api.dart';
 
-class MyWorkersApi {
+class MyWorkersApi implements RoomSettingsApi {
   MyWorkersApi({required this.roomId, required this.accessToken, http.Client? client})
       : _client = client ?? http.Client();
 
@@ -18,6 +19,7 @@ class MyWorkersApi {
 
   Uri get _uri => Uri.parse('$_base/rooms/${Uri.encodeComponent(roomId)}/settings');
 
+  @override
   Future<Map<String, dynamic>> loadSettings() async {
     final response = await _client.get(_uri, headers: _headers).timeout(const Duration(seconds: 15));
     final data = _decode(response);
@@ -28,7 +30,8 @@ class MyWorkersApi {
   }
 
   @override
-  Future<void> updateSetting(String key, Object? value) async {
+  @override
+  Future<void> updateSetting(String key, Object value) async {
     final response = await _client.patch(
       _uri,
       headers: _headers,
@@ -40,6 +43,7 @@ class MyWorkersApi {
     }
   }
 
+  @override
   Future<void> updatePermission(String permissionId, PermissionLevel level, List<String> adminIds) async {
     final response = await _client.patch(
       _uri,
