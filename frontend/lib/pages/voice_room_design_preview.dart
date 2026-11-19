@@ -90,8 +90,16 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
   String get _name => (room['name'] ?? 'غرفة صوتية').toString();
   String get _id => (room['roomCode'] ?? room['id'] ?? '').toString();
-  String get _micLayoutId =>
-      _roomInfoString(['micLayoutId', 'mic_layout_id']).trim().toLowerCase();
+  // Resolve the active layout exactly like _seats(): older room snapshots
+  // may omit micLayoutId and provide only micCount.
+  String get _micLayoutId {
+    final configuredId =
+        _roomInfoString(['micLayoutId', 'mic_layout_id']).trim().toLowerCase();
+    if (configuredId.isNotEmpty) return configuredId;
+    final micCount =
+        int.tryParse(_roomInfoString(['micCount', 'mic_count'], '0')) ?? 0;
+    return micCount > 0 ? 'm$micCount' : 'm8';
+  }
   bool get _is2MicLayout => _micLayoutId == 'm2';
   bool get _is24MicLayout => _micLayoutId == 'm24';
   String? get _cover {
