@@ -1414,6 +1414,7 @@ Widget _roomActionButton({
         );
           },
           ),
+          ),
         );
       },
     ),
