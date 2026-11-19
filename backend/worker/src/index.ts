@@ -2806,7 +2806,12 @@ export default {
           const now = new Date().toISOString();
           const [bans, kicks, muted, logs] = await Promise.all([
             env.DB!.prepare("SELECT b.user_id, COALESCE(p.display_name, 'مستخدم') AS display_name, COALESCE(p.happy_id, '') AS public_id, b.created_at FROM room_bans b LEFT JOIN profiles p ON p.user_id = b.user_id WHERE b.room_id = ? ORDER BY b.created_at DESC").bind(roomId).all(),
-            env.DB!.prepare("SELECT k.user_id, COALESCE(p.display_name, 'مستخدم') AS display_name, COALESCE(p.happy_id, '') AS public_id, k.kicked_until, k.created_at FROM room_kicks k LEFT JOIN profiles p ON p.user_id = k.user_id WHERE k.room_id = ? AND k.kicked_until > ? ORDER BY k.kicked_until DESC").bind(roomId, now).all(),
+            env.DB!.prepare(
+              "SELECT user_id, display_name, public_id, kicked_until, created_at FROM (" +
+              "SELECT k.user_id, COALESCE(p.display_name, 'مستخدم') AS display_name, COALESCE(p.happy_id, '') AS public_id, k.kicked_until, k.created_at FROM room_kicks k LEFT JOIN profiles p ON p.user_id = k.user_id WHERE k.room_id = ? AND k.kicked_until > ? " +
+              "UNION SELECT c.user_id, COALESCE(p.display_name, 'مستخدم'), COALESCE(p.happy_id, ''), c.kicked_until, c.updated_at FROM room_user_controls c LEFT JOIN profiles p ON p.user_id = c.user_id WHERE c.room_id = ? AND c.kicked_until > ?" +
+              ") ORDER BY kicked_until DESC"
+            ).bind(roomId, now, roomId, now).all(),
             env.DB!.prepare("SELECT c.user_id, COALESCE(p.display_name, 'مستخدم') AS display_name, COALESCE(p.happy_id, '') AS public_id, c.updated_at FROM room_user_controls c LEFT JOIN profiles p ON p.user_id = c.user_id WHERE c.room_id = ? AND c.is_muted = 1 ORDER BY c.updated_at DESC").bind(roomId).all(),
             env.DB!.prepare("SELECT l.id, l.action, l.details_json, l.created_at, COALESCE(a.display_name, 'مالك الغرفة') AS actor_name, COALESCE(t.display_name, 'مستخدم') AS target_name, COALESCE(t.happy_id, '') AS target_public_id FROM room_settings_logs l LEFT JOIN profiles a ON a.user_id = l.actor_user_id LEFT JOIN profiles t ON t.user_id = l.target_user_id WHERE l.room_id = ? ORDER BY l.created_at DESC LIMIT 200").bind(roomId).all()
           ]);
@@ -2915,7 +2920,10 @@ export default {
           return json({ ok: true, isMuted: nextMuted === 1 }, 200, origin, env);
         }
         if (action === "unkick") {
-          await env.DB!.prepare("DELETE FROM room_kicks WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId).run();
+          await env.DB!.batch([
+            env.DB!.prepare("DELETE FROM room_kicks WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId),
+            env.DB!.prepare("UPDATE room_user_controls SET kicked_until = NULL, updated_at = ? WHERE room_id = ? AND user_id = ?").bind(now, roomId, targetUserId)
+          ]);
           await env.DB!.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, target_user_id, action, details_json, created_at) VALUES (?, ?, ?, ?, 'unkick', '{}', ?)")
             .bind(crypto.randomUUID(), roomId, actor.id, targetUserId, now).run();
           return json({ ok: true }, 200, origin, env);
