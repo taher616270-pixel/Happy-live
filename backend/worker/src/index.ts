@@ -2691,6 +2691,8 @@ export default {
           await env.DB.prepare(
             "INSERT INTO room_settings (room_id, settings_json, permissions_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at"
           ).bind(roomId, JSON.stringify(settings), JSON.stringify(permissions), now).run();
+          await env.DB.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, action, details_json, created_at) VALUES (?, ?, ?, 'setting.update', ?, ?)")
+            .bind(crypto.randomUUID(), roomId, actor.id, JSON.stringify({ key, value }), now).run();
           return json({ ok: true, key, value }, 200, origin, env);
         }
 
@@ -2712,6 +2714,8 @@ export default {
           await env.DB.prepare(
             "INSERT INTO room_settings (room_id, settings_json, permissions_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET permissions_json = excluded.permissions_json, updated_at = excluded.updated_at"
           ).bind(roomId, JSON.stringify(settings), JSON.stringify(permissions), now).run();
+          await env.DB.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, action, details_json, created_at) VALUES (?, ?, ?, 'permission.update', ?, ?)")
+            .bind(crypto.randomUUID(), roomId, actor.id, JSON.stringify({ permissionId, level, adminIds }), now).run();
           return json({ ok: true, permissionId, level, adminIds }, 200, origin, env);
         }
         return json({ error: "invalid_room_settings_payload" }, 400, origin, env);
