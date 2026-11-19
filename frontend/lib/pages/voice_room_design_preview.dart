@@ -1210,11 +1210,6 @@ Widget _roomActionButton({
   Widget _seats(BuildContext context) {
     final layout = micLayoutById(_roomInfoString(['micLayoutId', 'mic_layout_id'], 'm8'));
     final columns = layout.maxCols;
-    final cells = <MicSeat?>[
-      for (final row in layout.rows) ...row,
-      for (final row in layout.rows)
-        ...List<MicSeat?>.filled(columns - row.length, null),
-    ];
     // Preserve each row's own alignment by building a padded row-major list.
     final arrangedCells = <MicSeat?>[];
     for (final row in layout.rows) {
@@ -1256,9 +1251,12 @@ Widget _roomActionButton({
         final isSpeaking = occupied && !muted && voiceLevel >=
             (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
         final isAndroid = Theme.of(context).platform == TargetPlatform.android;
-        final seatOffset = isAndroid
-            ? (number <= 4 ? 2.0 : -12.0)
-            : (number <= 4 ? -5.0 : -21.0);
+        final isDefaultEight = layout.id == 'm8';
+        final seatOffset = !isDefaultEight
+            ? 0.0
+            : isAndroid
+                ? (number <= 4 ? 2.0 : -12.0)
+                : (number <= 4 ? -5.0 : -21.0);
         return Transform.translate(
           offset: Offset(0, seatOffset + (isAndroid ? 0 : 5)),
           child: Transform.translate(
@@ -1266,7 +1264,7 @@ Widget _roomActionButton({
             child: Align(
               alignment: Alignment.topCenter,
               child: Transform.translate(
-                offset: number == 5 ? const Offset(5, 0) : Offset.zero,
+                offset: isDefaultEight && number == 5 ? const Offset(5, 0) : Offset.zero,
                 child: GestureDetector(
                 // Do not let the full seat rectangle block taps on listener
                 // avatars painted underneath the transparent/empty seat area.
@@ -1276,7 +1274,7 @@ Widget _roomActionButton({
                   width: 72,
                   height: number == 5 ? 82 : 72,
                   child: Transform.translate(
-                    offset: Offset(number == 5 ? -5 : 0, number > 4 ? 5 : 0),
+                    offset: Offset(isDefaultEight && number == 5 ? -5 : 0, isDefaultEight && number > 4 ? 5 : 0),
                     transformHitTests: false,
                     child: Column(
                     mainAxisSize: MainAxisSize.min,
