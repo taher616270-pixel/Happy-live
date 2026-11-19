@@ -127,23 +127,18 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 // follows the actual measured grid height for every layout.
                 _seats(context),
                 const SizedBox(height: 1),
-                Transform.translate(
-                  offset: const Offset(0, -4),
-                  child: _listeners(context),
-                ),
+                _listeners(context),
+                const SizedBox(height: 2),
                 Expanded(
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
                       if (chatMessagesPanel != null)
-                        Transform.translate(
-                          offset: const Offset(0, -4),
-                          child: Align(
-                            alignment: Alignment.topRight,
-                            child: Padding(
-                              // Move the chat panel upward together with the listener strip.
-                              padding: const EdgeInsets.only(left: 98, top: 2),
-                              child: SizedBox(
+                        Align(
+                          alignment: Alignment.topRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 98),
+                            child: SizedBox(
                               width: MediaQuery.sizeOf(context).width * 0.75,
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 220),
@@ -161,7 +156,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 ),
                               ),
                               ),
-                            ),
                           ),
                         ),
                       Positioned(
@@ -1228,17 +1222,15 @@ Widget _roomActionButton({
         if (slot == null) return const SizedBox.shrink();
         final number = layout.seatNumber(slot);
         final rowIndex = index ~/ columns;
-        // Raise each lower row independently in the 24-mic layout:
+        // Raise microphone groups by their seat numbers in every layout:
         // seats 7–12 by 3px, 13–18 by 6px, and 19–24 by 12px.
-        final verticalOffset = !is24SeatLayout
-            ? 0.0
-            : rowIndex == 1
-                ? -3.0
-                : rowIndex == 2
-                    ? -6.0
-                    : rowIndex == 3
-                        ? -12.0
-                        : 0.0;
+        final verticalOffset = number >= 19
+            ? -12.0
+            : number >= 13
+                ? -6.0
+                : number >= 7
+                    ? -3.0
+                    : 0.0;
         return Transform.translate(
           offset: Offset(0, verticalOffset),
           child: FittedBox(
