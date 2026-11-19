@@ -6,7 +6,7 @@ class EditTextPage extends StatefulWidget {
   final String title;
   final String initial;
   final int maxLength;
-  final ValueChanged<String> onSave;
+  final Future<void> Function(String) onSave;
   const EditTextPage({super.key, required this.title, required this.initial, required this.maxLength, required this.onSave});
   @override
   State<EditTextPage> createState() => _EditTextPageState();
@@ -29,7 +29,7 @@ class _EditTextPageState extends State<EditTextPage> {
       const SizedBox(height: 22),
       PrimaryButton(label: saving ? 'جارٍ الحفظ' : 'حفظ', onTap: t.text.trim().isEmpty || saving ? null : () async {
         setState(() => saving = true);
-        try { widget.onSave(t.text.trim()); if (context.mounted) { Navigator.pop(context); showRsToast(context, 'تم بنجاح'); } }
+        try { await widget.onSave(t.text.trim()); if (context.mounted) { Navigator.pop(context); showRsToast(context, 'تم بنجاح'); } }
         catch (e) { if (context.mounted) showRsToast(context, e.toString().replaceFirst('Exception: ', '')); }
         finally { if (mounted) setState(() => saving = false); }
       }),
