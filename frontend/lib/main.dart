@@ -1477,6 +1477,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
   @override
   void dispose() {
     GlobalGiftEvents.instance.disconnect();
+    CannonConfig.setAuthToken('');
     super.dispose();
   }
 
