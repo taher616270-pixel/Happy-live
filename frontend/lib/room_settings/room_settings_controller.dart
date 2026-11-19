@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'models.dart';
@@ -123,11 +124,28 @@ class RoomSettingsController extends ChangeNotifier {
         final action = (row['action'] ?? '').toString();
         final actor = (row['actor_name'] ?? 'مشرف').toString();
         final target = (row['target_name'] ?? 'مستخدم').toString();
+        Map<String, dynamic> details = {};
+        try {
+          final decoded = jsonDecode((row['details_json'] ?? '{}').toString());
+          if (decoded is Map) details = Map<String, dynamic>.from(decoded);
+        } catch (_) {}
         final category = switch (action) {
           'kick' || 'unkick' || 'ban' || 'unban' => 'طرد',
           'mute' || 'unmute' => 'كتم',
           'assign_moderator' || 'remove_moderator' => 'تعيين الأدوار',
           _ => 'عمليات أخرى',
+        };
+        const settingLabels = {
+          'name': 'اسم الغرفة',
+          'announcement': 'إعلان الغرفة',
+          'coverUrl': 'غلاف الغرفة',
+          'seats': 'عدد المقاعد',
+          'micRequestMode': 'طلب المايك',
+          'autoGames': 'الألعاب النارية التلقائية',
+          'whoEnter': 'صلاحية دخول الغرفة',
+          'whoMic': 'صلاحية المايك',
+          'whoChat': 'صلاحية الدردشة',
+          'whoLuck': 'صلاحية حقيبة الحظ',
         };
         final text = switch (action) {
           'kick' => 'تم طرد $target مؤقتًا',
@@ -138,6 +156,8 @@ class RoomSettingsController extends ChangeNotifier {
           'unmute' => 'تم إلغاء كتم $target',
           'assign_moderator' => 'تم تعيين $target مشرفًا',
           'remove_moderator' => 'تمت إزالة $target من المشرفين',
+          'setting.update' => 'تم تحديث إعداد الغرفة: ${settingLabels[details['key']?.toString()] ?? details['key'] ?? 'إعداد'}',
+          'permission.update' => 'تم تحديث صلاحية المشرف: ${details['permissionId'] ?? ''}',
           _ => 'إجراء على $target',
         };
         final date = DateTime.tryParse((row['created_at'] ?? '').toString())?.toLocal();
