@@ -2083,6 +2083,8 @@ export default {
           "INSERT INTO room_announcements (room_id, announcement, updated_at) VALUES (?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET announcement = excluded.announcement, updated_at = excluded.updated_at"
         ).bind(roomId, announcement, updatedAt).run();
         const now = new Date().toISOString();
+        await env.DB!.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, action, details_json, created_at) VALUES (?, ?, ?, 'setting.update', ?, ?)")
+          .bind(crypto.randomUUID(), roomId, user.id, JSON.stringify({ key: "announcement", value: announcement }), now).run();
         const announcementMessage = {
           id: crypto.randomUUID(), userId: user.id,
           name: user.display_name?.trim() || "مالك الغرفة",
