@@ -27,12 +27,12 @@ class _CannonPainter extends CustomPainter {
   _CannonPainter(this.level);
 
   static const _palettes = <List<Color>>[
-    [Color(0xFF1F9A5C), Color(0xFF0B4D2C)],
-    [Color(0xFF8A5CC8), Color(0xFF3A1F66)],
-    [Color(0xFF3F74E0), Color(0xFF142C6B)],
-    [Color(0xFF2A2A2E), Color(0xFF08080A)],
+    [Color(0xFF64E7C5), Color(0xFF126A62)],
+    [Color(0xFF8FE9E0), Color(0xFF245A70)],
+    [Color(0xFFFFD98A), Color(0xFF95652B)],
+    [Color(0xFFB6C8D0), Color(0xFF263A49)],
   ];
-  static const _gold = [Color(0xFFFFE08A), Color(0xFFB8791B)];
+  static const _gold = [Color(0xFFFFF0B8), Color(0xFFD5A64E), Color(0xFF8C642A)];
 
   @override
   void paint(Canvas canvas, Size s) {
@@ -50,10 +50,10 @@ class _CannonPainter extends CustomPainter {
       for (var i = 0; i < 8; i++) {
         final a = i * math.pi / 4;
         canvas.drawLine(c, c + Offset(math.cos(a), math.sin(a)) * r,
-          Paint()..color = const Color(0xFFE0A93C)..strokeWidth = w * 0.012);
+          Paint()..color = const Color(0xFFBCEFE4)..strokeWidth = w * 0.012);
       }
       canvas.drawCircle(c, r, rim);
-      canvas.drawCircle(c, r * 0.18, Paint()..color = const Color(0xFFFFD66B));
+      canvas.drawCircle(c, r * 0.18, Paint()..color = const Color(0xFFFFE5A0));
     }
 
     wheel(Offset(w * 0.40, w * 0.74), w * 0.17);
