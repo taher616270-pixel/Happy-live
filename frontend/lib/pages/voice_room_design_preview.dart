@@ -90,10 +90,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
   String get _name => (room['name'] ?? 'غرفة صوتية').toString();
   String get _id => (room['roomCode'] ?? room['id'] ?? '').toString();
-  bool get _is24MicLayout =>
-      _roomInfoString(['micLayoutId', 'mic_layout_id'])
-          .trim()
-          .toLowerCase() == 'm24';
+  String get _micLayoutId =>
+      _roomInfoString(['micLayoutId', 'mic_layout_id']).trim().toLowerCase();
+  bool get _is2MicLayout => _micLayoutId == 'm2';
+  bool get _is24MicLayout => _micLayoutId == 'm24';
   String? get _cover {
     final value = room['imageUrl']?.toString();
     return value != null && value.startsWith('https://') ? value : null;
@@ -128,7 +128,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 _seats(context),
                 const SizedBox(height: 1),
                 Transform.translate(
-                  offset: const Offset(0, -28),
+                  // Move the listener strip down 4px only in the 2-mic layout.
+                  offset: Offset(0, _is2MicLayout ? -24 : -28),
                   child: _listeners(context),
                 ),
                 const SizedBox(height: 2),
@@ -148,7 +149,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 curve: Curves.easeOutCubic,
                                 transform: Matrix4.translationValues(
                                   0,
-                                  -25 - MediaQuery.viewInsetsOf(context).bottom,
+                                  (_is2MicLayout ? -21 : -25) -
+                                      MediaQuery.viewInsetsOf(context).bottom,
                                   0,
                                 ),
                                 child: Container(
