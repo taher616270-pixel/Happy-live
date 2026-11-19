@@ -2611,8 +2611,8 @@ export default {
         if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = roomSettingsRoute[1];
         const room = await env.DB.prepare(
-          "SELECT id, owner_user_id, name, status FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
-        ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; status: string }>();
+          "SELECT id, owner_user_id, name, image_url, status FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; image_url: string | null; status: string }>();
         if (!room) return json({ error: "room_not_found", message: "الغرفة غير موجودة" }, 404, origin, env);
         if (room.owner_user_id !== actor.id) return json({ error: "room_owner_required", message: "إعدادات الغرفة متاحة للمالك فقط" }, 403, origin, env);
 
@@ -2636,6 +2636,7 @@ export default {
             settings: {
               ...settings,
               name: room.name,
+              coverUrl: room.image_url ?? "",
               announcement: announcement?.announcement ?? "",
               seats: Number(settings.seats ?? 8),
               micRequestMode: String(settings.micRequestMode ?? "إغلاق"),
@@ -2676,8 +2677,15 @@ export default {
             if (key === "micRequestMode" && !["إغلاق", "تفعيل"].includes(String(value))) return json({ error: "invalid_mic_request_mode" }, 400, origin, env);
             if (key === "autoGames" && typeof value !== "boolean") return json({ error: "invalid_boolean_setting" }, 400, origin, env);
             if (["whoEnter", "whoMic", "whoChat", "whoLuck"].includes(key) && !["everyone", "membersOnly", "ownerAndAdmins"].includes(String(value))) return json({ error: "invalid_audience" }, 400, origin, env);
-            if (key === "coverUrl" && value != null && value !== "" && !isSafeExternalHttpsUrl(String(value))) return json({ error: "invalid_cover_url" }, 400, origin, env);
-            settings[key] = value;
+            if (key === "coverUrl") {
+              const coverUrl = value == null ? "" : String(value).trim();
+              if (coverUrl && !isSafeExternalHttpsUrl(coverUrl)) return json({ error: "invalid_cover_url" }, 400, origin, env);
+              await env.DB.prepare("UPDATE rooms SET image_url = ?, updated_at = ? WHERE id = ? AND owner_user_id = ?")
+                .bind(coverUrl || null, new Date().toISOString(), roomId, actor.id).run();
+              settings.coverUrl = coverUrl;
+            } else {
+              settings[key] = value;
+            }
           }
           const now = new Date().toISOString();
           await env.DB.prepare(
@@ -2715,7 +2723,7 @@ export default {
 
     // Room moderation: room owners and explicitly assigned room moderators only.
     const moderationRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/moderation$/);
-    if (moderationRoute && request.method === "POST") {
+    if (moderationRoute && (request.method === "GET" || request.method === "POST")) {
       if (!env.DB || !env.ROOM_SEATS) return json({ error: "room_moderation_unavailable" }, 503, origin, env);
       try {
         const actor = await authenticatedUser(request, env.DB);
@@ -2725,6 +2733,17 @@ export default {
           "SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        if (request.method === "GET") {
+          if (room.owner_user_id !== actor.id) return json({ error: "room_owner_required", message: "هذه البيانات متاحة لمالك الغرفة فقط" }, 403, origin, env);
+          const now = new Date().toISOString();
+          const [bans, kicks, muted, logs] = await Promise.all([
+            env.DB!.prepare("SELECT b.user_id, COALESCE(p.display_name, 'مستخدم') AS display_name, COALESCE(p.happy_id, '') AS public_id, b.created_at FROM room_bans b LEFT JOIN profiles p ON p.user_id = b.user_id WHERE b.room_id = ? ORDER BY b.created_at DESC").bind(roomId).all(),
+            env.DB!.prepare("SELECT k.user_id, COALESCE(p.display_name, 'مستخدم') AS display_name, COALESCE(p.happy_id, '') AS public_id, k.kicked_until, k.created_at FROM room_kicks k LEFT JOIN profiles p ON p.user_id = k.user_id WHERE k.room_id = ? AND k.kicked_until > ? ORDER BY k.kicked_until DESC").bind(roomId, now).all(),
+            env.DB!.prepare("SELECT c.user_id, COALESCE(p.display_name, 'مستخدم') AS display_name, COALESCE(p.happy_id, '') AS public_id, c.updated_at FROM room_user_controls c LEFT JOIN profiles p ON p.user_id = c.user_id WHERE c.room_id = ? AND c.is_muted = 1 ORDER BY c.updated_at DESC").bind(roomId).all(),
+            env.DB!.prepare("SELECT l.id, l.action, l.details_json, l.created_at, COALESCE(a.display_name, 'مالك الغرفة') AS actor_name, COALESCE(t.display_name, 'مستخدم') AS target_name, COALESCE(t.happy_id, '') AS target_public_id FROM room_settings_logs l LEFT JOIN profiles a ON a.user_id = l.actor_user_id LEFT JOIN profiles t ON t.user_id = l.target_user_id WHERE l.room_id = ? ORDER BY l.created_at DESC LIMIT 200").bind(roomId).all()
+          ]);
+          return json({ ok: true, bans: bans.results ?? [], kicks: kicks.results ?? [], muted: muted.results ?? [], logs: logs.results ?? [] }, 200, origin, env);
+        }
         let body: Record<string, unknown>;
         try { body = await request.json() as Record<string, unknown>; }
         catch { return json({ error: "invalid_json" }, 400, origin, env); }
@@ -2742,7 +2761,7 @@ export default {
           if (current?.is_muted === 1 && current.muted_by && current.muted_by !== actor.id) {
             return json({ error: "moderator_muted", message: "تم كتم مايكك بواسطة إدارة الغرفة" }, 403, origin, env);
           }
-          const nextMuted = current?.is_muted === 1 ? 0 : 1;
+          const nextMuted = action === "unmute" ? 0 : (current?.is_muted === 1 ? 0 : 1);
           await env.DB!.prepare(
             "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, NULL, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = NULL, updated_at = excluded.updated_at"
           ).bind(roomId, actor.id, nextMuted, new Date().toISOString()).run();
@@ -2755,9 +2774,9 @@ export default {
         }
         if (!canModerate) return json({ error: "room_moderator_required", message: "هذه الصلاحية لمالك الغرفة ومشرفيها فقط" }, 403, origin, env);
         if (!isOwner) {
-          const permissionId = action === "toggle_mute" ? "mute"
+          const permissionId = action === "toggle_mute" || action === "unmute" ? "mute"
             : action === "kick" ? "kick"
-            : action === "ban" ? "blacklist"
+            : action === "ban" || action === "unban" ? "blacklist"
             : action === "lower" ? "super"
             : null;
           if (permissionId) {
@@ -2800,7 +2819,7 @@ export default {
           }));
           return json({ ok: true }, 200, origin, env);
         }
-        if (!["toggle_mute", "kick", "ban", "lower"].includes(action) || !targetUserId || targetUserId === room.owner_user_id) {
+        if (!["toggle_mute", "kick", "ban", "lower", "unmute", "unban"].includes(action) || !targetUserId || targetUserId === room.owner_user_id) {
           return json({ error: "invalid_moderation_action" }, 400, origin, env);
         }
         const targetModerator = await env.DB!.prepare(
@@ -2808,7 +2827,7 @@ export default {
         ).bind(roomId, targetUserId).first<{ user_id: string }>();
         if (targetModerator) return json({ error: "cannot_moderate_room_moderator", message: "لا يمكن تنفيذ الإجراء على مشرف الغرفة" }, 403, origin, env);
         const now = new Date().toISOString();
-        if (action === "toggle_mute") {
+        if (action === "toggle_mute" || action === "unmute") {
           const current = await env.DB!.prepare(
             "SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ?"
           ).bind(roomId, targetUserId).first<{ is_muted: number }>();
@@ -2821,7 +2840,15 @@ export default {
             method: "POST",
             headers: { "x-target-user-id": targetUserId, "x-is-muted": nextMuted === 1 ? "true" : "false" }
           }));
+          await env.DB!.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, target_user_id, action, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+            .bind(crypto.randomUUID(), roomId, actor.id, targetUserId, nextMuted === 1 ? "mute" : "unmute", "{}", now).run();
           return json({ ok: true, isMuted: nextMuted === 1 }, 200, origin, env);
+        }
+        if (action === "unban") {
+          await env.DB!.prepare("DELETE FROM room_bans WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId).run();
+          await env.DB!.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, target_user_id, action, details_json, created_at) VALUES (?, ?, ?, ?, 'unban', '{}', ?)")
+            .bind(crypto.randomUUID(), roomId, actor.id, targetUserId, now).run();
+          return json({ ok: true }, 200, origin, env);
         }
         if (action === "kick" || action === "ban" || action === "lower") {
           await env.DB!.prepare("DELETE FROM room_seats WHERE room_id = ? AND user_id = ?").bind(roomId, targetUserId).run();
@@ -2841,6 +2868,8 @@ export default {
               "INSERT INTO room_bans (room_id, user_id, banned_by, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET banned_by = excluded.banned_by, created_at = excluded.created_at"
             ).bind(roomId, targetUserId, actor.id, now).run();
           }
+          await env.DB!.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, target_user_id, action, details_json, created_at) VALUES (?, ?, ?, ?, ?, '{}', ?)")
+            .bind(crypto.randomUUID(), roomId, actor.id, targetUserId, action, now).run();
           const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
           await seatHub.fetch(new Request("https://room-seats.internal/remove-user", {
             method: "POST",
