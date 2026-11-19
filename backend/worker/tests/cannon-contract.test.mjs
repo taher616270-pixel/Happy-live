@@ -29,6 +29,7 @@ test("cannon energy uses only server-confirmed successful gift transactions", ()
 
 test("cannon client identity comes from the bearer session, not a user id parameter", () => {
   assert.match(cannon, /authenticateUser\(request, db\)/);
+  assert.match(cannon, /room_chat_visits WHERE room_id=\? AND user_id=\? AND exited_at IS NULL AND last_seen_at>=\?/);
   assert.doesNotMatch(cannonApi, /user_id|userId\(\)/);
   assert.match(cannonApi, /queryParameters: \{\s*'room_id': roomId\s*\}/);
   assert.match(cannon, /claim_id/);
