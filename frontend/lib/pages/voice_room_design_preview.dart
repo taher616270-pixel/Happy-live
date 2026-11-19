@@ -755,9 +755,15 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   }
 
   Widget _header(BuildContext context) {
-    final avatar = (ownerAvatarUrl.trim().isNotEmpty
-        ? ownerAvatarUrl.trim()
-        : (room['ownerAvatar'] ?? room['ownerAvatarUrl'] ?? '').toString().trim());
+    // The room tile is the room cover, not the owner's profile photo.
+    // New rooms receive a one-time owner-avatar default from the API; after
+    // that, changing the cover never changes the owner's personal avatar.
+    final roomCover = _roomInfoString(['imageUrl', 'image_url', 'coverUrl', 'cover_url']);
+    final avatar = roomCover.startsWith('https://')
+        ? roomCover
+        : (ownerAvatarUrl.trim().isNotEmpty
+            ? ownerAvatarUrl.trim()
+            : (room['ownerAvatar'] ?? room['ownerAvatarUrl'] ?? '').toString().trim());
     final trophies = (room['trophies'] ?? room['trophyCount'] ?? 0).toString();
     return Transform.translate(
       offset: Theme.of(context).platform == TargetPlatform.android
