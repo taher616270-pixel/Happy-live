@@ -2116,6 +2116,30 @@ class _RoomPageState extends State<RoomPage> {
     return null;
   }
 
+  Future<void> _openCannonBannerRoom(String targetRoomId) async {
+    final id = targetRoomId.trim();
+    if (id.isEmpty || id == _roomId || widget.accessToken.trim().isEmpty) return;
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(id)}/seats'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 12));
+      final payload = jsonDecode(response.body);
+      if (response.statusCode != 200 || payload is! Map || payload['room'] is! Map) {
+        _showMessage('تعذر فتح الغرفة المطلوبة من بنر المدفع');
+        return;
+      }
+      final targetRoom = Map<String, dynamic>.from(payload['room'] as Map);
+      targetRoom['id'] ??= id;
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => RoomPage(room: targetRoom, accessToken: widget.accessToken),
+      ));
+    } catch (_) {
+      if (mounted) _showMessage('تعذر الاتصال بالغرفة المطلوبة');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isMinimized) {
@@ -2175,6 +2199,7 @@ class _RoomPageState extends State<RoomPage> {
       onCloseRoom: _closeRoom,
       onUpgradeRoom: upgradeRoom,
       onOpenGifts: _openRoomGiftPicker,
+      onOpenCannonRoom: _openCannonBannerRoom,
       onRoomSettingsChanged: _refreshSeats,
           ),
         ),        if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
