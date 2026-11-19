@@ -2728,7 +2728,7 @@ export default {
               "INSERT INTO room_announcements (room_id, announcement, updated_at) VALUES (?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET announcement = excluded.announcement, updated_at = excluded.updated_at"
             ).bind(roomId, announcement, now).run();
           } else if (key === "micLayoutId") {
-            const layoutCounts: Record<string, number> = { m2: 2, m8: 8, m10: 10, m12: 12, m14: 14, m16: 16, m20: 20, m24: 24, m10b: 10, m10c: 10 };
+            const layoutCounts: Record<string, number> = { m2: 2, m8: 8, m10: 10, m12: 12, m14: 14, m15: 15, m16: 16, m20: 20, m24: 24, m10b: 10, m10c: 10 };
             const layoutId = String(value ?? "");
             if (!Object.prototype.hasOwnProperty.call(layoutCounts, layoutId)) return json({ error: "invalid_mic_layout" }, 400, origin, env);
             settings.micLayoutId = layoutId;
@@ -2738,7 +2738,7 @@ export default {
             if (!allowedKeys.has(key)) return json({ error: "unsupported_room_setting" }, 400, origin, env);
             if (key === "seats") {
               const count = Number(value);
-              if (![2, 8, 10, 12, 14, 16, 20, 24].includes(count)) return json({ error: "invalid_seat_count", message: "عدد المايكات غير مدعوم" }, 400, origin, env);
+              if (![2, 8, 10, 12, 14, 15, 16, 20, 24].includes(count)) return json({ error: "invalid_seat_count", message: "عدد المايكات غير مدعوم" }, 400, origin, env);
               settings.micLayoutId = "m" + count;
             }
             if (key === "micRequestMode" && !["إغلاق", "تفعيل"].includes(String(value))) return json({ error: "invalid_mic_request_mode" }, 400, origin, env);
