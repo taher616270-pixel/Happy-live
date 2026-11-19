@@ -18,6 +18,7 @@ class CannonService extends ChangeNotifier {
   bool _firstLoad = true;
   bool _roomRequestInFlight = false;
   bool _bannerRequestInFlight = false;
+  bool isUnavailable = false;
 
   final StreamController<CannonState> _launchCtrl = StreamController<CannonState>.broadcast();
   Stream<CannonState> get onLaunch => _launchCtrl.stream;
@@ -28,6 +29,7 @@ class CannonService extends ChangeNotifier {
     _roomTimer?.cancel();
     currentRoomId = roomId;
     state = null;
+    isUnavailable = false;
     _lastLaunchId = '';
     _firstLoad = true;
     refreshNow();
@@ -50,7 +52,13 @@ class CannonService extends ChangeNotifier {
     _roomRequestInFlight = true;
     try {
       final s = await CannonApi.fetchState(id);
-      if (s == null || currentRoomId != id) return;
+      if (currentRoomId != id) return;
+      if (s == null) {
+        isUnavailable = true;
+        notifyListeners();
+        return;
+      }
+      isUnavailable = false;
       if (!_firstLoad && s.launching && s.launchId.isNotEmpty && s.launchId != _lastLaunchId) {
         _launchCtrl.add(s);
       }
