@@ -2601,6 +2601,118 @@ export default {
         return json({ error: "room_upgrade_failed", message: "تعذر تنفيذ ترقية الغرفة" }, 500, origin, env);
       }
     }
+
+    // Owner-only room settings API. Settings and moderator permission rules are stored per room.
+    const roomSettingsRoute = url.pathname.match(/^\\/api\\/v1\\/rooms\\/([0-9a-f-]{36})\\/settings$/i);
+    if (roomSettingsRoute && (request.method === "GET" || request.method === "PATCH")) {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const actor = await authenticatedUser(request, env.DB);
+        if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
+        const roomId = roomSettingsRoute[1];
+        const room = await env.DB.prepare(
+          "SELECT id, owner_user_id, name, status FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; status: string }>();
+        if (!room) return json({ error: "room_not_found", message: "الغرفة غير موجودة" }, 404, origin, env);
+        if (room.owner_user_id !== actor.id) return json({ error: "room_owner_required", message: "إعدادات الغرفة متاحة للمالك فقط" }, 403, origin, env);
+
+        const saved = await env.DB.prepare(
+          "SELECT settings_json, permissions_json FROM room_settings WHERE room_id = ? LIMIT 1"
+        ).bind(roomId).first<{ settings_json: string; permissions_json: string }>();
+        let settings: Record<string, unknown> = {};
+        let permissions: Record<string, unknown> = {};
+        try { settings = saved?.settings_json ? JSON.parse(saved.settings_json) as Record<string, unknown> : {}; } catch { settings = {}; }
+        try { permissions = saved?.permissions_json ? JSON.parse(saved.permissions_json) as Record<string, unknown> : {}; } catch { permissions = {}; }
+
+        if (request.method === "GET") {
+          const [announcement, moderators] = await Promise.all([
+            env.DB.prepare("SELECT announcement FROM room_announcements WHERE room_id = ? LIMIT 1").bind(roomId).first<{ announcement: string }>(),
+            env.DB.prepare(
+              "SELECT m.user_id, COALESCE(p.display_name, '') AS display_name, COALESCE(p.gabo_id, '') AS public_id FROM room_moderators m LEFT JOIN profiles p ON p.user_id = m.user_id WHERE m.room_id = ? ORDER BY m.created_at ASC"
+            ).bind(roomId).all<{ user_id: string; display_name: string; public_id: string }>()
+          ]);
+          return json({
+            ok: true,
+            settings: {
+              ...settings,
+              name: room.name,
+              announcement: announcement?.announcement ?? "",
+              seats: Number(settings.seats ?? 8),
+              micRequestMode: String(settings.micRequestMode ?? "إغلاق"),
+              autoGames: settings.autoGames !== false,
+              whoEnter: String(settings.whoEnter ?? "everyone"),
+              whoMic: String(settings.whoMic ?? "membersOnly"),
+              whoChat: String(settings.whoChat ?? "everyone"),
+              whoLuck: String(settings.whoLuck ?? "everyone")
+            },
+            permissions,
+            admins: moderators.results ?? []
+          }, 200, origin, env);
+        }
+
+        let body: Record<string, unknown>;
+        try { body = await request.json() as Record<string, unknown>; }
+        catch { return json({ error: "invalid_json" }, 400, origin, env); }
+
+        if (typeof body.key === "string") {
+          const key = body.key;
+          const value = body.value;
+          if (key === "name") {
+            const name = String(value ?? "").trim();
+            if (!name || name.length > 30) return json({ error: "invalid_room_name", message: "اسم الغرفة يجب أن يكون من 1 إلى 30 حرفًا" }, 400, origin, env);
+            await env.DB.prepare("UPDATE rooms SET name = ?, updated_at = ? WHERE id = ? AND owner_user_id = ?")
+              .bind(name, new Date().toISOString(), roomId, actor.id).run();
+          } else if (key === "announcement") {
+            const announcement = String(value ?? "").trim();
+            if (announcement.length > 200) return json({ error: "invalid_announcement", message: "الإعلان لا يتجاوز 200 حرف" }, 400, origin, env);
+            const now = new Date().toISOString();
+            await env.DB.prepare(
+              "INSERT INTO room_announcements (room_id, announcement, updated_at) VALUES (?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET announcement = excluded.announcement, updated_at = excluded.updated_at"
+            ).bind(roomId, announcement, now).run();
+          } else {
+            const allowedKeys = new Set(["seats", "micRequestMode", "autoGames", "whoEnter", "whoMic", "whoChat", "whoLuck", "coverUrl"]);
+            if (!allowedKeys.has(key)) return json({ error: "unsupported_room_setting" }, 400, origin, env);
+            if (key === "seats" && ![8, 10, 12, 14, 16, 20, 24].includes(Number(value))) return json({ error: "invalid_seat_count" }, 400, origin, env);
+            if (key === "micRequestMode" && !["إغلاق", "تفعيل"].includes(String(value))) return json({ error: "invalid_mic_request_mode" }, 400, origin, env);
+            if (key === "autoGames" && typeof value !== "boolean") return json({ error: "invalid_boolean_setting" }, 400, origin, env);
+            if (["whoEnter", "whoMic", "whoChat", "whoLuck"].includes(key) && !["everyone", "membersOnly", "ownerAndAdmins"].includes(String(value))) return json({ error: "invalid_audience" }, 400, origin, env);
+            if (key === "coverUrl" && value != null && value !== "" && !isSafeExternalHttpsUrl(String(value))) return json({ error: "invalid_cover_url" }, 400, origin, env);
+            settings[key] = value;
+          }
+          const now = new Date().toISOString();
+          await env.DB.prepare(
+            "INSERT INTO room_settings (room_id, settings_json, permissions_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at"
+          ).bind(roomId, JSON.stringify(settings), JSON.stringify(permissions), now).run();
+          return json({ ok: true, key, value }, 200, origin, env);
+        }
+
+        if (typeof body.permissionId === "string") {
+          const permissionId = body.permissionId;
+          const allowedPermissions = new Set(["bg", "chat_delete", "room_lock", "seat_count", "mic_lock", "others_mic", "invite_seat", "mic_requests", "features", "events", "fireworks", "mute", "kick", "blacklist", "members", "super"]);
+          const level = String(body.level ?? "");
+          const adminIds = Array.isArray(body.adminIds) ? body.adminIds.map((id) => String(id)) : [];
+          if (!allowedPermissions.has(permissionId) || !["ownerOnly", "allAdmins", "selectedAdmins"].includes(level)) return json({ error: "invalid_permission" }, 400, origin, env);
+          if (level === "selectedAdmins" && adminIds.length === 0) return json({ error: "selected_admins_required", message: "حدد مشرفًا واحدًا على الأقل" }, 400, origin, env);
+          if (adminIds.length > 100 || new Set(adminIds).size !== adminIds.length) return json({ error: "invalid_admin_list" }, 400, origin, env);
+          if (adminIds.length) {
+            const currentAdmins = await env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ?").bind(roomId).all<{ user_id: string }>();
+            const validIds = new Set((currentAdmins.results ?? []).map((row) => row.user_id));
+            if (adminIds.some((id) => !validIds.has(id))) return json({ error: "invalid_room_moderator", message: "تحتوي القائمة على مشرف غير معيّن في هذه الغرفة" }, 400, origin, env);
+          }
+          permissions[permissionId] = { level, adminIds: level === "selectedAdmins" ? adminIds : [] };
+          const now = new Date().toISOString();
+          await env.DB.prepare(
+            "INSERT INTO room_settings (room_id, settings_json, permissions_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET permissions_json = excluded.permissions_json, updated_at = excluded.updated_at"
+          ).bind(roomId, JSON.stringify(settings), JSON.stringify(permissions), now).run();
+          return json({ ok: true, permissionId, level, adminIds }, 200, origin, env);
+        }
+        return json({ error: "invalid_room_settings_payload" }, 400, origin, env);
+      } catch (error) {
+        console.error("[rooms.settings] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "room_settings_failed", message: "تعذر حفظ إعدادات الغرفة" }, 500, origin, env);
+      }
+    }
+
     // Room moderation: room owners and explicitly assigned room moderators only.
     const moderationRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/moderation$/);
     if (moderationRoute && request.method === "POST") {
