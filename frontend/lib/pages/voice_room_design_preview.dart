@@ -127,20 +127,23 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 // follows the actual measured grid height for every layout.
                 _seats(context),
                 const SizedBox(height: 1),
-                _listeners(context),
+                Transform.translate(
+                  offset: const Offset(0, -4),
+                  child: _listeners(context),
+                ),
                 Expanded(
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
                       if (chatMessagesPanel != null)
-                        Align(
-                          alignment: Alignment.topRight,
-                          child: Padding(
-                            // Chat and the room announcement begin below the
-                            // microphone grid and listener strip; no fixed
-                            // negative offsets or Positioned coordinates.
-                            padding: const EdgeInsets.only(left: 98, top: 2),
-                            child: SizedBox(
+                        Transform.translate(
+                          offset: const Offset(0, -4),
+                          child: Align(
+                            alignment: Alignment.topRight,
+                            child: Padding(
+                              // Move the chat panel upward together with the listener strip.
+                              padding: const EdgeInsets.only(left: 98, top: 2),
+                              child: SizedBox(
                               width: MediaQuery.sizeOf(context).width * 0.75,
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 220),
@@ -156,6 +159,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                   ),
                                   child: chatMessagesPanel!,
                                 ),
+                              ),
                               ),
                             ),
                           ),
