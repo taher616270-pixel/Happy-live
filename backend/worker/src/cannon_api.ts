@@ -262,6 +262,10 @@ export async function handleCannonRequest(
         "FROM rooms r LEFT JOIN profiles p ON p.user_id=r.owner_user_id WHERE r.id=? AND r.status='active' LIMIT 1"
       ).bind(roomId).first<{ room_id: string; title: string; avatar: string }>();
       if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+      const activeVisit = await db.prepare(
+        "SELECT id FROM room_chat_visits WHERE room_id=? AND user_id=? AND exited_at IS NULL AND last_seen_at>=? LIMIT 1"
+      ).bind(roomId, user.id, new Date(Date.now() - 45000).toISOString()).first<{ id: string }>();
+      if (!activeVisit) return json({ error: "room_membership_required" }, 403, origin, env);
       const day = saudiDay();
       await ensureCannonRoom(db, roomId, day);
       await db.prepare(
