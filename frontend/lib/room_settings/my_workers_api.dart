@@ -30,7 +30,6 @@ class MyWorkersApi implements RoomSettingsApi {
   }
 
   @override
-  @override
   Future<void> updateSetting(String key, Object value) async {
     final response = await _client.patch(
       _uri,
