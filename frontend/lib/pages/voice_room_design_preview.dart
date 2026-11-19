@@ -118,44 +118,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 _header(context),
                 _subHeader(context),
                 const SizedBox(height: 10),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Keep the original vertical layout and visual offsets.
-                    // The audience strip is painted first so the microphone
-                    // seats remain the top hit-test layer where they overlap.
-                    final isAndroid = Theme.of(context).platform == TargetPlatform.android;
-                    final micLayout = micLayoutById(_roomInfoString(['micLayoutId', 'mic_layout_id'], 'm8'));
-                    final columns = micLayout.maxCols;
-                    final rows = micLayout.rows.length;
-                    // Give every microphone row a stable height so the
-                    // seat widgets cannot be squeezed into square grid cells.
-                    const seatRowHeight = 88.0;
-                    final seatsHeight = seatRowHeight * rows + 12 * (rows - 1);
-                    return SizedBox(
-                      height: seatsHeight + 43,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Positioned(
-                            top: seatsHeight + 8,
-                            left: 0,
-                            right: 0,
-                            child: _listeners(context),
-                          ),
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: Transform.translate(
-                              offset: isAndroid ? const Offset(0, -5) : Offset.zero,
-                              child: _seats(context),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                // Keep the microphone grid, listener strip and everything
+                // below it in normal vertical flow. The listener strip now
+                // follows the actual measured grid height for every layout.
+                _seats(context),
+                const SizedBox(height: 8),
+                _listeners(context),
                 Expanded(
                   child: Stack(
                     clipBehavior: Clip.none,
@@ -1237,7 +1205,7 @@ Widget _roomActionButton({
         return FittedBox(
           fit: BoxFit.scaleDown,
           child: Selector<SeatStateStore, SeatState>(
-          selector: (context, store) => store.seats[number]!,
+          selector: (context, store) => store.seats[number] ?? SeatState.empty(number),
           builder: (context, seatState, child) {
         final seat = seatState.occupied ? seatState.toMap() : null;
         final occupied = seat != null;
