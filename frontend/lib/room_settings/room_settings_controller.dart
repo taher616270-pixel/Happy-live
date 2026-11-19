@@ -174,11 +174,12 @@ class RoomSettingsController extends ChangeNotifier {
   }
 
   Future<void> _set(String key, Object value, VoidCallback apply) async {
-    apply();
     error = null;
     notifyListeners();
     try {
       await api.updateSetting(key, value);
+      apply();
+      notifyListeners();
     } catch (e) {
       error = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
