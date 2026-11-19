@@ -17,6 +17,7 @@ import 'package:happy_live/services/agora_room_bridge.dart';
 import 'package:happy_live/services/room_seat_socket.dart';
 import 'package:happy_live/pages/wallet_page.dart';
 import 'package:happy_live/widgets/room_gift_sheet.dart';
+import 'package:happy_live/cannon/cannon_top_banner.dart';
 import 'package:flutter_svga/flutter_svga.dart';
 import 'package:gif_view/gif_view.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -2148,9 +2149,14 @@ class _RoomPageState extends State<RoomPage> {
         body: SizedBox.expand(),
       );
     }
-    return Listener(
-      onPointerDown: (_) => unawaited(_unlockGiftAudio()),
-      child: Stack(
+    return CannonTopBanner(
+      currentRoomId: _roomId,
+      accessToken: widget.accessToken,
+      onOpenRoom: _openCannonBannerRoom,
+      topOffset: 56,
+      child: Listener(
+        onPointerDown: (_) => unawaited(_unlockGiftAudio()),
+        child: Stack(
       fit: StackFit.expand,
       children: [
         ChangeNotifierProvider<SeatStateStore>.value(
@@ -2221,8 +2227,10 @@ class _RoomPageState extends State<RoomPage> {
               ),
             ),
           ),
-      ],
-    ));
+        ],
+        ),
+      ),
+    );
   }
 
   Widget _referenceRoomHeader() {
