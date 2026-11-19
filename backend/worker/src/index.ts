@@ -1793,20 +1793,31 @@ export default {
           .bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
         const now = new Date().toISOString();
-        const [voiceEnabled, ban, kick, controlKick, profile, control, moderator] = await Promise.all([
+        const [voiceEnabled, ban, kick, controlKick, profile, control, moderator, settingsRow] = await Promise.all([
           isAgoraVoiceEnabled(env.DB, env),
           env.DB!.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
           env.DB!.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
           env.DB!.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
           env.DB!.prepare("SELECT avatar_key, country_name FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ avatar_key: string | null; country_name: string | null }>(),
           env.DB!.prepare("SELECT is_muted FROM room_user_controls WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first<{ is_muted: number }>(),
-          env.DB!.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
+          env.DB!.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
+          env.DB!.prepare("SELECT settings_json FROM room_settings WHERE room_id = ? LIMIT 1").bind(roomId).first<{ settings_json: string }>()
         ]);
         if (kick || controlKick) return json({ error: "room_kicked" }, 403, origin, env);
         if (ban) return json({ error: "room_banned" }, 403, origin, env);
         if (!voiceEnabled) return json({ error: "agora_voice_disabled" }, 503, origin, env);
+        let roomSettings: Record<string, unknown> = {};
+        try { roomSettings = settingsRow?.settings_json ? JSON.parse(settingsRow.settings_json) as Record<string, unknown> : {}; } catch { roomSettings = {}; }
+        const isRoomOwner = room.owner_user_id === user.id;
+        if (String(roomSettings.whoEnter ?? "everyone") === "ownerAndAdmins" && !isRoomOwner && !moderator) {
+          return json({ error: "room_entry_restricted", message: "دخول هذه الغرفة متاح للمالك والمشرفين فقط" }, 403, origin, env);
+        }
 
         const stub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+        await stub.fetch(new Request("https://room-seats.internal/set-mic-policy", {
+          method: "POST",
+          headers: { "x-who-mic": String(roomSettings.whoMic ?? "membersOnly") }
+        }));
         await stub.fetch(new Request("https://room-seats.internal/enable", { method: "POST" }));
         const headers = new Headers({
           "Upgrade": "websocket",
@@ -1850,9 +1861,18 @@ export default {
         const user = await authenticatedUser(authRequest, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = decodeURIComponent(chatStreamRoute[1]);
-        const room = await env.DB!.prepare("SELECT id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
-          .bind(roomId).first<{ id: string }>();
+        const room = await env.DB!.prepare("SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
+          .bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        const [settingsRow, roomModerator] = await Promise.all([
+          env.DB!.prepare("SELECT settings_json FROM room_settings WHERE room_id = ? LIMIT 1").bind(roomId).first<{ settings_json: string }>(),
+          env.DB!.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
+        ]);
+        let roomSettings: Record<string, unknown> = {};
+        try { roomSettings = settingsRow?.settings_json ? JSON.parse(settingsRow.settings_json) as Record<string, unknown> : {}; } catch { roomSettings = {}; }
+        if (String(roomSettings.whoChat ?? "everyone") === "ownerAndAdmins" && room.owner_user_id !== user.id && !roomModerator) {
+          return json({ error: "room_chat_restricted", message: "الدردشة متاحة للمالك والمشرفين فقط" }, 403, origin, env);
+        }
         const visit = await env.DB!.prepare(
           "SELECT id FROM room_chat_visits WHERE room_id = ? AND user_id = ? AND exited_at IS NULL ORDER BY entered_at DESC LIMIT 1"
         ).bind(roomId, user.id).first<{ id: string }>();
@@ -2714,6 +2734,13 @@ export default {
           await env.DB.prepare(
             "INSERT INTO room_settings (room_id, settings_json, permissions_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at"
           ).bind(roomId, JSON.stringify(settings), JSON.stringify(permissions), now).run();
+          if (key === "whoMic" && env.ROOM_SEATS) {
+            const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+            await seatHub.fetch(new Request("https://room-seats.internal/set-mic-policy", {
+              method: "POST",
+              headers: { "x-who-mic": String(value) }
+            }));
+          }
           await env.DB.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, action, details_json, created_at) VALUES (?, ?, ?, 'setting.update', ?, ?)")
             .bind(crypto.randomUUID(), roomId, actor.id, JSON.stringify({ key, value }), now).run();
           return json({ ok: true, key, value }, 200, origin, env);
