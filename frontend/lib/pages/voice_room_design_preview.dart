@@ -182,7 +182,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             _RoomGameTile(
                               color1: Color(0xFF3FA7D6),
                               color2: Color(0xFFE8A04A),
-                              badge: 'BET',
+                              badge: '',
                               timer: '19s',
                               backgroundOpacity: 0.35,
                             ),
