@@ -42,8 +42,8 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
             : ListView(padding: EdgeInsets.zero, children: [
           if (c.error != null) HintBar(c.error!),
           SettingsTile(title: 'الغلاف', trailing: ClipRRect(borderRadius: BorderRadius.circular(3), child: Container(width: 44, height: 44, color: const Color(0xFFB9C4D6), child: c.coverUrl == null || c.coverUrl!.isEmpty ? const Icon(Icons.image, color: Colors.white) : Image.network(c.coverUrl!, fit: BoxFit.cover))), onTap: () => showRsToast(context, 'رفع الغلاف غير مربوط بالخادم بعد')),
-          SettingsTile(title: 'الإسم', value: c.name, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإسم', initial: c.name, maxLength: 30, onSave: (v) => _run(() => c.setName(v)))))),
-          SettingsTile(title: 'الإعلان', value: c.announcement, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإعلان', initial: c.announcement, maxLength: 200, onSave: (v) => _run(() => c.setAnnouncement(v)))))),
+          SettingsTile(title: 'الإسم', value: c.name, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإسم', initial: c.name, maxLength: 30, onSave: c.setName)))),
+          SettingsTile(title: 'الإعلان', value: c.announcement, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإعلان', initial: c.announcement, maxLength: 200, onSave: c.setAnnouncement)))),
           SettingsTile(title: 'مكافأة الغرفة', onTap: () => showRsToast(context, 'قريبًا')),
           SettingsTile(title: 'عدد المقاعد', value: '${c.seats}', onTap: () async { final v = await showSeatsSheet(context, current: c.seats); if (v != null) await _run(() => c.setSeats(v)); }),
           SettingsTile(title: 'أخذ مايك يتطلب تقديم طلب', value: c.micRequestMode, onTap: () async { final v = await showChoiceSheet<String>(context, title: 'أخذ مايك يتطلب تقديم طلب', options: const [MapEntry('إغلاق', 'إغلاق'), MapEntry('تفعيل', 'تفعيل')], selected: c.micRequestMode); if (v != null) await _run(() => c.setMicRequestMode(v)); }),
