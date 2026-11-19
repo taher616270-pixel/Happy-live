@@ -115,8 +115,8 @@ class _RoomPageState extends State<RoomPage> {
   int _roomExperienceExp = 0;
   int _roomExperienceNextLevelExp = 3300000;
   int _roomDailyExperienceExp = 0;
-  int _micCount = 8;
-  String _micLayoutId = 'm8';
+  int _micCount = 0;
+  String _micLayoutId = '';
 
   String get _roomId => (widget.room['id'] ?? '').toString();
   String get _roomName => (widget.room['name'] ?? 'غرفة صوتية').toString();
@@ -572,10 +572,10 @@ class _RoomPageState extends State<RoomPage> {
         ? roomData['announcement'].toString()
         : _roomAnnouncement;
     final nextMicCount = roomData is Map && roomData['micCount'] is num
-        ? (roomData['micCount'] as num).toInt().clamp(8, 24).toInt()
+        ? (roomData['micCount'] as num).toInt().clamp(2, 24).toInt()
         : _micCount;
     final nextMicLayoutId = roomData is Map && roomData['micLayoutId'] != null
-        ? roomData['micLayoutId'].toString()
+        ? roomData['micLayoutId'].toString().trim()
         : _micLayoutId;
     final nextIsOwner = data['isOwner'] == true;
     final nextIsModerator = data['isModerator'] == true;
