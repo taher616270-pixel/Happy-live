@@ -1236,10 +1236,8 @@ Widget _roomActionButton({
                     : 0.0;
         final verticalOffset = baseVerticalOffset +
             (layout.id == 'm20' && number >= 1 && number <= 18 ? -7.0 : 0.0);
-        return Transform.translate(
-          offset: Offset(0, verticalOffset),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
+        return FittedBox(
+          fit: BoxFit.scaleDown,
           child: Selector<SeatStateStore, SeatState>(
           selector: (context, store) => store.seats[number] ?? SeatState.empty(number),
           builder: (context, seatState, child) {
@@ -1260,8 +1258,10 @@ Widget _roomActionButton({
         final seatBoxWidth = slot.big ? 66.0 : 58.0;
         // The row offset is applied by the parent Transform above;
         // the seat itself keeps its original 88px hit target and visuals.
-        return Align(
-          alignment: Alignment.topCenter,
+        return Transform.translate(
+          offset: Offset(0, verticalOffset),
+          child: Align(
+            alignment: Alignment.topCenter,
           child: GestureDetector(
                 // Do not let the full seat rectangle block taps on listener
                 // avatars painted underneath the transparent/empty seat area.
@@ -1425,9 +1425,9 @@ Widget _roomActionButton({
                     ),
                   ),
                 ),
+            ),
           );
           },
-          ),
           ),
         );
       },
