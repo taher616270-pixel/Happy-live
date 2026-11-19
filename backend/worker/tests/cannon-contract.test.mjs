@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
-const migration = await read("../migrations/0043_room_cannon.sql");
+const migration = await read("../migrations/0051_room_cannon.sql");
 const cannon = await read("../src/cannon_api.ts");
 const worker = await read("../src/index.ts");
 const preview = await read("../../../frontend/lib/pages/voice_room_design_preview.dart");
