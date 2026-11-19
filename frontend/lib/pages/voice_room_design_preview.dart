@@ -1196,22 +1196,19 @@ Widget _roomActionButton({
       arrangedCells.addAll(row);
       arrangedCells.addAll(List<MicSeat?>.filled(columns - row.length, null));
     }
-    // A 24-seat grid has four 88px rows and three 12px gaps:
-    // its real extent is 388px. The previous 376px viewport clipped the
-    // bottom row and made the row repositioning appear ineffective.
-    // Use the same fixed-height viewport correction that makes the 24-seat
-    // layout's row translations visible; the 20-seat layout also has four rows.
-    final needsFixedMicViewport = layout.count == 24 || layout.id == 'm20';
-    final micRowGap = layout.id == 'm15' ? 2.0 : 3.0;
-    final micColumnGap = layout.id == 'm15' ? 2.0 : 3.0;
+    // Every microphone layout uses an exact 2px gap in both directions.
+    // Give every layout an explicitly measured viewport so row offsets remain
+    // visible and no bottom row is clipped by shrink-wrap measurement.
+    const micRowGap = 2.0;
+    const micColumnGap = 2.0;
     final gridHeight = (layout.rows.length * 88.0) +
         ((layout.rows.length - 1) * micRowGap);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: SizedBox(
-        height: needsFixedMicViewport ? gridHeight : null,
+        height: gridHeight,
         child: GridView.builder(
-          shrinkWrap: !needsFixedMicViewport,
+          shrinkWrap: false,
           physics: const NeverScrollableScrollPhysics(),
           clipBehavior: Clip.none,
           itemCount: arrangedCells.length,
