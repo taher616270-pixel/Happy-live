@@ -53,9 +53,6 @@ final List<MicLayout> kMicLayouts = [
     [MicSeat('8'), null, MicSeat('9'), null, MicSeat('10')],
     [MicSeat('11'), MicSeat('12'), null, MicSeat('13'), MicSeat('14')],
   ]),
-  MicLayout(id: 'm16', count: 16, rows: [
-    _seats(1, 4), _seats(5, 8), _seats(9, 12), _seats(13, 16),
-  ]),
   MicLayout(id: 'm20', count: 20, rows: [
     [null, null, _s1, _s2, null, null],
     _seats(1, 6), _seats(7, 12), _seats(13, 18),
