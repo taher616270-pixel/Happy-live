@@ -9,4 +9,6 @@ class CannonConfig {
 
   // Optional per-level artwork URLs; the built-in painter is used when empty.
   static final Map<int, String> cannonImages = <int, String>{};
+  static String bannerImageUrl = '';
+  static String frameImageUrl = '';
 }
