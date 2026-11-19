@@ -4,9 +4,7 @@ import '../theme.dart';
 import '../widgets/common_widgets.dart';
 
 const _options = <SeatOption>[
-  SeatOption(8), SeatOption(10), SeatOption(12), SeatOption(14), SeatOption(16),
-  SeatOption(20, locked: true, vip: true), SeatOption(10, locked: true, vip: true),
-  SeatOption(10, locked: true, vip: true), SeatOption(24, locked: true, vip: true),
+  SeatOption(8),
 ];
 
 Future<int?> showSeatsSheet(BuildContext context, {required int current}) => showModalBottomSheet<int>(
