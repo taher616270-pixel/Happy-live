@@ -41,6 +41,7 @@ class CannonService extends ChangeNotifier {
     _roomTimer = null;
     currentRoomId = null;
     state = null;
+    isUnavailable = false;
     _lastLaunchId = '';
     _firstLoad = true;
     Future.microtask(notifyListeners);
