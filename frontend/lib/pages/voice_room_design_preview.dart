@@ -755,7 +755,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   }
 
   Widget _header(BuildContext context) {
-    final avatar = (room['ownerAvatar'] ?? room['ownerAvatarUrl'] ?? _cover ?? '').toString();
+    final avatar = (ownerAvatarUrl.trim().isNotEmpty
+        ? ownerAvatarUrl.trim()
+        : (room['ownerAvatar'] ?? room['ownerAvatarUrl'] ?? '').toString().trim());
     final trophies = (room['trophies'] ?? room['trophyCount'] ?? 0).toString();
     return Transform.translate(
       offset: Theme.of(context).platform == TargetPlatform.android
