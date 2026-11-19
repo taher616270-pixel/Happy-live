@@ -1177,7 +1177,20 @@ Widget _roomActionButton({
   );
 
   Widget _seats(BuildContext context) {
-    final layout = micLayoutById(_roomInfoString(['micLayoutId', 'mic_layout_id'], 'm8'));
+    final configuredLayoutId =
+        _roomInfoString(['micLayoutId', 'mic_layout_id'], '').trim().toLowerCase();
+    final configuredMicCount =
+        int.tryParse(_roomInfoString(['micCount', 'mic_count'], '0')) ?? 0;
+    // Some room snapshots send the seat count but omit/retain an older layout ID.
+    // Resolve the 24-seat grid from its count as well, so row offsets are applied
+    // to the actual 24-microphone layout instead of silently falling back to m8.
+    final layout = micLayoutById(
+      configuredLayoutId == 'm24' || configuredMicCount == 24
+          ? 'm24'
+          : configuredLayoutId.isEmpty
+              ? 'm8'
+              : configuredLayoutId,
+    );
     final columns = layout.maxCols;
     // Preserve each row's own alignment by building a padded row-major list.
     final arrangedCells = <MicSeat?>[];
