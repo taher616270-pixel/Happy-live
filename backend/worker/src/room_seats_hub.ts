@@ -110,6 +110,18 @@ export class RoomSeatsHub {
   private readonly sockets = new Map<WebSocket, SocketIdentity>();
   private mutationQueue: Promise<void> = Promise.resolve();
   private whoMicMode = "membersOnly";
+  private async configuredSeatLimit(): Promise<number> {
+    if (!this.roomId) return 8;
+    try {
+      const row = await this.env.DB.prepare("SELECT settings_json FROM room_settings WHERE room_id = ? LIMIT 1")
+        .bind(this.roomId).first<{ settings_json: string }>();
+      const settings = row?.settings_json ? JSON.parse(row.settings_json) as Record<string, unknown> : {};
+      const value = Number(settings.seats ?? 8);
+      return [8, 10, 12, 14, 16, 20, 24].includes(value) ? value : 8;
+    } catch {
+      return 8;
+    }
+  }
   private readonly ready: Promise<void>;
 
   constructor(private readonly state: DurableObjectState, private readonly env: RoomSeatsEnv) {
@@ -177,7 +189,7 @@ export class RoomSeatsHub {
       const version = Number.isSafeInteger(requestedVersion) && requestedVersion > 0
         ? requestedVersion
         : Math.max(Date.now() * 1000, (this.snapshot.versions[userId] ?? 0) + 1);
-      if ((to !== null && (!Number.isInteger(to) || to < 1 || to > 8)) || !Number.isSafeInteger(version) || version < 1) {
+      if ((to !== null && (!Number.isInteger(to) || to < 1 || to > 24)) || !Number.isSafeInteger(version) || version < 1) {
         return Response.json({ error: "invalid_move" }, { status: 400 });
       }
       const identity: SocketIdentity = {
@@ -413,7 +425,7 @@ export class RoomSeatsHub {
     const from = message.from === null ? null : Number(message.from);
     const to = message.to === null ? null : Number(message.to);
     const version = Number(message.version);
-    if ((from !== null && (!Number.isInteger(from) || from < 1 || from > 8)) ||
+    if ((from !== null && (!Number.isInteger(from) || from < 1 || from > 24)) ||
         (to !== null && (!Number.isInteger(to) || to < 1 || to > 8)) ||
         !Number.isSafeInteger(version) || version < 1) {
       this.send(socket, { type: "ack", ok: false, code: "invalid_move", version, ...this.publicSnapshot() });
@@ -430,6 +442,10 @@ export class RoomSeatsHub {
   private async applyMove(identity: SocketIdentity, to: number | null, version: number): Promise<Record<string, unknown>> {
     if (!this.snapshot.voiceEnabled) {
       return { type: "ack", ok: false, code: "voice_disabled", version, ...this.publicSnapshot() };
+    }
+    const seatLimit = await this.configuredSeatLimit();
+    if (to !== null && (!Number.isInteger(to) || to < 1 || to > seatLimit)) {
+      return { type: "ack", ok: false, code: "seat_limit_exceeded", version, mySeat: Object.values(this.snapshot.seats).find((seat) => seat.userId === identity.userId)?.seatNumber ?? null, ...this.publicSnapshot() };
     }
     if (to !== null && this.whoMicMode === "ownerAndAdmins" && !identity.isRoomOwner && !identity.isRoomModerator) {
       return { type: "ack", ok: false, code: "mic_restricted", version, mySeat: Object.values(this.snapshot.seats).find((seat) => seat.userId === identity.userId)?.seatNumber ?? null, ...this.publicSnapshot() };
