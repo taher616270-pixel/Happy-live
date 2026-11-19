@@ -1212,8 +1212,6 @@ Widget _roomActionButton({
         final voiceLevel = speakerUid == null ? 0.0 : (speakerLevels[speakerUid] ?? 0.0);
         final isSpeaking = occupied && !muted && voiceLevel >=
             (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
-        final isAndroid = Theme.of(context).platform == TargetPlatform.android;
-        final isDefaultEight = layout.id == 'm8';
         final seatDiameter = slot.big ? 62.0 : 54.0;
         final seatBoxWidth = slot.big ? 82.0 : 72.0;
         // Every seat occupies the same fixed-height grid cell. Do not
