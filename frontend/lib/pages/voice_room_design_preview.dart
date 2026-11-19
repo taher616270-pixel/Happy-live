@@ -1214,6 +1214,8 @@ Widget _roomActionButton({
             (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
         final isAndroid = Theme.of(context).platform == TargetPlatform.android;
         final isDefaultEight = layout.id == 'm8';
+        final seatDiameter = slot.big ? 62.0 : 54.0;
+        final seatBoxWidth = slot.big ? 82.0 : 72.0;
         final seatOffset = !isDefaultEight
             ? 0.0
             : isAndroid
@@ -1233,8 +1235,8 @@ Widget _roomActionButton({
                 behavior: HitTestBehavior.deferToChild,
                 onTap: null,
                 child: SizedBox(
-                  width: 72,
-                  height: number == 5 ? 82 : 72,
+                  width: seatBoxWidth,
+                  height: number == 5 ? 82 : (slot.big ? 86 : 72),
                   child: Transform.translate(
                     offset: Offset(isDefaultEight && number == 5 ? -5 : 0, isDefaultEight && number > 4 ? 5 : 0),
                     transformHitTests: false,
@@ -1261,9 +1263,9 @@ Widget _roomActionButton({
                             : null),
                     child: _GoldenVoiceWave(
                     isSpeaking: isSpeaking,
-                    avatarSize: 54,
-                    rippleStartSize: 60,
-                    rippleEndSize: 76,
+                    avatarSize: seatDiameter,
+                    rippleStartSize: seatDiameter + 6,
+                    rippleEndSize: seatDiameter + 22,
                     avatar: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 460),
                       switchInCurve: Curves.easeOutCubic,
@@ -1292,14 +1294,20 @@ Widget _roomActionButton({
                       key: ValueKey<String>(seat?['userId']?.toString().isNotEmpty == true
                           ? seat!['userId'].toString()
                           : 'empty-$number'),
-                      width: 54,
-                      height: 54,
+                      width: seatDiameter,
+                      height: seatDiameter,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(.14),
+                        color: slot.big
+                            ? const Color(0x33E8C477)
+                            : Colors.white.withOpacity(.14),
                         border: Border.all(
-                          color: mine ? Colors.transparent : Colors.white.withOpacity(occupied ? .82 : .48),
-                          width: mine ? 0 : occupied ? 2 : 1,
+                          color: mine
+                              ? Colors.transparent
+                              : slot.big
+                                  ? const Color(0xFFFFD98A)
+                                  : Colors.white.withOpacity(occupied ? .82 : .48),
+                          width: mine ? 0 : slot.big ? 2.2 : occupied ? 2 : 1,
                         ),
                         // Improve separation from the new wallpaper without
                         // changing the seats' original transparency.
@@ -1320,7 +1328,7 @@ Widget _roomActionButton({
                           : Icon(
                               occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
                               color: Colors.white.withOpacity(.92),
-                              size: 23,
+                              size: slot.big ? 27 : 23,
                             ),
                       ),
                     ),
