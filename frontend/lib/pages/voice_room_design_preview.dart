@@ -1244,7 +1244,7 @@ Widget _roomActionButton({
                     ? -3.0
                     : 0.0;
         // The 15-seat layout must keep every seat level within its row.
-        final verticalOffset = layout.id == 'm8'
+        final verticalOffset = (layout.id == 'm8' || layout.id == 'm10')
             ? 0.0
             : layout.id == 'm15'
                 ? (number >= 11 && number <= 15
