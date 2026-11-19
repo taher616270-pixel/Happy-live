@@ -74,7 +74,7 @@ class _CannonGlobalBannerHostState extends State<CannonGlobalBannerHost> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(22),
                     image: CannonConfig.bannerImageUrl.isNotEmpty
                       ? DecorationImage(
                           image: NetworkImage(CannonConfig.bannerImageUrl),
@@ -82,9 +82,9 @@ class _CannonGlobalBannerHostState extends State<CannonGlobalBannerHost> {
                           colorFilter: const ColorFilter.mode(Color(0x99000020), BlendMode.darken),
                         )
                       : null,
-                    gradient: const LinearGradient(colors: [Color(0xFF142D8C), Color(0xFF061044)]),
-                    border: Border.all(color: const Color(0xFF55C8FF), width: 1.2),
-                    boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 12, offset: Offset(0, 4))],
+                    gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF176B68), Color(0xFF092B38), Color(0xFF101D35)]),
+                    border: Border.all(color: const Color(0xFF70E8D1), width: 1.4),
+                    boxShadow: const [BoxShadow(color: Color(0x7737DCC5), blurRadius: 22, spreadRadius: -7, offset: Offset(0, 6))],
                   ),
                   child: Row(children: [
                     Stack(alignment: Alignment.center, children: [
@@ -107,12 +107,12 @@ class _CannonGlobalBannerHostState extends State<CannonGlobalBannerHost> {
                           Text(banner.title, maxLines: 1, overflow: TextOverflow.ellipsis,
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
                           Text(banner.text, maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Color(0xFFB9DFFF), fontSize: 11)),
+                            style: const TextStyle(color: Color(0xFFC0F4E9), fontSize: 11)),
                         ],
                       ),
                     ),
                     Text(banner.launching ? 'إطلاق' : '${banner.percent}%',
-                      style: const TextStyle(color: Color(0xFFFFD66B), fontWeight: FontWeight.w900)),
+                      style: const TextStyle(color: Color(0xFFFFD98A), fontWeight: FontWeight.w900)),
                     const SizedBox(width: 5),
                     const Icon(Icons.chevron_left, color: Colors.white70),
                   ]),
