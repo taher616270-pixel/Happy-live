@@ -1228,9 +1228,9 @@ Widget _roomActionButton({
         // Raise microphone groups by their seat numbers in every layout:
         // seats 7–12 by 3px, 13–18 by 6px, and 19–24 by 12px.
         final verticalOffset = number >= 19
-            ? -12.0
+            ? -18.0
             : number >= 13
-                ? -6.0
+                ? -12.0
                 : number >= 7
                     ? -3.0
                     : 0.0;
