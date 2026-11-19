@@ -1183,7 +1183,7 @@ Widget _roomActionButton({
     return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 12),
     child: SizedBox(
-      height: layout.id == 'm24' ? 388 : null,
+      height: layout.id == 'm24' ? 376 : null,
       child: GridView.builder(
       shrinkWrap: layout.id != 'm24',
       physics: const NeverScrollableScrollPhysics(),
