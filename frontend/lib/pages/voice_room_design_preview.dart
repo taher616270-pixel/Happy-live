@@ -129,37 +129,29 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     clipBehavior: Clip.none,
                     children: [
                       if (chatMessagesPanel != null)
-                        Positioned(
-                          left: 98,
-                          width: MediaQuery.sizeOf(context).width * 0.75,
-                          top: Theme.of(context).platform == TargetPlatform.android
-                              ? -92
-                              : 50,
-                          bottom: Theme.of(context).platform == TargetPlatform.android
-                              ? 8
-                              : -42,
-                          child: Transform.translate(
-                            // Keep the chat exactly where it was painted, but
-                            // move its hit-test bounds below the lower mic row.
-                            offset: Theme.of(context).platform == TargetPlatform.android
-                                ? Offset.zero
-                                : const Offset(0, -100),
-                            // Keep hit testing aligned with the chat's visual
-                            // position so sender names and avatars receive taps.
-                            transformHitTests: true,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 220),
-                              curve: Curves.easeOutCubic,
-                              transform: Matrix4.translationValues(
-                                0,
-                                -MediaQuery.viewInsetsOf(context).bottom,
-                                0,
-                              ),
-                              child: Container(
-                                decoration: const BoxDecoration(
-                                  color: Colors.transparent,
+                        Align(
+                          alignment: Alignment.topRight,
+                          child: Padding(
+                            // Chat and the room announcement begin below the
+                            // microphone grid and listener strip; no fixed
+                            // negative offsets or Positioned coordinates.
+                            padding: const EdgeInsets.only(left: 98, top: 8),
+                            child: SizedBox(
+                              width: MediaQuery.sizeOf(context).width * 0.75,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOutCubic,
+                                transform: Matrix4.translationValues(
+                                  0,
+                                  -MediaQuery.viewInsetsOf(context).bottom,
+                                  0,
                                 ),
-                                child: chatMessagesPanel!,
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.transparent,
+                                  ),
+                                  child: chatMessagesPanel!,
+                                ),
                               ),
                             ),
                           ),
