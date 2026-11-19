@@ -44,6 +44,14 @@ final List<MicLayout> kMicLayouts = [
   MicLayout(id: 'm14', count: 14, rows: [
     [null, _s1, _s2, null], _seats(1, 4), _seats(5, 8), _seats(9, 12),
   ]),
+  // Fifteen microphones in five staggered rows, matching the requested pattern.
+  MicLayout(id: 'm15', count: 15, rows: [
+    [MicSeat('1'), MicSeat('2'), MicSeat('3'), null],
+    [null, MicSeat('4'), MicSeat('5'), MicSeat('6')],
+    [MicSeat('7'), MicSeat('8'), MicSeat('9'), null],
+    [null, MicSeat('10'), MicSeat('11'), MicSeat('12')],
+    [MicSeat('13'), MicSeat('14'), MicSeat('15'), null],
+  ]),
   MicLayout(id: 'm16', count: 16, rows: [
     _seats(1, 4), _seats(5, 8), _seats(9, 12), _seats(13, 16),
   ]),
