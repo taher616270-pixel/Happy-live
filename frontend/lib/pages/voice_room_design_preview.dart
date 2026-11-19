@@ -1199,8 +1199,11 @@ Widget _roomActionButton({
     // its real extent is 388px. The previous 376px viewport clipped the
     // bottom row and made the row repositioning appear ineffective.
     final is24SeatLayout = layout.count == 24;
+    // Keep a precise 3px gap between microphone rows and size the
+    // 24-seat viewport to the same spacing so the last row is not clipped.
+    const micRowGap = 3.0;
     final gridHeight = (layout.rows.length * 88.0) +
-        ((layout.rows.length - 1) * 12.0);
+        ((layout.rows.length - 1) * micRowGap);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: SizedBox(
@@ -1212,8 +1215,8 @@ Widget _roomActionButton({
           itemCount: arrangedCells.length,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
+            mainAxisSpacing: micRowGap,
+            crossAxisSpacing: 3,
             mainAxisExtent: 88,
           ),
       itemBuilder: (context, index) {
