@@ -54,15 +54,18 @@ class MicLayoutPreview extends StatelessWidget {
                                         height: seat.big ? diameter * 1.15 : diameter,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: Colors.white.withOpacity(.14),
-                                          border: Border.all(color: Colors.white.withOpacity(.48)),
+                                          color: seat.big ? const Color(0x33E8C477) : Colors.white.withOpacity(.14),
+                                          border: Border.all(
+                                            color: seat.big ? const Color(0xFFFFD98A) : Colors.white.withOpacity(.48),
+                                            width: seat.big ? 1.7 : 1,
+                                          ),
                                           boxShadow: const [
                                             BoxShadow(color: Color(0x99000000), blurRadius: 4, offset: Offset(0, 1)),
                                           ],
                                         ),
                                         child: Icon(Icons.weekend_outlined,
                                           color: Colors.white.withOpacity(.92),
-                                          size: diameter * .42),
+                                          size: diameter * (seat.big ? .46 : .42)),
                                       ),
                                       const SizedBox(height: 1),
                                       Text(seat.label,
