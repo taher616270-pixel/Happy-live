@@ -508,12 +508,20 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           'role', 'roleName', 'role_name'
         ]);
         final isOwner = data['isOwner'] == true ||
+            data['isRoomOwner'] == true ||
+            data['is_room_owner'] == true ||
             data['is_owner'] == true ||
             role.toLowerCase() == 'owner' ||
             role == 'المالك';
+        final isModerator = data['isRoomModerator'] == true ||
+            data['is_room_moderator'] == true ||
+            role.toLowerCase() == 'moderator' ||
+            role == 'مشرف' ||
+            role == 'مشرفة';
+        final resolvedRole = isOwner ? 'المالك' : isModerator ? 'مشرف' : role;
         final member = RoomMember(
           avatarUrl: avatarUrl,
-          role: isOwner ? 'المالك' : role,
+          role: resolvedRole,
           isOwner: isOwner,
           name: name,
           id: publicId,
@@ -527,7 +535,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           final existing = members[existingIndex];
           members[existingIndex] = RoomMember(
             avatarUrl: existing.avatarUrl.isNotEmpty ? existing.avatarUrl : member.avatarUrl,
-            role: member.isOwner ? member.role : existing.role,
+            role: member.isOwner ? member.role :
+                (member.role == 'مشرف' ? member.role : existing.role),
             isOwner: existing.isOwner || member.isOwner,
             name: existing.name.isNotEmpty ? existing.name : member.name,
             id: existing.id.isNotEmpty ? existing.id : member.id,
