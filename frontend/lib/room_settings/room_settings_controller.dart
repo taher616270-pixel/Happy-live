@@ -1,12 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'models.dart';
-import 'my_workers_api.dart';
-
-abstract class RoomSettingsApi {
-  Future<Map<String, dynamic>> loadSettings();
-  Future<void> updateSetting(String key, Object value);
-  Future<void> updatePermission(String permissionId, PermissionLevel level, List<String> adminIds);
-}
+import 'room_settings_api.dart';
 
 class MockRoomSettingsApi implements RoomSettingsApi {
   @override
