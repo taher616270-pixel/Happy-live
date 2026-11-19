@@ -1870,6 +1870,9 @@ export default {
         ]);
         let roomSettings: Record<string, unknown> = {};
         try { roomSettings = settingsRow?.settings_json ? JSON.parse(settingsRow.settings_json) as Record<string, unknown> : {}; } catch { roomSettings = {}; }
+        if (String(roomSettings.whoEnter ?? "everyone") === "ownerAndAdmins" && room.owner_user_id !== user.id && !roomModerator) {
+          return json({ error: "room_entry_restricted", message: "دخول هذه الغرفة متاح للمالك والمشرفين فقط" }, 403, origin, env);
+        }
         if (String(roomSettings.whoChat ?? "everyone") === "ownerAndAdmins" && room.owner_user_id !== user.id && !roomModerator) {
           return json({ error: "room_chat_restricted", message: "الدردشة متاحة للمالك والمشرفين فقط" }, 403, origin, env);
         }
@@ -1898,6 +1901,15 @@ export default {
           "SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+        const [entrySettingsRow, entryModerator] = await Promise.all([
+          env.DB!.prepare("SELECT settings_json FROM room_settings WHERE room_id = ? LIMIT 1").bind(roomId).first<{ settings_json: string }>(),
+          env.DB!.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first()
+        ]);
+        let entrySettings: Record<string, unknown> = {};
+        try { entrySettings = entrySettingsRow?.settings_json ? JSON.parse(entrySettingsRow.settings_json) as Record<string, unknown> : {}; } catch { entrySettings = {}; }
+        if (String(entrySettings.whoEnter ?? "everyone") === "ownerAndAdmins" && room.owner_user_id !== user.id && !entryModerator) {
+          return json({ error: "room_entry_restricted", message: "دخول هذه الغرفة متاح للمالك والمشرفين فقط" }, 403, origin, env);
+        }
         const activeBan = await env.DB!.prepare(
           "SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1"
         ).bind(roomId, user.id).first<{ user_id: string }>();
