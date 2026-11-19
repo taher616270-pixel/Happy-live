@@ -90,8 +90,13 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
   String get _name => (room['name'] ?? 'غرفة صوتية').toString();
   String get _id => (room['roomCode'] ?? room['id'] ?? '').toString();
-  bool get _is24MicLayout =>
-      _roomInfoString(['micLayoutId', 'mic_layout_id'], 'm8') == 'm24';
+  bool get _is24MicLayout {
+    final layoutId = _roomInfoString(['micLayoutId', 'mic_layout_id'], 'm8')
+        .trim()
+        .toLowerCase();
+    final micCount = int.tryParse(_roomInfoString(['micCount', 'mic_count'], '0'));
+    return layoutId == 'm24' || micCount == 24;
+  }
   String? get _cover {
     final value = room['imageUrl']?.toString();
     return value != null && value.startsWith('https://') ? value : null;
@@ -1199,16 +1204,14 @@ Widget _roomActionButton({
         if (slot == null) return const SizedBox.shrink();
         final number = layout.seatNumber(slot);
         final rowIndex = index ~/ columns;
-        final verticalOffset = layout.id != 'm24' || rowIndex == 0
+        final verticalOffset = layout.count != 24 || rowIndex == 0
             ? 0.0
             : rowIndex == 1
                 ? -3.0
                 : rowIndex == 2
                     ? -6.0
                     : -12.0;
-        return Transform.translate(
-          offset: Offset(0, verticalOffset),
-          child: FittedBox(
+        return FittedBox(
           fit: BoxFit.scaleDown,
           child: Selector<SeatStateStore, SeatState>(
           selector: (context, store) => store.seats[number] ?? SeatState.empty(number),
@@ -1230,7 +1233,9 @@ Widget _roomActionButton({
         final seatBoxWidth = slot.big ? 82.0 : 72.0;
         // Every seat occupies the same fixed-height grid cell. Do not
         // apply per-seat offsets: they made some microphones look staggered.
-        return Align(
+        return Transform.translate(
+          offset: Offset(0, verticalOffset),
+          child: Align(
           alignment: Alignment.topCenter,
           child: GestureDetector(
                 // Do not let the full seat rectangle block taps on listener
@@ -1395,9 +1400,9 @@ Widget _roomActionButton({
                     ),
                   ),
                 ),
+          ),
         );
           },
-        ),
         ),
         );
       },
