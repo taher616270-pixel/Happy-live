@@ -237,9 +237,9 @@ export async function handleCannonRequest(
     const user = await authenticateUser(request, db);
     if (!user) return json({ error: "authentication_required" }, 401, origin, env);
     const settings = await cannonSettings(db);
-    if (!settings.enabled) return json({ ok: true, disabled: true }, 200, origin, env);
 
     if (url.pathname === "/api/cannon/state" && request.method === "GET") {
+      if (!settings.enabled) return json({ ok: true, disabled: true }, 200, origin, env);
       const roomId = (url.searchParams.get("room_id") ?? "").trim();
       if (!/^[0-9a-f-]{36}$/i.test(roomId)) return json({ error: "invalid_room_id" }, 400, origin, env);
       const room = await db.prepare(
