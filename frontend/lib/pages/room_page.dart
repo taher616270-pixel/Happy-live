@@ -115,6 +115,8 @@ class _RoomPageState extends State<RoomPage> {
   int _roomExperienceExp = 0;
   int _roomExperienceNextLevelExp = 3300000;
   int _roomDailyExperienceExp = 0;
+  int _micCount = 8;
+  String _micLayoutId = 'm8';
 
   String get _roomId => (widget.room['id'] ?? '').toString();
   String get _roomName => (widget.room['name'] ?? 'غرفة صوتية').toString();
@@ -569,6 +571,12 @@ class _RoomPageState extends State<RoomPage> {
     final nextAnnouncement = roomData is Map && roomData['announcement'] != null
         ? roomData['announcement'].toString()
         : _roomAnnouncement;
+    final nextMicCount = roomData is Map && roomData['micCount'] is num
+        ? (roomData['micCount'] as num).toInt().clamp(8, 24).toInt()
+        : _micCount;
+    final nextMicLayoutId = roomData is Map && roomData['micLayoutId'] != null
+        ? roomData['micLayoutId'].toString()
+        : _micLayoutId;
     final nextIsOwner = data['isOwner'] == true;
     final nextIsModerator = data['isModerator'] == true;
     final meData = data['me'];
@@ -603,6 +611,8 @@ class _RoomPageState extends State<RoomPage> {
         _ownerAvatarUrl != nextOwnerAvatarUrl ||
         _ownerCountryName != nextOwnerCountryName ||
         _roomAnnouncement != nextAnnouncement ||
+        _micCount != nextMicCount ||
+        _micLayoutId != nextMicLayoutId ||
         _roomLevel != nextRoomLevel ||
         _roomExperienceLevel != nextExperienceLevel ||
         _roomExperienceExp != nextExperienceExp ||
@@ -634,6 +644,8 @@ class _RoomPageState extends State<RoomPage> {
       _ownerAvatarUrl = nextOwnerAvatarUrl;
       _ownerCountryName = nextOwnerCountryName;
       _roomAnnouncement = nextAnnouncement;
+      _micCount = nextMicCount;
+      _micLayoutId = nextMicLayoutId;
       _roomLevel = nextRoomLevel;
       _roomExperienceLevel = nextExperienceLevel;
       _roomExperienceExp = nextExperienceExp;
@@ -2134,6 +2146,8 @@ class _RoomPageState extends State<RoomPage> {
         'experienceExp': _roomExperienceExp,
         'experienceNextLevelExp': _roomExperienceNextLevelExp,
         'dailyExperienceExp': _roomDailyExperienceExp,
+        'micCount': _micCount,
+        'micLayoutId': _micLayoutId,
         'palaceStatus': _roomLevel >= 5 ? 'مفعّل' : 'غير مفعّل',
       },
       chatMessagesPanel: _roomMessagesPanel(),
@@ -2162,6 +2176,7 @@ class _RoomPageState extends State<RoomPage> {
       onCloseRoom: _closeRoom,
       onUpgradeRoom: upgradeRoom,
       onOpenGifts: _openRoomGiftPicker,
+      onRoomSettingsChanged: _refreshSeats,
           ),
         ),        if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
         if (_isLoading)
