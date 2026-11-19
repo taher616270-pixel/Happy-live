@@ -1214,10 +1214,17 @@ Widget _roomActionButton({
         if (slot == null) return const SizedBox.shrink();
         final number = layout.seatNumber(slot);
         final rowIndex = index ~/ columns;
-        // Isolate this test to seats 7–12: move their entire grid cell
-        // upward by exactly 3 logical pixels, after FittedBox scaling.
-        final verticalOffset =
-            layout.id == 'm24' && rowIndex == 1 ? -3.0 : 0.0;
+        // Raise each lower row independently in the 24-mic layout:
+        // seats 7–12 by 3px, 13–18 by 6px, and 19–24 by 12px.
+        final verticalOffset = layout.id != 'm24'
+            ? 0.0
+            : rowIndex == 1
+                ? -3.0
+                : rowIndex == 2
+                    ? -6.0
+                    : rowIndex == 3
+                        ? -12.0
+                        : 0.0;
         return Transform.translate(
           offset: Offset(0, verticalOffset),
           child: FittedBox(
