@@ -17,6 +17,9 @@ import 'package:happy_live/models/seat_state.dart';
 import 'package:happy_live/models/mic_layout.dart';
 import 'edit_profile_page.dart';
 import 'ranking_sheet_pro.dart';
+import '../cannon/cannon_sheet.dart';
+import '../cannon/cannon_service.dart';
+import '../cannon/cannon_top_banner.dart';
 
 class VoiceRoomDesignPreview extends StatelessWidget {
   static final Set<String> _openingRoomInfo = <String>{};
@@ -51,6 +54,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     required this.chatFocusNode,
     required this.onSendChat,
     required this.accessToken,
+    this.onOpenCannonRoom,
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
@@ -80,6 +84,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final FocusNode chatFocusNode;
   final Future<void> Function() onSendChat;
   final String accessToken;
+  final Future<void> Function(String roomId)? onOpenCannonRoom;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -178,16 +183,22 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             ? -4
                             : 28,
                         child: Column(
-                          children: const [
+                          children: [
                             _RoomGameTile(
-                              color1: Color(0xFF3FA7D6),
-                              color2: Color(0xFFE8A04A),
+                              color1: const Color(0xFF3FA7D6),
+                              color2: const Color(0xFFE8A04A),
                               badge: '',
                               backgroundOpacity: 0.35,
                               showContent: false,
+                              onTap: () {
+                                final cannonRoomId = (room['id'] ?? '').toString().trim();
+                                if (cannonRoomId.isEmpty || accessToken.trim().isEmpty) return;
+                                CannonService.instance.enterRoom(cannonRoomId, accessToken);
+                                showCannonSheet(context, roomId: cannonRoomId, onSendGift: onOpenGifts);
+                              },
                             ),
-                            SizedBox(height: 8),
-                            _RoomGameTile(
+                            const SizedBox(height: 8),
+                            const _RoomGameTile(
                               color1: Color(0xFF7A1F2B),
                               color2: Color(0xFFC9972C),
                               badge: 'VIP EXP ×1.8',
@@ -204,6 +215,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             ),
           ),
           _roomActionsPanel(context),
+          CannonTopBanner(
+            child: const SizedBox.expand(),
+            currentRoomId: (room['id'] ?? '').toString(),
+            accessToken: accessToken,
+            onOpenRoom: onOpenCannonRoom,
+          ),
         ],
       ),
     ),
@@ -1955,6 +1972,7 @@ class _RoomGameTile extends StatelessWidget {
     this.timer,
     this.backgroundOpacity = 1,
     this.showContent = true,
+    this.onTap,
   });
 
   final Color color1;
@@ -1963,47 +1981,55 @@ class _RoomGameTile extends StatelessWidget {
   final String? timer;
   final double backgroundOpacity;
   final bool showContent;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 72,
-    height: 72,
-    decoration: BoxDecoration(
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onTap,
       borderRadius: BorderRadius.circular(10),
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          color1.withOpacity(backgroundOpacity),
-          color2.withOpacity(backgroundOpacity),
-        ],
-      ),
-    ),
-    child: Stack(
-      children: [
-        if (showContent && timer != null)
-          Positioned(
-            top: 3,
-            right: 6,
-            child: Text(timer!, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+      child: Container(
+        width: 72,
+        height: 72,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color1.withOpacity(backgroundOpacity),
+              color2.withOpacity(backgroundOpacity),
+            ],
           ),
-        if (showContent)
-          Positioned(
-            bottom: 4,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: timer != null ? const Color(0xFF3B8DEB) : Colors.black26,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(badge, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+        ),
+        child: Stack(
+          children: [
+            if (showContent && timer != null)
+              Positioned(
+                top: 3,
+                right: 6,
+                child: Text(timer!, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
               ),
-            ),
-          ),
-      ],
+            if (showContent)
+              Positioned(
+                bottom: 4,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: timer != null ? const Color(0xFF3B8DEB) : Colors.black26,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(badge, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     ),
   );
 }
