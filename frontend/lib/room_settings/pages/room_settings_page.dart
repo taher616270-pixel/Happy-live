@@ -3,6 +3,8 @@ import 'package:image_picker/image_picker.dart';
 import '../models.dart';
 import '../room_settings_controller.dart';
 import '../sheets/choice_sheet.dart';
+import '../../widgets/mic_count_sheet.dart';
+import '../../models/mic_layout.dart';
 import '../theme.dart';
 import '../widgets/common_widgets.dart';
 import 'admin_log_page.dart';
@@ -106,10 +108,18 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                     value: c.announcement,
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإعلان', initial: c.announcement, maxLength: 200, onSave: c.setAnnouncement))),
                   ),
-                  const SettingsTile(
+                  SettingsTile(
                     title: 'عدد المقاعد',
-                    value: '8',
-                    chevron: false,
+                    value: c.seats.toString(),
+                    onTap: () async {
+                      final layoutId = await showMicCountSheet(
+                        context,
+                        currentId: c.micLayoutId,
+                      );
+                      if (layoutId == null || !mounted) return;
+                      final layout = micLayoutById(layoutId);
+                      await _run(() => c.setMicLayout(layout.id, layout.count));
+                    },
                   ),
 
                   SettingsTile(
