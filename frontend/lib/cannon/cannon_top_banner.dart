@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'cannon_art.dart';
 import 'cannon_service.dart';
+import 'cannon_config.dart';
 
 class CannonTopBanner extends StatefulWidget {
   final Widget child;
@@ -66,12 +67,21 @@ class _CannonTopBannerState extends State<CannonTopBanner> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
+                    image: CannonConfig.bannerImageUrl.isNotEmpty
+                      ? DecorationImage(image: NetworkImage(CannonConfig.bannerImageUrl), fit: BoxFit.cover,
+                          colorFilter: const ColorFilter.mode(Color(0x99000020), BlendMode.darken))
+                      : null,
                     gradient: const LinearGradient(colors: [Color(0xFF142D8C), Color(0xFF061044)]),
                     border: Border.all(color: const Color(0xFF55C8FF), width: 1.2),
                     boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 12, offset: Offset(0, 4))],
                   ),
                   child: Row(children: [
-                    CannonArt(level: banner.cannonLevel, size: 42),
+                    Stack(alignment: Alignment.center, children: [
+                      CannonArt(level: banner.cannonLevel, size: 42),
+                      if (CannonConfig.frameImageUrl.isNotEmpty)
+                        Image.network(CannonConfig.frameImageUrl, width: 46, height: 46, fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                    ]),
                     const SizedBox(width: 8),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                       Text(banner.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
