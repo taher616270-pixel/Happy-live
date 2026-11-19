@@ -184,6 +184,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               color2: Color(0xFFE8A04A),
                               badge: 'BET',
                               timer: '19s',
+                              backgroundOpacity: 0.35,
                             ),
                             SizedBox(height: 8),
                             _RoomGameTile(
@@ -1952,12 +1953,14 @@ class _RoomGameTile extends StatelessWidget {
     required this.color2,
     required this.badge,
     this.timer,
+    this.backgroundOpacity = 1,
   });
 
   final Color color1;
   final Color color2;
   final String badge;
   final String? timer;
+  final double backgroundOpacity;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1968,7 +1971,10 @@ class _RoomGameTile extends StatelessWidget {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [color1, color2],
+        colors: [
+          color1.withOpacity(backgroundOpacity),
+          color2.withOpacity(backgroundOpacity),
+        ],
       ),
     ),
     child: Stack(
