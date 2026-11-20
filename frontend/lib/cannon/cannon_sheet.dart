@@ -179,7 +179,7 @@ class _CannonSheetState extends State<CannonSheet> {
                   onPageChanged: (i) => setState(() => _page = i),
                   itemBuilder: (_, i) => _CannonVisual(level: levels[i], dim: levels[i].level > st.level),
                 )),
-                Transform.translate(offset: const Offset(0, 23), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Transform.translate(offset: const Offset(0, 30), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   const _Bolt(size: 22), const SizedBox(width: 8),
                   Text(_fmt(lv.need), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w500)),
                   const SizedBox(width: 10),
