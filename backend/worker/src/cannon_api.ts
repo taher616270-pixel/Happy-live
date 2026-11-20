@@ -183,7 +183,7 @@ export async function handleCannonRequest(
   const url = new URL(request.url);
   const db = env.DB;
   const isAdminRoute = url.pathname === "/api/v1/admin/cannon/settings";
-  const isCannonRoute = url.pathname === "/api/cannon/state" || url.pathname === "/api/cannon/banners" || url.pathname === "/api/cannon/claim" || url.pathname === "/api/cannon/contributors" || url.pathname === "/api/cannon/winners";
+  const isCannonRoute = url.pathname === "/api/cannon/state" || url.pathname === "/api/cannon/banners" || url.pathname === "/api/cannon/claim" || url.pathname === "/api/cannon/contributors" || url.pathname === "/api/cannon/winners" || url.pathname === "/api/cannon/boxes/start" || url.pathname === "/api/cannon/boxes/open" || url.pathname === "/api/cannon/boxes/results";
   if (!isAdminRoute && !isCannonRoute) return null;
   if (!db) return json({ error: "database_unavailable" }, 503, origin, env);
 
@@ -321,6 +321,106 @@ export async function handleCannonRequest(
         contributors: contributors.results ?? [],
         levels: settings.levels
       }, 200, origin, env);
+    }
+
+    if (url.pathname === "/api/cannon/boxes/start" && request.method === "POST") {
+      let body: Record<string, unknown>;
+      try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+      const launchId = typeof body.launch_id === "string" ? body.launch_id.trim() : "";
+      if (!/^[0-9a-f-]{36}$/i.test(launchId)) return json({ error: "invalid_launch_id" }, 400, origin, env);
+      const launch = await db.prepare(
+        "SELECT id, room_id AS roomId, level, created_at AS createdAt FROM cannon_launches WHERE id=? LIMIT 1"
+      ).bind(launchId).first<{ id: string; roomId: string; level: number; createdAt: number }>();
+      if (!launch) return json({ error: "launch_not_found" }, 404, origin, env);
+      const activeVisit = await db.prepare(
+        "SELECT id FROM room_chat_visits WHERE room_id=? AND user_id=? AND exited_at IS NULL AND last_seen_at>=? LIMIT 1"
+      ).bind(launch.roomId, user.id, new Date(Date.now() - 45000).toISOString()).first<{ id: string }>();
+      if (!activeVisit) return json({ error: "room_membership_required" }, 403, origin, env);
+      if (Date.now() - Number(launch.createdAt) * 1000 > 60000) return json({ error: "box_round_expired" }, 410, origin, env);
+      const existing = await db.prepare(
+        "SELECT id, starts_at_ms AS startsAt, ends_at_ms AS endsAt FROM cannon_box_rounds WHERE launch_id=? AND user_id=? LIMIT 1"
+      ).bind(launchId, user.id).first<{ id: string; startsAt: number; endsAt: number }>();
+      if (existing) return json({ ok: true, round: { id: existing.id, startsAt: existing.startsAt, endsAt: existing.endsAt, count: 50 } }, 200, origin, env);
+      const roundId = crypto.randomUUID();
+      const startsAt = Date.now() + 5500;
+      const endsAt = startsAt + 5000;
+      await db.prepare(
+        "INSERT OR IGNORE INTO cannon_box_rounds (id, launch_id, room_id, user_id, starts_at_ms, ends_at_ms, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      ).bind(roundId, launchId, launch.roomId, user.id, startsAt, endsAt, new Date().toISOString()).run();
+      const round = await db.prepare(
+        "SELECT id, starts_at_ms AS startsAt, ends_at_ms AS endsAt FROM cannon_box_rounds WHERE launch_id=? AND user_id=? LIMIT 1"
+      ).bind(launchId, user.id).first<{ id: string; startsAt: number; endsAt: number }>();
+      return json({ ok: true, round: { id: round?.id ?? roundId, startsAt: round?.startsAt ?? startsAt, endsAt: round?.endsAt ?? endsAt, count: 50 } }, 200, origin, env);
+    }
+
+    if (url.pathname === "/api/cannon/boxes/open" && request.method === "POST") {
+      let body: Record<string, unknown>;
+      try { body = await request.json() as Record<string, unknown>; } catch { return json({ error: "invalid_json" }, 400, origin, env); }
+      const roundId = typeof body.round_id === "string" ? body.round_id.trim() : "";
+      const boxIndex = Number(body.box_index);
+      if (!/^[0-9a-f-]{36}$/i.test(roundId) || !Number.isSafeInteger(boxIndex) || boxIndex < 0 || boxIndex >= 50) {
+        return json({ error: "invalid_box_request" }, 400, origin, env);
+      }
+      const round = await db.prepare(
+        "SELECT id, room_id AS roomId, launch_id AS launchId, starts_at_ms AS startsAt, ends_at_ms AS endsAt FROM cannon_box_rounds WHERE id=? AND user_id=? LIMIT 1"
+      ).bind(roundId, user.id).first<{ id: string; roomId: string; launchId: string; startsAt: number; endsAt: number }>();
+      if (!round) return json({ error: "box_round_not_found" }, 404, origin, env);
+      const activeVisit = await db.prepare(
+        "SELECT id FROM room_chat_visits WHERE room_id=? AND user_id=? AND exited_at IS NULL AND last_seen_at>=? LIMIT 1"
+      ).bind(round.roomId, user.id, new Date(Date.now() - 45000).toISOString()).first<{ id: string }>();
+      if (!activeVisit) return json({ error: "room_membership_required" }, 403, origin, env);
+      const nowMs = Date.now();
+      if (nowMs < Number(round.startsAt) || nowMs > Number(round.endsAt)) return json({ error: "box_drop_not_active" }, 409, origin, env);
+      let opening = await db.prepare(
+        "SELECT id, reward_type AS rewardType, reward_value AS rewardValue, reward_name AS rewardName, reward_icon AS rewardIcon FROM cannon_box_openings WHERE round_id=? AND box_index=? LIMIT 1"
+      ).bind(roundId, boxIndex).first<{ id: string; rewardType: string; rewardValue: string; rewardName: string; rewardIcon: string }>();
+      if (!opening) {
+        const launch = await db.prepare("SELECT level FROM cannon_launches WHERE id=? AND room_id=? LIMIT 1")
+          .bind(round.launchId, round.roomId).first<{ level: number }>();
+        const level = settings.levels.find(item => item.level === Number(launch?.level ?? 1));
+        const prize = prizeFor(level?.prizes ?? [], 0);
+        if (!prize) return json({ error: "box_prizes_unavailable" }, 503, origin, env);
+        const openingId = crypto.randomUUID();
+        await db.prepare(
+          "INSERT OR IGNORE INTO cannon_box_openings (id, round_id, box_index, reward_key, reward_type, reward_value, reward_name, reward_icon, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        ).bind(openingId, roundId, boxIndex, prize.key, prize.type, prize.value, prize.name, prize.icon ?? "", new Date().toISOString()).run();
+        opening = await db.prepare(
+          "SELECT id, reward_type AS rewardType, reward_value AS rewardValue, reward_name AS rewardName, reward_icon AS rewardIcon FROM cannon_box_openings WHERE round_id=? AND box_index=? LIMIT 1"
+        ).bind(roundId, boxIndex).first<{ id: string; rewardType: string; rewardValue: string; rewardName: string; rewardIcon: string }>();
+      }
+      if (!opening) return json({ error: "box_open_failed" }, 503, origin, env);
+      if (opening.rewardType === "coins") {
+        const amount = Number(opening.rewardValue);
+        if (!Number.isSafeInteger(amount) || amount < 1 || amount > 1000000000) return json({ error: "invalid_coin_reward" }, 400, origin, env);
+        await db.prepare("INSERT OR IGNORE INTO user_wallets (user_id,balance,updated_at) VALUES (?,0,?)")
+          .bind(user.id, new Date().toISOString()).run();
+        const ledger = await db.prepare(
+          "INSERT OR IGNORE INTO cannon_box_wallet_ledger (id, opening_id, user_id, amount, created_at) SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM cannon_box_openings WHERE id=?)"
+        ).bind(crypto.randomUUID(), opening.id, user.id, amount, new Date().toISOString(), opening.id).run();
+        if ((ledger.meta?.changes ?? 0) === 1) {
+          await db.prepare("UPDATE user_wallets SET balance=balance+?,updated_at=? WHERE user_id=?")
+            .bind(amount, new Date().toISOString(), user.id).run();
+        }
+      } else {
+        await db.prepare(
+          "INSERT OR IGNORE INTO cannon_box_inventory (id, opening_id, user_id, item_id, item_name, item_type, icon_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        ).bind(crypto.randomUUID(), opening.id, user.id, opening.rewardValue, opening.rewardName, opening.rewardType, opening.rewardIcon, new Date().toISOString()).run();
+      }
+      return json({ ok: true, opened: true, boxIndex }, 200, origin, env);
+    }
+
+    if (url.pathname === "/api/cannon/boxes/results" && request.method === "GET") {
+      const roundId = (url.searchParams.get("round_id") ?? "").trim();
+      if (!/^[0-9a-f-]{36}$/i.test(roundId)) return json({ error: "invalid_box_round_id" }, 400, origin, env);
+      const round = await db.prepare(
+        "SELECT id, room_id AS roomId, ends_at_ms AS endsAt FROM cannon_box_rounds WHERE id=? AND user_id=? LIMIT 1"
+      ).bind(roundId, user.id).first<{ id: string; roomId: string; endsAt: number }>();
+      if (!round) return json({ error: "box_round_not_found" }, 404, origin, env);
+      if (Date.now() < Number(round.endsAt)) return json({ error: "box_drop_not_finished", endsAt: round.endsAt }, 409, origin, env);
+      const openings = await db.prepare(
+        "SELECT box_index AS boxIndex, reward_type AS rewardType, reward_value AS rewardValue, reward_name AS rewardName, reward_icon AS rewardIcon FROM cannon_box_openings WHERE round_id=? ORDER BY box_index ASC"
+      ).bind(roundId).all<Record<string, unknown>>();
+      return json({ ok: true, round: { id: roundId, count: 50 }, opened: openings.results ?? [] }, 200, origin, env);
     }
 
     if (url.pathname === "/api/cannon/winners" && request.method === "GET") {
