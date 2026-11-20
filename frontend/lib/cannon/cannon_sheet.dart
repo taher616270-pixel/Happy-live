@@ -323,7 +323,7 @@ class _CannonVisual extends StatelessWidget {
   const _CannonVisual({required this.level, required this.dim, this.completed = false});
 
   @override
-  Widget build(BuildContext context) => Stack(alignment: Alignment.center, children: [
+  Widget build(BuildContext context) => Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
     // The animated floor is supplied by the parent Stack. Keep only the cannon here
     // so changing levels moves the cannon without moving the fixed requirement label.
     Positioned(bottom: 30, child: CannonArt(level: level.level, size: 210, dim: dim, completed: completed)),
