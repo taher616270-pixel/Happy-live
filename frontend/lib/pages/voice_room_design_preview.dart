@@ -2360,7 +2360,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     _airstrikeTimer?.cancel();
     // Animated WEBP is decoded and played by Flutter's image codec.
     // Keep the overlay visible for the effect, then remove it.
-    _airstrikeTimer = Timer(const Duration(seconds: 10), () {
+    _airstrikeTimer = Timer(const Duration(seconds: 11), () {
       if (!mounted) return;
       _airstrikeOverlayEntry?.remove();
       _airstrikeOverlayEntry = null;
