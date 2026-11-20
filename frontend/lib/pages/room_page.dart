@@ -75,6 +75,7 @@ class _RoomPageState extends State<RoomPage> {
   late String _roomAnnouncement;
   DateTime _lastHeartbeat = DateTime.fromMillisecondsSinceEpoch(0);
   bool _isLoading = true;
+  bool _roomDataReady = false;
   bool _isRefreshing = false;
   bool _refreshSeatsQueued = false;
   bool _isMinimized = false;
@@ -657,6 +658,7 @@ class _RoomPageState extends State<RoomPage> {
       _isBannedFromRoom = nextIsBanned;
       _voiceEnabled = nextVoiceEnabled;
       _isLoading = false;
+      _roomDataReady = true;
       _loadError = null;
     });
     if (!nextVoiceEnabled) {
@@ -2201,26 +2203,9 @@ class _RoomPageState extends State<RoomPage> {
       onOpenGifts: _openRoomGiftPicker,
       onOpenCannonRoom: _openCannonBannerRoom,
       onRoomSettingsChanged: _refreshSeats,
+      isRoomDataReady: _roomDataReady,
           ),
         ),        if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
-        if (_isLoading)
-          Positioned.fill(
-            child: AbsorbPointer(
-              child: ColoredBox(
-                color: Color(0x9909080D),
-                child: Center(
-                  child: SizedBox(
-                    width: 42,
-                    height: 42,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      valueColor: AlwaysStoppedAnimation<Color>(_gold),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
         ),
     );
