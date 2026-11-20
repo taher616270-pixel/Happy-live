@@ -87,11 +87,13 @@ class CannonService extends ChangeNotifier {
 
   Future<void> _loadContributors(String roomId, String launchId) async {
     _contributorsLaunchId = launchId;
+    contributors = [];
     contributorsUnavailable = false;
     final result = await CannonApi.fetchContributors(roomId, launchId);
     if (currentRoomId != roomId || state?.launchId != launchId) return;
     if (result == null) {
       contributorsUnavailable = true;
+      _contributorsLaunchId = ''; // Retry on the next room refresh.
     } else {
       contributors = result;
     }
