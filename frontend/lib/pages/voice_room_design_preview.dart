@@ -60,6 +60,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     required this.onSendChat,
     required this.accessToken,
     this.onOpenCannonRoom,
+    this.isRoomDataReady = true,
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
@@ -90,6 +91,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final Future<void> Function() onSendChat;
   final String accessToken;
   final Future<void> Function(String roomId)? onOpenCannonRoom;
+  /// True only after the authenticated room snapshot has loaded from the API.
+  final bool isRoomDataReady;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -136,7 +139,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ),
           SafeArea(
             bottom: false,
-            child: Column(
+            child: isRoomDataReady ? Column(
               children: [
                 _header(context),
                 _subHeader(context),
@@ -203,10 +206,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 _bottomBar(context),
                 SizedBox(height: MediaQuery.of(context).viewPadding.bottom + 8),
               ],
-            ),
+            ) : _loadingRoomContent(context),
           ),
-          _roomActionsPanel(context),
-          CannonGlobalBannerHost(
+          if (isRoomDataReady) _roomActionsPanel(context),
+          if (isRoomDataReady) CannonGlobalBannerHost(
             child: const SizedBox.expand(),
             accessToken: accessToken,
             onOpenRoom: (roomId) async {
@@ -217,6 +220,84 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       ),
     ),
   );
+
+  /// During entry, expose only the room identity tile and the close control.
+  /// Mic seats, chat, gifts and every other action wait for the DB snapshot.
+  Widget _loadingRoomContent(BuildContext context) {
+    final cover = _roomInfoString(['imageUrl', 'image_url', 'coverUrl', 'cover_url']);
+    final fallbackAvatar = ownerAvatarUrl.trim().isNotEmpty
+        ? ownerAvatarUrl.trim()
+        : (room['ownerAvatar'] ?? room['ownerAvatarUrl'] ?? '').toString().trim();
+    final image = cover.startsWith('https://') ? cover : fallbackAvatar;
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+        child: Row(
+          textDirection: TextDirection.rtl,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              onTap: () => _showSaveLeaveDialog(context),
+              borderRadius: BorderRadius.circular(20),
+              child: const SizedBox(
+                width: 36,
+                height: 42,
+                child: Icon(Icons.close_rounded, color: Colors.white, size: 28),
+              ),
+            ),
+            const Spacer(),
+            Container(
+              constraints: BoxConstraints(
+                maxWidth: (MediaQuery.sizeOf(context).width * .66).clamp(170.0, 260.0),
+              ),
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(.22),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 42,
+                      height: 42,
+                      child: image.startsWith('https://')
+                          ? Image.network(image, fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const ColoredBox(
+                                color: Colors.white12,
+                                child: Icon(Icons.graphic_eq_rounded, color: Colors.white70),
+                              ))
+                          : const ColoredBox(
+                              color: Colors.white12,
+                              child: Icon(Icons.graphic_eq_rounded, color: Colors.white70),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 3),
+                        Text('ID: $_id', maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white60, fontSize: 10)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _pill(Widget child, {EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6)}) =>
     Container(padding: padding, decoration: BoxDecoration(color: Colors.black.withOpacity(.28), borderRadius: BorderRadius.circular(18)), child: child);
