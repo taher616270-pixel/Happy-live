@@ -191,8 +191,8 @@ class _PrizePoolCard extends StatelessWidget {
               ),
             ),
           ),
-          Positioned(right: -5, top: 39, child: _PrizeNotch(color: _edge)),
-          Positioned(left: -5, top: 49, child: _PrizeNotch(color: _edge)),
+          Positioned(right: -3, top: 44, child: _PrizeNotch(color: _edge)),
+          Positioned(left: -3, top: 44, child: _PrizeNotch(color: _edge)),
           Padding(
             padding: const EdgeInsets.all(7),
             child: wide ? _wideContent() : _normalContent(),
@@ -359,11 +359,11 @@ class _PrizeNotch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 10,
-        height: 25,
+        width: 6,
+        height: 16,
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(4),
         ),
       );
 }
