@@ -2043,53 +2043,14 @@ class _CannonRoomTileState extends State<_CannonRoomTile> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      SizedBox(
-        width: 72,
-        height: 18,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              const ColoredBox(color: Color(0xFF101010)),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: _ratio,
-                  heightFactor: 1,
-                  alignment: Alignment.centerLeft,
-                  child: const DecoratedBox(
-                    decoration: BoxDecoration(color: Color(0xFF20D66B)),
-                  ),
-                ),
-              ),
-              Center(
-                child: Text(
-                  '${(_ratio * 100).round()}%',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    shadows: [
-                      Shadow(color: Colors.black, blurRadius: 2),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      const SizedBox(height: 4),
-      Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: widget.onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Stack(
+        children: [
+          Container(
             width: 72,
             height: 72,
             decoration: BoxDecoration(
@@ -2104,9 +2065,50 @@ class _CannonRoomTileState extends State<_CannonRoomTile> {
               child: CannonArt(level: _level, size: 66, dim: false),
             ),
           ),
-        ),
+          Positioned(
+            left: 4,
+            right: 4,
+            bottom: 4,
+            child: SizedBox(
+              height: 16,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    const ColoredBox(color: Color(0xFF101010)),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(
+                        widthFactor: _ratio,
+                        heightFactor: 1,
+                        alignment: Alignment.centerLeft,
+                        child: const DecoratedBox(
+                          decoration: BoxDecoration(color: Color(0xFF20D66B)),
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Text(
+                        '${(_ratio * 100).round()}%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          shadows: [
+                            Shadow(color: Colors.black, blurRadius: 2),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-    ],
+    ),
   );
 }
 
