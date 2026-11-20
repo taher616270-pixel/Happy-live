@@ -265,44 +265,133 @@ async function render(){
 }
 
 
+async function uploadCannonImage(file, folder){
+  if(!file)return null;
+  const allowed=["image/png","image/jpeg","image/webp","image/gif"];
+  if(!allowed.includes(file.type)||file.size>10*1024*1024)throw Error("اختر PNG أو JPG أو WEBP أو GIF بحجم لا يتجاوز 10MB.");
+  const authResponse=await fetch(API+"/imagekit/auth",{headers:{Authorization:"Bearer "+token}});
+  const auth=await authResponse.json();
+  if(!authResponse.ok||!auth.token||!auth.signature||!auth.expire||!auth.publicKey)throw Error(auth.message||auth.error||"تعذر تجهيز رفع الصورة.");
+  const form=new FormData();
+  form.append("file",file);form.append("fileName",file.name);form.append("publicKey",auth.publicKey);
+  form.append("token",auth.token);form.append("expire",String(auth.expire));form.append("signature",auth.signature);
+  form.append("folder",folder);form.append("useUniqueFileName","true");
+  const response=await fetch("https://upload.imagekit.io/api/v1/files/upload",{method:"POST",body:form});
+  const result=await response.json();
+  if(!response.ok||!result.url||!result.fileId)throw Error("فشل رفع الصورة إلى مكتبة الصور.");
+  return result.url;
+}
+
 async function cannonAdminPage(){
   const result=await api("/admin/cannon/settings");
-  const s=result.settings||{},levels=s.levels||[];
+  const s=result.settings||{};
+  let draftLevels=JSON.parse(JSON.stringify((s.levels||[]).slice().sort((a,b)=>Number(a.level)-Number(b.level))));
   const canEdit=admin.role==="owner"||admin.role==="admin";
-  $("content").innerHTML=
-    '<div class="section"><div class="section-head"><div><h2>إعدادات مدفع الغرفة</h2><p class="muted">تتحكم هذه الإعدادات في طاقة المدفع، مستويات الغرف، الجوائز والبنر. الطاقة تُحتسب من قيمة الهدية المؤكدة في الخادم فقط.</p></div><span class="badge '+(s.enabled?'good':'warn')+'">'+(s.enabled?'مفعّل':'متوقف')+'</span></div>'+
-    '<div class="form-grid">'+
-      '<label class="check-field"><input id="cannonEnabled" type="checkbox" '+(s.enabled?'checked':'')+' '+(canEdit?'':'disabled')+'> تفعيل نظام مدفع الغرفة</label>'+
-      '<label class="check-field"><input id="cannonBannerEnabled" type="checkbox" '+(s.bannerEnabled?'checked':'')+' '+(canEdit?'':'disabled')+'> تفعيل بنر المدفع أعلى الغرف</label>'+
-      '<label>رابط صورة البنر (HTTPS)<input id="cannonBannerImage" type="url" maxlength="2048" value="'+esc(s.bannerImageUrl||'')+'" '+(canEdit?'':'disabled')+'></label>'+
-      '<label>رابط إطار المدفع (HTTPS)<input id="cannonFrameImage" type="url" maxlength="2048" value="'+esc(s.frameImageUrl||'')+'" '+(canEdit?'':'disabled')+'></label>'+
+  const types=[["coins","عملات"],["frame","إطار"],["bubble","فقاعة"],["entry","دخول مميز"],["gift","هدية"],["badge","شارة"],["wave","موجة"],["item","عنصر"]];
+  const typeOptions=value=>types.map(([v,label])=>'<option value="'+v+'" '+(value===v?'selected':'')+'>'+label+'</option>').join("");
+  const rewardCard=(level,li,prize,pi)=>'<article class="cannon-reward-editor" data-prize-card="'+li+':'+pi+'">'+
+    '<div class="cannon-reward-head"><b>مكافأة '+(pi+1)+'</b><button type="button" class="action danger" data-remove-prize="'+li+':'+pi+'">حذف المكافأة</button></div>'+
+    '<div class="cannon-reward-grid">'+
+      '<label>اسم المكافأة<input data-prize-field="name" data-level="'+li+'" data-prize="'+pi+'" maxlength="100" value="'+esc(prize.name||'')+'"></label>'+
+      '<label>نوع المكافأة<select data-prize-field="type" data-level="'+li+'" data-prize="'+pi+'">'+typeOptions(prize.type)+'</select></label>'+
+      '<label>القيمة / معرف العنصر<input data-prize-field="value" data-level="'+li+'" data-prize="'+pi+'" maxlength="120" value="'+esc(prize.value||'')+'"></label>'+
+      '<label>وزن الظهور<input type="number" min="0" max="100000" step="1" data-prize-field="weight" data-level="'+li+'" data-prize="'+pi+'" value="'+Number(prize.weight||0)+'"></label>'+
     '</div>'+
-    '<div style="margin-top:18px"><label for="cannonLevels"><strong>المستويات والجوائز — JSON</strong></label>'+
-    '<p class="muted">يمكن تعديل رقم المستوى، الطاقة المطلوبة، الجوائز، نوعها، قيمتها، رابط صورتها، واحتمالها (weight). الجائزة ذات top1=true تُمنح لصاحب أعلى مساهمة. المستوى الثالث يبدأ بـ5,000,000 وهو تقدير أولي قابل للتعديل.</p>'+
-    '<textarea id="cannonLevels" rows="22" spellcheck="false" style="width:100%;direction:ltr;text-align:left;font-family:monospace;font-size:12px" '+(canEdit?'':'disabled')+'>'+esc(JSON.stringify(levels,null,2))+'</textarea></div>'+
-    (canEdit?'<button class="primary" id="saveCannonSettings" style="margin-top:14px">حفظ إعدادات المدفع</button>':'<p class="notice">لديك صلاحية قراءة إعدادات المدفع فقط.</p>')+
-    '<p id="cannonSettingsMessage" class="muted" style="margin-top:12px"></p></div>';
-  if(canEdit){
-    $("saveCannonSettings").onclick=async()=>{
-      const button=$("saveCannonSettings"),message=$("cannonSettingsMessage");
-      let levels;
-      try{levels=JSON.parse($("cannonLevels").value)}catch(_){message.textContent="صيغة JSON غير صحيحة.";return}
-      if(!Array.isArray(levels)||!levels.length){message.textContent="أدخل قائمة مستويات صحيحة.";return}
-      button.disabled=true;message.textContent="جارٍ حفظ إعدادات المدفع…";
-      try{
-        await api("/admin/cannon/settings",{method:"PATCH",body:JSON.stringify({
-          enabled:$("cannonEnabled").checked,
-          bannerEnabled:$("cannonBannerEnabled").checked,
-          bannerImageUrl:$("cannonBannerImage").value.trim(),
-          frameImageUrl:$("cannonFrameImage").value.trim(),
-          levels
-        })});
-        message.textContent="تم حفظ إعدادات المدفع بنجاح.";
-        await cannonAdminPage();
-      }catch(error){message.textContent=error.message||"تعذر حفظ إعدادات المدفع."}
-      finally{button.disabled=false}
+    '<div class="cannon-reward-options"><label class="check-field"><input type="checkbox" data-prize-field="top1" data-level="'+li+'" data-prize="'+pi+'" '+(prize.top1?'checked':'')+'> جائزة صاحب أعلى مساهمة</label>'+
+      '<label class="check-field"><input type="checkbox" data-prize-field="rare" data-level="'+li+'" data-prize="'+pi+'" '+(prize.rare?'checked':'')+'> مكافأة نادرة</label></div>'+
+    '<div class="cannon-image-picker"><div class="cannon-image-preview" data-prize-preview="'+li+':'+pi+'">'+(prize.icon?'<img src="'+esc(prize.icon)+'" alt="صورة المكافأة">':'<span>بدون صورة</span>')+'</div>'+
+      '<div><b>صورة المكافأة</b><p class="muted">اختر صورة من جهازك أو المعرض.</p><label class="action">اختيار صورة<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-prize-image="'+li+':'+pi+'" hidden></label></div></div>'+
+    '</article>';
+  const renderLevels=()=>{
+    $("cannonLevelEditors").innerHTML=draftLevels.map((level,li)=>'<section class="cannon-level-editor" data-level-card="'+li+'">'+
+      '<header class="cannon-level-head"><div><span class="badge good">LV '+Number(level.level)+'</span><strong>إعدادات المستوى</strong></div><span class="muted">المستويات متصلة بالتدرج تلقائيًا</span></header>'+
+      '<div class="cannon-level-grid"><label>اسم / نص المستوى<input data-level-field="title" data-level="'+li+'" maxlength="60" value="'+esc(level.title||("المستوى "+level.level))+'"></label>'+
+      '<label>المساهمة المطلوبة<input type="number" min="1" max="1000000000000" step="1" data-level-field="need" data-level="'+li+'" value="'+Number(level.need||0)+'"></label></div>'+
+      '<div class="cannon-rewards-heading"><strong>مكافآت هذا المستوى</strong><button type="button" class="action" data-add-prize="'+li+'">＋ إضافة مكافأة</button></div>'+
+      '<div class="cannon-rewards-list">'+(level.prizes||[]).map((p,pi)=>rewardCard(level,li,p,pi)).join("")+'</div></section>').join("");
+  };
+  $("content").innerHTML='<style>'+
+    '.cannon-admin{display:grid;gap:16px}.cannon-admin .section{margin:0}.cannon-admin-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.cannon-admin-assets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.cannon-asset-card,.cannon-level-editor{border:1px solid var(--border,#d8deea);border-radius:14px;padding:14px;background:var(--card,#fff)}.cannon-asset-card label,.cannon-level-grid label,.cannon-reward-grid label{display:grid;gap:7px}.cannon-asset-preview,.cannon-image-preview{width:100%;height:112px;border:1px dashed var(--border,#aab4c7);border-radius:10px;display:grid;place-items:center;overflow:hidden;background:rgba(120,130,150,.06);margin:10px 0}.cannon-asset-preview img,.cannon-image-preview img{width:100%;height:100%;object-fit:contain}.cannon-levels{display:grid;gap:14px}.cannon-level-head,.cannon-rewards-heading,.cannon-reward-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.cannon-level-head>div{display:flex;gap:10px;align-items:center}.cannon-level-grid,.cannon-reward-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.cannon-rewards-list{display:grid;gap:10px}.cannon-reward-editor{border:1px solid var(--border,#d8deea);border-radius:12px;padding:12px}.cannon-reward-options{display:flex;gap:18px;flex-wrap:wrap;margin:12px 0}.cannon-image-picker{display:flex;gap:12px;align-items:center}.cannon-image-preview{width:92px;height:76px;flex:0 0 92px;margin:0}.cannon-image-picker .action{display:inline-flex;cursor:pointer}.cannon-admin input:not([type=checkbox]):not([type=file]),.cannon-admin select{width:100%;min-width:0}.cannon-admin .muted{font-size:12px}@media(max-width:700px){.cannon-admin-assets,.cannon-level-grid,.cannon-reward-grid{grid-template-columns:1fr}.cannon-image-picker{align-items:flex-start}}'+
+    '</style><div class="cannon-admin">'+
+    '<div class="section"><div class="section-head"><div><h2>إدارة مدفع الغرفة</h2><p class="muted">إدارة البنر والمستويات والمساهمات والمكافآت من اختيارات واضحة. لا تحتاج إلى كتابة روابط الصور أو تعديل JSON.</p></div><span class="badge '+(s.enabled?'good':'warn')+'">'+(s.enabled?'مفعّل':'متوقف')+'</span></div>'+
+    '<div class="form-grid"><label class="check-field"><input id="cannonEnabled" type="checkbox" '+(s.enabled?'checked':'')+' '+(canEdit?'':'disabled')+'> تفعيل نظام مدفع الغرفة</label><label class="check-field"><input id="cannonBannerEnabled" type="checkbox" '+(s.bannerEnabled?'checked':'')+' '+(canEdit?'':'disabled')+'> تفعيل بنر المدفع</label></div></div>'+
+    '<div class="section"><h3>صور البنر والإطار</h3><p class="muted">اختر الصور مباشرة من معرض الجهاز؛ سيتم رفعها إلى مكتبة الصور وربطها تلقائيًا.</p><div class="cannon-admin-assets">'+
+    '<div class="cannon-asset-card"><b>صورة بنر المدفع</b><div id="cannonBannerPreview" class="cannon-asset-preview">'+(s.bannerImageUrl?'<img src="'+esc(s.bannerImageUrl)+'" alt="معاينة البنر">':'<span>لم يتم اختيار صورة</span>')+'</div><label class="action">اختيار صورة البنر<input id="cannonBannerFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden '+(canEdit?'':'disabled')+'></label></div>'+
+    '<div class="cannon-asset-card"><b>صورة إطار المدفع</b><div id="cannonFramePreview" class="cannon-asset-preview">'+(s.frameImageUrl?'<img src="'+esc(s.frameImageUrl)+'" alt="معاينة الإطار">':'<span>لم يتم اختيار صورة</span>')+'</div><label class="action">اختيار صورة الإطار<input id="cannonFrameFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden '+(canEdit?'':'disabled')+'></label></div></div></div>'+
+    '<div class="section"><div class="section-head"><div><h3>المستويات والمكافآت</h3><p class="muted">يمكن تعديل النص والطاقة والمكافآت، وإضافة مستويات جديدة حتى 150. لا يمكن حذف أو إعادة ترقيم مستوى موجود حتى لا تنقطع الغرف التي وصلت إليه.</p></div><button type="button" class="action" id="addCannonLevel" '+(canEdit?'':'disabled')+'>＋ إضافة مستوى جديد</button></div><div id="cannonLevelEditors" class="cannon-levels"></div></div>'+
+    (canEdit?'<div class="section"><button class="primary" id="saveCannonSettings">حفظ جميع إعدادات المدفع</button><p id="cannonSettingsMessage" class="muted" style="margin-top:12px"></p></div>':'<div class="section"><p class="notice">لديك صلاحية قراءة إعدادات المدفع فقط.</p></div>')+
+    '</div>';
+  renderLevels();
+  if(!canEdit)return;
+  let bannerImageUrl=s.bannerImageUrl||"",frameImageUrl=s.frameImageUrl||"";
+  const uploadAsset=async(inputId,folder,previewId,onDone)=>{
+    const input=$(inputId);input.onchange=async()=>{
+      const file=input.files&&input.files[0];if(!file)return;
+      const preview=$(previewId);preview.textContent="جارٍ رفع الصورة…";
+      try{const url=await uploadCannonImage(file,folder);onDone(url);preview.innerHTML='<img src="'+esc(url)+'" alt="معاينة الصورة">';}
+      catch(error){preview.textContent=error.message||"فشل رفع الصورة."}
+      finally{input.value=""}
     };
-  }
+  };
+  await uploadAsset("cannonBannerFile","/happy-live/cannon/banners","cannonBannerPreview",url=>bannerImageUrl=url);
+  await uploadAsset("cannonFrameFile","/happy-live/cannon/frames","cannonFramePreview",url=>frameImageUrl=url);
+  $("cannonLevelEditors").addEventListener("input",event=>{
+    const el=event.target,li=Number(el.dataset.level),pi=Number(el.dataset.prize);
+    if(el.dataset.levelField){const level=draftLevels[li];level[el.dataset.levelField]=el.dataset.levelField==="need"?Number(el.value):el.value;}
+    if(el.dataset.prizeField&&draftLevels[li]?.prizes?.[pi]){
+      const prize=draftLevels[li].prizes[pi],field=el.dataset.prizeField;
+      prize[field]=field==="weight"?Number(el.value):field==="top1"||field==="rare"?el.checked:el.value;
+    }
+  });
+  $("cannonLevelEditors").addEventListener("change",event=>{
+    const el=event.target,li=Number(el.dataset.level),pi=Number(el.dataset.prize);
+    if(el.dataset.levelField){draftLevels[li][el.dataset.levelField]=el.dataset.levelField==="need"?Number(el.value):el.value;}
+    if(el.dataset.prizeField&&draftLevels[li]?.prizes?.[pi]){
+      const field=el.dataset.prizeField;draftLevels[li].prizes[pi][field]=field==="weight"?Number(el.value):field==="top1"||field==="rare"?el.checked:el.value;
+    }
+    if(el.dataset.prizeField==="top1"&&el.checked){
+      draftLevels[li].prizes.forEach((p,index)=>{if(index!==pi)p.top1=false;});renderLevels();
+    }
+  });
+  $("cannonLevelEditors").addEventListener("click",event=>{
+    const add=event.target.closest("[data-add-prize]");
+    const remove=event.target.closest("[data-remove-prize]");
+    if(add){const li=Number(add.dataset.addPrize);draftLevels[li].prizes.push({key:"reward_l"+draftLevels[li].level+"_"+Date.now().toString(36),name:"مكافأة جديدة",type:"coins",value:"100",icon:"",top1:false,weight:10});renderLevels();return;}
+    if(remove){const [li,pi]=remove.dataset.removePrize.split(":").map(Number);if(draftLevels[li].prizes.length<=1){alert("يجب أن يبقى مستوى الجائزة محتويًا على مكافأة واحدة على الأقل.");return;}draftLevels[li].prizes.splice(pi,1);renderLevels();}
+  });
+  $("cannonLevelEditors").addEventListener("change",async event=>{
+    const input=event.target;if(!input.matches("[data-prize-image]"))return;
+    const [li,pi]=input.dataset.prizeImage.split(":").map(Number),file=input.files&&input.files[0];if(!file)return;
+    const preview=$('[data-prize-preview="'+li+":"+pi+'"]');if(preview)preview.textContent="جارٍ الرفع…";
+    try{const url=await uploadCannonImage(file,"/happy-live/cannon/rewards");draftLevels[li].prizes[pi].icon=url;if(preview)preview.innerHTML='<img src="'+esc(url)+'" alt="صورة المكافأة">';}
+    catch(error){if(preview)preview.textContent=error.message||"فشل رفع الصورة."}
+    finally{input.value=""}
+  });
+  $("addCannonLevel").onclick=()=>{
+    const next=(draftLevels.length?Math.max(...draftLevels.map(x=>Number(x.level)||0)):0)+1;
+    if(next>150){$("cannonSettingsMessage").textContent="وصلت إلى الحد الأعلى وهو 150 مستوى.";return;}
+    const previous=draftLevels[draftLevels.length-1];
+    const nextNeed=Math.max(1,Math.floor(Number(previous?.need||90000)*2));
+    draftLevels.push({level:next,title:"المستوى "+next,need:nextNeed,prizes:[{key:"coins_l"+next,name:"مكافأة المستوى "+next,type:"coins",value:"100",icon:"",top1:false,weight:100}]});
+    renderLevels();
+    $("cannonSettingsMessage").textContent="أضيف المستوى "+next+"؛ احفظ الإعدادات لربطه بتدرج المدفع.";
+    $("cannonLevelEditors").lastElementChild?.scrollIntoView({behavior:"smooth",block:"start"});
+  };
+  $("saveCannonSettings").onclick=async()=>{
+    const button=$("saveCannonSettings"),message=$("cannonSettingsMessage");
+    const invalid=draftLevels.find((level,index)=>Number(level.level)!==index+1||!Number.isSafeInteger(Number(level.need))||Number(level.need)<1||!Array.isArray(level.prizes)||!level.prizes.length);
+    if(invalid){message.textContent="تحقق من تسلسل المستويات وقيمة المساهمة ووجود مكافأة واحدة على الأقل في كل مستوى.";return;}
+    button.disabled=true;message.textContent="جارٍ حفظ الإعدادات وربط المستويات…";
+    try{
+      await api("/admin/cannon/settings",{method:"PATCH",body:JSON.stringify({
+        enabled:$("cannonEnabled").checked,bannerEnabled:$("cannonBannerEnabled").checked,
+        bannerImageUrl,frameImageUrl,levels:draftLevels
+      })});
+      message.textContent="تم الحفظ. المستويات الجديدة أصبحت متصلة بتدرج المدفع.";
+      await cannonAdminPage();
+    }catch(error){message.textContent=error.message||"تعذر حفظ إعدادات المدفع."}
+    finally{button.disabled=false}
+  };
 }
 
 async function giftsPage(){
