@@ -171,7 +171,7 @@ class _CannonSheetState extends State<CannonSheet> {
           SizedBox(height: 270, child: Column(children: [
                 const SizedBox(height: 6),
                 Transform.translate(
-                  offset: const Offset(0, -15),
+                  offset: const Offset(0, -22),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
                     decoration: BoxDecoration(color: const Color(0x33205BFF), border: Border.all(color: const Color(0xFF3AA8FF), width: 1.2)),
