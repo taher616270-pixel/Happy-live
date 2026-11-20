@@ -404,6 +404,26 @@ export async function handleCannonRequest(
           "ORDER BY c.amount DESC, c.user_id ASC LIMIT 200"
         ).bind(roomId, launch.day, launch.level).all<Record<string, unknown>>();
       }
+      // Last-resort recovery for launches whose frozen snapshot was not written:
+      // rebuild this round's ranking from successful, already-applied gift energy.
+      // The previous launch (or Saudi-day boundary) defines the start of this round.
+      if (!(rows.results?.length)) {
+        rows = await db.prepare(
+          "SELECT e.user_id AS user_id, COALESCE(NULLIF(p.display_name,''), NULLIF(p.happy_id,''), 'مساهم') AS user_name, " +
+          "COALESCE(p.avatar_key,'') AS avatar_url, COALESCE(p.happy_id,'') AS public_id, SUM(e.coin_cost) AS contribution " +
+          "FROM cannon_energy_transactions e LEFT JOIN profiles p ON p.user_id=e.user_id " +
+          "WHERE e.room_id=? AND e.applied_at IS NOT NULL " +
+          "AND e.created_at > COALESCE((" +
+          "SELECT datetime(prev.created_at,'unixepoch') FROM cannon_launches prev " +
+          "WHERE prev.room_id=? AND prev.day=? AND prev.created_at< " +
+          "(SELECT current.created_at FROM cannon_launches current WHERE current.id=?) " +
+          "ORDER BY prev.created_at DESC LIMIT 1" +
+          "), datetime(? || ' 00:00:00','-3 hours')) " +
+          "AND e.created_at <= (SELECT datetime(current.created_at,'unixepoch') FROM cannon_launches current WHERE current.id=?) " +
+          "GROUP BY e.user_id HAVING SUM(e.coin_cost)>0 " +
+          "ORDER BY contribution DESC, e.user_id ASC LIMIT 200"
+        ).bind(roomId, roomId, launch.day, launch.id, launch.day, launch.id).all<Record<string, unknown>>();
+      }
       return json({
         ok: true,
         launch_id: launch.id,
