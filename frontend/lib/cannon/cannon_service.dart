@@ -14,6 +14,7 @@ class CannonService extends ChangeNotifier {
   CannonBanner? activeBanner;
   List<CannonContributor> contributors = [];
   String _contributorsLaunchId = '';
+  int contributorsLevel = 0;
   bool contributorsUnavailable = false;
 
   Timer? _roomTimer;
@@ -38,6 +39,7 @@ class CannonService extends ChangeNotifier {
     state = null;
     contributors = [];
     _contributorsLaunchId = '';
+    contributorsLevel = 0;
     contributorsUnavailable = false;
     isUnavailable = false;
     _lastLaunchId = '';
@@ -53,6 +55,7 @@ class CannonService extends ChangeNotifier {
     state = null;
     contributors = [];
     _contributorsLaunchId = '';
+    contributorsLevel = 0;
     contributorsUnavailable = false;
     isUnavailable = false;
     _lastLaunchId = '';
@@ -89,7 +92,7 @@ class CannonService extends ChangeNotifier {
           _contributorsLaunchId = '';
           contributorsUnavailable = false;
         } else {
-          _loadContributors(id, s.launchId);
+          _loadContributors(id, s.launchId, s.level - 1);
         }
       }
       notifyListeners();
@@ -98,12 +101,13 @@ class CannonService extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadContributors(String roomId, String launchId) async {
+  Future<void> _loadContributors(String roomId, String launchId, int level) async {
     _contributorsLaunchId = launchId;
+    contributorsLevel = level;
     contributors = [];
     contributorsUnavailable = false;
-    final result = await CannonApi.fetchContributors(roomId, launchId);
-    if (currentRoomId != roomId || state?.launchId != launchId) return;
+    final result = await CannonApi.fetchContributors(roomId, launchId: launchId, level: level);
+    if (currentRoomId != roomId || contributorsLevel != level) return;
     if (result == null) {
       contributorsUnavailable = true;
       _contributorsLaunchId = ''; // Retry on the next room refresh.
@@ -111,6 +115,12 @@ class CannonService extends ChangeNotifier {
       contributors = result;
     }
     notifyListeners();
+  }
+
+  Future<void> loadContributorsForLevel(int level) async {
+    final id = currentRoomId;
+    if (id == null || level < 1 || contributorsLevel == level) return;
+    await _loadContributors(id, '', level);
   }
 
   Future<bool> claim(CannonClaim c) async {
