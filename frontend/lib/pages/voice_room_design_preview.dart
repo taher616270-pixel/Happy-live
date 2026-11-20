@@ -2050,6 +2050,7 @@ class _SlowedAnimatedAsset extends StatefulWidget {
 
   final String asset;
   final Duration? targetDuration;
+  final VoidCallback? onCompleted;
   final BoxFit fit;
 
   @override
@@ -2062,6 +2063,7 @@ class _SlowedAnimatedAssetState extends State<_SlowedAnimatedAsset> {
   Timer? _frameTimer;
   bool _disposed = false;
   double _frameDelayScale = 1.0;
+  int _playedFrames = 0;
 
   @override
   void initState() {
@@ -2114,12 +2116,19 @@ class _SlowedAnimatedAssetState extends State<_SlowedAnimatedAsset> {
       _frame = next.image;
       previous?.dispose();
       if (mounted) setState(() {});
+      _playedFrames++;
       final delayMs = (next.duration.inMilliseconds * _frameDelayScale)
           .round()
           .clamp(1, 10000)
           .toInt();
       _frameTimer?.cancel();
-      _frameTimer = Timer(Duration(milliseconds: delayMs), _showNextFrame);
+      if (_playedFrames >= codec.frameCount) {
+        _frameTimer = Timer(Duration(milliseconds: delayMs), () {
+          if (!_disposed) widget.onCompleted?.call();
+        });
+      } else {
+        _frameTimer = Timer(Duration(milliseconds: delayMs), _showNextFrame);
+      }
     } catch (error) {
       debugPrint('[cannon-animation] frame playback failed: $error');
     }
@@ -2373,17 +2382,17 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
 
   Future<void> _playLevelOneAirstrike() async {
     if (!mounted || _showLevelOneAirstrike) return;
+    _airstrikeTimer?.cancel();
     _insertAirstrikeOverlay();
     setState(() => _showLevelOneAirstrike = true);
+  }
+
+  void _finishLevelOneAirstrike() {
+    if (!mounted) return;
     _airstrikeTimer?.cancel();
-    // Animated WEBP is decoded and played by Flutter's image codec.
-    // Keep the overlay visible for the effect, then remove it.
-    _airstrikeTimer = Timer(const Duration(seconds: 11), () {
-      if (!mounted) return;
-      _airstrikeOverlayEntry?.remove();
-      _airstrikeOverlayEntry = null;
-      setState(() => _showLevelOneAirstrike = false);
-    });
+    _airstrikeOverlayEntry?.remove();
+    _airstrikeOverlayEntry = null;
+    setState(() => _showLevelOneAirstrike = false);
   }
 
   void _insertAirstrikeOverlay() {
@@ -2396,6 +2405,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
             child: _SlowedAnimatedAsset(
               asset: 'assets/images/cannon/airstrike_Lv1.webp',
               targetDuration: const Duration(seconds: 11),
+              onCompleted: _finishLevelOneAirstrike,
               fit: BoxFit.cover,
             ),
           ),
