@@ -21,6 +21,7 @@ import 'edit_profile_page.dart';
 import 'ranking_sheet_pro.dart';
 import '../cannon/cannon_sheet.dart';
 import '../cannon/cannon_api.dart';
+import '../cannon/cannon_box_drop_overlay.dart';
 import '../cannon/cannon_art.dart';
 import '../cannon/cannon_config.dart';
 import '../cannon/cannon_service.dart';
@@ -2248,7 +2249,92 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     _playLevelOneFlight();
   }
 
-  void _playLevelOneFlight() {
+  String _boxRoundId = '';
+  OverlayEntry? _boxDropOverlayEntry;
+
+  Future<void> _playLevelOneFlight({String launchId = ''}) async {
+    if (_flight.isAnimating) return;
+    _boxRoundId = '';
+    if (launchId.isNotEmpty) {
+      final round = await CannonApi.startBoxRound(launchId);
+      if (!mounted) return;
+      _boxRoundId = (round?['id'] ?? '').toString();
+    }
+    _insertFlightOverlay();
+    _flight.forward(from: 0);
+  }
+
+  void _showFallingGiftBoxes() {
+    if (!mounted || _boxRoundId.isEmpty) return;
+    _boxDropOverlayEntry?.remove();
+    _boxDropOverlayEntry = OverlayEntry(
+      builder: (overlayContext) => CannonBoxDropOverlay(
+        roundId: _boxRoundId,
+        onFinished: (results) {
+          _boxDropOverlayEntry?.remove();
+          _boxDropOverlayEntry = null;
+          if (!mounted || results.isEmpty) return;
+          showDialog<void>(
+            context: context,
+            barrierDismissible: true,
+            builder: (dialogContext) => Directionality(
+              textDirection: TextDirection.rtl,
+              child: AlertDialog(
+                backgroundColor: const Color(0xFF101747),
+                title: const Text('جوائز الصناديق', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+                content: SizedBox(
+                  width: 360,
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: results.map((item) {
+                        final icon = (item['rewardIcon'] ?? '').toString();
+                        return Container(
+                          width: 94,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF202B62),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFFFD76A)),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (icon.startsWith('https://'))
+                                Image.network(icon, width: 42, height: 42, fit: BoxFit.contain)
+                              else
+                                const Icon(Icons.card_giftcard, color: Color(0xFFFFD76A), size: 40),
+                              const SizedBox(height: 5),
+                              Text(
+                                (item['rewardName'] ?? 'هدية').toString(),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('إغلاق', style: TextStyle(color: Color(0xFFFFD76A))),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    Overlay.of(context, rootOverlay: true).insert(_boxDropOverlayEntry!);
+  }
+
     if (_flight.isAnimating) return;
     _insertFlightOverlay();
     _flight.forward(from: 0);
