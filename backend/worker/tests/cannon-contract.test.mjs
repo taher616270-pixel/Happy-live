@@ -51,6 +51,25 @@ test("cannon admin endpoint is separately authenticated and permission-gated", (
   assert.match(admin, /\/admin\/cannon\/settings/);
 });
 
+test("cannon admin supports gallery uploads, editable levels, and rewards without JSON editing", () => {
+  assert.match(admin, /async function uploadCannonImage/);
+  assert.match(admin, /\/imagekit\/auth/);
+  assert.match(admin, /data-level-field="title"/);
+  assert.match(admin, /data-level-field="need"/);
+  assert.match(admin, /data-add-prize/);
+  assert.match(admin, /data-prize-image/);
+  assert.match(admin, /اختيار صورة البنر/);
+  assert.match(admin, /إضافة مستوى جديد/);
+});
+
+test("cannon levels can grow sequentially while protecting room progression", () => {
+  assert.match(cannon, /levels\.length > 150/);
+  assert.match(cannon, /levelId !== levelIds\.size \+ 1/);
+  assert.match(cannon, /level\.level < Math\.max\(\.\.\.levels\.map\(x => x\.level\)\)/);
+  assert.match(cannon, /level\?\.title !== undefined/);
+  assert.match(cannon, /top1Count > 1/);
+});
+
 test("only the empty BET room tile opens the cannon sheet", () => {
   assert.match(preview, /showCannonSheet\(context, roomId: cannonRoomId, onSendGift: onOpenGifts\)/);
   assert.match(preview, /CannonService\.instance\.enterRoom\(cannonRoomId, accessToken\)/);
