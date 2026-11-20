@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:gif_view/gif_view.dart';
 import 'cannon_art.dart';
 import 'cannon_models.dart';
 import 'cannon_rules_sheet.dart';
@@ -19,8 +20,16 @@ String _fmt(int n) {
   return b.toString();
 }
 
-Future<void> showCannonSheet(BuildContext context, {required String roomId, VoidCallback? onSendGift}) {
-  return showModalBottomSheet<void>(
+Future<void> showCannonSheet(BuildContext context, {required String roomId, VoidCallback? onSendGift}) async {
+  // Warm the two larger airplane GIFs before opening the sheet so their first
+  // visible frame is ready immediately instead of appearing after decoding.
+  await Future.wait([
+    GifView.preFetchImage(const AssetImage('assets/images/cannon/airplane_lv2.gif')),
+    GifView.preFetchImage(const AssetImage('assets/images/cannon/airplane_lv4.gif')),
+  ].map((future) => future.catchError((_) {})));
+
+  if (!context.mounted) return;
+  await showModalBottomSheet<void>(
     context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
     builder: (_) => Directionality(textDirection: TextDirection.rtl, child: CannonSheet(roomId: roomId, onSendGift: onSendGift)),
   );
