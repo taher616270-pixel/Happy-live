@@ -229,24 +229,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         ? ownerAvatarUrl.trim()
         : (room['ownerAvatar'] ?? room['ownerAvatarUrl'] ?? '').toString().trim();
     final image = cover.startsWith('https://') ? cover : fallbackAvatar;
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-        child: Row(
-          textDirection: TextDirection.rtl,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            InkWell(
-              onTap: () => _showSaveLeaveDialog(context),
-              borderRadius: BorderRadius.circular(20),
-              child: const SizedBox(
-                width: 36,
-                height: 42,
-                child: Icon(Icons.close_rounded, color: Colors.white, size: 28),
-              ),
-            ),
-            const Spacer(),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             Container(
               constraints: BoxConstraints(
                 maxWidth: (MediaQuery.sizeOf(context).width * .66).clamp(170.0, 260.0),
@@ -293,9 +281,18 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 ],
               ),
             ),
+            const Spacer(),
+            InkWell(
+              onTap: () => _showSaveLeaveDialog(context),
+              borderRadius: BorderRadius.circular(20),
+              child: const SizedBox(
+                width: 36,
+                height: 42,
+                child: Icon(Icons.close_rounded, color: Colors.white, size: 28),
+              ),
+            ),
           ],
         ),
-      ),
     );
   }
 
