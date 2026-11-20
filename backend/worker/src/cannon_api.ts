@@ -333,13 +333,25 @@ export async function handleCannonRequest(
         launchId = launch?.id ?? '';
       }
       if (!launch) return json({ ok: true, launch_id: '', level: requestedLevel || 0, contributors: [] }, 200, origin, env);
-      const rows = await db.prepare(
+      let rows = await db.prepare(
         "SELECT c.user_id AS user_id, COALESCE(NULLIF(p.display_name,''), NULLIF(p.happy_id,''), 'مساهم') AS user_name, " +
         "COALESCE(p.avatar_key,'') AS avatar_url, COALESCE(p.happy_id,'') AS public_id, c.contribution AS contribution " +
         "FROM cannon_launch_contributors c LEFT JOIN profiles p ON p.user_id=c.user_id " +
         "WHERE c.launch_id=? AND c.room_id=? AND c.contribution>0 " +
         "ORDER BY c.contribution DESC, c.user_id ASC LIMIT 200"
-      ).bind(launchId, roomId).all();
+      ).bind(launchId, roomId).all<Record<string, unknown>>();
+      // Backward compatibility: older Worker versions created launches but did not
+      // freeze their contributor rows. Use the retained per-level contribution ledger
+      // for those launches so genuine contributors are not shown as empty cards.
+      if (!(rows.results?.length)) {
+        rows = await db.prepare(
+          "SELECT c.user_id AS user_id, COALESCE(NULLIF(p.display_name,''), NULLIF(p.happy_id,''), 'مساهم') AS user_name, " +
+          "COALESCE(p.avatar_key,'') AS avatar_url, COALESCE(p.happy_id,'') AS public_id, c.amount AS contribution " +
+          "FROM cannon_contrib c LEFT JOIN profiles p ON p.user_id=c.user_id " +
+          "WHERE c.room_id=? AND c.day=? AND c.level=? AND c.amount>0 " +
+          "ORDER BY c.amount DESC, c.user_id ASC LIMIT 200"
+        ).bind(roomId, launch.day, launch.level).all<Record<string, unknown>>();
+      }
       return json({
         ok: true,
         launch_id: launch.id,
