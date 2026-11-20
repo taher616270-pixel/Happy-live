@@ -185,14 +185,17 @@ class _CannonSheetState extends State<CannonSheet> {
                 Transform.translate(
                   offset: const Offset(0, 34),
                   child: done
-                    ? const Text(
-                        'اكتمل',
+                    ? Transform.translate(
+                        offset: const Offset(0, 3),
+                        child: const Text(
+                          'اكتمل',
                         style: TextStyle(
                           color: Color(0xFFDDF7FF),
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                         ),
-                      )
+                      ),
+                    )
                     : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                         const _Bolt(size: 22), const SizedBox(width: 8),
                         Text(_fmt(lv.need), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w500)),
