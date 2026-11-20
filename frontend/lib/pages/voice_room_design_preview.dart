@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 import '../widgets/square_country_flag.dart';
 import 'package:happy_live/widgets/room_info_sheet.dart';
 import 'package:happy_live/widgets/room_level_sheet.dart';
@@ -2058,7 +2057,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     vsync: this,
     duration: const Duration(milliseconds: 1250),
   );
-  late final VideoPlayerController _airstrikeController;
+  Timer? _airstrikeTimer;
   final GlobalKey _cannonTileKey = GlobalKey();
   OverlayEntry? _flightOverlayEntry;
   OverlayEntry? _airstrikeOverlayEntry;
@@ -2077,14 +2076,6 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
   @override
   void initState() {
     super.initState();
-    _airstrikeController = VideoPlayerController.asset(
-      'assets/images/cannon/airstrike_Lv1.webp',
-    )..addListener(_handleAirstrikeProgress);
-    _airstrikeController.initialize().then((_) {
-      if (mounted) _airstrikeController.setLooping(false);
-    }).catchError((Object error) {
-      debugPrint('[cannon] level-one airstrike video failed to initialize: $error');
-    });
     _flight.addStatusListener(_handleFlightStatus);
     CannonConfig.setAuthToken(widget.accessToken);
     _refreshCannon();
@@ -2230,20 +2221,18 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
   }
 
   Future<void> _playLevelOneAirstrike() async {
-    try {
-      if (!_airstrikeController.value.isInitialized) {
-        await _airstrikeController.initialize();
-      }
+    if (!mounted || _showLevelOneAirstrike) return;
+    _insertAirstrikeOverlay();
+    setState(() => _showLevelOneAirstrike = true);
+    _airstrikeTimer?.cancel();
+    // Animated WEBP is decoded and played by Flutter's image codec.
+    // Keep the overlay visible for the effect, then remove it.
+    _airstrikeTimer = Timer(const Duration(seconds: 5), () {
       if (!mounted) return;
-      await _airstrikeController.seekTo(Duration.zero);
-      if (!mounted) return;
-      _insertAirstrikeOverlay();
-      setState(() => _showLevelOneAirstrike = true);
-      await _airstrikeController.play();
-    } catch (error) {
-      debugPrint('[cannon] level-one airstrike playback failed: $error');
-      if (mounted) setState(() => _showLevelOneAirstrike = false);
-    }
+      _airstrikeOverlayEntry?.remove();
+      _airstrikeOverlayEntry = null;
+      setState(() => _showLevelOneAirstrike = false);
+    });
   }
 
   void _insertAirstrikeOverlay() {
@@ -2251,13 +2240,11 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     _airstrikeOverlayEntry = OverlayEntry(
       builder: (context) => Positioned.fill(
         child: IgnorePointer(
-          child: ColoredBox(
-            color: Colors.transparent,
-            child: Center(
-              child: AspectRatio(
-                aspectRatio: _airstrikeController.value.aspectRatio,
-                child: VideoPlayer(_airstrikeController),
-              ),
+          child: Center(
+            child: Image.asset(
+              'assets/images/cannon/airstrike_Lv1.webp',
+              fit: BoxFit.contain,
+              gaplessPlayback: true,
             ),
           ),
         ),
@@ -2266,26 +2253,13 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     Overlay.of(context, rootOverlay: true).insert(_airstrikeOverlayEntry!);
   }
 
-  void _handleAirstrikeProgress() {
-    if (!mounted || !_showLevelOneAirstrike ||
-        !_airstrikeController.value.isInitialized) return;
-    final value = _airstrikeController.value;
-    if (value.duration > Duration.zero && value.position >= value.duration) {
-      _airstrikeController.pause();
-      _airstrikeOverlayEntry?.remove();
-      _airstrikeOverlayEntry = null;
-      setState(() => _showLevelOneAirstrike = false);
-    }
-  }
-
   @override
   void dispose() {
     _timer?.cancel();
     _flightOverlayEntry?.remove();
     _airstrikeOverlayEntry?.remove();
     _flight.removeStatusListener(_handleFlightStatus);
-    _airstrikeController.removeListener(_handleAirstrikeProgress);
-    _airstrikeController.dispose();
+    _airstrikeTimer?.cancel();
     _flight.dispose();
     super.dispose();
   }
