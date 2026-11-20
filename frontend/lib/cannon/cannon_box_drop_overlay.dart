@@ -120,14 +120,14 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
     final progress = _fraction(index);
     final random = math.Random(index * 7919 + 17);
     final boxSize = 48.0 + (index % 3) * 3;
-    final maxLeft = math.max(0.0, screen.width - boxSize - 8);
-    final left = 4 + random.nextDouble() * maxLeft;
+    final maxLeft = math.max(0.0, screen.width - boxSize - 8.0).toDouble();
+    final left = 4.0 + random.nextDouble() * maxLeft;
     final sway = math.sin(progress * math.pi * 2 + index) * 13;
     final top = -boxSize - 20 + progress * (screen.height + boxSize + 50);
     final isBusy = _busy.contains(index);
 
     return Positioned(
-      left: (left + sway).clamp(0.0, maxLeft),
+      left: (left + sway).clamp(0.0, maxLeft).toDouble(),
       top: top,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
