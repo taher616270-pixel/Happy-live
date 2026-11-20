@@ -2055,11 +2055,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile> {
             height: 72,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF3FA7D6), Color(0xFFE8A04A)],
-              ),
+              color: Colors.black.withOpacity(0.20),
             ),
             child: Center(
               child: CannonArt(level: _level, size: 66, dim: false),
