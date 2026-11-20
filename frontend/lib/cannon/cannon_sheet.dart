@@ -131,30 +131,49 @@ class _CannonSheetState extends State<CannonSheet> {
       Expanded(child: SingleChildScrollView(
         padding: EdgeInsets.only(bottom: bottomPad + 18),
         child: Column(children: [
-          SizedBox(height: 340, child: Column(children: [
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
-              decoration: BoxDecoration(color: const Color(0x33205BFF), border: Border.all(color: const Color(0xFF3AA8FF), width: 1.2)),
-              child: Text('LV${lv.level}', style: const TextStyle(color: Color(0xFF6FE7FF), fontSize: 20, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic)),
-            ),
-            Expanded(child: PageView.builder(
-              controller: _pc, itemCount: levels.length,
-              onPageChanged: (i) => setState(() => _page = i),
-              itemBuilder: (_, i) => _CannonVisual(level: levels[i], dim: levels[i].level > st.level),
-            )),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const _Bolt(size: 22), const SizedBox(width: 8),
-              Text(_fmt(lv.need), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w500)),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-                decoration: BoxDecoration(color: const Color(0xFF1FD27A), borderRadius: BorderRadius.circular(6)),
-                child: const Text('يحتاج', style: TextStyle(color: Color(0xFF05301C), fontSize: 12, fontWeight: FontWeight.w800)),
+          SizedBox(height: 340, child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Animated blue floor/light background; cannon art stays layered above it.
+              Image.asset(
+                'assets/images/cannon/cannon_floor_lights.gif',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0xFF071A52), Color(0xFF02091F)],
+                    ),
+                  ),
+                ),
               ),
-            ]),
-            const SizedBox(height: 14),
-          ])),
+              Column(children: [
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
+                  decoration: BoxDecoration(color: const Color(0x33205BFF), border: Border.all(color: const Color(0xFF3AA8FF), width: 1.2)),
+                  child: Text('LV${lv.level}', style: const TextStyle(color: Color(0xFF6FE7FF), fontSize: 20, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic)),
+                ),
+                Expanded(child: PageView.builder(
+                  controller: _pc, itemCount: levels.length,
+                  onPageChanged: (i) => setState(() => _page = i),
+                  itemBuilder: (_, i) => _CannonVisual(level: levels[i], dim: levels[i].level > st.level),
+                )),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const _Bolt(size: 22), const SizedBox(width: 8),
+                  Text(_fmt(lv.need), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w500)),
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+                    decoration: BoxDecoration(color: const Color(0xFF1FD27A), borderRadius: BorderRadius.circular(6)),
+                    child: const Text('يحتاج', style: TextStyle(color: Color(0xFF05301C), fontSize: 12, fontWeight: FontWeight.w800)),
+                  ),
+                ]),
+                const SizedBox(height: 14),
+              ]),
+            ],
+          )),
           Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
             ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
               value: ratio, minHeight: 7, backgroundColor: const Color(0xFF1A2A7A),
@@ -234,31 +253,10 @@ class _CannonVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Stack(alignment: Alignment.center, children: [
-    Positioned(bottom: 4, child: CustomPaint(size: const Size(300, 80), painter: _RingsPainter(dim))),
+    // The animated floor is supplied by the parent Stack. Keep only the cannon here
+    // so changing levels moves the cannon without moving the fixed requirement label.
     Positioned(bottom: 30, child: CannonArt(level: level.level, size: 210, dim: dim)),
   ]);
-}
-
-class _RingsPainter extends CustomPainter {
-  final bool dim;
-  _RingsPainter(this.dim);
-  @override
-  void paint(Canvas canvas, Size s) {
-    final c = Offset(s.width / 2, s.height / 2);
-    for (var i = 0; i < 3; i++) {
-      final k = 1 - i * 0.18;
-      final r = Rect.fromCenter(center: c, width: s.width * k, height: s.height * k);
-      canvas.drawOval(r, Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = i == 0 ? 3 : 1.6
-        ..color = const Color(0xFF2FC4FF).withAlpha(dim ? 70 : (i == 0 ? 230 : 130))
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, i == 0 ? 3 : 1));
-    }
-    canvas.drawOval(Rect.fromCenter(center: c, width: s.width * 0.6, height: s.height * 0.5),
-      Paint()..color = const Color(0xFF1E7BFF).withAlpha(dim ? 40 : 90));
-  }
-  @override
-  bool shouldRepaint(covariant _RingsPainter old) => old.dim != dim;
 }
 
 class _Tab extends StatelessWidget {
