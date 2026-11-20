@@ -29,7 +29,7 @@ class CannonContributorsBox extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 18),
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF07164D).withValues(alpha: 0.92),
+        color: const Color(0xFF07164D).withOpacity(0.92),
         borderRadius: BorderRadius.circular(13),
         border: Border.all(color: const Color(0xFF328BFF), width: 1.2),
       ),
