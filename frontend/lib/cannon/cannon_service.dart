@@ -51,6 +51,9 @@ class CannonService extends ChangeNotifier {
     _roomTimer = null;
     currentRoomId = null;
     state = null;
+    contributors = [];
+    _contributorsLaunchId = '';
+    contributorsUnavailable = false;
     isUnavailable = false;
     _lastLaunchId = '';
     _firstLoad = true;
