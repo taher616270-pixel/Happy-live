@@ -147,7 +147,7 @@ class _CannonSheetState extends State<CannonSheet> {
           ),
           Column(children: [
       SizedBox(height: 60, child: Stack(children: [
-        const Center(child: _Tab(title: 'مدفع الغرفة')),
+        const Center(child: Transform.translate(offset: Offset(0, -8), child: _Tab(title: 'مدفع الغرفة'))),
         Align(alignment: Alignment.centerLeft, child: IconButton(
           onPressed: () => showCannonRulesSheet(context),
           icon: Container(width: 28, height: 28,
@@ -428,7 +428,7 @@ class _Tab extends StatelessWidget {
   const _Tab({required this.title});
   @override
   Widget build(BuildContext context) => Container(
-    width: 135,
+    width: 120,
     height: 34,
     alignment: Alignment.center,
     decoration: BoxDecoration(
