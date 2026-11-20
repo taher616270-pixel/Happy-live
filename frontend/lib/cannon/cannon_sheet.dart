@@ -5,6 +5,7 @@ import 'cannon_art.dart';
 import 'cannon_models.dart';
 import 'cannon_rules_sheet.dart';
 import 'cannon_reward_dialog.dart';
+import 'cannon_luck_dialog.dart';
 import 'cannon_service.dart';
 import 'prize_pool_box.dart';
 
@@ -231,12 +232,14 @@ class _CannonSheetState extends State<CannonSheet> {
           ])),
           const SizedBox(height: 16),
           Transform.translate(offset: const Offset(0, 10), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 18), child: Opacity(
-            opacity: isCurrent ? 1 : 0.4,
+            opacity: (isCurrent || done) ? 1 : 0.4,
             child: GestureDetector(
-              onTap: isCurrent ? () {
-                Navigator.pop(context);
-                widget.onSendGift?.call();
-              } : null,
+              onTap: done
+                ? () => showCannonLuckSheet(context, roomId: widget.roomId, level: lv.level)
+                : isCurrent ? () {
+                    Navigator.pop(context);
+                    widget.onSendGift?.call();
+                  } : null,
               child: Container(
                 height: 62, width: double.infinity,
                 decoration: BoxDecoration(
@@ -246,10 +249,22 @@ class _CannonSheetState extends State<CannonSheet> {
                   border: Border.all(color: const Color(0xFF9FE0FF), width: 1.4),
                 ),
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text(done ? 'تم الإنجاز' : (locked ? 'مقفل' : 'إرسال هدية'),
-                    style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 2),
-                  const Text('أرسل أي هدية وشارك في اليانصيب', style: TextStyle(color: Color(0xFFFFE9A8), fontSize: 11)),
+                  if (done)
+                    const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('ترتيب الحظ', style: TextStyle(color: Color(0xFFD6D6D6), fontSize: 17, fontWeight: FontWeight.w800)),
+                        SizedBox(width: 5),
+                        Text('>', style: TextStyle(color: Color(0xFFD6D6D6), fontSize: 19, fontWeight: FontWeight.w800)),
+                      ],
+                    )
+                  else ...[
+                    Text(locked ? 'مقفل' : 'إرسال هدية',
+                      style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    const Text('أرسل أي هدية وشارك في اليانصيب', style: TextStyle(color: Color(0xFFFFE9A8), fontSize: 11)),
+                  ],
                 ]),
               ),
             ),
