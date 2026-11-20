@@ -13,25 +13,28 @@ class CannonArt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = CannonConfig.cannonImages[level];
+    final localAnimatedAsset = level >= 1 && level <= 4
+        ? 'assets/images/cannon/airplane_lv$level.gif'
+        : null;
     final Widget art = completed
         ? _drawn()
-        : level == 1
-        ? Image.asset(
-            'assets/images/cannon/airplane_lv1.png',
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => _drawn(),
-          )
-        : (url != null && url.isNotEmpty)
-            ? Image.network(
-                url,
+        : localAnimatedAsset != null
+            ? Image.asset(
+                localAnimatedAsset,
                 width: size,
                 height: size,
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => _drawn(),
               )
-            : _drawn();
+            : (url != null && url.isNotEmpty)
+                ? Image.network(
+                    url,
+                    width: size,
+                    height: size,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => _drawn(),
+                  )
+                : _drawn();
     return Opacity(opacity: dim ? 0.4 : 1, child: art);
   }
 
