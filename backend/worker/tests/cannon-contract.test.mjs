@@ -5,6 +5,8 @@ import { readFile } from "node:fs/promises";
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const migration = await read("../migrations/0051_room_cannon.sql");
 const launchMigration = await read("../migrations/0052_cannon_launch_contributors.sql");
+const boxMigration = await read("../migrations/0053_cannon_gift_boxes.sql");
+const boxOverlay = await read("../../../frontend/lib/cannon/cannon_box_drop_overlay.dart");
 const cannon = await read("../src/cannon_api.ts");
 const worker = await read("../src/index.ts");
 const preview = await read("../../../frontend/lib/pages/voice_room_design_preview.dart");
@@ -77,6 +79,25 @@ test("cannon levels can grow sequentially while protecting room progression", ()
   assert.match(cannon, /room\.level < Math\.max\(\.\.\.levels\.map\(x => x\.level\)\)/);
   assert.match(cannon, /level\?\.title !== undefined/);
   assert.match(cannon, /top1Count > 1/);
+});
+
+
+test("each room member gets a private 50-box round and only sees rewards after the five-second drop", () => {
+  assert.match(boxMigration, /UNIQUE \(launch_id, user_id\)/);
+  assert.match(boxMigration, /UNIQUE \(round_id, box_index\)/);
+  assert.match(boxMigration, /box_index >= 0 AND box_index < 50/);
+  assert.match(cannon, /\/api\/cannon\/boxes\/start/);
+  assert.match(cannon, /\/api\/cannon\/boxes\/open/);
+  assert.match(cannon, /\/api\/cannon\/boxes\/results/);
+  assert.match(cannon, /box_drop_not_finished/);
+  assert.match(cannon, /WHERE id=\? AND user_id=\?/);
+  assert.match(cannonApi, /startBoxRound/);
+  assert.match(cannonApi, /openBox/);
+  assert.match(cannonApi, /fetchBoxResults/);
+  assert.match(boxOverlay, /Duration\(seconds: 5\)/);
+  assert.match(boxOverlay, /for \(var index = 0; index < 50; index\+\+\)/);
+  assert.match(preview, /_showFallingGiftBoxes\(\)/);
+  assert.match(preview, /جوائز الصناديق/);
 });
 
 test("only the empty BET room tile opens the cannon sheet", () => {
