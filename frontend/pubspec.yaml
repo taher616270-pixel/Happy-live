@@ -27,6 +27,7 @@ dependencies:
   gif_view: ^1.0.3
   flutter_svga: ^0.0.14
   audioplayers: ^6.5.0
+  video_player: ^2.9.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -54,6 +55,7 @@ flutter:
     - assets/images/cannon/airplane_lv2.gif
     - assets/images/cannon/airplane_lv3.gif
     - assets/images/cannon/airplane_lv4.gif
+    - assets/images/cannon/airstrike_Lv1.mp4
     - assets/levels/
     - web/assets/south-arabia-new.png
     - web/assets/images/profile_cover/profile_cover.jpg.JPG
