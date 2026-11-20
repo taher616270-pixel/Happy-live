@@ -303,7 +303,8 @@ async function cannonAdminPage(){
       '<div><b>صورة المكافأة</b><p class="muted">اختر صورة من جهازك أو المعرض.</p><label class="action">اختيار صورة<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-prize-image="'+li+':'+pi+'" hidden '+(canEdit?'':'disabled')+'></label></div></div>'+
     '</article>';
   const renderLevels=()=>{
-    $("cannonLevelEditors").innerHTML=draftLevels.map((level,li)=>'<details class="cannon-level-editor" data-level-card="'+li+'" '+(li===0?'open':'')+'>'+
+    const openedLevels=new Set([...$("cannonLevelEditors").querySelectorAll("details[open]")].map(node=>Number(node.dataset.levelCard)));
+    $("cannonLevelEditors").innerHTML=draftLevels.map((level,li)=>'<details class="cannon-level-editor" data-level-card="'+li+'" '+(li===0||openedLevels.has(li)?'open':'')+'>'+
       '<summary class="cannon-level-head"><div><span class="badge good">LV '+Number(level.level)+'</span><strong>'+esc(level.title||("المستوى "+level.level))+'</strong></div><span class="muted">إعدادات المستوى · اضغط للفتح</span></summary>'+
       '<div class="cannon-level-grid"><label>اسم / نص المستوى<input data-level-field="title" data-level="'+li+'" maxlength="60" value="'+esc(level.title||("المستوى "+level.level))+'" '+(canEdit?'':'disabled')+'></label>'+
       '<label>المساهمة المطلوبة<input type="number" min="1" max="1000000000000" step="1" data-level-field="need" data-level="'+li+'" value="'+Number(level.need||0)+'" '+(canEdit?'':'disabled')+'></label></div>'+
@@ -337,7 +338,7 @@ async function cannonAdminPage(){
   await uploadAsset("cannonFrameFile","/happy-live/cannon/frames","cannonFramePreview",url=>frameImageUrl=url);
   $("cannonLevelEditors").addEventListener("input",event=>{
     const el=event.target,li=Number(el.dataset.level),pi=Number(el.dataset.prize);
-    if(el.dataset.levelField){const level=draftLevels[li];level[el.dataset.levelField]=el.dataset.levelField==="need"?Number(el.value):el.value;}
+    if(el.dataset.levelField){const level=draftLevels[li];level[el.dataset.levelField]=el.dataset.levelField==="need"?Number(el.value):el.value;if(el.dataset.levelField==="title"){const title=el.closest("details")?.querySelector("summary strong");if(title)title.textContent=el.value||("المستوى "+level.level);}}
     if(el.dataset.prizeField&&draftLevels[li]?.prizes?.[pi]){
       const prize=draftLevels[li].prizes[pi],field=el.dataset.prizeField;
       prize[field]=field==="weight"?Number(el.value):field==="top1"||field==="rare"?el.checked:el.value;
@@ -375,7 +376,7 @@ async function cannonAdminPage(){
     draftLevels.push({level:next,title:"المستوى "+next,need:nextNeed,prizes:[{key:"coins_l"+next,name:"مكافأة المستوى "+next,type:"coins",value:"100",icon:"",top1:false,weight:100}]});
     renderLevels();
     $("cannonSettingsMessage").textContent="أضيف المستوى "+next+"؛ احفظ الإعدادات لربطه بتدرج المدفع.";
-    $("cannonLevelEditors").lastElementChild?.scrollIntoView({behavior:"smooth",block:"start"});
+    if($("cannonLevelEditors").lastElementChild){$("cannonLevelEditors").lastElementChild.open=true;$("cannonLevelEditors").lastElementChild.scrollIntoView({behavior:"smooth",block:"start"});}
   };
   $("saveCannonSettings").onclick=async()=>{
     const button=$("saveCannonSettings"),message=$("cannonSettingsMessage");
