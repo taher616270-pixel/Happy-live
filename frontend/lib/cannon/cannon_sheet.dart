@@ -114,6 +114,9 @@ class _CannonSheetState extends State<CannonSheet> {
     final locked = lv.level > st.level;
     final done = lv.level < st.level;
     final ratio = isCurrent ? st.ratio : (done ? 1.0 : 0.0);
+    // Show the live remaining amount for the active cannon level.
+    // Future levels keep their configured target amount.
+    final remainingNeed = isCurrent ? (lv.need - st.progress).clamp(0, lv.need) : lv.need;
     final ordered = [...lv.prizes.where((p) => p.top1), ...lv.prizes.where((p) => !p.top1)];
 
     return LayoutBuilder(builder: (context, sheetConstraints) {
@@ -203,7 +206,7 @@ class _CannonSheetState extends State<CannonSheet> {
                     )
                     : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                         const _Bolt(size: 22), const SizedBox(width: 8),
-                        Text(_fmt(lv.need), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w500)),
+                        Text(_fmt(remainingNeed), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w500)),
                         const SizedBox(width: 10),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
