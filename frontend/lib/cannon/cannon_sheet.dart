@@ -226,7 +226,7 @@ class _CannonSheetState extends State<CannonSheet> {
             ),
           )),
           const SizedBox(height: 18),
-          if (st.launchId.isNotEmpty)
+          if (st.launchId.isNotEmpty && !st.launching)
             CannonContributorsBox(
               contributors: _svc.contributors,
               loading: _svc.contributors.isEmpty && !_svc.contributorsUnavailable,
