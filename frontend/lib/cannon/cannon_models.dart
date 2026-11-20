@@ -42,11 +42,13 @@ class CannonState {
   final bool launching;
   final List<CannonLevel> levels;
   final List<CannonClaim> pending;
+  final List<CannonContributor> contributors;
 
   const CannonState({
     required this.roomId, required this.launchId, required this.level,
     required this.progress, required this.need, required this.myContribution,
     required this.launching, required this.levels, required this.pending,
+    this.contributors = const [],
   });
 
   double get ratio => need <= 0 ? 0 : (progress / need).clamp(0.0, 1.0).toDouble();
@@ -76,6 +78,10 @@ class CannonState {
       pending: ((my['pending'] as List?) ?? [])
         .whereType<Map>()
         .map((e) => CannonClaim.fromJson(Map<String, dynamic>.from(e)))
+        .toList(),
+      contributors: ((j['contributors'] as List?) ?? [])
+        .whereType<Map>()
+        .map((e) => CannonContributor.fromJson(Map<String, dynamic>.from(e)))
         .toList(),
     );
   }
