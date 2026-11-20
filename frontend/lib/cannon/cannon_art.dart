@@ -7,12 +7,15 @@ class CannonArt extends StatelessWidget {
   final int level;
   final double size;
   final bool dim;
-  const CannonArt({super.key, required this.level, this.size = 160, this.dim = false});
+  final bool completed;
+  const CannonArt({super.key, required this.level, this.size = 160, this.dim = false, this.completed = false});
 
   @override
   Widget build(BuildContext context) {
     final url = CannonConfig.cannonImages[level];
-    final Widget art = level == 1
+    final Widget art = completed
+        ? _drawn()
+        : level == 1
         ? Image.asset(
             'assets/images/cannon/airplane_lv1.png',
             width: size,
@@ -32,12 +35,13 @@ class CannonArt extends StatelessWidget {
     return Opacity(opacity: dim ? 0.4 : 1, child: art);
   }
 
-  Widget _drawn() => SizedBox(width: size, height: size, child: CustomPaint(painter: _CannonPainter(level)));
+  Widget _drawn() => SizedBox(width: size, height: size, child: CustomPaint(painter: _CannonPainter(level, completed: completed)));
 }
 
 class _CannonPainter extends CustomPainter {
   final int level;
-  _CannonPainter(this.level);
+  final bool completed;
+  _CannonPainter(this.level, {this.completed = false});
 
   static const _palettes = <List<Color>>[
     [Color(0xFF64E7C5), Color(0xFF126A62)],
@@ -50,7 +54,9 @@ class _CannonPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size s) {
     final w = s.width;
-    final pal = _palettes[(level - 1).clamp(0, 3).toInt()];
+    final pal = completed
+        ? const [Color(0xFF20E58B), Color(0xFF075B3D)]
+        : _palettes[(level - 1).clamp(0, 3).toInt()];
     final goldPaint = (Rect r) => Paint()
       ..shader = const LinearGradient(colors: _gold, begin: Alignment.topLeft, end: Alignment.bottomRight).createShader(r);
 
@@ -90,5 +96,5 @@ class _CannonPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _CannonPainter old) => old.level != level;
+  bool shouldRepaint(covariant _CannonPainter old) => old.level != level || old.completed != completed;
 }
