@@ -14,6 +14,7 @@ class CannonService extends ChangeNotifier {
   CannonBanner? activeBanner;
   List<CannonContributor> contributors = [];
   String _contributorsLaunchId = '';
+  String _observedLaunchId = '';
   int contributorsLevel = 0;
   bool contributorsUnavailable = false;
 
@@ -39,6 +40,7 @@ class CannonService extends ChangeNotifier {
     state = null;
     contributors = [];
     _contributorsLaunchId = '';
+    _observedLaunchId = '';
     contributorsLevel = 0;
     contributorsUnavailable = false;
     isUnavailable = false;
@@ -86,10 +88,12 @@ class CannonService extends ChangeNotifier {
       // A new Saudi day creates a fresh cannon state with an empty launch ID.
       // Clear the previous launch's contributors so the prize pool is visible
       // again for the new day in every room.
-      if (s.launchId != _contributorsLaunchId) {
+      if (s.launchId != _observedLaunchId) {
+        _observedLaunchId = s.launchId;
         if (s.launchId.isEmpty) {
           contributors = [];
           _contributorsLaunchId = '';
+          contributorsLevel = 0;
           contributorsUnavailable = false;
         } else {
           _loadContributors(id, s.launchId, s.level - 1);
