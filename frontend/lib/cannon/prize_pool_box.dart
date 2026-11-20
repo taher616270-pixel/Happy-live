@@ -369,3 +369,30 @@ class _PrizeScanlinePainter extends CustomPainter {
   bool shouldRepaint(covariant _PrizeScanlinePainter oldDelegate) =>
       oldDelegate.color != color;
 }
+
+
+class _GreenPixels extends StatelessWidget {
+  const _GreenPixels();
+
+  @override
+  Widget build(BuildContext context) {
+    const shades = [
+      Color(0xFF8BFFC0),
+      Color(0xFF27E987),
+      Color(0xFF176E53),
+      Color(0xFF42FF9B),
+    ];
+    return SizedBox(
+      width: 23,
+      height: 19,
+      child: Wrap(
+        spacing: 3,
+        runSpacing: 3,
+        children: [
+          for (final shade in shades)
+            Container(width: 7, height: 7, color: shade),
+        ],
+      ),
+    );
+  }
+}
