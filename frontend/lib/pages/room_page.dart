@@ -2180,6 +2180,7 @@ class _RoomPageState extends State<RoomPage> {
       chatFocusNode: _roomChatFocusNode,
       onSendChat: _sendRoomMessage,
       accessToken: widget.accessToken,
+      currentUserCode: _seatStateStore.currentUserCode,
       seats: _seats,
       speakerLevels: _speakerLevels,
       onTapSeat: _selectSeat,
