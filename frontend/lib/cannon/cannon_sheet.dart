@@ -182,16 +182,28 @@ class _CannonSheetState extends State<CannonSheet> {
                   },
                   itemBuilder: (_, i) => _CannonVisual(level: levels[i], dim: levels[i].level > st.level, completed: levels[i].level < st.level),
                 )),
-                Transform.translate(offset: const Offset(0, 34), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const _Bolt(size: 22), const SizedBox(width: 8),
-                  Text(_fmt(lv.need), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w500)),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-                    decoration: BoxDecoration(color: const Color(0xFF1FD27A), borderRadius: BorderRadius.circular(6)),
-                    child: const Text('يحتاج', style: TextStyle(color: Color(0xFF05301C), fontSize: 12, fontWeight: FontWeight.w800)),
-                  ),
-                ])),
+                Transform.translate(
+                  offset: const Offset(0, 34),
+                  child: done
+                    ? const Text(
+                        'اكتمل',
+                        style: TextStyle(
+                          color: Color(0xFFDDF7FF),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      )
+                    : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        const _Bolt(size: 22), const SizedBox(width: 8),
+                        Text(_fmt(lv.need), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w500)),
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+                          decoration: BoxDecoration(color: const Color(0xFF1FD27A), borderRadius: BorderRadius.circular(6)),
+                          child: const Text('يحتاج', style: TextStyle(color: Color(0xFF05301C), fontSize: 12, fontWeight: FontWeight.w800)),
+                        ),
+                      ]),
+                ),
                 const SizedBox(height: 14),
               ])),
                     Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
