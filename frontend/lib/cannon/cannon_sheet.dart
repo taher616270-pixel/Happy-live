@@ -225,7 +225,6 @@ class _CannonSheetState extends State<CannonSheet> {
             ),
           )),
           const SizedBox(height: 18),
-          const SizedBox(height: 18),
           Opacity(
             opacity: locked ? 0.45 : 1,
             child: PrizePoolBox(
@@ -240,7 +239,6 @@ class _CannonSheetState extends State<CannonSheet> {
               ],
             ),
           ),
-          )),
             ]),
           ),
         ),
