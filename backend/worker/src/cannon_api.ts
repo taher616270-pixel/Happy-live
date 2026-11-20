@@ -173,7 +173,7 @@ export async function handleCannonRequest(
   const url = new URL(request.url);
   const db = env.DB;
   const isAdminRoute = url.pathname === "/api/v1/admin/cannon/settings";
-  const isCannonRoute = url.pathname === "/api/cannon/state" || url.pathname === "/api/cannon/banners" || url.pathname === "/api/cannon/claim";
+  const isCannonRoute = url.pathname === "/api/cannon/state" || url.pathname === "/api/cannon/banners" || url.pathname === "/api/cannon/claim" || url.pathname === "/api/cannon/contributors";
   if (!isAdminRoute && !isCannonRoute) return null;
   if (!db) return json({ error: "database_unavailable" }, 503, origin, env);
 
@@ -294,6 +294,36 @@ export async function handleCannonRequest(
         room: { room_id: room.room_id, title: room.title, avatar: room.avatar, launch_id: state?.launchId ?? "", level: state?.level ?? 1, progress: state?.progress ?? 0, need, launching: Number(state?.launchingUntil ?? 0) > nowSeconds() },
         my: { contribution: mine?.amount ?? 0, pending: pending.results ?? [] },
         levels: settings.levels
+      }, 200, origin, env);
+    }
+
+    if (url.pathname === "/api/cannon/contributors" && request.method === "GET") {
+      if (!settings.enabled) return json({ ok: true, contributors: [] }, 200, origin, env);
+      const roomId = (url.searchParams.get("room_id") ?? "").trim();
+      const launchId = (url.searchParams.get("launch_id") ?? "").trim();
+      if (!/^[0-9a-f-]{36}$/i.test(roomId) || !/^[0-9a-f-]{36}$/i.test(launchId)) {
+        return json({ error: "invalid_contributor_request" }, 400, origin, env);
+      }
+      const activeVisit = await db.prepare(
+        "SELECT id FROM room_chat_visits WHERE room_id=? AND user_id=? AND exited_at IS NULL AND last_seen_at>=? LIMIT 1"
+      ).bind(roomId, user.id, new Date(Date.now() - 45000).toISOString()).first<{ id: string }>();
+      if (!activeVisit) return json({ error: "room_membership_required" }, 403, origin, env);
+      const launch = await db.prepare(
+        "SELECT level, day FROM cannon_launches WHERE id=? AND room_id=? LIMIT 1"
+      ).bind(launchId, roomId).first<{ level: number; day: string }>();
+      if (!launch) return json({ error: "cannon_launch_not_found" }, 404, origin, env);
+      const rows = await db.prepare(
+        "SELECT c.user_id AS user_id, COALESCE(NULLIF(p.display_name,''), NULLIF(p.happy_id,''), 'مساهم') AS user_name, " +
+        "COALESCE(p.avatar_key,'') AS avatar_url, COALESCE(p.happy_id,'') AS public_id, c.amount AS contribution " +
+        "FROM cannon_contrib c LEFT JOIN profiles p ON p.user_id=c.user_id " +
+        "WHERE c.room_id=? AND c.day=? AND c.level=? AND c.amount>0 " +
+        "ORDER BY c.amount DESC, c.user_id ASC LIMIT 200"
+      ).bind(roomId, launch.day, launch.level).all();
+      return json({
+        ok: true,
+        launch_id: launchId,
+        level: launch.level,
+        contributors: rows.results ?? []
       }, 200, origin, env);
     }
 
