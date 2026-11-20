@@ -131,11 +131,30 @@ class _CannonSheetState extends State<CannonSheet> {
       Expanded(child: SingleChildScrollView(
         padding: EdgeInsets.only(bottom: bottomPad + 18),
         child: Column(children: [
-          SizedBox(height: 340, child: PageView.builder(
-            controller: _pc, itemCount: levels.length,
-            onPageChanged: (i) => setState(() => _page = i),
-            itemBuilder: (_, i) => _LevelPage(level: levels[i], dim: levels[i].level > st.level),
-          )),
+          SizedBox(height: 340, child: Column(children: [
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
+              decoration: BoxDecoration(color: const Color(0x33205BFF), border: Border.all(color: const Color(0xFF3AA8FF), width: 1.2)),
+              child: Text('LV${lv.level}', style: const TextStyle(color: Color(0xFF6FE7FF), fontSize: 20, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic)),
+            ),
+            Expanded(child: PageView.builder(
+              controller: _pc, itemCount: levels.length,
+              onPageChanged: (i) => setState(() => _page = i),
+              itemBuilder: (_, i) => _CannonVisual(level: levels[i], dim: levels[i].level > st.level),
+            )),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const _Bolt(size: 22), const SizedBox(width: 8),
+              Text(_fmt(lv.need), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w500)),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+                decoration: BoxDecoration(color: const Color(0xFF1FD27A), borderRadius: BorderRadius.circular(6)),
+                child: const Text('يحتاج', style: TextStyle(color: Color(0xFF05301C), fontSize: 12, fontWeight: FontWeight.w800)),
+              ),
+            ]),
+            const SizedBox(height: 14),
+          ])),
           Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
             ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
               value: ratio, minHeight: 7, backgroundColor: const Color(0xFF1A2A7A),
@@ -208,34 +227,15 @@ class _CannonSheetState extends State<CannonSheet> {
   }
 }
 
-class _LevelPage extends StatelessWidget {
+class _CannonVisual extends StatelessWidget {
   final CannonLevel level;
   final bool dim;
-  const _LevelPage({required this.level, required this.dim});
+  const _CannonVisual({required this.level, required this.dim});
 
   @override
-  Widget build(BuildContext context) => Column(children: [
-    const SizedBox(height: 6),
-    Container(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
-      decoration: BoxDecoration(color: const Color(0x33205BFF), border: Border.all(color: const Color(0xFF3AA8FF), width: 1.2)),
-      child: Text('LV${level.level}', style: const TextStyle(color: Color(0xFF6FE7FF), fontSize: 20, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic)),
-    ),
-    Expanded(child: Stack(alignment: Alignment.center, children: [
-      Positioned(bottom: 4, child: CustomPaint(size: const Size(300, 80), painter: _RingsPainter(dim))),
-      Positioned(bottom: 30, child: CannonArt(level: level.level, size: 210, dim: dim)),
-    ])),
-    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-      const _Bolt(size: 22), const SizedBox(width: 8),
-      Text(_fmt(level.need), style: TextStyle(color: Colors.white.withAlpha(dim ? 110 : 255), fontSize: 26, fontWeight: FontWeight.w500)),
-      const SizedBox(width: 10),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-        decoration: BoxDecoration(color: const Color(0xFF1FD27A), borderRadius: BorderRadius.circular(6)),
-        child: const Text('يحتاج', style: TextStyle(color: Color(0xFF05301C), fontSize: 12, fontWeight: FontWeight.w800)),
-      ),
-    ]),
-    const SizedBox(height: 14),
+  Widget build(BuildContext context) => Stack(alignment: Alignment.center, children: [
+    Positioned(bottom: 4, child: CustomPaint(size: const Size(300, 80), painter: _RingsPainter(dim))),
+    Positioned(bottom: 30, child: CannonArt(level: level.level, size: 210, dim: dim)),
   ]);
 }
 
