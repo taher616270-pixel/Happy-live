@@ -4,7 +4,7 @@ type CannonEnv = { DB?: D1Database };
 type CannonJson = (data: unknown, status?: number, origin?: string, env?: any) => Response;
 type CannonAuthUser = (request: Request, db: D1Database) => Promise<CannonUser | null>;
 type CannonAuthAdmin = (request: Request, db: D1Database) => Promise<CannonAdmin | null>;
-type CannonLevelConfig = { level: number; need: number; prizes: CannonPrizeConfig[] };
+type CannonLevelConfig = { level: number; title?: string; need: number; prizes: CannonPrizeConfig[] };
 type CannonPrizeConfig = { key: string; name: string; type: string; value: string; icon: string; top1: boolean; weight?: number; rare?: boolean };
 
 const DEFAULT_LEVELS: CannonLevelConfig[] = [
@@ -203,19 +203,22 @@ export async function handleCannonRequest(
         }
         let levelsJson: string | undefined;
         if (levels !== undefined) {
-          if (!Array.isArray(levels) || levels.length !== 4) return json({ error: "invalid_cannon_levels" }, 400, origin, env);
+          if (!Array.isArray(levels) || levels.length < 1 || levels.length > 150) return json({ error: "invalid_cannon_levels" }, 400, origin, env);
           const levelIds = new Set<number>();
           for (const level of levels as any[]) {
             const levelId = Number(level?.level);
-            if (!Number.isSafeInteger(levelId) || levelId < 1 || levelId > 4 || levelIds.has(levelId) ||
+            if (!Number.isSafeInteger(levelId) || levelId !== levelIds.size + 1 || levelId < 1 || levelId > 150 || levelIds.has(levelId) ||
+                (level?.title !== undefined && (typeof level.title !== "string" || level.title.trim().length > 60)) ||
                 !Number.isSafeInteger(Number(level?.need)) || Number(level.need) < 1 || Number(level.need) > 1000000000000 ||
                 !Array.isArray(level?.prizes) || level.prizes.length < 1 || level.prizes.length > 40) {
               return json({ error: "invalid_cannon_levels" }, 400, origin, env);
             }
             levelIds.add(levelId);
+            const prizeKeys = new Set<string>();
+            let top1Count = 0;
             for (const prize of level.prizes) {
               const weight = prize?.weight === undefined ? 0 : Number(prize.weight);
-              if (!prize || typeof prize.key !== "string" || !/^[a-z0-9_-]{1,80}$/i.test(prize.key) ||
+              if (!prize || typeof prize.key !== "string" || !/^[a-z0-9_-]{1,80}$/i.test(prize.key) || prizeKeys.has(prize.key) ||
                   typeof prize.name !== "string" || prize.name.trim().length < 1 || prize.name.length > 100 ||
                   typeof prize.type !== "string" || typeof prize.value !== "string" || prize.value.length > 120 ||
                   typeof prize.icon !== "string" || prize.icon.length > 2048 ||
@@ -225,11 +228,12 @@ export async function handleCannonRequest(
                   typeof prize.top1 !== "boolean" || (prize.rare !== undefined && typeof prize.rare !== "boolean")) {
                 return json({ error: "invalid_cannon_prize" }, 400, origin, env);
               }
+              prizeKeys.add(prize.key);
+              if (prize.top1) top1Count++;
             }
+            if (top1Count > 1) return json({ error: "multiple_top1_prizes" }, 400, origin, env);
           }
-          if (levelIds.size !== 4 || [1,2,3,4].some(id => !levelIds.has(id))) {
-            return json({ error: "invalid_cannon_levels" }, 400, origin, env);
-          }
+          if (levelIds.size !== levels.length) return json({ error: "invalid_cannon_levels" }, 400, origin, env);
           levelsJson = JSON.stringify(levels);
         }
         const current = await db.prepare(
