@@ -2148,11 +2148,13 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
               ],
             ),
           ),
-          if (_flight.isAnimating)
-            AnimatedBuilder(
-              animation: _flight,
-              builder: (context, child) {
-                final t = Curves.easeInCubic.transform(_flight.value);
+          AnimatedBuilder(
+            animation: _flight,
+            builder: (context, child) {
+              if (_flight.value <= 0 || _flight.value >= 1) {
+                return const SizedBox.shrink();
+              }
+              final t = Curves.easeInCubic.transform(_flight.value);
                 final flightTop = tileTop + 36 - 54 - (tileTop + 150) * t;
                 final sway = math.sin(t * math.pi * 2) * 20;
                 final burstOpacity = (1 - (_flight.value / .22)).clamp(0.0, 1.0);
