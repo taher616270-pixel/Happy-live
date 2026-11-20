@@ -310,18 +310,29 @@ export async function handleCannonRequest(
     if (url.pathname === "/api/cannon/contributors" && request.method === "GET") {
       if (!settings.enabled) return json({ ok: true, contributors: [] }, 200, origin, env);
       const roomId = (url.searchParams.get("room_id") ?? "").trim();
-      const launchId = (url.searchParams.get("launch_id") ?? "").trim();
-      if (!/^[0-9a-f-]{36}$/i.test(roomId) || !/^[0-9a-f-]{36}$/i.test(launchId)) {
+      let launchId = (url.searchParams.get("launch_id") ?? "").trim();
+      const requestedLevel = Number(url.searchParams.get("level") ?? 0);
+      if (!/^[0-9a-f-]{36}$/i.test(roomId) ||
+          (launchId && !/^[0-9a-f-]{36}$/i.test(launchId)) ||
+          (!launchId && (!Number.isSafeInteger(requestedLevel) || requestedLevel < 1 || requestedLevel > 150))) {
         return json({ error: "invalid_contributor_request" }, 400, origin, env);
       }
       const activeVisit = await db.prepare(
         "SELECT id FROM room_chat_visits WHERE room_id=? AND user_id=? AND exited_at IS NULL AND last_seen_at>=? LIMIT 1"
       ).bind(roomId, user.id, new Date(Date.now() - 45000).toISOString()).first<{ id: string }>();
       if (!activeVisit) return json({ error: "room_membership_required" }, 403, origin, env);
-      const launch = await db.prepare(
-        "SELECT level, day FROM cannon_launches WHERE id=? AND room_id=? LIMIT 1"
-      ).bind(launchId, roomId).first<{ level: number; day: string }>();
-      if (!launch) return json({ error: "cannon_launch_not_found" }, 404, origin, env);
+      let launch: { id: string; level: number; day: string } | null;
+      if (launchId) {
+        launch = await db.prepare(
+          "SELECT id, level, day FROM cannon_launches WHERE id=? AND room_id=? LIMIT 1"
+        ).bind(launchId, roomId).first<{ id: string; level: number; day: string }>();
+      } else {
+        launch = await db.prepare(
+          "SELECT id, level, day FROM cannon_launches WHERE room_id=? AND day=? AND level=? ORDER BY created_at DESC LIMIT 1"
+        ).bind(roomId, saudiDay(), requestedLevel).first<{ id: string; level: number; day: string }>();
+        launchId = launch?.id ?? '';
+      }
+      if (!launch) return json({ ok: true, launch_id: '', level: requestedLevel || 0, contributors: [] }, 200, origin, env);
       const rows = await db.prepare(
         "SELECT c.user_id AS user_id, COALESCE(NULLIF(p.display_name,''), NULLIF(p.happy_id,''), 'مساهم') AS user_name, " +
         "COALESCE(p.avatar_key,'') AS avatar_url, COALESCE(p.happy_id,'') AS public_id, c.contribution AS contribution " +
@@ -331,7 +342,7 @@ export async function handleCannonRequest(
       ).bind(launchId, roomId).all();
       return json({
         ok: true,
-        launch_id: launchId,
+        launch_id: launch.id,
         level: launch.level,
         contributors: rows.results ?? []
       }, 200, origin, env);
