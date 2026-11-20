@@ -2324,7 +2324,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
                     left: planeX.clamp(-planeSize, screen.width),
                     top: planeY,
                     child: Opacity(
-                      opacity: (1 - ((t - .88) / .12)).clamp(0.0, 1.0).toDouble(),
+                      opacity: (1 - ((t - .97) / .03)).clamp(0.0, 1.0).toDouble(),
                       child: Image.asset(
                         'assets/images/cannon/airplane_lv1.gif',
                         width: planeSize,
@@ -2346,9 +2346,11 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
 
   void _handleFlightStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed || !mounted) return;
+    // Start the explosion overlay before removing the airplane overlay,
+    // avoiding a blank frame between the two effects.
+    _playLevelOneAirstrike();
     _flightOverlayEntry?.remove();
     _flightOverlayEntry = null;
-    _playLevelOneAirstrike();
   }
 
   Future<void> _playLevelOneAirstrike() async {
