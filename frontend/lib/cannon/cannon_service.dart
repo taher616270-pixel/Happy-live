@@ -17,6 +17,7 @@ class CannonService extends ChangeNotifier {
   String _observedLaunchId = '';
   int contributorsLevel = 0;
   bool contributorsUnavailable = false;
+  final Map<String, List<CannonContributor>> _contributorsCache = <String, List<CannonContributor>>{};
 
   Timer? _roomTimer;
   Timer? _bannerTimer;
@@ -86,19 +87,17 @@ class CannonService extends ChangeNotifier {
       _firstLoad = false;
       state = s;
 
-      // A new Saudi day creates a fresh cannon state with an empty launch ID.
-      // Clear the previous launch's contributors so the prize pool is visible
-      // again for the new day in every room.
+      // Contributor data is returned with the state request, avoiding a second
+      // HTTP round trip before the completed cannon ranking appears.
       if (s.launchId != _observedLaunchId) {
         _observedLaunchId = s.launchId;
-        if (s.launchId.isEmpty) {
-          contributors = [];
-          _contributorsLaunchId = '';
-          contributorsLevel = 0;
-          contributorsUnavailable = false;
-        } else {
-          _loadContributors(id, s.launchId, s.level - 1);
-        }
+        _contributorsLaunchId = s.launchId;
+        contributorsLevel = s.level - 1;
+        contributors = s.contributors;
+        contributorsUnavailable = false;
+      } else if (s.contributors.isNotEmpty) {
+        contributors = s.contributors;
+        contributorsUnavailable = false;
       }
       notifyListeners();
     } finally {
@@ -107,9 +106,18 @@ class CannonService extends ChangeNotifier {
   }
 
   Future<void> _loadContributors(String roomId, String launchId, int level) async {
+    final cacheKey = '$roomId:$launchId:$level';
+    if (_contributorsCache.containsKey(cacheKey)) {
+      contributors = _contributorsCache[cacheKey]!;
+      contributorsLevel = level;
+      _contributorsLaunchId = launchId;
+      contributorsUnavailable = false;
+      notifyListeners();
+      return;
+    }
     _contributorsLaunchId = launchId;
     contributorsLevel = level;
-    contributors = [];
+    // Keep the last known ranking visible while refreshing; don't blank the cards.
     contributorsUnavailable = false;
     final result = await CannonApi.fetchContributors(roomId, launchId: launchId, level: level);
     if (currentRoomId != roomId || contributorsLevel != level) return;
@@ -118,6 +126,7 @@ class CannonService extends ChangeNotifier {
       _contributorsLaunchId = ''; // Retry on the next room refresh.
     } else {
       contributors = result;
+      _contributorsCache[cacheKey] = result;
     }
     notifyListeners();
   }
@@ -125,6 +134,13 @@ class CannonService extends ChangeNotifier {
   Future<void> loadContributorsForLevel(int level) async {
     final id = currentRoomId;
     if (id == null || level < 1 || contributorsLevel == level) return;
+    final cached = _contributorsCache['$id::$level'];
+    if (cached != null) {
+      contributors = cached;
+      contributorsLevel = level;
+      notifyListeners();
+      return;
+    }
     await _loadContributors(id, '', level);
   }
 
