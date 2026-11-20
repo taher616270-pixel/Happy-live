@@ -103,7 +103,17 @@ async function tryLaunches(db: D1Database, roomId: string, day: string, levels: 
       db.prepare(
         "INSERT INTO cannon_launches (id, room_id, level, day, created_at) " +
         "SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM cannon_rooms WHERE room_id=? AND day=? AND last_launch_id=?)"
-      ).bind(launchId, roomId, room.level, day, now, roomId, day, launchId)
+      ).bind(launchId, roomId, room.level, day, now, roomId, day, launchId),
+      db.prepare(
+        "INSERT INTO cannon_launch_contributors (launch_id, room_id, user_id, contribution) " +
+        "SELECT ?, ?, user_id, amount FROM cannon_contrib " +
+        "WHERE room_id=? AND day=? AND level=? AND amount>0 " +
+        "AND EXISTS (SELECT 1 FROM cannon_launches WHERE id=?)"
+      ).bind(launchId, roomId, roomId, day, room.level, launchId),
+      db.prepare(
+        "UPDATE cannon_contrib SET amount=0 WHERE room_id=? AND day=? AND level=? " +
+        "AND EXISTS (SELECT 1 FROM cannon_launches WHERE id=?)"
+      ).bind(roomId, day, room.level, launchId)
     ];
     if (top && topPrize) {
       statements.push(db.prepare(
@@ -314,11 +324,11 @@ export async function handleCannonRequest(
       if (!launch) return json({ error: "cannon_launch_not_found" }, 404, origin, env);
       const rows = await db.prepare(
         "SELECT c.user_id AS user_id, COALESCE(NULLIF(p.display_name,''), NULLIF(p.happy_id,''), 'مساهم') AS user_name, " +
-        "COALESCE(p.avatar_key,'') AS avatar_url, COALESCE(p.happy_id,'') AS public_id, c.amount AS contribution " +
-        "FROM cannon_contrib c LEFT JOIN profiles p ON p.user_id=c.user_id " +
-        "WHERE c.room_id=? AND c.day=? AND c.level=? AND c.amount>0 " +
-        "ORDER BY c.amount DESC, c.user_id ASC LIMIT 200"
-      ).bind(roomId, launch.day, launch.level).all();
+        "COALESCE(p.avatar_key,'') AS avatar_url, COALESCE(p.happy_id,'') AS public_id, c.contribution AS contribution " +
+        "FROM cannon_launch_contributors c LEFT JOIN profiles p ON p.user_id=c.user_id " +
+        "WHERE c.launch_id=? AND c.room_id=? AND c.contribution>0 " +
+        "ORDER BY c.contribution DESC, c.user_id ASC LIMIT 200"
+      ).bind(launchId, roomId).all();
       return json({
         ok: true,
         launch_id: launchId,
