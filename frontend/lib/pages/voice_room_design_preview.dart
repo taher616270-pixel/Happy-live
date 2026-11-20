@@ -2060,13 +2060,11 @@ class _CannonGiftDropPainter extends CustomPainter {
 
   @override
   void paint(ui.Canvas canvas, Size size) {
-    // A steady stream of colorful gift boxes falls directly from the aircraft.
     const count = 16;
     for (var i = 0; i < count; i++) {
       final release = .12 + i * .025;
       final elapsed = progress - release;
       if (elapsed < 0 || elapsed > .42) continue;
-
       final fall = (elapsed / .42).clamp(0.0, 1.0).toDouble();
       final drift = math.sin((i * 1.73) + fall * 2.2) * (8 + fall * 9);
       final x = (planeCenter.dx + (i.isEven ? -1 : 1) * planeSize * (.12 + (i % 4) * .075) + drift)
@@ -2075,7 +2073,6 @@ class _CannonGiftDropPainter extends CustomPainter {
       final y = startY + (screenHeight * .82 - startY) * Curves.easeInCubic.transform(fall);
       final boxSize = 17.0 + (i % 3) * 3.0;
       final center = Offset(x, y);
-      final rect = ui.Rect.fromCenter(center: center, width: boxSize, height: boxSize * .82);
       final color = _giftColors[i % _giftColors.length];
 
       canvas.save();
@@ -2091,7 +2088,7 @@ class _CannonGiftDropPainter extends CustomPainter {
         ui.Paint()
           ..style = ui.PaintingStyle.stroke
           ..strokeWidth = 1
-          ..color = Colors.white.withOpacity(.8),
+          ..color = Colors.white.withOpacity(.85),
       );
       canvas.drawRect(
         ui.Rect.fromCenter(center: Offset.zero, width: boxSize * .17, height: boxSize * .82),
@@ -2113,6 +2110,85 @@ class _CannonGiftDropPainter extends CustomPainter {
       oldDelegate.planeCenter != planeCenter ||
       oldDelegate.planeSize != planeSize ||
       oldDelegate.screenHeight != screenHeight;
+}
+
+class _CannonLaunchFireworksPainter extends CustomPainter {
+  const _CannonLaunchFireworksPainter({
+    required this.progress,
+    required this.origin,
+  });
+
+  final double progress;
+  final Offset origin;
+
+  static const List<Color> _colors = <Color>[
+    Color(0xFFFFD54F), Color(0xFFFF4F91), Color(0xFF56D9FF),
+    Color(0xFFB58CFF), Color(0xFF65F0B2), Color(0xFFFF8A45),
+  ];
+
+  @override
+  void paint(ui.Canvas canvas, Size size) {
+    // Three overlapping premium firework bursts, all confined to the room.
+    const bursts = <(double, double, double, double)>[
+      (0.015, -0.10, -0.12, 1.00),
+      (0.075, 0.22, -0.02, 1.18),
+      (0.135, -0.30, 0.10, 0.88),
+    ];
+    for (var b = 0; b < bursts.length; b++) {
+      final (start, dx, dy, scale) = bursts[b];
+      final local = ((progress - start) / .22).clamp(0.0, 1.0).toDouble();
+      if (progress < start || local >= 1) continue;
+      final fade = math.pow(1 - local, 1.35).toDouble();
+      final radius = (24 + 118 * Curves.easeOutCubic.transform(local)) * scale;
+      final center = Offset(
+        (origin.dx + dx * size.width).clamp(30.0, size.width - 30.0).toDouble(),
+        (origin.dy + dy * size.height).clamp(50.0, size.height - 70.0).toDouble(),
+      );
+      final color = _colors[(b * 2) % _colors.length];
+
+      canvas.drawCircle(
+        center,
+        radius * .30,
+        ui.Paint()
+          ..color = color.withOpacity(.20 * fade)
+          ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 20),
+      );
+      canvas.drawCircle(
+        center,
+        radius * .16,
+        ui.Paint()..color = Colors.white.withOpacity(.75 * fade),
+      );
+
+      const particles = 32;
+      for (var i = 0; i < particles; i++) {
+        final angle = (math.pi * 2 * i / particles) + b * .31;
+        final wave = (i % 3 == 0) ? 1.0 : .78;
+        final outer = radius * wave;
+        final inner = radius * (.18 + .12 * math.sin(i * 2.1));
+        final end = center.translate(math.cos(angle) * outer, math.sin(angle) * outer);
+        final tail = center.translate(math.cos(angle) * inner, math.sin(angle) * inner);
+        final particleColor = _colors[(i + b * 2) % _colors.length];
+        canvas.drawLine(
+          tail,
+          end,
+          ui.Paint()
+            ..color = particleColor.withOpacity(.95 * fade)
+            ..strokeWidth = i % 4 == 0 ? 3.4 : 2.0
+            ..strokeCap = ui.StrokeCap.round
+            ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 1.5),
+        );
+        canvas.drawCircle(
+          end,
+          i % 4 == 0 ? 3.0 : 1.8,
+          ui.Paint()..color = Colors.white.withOpacity(.9 * fade),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CannonLaunchFireworksPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.origin != origin;
 }
 
 class _CannonRoomTile extends StatefulWidget {
@@ -2259,22 +2335,48 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
           final startX = origin.dx + 36 - planeStartSize / 2;
           final startY = origin.dy + 36 - planeStartSize / 2;
           final centerX = (screen.width - planeEndSize) / 2;
-          final topExitY = -planeEndSize - 28;
-          // One continuous, slow six-second climb. No turns, re-entry, blasts,
-          // wind trails, glow, or decorative overlays.
-          final climb = Curves.easeInOutSine.transform(raw);
-          final planeSize = planeStartSize + (planeEndSize - planeStartSize) * climb;
-          final planeX = startX + (centerX - startX) * climb;
-          final planeY = startY + (topExitY - startY) * climb;
+          final middleY = screen.height * .34;
+
+          double planeX;
+          double planeY;
+          double planeSize;
+          if (raw < .20) {
+            // First 1.2 seconds: leave the cannon and reach the room center.
+            final p = Curves.easeOutCubic.transform(raw / .20);
+            planeX = startX + (centerX - startX) * p;
+            planeY = startY + (middleY - startY) * p;
+            planeSize = planeStartSize + (planeEndSize - planeStartSize) * p;
+          } else if (raw < .70) {
+            // Next 3 seconds: cruise gently across the middle of the room.
+            final p = (raw - .20) / .50;
+            planeX = centerX + math.sin(p * math.pi * 2) * screen.width * .10;
+            planeY = middleY + math.sin(p * math.pi * 2.4) * 13;
+            planeSize = planeEndSize;
+          } else {
+            // Final 1.8 seconds: smoothly climb and disappear above the room.
+            final p = Curves.easeInOutCubic.transform((raw - .70) / .30);
+            planeX = centerX + math.sin(p * math.pi) * screen.width * .035;
+            planeY = middleY + ( -planeEndSize - 28 - middleY) * p;
+            planeSize = planeEndSize;
+          }
           final planeOpacity = raw > .94
               ? (1 - ((raw - .94) / .06)).clamp(0.0, 1.0).toDouble()
               : 1.0;
           final planeCenter = Offset(planeX + planeSize / 2, planeY + planeSize / 2);
+          final fireworkOrigin = Offset(origin.dx + 36, origin.dy + 36);
           return Positioned.fill(
             child: IgnorePointer(
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _CannonLaunchFireworksPainter(
+                        progress: raw,
+                        origin: fireworkOrigin,
+                      ),
+                    ),
+                  ),
                   Positioned.fill(
                     child: CustomPaint(
                       painter: _CannonGiftDropPainter(
