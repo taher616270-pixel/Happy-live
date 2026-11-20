@@ -183,7 +183,7 @@ export async function handleCannonRequest(
   const url = new URL(request.url);
   const db = env.DB;
   const isAdminRoute = url.pathname === "/api/v1/admin/cannon/settings";
-  const isCannonRoute = url.pathname === "/api/cannon/state" || url.pathname === "/api/cannon/banners" || url.pathname === "/api/cannon/claim" || url.pathname === "/api/cannon/contributors";
+  const isCannonRoute = url.pathname === "/api/cannon/state" || url.pathname === "/api/cannon/banners" || url.pathname === "/api/cannon/claim" || url.pathname === "/api/cannon/contributors" || url.pathname === "/api/cannon/winners";
   if (!isAdminRoute && !isCannonRoute) return null;
   if (!db) return json({ error: "database_unavailable" }, 503, origin, env);
 
@@ -321,6 +321,42 @@ export async function handleCannonRequest(
         contributors: contributors.results ?? [],
         levels: settings.levels
       }, 200, origin, env);
+    }
+
+    if (url.pathname === "/api/cannon/winners" && request.method === "GET") {
+      if (!settings.enabled) return json({ ok: true, winners: [] }, 200, origin, env);
+      const roomId = (url.searchParams.get("room_id") ?? "").trim();
+      const level = Number(url.searchParams.get("level") ?? 0);
+      if (!/^[0-9a-f-]{36}$/i.test(roomId) ||
+          !Number.isSafeInteger(level) || level < 1 || level > 150) {
+        return json({ error: "invalid_winner_request" }, 400, origin, env);
+      }
+      const activeVisit = await db.prepare(
+        "SELECT id FROM room_chat_visits WHERE room_id=? AND user_id=? AND exited_at IS NULL AND last_seen_at>=? LIMIT 1"
+      ).bind(roomId, user.id, new Date(Date.now() - 45000).toISOString()).first<{ id: string }>();
+      if (!activeVisit) return json({ error: "room_membership_required" }, 403, origin, env);
+      const rows = await db.prepare(
+        "SELECT c.user_id AS user_id, COALESCE(NULLIF(p.display_name,''), NULLIF(p.happy_id,''), 'فائز') AS user_name, " +
+        "COALESCE(p.avatar_key,'') AS avatar_url, c.reward_type AS reward_type, " +
+        "c.reward_value AS reward_value, c.reward_name AS reward_name, c.claimed_at AS claimed_at, " +
+        "c.reward_key AS reward_key " +
+        "FROM cannon_claims c LEFT JOIN profiles p ON p.user_id=c.user_id " +
+        "INNER JOIN cannon_launches l ON l.id=c.launch_id " +
+        "WHERE c.room_id=? AND l.level=? AND l.day=? AND c.claimed=1 " +
+        "ORDER BY c.claimed_at DESC, c.created_at DESC LIMIT 100"
+      ).bind(roomId, level, saudiDay()).all<Record<string, unknown>>();
+      const prizeIcons = new Map<string, string>();
+      for (const cfg of settings.levels) {
+        if (cfg.level !== level) continue;
+        for (const prize of cfg.prizes) prizeIcons.set(prize.key, prize.icon ?? "");
+      }
+      const winners = (rows.results ?? []).map(row => ({
+        user_id: row.user_id, user_name: row.user_name, avatar_url: row.avatar_url,
+        reward_type: row.reward_type, reward_value: row.reward_value,
+        reward_name: row.reward_name, claimed_at: row.claimed_at,
+        prize_icon: prizeIcons.get(String(row.reward_key ?? "")) ?? ""
+      }));
+      return json({ ok: true, level, winners }, 200, origin, env);
     }
 
     if (url.pathname === "/api/cannon/contributors" && request.method === "GET") {
