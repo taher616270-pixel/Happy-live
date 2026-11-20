@@ -2157,8 +2157,8 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
               final t = Curves.easeInCubic.transform(_flight.value);
                 final flightTop = tileTop + 36 - 54 - (tileTop + 150) * t;
                 final sway = math.sin(t * math.pi * 2) * 20;
-                final burstOpacity = (1 - (_flight.value / .22)).clamp(0.0, 1.0);
-                final burstScale = .45 + (_flight.value / .22).clamp(0.0, 1.0) * 1.9;
+                final burstOpacity = (1 - (_flight.value / .22)).clamp(0.0, 1.0).toDouble();
+                final burstScale = .45 + (_flight.value / .22).clamp(0.0, 1.0).toDouble() * 1.9;
                 return Stack(
                   children: [
                     if (_flight.value < .22)
@@ -2197,7 +2197,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
                       top: flightTop,
                       child: IgnorePointer(
                         child: Opacity(
-                          opacity: (1 - ((t - .78) / .22)).clamp(0.0, 1.0),
+                          opacity: (1 - ((t - .78) / .22)).clamp(0.0, 1.0).toDouble(),
                           child: Image.asset(
                             'assets/images/cannon/airplane_lv1.gif',
                             width: 108,
