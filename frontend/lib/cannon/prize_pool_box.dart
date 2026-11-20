@@ -68,16 +68,7 @@ class _PrizePoolHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: const [
-        _GreenPixels(),
-        SizedBox(width: 9),
-        _PrizePoolTab(),
-        SizedBox(width: 9),
-        _GreenPixels(),
-      ],
-    );
+    return const _PrizePoolTab();
   }
 }
 
@@ -115,18 +106,27 @@ class _PrizePoolTab extends StatelessWidget {
     return ClipPath(
       clipper: _PrizePoolTabClipper(),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 55, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
         decoration: BoxDecoration(
           color: const Color(0x99205BFF),
           border: Border.all(color: const Color(0xFF2F7BFF), width: 1),
         ),
-        child: const Text(
-          'حوض الجوائز',
-          style: TextStyle(
-            color: Color(0xFFDDF8FF),
-            fontSize: 17,
-            fontWeight: FontWeight.w900,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            _GreenPixels(),
+            SizedBox(width: 9),
+            Text(
+              'حوض الجوائز',
+              style: TextStyle(
+                color: Color(0xFFDDF8FF),
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            SizedBox(width: 9),
+            _GreenPixels(),
+          ],
         ),
       ),
     );
