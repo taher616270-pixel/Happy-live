@@ -2218,12 +2218,11 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
       // A new launch ID plus the level transition confirms that this room's
       // level-one contribution has completed. Play once for everyone in-room.
       if (_hasInitialState &&
-          _level == 1 &&
-          nextLevel > 1 &&
+          nextLevel != _level &&
           state.launching &&
           state.launchId.isNotEmpty &&
           state.launchId != _lastLaunchId) {
-        _playLevelOneFlight();
+        _playLevelOneFlight(launchId: state.launchId);
       }
 
       _lastLaunchId = state.launchId;
@@ -2281,7 +2280,10 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
               textDirection: TextDirection.rtl,
               child: AlertDialog(
                 backgroundColor: const Color(0xFF101747),
-                title: const Text('جوائز الصناديق', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+                title: const Text(
+                  'جوائز الصناديق',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+                ),
                 content: SizedBox(
                   width: 360,
                   child: SingleChildScrollView(
@@ -2311,7 +2313,11 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),
@@ -2333,11 +2339,6 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
       ),
     );
     Overlay.of(context, rootOverlay: true).insert(_boxDropOverlayEntry!);
-  }
-
-    if (_flight.isAnimating) return;
-    _insertFlightOverlay();
-    _flight.forward(from: 0);
   }
 
   void _insertFlightOverlay() {
@@ -2412,12 +2413,14 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     if (status != AnimationStatus.completed || !mounted) return;
     _flightOverlayEntry?.remove();
     _flightOverlayEntry = null;
+    _showFallingGiftBoxes();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _flightOverlayEntry?.remove();
+    _boxDropOverlayEntry?.remove();
     _flight.removeStatusListener(_handleFlightStatus);
     _flight.dispose();
     super.dispose();
