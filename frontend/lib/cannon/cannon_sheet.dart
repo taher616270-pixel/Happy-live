@@ -120,7 +120,7 @@ class _CannonSheetState extends State<CannonSheet> {
       // exactly where the original 270px floor ended.
       final availableHeight = (sheetConstraints.maxHeight - 60).clamp(0.0, double.infinity);
       final contentScale = math.min(1.0, availableHeight / 680);
-      final floorHeight = 60 + (270 * contentScale);
+      final floorHeight = 60 + (300 * contentScale);
 
       return Stack(
         fit: StackFit.expand,
