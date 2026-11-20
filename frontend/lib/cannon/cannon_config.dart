@@ -1,6 +1,6 @@
 class CannonConfig {
   static const String apiBase = 'https://happy-live-api.taher616270.workers.dev';
-  static const Duration roomPoll = Duration(seconds: 4);
+  static const Duration roomPoll = Duration(seconds: 1);
   static const Duration bannerPoll = Duration(seconds: 10);
 
   static String _token = '';
