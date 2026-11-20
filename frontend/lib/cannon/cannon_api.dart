@@ -66,6 +66,23 @@ class CannonApi {
     }
   }
 
+  static Future<List<CannonWinner>?> fetchWinners(String roomId, int level) async {
+    try {
+      final uri = Uri.parse('${CannonConfig.apiBase}/api/cannon/winners')
+        .replace(queryParameters: {'room_id': roomId, 'level': '$level'});
+      final r = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 8));
+      if (r.statusCode != 200) return null;
+      final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+      if (j['ok'] != true) return null;
+      return ((j['winners'] as List?) ?? [])
+        .whereType<Map>()
+        .map((e) => CannonWinner.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<bool> claim(String claimId) async {
     try {
       final uri = Uri.parse('${CannonConfig.apiBase}/api/cannon/claim');
