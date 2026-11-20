@@ -329,7 +329,9 @@ class _CannonVisual extends StatelessWidget {
   Widget build(BuildContext context) => Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
     // The animated floor is supplied by the parent Stack. Keep only the cannon here
     // so changing levels moves the cannon without moving the fixed requirement label.
-    Positioned(bottom: 5, child: CannonArt(level: level.level, size: 170, dim: dim, completed: completed)),
+    // Slightly larger, with extra inset from the floor edge so the plane
+    // stays visually inside the circular ground area and feels farther away.
+    Positioned(bottom: 14, child: CannonArt(level: level.level, size: 180, dim: dim, completed: completed)),
   ]);
 }
 
