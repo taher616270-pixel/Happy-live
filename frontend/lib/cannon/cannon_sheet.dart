@@ -222,27 +222,27 @@ class _CannonSheetState extends State<CannonSheet> {
           const SizedBox(height: 18),
           Transform.translate(
             offset: const Offset(0, -5),
-            child: Transform.scale(scale: 0.9, child: const _Tab(title: 'حوض الجوائز')),
+            child: const _PrizePoolTab(),
           ),
-          const SizedBox(height: 7),
-          Transform.translate(offset: const Offset(0, -5), child: Opacity(opacity: locked ? 0.45 : 1, child: Padding(
+          Opacity(opacity: locked ? 0.45 : 1, child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Column(children: [
-              if (ordered.isNotEmpty) Row(children: [
-                Expanded(flex: 2, child: _PrizeCard(prize: ordered[0], wide: ordered[0].top1)),
-                if (ordered.length > 1) ...[const SizedBox(width: 10), Expanded(child: _PrizeCard(prize: ordered[1]))],
-              ]),
-              if (ordered.length > 2) ...[
-                const SizedBox(height: 10),
-                Row(children: [
-                  for (var i = 2; i < ordered.length && i < 5; i++) ...[
-                    if (i > 2) const SizedBox(width: 10),
-                    Expanded(child: _PrizeCard(prize: ordered[i])),
-                  ],
+              if (ordered.isNotEmpty) Transform.translate(
+                offset: const Offset(0, -5),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(flex: 2, child: _PrizeCard(prize: ordered[0], wide: ordered[0].top1)),
+                  if (ordered.length > 1) Expanded(child: _PrizeCard(prize: ordered[1])),
                 ]),
-              ],
+              ),
+              if (ordered.length > 2) Transform.translate(
+                offset: const Offset(0, -5),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  for (var i = 2; i < ordered.length && i < 5; i++)
+                    Expanded(child: _PrizeCard(prize: ordered[i])),
+                ]),
+              ),
             ]),
-          ))),
+          )),
         ]),
       )),
     ]);
@@ -275,6 +275,40 @@ class _Tab extends StatelessWidget {
     ),
     child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
   );
+}
+
+class _PrizePoolTab extends StatelessWidget {
+  const _PrizePoolTab();
+
+  @override
+  Widget build(BuildContext context) => ClipPath(
+    clipper: _PrizePoolTrapezoidClipper(),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 38, vertical: 8),
+      decoration: const BoxDecoration(
+        color: Color(0x33205BFF),
+        border: Border(
+          bottom: BorderSide(color: Color(0xFF3AA8FF), width: 1.6),
+        ),
+      ),
+      child: const Text('حوض الجوائز', style: TextStyle(
+        color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800,
+      )),
+    ),
+  );
+}
+
+class _PrizePoolTrapezoidClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) => Path()
+    ..moveTo(size.width * 0.12, 0)
+    ..lineTo(size.width * 0.88, 0)
+    ..lineTo(size.width, size.height)
+    ..lineTo(0, size.height)
+    ..close();
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
 
 class _Bolt extends StatelessWidget {
