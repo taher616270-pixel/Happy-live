@@ -2049,7 +2049,7 @@ class _SlowedAnimatedAsset extends StatefulWidget {
   });
 
   final String asset;
-  final int speedFactor;
+  final Duration? targetDuration;
   final BoxFit fit;
 
   @override
@@ -2061,6 +2061,7 @@ class _SlowedAnimatedAssetState extends State<_SlowedAnimatedAsset> {
   ui.Image? _frame;
   Timer? _frameTimer;
   bool _disposed = false;
+  double _frameDelayScale = 1.0;
 
   @override
   void initState() {
@@ -2072,7 +2073,23 @@ class _SlowedAnimatedAssetState extends State<_SlowedAnimatedAsset> {
     try {
       final data = await rootBundle.load(widget.asset);
       if (_disposed) return;
-      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+      final bytes = data.buffer.asUint8List();
+      final probeCodec = await ui.instantiateImageCodec(bytes);
+      var sourceDurationMs = 0;
+      for (var i = 0; i < probeCodec.frameCount; i++) {
+        final frame = await probeCodec.getNextFrame();
+        sourceDurationMs += frame.duration.inMilliseconds;
+        frame.image.dispose();
+      }
+      probeCodec.dispose();
+
+      if (_disposed) return;
+      final targetDuration = widget.targetDuration;
+      if (targetDuration != null && sourceDurationMs > 0) {
+        _frameDelayScale = targetDuration.inMilliseconds / sourceDurationMs;
+      }
+
+      final codec = await ui.instantiateImageCodec(bytes);
       if (_disposed) {
         codec.dispose();
         return;
@@ -2097,8 +2114,9 @@ class _SlowedAnimatedAssetState extends State<_SlowedAnimatedAsset> {
       _frame = next.image;
       previous?.dispose();
       if (mounted) setState(() {});
-      final delayMs = (next.duration.inMilliseconds * widget.speedFactor)
-          .clamp(40, 10000)
+      final delayMs = (next.duration.inMilliseconds * _frameDelayScale)
+          .round()
+          .clamp(1, 10000)
           .toInt();
       _frameTimer?.cancel();
       _frameTimer = Timer(Duration(milliseconds: delayMs), _showNextFrame);
@@ -2377,7 +2395,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
           child: SizedBox.expand(
             child: _SlowedAnimatedAsset(
               asset: 'assets/images/cannon/airstrike_Lv1.webp',
-              speedFactor: 3,
+              targetDuration: const Duration(seconds: 11),
               fit: BoxFit.cover,
             ),
           ),
