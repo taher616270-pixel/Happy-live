@@ -179,6 +179,7 @@ class _CannonSheetState extends State<CannonSheet> {
                   ),
                 ),
                 Expanded(child: PageView.builder(
+                  clipBehavior: Clip.none,
                   controller: _pc, itemCount: levels.length,
                   onPageChanged: (i) {
                     setState(() => _page = i);
