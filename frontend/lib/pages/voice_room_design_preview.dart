@@ -2039,6 +2039,146 @@ Widget _roomActionButton({
 
 
 
+class _CannonAirstrikePainter extends CustomPainter {
+  const _CannonAirstrikePainter({
+    required this.progress,
+    required this.planeCenter,
+    required this.planeSize,
+  });
+
+  final double progress;
+  final Offset planeCenter;
+  final double planeSize;
+
+  @override
+  void paint(ui.Canvas canvas, Size size) {
+    final active = (progress >= .07 && progress <= .80)
+        ? (progress < .26
+            ? ((progress - .07) / .19).clamp(0.0, 1.0)
+            : progress > .68
+                ? (1 - (progress - .68) / .12).clamp(0.0, 1.0)
+                : 1.0)
+        : 0.0;
+    if (active > 0) {
+      // Broad curved air streams make the aircraft feel fast and powerful.
+      for (var i = 0; i < 8; i++) {
+        final offset = (i - 3.5) * planeSize * .115;
+        final drift = math.sin(progress * 28 + i * 1.7) * 28;
+        final path = ui.Path()
+          ..moveTo(planeCenter.dx - planeSize * 1.55, planeCenter.dy + offset + drift)
+          ..cubicTo(
+            planeCenter.dx - planeSize * .95,
+            planeCenter.dy + offset - 54 + drift,
+            planeCenter.dx - planeSize * .55,
+            planeCenter.dy + offset + 48 - drift,
+            planeCenter.dx + planeSize * .12,
+            planeCenter.dy + offset * .35,
+          );
+        canvas.drawPath(
+          path,
+          ui.Paint()
+            ..style = ui.PaintingStyle.stroke
+            ..strokeCap = ui.StrokeCap.round
+            ..strokeWidth = i.isEven ? 5.5 : 2.8
+            ..color = (i.isEven ? const Color(0xB9DDF8FF) : const Color(0x80FFFFFF))
+                .withOpacity((i.isEven ? .72 : .48) * active),
+          );
+      }
+      // Rotating wind rings around the aircraft.
+      for (var i = 0; i < 3; i++) {
+        final rect = ui.Rect.fromCenter(
+          center: planeCenter.translate(-planeSize * .05, 0),
+          width: planeSize * (1.35 + i * .20),
+          height: planeSize * (.56 + i * .16),
+        );
+        canvas.drawArc(
+          rect,
+          progress * 22 + i * 1.7,
+          math.pi * 1.22,
+          false,
+          ui.Paint()
+            ..style = ui.PaintingStyle.stroke
+            ..strokeWidth = 2.2 + i * .7
+            ..color = const Color(0xB8E9FAFF).withOpacity(.42 * active),
+        );
+      }
+    }
+
+    // Four bombs are released at staggered moments and explode on impact.
+    const releases = <double>[.425, .485, .545, .605];
+    const xOffsets = <double>[-.34, -.12, .13, .35];
+    const targetFractions = <double>[.69, .76, .72, .80];
+    for (var i = 0; i < releases.length; i++) {
+      final fall = ((progress - releases[i]) / .115).clamp(0.0, 1.0);
+      if (progress < releases[i] || progress > releases[i] + .205) continue;
+      final x = (planeCenter.dx + planeSize * xOffsets[i]).clamp(18.0, size.width - 18.0);
+      final startY = planeCenter.dy + planeSize * .28;
+      final impactY = size.height * targetFractions[i];
+      final y = startY + (impactY - startY) * Curves.easeInCubic.transform(fall);
+      if (fall < 1) {
+        final bomb = Offset(x, y);
+        canvas.drawLine(
+          bomb.translate(-2, -19),
+          bomb.translate(2, -5),
+          ui.Paint()
+            ..color = const Color(0xFFFFB74D)
+            ..strokeWidth = 3
+            ..strokeCap = ui.StrokeCap.round,
+        );
+        canvas.drawOval(
+          ui.Rect.fromCenter(center: bomb, width: 15, height: 25),
+          ui.Paint()..color = const Color(0xFF263238),
+        );
+        canvas.drawCircle(bomb.translate(0, 10), 3, ui.Paint()..color = const Color(0xFFFF7043));
+      } else {
+        final blast = ((progress - releases[i] - .115) / .09).clamp(0.0, 1.0);
+        final radius = 10 + Curves.easeOutCubic.transform(blast) * 58;
+        final center = Offset(x, impactY);
+        canvas.drawCircle(
+          center,
+          radius,
+          ui.Paint()..color = const Color(0xFFFFA726).withOpacity((1 - blast) * .58),
+        );
+        canvas.drawCircle(
+          center,
+          radius * .72,
+          ui.Paint()
+            ..style = ui.PaintingStyle.stroke
+            ..strokeWidth = 5 * (1 - blast) + 1
+            ..color = const Color(0xFFFFE082).withOpacity(1 - blast),
+        );
+        canvas.drawCircle(
+          center,
+          radius * 1.25,
+          ui.Paint()
+            ..style = ui.PaintingStyle.stroke
+            ..strokeWidth = 2
+            ..color = const Color(0xFFFF7043).withOpacity((1 - blast) * .75),
+        );
+        for (var spark = 0; spark < 9; spark++) {
+          final angle = spark * math.pi * 2 / 9 + i;
+          final inner = radius * .35;
+          final outer = radius * (1.05 + .25 * math.sin(spark.toDouble()));
+          canvas.drawLine(
+            center.translate(math.cos(angle) * inner, math.sin(angle) * inner),
+            center.translate(math.cos(angle) * outer, math.sin(angle) * outer),
+            ui.Paint()
+              ..color = const Color(0xFFFFD180).withOpacity(1 - blast)
+              ..strokeWidth = 2.5
+              ..strokeCap = ui.StrokeCap.round,
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CannonAirstrikePainter oldDelegate) =>
+      oldDelegate.progress != progress ||
+      oldDelegate.planeCenter != planeCenter ||
+      oldDelegate.planeSize != planeSize;
+}
+
 class _CannonRoomTile extends StatefulWidget {
   final String roomId;
   final String accessToken;
@@ -2063,7 +2203,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
   Timer? _timer;
   late final AnimationController _flight = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 2000),
+    duration: const Duration(milliseconds: 10500),
   );
   final GlobalKey _cannonTileKey = GlobalKey();
   OverlayEntry? _flightOverlayEntry;
@@ -2177,66 +2317,86 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
           }
           final origin = renderObject.localToGlobal(Offset.zero);
           final screen = MediaQuery.sizeOf(overlayContext);
-          final t = Curves.easeInOutCubic.transform(_flight.value.clamp(0.0, 1.0));
-          const planeSize = 108.0;
-          final startX = origin.dx + 36 - planeSize / 2;
-          final startY = origin.dy + 36 - planeSize / 2;
-          // First fly from the cannon tile to the center of the screen.
-          // Then climb straight upward, keeping the same horizontal position.
-          final centerX = (screen.width - planeSize) / 2;
-          final centerY = (screen.height * .52) - planeSize / 2;
-          final endY = -planeSize - 8;
-          late final double planeX;
-          late final double planeY;
-          if (t <= .42) {
-            final approach = Curves.easeOutCubic.transform(t / .42);
-            planeX = startX + (centerX - startX) * approach;
-            planeY = startY + (centerY - startY) * approach;
-          } else {
-            final climb = Curves.easeInOutCubic.transform((t - .42) / .58);
+          final raw = _flight.value.clamp(0.0, 1.0).toDouble();
+          const planeStartSize = 72.0;
+          const planeLargeSize = 224.0;
+          final startX = origin.dx + 36 - planeStartSize / 2;
+          final startY = origin.dy + 36 - planeStartSize / 2;
+          final centerX = (screen.width - planeLargeSize) / 2;
+          final topExitY = -planeLargeSize - 24;
+          double planeX;
+          double planeY;
+          double planeSize;
+          double planeOpacity = 1;
+
+          // 0–16%: airplane bursts out of the cannon and grows dramatically.
+          if (raw <= .16) {
+            final p = Curves.easeOutCubic.transform(raw / .16);
+            planeX = startX + (centerX - startX) * p;
+            planeY = startY + (screen.height * .22 - startY) * p;
+            planeSize = planeStartSize + (planeLargeSize - planeStartSize) * p;
+          // 16–26%: it climbs out of view and fades away.
+          } else if (raw <= .26) {
+            final p = Curves.easeInCubic.transform((raw - .16) / .10);
             planeX = centerX;
-            planeY = centerY + (endY - centerY) * climb;
+            planeY = screen.height * .22 + (topExitY - screen.height * .22) * p;
+            planeSize = planeLargeSize;
+            planeOpacity = 1 - p;
+          // 26–40%: re-enter from the top, pointing down into the strike.
+          } else if (raw <= .40) {
+            final p = Curves.easeOutCubic.transform((raw - .26) / .14);
+            planeX = centerX + math.sin(p * math.pi) * 18;
+            planeY = topExitY + (screen.height * .18 - topExitY) * p;
+            planeSize = planeLargeSize;
+            planeOpacity = p;
+          // 40–68%: fly down while releasing a line of bombs.
+          } else if (raw <= .68) {
+            final p = Curves.easeInOutCubic.transform((raw - .40) / .28);
+            planeX = centerX + math.sin(p * math.pi * 1.2) * 24;
+            planeY = screen.height * (.18 + .23 * p);
+            planeSize = planeLargeSize;
+          // 68–80%: pull up sharply and disappear through the top.
+          } else {
+            final p = Curves.easeInCubic.transform(((raw - .68) / .12).clamp(0.0, 1.0));
+            planeX = centerX + 24 * (1 - p);
+            planeY = screen.height * .41 + (topExitY - screen.height * .41) * p;
+            planeSize = planeLargeSize * (1 - .10 * p);
+            planeOpacity = 1 - p;
           }
-          final burstProgress = (_flight.value / .22).clamp(0.0, 1.0).toDouble();
+
+          final planeCenter = Offset(planeX + planeSize / 2, planeY + planeSize / 2);
           return Positioned.fill(
             child: IgnorePointer(
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  if (_flight.value < .22)
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _CannonAirstrikePainter(
+                        progress: raw,
+                        planeCenter: planeCenter,
+                        planeSize: planeSize,
+                      ),
+                    ),
+                  ),
+                  if (raw < .80 && planeOpacity > .01)
                     Positioned(
-                      left: origin.dx + 16,
-                      top: origin.dy + 16,
+                      left: planeX.clamp(-planeSize, screen.width),
+                      top: planeY,
                       child: Opacity(
-                        opacity: (1 - burstProgress).clamp(0.0, 1.0),
-                        child: Transform.scale(
-                          scale: .45 + burstProgress * 1.9,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: const Color(0xFFFFD76A), width: 3),
-                              boxShadow: const [BoxShadow(color: Color(0xAAFFB52E), blurRadius: 18, spreadRadius: 3)],
-                            ),
+                        opacity: planeOpacity.clamp(0.0, 1.0),
+                        child: Transform.rotate(
+                          angle: raw > .40 && raw < .68 ? .10 : -.035,
+                          child: Image.asset(
+                            'assets/images/cannon/airplane_lv1.gif',
+                            width: planeSize,
+                            height: planeSize,
+                            fit: BoxFit.contain,
+                            gaplessPlayback: true,
                           ),
                         ),
                       ),
                     ),
-                  Positioned(
-                    left: planeX.clamp(-planeSize, screen.width),
-                    top: planeY,
-                    child: Opacity(
-                      opacity: (1 - ((t - .97) / .03)).clamp(0.0, 1.0).toDouble(),
-                      child: Image.asset(
-                        'assets/images/cannon/airplane_lv1.gif',
-                        width: planeSize,
-                        height: planeSize,
-                        fit: BoxFit.contain,
-                        gaplessPlayback: true,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
