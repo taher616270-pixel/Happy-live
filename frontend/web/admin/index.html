@@ -290,23 +290,23 @@ async function cannonAdminPage(){
   const types=[["coins","عملات"],["frame","إطار"],["bubble","فقاعة"],["entry","دخول مميز"],["gift","هدية"],["badge","شارة"],["wave","موجة"],["item","عنصر"]];
   const typeOptions=value=>types.map(([v,label])=>'<option value="'+v+'" '+(value===v?'selected':'')+'>'+label+'</option>').join("");
   const rewardCard=(level,li,prize,pi)=>'<article class="cannon-reward-editor" data-prize-card="'+li+':'+pi+'">'+
-    '<div class="cannon-reward-head"><b>مكافأة '+(pi+1)+'</b><button type="button" class="action danger" data-remove-prize="'+li+':'+pi+'">حذف المكافأة</button></div>'+
+    '<div class="cannon-reward-head"><b>مكافأة '+(pi+1)+'</b><button type="button" class="action danger" data-remove-prize="'+li+':'+pi+'" '+(canEdit?'':'disabled')+'>حذف المكافأة</button></div>'+
     '<div class="cannon-reward-grid">'+
-      '<label>اسم المكافأة<input data-prize-field="name" data-level="'+li+'" data-prize="'+pi+'" maxlength="100" value="'+esc(prize.name||'')+'"></label>'+
-      '<label>نوع المكافأة<select data-prize-field="type" data-level="'+li+'" data-prize="'+pi+'">'+typeOptions(prize.type)+'</select></label>'+
-      '<label>القيمة / معرف العنصر<input data-prize-field="value" data-level="'+li+'" data-prize="'+pi+'" maxlength="120" value="'+esc(prize.value||'')+'"></label>'+
-      '<label>وزن الظهور<input type="number" min="0" max="100000" step="1" data-prize-field="weight" data-level="'+li+'" data-prize="'+pi+'" value="'+Number(prize.weight||0)+'"></label>'+
+      '<label>اسم المكافأة<input data-prize-field="name" data-level="'+li+'" data-prize="'+pi+'" maxlength="100" value="'+esc(prize.name||'')+'" '+(canEdit?'':'disabled')+'></label>'+
+      '<label>نوع المكافأة<select data-prize-field="type" data-level="'+li+'" data-prize="'+pi+'" '+(canEdit?'':'disabled')+'">'+typeOptions(prize.type)+'</select></label>'+
+      '<label>القيمة / معرف العنصر<input data-prize-field="value" data-level="'+li+'" data-prize="'+pi+'" maxlength="120" value="'+esc(prize.value||'')+'" '+(canEdit?'':'disabled')+'></label>'+
+      '<label>وزن الظهور<input type="number" min="0" max="100000" step="1" data-prize-field="weight" data-level="'+li+'" data-prize="'+pi+'" value="'+Number(prize.weight||0)+'" '+(canEdit?'':'disabled')+'></label>'+
     '</div>'+
-    '<div class="cannon-reward-options"><label class="check-field"><input type="checkbox" data-prize-field="top1" data-level="'+li+'" data-prize="'+pi+'" '+(prize.top1?'checked':'')+'> جائزة صاحب أعلى مساهمة</label>'+
-      '<label class="check-field"><input type="checkbox" data-prize-field="rare" data-level="'+li+'" data-prize="'+pi+'" '+(prize.rare?'checked':'')+'> مكافأة نادرة</label></div>'+
+    '<div class="cannon-reward-options"><label class="check-field"><input type="checkbox" data-prize-field="top1" data-level="'+li+'" data-prize="'+pi+'" '+(prize.top1?'checked':'')+' '+(canEdit?'':'disabled')+'> جائزة صاحب أعلى مساهمة</label>'+
+      '<label class="check-field"><input type="checkbox" data-prize-field="rare" data-level="'+li+'" data-prize="'+pi+'" '+(prize.rare?'checked':'')+' '+(canEdit?'':'disabled')+'> مكافأة نادرة</label></div>'+
     '<div class="cannon-image-picker"><div class="cannon-image-preview" data-prize-preview="'+li+':'+pi+'">'+(prize.icon?'<img src="'+esc(prize.icon)+'" alt="صورة المكافأة">':'<span>بدون صورة</span>')+'</div>'+
-      '<div><b>صورة المكافأة</b><p class="muted">اختر صورة من جهازك أو المعرض.</p><label class="action">اختيار صورة<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-prize-image="'+li+':'+pi+'" hidden></label></div></div>'+
+      '<div><b>صورة المكافأة</b><p class="muted">اختر صورة من جهازك أو المعرض.</p><label class="action">اختيار صورة<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-prize-image="'+li+':'+pi+'" hidden '+(canEdit?'':'disabled')+'></label></div></div>'+
     '</article>';
   const renderLevels=()=>{
     $("cannonLevelEditors").innerHTML=draftLevels.map((level,li)=>'<section class="cannon-level-editor" data-level-card="'+li+'">'+
       '<header class="cannon-level-head"><div><span class="badge good">LV '+Number(level.level)+'</span><strong>إعدادات المستوى</strong></div><span class="muted">المستويات متصلة بالتدرج تلقائيًا</span></header>'+
-      '<div class="cannon-level-grid"><label>اسم / نص المستوى<input data-level-field="title" data-level="'+li+'" maxlength="60" value="'+esc(level.title||("المستوى "+level.level))+'"></label>'+
-      '<label>المساهمة المطلوبة<input type="number" min="1" max="1000000000000" step="1" data-level-field="need" data-level="'+li+'" value="'+Number(level.need||0)+'"></label></div>'+
+      '<div class="cannon-level-grid"><label>اسم / نص المستوى<input data-level-field="title" data-level="'+li+'" maxlength="60" value="'+esc(level.title||("المستوى "+level.level))+'" '+(canEdit?'':'disabled')+'></label>'+
+      '<label>المساهمة المطلوبة<input type="number" min="1" max="1000000000000" step="1" data-level-field="need" data-level="'+li+'" value="'+Number(level.need||0)+'" '+(canEdit?'':'disabled')+'></label></div>'+
       '<div class="cannon-rewards-heading"><strong>مكافآت هذا المستوى</strong><button type="button" class="action" data-add-prize="'+li+'">＋ إضافة مكافأة</button></div>'+
       '<div class="cannon-rewards-list">'+(level.prizes||[]).map((p,pi)=>rewardCard(level,li,p,pi)).join("")+'</div></section>').join("");
   };
