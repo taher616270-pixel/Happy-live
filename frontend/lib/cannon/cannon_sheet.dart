@@ -7,6 +7,7 @@ import 'cannon_rules_sheet.dart';
 import 'cannon_reward_dialog.dart';
 import 'cannon_service.dart';
 import 'prize_pool_box.dart';
+import 'cannon_luck_dialog.dart';
 
 String _fmt(int n) {
   final s = n.toString();
@@ -230,35 +231,56 @@ class _CannonSheetState extends State<CannonSheet> {
             ]),),
           ])),
           const SizedBox(height: 16),
-          Transform.translate(offset: const Offset(0, 10), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 18), child: Opacity(
-            opacity: (isCurrent || done) ? 1 : 0.4,
-            child: GestureDetector(
-              onTap: isCurrent ? () {
-                Navigator.pop(context);
-                widget.onSendGift?.call();
-              } : null,
-              child: Container(
-                height: 62, width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                    colors: [Color(0xFF39B6FF), Color(0xFF1458E8)]),
-                  border: Border.all(color: const Color(0xFF9FE0FF), width: 1.4),
+          Transform.translate(
+            offset: const Offset(0, 10),
+            child: done
+              ? Center(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => showCannonLuckSheet(
+                      context, roomId: widget.roomId, level: lv.level,
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Text(
+                        'ترتيب الحظ  >',
+                        style: TextStyle(
+                          color: Color(0xFFD6D6D6),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Opacity(
+                    opacity: locked ? 0.4 : 1,
+                    child: GestureDetector(
+                      onTap: isCurrent ? () {
+                        Navigator.pop(context);
+                        widget.onSendGift?.call();
+                      } : null,
+                      child: Container(
+                        height: 62, width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                            colors: [Color(0xFF39B6FF), Color(0xFF1458E8)]),
+                          border: Border.all(color: const Color(0xFF9FE0FF), width: 1.4),
+                        ),
+                        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Text(locked ? 'مقفل' : 'إرسال هدية',
+                            style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 2),
+                          const Text('أرسل أي هدية وشارك في اليانصيب', style: TextStyle(color: Color(0xFFFFE9A8), fontSize: 11)),
+                        ]),
+                      ),
+                    ),
+                  ),
                 ),
-                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  if (done)
-                    const Text('تم الإنجاز',
-                      style: TextStyle(color: Color(0xFFD6D6D6), fontSize: 17, fontWeight: FontWeight.w800))
-                  else ...[
-                    Text(locked ? 'مقفل' : 'إرسال هدية',
-                      style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 2),
-                    const Text('أرسل أي هدية وشارك في اليانصيب', style: TextStyle(color: Color(0xFFFFE9A8), fontSize: 11)),
-                  ],
-                ]),
-              ),
-            ),
-          ))),
+          ),
           const SizedBox(height: 18),
           if (done) ...[
             const _ContributionRankingTab(),
