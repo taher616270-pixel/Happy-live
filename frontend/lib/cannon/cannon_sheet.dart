@@ -129,41 +129,30 @@ class _CannonSheetState extends State<CannonSheet> {
         )),
       ])),
       Expanded(child: LayoutBuilder(
-        builder: (context, constraints) => SizedBox(
-          width: constraints.maxWidth,
-          child: Stack(
+        builder: (context, constraints) => FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: constraints.maxWidth,
+            height: 680,
+            child: Column(children: [
+          SizedBox(height: 270, child: Stack(
             fit: StackFit.expand,
             children: [
-              // Full-width animated floor, flush with the top of the cannon window.
-              Positioned.fill(
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: SizedBox(
-                    width: constraints.maxWidth,
-                    height: constraints.maxHeight,
-                    child: Image.asset(
-                      'assets/images/cannon/cannon_floor_lights.gif',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xFF071A52), Color(0xFF02091F)],
-                          ),
-                        ),
-                      ),
+              // Animated blue floor/light background; cannon art stays layered above it.
+              Image.asset(
+                'assets/images/cannon/cannon_floor_lights.gif',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0xFF071A52), Color(0xFF02091F)],
                     ),
                   ),
                 ),
               ),
-              SingleChildScrollView(
-                child: SizedBox(
-                  width: constraints.maxWidth,
-                  child: Column(children: [
-          SizedBox(height: 270, child: Stack(
-            fit: StackFit.expand,
-            children: [
               Column(children: [
                 const SizedBox(height: 6),
                 Container(
@@ -253,9 +242,6 @@ class _CannonSheetState extends State<CannonSheet> {
             ),
           ),
             ]),
-                ),
-              ),
-            ],
           ),
         ),
       )),
