@@ -5,7 +5,6 @@ import 'cannon_art.dart';
 import 'cannon_models.dart';
 import 'cannon_rules_sheet.dart';
 import 'cannon_reward_dialog.dart';
-import 'cannon_luck_dialog.dart';
 import 'cannon_service.dart';
 import 'prize_pool_box.dart';
 
@@ -234,12 +233,10 @@ class _CannonSheetState extends State<CannonSheet> {
           Transform.translate(offset: const Offset(0, 10), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 18), child: Opacity(
             opacity: (isCurrent || done) ? 1 : 0.4,
             child: GestureDetector(
-              onTap: done
-                ? () => showCannonLuckSheet(context, roomId: widget.roomId, level: lv.level)
-                : isCurrent ? () {
-                    Navigator.pop(context);
-                    widget.onSendGift?.call();
-                  } : null,
+              onTap: isCurrent ? () {
+                Navigator.pop(context);
+                widget.onSendGift?.call();
+              } : null,
               child: Container(
                 height: 62, width: double.infinity,
                 decoration: BoxDecoration(
@@ -250,15 +247,8 @@ class _CannonSheetState extends State<CannonSheet> {
                 ),
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                   if (done)
-                    const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('ترتيب الحظ', style: TextStyle(color: Color(0xFFD6D6D6), fontSize: 17, fontWeight: FontWeight.w800)),
-                        SizedBox(width: 5),
-                        Text('>', style: TextStyle(color: Color(0xFFD6D6D6), fontSize: 19, fontWeight: FontWeight.w800)),
-                      ],
-                    )
+                    const Text('تم الإنجاز',
+                      style: TextStyle(color: Color(0xFFD6D6D6), fontSize: 17, fontWeight: FontWeight.w800))
                   else ...[
                     Text(locked ? 'مقفل' : 'إرسال هدية',
                       style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
