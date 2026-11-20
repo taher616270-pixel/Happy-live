@@ -2055,13 +2055,14 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
   Timer? _timer;
   late final AnimationController _flight = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1250),
+    duration: const Duration(milliseconds: 900),
   );
   Timer? _airstrikeTimer;
   final GlobalKey _cannonTileKey = GlobalKey();
   OverlayEntry? _flightOverlayEntry;
   OverlayEntry? _airstrikeOverlayEntry;
   bool _showLevelOneAirstrike = false;
+  bool _cannonAssetsPrecached = false;
   int _level = 1;
   int _progress = 0;
   int _need = 0;
@@ -2080,6 +2081,17 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     CannonConfig.setAuthToken(widget.accessToken);
     _refreshCannon();
     _timer = Timer.periodic(CannonConfig.roomPoll, (_) => _refreshCannon());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_cannonAssetsPrecached) return;
+    _cannonAssetsPrecached = true;
+    // Decode both animations before the launch event so the WEBP starts
+    // immediately after the airplane instead of waiting for first decode.
+    precacheImage(const AssetImage('assets/images/cannon/airplane_lv1.gif'), context);
+    precacheImage(const AssetImage('assets/images/cannon/airstrike_Lv1.webp'), context);
   }
 
   @override
