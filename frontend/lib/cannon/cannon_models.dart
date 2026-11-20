@@ -19,7 +19,7 @@ class CannonLevel {
   factory CannonLevel.fromJson(Map<String, dynamic> j) => CannonLevel(
     level: _i(j['level']),
     need: _i(j['need']),
-    title: _s(j['title']).isEmpty ? 'المستوى ${_i(j['level'])}' : _s(j['title']),
+    title: _s(j['title']).isEmpty ? 'Level ${_i(j['level'])}' : _s(j['title']),
     prizes: ((j['prizes'] as List?) ?? [])
       .whereType<Map>()
       .map((e) => CannonPrize.fromJson(Map<String, dynamic>.from(e)))
