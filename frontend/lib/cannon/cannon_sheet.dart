@@ -40,7 +40,7 @@ class _CannonSheetState extends State<CannonSheet> {
   @override
   void initState() {
     super.initState();
-    _page = ((_svc.state?.level ?? 1) - 1).clamp(0, 3).toInt();
+    _page = ((_svc.state?.level ?? 1) - 1).clamp(0, 149).toInt();
     _pc = PageController(initialPage: _page);
     _svc.refreshNow();
   }
