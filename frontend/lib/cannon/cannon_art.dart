@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gif_view/gif_view.dart';
 import 'cannon_config.dart';
 
 /// Displays the configured airplane artwork. No drawn cannon fallback is used.
@@ -24,10 +25,11 @@ class CannonArt extends StatelessWidget {
         : null;
 
     final Widget art = localAnimatedAsset != null
-        ? Image.asset(
+        ? GifView.asset(
             localAnimatedAsset,
             width: size,
             height: size,
+            frameRate: 30,
             fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => _empty(),
           )
