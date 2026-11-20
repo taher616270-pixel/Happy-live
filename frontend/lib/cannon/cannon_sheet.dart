@@ -179,7 +179,7 @@ class _CannonSheetState extends State<CannonSheet> {
                   onPageChanged: (i) => setState(() => _page = i),
                   itemBuilder: (_, i) => _CannonVisual(level: levels[i], dim: levels[i].level > st.level),
                 )),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Transform.translate(offset: const Offset(0, 10), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   const _Bolt(size: 22), const SizedBox(width: 8),
                   Text(_fmt(lv.need), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w500)),
                   const SizedBox(width: 10),
@@ -188,10 +188,10 @@ class _CannonSheetState extends State<CannonSheet> {
                     decoration: BoxDecoration(color: const Color(0xFF1FD27A), borderRadius: BorderRadius.circular(6)),
                     child: const Text('يحتاج', style: TextStyle(color: Color(0xFF05301C), fontSize: 12, fontWeight: FontWeight.w800)),
                   ),
-                ]),
+                ])),
                 const SizedBox(height: 14),
               ])),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
+          Transform.translate(offset: const Offset(0, 10), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
             ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
               value: ratio, minHeight: 7, backgroundColor: const Color(0xFF1A2A7A),
               valueColor: const AlwaysStoppedAnimation(Color(0xFF2BE3A0)),
@@ -210,7 +210,7 @@ class _CannonSheetState extends State<CannonSheet> {
                 _Bolt(size: 13),
               ]),
             ]),
-          ])),
+          ]))),
           const SizedBox(height: 16),
           Transform.translate(offset: const Offset(0, 10), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 18), child: Opacity(
             opacity: isCurrent ? 1 : 0.4,
