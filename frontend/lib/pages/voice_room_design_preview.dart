@@ -2278,11 +2278,22 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
           const planeSize = 108.0;
           final startX = origin.dx + 36 - planeSize / 2;
           final startY = origin.dy + 36 - planeSize / 2;
-          // Fly vertically across the microphone area and room header, then
-          // leave through the very top edge of the screen.
+          // First fly from the cannon tile to the center of the screen.
+          // Then climb straight upward, keeping the same horizontal position.
+          final centerX = (screen.width - planeSize) / 2;
+          final centerY = (screen.height * .52) - planeSize / 2;
           final endY = -planeSize - 8;
-          final top = startY + (endY - startY) * t;
-          final sway = math.sin(t * math.pi * 2) * 18;
+          late final double planeX;
+          late final double planeY;
+          if (t <= .42) {
+            final approach = Curves.easeOutCubic.transform(t / .42);
+            planeX = startX + (centerX - startX) * approach;
+            planeY = startY + (centerY - startY) * approach;
+          } else {
+            final climb = Curves.easeInOutCubic.transform((t - .42) / .58);
+            planeX = centerX;
+            planeY = centerY + (endY - centerY) * climb;
+          }
           final burstProgress = (_flight.value / .22).clamp(0.0, 1.0).toDouble();
           return Positioned.fill(
             child: IgnorePointer(
@@ -2310,8 +2321,8 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
                       ),
                     ),
                   Positioned(
-                    left: (startX + sway).clamp(-planeSize, screen.width),
-                    top: top,
+                    left: planeX.clamp(-planeSize, screen.width),
+                    top: planeY,
                     child: Opacity(
                       opacity: (1 - ((t - .88) / .12)).clamp(0.0, 1.0).toDouble(),
                       child: Image.asset(
