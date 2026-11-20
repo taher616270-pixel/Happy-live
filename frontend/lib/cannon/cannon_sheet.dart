@@ -220,9 +220,12 @@ class _CannonSheetState extends State<CannonSheet> {
             ),
           )),
           const SizedBox(height: 18),
-          const _Tab(title: 'حوض الجوائز'),
-          const SizedBox(height: 12),
-          Opacity(opacity: locked ? 0.45 : 1, child: Padding(
+          Transform.translate(
+            offset: const Offset(0, -5),
+            child: Transform.scale(scale: 0.9, child: const _Tab(title: 'حوض الجوائز')),
+          ),
+          const SizedBox(height: 7),
+          Transform.translate(offset: const Offset(0, -5), child: Opacity(opacity: locked ? 0.45 : 1, child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Column(children: [
               if (ordered.isNotEmpty) Row(children: [
@@ -239,7 +242,7 @@ class _CannonSheetState extends State<CannonSheet> {
                 ]),
               ],
             ]),
-          )),
+          ))),
         ]),
       )),
     ]);
@@ -309,7 +312,7 @@ class _PrizeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 100, padding: const EdgeInsets.all(8),
+    height: 90, padding: const EdgeInsets.all(7),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(10),
       gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
