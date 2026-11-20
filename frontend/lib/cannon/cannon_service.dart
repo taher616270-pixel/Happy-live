@@ -57,6 +57,7 @@ class CannonService extends ChangeNotifier {
     state = null;
     contributors = [];
     _contributorsLaunchId = '';
+    _observedLaunchId = '';
     contributorsLevel = 0;
     contributorsUnavailable = false;
     isUnavailable = false;
