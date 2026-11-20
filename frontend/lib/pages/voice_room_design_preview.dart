@@ -2344,10 +2344,11 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
       builder: (context) => Positioned.fill(
         child: IgnorePointer(
           child: Center(
+          child: SizedBox.expand(
             child: _SlowedAnimatedAsset(
               asset: 'assets/images/cannon/airstrike_Lv1.webp',
               speedFactor: 3,
-              fit: BoxFit.contain,
+              fit: BoxFit.cover,
             ),
           ),
         ),
