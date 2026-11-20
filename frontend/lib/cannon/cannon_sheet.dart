@@ -212,7 +212,7 @@ class _CannonSheetState extends State<CannonSheet> {
             ]),
           ])),
           const SizedBox(height: 16),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 18), child: Opacity(
+          Transform.translate(offset: const Offset(0, 6), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 18), child: Opacity(
             opacity: isCurrent ? 1 : 0.4,
             child: GestureDetector(
               onTap: isCurrent ? () {
@@ -235,7 +235,7 @@ class _CannonSheetState extends State<CannonSheet> {
                 ]),
               ),
             ),
-          )),
+          ))),
           const SizedBox(height: 18),
           // Keep the original prize-pool design visible at all times.
           // Contributors are intentionally not displayed.
