@@ -170,10 +170,13 @@ class _CannonSheetState extends State<CannonSheet> {
             child: Column(children: [
           SizedBox(height: 270, child: Column(children: [
                 const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
-                  decoration: BoxDecoration(color: const Color(0x33205BFF), border: Border.all(color: const Color(0xFF3AA8FF), width: 1.2)),
-                  child: Text('LV${lv.level}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF6FE7FF), fontSize: 16, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic)),
+                Transform.translate(
+                  offset: const Offset(0, -15),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
+                    decoration: BoxDecoration(color: const Color(0x33205BFF), border: Border.all(color: const Color(0xFF3AA8FF), width: 1.2)),
+                    child: Text('LV${lv.level}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF6FE7FF), fontSize: 16, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic)),
+                  ),
                 ),
                 Expanded(child: PageView.builder(
                   controller: _pc, itemCount: levels.length,
