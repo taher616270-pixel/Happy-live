@@ -31,21 +31,34 @@ class PrizePoolBox extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const _PrizePoolHeader(),
-          const SizedBox(height: 0),
-          if (visible.length >= 2)
-            Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: _PrizePoolCard(item: visible[0], wide: true),
-                ),
-                const SizedBox(width: 8),
-                Expanded(child: _PrizePoolCard(item: visible[1])),
-              ],
-            )
-          else
-            _PrizePoolCard(item: visible.first, wide: true),
+          // The parent tray belongs only to the first two prize cards.
+          // The remaining three cards stay completely outside this frame.
+          CustomPaint(
+            painter: const _PrizePoolParentFramePainter(),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 9, 8, 5),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Center(child: _PrizePoolHeader()),
+                  const SizedBox(height: 5),
+                  if (visible.length >= 2)
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: _PrizePoolCard(item: visible[0], wide: true),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(child: _PrizePoolCard(item: visible[1])),
+                      ],
+                    )
+                  else
+                    _PrizePoolCard(item: visible.first, wide: true),
+                ],
+              ),
+            ),
+          ),
           if (visible.length > 2) ...[
             const SizedBox(height: 8),
             Row(
@@ -61,6 +74,63 @@ class PrizePoolBox extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Open-bottom parent tray for the header and the first two prizes only.
+/// The right edge narrows inward with a soft curve; the bottom stays open.
+class _PrizePoolParentFramePainter extends CustomPainter {
+  const _PrizePoolParentFramePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(7, size.height - 5)
+      ..lineTo(7, 19)
+      ..quadraticBezierTo(7, 8, 20, 8)
+      ..lineTo(size.width - 25, 8)
+      ..quadraticBezierTo(size.width - 8, 8, size.width - 9, 25)
+      ..quadraticBezierTo(
+        size.width - 10,
+        size.height * 0.62,
+        size.width - 34,
+        size.height - 5,
+      );
+
+    final fillPath = Path.from(path)
+      ..lineTo(7, size.height - 5)
+      ..close();
+
+    canvas.drawPath(
+      fillPath,
+      Paint()
+        ..color = const Color(0xCC071B50)
+        ..style = PaintingStyle.fill,
+    );
+
+    // Dark outer layer, then the brighter cyan-blue inner layer.
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xFF123A82)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..strokeJoin = StrokeJoin.round
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xFF55D8FF)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+        ..strokeJoin = StrokeJoin.round
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _PrizePoolParentFramePainter oldDelegate) =>
+      false;
 }
 
 class _PrizePoolHeader extends StatelessWidget {
