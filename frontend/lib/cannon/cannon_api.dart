@@ -45,10 +45,14 @@ class CannonApi {
     }
   }
 
-  static Future<List<CannonContributor>?> fetchContributors(String roomId, String launchId) async {
+  static Future<List<CannonContributor>?> fetchContributors(String roomId, {String launchId = '', int? level}) async {
     try {
       final uri = Uri.parse('${CannonConfig.apiBase}/api/cannon/contributors')
-        .replace(queryParameters: {'room_id': roomId, 'launch_id': launchId});
+        .replace(queryParameters: {
+          'room_id': roomId,
+          if (launchId.isNotEmpty) 'launch_id': launchId,
+          if (level != null) 'level': '$level',
+        });
       final r = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 8));
       if (r.statusCode != 200) return null;
       final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
