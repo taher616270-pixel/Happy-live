@@ -20,6 +20,14 @@ test("cannon schema is room-scoped, daily, and idempotent per committed gift tra
   assert.match(migration, /CREATE TABLE IF NOT EXISTS cannon_claims/);
 });
 
+test("each cannon launch stores an isolated contributor snapshot and resets that level's running totals", () => {
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS cannon_launch_contributors/);
+  assert.match(cannon, /INSERT INTO cannon_launch_contributors/);
+  assert.match(cannon, /UPDATE cannon_contrib SET amount=0/);
+  assert.match(cannon, /WHERE c\.launch_id=\? AND c\.room_id=\?/);
+  assert.match(cannonSheet, /st\.launchId\.isNotEmpty && !st\.launching/);
+});
+
 test("cannon energy uses only server-confirmed successful gift transactions", () => {
   assert.match(cannon, /FROM gift_transactions WHERE id=\? AND status='succeeded'/);
   assert.match(cannon, /INSERT OR IGNORE INTO cannon_energy_transactions/);
