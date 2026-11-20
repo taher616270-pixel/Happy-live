@@ -2370,6 +2370,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
           ),
         ),
       ),
+    ),
     );
     Overlay.of(context, rootOverlay: true).insert(_airstrikeOverlayEntry!);
   }
