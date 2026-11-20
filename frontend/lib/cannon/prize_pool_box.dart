@@ -31,43 +31,40 @@ class PrizePoolBox extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // The parent tray belongs only to the first two prize cards.
-          // The remaining three cards stay completely outside this frame.
-          CustomPaint(
-            painter: const _PrizePoolParentFramePainter(),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 9, 8, 5),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+          // A standalone, non-interactive title banner, matching the reference.
+          const _PrizePoolHeader(),
+          const SizedBox(height: 7),
+          if (visible.length >= 2)
+            SizedBox(
+              height: 104,
+              child: Row(
                 children: [
-                  const Center(child: _PrizePoolHeader()),
-                  const SizedBox(height: 5),
-                  if (visible.length >= 2)
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: _PrizePoolCard(item: visible[0], wide: true),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(child: _PrizePoolCard(item: visible[1])),
-                      ],
-                    )
-                  else
-                    _PrizePoolCard(item: visible.first, wide: true),
+                  Expanded(
+                    flex: 2,
+                    child: _PrizePoolCard(item: visible[0], wide: true),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: _PrizePoolCard(item: visible[1])),
                 ],
               ),
+            )
+          else
+            SizedBox(
+              height: 104,
+              child: _PrizePoolCard(item: visible.first, wide: true),
             ),
-          ),
           if (visible.length > 2) ...[
             const SizedBox(height: 8),
-            Row(
-              children: [
-                for (var i = 2; i < visible.length; i++) ...[
-                  if (i > 2) const SizedBox(width: 8),
-                  Expanded(child: _PrizePoolCard(item: visible[i])),
+            SizedBox(
+              height: 104,
+              child: Row(
+                children: [
+                  for (var i = 2; i < visible.length; i++) ...[
+                    if (i > 2) const SizedBox(width: 8),
+                    Expanded(child: _PrizePoolCard(item: visible[i])),
+                  ],
                 ],
-              ],
+              ),
             ),
           ],
         ],
@@ -76,127 +73,40 @@ class PrizePoolBox extends StatelessWidget {
   }
 }
 
-/// Open-bottom parent tray for the header and the first two prizes only.
-/// The right edge narrows inward with a soft curve; the bottom stays open.
-class _PrizePoolParentFramePainter extends CustomPainter {
-  const _PrizePoolParentFramePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..moveTo(7, size.height - 5)
-      ..lineTo(7, 19)
-      ..quadraticBezierTo(7, 8, 20, 8)
-      ..lineTo(size.width - 25, 8)
-      ..quadraticBezierTo(size.width - 8, 8, size.width - 9, 25)
-      ..quadraticBezierTo(
-        size.width - 10,
-        size.height * 0.62,
-        size.width - 34,
-        size.height - 5,
-      );
-
-    final fillPath = Path.from(path)
-      ..lineTo(7, size.height - 5)
-      ..close();
-
-    canvas.drawPath(
-      fillPath,
-      Paint()
-        ..color = const Color(0xCC071B50)
-        ..style = PaintingStyle.fill,
-    );
-
-    // Dark outer layer, then the brighter cyan-blue inner layer.
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0xFF123A82)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4
-        ..strokeJoin = StrokeJoin.round
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0xFF55D8FF)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5
-        ..strokeJoin = StrokeJoin.round
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _PrizePoolParentFramePainter oldDelegate) =>
-      false;
-}
-
+/// The cyan-edged trapezoid title panel sits above the cards, not around them.
 class _PrizePoolHeader extends StatelessWidget {
   const _PrizePoolHeader();
 
   @override
   Widget build(BuildContext context) {
-    return const _PrizePoolTab();
-  }
-}
-
-class _GreenPixels extends StatelessWidget {
-  const _GreenPixels();
-
-  @override
-  Widget build(BuildContext context) {
-    const shades = [
-      Color(0xFF8BFFC0),
-      Color(0xFF27E987),
-      Color(0xFF176E53),
-      Color(0xFF42FF9B),
-    ];
-    return SizedBox(
-      width: 23,
-      height: 19,
-      child: Wrap(
-        spacing: 3,
-        runSpacing: 3,
-        children: [
-          for (final shade in shades)
-            Container(width: 7, height: 7, color: shade),
-        ],
-      ),
-    );
-  }
-}
-
-class _PrizePoolTab extends StatelessWidget {
-  const _PrizePoolTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipPath(
-      clipper: _PrizePoolTabClipper(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
-        decoration: BoxDecoration(
-          color: const Color(0x99205BFF),
-          border: Border.all(color: const Color(0xFF2F7BFF), width: 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            _GreenPixels(),
-            SizedBox(width: 9),
-            Text(
-              'حوض الجوائز',
-              style: TextStyle(
-                color: Color(0xFFDDF8FF),
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-              ),
+    return Center(
+      child: SizedBox(
+        width: MediaQuery.sizeOf(context).width * 0.88,
+        height: 43,
+        child: ClipPath(
+          clipper: _PrizePoolTabClipper(),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xCC071B50),
+              border: Border.all(color: const Color(0xFF55D8FF), width: 1.4),
             ),
-            SizedBox(width: 9),
-            _GreenPixels(),
-          ],
+            child: Stack(
+              alignment: Alignment.center,
+              children: const [
+                Positioned(left: 12, top: 5, child: _GreenPixels()),
+                Positioned(right: 12, top: 5, child: _GreenPixels()),
+                Text(
+                  'حوض الجوائز',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFFDDF8FF),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -206,8 +116,8 @@ class _PrizePoolTab extends StatelessWidget {
 class _PrizePoolTabClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) => Path()
-    ..moveTo(0, 0)
-    ..lineTo(size.width - 15, 0)
+    ..moveTo(size.width * 0.10, 0)
+    ..lineTo(size.width * 0.90, 0)
     ..lineTo(size.width, size.height)
     ..lineTo(0, size.height)
     ..close();
