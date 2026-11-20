@@ -36,6 +36,26 @@ class CannonClaim {
   );
 }
 
+class CannonWinner {
+  final String userId, userName, avatarUrl, rewardName, rewardType, rewardValue, prizeIcon;
+  final String claimedAt;
+  const CannonWinner({
+    required this.userId, required this.userName, required this.avatarUrl,
+    required this.rewardName, required this.rewardType, required this.rewardValue,
+    required this.prizeIcon, required this.claimedAt,
+  });
+  factory CannonWinner.fromJson(Map<String, dynamic> j) => CannonWinner(
+    userId: _s(j['user_id']),
+    userName: _s(j['user_name']).isEmpty ? 'فائز' : _s(j['user_name']),
+    avatarUrl: _s(j['avatar_url']),
+    rewardName: _s(j['reward_name']),
+    rewardType: _s(j['reward_type']),
+    rewardValue: _s(j['reward_value']),
+    prizeIcon: _s(j['prize_icon']),
+    claimedAt: _s(j['claimed_at']),
+  );
+}
+
 class CannonState {
   final String roomId, launchId;
   final int level, progress, need, myContribution;
