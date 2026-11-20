@@ -229,7 +229,7 @@ class _CannonSheetState extends State<CannonSheet> {
             child: const _PrizePoolTab(),
           ),
           Opacity(opacity: locked ? 0.45 : 1, child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 9),
             child: Column(children: [
               if (ordered.isNotEmpty) Transform.translate(
                 offset: const Offset(0, 15),
@@ -298,7 +298,7 @@ class _PrizePoolTab extends StatelessWidget {
   Widget build(BuildContext context) => ClipPath(
     clipper: _PrizePoolTrapezoidClipper(),
     child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 38, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 43, vertical: 10.5),
       decoration: const BoxDecoration(
         color: Color(0x33205BFF),
         border: Border(
@@ -360,7 +360,7 @@ class _PrizeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 90, padding: const EdgeInsets.all(7),
+    height: 95, padding: const EdgeInsets.all(7),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(10),
       gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
