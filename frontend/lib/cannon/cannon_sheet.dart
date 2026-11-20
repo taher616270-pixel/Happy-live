@@ -111,7 +111,6 @@ class _CannonSheetState extends State<CannonSheet> {
     final done = lv.level < st.level;
     final ratio = isCurrent ? st.ratio : (done ? 1.0 : 0.0);
     final ordered = [...lv.prizes.where((p) => p.top1), ...lv.prizes.where((p) => !p.top1)];
-    final bottomPad = MediaQuery.of(context).padding.bottom;
 
     return Column(children: [
       SizedBox(height: 60, child: Stack(children: [
@@ -128,10 +127,15 @@ class _CannonSheetState extends State<CannonSheet> {
           icon: const Icon(Icons.chevron_right, color: Color(0xFF3AA8FF), size: 30),
         )),
       ])),
-      Expanded(child: SingleChildScrollView(
-        padding: EdgeInsets.only(bottom: bottomPad + 18),
-        child: Column(children: [
-          SizedBox(height: 340, child: Stack(
+      Expanded(child: LayoutBuilder(
+        builder: (context, constraints) => FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: constraints.maxWidth,
+            height: 680,
+            child: Column(children: [
+          SizedBox(height: 270, child: Stack(
             fit: StackFit.expand,
             children: [
               // Animated blue floor/light background; cannon art stays layered above it.
@@ -243,7 +247,9 @@ class _CannonSheetState extends State<CannonSheet> {
               ),
             ]),
           )),
-        ]),
+            ]),
+          ),
+        ),
       )),
     ]);
   }
