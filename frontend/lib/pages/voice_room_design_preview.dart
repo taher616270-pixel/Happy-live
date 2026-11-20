@@ -2039,80 +2039,6 @@ Widget _roomActionButton({
 
 
 
-class _CannonGiftDropPainter extends CustomPainter {
-  const _CannonGiftDropPainter({
-    required this.progress,
-    required this.planeCenter,
-    required this.planeSize,
-    required this.screenHeight,
-  });
-
-  final double progress;
-  final Offset planeCenter;
-  final double planeSize;
-  final double screenHeight;
-
-  static const List<Color> _giftColors = <Color>[
-    Color(0xFFFF4F81), Color(0xFF32B7E8), Color(0xFFFFC247),
-    Color(0xFF9B72F2), Color(0xFF45C98B), Color(0xFFFF8748),
-    Color(0xFFEC5BCB), Color(0xFF64A5FF),
-  ];
-
-  @override
-  void paint(ui.Canvas canvas, Size size) {
-    const count = 16;
-    for (var i = 0; i < count; i++) {
-      final release = .12 + i * .025;
-      final elapsed = progress - release;
-      if (elapsed < 0 || elapsed > .42) continue;
-      final fall = (elapsed / .42).clamp(0.0, 1.0).toDouble();
-      final drift = math.sin((i * 1.73) + fall * 2.2) * (8 + fall * 9);
-      final x = (planeCenter.dx + (i.isEven ? -1 : 1) * planeSize * (.12 + (i % 4) * .075) + drift)
-          .clamp(12.0, size.width - 12.0).toDouble();
-      final startY = planeCenter.dy + planeSize * .30;
-      final y = startY + (screenHeight * .82 - startY) * Curves.easeInCubic.transform(fall);
-      // Large, clearly visible gift boxes (about 2.5x the previous size).
-      final boxSize = 40.0 + (i % 3) * 8.0;
-      final center = Offset(x, y);
-      final color = _giftColors[i % _giftColors.length];
-
-      canvas.save();
-      canvas.translate(center.dx, center.dy);
-      canvas.rotate(math.sin(fall * math.pi + i) * .12);
-      final boxRect = ui.Rect.fromCenter(
-        center: Offset.zero, width: boxSize, height: boxSize * .82,
-      );
-      final radius = ui.RRect.fromRectAndRadius(boxRect, const ui.Radius.circular(3));
-      canvas.drawRRect(radius, ui.Paint()..color = color);
-      canvas.drawRRect(
-        radius,
-        ui.Paint()
-          ..style = ui.PaintingStyle.stroke
-          ..strokeWidth = 1
-          ..color = Colors.white.withOpacity(.85),
-      );
-      canvas.drawRect(
-        ui.Rect.fromCenter(center: Offset.zero, width: boxSize * .17, height: boxSize * .82),
-        ui.Paint()..color = const Color(0xFFFFF4D0),
-      );
-      canvas.drawRect(
-        ui.Rect.fromCenter(center: Offset.zero, width: boxSize, height: boxSize * .16),
-        ui.Paint()..color = const Color(0xFFFFF4D0),
-      );
-      canvas.drawCircle(Offset(0, -boxSize * .48), boxSize * .12,
-        ui.Paint()..color = const Color(0xFFFFF4D0));
-      canvas.restore();
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _CannonGiftDropPainter oldDelegate) =>
-      oldDelegate.progress != progress ||
-      oldDelegate.planeCenter != planeCenter ||
-      oldDelegate.planeSize != planeSize ||
-      oldDelegate.screenHeight != screenHeight;
-}
-
 class _CannonLaunchFireworksPainter extends CustomPainter {
   const _CannonLaunchFireworksPainter({
     required this.progress,
@@ -2129,59 +2055,71 @@ class _CannonLaunchFireworksPainter extends CustomPainter {
 
   @override
   void paint(ui.Canvas canvas, Size size) {
-    // Three overlapping premium firework bursts, all confined to the room.
-    const bursts = <(double, double, double, double)>[
-      (0.015, -0.10, -0.12, 1.00),
-      (0.075, 0.22, -0.02, 1.18),
-      (0.135, -0.30, 0.10, 0.88),
-    ];
-    for (var b = 0; b < bursts.length; b++) {
-      final (start, dx, dy, scale) = bursts[b];
-      final local = ((progress - start) / .22).clamp(0.0, 1.0).toDouble();
-      if (progress < start || local >= 1) continue;
-      final fade = math.pow(1 - local, 1.35).toDouble();
-      final radius = (24 + 118 * Curves.easeOutCubic.transform(local)) * scale;
+    // Repeating layered bursts keep the sky active for the complete ascent.
+    // Each burst has a bright core, a soft bloom, long sparks and falling trails.
+    const burstInterval = .105;
+    const burstLife = .30;
+    final activeBurst = (progress / burstInterval).floor();
+    for (var b = math.max(0, activeBurst - 3); b <= activeBurst; b++) {
+      final start = b * burstInterval;
+      final age = progress - start;
+      if (age < 0 || age > burstLife) continue;
+      final t = (age / burstLife).clamp(0.0, 1.0).toDouble();
+      final fade = math.pow(1 - t, 1.12).toDouble();
+      final radius = (18 + 172 * Curves.easeOutCubic.transform(t));
+      final seed = math.Random(9001 + b * 97);
       final center = Offset(
-        (origin.dx + dx * size.width).clamp(30.0, size.width - 30.0).toDouble(),
-        (origin.dy + dy * size.height).clamp(50.0, size.height - 70.0).toDouble(),
+        (origin.dx + (seed.nextDouble() - .5) * size.width * .78)
+            .clamp(24.0, size.width - 24.0).toDouble(),
+        (origin.dy + (seed.nextDouble() - .5) * size.height * .26)
+            .clamp(40.0, size.height - 70.0).toDouble(),
       );
-      final color = _colors[(b * 2) % _colors.length];
+      final color = _colors[b % _colors.length];
 
       canvas.drawCircle(
         center,
-        radius * .30,
+        radius * .42,
         ui.Paint()
-          ..color = color.withOpacity(.20 * fade)
-          ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 20),
+          ..color = color.withOpacity(.23 * fade)
+          ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, 22 + 14 * (1 - t)),
       );
       canvas.drawCircle(
         center,
-        radius * .16,
-        ui.Paint()..color = Colors.white.withOpacity(.75 * fade),
+        radius * .10,
+        ui.Paint()
+          ..color = Colors.white.withOpacity(.95 * fade)
+          ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 7),
       );
 
-      const particles = 32;
+      const particles = 72;
       for (var i = 0; i < particles; i++) {
-        final angle = (math.pi * 2 * i / particles) + b * .31;
-        final wave = (i % 3 == 0) ? 1.0 : .78;
-        final outer = radius * wave;
-        final inner = radius * (.18 + .12 * math.sin(i * 2.1));
-        final end = center.translate(math.cos(angle) * outer, math.sin(angle) * outer);
-        final tail = center.translate(math.cos(angle) * inner, math.sin(angle) * inner);
-        final particleColor = _colors[(i + b * 2) % _colors.length];
+        final angle = (math.pi * 2 * i / particles) + (b % 5) * .13;
+        final variation = .62 + seed.nextDouble() * .55;
+        final distance = radius * variation;
+        final gravity = t * t * (18 + (i % 5) * 5);
+        final end = Offset(
+          center.dx + math.cos(angle) * distance,
+          center.dy + math.sin(angle) * distance + gravity,
+        );
+        final tailLength = (8 + (i % 7) * 3) * (1 - t * .35);
+        final tail = Offset(
+          end.dx - math.cos(angle) * tailLength,
+          end.dy - math.sin(angle) * tailLength - gravity * .12,
+        );
+        final sparkColor = _colors[(i + b) % _colors.length];
         canvas.drawLine(
           tail,
           end,
           ui.Paint()
-            ..color = particleColor.withOpacity(.95 * fade)
-            ..strokeWidth = i % 4 == 0 ? 3.4 : 2.0
+            ..color = sparkColor.withOpacity(.92 * fade)
+            ..strokeWidth = i % 6 == 0 ? 3.8 : 2.1
             ..strokeCap = ui.StrokeCap.round
-            ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 1.5),
+            ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 1.8),
         );
         canvas.drawCircle(
           end,
-          i % 4 == 0 ? 3.0 : 1.8,
-          ui.Paint()..color = Colors.white.withOpacity(.9 * fade),
+          i % 6 == 0 ? 3.2 : 1.7,
+          ui.Paint()..color = Colors.white.withOpacity(.88 * fade),
         );
       }
     }
@@ -2216,7 +2154,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
   Timer? _timer;
   late final AnimationController _flight = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 6),
+    duration: const Duration(milliseconds: 5500),
   );
   final GlobalKey _cannonTileKey = GlobalKey();
   OverlayEntry? _flightOverlayEntry;
@@ -2330,43 +2268,22 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
           }
           final origin = renderObject.localToGlobal(Offset.zero);
           final screen = MediaQuery.sizeOf(overlayContext);
-          final raw = _flight.value.clamp(0.0, 1.0).toDouble();
-          // The airplane is already large as soon as it emerges from the cannon:
-          // 45% of the available screen width, with no tiny-to-large scaling.
-          final planeStartSize = screen.width * .45;
-          final planeEndSize = planeStartSize;
-          final startX = origin.dx + 36 - planeStartSize / 2;
-          final startY = origin.dy + 36 - planeStartSize / 2;
-          final centerX = (screen.width - planeEndSize) / 2;
-          final middleY = screen.height * .34;
+          final progress = _flight.value.clamp(0.0, 1.0).toDouble();
 
-          double planeX;
-          double planeY;
-          double planeSize;
-          if (raw < .20) {
-            // First 1.2 seconds: leave the cannon and reach the room center.
-            final p = Curves.easeOutCubic.transform(raw / .20);
-            planeX = startX + (centerX - startX) * p;
-            planeY = startY + (middleY - startY) * p;
-            planeSize = planeStartSize + (planeEndSize - planeStartSize) * p;
-          } else if (raw < .70) {
-            // Next 3 seconds: cruise gently across the middle of the room.
-            final p = (raw - .20) / .50;
-            planeX = centerX + math.sin(p * math.pi * 2) * screen.width * .10;
-            planeY = middleY + math.sin(p * math.pi * 2.4) * 13;
-            planeSize = planeEndSize;
-          } else {
-            // Final 1.8 seconds: smoothly climb and disappear above the room.
-            final p = Curves.easeInOutCubic.transform((raw - .70) / .30);
-            planeX = centerX + math.sin(p * math.pi) * screen.width * .035;
-            planeY = middleY + ( -planeEndSize - 28 - middleY) * p;
-            planeSize = planeEndSize;
-          }
-          final planeOpacity = raw > .94
-              ? (1 - ((raw - .94) / .06)).clamp(0.0, 1.0).toDouble()
+          // The plane leaves the cannon tile immediately and keeps a single,
+          // smooth vertical trajectory until it exits above the screen.
+          final planeSize = screen.width * .52;
+          final planeCenterX = origin.dx + renderObject.size.width / 2;
+          final startCenterY = origin.dy + renderObject.size.height / 2;
+          final endCenterY = -planeSize * .65;
+          final eased = Curves.easeInOutSine.transform(progress);
+          final planeCenterY = startCenterY + (endCenterY - startCenterY) * eased;
+          final planeLeft = planeCenterX - planeSize / 2;
+          final planeTop = planeCenterY - planeSize / 2;
+          final planeOpacity = progress > .96
+              ? (1 - ((progress - .96) / .04)).clamp(0.0, 1.0).toDouble()
               : 1.0;
-          final planeCenter = Offset(planeX + planeSize / 2, planeY + planeSize / 2);
-          final fireworkOrigin = Offset(origin.dx + 36, origin.dy + 36);
+
           return Positioned.fill(
             child: IgnorePointer(
               child: Stack(
@@ -2375,25 +2292,15 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
                   Positioned.fill(
                     child: CustomPaint(
                       painter: _CannonLaunchFireworksPainter(
-                        progress: raw,
-                        origin: fireworkOrigin,
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _CannonGiftDropPainter(
-                        progress: raw,
-                        planeCenter: planeCenter,
-                        planeSize: planeSize,
-                        screenHeight: screen.height,
+                        progress: progress,
+                        origin: Offset(planeCenterX, planeCenterY),
                       ),
                     ),
                   ),
                   if (planeOpacity > .01)
                     Positioned(
-                      left: planeX.clamp(-planeSize, screen.width).toDouble(),
-                      top: planeY,
+                      left: planeLeft,
+                      top: planeTop,
                       child: Opacity(
                         opacity: planeOpacity,
                         child: Image.asset(
