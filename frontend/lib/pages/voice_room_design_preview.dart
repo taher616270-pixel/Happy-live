@@ -2057,7 +2057,7 @@ class _CannonAirstrikePainter extends CustomPainter {
             ? ((progress - .07) / .19).clamp(0.0, 1.0)
             : progress > .68
                 ? (1 - (progress - .68) / .12).clamp(0.0, 1.0)
-                : 1.0)
+                : 1.0).toDouble()
         : 0.0;
     if (active > 0) {
       // Broad curved air streams make the aircraft feel fast and powerful.
@@ -2109,9 +2109,9 @@ class _CannonAirstrikePainter extends CustomPainter {
     const xOffsets = <double>[-.34, -.12, .13, .35];
     const targetFractions = <double>[.69, .76, .72, .80];
     for (var i = 0; i < releases.length; i++) {
-      final fall = ((progress - releases[i]) / .115).clamp(0.0, 1.0);
+      final fall = ((progress - releases[i]) / .115).clamp(0.0, 1.0).toDouble();
       if (progress < releases[i] || progress > releases[i] + .205) continue;
-      final x = (planeCenter.dx + planeSize * xOffsets[i]).clamp(18.0, size.width - 18.0);
+      final x = (planeCenter.dx + planeSize * xOffsets[i]).clamp(18.0, size.width - 18.0).toDouble();
       final startY = planeCenter.dy + planeSize * .28;
       final impactY = size.height * targetFractions[i];
       final y = startY + (impactY - startY) * Curves.easeInCubic.transform(fall);
@@ -2131,7 +2131,7 @@ class _CannonAirstrikePainter extends CustomPainter {
         );
         canvas.drawCircle(bomb.translate(0, 10), 3, ui.Paint()..color = const Color(0xFFFF7043));
       } else {
-        final blast = ((progress - releases[i] - .115) / .09).clamp(0.0, 1.0);
+        final blast = ((progress - releases[i] - .115) / .09).clamp(0.0, 1.0).toDouble();
         final radius = 10 + Curves.easeOutCubic.transform(blast) * 58;
         final center = Offset(x, impactY);
         canvas.drawCircle(
@@ -2381,10 +2381,10 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
                   ),
                   if (raw < .80 && planeOpacity > .01)
                     Positioned(
-                      left: planeX.clamp(-planeSize, screen.width),
+                      left: planeX.clamp(-planeSize, screen.width).toDouble(),
                       top: planeY,
                       child: Opacity(
-                        opacity: planeOpacity.clamp(0.0, 1.0),
+                        opacity: planeOpacity.clamp(0.0, 1.0).toDouble(),
                         child: Transform.rotate(
                           angle: raw > .40 && raw < .68 ? .10 : -.035,
                           child: Image.asset(
