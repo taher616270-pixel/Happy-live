@@ -4,6 +4,7 @@ import 'cannon_models.dart';
 import 'cannon_rules_sheet.dart';
 import 'cannon_reward_dialog.dart';
 import 'cannon_service.dart';
+import 'prize_pool_box.dart';
 
 String _fmt(int n) {
   final s = n.toString();
@@ -224,36 +225,21 @@ class _CannonSheetState extends State<CannonSheet> {
             ),
           )),
           const SizedBox(height: 18),
-          Transform.translate(
-            offset: const Offset(0, 15),
-            child: const _PrizePoolTab(),
+          const SizedBox(height: 18),
+          Opacity(
+            opacity: locked ? 0.45 : 1,
+            child: PrizePoolBox(
+              items: [
+                for (final prize in ordered.take(5))
+                  PrizePoolItem(
+                    imageUrl: prize.icon,
+                    title: prize.name,
+                    isGold: prize.top1,
+                    badgeText: prize.top1 ? 'Top1 only' : null,
+                  ),
+              ],
+            ),
           ),
-          Opacity(opacity: locked ? 0.45 : 1, child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 9),
-            child: Column(children: [
-              if (ordered.isNotEmpty) Transform.translate(
-                offset: const Offset(0, 15),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(flex: 2, child: _PrizeCard(prize: ordered[0], wide: ordered[0].top1)),
-                  if (ordered.length > 1) ...[
-                    const SizedBox(width: 6),
-                    Expanded(child: _PrizeCard(prize: ordered[1])),
-                  ],
-                ]),
-              ),
-              if (ordered.length > 2) Transform.translate(
-                offset: const Offset(0, 15),
-                child: Column(children: [
-                  const SizedBox(height: 6),
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    for (var i = 2; i < ordered.length && i < 5; i++) ...[
-                      if (i > 2) const SizedBox(width: 6),
-                      Expanded(child: _PrizeCard(prize: ordered[i])),
-                    ],
-                  ]),
-                ]),
-              ),
-            ]),
           )),
             ]),
           ),
