@@ -16,16 +16,16 @@ class CannonArt extends StatelessWidget {
     final localAnimatedAsset = level >= 1 && level <= 4
         ? 'assets/images/cannon/airplane_lv$level.gif'
         : null;
-    final Widget art = completed
-        ? _drawn()
-        : localAnimatedAsset != null
-            ? Image.asset(
-                localAnimatedAsset,
-                width: size,
-                height: size,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => _drawn(),
-              )
+    final Widget art = localAnimatedAsset != null
+        ? Image.asset(
+            localAnimatedAsset,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => _drawn(),
+          )
+        : completed
+            ? _drawn()
             : (url != null && url.isNotEmpty)
                 ? Image.network(
                     url,
