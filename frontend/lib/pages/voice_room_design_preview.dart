@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
@@ -18,6 +19,9 @@ import 'package:happy_live/models/mic_layout.dart';
 import 'edit_profile_page.dart';
 import 'ranking_sheet_pro.dart';
 import '../cannon/cannon_sheet.dart';
+import '../cannon/cannon_api.dart';
+import '../cannon/cannon_art.dart';
+import '../cannon/cannon_config.dart';
 import '../cannon/cannon_service.dart';
 import '../cannon/cannon_top_banner.dart'; // Global cannon banner overlay for room view.
 
@@ -190,6 +194,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               badge: '',
                               backgroundOpacity: 0.35,
                               showContent: false,
+                              content: _CannonRoomTilePreview(
+                                roomId: (room['id'] ?? '').toString().trim(),
+                                accessToken: accessToken,
+                              ),
                               onTap: () {
                                 final cannonRoomId = (room['id'] ?? '').toString().trim();
                                 if (cannonRoomId.isEmpty || accessToken.trim().isEmpty) return;
@@ -1965,6 +1973,84 @@ Widget _roomActionButton({
 }
 
 
+class _CannonRoomTilePreview extends StatefulWidget {
+  final String roomId;
+  final String accessToken;
+
+  const _CannonRoomTilePreview({
+    required this.roomId,
+    required this.accessToken,
+  });
+
+  @override
+  State<_CannonRoomTilePreview> createState() => _CannonRoomTilePreviewState();
+}
+
+class _CannonRoomTilePreviewState extends State<_CannonRoomTilePreview> {
+  Timer? _timer;
+  int _level = 1;
+  bool _loaded = false;
+  bool _requestInFlight = false;
+
+  @override
+  void initState() {
+    super.initState();
+    CannonConfig.setAuthToken(widget.accessToken);
+    _refreshLevel();
+    _timer = Timer.periodic(CannonConfig.roomPoll, (_) => _refreshLevel());
+  }
+
+  @override
+  void didUpdateWidget(covariant _CannonRoomTilePreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.roomId != widget.roomId ||
+        oldWidget.accessToken != widget.accessToken) {
+      CannonConfig.setAuthToken(widget.accessToken);
+      _refreshLevel();
+    }
+  }
+
+  Future<void> _refreshLevel() async {
+    if (_requestInFlight || widget.roomId.isEmpty || widget.accessToken.isEmpty) {
+      return;
+    }
+    _requestInFlight = true;
+    try {
+      CannonConfig.setAuthToken(widget.accessToken);
+      final state = await CannonApi.fetchState(widget.roomId);
+      if (!mounted || state == null) return;
+      final nextLevel = state.level.clamp(1, 150).toInt();
+      if (!_loaded || nextLevel != _level) {
+        setState(() {
+          _level = nextLevel;
+          _loaded = true;
+        });
+      }
+    } finally {
+      _requestInFlight = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 68,
+    height: 68,
+    child: Center(
+      child: CannonArt(
+        level: _level,
+        size: 66,
+        dim: false,
+      ),
+    ),
+  );
+}
+
 class _RoomGameTile extends StatelessWidget {
   const _RoomGameTile({
     required this.color1,
@@ -1973,6 +2059,7 @@ class _RoomGameTile extends StatelessWidget {
     this.timer,
     this.backgroundOpacity = 1,
     this.showContent = true,
+    this.content,
     this.onTap,
   });
 
@@ -1982,6 +2069,7 @@ class _RoomGameTile extends StatelessWidget {
   final String? timer;
   final double backgroundOpacity;
   final bool showContent;
+  final Widget? content;
   final VoidCallback? onTap;
 
   @override
@@ -2006,6 +2094,7 @@ class _RoomGameTile extends StatelessWidget {
         ),
         child: Stack(
           children: [
+            if (content != null) Positioned.fill(child: content!),
             if (showContent && timer != null)
               Positioned(
                 top: 3,
