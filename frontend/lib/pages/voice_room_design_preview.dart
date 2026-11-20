@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -2033,6 +2034,96 @@ Widget _roomActionButton({
 }
 
 
+
+/// Plays animated assets at a deliberately slower frame rate without
+/// changing the source artwork. The frame delay is multiplied by speedFactor.
+class _SlowedAnimatedAsset extends StatefulWidget {
+  const _SlowedAnimatedAsset({
+    required this.asset,
+    this.speedFactor = 3,
+    this.fit = BoxFit.contain,
+  });
+
+  final String asset;
+  final int speedFactor;
+  final BoxFit fit;
+
+  @override
+  State<_SlowedAnimatedAsset> createState() => _SlowedAnimatedAssetState();
+}
+
+class _SlowedAnimatedAssetState extends State<_SlowedAnimatedAsset> {
+  ui.Codec? _codec;
+  ui.Image? _frame;
+  Timer? _frameTimer;
+  bool _disposed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAnimation();
+  }
+
+  Future<void> _loadAnimation() async {
+    try {
+      final data = await rootBundle.load(widget.asset);
+      if (_disposed) return;
+      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+      if (_disposed) {
+        codec.dispose();
+        return;
+      }
+      _codec = codec;
+      await _showNextFrame();
+    } catch (error) {
+      debugPrint('[cannon-animation] failed to load ${widget.asset}: $error');
+    }
+  }
+
+  Future<void> _showNextFrame() async {
+    final codec = _codec;
+    if (_disposed || codec == null) return;
+    try {
+      final next = await codec.getNextFrame();
+      if (_disposed) {
+        next.image.dispose();
+        return;
+      }
+      final previous = _frame;
+      _frame = next.image;
+      previous?.dispose();
+      if (mounted) setState(() {});
+      final delayMs = (next.duration.inMilliseconds * widget.speedFactor)
+          .clamp(40, 10000)
+          .toInt();
+      _frameTimer?.cancel();
+      _frameTimer = Timer(Duration(milliseconds: delayMs), _showNextFrame);
+    } catch (error) {
+      debugPrint('[cannon-animation] frame playback failed: $error');
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _frameTimer?.cancel();
+    _frame?.dispose();
+    _codec?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final frame = _frame;
+    if (frame == null) return const SizedBox.shrink();
+    return RawImage(
+      image: frame,
+      fit: widget.fit,
+      filterQuality: FilterQuality.medium,
+    );
+  }
+}
+
 class _CannonRoomTile extends StatefulWidget {
   final String roomId;
   final String accessToken;
@@ -2253,10 +2344,10 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
       builder: (context) => Positioned.fill(
         child: IgnorePointer(
           child: Center(
-            child: Image.asset(
-              'assets/images/cannon/airstrike_Lv1.webp',
+            child: _SlowedAnimatedAsset(
+              asset: 'assets/images/cannon/airstrike_Lv1.webp',
+              speedFactor: 3,
               fit: BoxFit.contain,
-              gaplessPlayback: true,
             ),
           ),
         ),
