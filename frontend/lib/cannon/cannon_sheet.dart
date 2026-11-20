@@ -193,7 +193,7 @@ class _CannonSheetState extends State<CannonSheet> {
               ])),
                     Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
             Transform.translate(offset: const Offset(0, 27), child: ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
-              value: ratio, minHeight: 7, backgroundColor: const Color(0xFF1A2A7A),
+              value: ratio, minHeight: 5, backgroundColor: const Color(0xFF1A2A7A),
               valueColor: const AlwaysStoppedAnimation(Color(0xFF2BE3A0)),
             )),),
             const SizedBox(height: 8),
