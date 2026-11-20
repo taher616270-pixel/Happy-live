@@ -218,7 +218,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           CannonGlobalBannerHost(
             child: const SizedBox.expand(),
             accessToken: accessToken,
-            onOpenRoom: onOpenCannonRoom,
+            onOpenRoom: (roomId) async {
+              await onOpenCannonRoom?.call(roomId);
+            },
           ),
         ],
       ),
