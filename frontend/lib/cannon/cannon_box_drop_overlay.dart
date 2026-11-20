@@ -48,7 +48,11 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
   Future<void> _finish() async {
     if (_finishing) return;
     _finishing = true;
-    final results = await CannonApi.fetchBoxResults(widget.roundId);
+    List<Map<String, dynamic>>? results;
+    for (var attempt = 0; attempt < 4 && results == null; attempt++) {
+      if (attempt > 0) await Future<void>.delayed(const Duration(milliseconds: 250));
+      results = await CannonApi.fetchBoxResults(widget.roundId);
+    }
     if (!mounted) return;
     widget.onFinished(results ?? <Map<String, dynamic>>[]);
   }
