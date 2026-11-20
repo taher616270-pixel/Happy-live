@@ -225,29 +225,29 @@ class _CannonSheetState extends State<CannonSheet> {
           )),
           const SizedBox(height: 18),
           Transform.translate(
-            offset: const Offset(0, 5),
+            offset: const Offset(0, 10),
             child: const _PrizePoolTab(),
           ),
           Opacity(opacity: locked ? 0.45 : 1, child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Column(children: [
               if (ordered.isNotEmpty) Transform.translate(
-                offset: const Offset(0, 5),
+                offset: const Offset(0, 10),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Expanded(flex: 2, child: _PrizeCard(prize: ordered[0], wide: ordered[0].top1)),
                   if (ordered.length > 1) ...[
-                    const SizedBox(width: 1),
+                    const SizedBox(width: 3),
                     Expanded(child: _PrizeCard(prize: ordered[1])),
                   ],
                 ]),
               ),
               if (ordered.length > 2) Transform.translate(
-                offset: const Offset(0, 5),
+                offset: const Offset(0, 10),
                 child: Column(children: [
-                  const SizedBox(height: 1),
+                  const SizedBox(height: 3),
                   Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     for (var i = 2; i < ordered.length && i < 5; i++) ...[
-                      if (i > 2) const SizedBox(width: 1),
+                      if (i > 2) const SizedBox(width: 3),
                       Expanded(child: _PrizeCard(prize: ordered[i])),
                     ],
                   ]),
