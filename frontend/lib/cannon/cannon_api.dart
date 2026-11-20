@@ -83,6 +83,51 @@ class CannonApi {
     }
   }
 
+  static Future<Map<String, dynamic>?> startBoxRound(String launchId) async {
+    try {
+      final uri = Uri.parse('${CannonConfig.apiBase}/api/cannon/boxes/start');
+      final r = await http.post(uri, headers: _headers, body: jsonEncode({'launch_id': launchId}))
+          .timeout(const Duration(seconds: 8));
+      if (r.statusCode != 200) return null;
+      final j = jsonDecode(utf8.decode(r.bodyBytes));
+      if (j is! Map || j['ok'] != true || j['round'] is! Map) return null;
+      return Map<String, dynamic>.from(j['round'] as Map);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<bool> openBox(String roundId, int boxIndex) async {
+    try {
+      final uri = Uri.parse('${CannonConfig.apiBase}/api/cannon/boxes/open');
+      final r = await http.post(uri, headers: _headers,
+          body: jsonEncode({'round_id': roundId, 'box_index': boxIndex}))
+          .timeout(const Duration(seconds: 8));
+      if (r.statusCode != 200) return false;
+      final j = jsonDecode(utf8.decode(r.bodyBytes));
+      return j is Map && j['ok'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>?> fetchBoxResults(String roundId) async {
+    try {
+      final uri = Uri.parse('${CannonConfig.apiBase}/api/cannon/boxes/results')
+          .replace(queryParameters: {'round_id': roundId});
+      final r = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 8));
+      if (r.statusCode != 200) return null;
+      final j = jsonDecode(utf8.decode(r.bodyBytes));
+      if (j is! Map || j['ok'] != true) return null;
+      return ((j['opened'] as List?) ?? [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<bool> claim(String claimId) async {
     try {
       final uri = Uri.parse('${CannonConfig.apiBase}/api/cannon/claim');
