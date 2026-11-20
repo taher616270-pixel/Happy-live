@@ -190,8 +190,7 @@ class _CannonSheetState extends State<CannonSheet> {
                   ),
                 ]),
                 const SizedBox(height: 14),
-              ]),
-          ])),
+              ])),
           Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
             ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
               value: ratio, minHeight: 7, backgroundColor: const Color(0xFF1A2A7A),
