@@ -2071,7 +2071,8 @@ class _CannonGiftDropPainter extends CustomPainter {
           .clamp(12.0, size.width - 12.0).toDouble();
       final startY = planeCenter.dy + planeSize * .30;
       final y = startY + (screenHeight * .82 - startY) * Curves.easeInCubic.transform(fall);
-      final boxSize = 17.0 + (i % 3) * 3.0;
+      // Large, clearly visible gift boxes (about 2.5x the previous size).
+      final boxSize = 40.0 + (i % 3) * 8.0;
       final center = Offset(x, y);
       final color = _giftColors[i % _giftColors.length];
 
@@ -2330,8 +2331,10 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
           final origin = renderObject.localToGlobal(Offset.zero);
           final screen = MediaQuery.sizeOf(overlayContext);
           final raw = _flight.value.clamp(0.0, 1.0).toDouble();
-          const planeStartSize = 72.0;
-          const planeEndSize = 108.0;
+          // The airplane is already large as soon as it emerges from the cannon:
+          // 45% of the available screen width, with no tiny-to-large scaling.
+          final planeStartSize = screen.width * .45;
+          final planeEndSize = planeStartSize;
           final startX = origin.dx + 36 - planeStartSize / 2;
           final startY = origin.dy + 36 - planeStartSize / 2;
           final centerX = (screen.width - planeEndSize) / 2;
