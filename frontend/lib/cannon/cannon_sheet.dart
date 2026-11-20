@@ -4,7 +4,7 @@ import 'cannon_models.dart';
 import 'cannon_rules_sheet.dart';
 import 'cannon_reward_dialog.dart';
 import 'cannon_service.dart';
-import 'prize_pool_box.dart';
+import 'prize_pool_box.dart';\nimport 'cannon_contributors_box.dart';
 
 String _fmt(int n) {
   final s = n.toString();
@@ -225,7 +225,14 @@ class _CannonSheetState extends State<CannonSheet> {
             ),
           )),
           const SizedBox(height: 18),
-          Opacity(
+          if (st.launchId.isNotEmpty)
+            CannonContributorsBox(
+              contributors: _svc.contributors,
+              loading: _svc.contributors.isEmpty && !_svc.contributorsUnavailable,
+              unavailable: _svc.contributorsUnavailable,
+            )
+          else
+            Opacity(
             opacity: locked ? 0.45 : 1,
             child: PrizePoolBox(
               items: [
