@@ -181,30 +181,19 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               ),
                           ),
                         ),
-                      Positioned(
-                        left: 12,
-                        bottom: Theme.of(context).platform == TargetPlatform.android
-                            ? -4
-                            : 28,
-                        child: Column(
-                          children: [
-                            _CannonRoomTile(
-                              roomId: (room['id'] ?? '').toString().trim(),
-                              accessToken: accessToken,
-                              onTap: () {
-                                final cannonRoomId = (room['id'] ?? '').toString().trim();
-                                if (cannonRoomId.isEmpty || accessToken.trim().isEmpty) return;
-                                CannonService.instance.enterRoom(cannonRoomId, accessToken);
-                                showCannonSheet(context, roomId: cannonRoomId, onSendGift: onOpenGifts);
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                            const _RoomGameTile(
-                              color1: Color(0xFF7A1F2B),
-                              color2: Color(0xFFC9972C),
-                              badge: 'VIP EXP ×1.8',
-                            ),
-                          ],
+                      Positioned.fill(
+                        child: _CannonRoomTile(
+                          roomId: (room['id'] ?? '').toString().trim(),
+                          accessToken: accessToken,
+                          bottomOffset: Theme.of(context).platform == TargetPlatform.android
+                              ? -4
+                              : 28,
+                          onTap: () {
+                            final cannonRoomId = (room['id'] ?? '').toString().trim();
+                            if (cannonRoomId.isEmpty || accessToken.trim().isEmpty) return;
+                            CannonService.instance.enterRoom(cannonRoomId, accessToken);
+                            showCannonSheet(context, roomId: cannonRoomId, onSendGift: onOpenGifts);
+                          },
                         ),
                       ),
                     ],
@@ -1969,11 +1958,13 @@ Widget _roomActionButton({
 class _CannonRoomTile extends StatefulWidget {
   final String roomId;
   final String accessToken;
+  final double bottomOffset;
   final VoidCallback onTap;
 
   const _CannonRoomTile({
     required this.roomId,
     required this.accessToken,
+    required this.bottomOffset,
     required this.onTap,
   });
 
@@ -1981,12 +1972,19 @@ class _CannonRoomTile extends StatefulWidget {
   State<_CannonRoomTile> createState() => _CannonRoomTileState();
 }
 
-class _CannonRoomTileState extends State<_CannonRoomTile> {
+class _CannonRoomTileState extends State<_CannonRoomTile>
+    with SingleTickerProviderStateMixin {
   Timer? _timer;
+  late final AnimationController _flight = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1250),
+  );
   int _level = 1;
   int _progress = 0;
   int _need = 0;
   bool _requestInFlight = false;
+  String _lastLaunchId = '';
+  bool _hasInitialState = false;
 
   double get _ratio => _need <= 0
       ? 0
@@ -2006,6 +2004,8 @@ class _CannonRoomTileState extends State<_CannonRoomTile> {
     if (oldWidget.roomId != widget.roomId ||
         oldWidget.accessToken != widget.accessToken) {
       CannonConfig.setAuthToken(widget.accessToken);
+      _lastLaunchId = '';
+      _hasInitialState = false;
       _refreshCannon();
     }
   }
@@ -2022,6 +2022,20 @@ class _CannonRoomTileState extends State<_CannonRoomTile> {
       final nextLevel = state.level.clamp(1, 150).toInt();
       final nextProgress = state.progress.clamp(0, 2147483647).toInt();
       final nextNeed = state.need.clamp(0, 2147483647).toInt();
+
+      // A new launch ID plus the level transition confirms that this room's
+      // level-one contribution has completed. Play once for everyone in-room.
+      if (_hasInitialState &&
+          _level == 1 &&
+          nextLevel > 1 &&
+          state.launching &&
+          state.launchId.isNotEmpty &&
+          state.launchId != _lastLaunchId) {
+        _playLevelOneFlight();
+      }
+
+      _lastLaunchId = state.launchId;
+      _hasInitialState = true;
       if (nextLevel != _level ||
           nextProgress != _progress ||
           nextNeed != _need) {
@@ -2036,14 +2050,18 @@ class _CannonRoomTileState extends State<_CannonRoomTile> {
     }
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  void _playLevelOneFlight() {
+    _flight.forward(from: 0);
   }
 
   @override
-  Widget build(BuildContext context) => Material(
+  void dispose() {
+    _timer?.cancel();
+    _flight.dispose();
+    super.dispose();
+  }
+
+  Widget _progressTile() => Material(
     color: Colors.transparent,
     child: InkWell(
       onTap: widget.onTap,
@@ -2105,6 +2123,96 @@ class _CannonRoomTileState extends State<_CannonRoomTile> {
         ],
       ),
     ),
+  );
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final tileTop = constraints.maxHeight - widget.bottomOffset - 72;
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: 12,
+            bottom: widget.bottomOffset,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _progressTile(),
+                const SizedBox(height: 8),
+                const _RoomGameTile(
+                  color1: Color(0xFF7A1F2B),
+                  color2: Color(0xFFC9972C),
+                  badge: 'VIP EXP ×1.8',
+                ),
+              ],
+            ),
+          ),
+          if (_flight.isAnimating)
+            AnimatedBuilder(
+              animation: _flight,
+              builder: (context, child) {
+                final t = Curves.easeInCubic.transform(_flight.value);
+                final flightTop = tileTop + 36 - 54 - (tileTop + 150) * t;
+                final sway = math.sin(t * math.pi * 2) * 20;
+                final burstOpacity = (1 - (_flight.value / .22)).clamp(0.0, 1.0);
+                final burstScale = .45 + (_flight.value / .22).clamp(0.0, 1.0) * 1.9;
+                return Stack(
+                  children: [
+                    if (_flight.value < .22)
+                      Positioned(
+                        left: 12 + 36 - 20,
+                        top: tileTop + 36 - 20,
+                        child: IgnorePointer(
+                          child: Opacity(
+                            opacity: burstOpacity,
+                            child: Transform.scale(
+                              scale: burstScale,
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFFFFD76A),
+                                    width: 3,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0xAAFFB52E),
+                                      blurRadius: 18,
+                                      spreadRadius: 3,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      left: 12 + 36 - 54 + sway,
+                      top: flightTop,
+                      child: IgnorePointer(
+                        child: Opacity(
+                          opacity: (1 - ((t - .78) / .22)).clamp(0.0, 1.0),
+                          child: Image.asset(
+                            'assets/images/cannon/airplane_lv1.gif',
+                            width: 108,
+                            height: 108,
+                            fit: BoxFit.contain,
+                            gaplessPlayback: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+        ],
+      );
+    },
   );
 }
 
