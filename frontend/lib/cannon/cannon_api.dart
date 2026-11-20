@@ -45,6 +45,23 @@ class CannonApi {
     }
   }
 
+  static Future<List<CannonContributor>?> fetchContributors(String roomId, String launchId) async {
+    try {
+      final uri = Uri.parse('${CannonConfig.apiBase}/api/cannon/contributors')
+        .replace(queryParameters: {'room_id': roomId, 'launch_id': launchId});
+      final r = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 8));
+      if (r.statusCode != 200) return null;
+      final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+      if (j['ok'] != true) return null;
+      return ((j['contributors'] as List?) ?? [])
+        .whereType<Map>()
+        .map((e) => CannonContributor.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<bool> claim(String claimId) async {
     try {
       final uri = Uri.parse('${CannonConfig.apiBase}/api/cannon/claim');
