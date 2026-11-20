@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const migration = await read("../migrations/0051_room_cannon.sql");
+const launchMigration = await read("../migrations/0052_cannon_launch_contributors.sql");
 const cannon = await read("../src/cannon_api.ts");
 const worker = await read("../src/index.ts");
 const preview = await read("../../../frontend/lib/pages/voice_room_design_preview.dart");
@@ -21,7 +22,7 @@ test("cannon schema is room-scoped, daily, and idempotent per committed gift tra
 });
 
 test("each cannon launch stores an isolated contributor snapshot and resets that level's running totals", () => {
-  assert.match(migration, /CREATE TABLE IF NOT EXISTS cannon_launch_contributors/);
+  assert.match(launchMigration, /CREATE TABLE IF NOT EXISTS cannon_launch_contributors/);
   assert.match(cannon, /INSERT INTO cannon_launch_contributors/);
   assert.match(cannon, /UPDATE cannon_contrib SET amount=0/);
   assert.match(cannon, /WHERE c\.launch_id=\? AND c\.room_id=\?/);
