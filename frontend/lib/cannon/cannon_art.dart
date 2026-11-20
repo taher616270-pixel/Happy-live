@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'cannon_config.dart';
 
-/// Uses an optional ImageKit image; otherwise draws the cannon in Flutter.
+/// Uses a local airplane image for level 1 and the existing artwork for other levels.
 class CannonArt extends StatelessWidget {
   final int level;
   final double size;
@@ -12,10 +12,23 @@ class CannonArt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = CannonConfig.cannonImages[level];
-    final Widget art = (url != null && url.isNotEmpty)
-      ? Image.network(url, width: size, height: size, fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => _drawn())
-      : _drawn();
+    final Widget art = level == 1
+        ? Image.asset(
+            'assets/images/cannon/airplane_lv1.png',
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => _drawn(),
+          )
+        : (url != null && url.isNotEmpty)
+            ? Image.network(
+                url,
+                width: size,
+                height: size,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => _drawn(),
+              )
+            : _drawn();
     return Opacity(opacity: dim ? 0.4 : 1, child: art);
   }
 
