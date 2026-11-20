@@ -307,7 +307,7 @@ async function cannonAdminPage(){
       '<header class="cannon-level-head"><div><span class="badge good">LV '+Number(level.level)+'</span><strong>إعدادات المستوى</strong></div><span class="muted">المستويات متصلة بالتدرج تلقائيًا</span></header>'+
       '<div class="cannon-level-grid"><label>اسم / نص المستوى<input data-level-field="title" data-level="'+li+'" maxlength="60" value="'+esc(level.title||("المستوى "+level.level))+'" '+(canEdit?'':'disabled')+'></label>'+
       '<label>المساهمة المطلوبة<input type="number" min="1" max="1000000000000" step="1" data-level-field="need" data-level="'+li+'" value="'+Number(level.need||0)+'" '+(canEdit?'':'disabled')+'></label></div>'+
-      '<div class="cannon-rewards-heading"><strong>مكافآت هذا المستوى</strong><button type="button" class="action" data-add-prize="'+li+'">＋ إضافة مكافأة</button></div>'+
+      '<div class="cannon-rewards-heading"><strong>مكافآت هذا المستوى</strong><button type="button" class="action" data-add-prize="'+li+'" '+(canEdit?'':'disabled')+'>＋ إضافة مكافأة</button></div>'+
       '<div class="cannon-rewards-list">'+(level.prizes||[]).map((p,pi)=>rewardCard(level,li,p,pi)).join("")+'</div></section>').join("");
   };
   $("content").innerHTML='<style>'+
