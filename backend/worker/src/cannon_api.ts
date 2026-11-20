@@ -292,17 +292,33 @@ export async function handleCannonRequest(
       ).bind(roomId, day).first<{ level: number; progress: number; launchingUntil: number; launchId: string | null }>();
       const currentLevel = settings.levels.find(x => x.level === Number(state?.level ?? 1));
       const need = currentLevel?.need ?? 0;
-      const [mine, pending] = await Promise.all([
+      const [mine, pending, contributors] = await Promise.all([
         db.prepare("SELECT amount FROM cannon_contrib WHERE room_id=? AND day=? AND user_id=? AND level=? LIMIT 1")
           .bind(roomId, day, user.id, state?.level ?? 1).first<{ amount: number }>(),
         db.prepare(
           "SELECT id, reward_type, reward_value, reward_name FROM cannon_claims WHERE room_id=? AND user_id=? AND claimed=0 ORDER BY created_at ASC LIMIT 50"
-        ).bind(roomId, user.id).all()
+        ).bind(roomId, user.id).all(),
+        state?.launchId ? db.prepare(
+          "SELECT user_id, user_name, avatar_url, public_id, contribution FROM (" +
+          "SELECT c.user_id AS user_id, COALESCE(NULLIF(p.display_name,''), NULLIF(p.happy_id,''), 'مساهم') AS user_name, " +
+          "COALESCE(p.avatar_key,'') AS avatar_url, COALESCE(p.happy_id,'') AS public_id, c.contribution AS contribution " +
+          "FROM cannon_launch_contributors c LEFT JOIN profiles p ON p.user_id=c.user_id " +
+          "WHERE c.launch_id=? AND c.room_id=? AND c.contribution>0 " +
+          "UNION ALL " +
+          "SELECT c.user_id AS user_id, COALESCE(NULLIF(p.display_name,''), NULLIF(p.happy_id,''), 'مساهم') AS user_name, " +
+          "COALESCE(p.avatar_key,'') AS avatar_url, COALESCE(p.happy_id,'') AS public_id, c.amount AS contribution " +
+          "FROM cannon_launches l INNER JOIN cannon_contrib c ON c.room_id=l.room_id AND c.day=l.day AND c.level=l.level " +
+          "LEFT JOIN profiles p ON p.user_id=c.user_id " +
+          "WHERE l.id=? AND l.room_id=? AND c.amount>0 " +
+          "AND NOT EXISTS (SELECT 1 FROM cannon_launch_contributors frozen WHERE frozen.launch_id=l.id AND frozen.contribution>0)" +
+          ") ORDER BY contribution DESC, user_id ASC LIMIT 200"
+        ).bind(state.launchId, roomId, state.launchId, roomId).all<Record<string, unknown>>() : Promise.resolve({ results: [] as Record<string, unknown>[] })
       ]);
       return json({
         ok: true,
         room: { room_id: room.room_id, title: room.title, avatar: room.avatar, launch_id: state?.launchId ?? "", level: state?.level ?? 1, progress: state?.progress ?? 0, need, launching: Number(state?.launchingUntil ?? 0) > nowSeconds() },
         my: { contribution: mine?.amount ?? 0, pending: pending.results ?? [] },
+        contributors: contributors.results ?? [],
         levels: settings.levels
       }, 200, origin, env);
     }
