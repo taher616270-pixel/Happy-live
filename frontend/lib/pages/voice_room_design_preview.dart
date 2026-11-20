@@ -2055,7 +2055,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
   Timer? _timer;
   late final AnimationController _flight = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 900),
+    duration: const Duration(milliseconds: 2000),
   );
   Timer? _airstrikeTimer;
   final GlobalKey _cannonTileKey = GlobalKey();
@@ -2166,7 +2166,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
           }
           final origin = renderObject.localToGlobal(Offset.zero);
           final screen = MediaQuery.sizeOf(overlayContext);
-          final t = Curves.easeInCubic.transform(_flight.value.clamp(0.0, 1.0));
+          final t = Curves.easeInOutCubic.transform(_flight.value.clamp(0.0, 1.0));
           const planeSize = 108.0;
           final startX = origin.dx + 36 - planeSize / 2;
           final startY = origin.dy + 36 - planeSize / 2;
