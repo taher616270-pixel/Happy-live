@@ -79,8 +79,18 @@ class CannonService extends ChangeNotifier {
       _lastLaunchId = s.launchId;
       _firstLoad = false;
       state = s;
-      if (s.launchId.isNotEmpty && s.launchId != _contributorsLaunchId) {
-        _loadContributors(id, s.launchId);
+
+      // A new Saudi day creates a fresh cannon state with an empty launch ID.
+      // Clear the previous launch's contributors so the prize pool is visible
+      // again for the new day in every room.
+      if (s.launchId != _contributorsLaunchId) {
+        if (s.launchId.isEmpty) {
+          contributors = [];
+          _contributorsLaunchId = '';
+          contributorsUnavailable = false;
+        } else {
+          _loadContributors(id, s.launchId);
+        }
       }
       notifyListeners();
     } finally {
