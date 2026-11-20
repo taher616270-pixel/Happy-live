@@ -188,16 +188,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             : 28,
                         child: Column(
                           children: [
-                            _RoomGameTile(
-                              color1: const Color(0xFF3FA7D6),
-                              color2: const Color(0xFFE8A04A),
-                              badge: '',
-                              backgroundOpacity: 0.35,
-                              showContent: false,
-                              content: _CannonRoomTilePreview(
-                                roomId: (room['id'] ?? '').toString().trim(),
-                                accessToken: accessToken,
-                              ),
+                            _CannonRoomTile(
+                              roomId: (room['id'] ?? '').toString().trim(),
+                              accessToken: accessToken,
                               onTap: () {
                                 final cannonRoomId = (room['id'] ?? '').toString().trim();
                                 if (cannonRoomId.isEmpty || accessToken.trim().isEmpty) return;
@@ -1973,44 +1966,51 @@ Widget _roomActionButton({
 }
 
 
-class _CannonRoomTilePreview extends StatefulWidget {
+class _CannonRoomTile extends StatefulWidget {
   final String roomId;
   final String accessToken;
+  final VoidCallback onTap;
 
-  const _CannonRoomTilePreview({
+  const _CannonRoomTile({
     required this.roomId,
     required this.accessToken,
+    required this.onTap,
   });
 
   @override
-  State<_CannonRoomTilePreview> createState() => _CannonRoomTilePreviewState();
+  State<_CannonRoomTile> createState() => _CannonRoomTileState();
 }
 
-class _CannonRoomTilePreviewState extends State<_CannonRoomTilePreview> {
+class _CannonRoomTileState extends State<_CannonRoomTile> {
   Timer? _timer;
   int _level = 1;
-  bool _loaded = false;
+  int _progress = 0;
+  int _need = 0;
   bool _requestInFlight = false;
+
+  double get _ratio => _need <= 0
+      ? 0
+      : (_progress / _need).clamp(0.0, 1.0).toDouble();
 
   @override
   void initState() {
     super.initState();
     CannonConfig.setAuthToken(widget.accessToken);
-    _refreshLevel();
-    _timer = Timer.periodic(CannonConfig.roomPoll, (_) => _refreshLevel());
+    _refreshCannon();
+    _timer = Timer.periodic(CannonConfig.roomPoll, (_) => _refreshCannon());
   }
 
   @override
-  void didUpdateWidget(covariant _CannonRoomTilePreview oldWidget) {
+  void didUpdateWidget(covariant _CannonRoomTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.roomId != widget.roomId ||
         oldWidget.accessToken != widget.accessToken) {
       CannonConfig.setAuthToken(widget.accessToken);
-      _refreshLevel();
+      _refreshCannon();
     }
   }
 
-  Future<void> _refreshLevel() async {
+  Future<void> _refreshCannon() async {
     if (_requestInFlight || widget.roomId.isEmpty || widget.accessToken.isEmpty) {
       return;
     }
@@ -2020,10 +2020,15 @@ class _CannonRoomTilePreviewState extends State<_CannonRoomTilePreview> {
       final state = await CannonApi.fetchState(widget.roomId);
       if (!mounted || state == null) return;
       final nextLevel = state.level.clamp(1, 150).toInt();
-      if (!_loaded || nextLevel != _level) {
+      final nextProgress = state.progress.clamp(0, 2147483647).toInt();
+      final nextNeed = state.need.clamp(0, 2147483647).toInt();
+      if (nextLevel != _level ||
+          nextProgress != _progress ||
+          nextNeed != _need) {
         setState(() {
           _level = nextLevel;
-          _loaded = true;
+          _progress = nextProgress;
+          _need = nextNeed;
         });
       }
     } finally {
@@ -2038,16 +2043,70 @@ class _CannonRoomTilePreviewState extends State<_CannonRoomTilePreview> {
   }
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 68,
-    height: 68,
-    child: Center(
-      child: CannonArt(
-        level: _level,
-        size: 66,
-        dim: false,
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      SizedBox(
+        width: 72,
+        height: 18,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const ColoredBox(color: Color(0xFF101010)),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: _ratio,
+                  heightFactor: 1,
+                  alignment: Alignment.centerLeft,
+                  child: const DecoratedBox(
+                    decoration: BoxDecoration(color: Color(0xFF20D66B)),
+                  ),
+                ),
+              ),
+              Center(
+                child: Text(
+                  '${(_ratio * 100).round()}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    shadows: [
+                      Shadow(color: Colors.black, blurRadius: 2),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-    ),
+      const SizedBox(height: 4),
+      Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF3FA7D6), Color(0xFFE8A04A)],
+              ),
+            ),
+            child: Center(
+              child: CannonArt(level: _level, size: 66, dim: false),
+            ),
+          ),
+        ),
+      ),
+    ],
   );
 }
 
