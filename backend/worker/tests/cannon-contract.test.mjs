@@ -65,7 +65,7 @@ test("cannon admin supports gallery uploads, editable levels, and rewards withou
 test("cannon levels can grow sequentially while protecting room progression", () => {
   assert.match(cannon, /levels\.length > 150/);
   assert.match(cannon, /levelId !== levelIds\.size \+ 1/);
-  assert.match(cannon, /level\.level < Math\.max\(\.\.\.levels\.map\(x => x\.level\)\)/);
+  assert.match(cannon, /room\.level < Math\.max\(\.\.\.levels\.map\(x => x\.level\)\)/);
   assert.match(cannon, /level\?\.title !== undefined/);
   assert.match(cannon, /top1Count > 1/);
 });
