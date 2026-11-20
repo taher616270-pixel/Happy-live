@@ -11,7 +11,10 @@ class CannonService extends ChangeNotifier {
   String? currentRoomId;
   CannonState? state;
   List<CannonBanner> banners = [];
-  CannonBanner? activeBanner;\n  List<CannonContributor> contributors = [];\n  String _contributorsLaunchId = '';\n  bool contributorsUnavailable = false;
+  CannonBanner? activeBanner;
+  List<CannonContributor> contributors = [];
+  String _contributorsLaunchId = '';
+  bool contributorsUnavailable = false;
 
   Timer? _roomTimer;
   Timer? _bannerTimer;
@@ -33,6 +36,9 @@ class CannonService extends ChangeNotifier {
     _roomTimer?.cancel();
     currentRoomId = roomId;
     state = null;
+    contributors = [];
+    _contributorsLaunchId = '';
+    contributorsUnavailable = false;
     isUnavailable = false;
     _lastLaunchId = '';
     _firstLoad = true;
@@ -70,6 +76,9 @@ class CannonService extends ChangeNotifier {
       _lastLaunchId = s.launchId;
       _firstLoad = false;
       state = s;
+      if (s.launchId.isNotEmpty && s.launchId != _contributorsLaunchId) {
+        _loadContributors(id, s.launchId);
+      }
       notifyListeners();
     } finally {
       _roomRequestInFlight = false;
