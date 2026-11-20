@@ -97,3 +97,24 @@ class CannonBanner {
     percent: _i(j['percent']), launching: j['launching'] == true,
   );
 }
+
+
+class CannonContributor {
+  final String userId, userName, avatarUrl, publicId;
+  final int contribution;
+  const CannonContributor({
+    required this.userId,
+    required this.userName,
+    required this.avatarUrl,
+    required this.publicId,
+    required this.contribution,
+  });
+
+  factory CannonContributor.fromJson(Map<String, dynamic> j) => CannonContributor(
+    userId: _s(j['user_id']),
+    userName: _s(j['user_name']).isEmpty ? 'مساهم' : _s(j['user_name']),
+    avatarUrl: _s(j['avatar_url']),
+    publicId: _s(j['public_id']),
+    contribution: _i(j['contribution']),
+  );
+}
