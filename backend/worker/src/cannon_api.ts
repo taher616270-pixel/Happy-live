@@ -225,7 +225,8 @@ export async function handleCannonRequest(
                   (prize.icon && !/^https:\/\//i.test(prize.icon)) ||
                   !["coins","frame","bubble","entry","gift","badge","wave","item"].includes(prize.type) ||
                   !Number.isFinite(weight) || weight < 0 || weight > 100000 ||
-                  typeof prize.top1 !== "boolean" || (prize.rare !== undefined && typeof prize.rare !== "boolean")) {
+                  typeof prize.top1 !== "boolean" || (prize.rare !== undefined && typeof prize.rare !== "boolean") ||
+                  (prize.type === "coins" && (!/^\\d+$/.test(prize.value) || Number(prize.value) < 1 || Number(prize.value) > 1000000000))) {
                 return json({ error: "invalid_cannon_prize" }, 400, origin, env);
               }
               prizeKeys.add(prize.key);
