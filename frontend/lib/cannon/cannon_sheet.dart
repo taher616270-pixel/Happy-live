@@ -428,13 +428,15 @@ class _Tab extends StatelessWidget {
   const _Tab({required this.title});
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 38, vertical: 9),
+    width: 135,
+    height: 34,
+    alignment: Alignment.center,
     decoration: BoxDecoration(
       color: const Color(0x331E56FF),
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
       border: const Border(bottom: BorderSide(color: Color(0xFF3AA8FF), width: 1.6)),
     ),
-    child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+    child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
   );
 }
 
