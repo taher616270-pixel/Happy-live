@@ -19,7 +19,7 @@ import 'edit_profile_page.dart';
 import 'ranking_sheet_pro.dart';
 import '../cannon/cannon_sheet.dart';
 import '../cannon/cannon_service.dart';
-import '../cannon/cannon_top_banner.dart';
+import '../cannon/cannon_top_banner.dart'; // Global cannon banner overlay for room view.
 
 class VoiceRoomDesignPreview extends StatelessWidget {
   static final Set<String> _openingRoomInfo = <String>{};
