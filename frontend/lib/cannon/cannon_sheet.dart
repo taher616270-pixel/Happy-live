@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'cannon_art.dart';
 import 'cannon_models.dart';
@@ -113,7 +115,36 @@ class _CannonSheetState extends State<CannonSheet> {
     final ratio = isCurrent ? st.ratio : (done ? 1.0 : 0.0);
     final ordered = [...lv.prizes.where((p) => p.top1), ...lv.prizes.where((p) => !p.top1)];
 
-    return Column(children: [
+    return LayoutBuilder(builder: (context, sheetConstraints) {
+      // Match the FittedBox scale below so the floor's lower edge stays
+      // exactly where the original 270px floor ended.
+      final availableHeight = (sheetConstraints.maxHeight - 60).clamp(0.0, double.infinity);
+      final contentScale = math.min(1.0, availableHeight / 680);
+      final floorHeight = 60 + (270 * contentScale);
+
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: floorHeight,
+            child: Image.asset(
+              'assets/images/cannon/cannon_floor_lights.gif',
+              fit: BoxFit.fill,
+              errorBuilder: (_, __, ___) => const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF071A52), Color(0xFF02091F)],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Column(children: [
       SizedBox(height: 60, child: Stack(children: [
         const Center(child: _Tab(title: 'مدفع الغرفة')),
         Align(alignment: Alignment.centerLeft, child: IconButton(
@@ -136,24 +167,7 @@ class _CannonSheetState extends State<CannonSheet> {
             width: constraints.maxWidth,
             height: 680,
             child: Column(children: [
-          SizedBox(height: 270, child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Animated blue floor/light background; cannon art stays layered above it.
-              Image.asset(
-                'assets/images/cannon/cannon_floor_lights.gif',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0xFF071A52), Color(0xFF02091F)],
-                    ),
-                  ),
-                ),
-              ),
-              Column(children: [
+          SizedBox(height: 270, child: Column(children: [
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
@@ -177,8 +191,7 @@ class _CannonSheetState extends State<CannonSheet> {
                 ]),
                 const SizedBox(height: 14),
               ]),
-            ],
-          )),
+          ])),
           Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
             ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
               value: ratio, minHeight: 7, backgroundColor: const Color(0xFF1A2A7A),
@@ -245,7 +258,10 @@ class _CannonSheetState extends State<CannonSheet> {
           ),
         ),
       )),
-    ]);
+          ]),
+        ],
+      );
+    });
   }
 }
 
