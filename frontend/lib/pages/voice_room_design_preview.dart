@@ -2063,11 +2063,11 @@ class _CannonGiftDropPainter extends CustomPainter {
     // A steady stream of colorful gift boxes falls directly from the aircraft.
     const count = 16;
     for (var i = 0; i < count; i++) {
-      final release = .12 + i * .047;
+      final release = .12 + i * .025;
       final elapsed = progress - release;
-      if (elapsed < 0 || elapsed > .52) continue;
+      if (elapsed < 0 || elapsed > .42) continue;
 
-      final fall = (elapsed / .52).clamp(0.0, 1.0).toDouble();
+      final fall = (elapsed / .42).clamp(0.0, 1.0).toDouble();
       final drift = math.sin((i * 1.73) + fall * 2.2) * (8 + fall * 9);
       final x = (planeCenter.dx + (i.isEven ? -1 : 1) * planeSize * (.12 + (i % 4) * .075) + drift)
           .clamp(12.0, size.width - 12.0).toDouble();
