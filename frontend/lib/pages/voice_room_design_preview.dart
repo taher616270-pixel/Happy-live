@@ -61,6 +61,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     required this.accessToken,
     this.onOpenCannonRoom,
     this.isRoomDataReady = true,
+    this.currentUserCode = '',
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
@@ -93,6 +94,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final Future<void> Function(String roomId)? onOpenCannonRoom;
   /// True only after the authenticated room snapshot has loaded from the API.
   final bool isRoomDataReady;
+  final String currentUserCode;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -189,6 +191,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         child: _CannonRoomTile(
                           roomId: (room['id'] ?? '').toString().trim(),
                           accessToken: accessToken,
+                          enableTestButton: currentUserCode.trim() == '93013793' &&
+                              (room['roomCode'] ?? room['id'] ?? room['room_id'] ?? '').toString().trim() == '72187771',
                           bottomOffset: Theme.of(context).platform == TargetPlatform.android
                               ? -4
                               : 28,
@@ -2127,12 +2131,14 @@ class _SlowedAnimatedAssetState extends State<_SlowedAnimatedAsset> {
 class _CannonRoomTile extends StatefulWidget {
   final String roomId;
   final String accessToken;
+  final bool enableTestButton;
   final double bottomOffset;
   final VoidCallback onTap;
 
   const _CannonRoomTile({
     required this.roomId,
     required this.accessToken,
+    this.enableTestButton = false,
     required this.bottomOffset,
     required this.onTap,
   });
@@ -2235,6 +2241,17 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     } finally {
       _requestInFlight = false;
     }
+  }
+
+  void _playTestFlight() {
+    if (!mounted || _flight.isAnimating) return;
+    _airstrikeTimer?.cancel();
+    _airstrikeOverlayEntry?.remove();
+    _airstrikeOverlayEntry = null;
+    _flightOverlayEntry?.remove();
+    _flightOverlayEntry = null;
+    _showLevelOneAirstrike = false;
+    _playLevelOneFlight();
   }
 
   void _playLevelOneFlight() {
@@ -2456,6 +2473,23 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
               ],
             ),
           ),
+          if (widget.enableTestButton)
+            Positioned(
+              left: 92,
+              bottom: widget.bottomOffset + 44,
+              child: Material(
+                color: const Color(0xFF16A6A0),
+                borderRadius: BorderRadius.circular(18),
+                child: InkWell(
+                  onTap: _playTestFlight,
+                  borderRadius: BorderRadius.circular(18),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    child: Text('تجربة الطائرة', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ),
+            ),
         ],
       );
     },
