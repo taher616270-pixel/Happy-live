@@ -2078,7 +2078,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
   void initState() {
     super.initState();
     _airstrikeController = VideoPlayerController.asset(
-      'assets/images/cannon/airstrike_Lv1.mp4',
+      'assets/images/cannon/airstrike_Lv1.webp',
     )..addListener(_handleAirstrikeProgress);
     _airstrikeController.initialize().then((_) {
       if (mounted) _airstrikeController.setLooping(false);
