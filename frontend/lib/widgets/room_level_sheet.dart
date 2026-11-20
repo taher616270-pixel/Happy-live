@@ -273,7 +273,7 @@ class RoomLevelChip extends StatelessWidget {
                     colors: colors,
                   ).createShader(bounds),
                   child: Text(
-                    'Lv. ${data.level}',
+                    'LV${data.level}',
                     maxLines: 1,
                     softWrap: false,
                     overflow: TextOverflow.clip,
@@ -451,7 +451,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
       Row(children: [
         Text('نقاط خبرة الغرفة: ${short(d.exp)}/${short(d.nextLevelExp)}', style: const TextStyle(color: _muted, fontSize: 11)),
         const Spacer(),
-        Text('Lv.${d.level + 1}', style: const TextStyle(color: _muted, fontSize: 11)),
+        Text('LV${d.level + 1}', style: const TextStyle(color: _muted, fontSize: 11)),
       ]),
     ]));
   }
@@ -509,7 +509,7 @@ class _RoomLevelSheetState extends State<_RoomLevelSheet> {
   Widget _perksTab(RoomLevelData d) => ListView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24), children: [
     for (final group in d.perkGroups) ...[
       Padding(padding: const EdgeInsets.fromLTRB(2, 14, 2, 10), child: Row(children: [
-        Text('Lv.${group.level}', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+        Text('LV${group.level}', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
         const SizedBox(width: 6),
         if (group.level > d.level) const Icon(Icons.lock, color: _muted, size: 14) else const Icon(Icons.check_box, color: Colors.white, size: 16),
       ])),
