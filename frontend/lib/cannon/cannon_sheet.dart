@@ -147,7 +147,7 @@ class _CannonSheetState extends State<CannonSheet> {
           ),
           Column(children: [
       SizedBox(height: 60, child: Stack(children: [
-        Center(child: Transform.translate(offset: const Offset(0, -8), child: const _Tab(title: 'مدفع الغرفة'))),
+        Center(child: Transform.translate(offset: const Offset(0, -11), child: const _Tab(title: 'مدفع الغرفة'))),
         Align(alignment: Alignment.centerLeft, child: IconButton(
           onPressed: () => showCannonRulesSheet(context),
           icon: Container(width: 28, height: 28,
