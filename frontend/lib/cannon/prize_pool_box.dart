@@ -159,7 +159,7 @@ class _PrizePoolCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: wide ? 126 : 126,
+      height: 104,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         gradient: LinearGradient(
@@ -191,7 +191,7 @@ class _PrizePoolCard extends StatelessWidget {
               ),
             ),
           ),
-          Positioned(right: -5, top: 49, child: _PrizeNotch(color: _edge)),
+          Positioned(right: -5, top: 39, child: _PrizeNotch(color: _edge)),
           Positioned(left: -5, top: 49, child: _PrizeNotch(color: _edge)),
           Padding(
             padding: const EdgeInsets.all(7),
@@ -207,7 +207,7 @@ class _PrizePoolCard extends StatelessWidget {
       children: [
         Expanded(
           child: Center(
-            child: _PrizeImage(url: item.imageUrl, size: 68),
+            child: _PrizeImage(url: item.imageUrl, size: 54),
           ),
         ),
         Expanded(
@@ -224,7 +224,7 @@ class _PrizePoolCard extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFFFFD77D),
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -240,7 +240,7 @@ class _PrizePoolCard extends StatelessWidget {
       children: [
         Expanded(
           child: Center(
-            child: _PrizeImage(url: item.imageUrl, size: 62),
+            child: _PrizeImage(url: item.imageUrl, size: 48),
           ),
         ),
         Text(
@@ -250,7 +250,7 @@ class _PrizePoolCard extends StatelessWidget {
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Color(0xFFD0DFFF),
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: FontWeight.w600,
           ),
         ),
