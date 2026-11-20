@@ -92,10 +92,12 @@ class _PrizePoolHeader extends StatelessWidget {
             ),
             child: Stack(
               alignment: Alignment.center,
-              children: const [
+              // Keep this list non-const: decorative children may have
+              // non-const constructors in the current Flutter SDK.
+              children: [
                 Positioned(left: 12, top: 5, child: _GreenPixels()),
                 Positioned(right: 12, top: 5, child: _GreenPixels()),
-                Text(
+                const Text(
                   'حوض الجوائز',
                   textAlign: TextAlign.center,
                   style: TextStyle(
