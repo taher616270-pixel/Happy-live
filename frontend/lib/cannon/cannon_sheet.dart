@@ -179,7 +179,7 @@ class _CannonSheetState extends State<CannonSheet> {
                   onPageChanged: (i) => setState(() => _page = i),
                   itemBuilder: (_, i) => _CannonVisual(level: levels[i], dim: levels[i].level > st.level),
                 )),
-                Transform.translate(offset: const Offset(0, 30), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Transform.translate(offset: const Offset(0, 34), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   const _Bolt(size: 22), const SizedBox(width: 8),
                   Text(_fmt(lv.need), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w500)),
                   const SizedBox(width: 10),
@@ -191,13 +191,13 @@ class _CannonSheetState extends State<CannonSheet> {
                 ])),
                 const SizedBox(height: 14),
               ])),
-          Transform.translate(offset: const Offset(0, 23), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
-            ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
+                    Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(children: [
+            Transform.translate(offset: const Offset(0, 27), child: ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
               value: ratio, minHeight: 7, backgroundColor: const Color(0xFF1A2A7A),
               valueColor: const AlwaysStoppedAnimation(Color(0xFF2BE3A0)),
-            )),
+            )),),
             const SizedBox(height: 8),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Transform.translate(offset: const Offset(0, 23), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Row(children: [
                 const Text('مساهمتك', style: TextStyle(color: Color(0xFF9AA6D8), fontSize: 12)),
                 const SizedBox(width: 4), const _Bolt(size: 13), const SizedBox(width: 3),
@@ -209,8 +209,8 @@ class _CannonSheetState extends State<CannonSheet> {
                 Text(' = 1 ', style: TextStyle(color: Color(0xFFFFD66B), fontSize: 12)),
                 _Bolt(size: 13),
               ]),
-            ]),
-          ]))),
+            ]),),
+          ])),
           const SizedBox(height: 16),
           Transform.translate(offset: const Offset(0, 10), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 18), child: Opacity(
             opacity: isCurrent ? 1 : 0.4,
