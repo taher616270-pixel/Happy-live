@@ -2039,122 +2039,6 @@ Widget _roomActionButton({
 
 
 
-/// Plays animated assets at a deliberately slower frame rate without
-/// changing the source artwork. The frame delay is multiplied by speedFactor.
-class _SlowedAnimatedAsset extends StatefulWidget {
-  const _SlowedAnimatedAsset({
-    required this.asset,
-    this.speedFactor = 3,
-    this.fit = BoxFit.contain,
-  });
-
-  final String asset;
-  final Duration? targetDuration;
-  final VoidCallback? onCompleted;
-  final BoxFit fit;
-
-  @override
-  State<_SlowedAnimatedAsset> createState() => _SlowedAnimatedAssetState();
-}
-
-class _SlowedAnimatedAssetState extends State<_SlowedAnimatedAsset> {
-  ui.Codec? _codec;
-  ui.Image? _frame;
-  Timer? _frameTimer;
-  bool _disposed = false;
-  double _frameDelayScale = 1.0;
-  int _playedFrames = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAnimation();
-  }
-
-  Future<void> _loadAnimation() async {
-    try {
-      final data = await rootBundle.load(widget.asset);
-      if (_disposed) return;
-      final bytes = data.buffer.asUint8List();
-      final probeCodec = await ui.instantiateImageCodec(bytes);
-      var sourceDurationMs = 0;
-      for (var i = 0; i < probeCodec.frameCount; i++) {
-        final frame = await probeCodec.getNextFrame();
-        sourceDurationMs += frame.duration.inMilliseconds;
-        frame.image.dispose();
-      }
-      probeCodec.dispose();
-
-      if (_disposed) return;
-      final targetDuration = widget.targetDuration;
-      if (targetDuration != null && sourceDurationMs > 0) {
-        _frameDelayScale = targetDuration.inMilliseconds / sourceDurationMs;
-      }
-
-      final codec = await ui.instantiateImageCodec(bytes);
-      if (_disposed) {
-        codec.dispose();
-        return;
-      }
-      _codec = codec;
-      await _showNextFrame();
-    } catch (error) {
-      debugPrint('[cannon-animation] failed to load ${widget.asset}: $error');
-    }
-  }
-
-  Future<void> _showNextFrame() async {
-    final codec = _codec;
-    if (_disposed || codec == null) return;
-    try {
-      final next = await codec.getNextFrame();
-      if (_disposed) {
-        next.image.dispose();
-        return;
-      }
-      final previous = _frame;
-      _frame = next.image;
-      previous?.dispose();
-      if (mounted) setState(() {});
-      _playedFrames++;
-      final delayMs = (next.duration.inMilliseconds * _frameDelayScale)
-          .round()
-          .clamp(1, 10000)
-          .toInt();
-      _frameTimer?.cancel();
-      if (_playedFrames >= codec.frameCount) {
-        _frameTimer = Timer(Duration(milliseconds: delayMs), () {
-          if (!_disposed) widget.onCompleted?.call();
-        });
-      } else {
-        _frameTimer = Timer(Duration(milliseconds: delayMs), _showNextFrame);
-      }
-    } catch (error) {
-      debugPrint('[cannon-animation] frame playback failed: $error');
-    }
-  }
-
-  @override
-  void dispose() {
-    _disposed = true;
-    _frameTimer?.cancel();
-    _frame?.dispose();
-    _codec?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final frame = _frame;
-    if (frame == null) return const SizedBox.shrink();
-    return RawImage(
-      image: frame,
-      fit: widget.fit,
-      filterQuality: FilterQuality.medium,
-    );
-  }
-}
-
 class _CannonRoomTile extends StatefulWidget {
   final String roomId;
   final String accessToken;
@@ -2181,11 +2065,8 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     vsync: this,
     duration: const Duration(milliseconds: 2000),
   );
-  Timer? _airstrikeTimer;
   final GlobalKey _cannonTileKey = GlobalKey();
   OverlayEntry? _flightOverlayEntry;
-  OverlayEntry? _airstrikeOverlayEntry;
-  bool _showLevelOneAirstrike = false;
   bool _cannonAssetsPrecached = false;
   int _level = 1;
   int _progress = 0;
@@ -2215,7 +2096,6 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     // Decode both animations before the launch event so the WEBP starts
     // immediately after the airplane instead of waiting for first decode.
     precacheImage(const AssetImage('assets/images/cannon/airplane_lv1.gif'), context);
-    precacheImage(const AssetImage('assets/images/cannon/airstrike_Lv1.webp'), context);
   }
 
   @override
@@ -2272,17 +2152,13 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
 
   void _playTestFlight() {
     if (!mounted || _flight.isAnimating) return;
-    _airstrikeTimer?.cancel();
-    _airstrikeOverlayEntry?.remove();
-    _airstrikeOverlayEntry = null;
     _flightOverlayEntry?.remove();
     _flightOverlayEntry = null;
-    _showLevelOneAirstrike = false;
     _playLevelOneFlight();
   }
 
   void _playLevelOneFlight() {
-    if (_showLevelOneAirstrike || _flight.isAnimating) return;
+    if (_flight.isAnimating) return;
     _insertFlightOverlay();
     _flight.forward(from: 0);
   }
@@ -2373,56 +2249,15 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
 
   void _handleFlightStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed || !mounted) return;
-    // Start the explosion overlay before removing the airplane overlay,
-    // avoiding a blank frame between the two effects.
-    _playLevelOneAirstrike();
     _flightOverlayEntry?.remove();
     _flightOverlayEntry = null;
-  }
-
-  Future<void> _playLevelOneAirstrike() async {
-    if (!mounted || _showLevelOneAirstrike) return;
-    _airstrikeTimer?.cancel();
-    _insertAirstrikeOverlay();
-    setState(() => _showLevelOneAirstrike = true);
-  }
-
-  void _finishLevelOneAirstrike() {
-    if (!mounted) return;
-    _airstrikeTimer?.cancel();
-    _airstrikeOverlayEntry?.remove();
-    _airstrikeOverlayEntry = null;
-    setState(() => _showLevelOneAirstrike = false);
-  }
-
-  void _insertAirstrikeOverlay() {
-    _airstrikeOverlayEntry?.remove();
-    _airstrikeOverlayEntry = OverlayEntry(
-      builder: (context) => Positioned.fill(
-        child: IgnorePointer(
-          child: Center(
-          child: SizedBox.expand(
-            child: _SlowedAnimatedAsset(
-              asset: 'assets/images/cannon/airstrike_Lv1.webp',
-              targetDuration: const Duration(seconds: 11),
-              onCompleted: _finishLevelOneAirstrike,
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-      ),
-    ),
-    );
-    Overlay.of(context, rootOverlay: true).insert(_airstrikeOverlayEntry!);
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _flightOverlayEntry?.remove();
-    _airstrikeOverlayEntry?.remove();
     _flight.removeStatusListener(_handleFlightStatus);
-    _airstrikeTimer?.cancel();
     _flight.dispose();
     super.dispose();
   }
