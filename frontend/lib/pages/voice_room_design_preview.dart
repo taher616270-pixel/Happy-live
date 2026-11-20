@@ -1981,6 +1981,9 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     duration: const Duration(milliseconds: 1250),
   );
   late final VideoPlayerController _airstrikeController;
+  final GlobalKey _cannonTileKey = GlobalKey();
+  OverlayEntry? _flightOverlayEntry;
+  OverlayEntry? _airstrikeOverlayEntry;
   bool _showLevelOneAirstrike = false;
   int _level = 1;
   int _progress = 0;
@@ -2063,12 +2066,88 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
   }
 
   void _playLevelOneFlight() {
-    if (_showLevelOneAirstrike) return;
+    if (_showLevelOneAirstrike || _flight.isAnimating) return;
+    _insertFlightOverlay();
     _flight.forward(from: 0);
+  }
+
+  void _insertFlightOverlay() {
+    _flightOverlayEntry?.remove();
+    final overlay = Overlay.of(context, rootOverlay: true);
+    _flightOverlayEntry = OverlayEntry(
+      builder: (overlayContext) => AnimatedBuilder(
+        animation: _flight,
+        builder: (context, child) {
+          final tileContext = _cannonTileKey.currentContext;
+          final renderObject = tileContext?.findRenderObject();
+          if (renderObject is! RenderBox || !renderObject.hasSize) {
+            return const SizedBox.shrink();
+          }
+          final origin = renderObject.localToGlobal(Offset.zero);
+          final screen = MediaQuery.sizeOf(overlayContext);
+          final t = Curves.easeInCubic.transform(_flight.value.clamp(0.0, 1.0));
+          const planeSize = 108.0;
+          final startX = origin.dx + 36 - planeSize / 2;
+          final startY = origin.dy + 36 - planeSize / 2;
+          // Fly vertically across the microphone area and room header, then
+          // leave through the very top edge of the screen.
+          final endY = -planeSize - 8;
+          final top = startY + (endY - startY) * t;
+          final sway = math.sin(t * math.pi * 2) * 18;
+          final burstProgress = (_flight.value / .22).clamp(0.0, 1.0).toDouble();
+          return Positioned.fill(
+            child: IgnorePointer(
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  if (_flight.value < .22)
+                    Positioned(
+                      left: origin.dx + 16,
+                      top: origin.dy + 16,
+                      child: Opacity(
+                        opacity: (1 - burstProgress).clamp(0.0, 1.0),
+                        child: Transform.scale(
+                          scale: .45 + burstProgress * 1.9,
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFFFFD76A), width: 3),
+                              boxShadow: const [BoxShadow(color: Color(0xAAFFB52E), blurRadius: 18, spreadRadius: 3)],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    left: (startX + sway).clamp(-planeSize, screen.width),
+                    top: top,
+                    child: Opacity(
+                      opacity: (1 - ((t - .88) / .12)).clamp(0.0, 1.0).toDouble(),
+                      child: Image.asset(
+                        'assets/images/cannon/airplane_lv1.gif',
+                        width: planeSize,
+                        height: planeSize,
+                        fit: BoxFit.contain,
+                        gaplessPlayback: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    overlay.insert(_flightOverlayEntry!);
   }
 
   void _handleFlightStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed || !mounted) return;
+    _flightOverlayEntry?.remove();
+    _flightOverlayEntry = null;
     _playLevelOneAirstrike();
   }
 
@@ -2079,6 +2158,8 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
       }
       if (!mounted) return;
       await _airstrikeController.seekTo(Duration.zero);
+      if (!mounted) return;
+      _insertAirstrikeOverlay();
       setState(() => _showLevelOneAirstrike = true);
       await _airstrikeController.play();
     } catch (error) {
@@ -2087,12 +2168,34 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     }
   }
 
+  void _insertAirstrikeOverlay() {
+    _airstrikeOverlayEntry?.remove();
+    _airstrikeOverlayEntry = OverlayEntry(
+      builder: (context) => Positioned.fill(
+        child: IgnorePointer(
+          child: ColoredBox(
+            color: Colors.transparent,
+            child: Center(
+              child: AspectRatio(
+                aspectRatio: _airstrikeController.value.aspectRatio,
+                child: VideoPlayer(_airstrikeController),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    Overlay.of(context, rootOverlay: true).insert(_airstrikeOverlayEntry!);
+  }
+
   void _handleAirstrikeProgress() {
     if (!mounted || !_showLevelOneAirstrike ||
         !_airstrikeController.value.isInitialized) return;
     final value = _airstrikeController.value;
     if (value.duration > Duration.zero && value.position >= value.duration) {
       _airstrikeController.pause();
+      _airstrikeOverlayEntry?.remove();
+      _airstrikeOverlayEntry = null;
       setState(() => _showLevelOneAirstrike = false);
     }
   }
@@ -2100,6 +2203,8 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
   @override
   void dispose() {
     _timer?.cancel();
+    _flightOverlayEntry?.remove();
+    _airstrikeOverlayEntry?.remove();
     _flight.removeStatusListener(_handleFlightStatus);
     _airstrikeController.removeListener(_handleAirstrikeProgress);
     _airstrikeController.dispose();
@@ -2115,6 +2220,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
       child: Stack(
         children: [
           Container(
+            key: _cannonTileKey,
             width: 72,
             height: 72,
             decoration: BoxDecoration(
@@ -2194,81 +2300,6 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
               ],
             ),
           ),
-          if (_showLevelOneAirstrike && _airstrikeController.value.isInitialized)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: _airstrikeController.value.aspectRatio,
-                    child: VideoPlayer(_airstrikeController),
-                  ),
-                ),
-              ),
-            ),
-          AnimatedBuilder(
-            animation: _flight,
-            builder: (context, child) {
-              if (_flight.value <= 0 || _flight.value >= 1) {
-                return const SizedBox.shrink();
-              }
-              final t = Curves.easeInCubic.transform(_flight.value);
-                final flightTop = tileTop + 36 - 54 - (tileTop + 150) * t;
-                final sway = math.sin(t * math.pi * 2) * 20;
-                final burstOpacity = (1 - (_flight.value / .22)).clamp(0.0, 1.0).toDouble();
-                final burstScale = .45 + (_flight.value / .22).clamp(0.0, 1.0).toDouble() * 1.9;
-                return Stack(
-                  children: [
-                    if (_flight.value < .22)
-                      Positioned(
-                        left: 12 + 36 - 20,
-                        top: tileTop + 36 - 20,
-                        child: IgnorePointer(
-                          child: Opacity(
-                            opacity: burstOpacity,
-                            child: Transform.scale(
-                              scale: burstScale,
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: const Color(0xFFFFD76A),
-                                    width: 3,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0xAAFFB52E),
-                                      blurRadius: 18,
-                                      spreadRadius: 3,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    Positioned(
-                      left: 12 + 36 - 54 + sway,
-                      top: flightTop,
-                      child: IgnorePointer(
-                        child: Opacity(
-                          opacity: (1 - ((t - .78) / .22)).clamp(0.0, 1.0).toDouble(),
-                          child: Image.asset(
-                            'assets/images/cannon/airplane_lv1.gif',
-                            width: 108,
-                            height: 108,
-                            fit: BoxFit.contain,
-                            gaplessPlayback: true,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
         ],
       );
     },
