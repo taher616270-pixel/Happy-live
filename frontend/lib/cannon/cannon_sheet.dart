@@ -176,8 +176,11 @@ class _CannonSheetState extends State<CannonSheet> {
                 ),
                 Expanded(child: PageView.builder(
                   controller: _pc, itemCount: levels.length,
-                  onPageChanged: (i) => setState(() => _page = i),
-                  itemBuilder: (_, i) => _CannonVisual(level: levels[i], dim: levels[i].level > st.level),
+                  onPageChanged: (i) {
+                    setState(() => _page = i);
+                    if (levels[i].level < st.level) _svc.loadContributorsForLevel(levels[i].level);
+                  },
+                  itemBuilder: (_, i) => _CannonVisual(level: levels[i], dim: levels[i].level > st.level, completed: levels[i].level < st.level),
                 )),
                 Transform.translate(offset: const Offset(0, 34), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   const _Bolt(size: 22), const SizedBox(width: 8),
@@ -237,22 +240,25 @@ class _CannonSheetState extends State<CannonSheet> {
             ),
           ))),
           const SizedBox(height: 18),
-          // Keep the original prize-pool design visible at all times.
-          // Contributors are intentionally not displayed.
-          Opacity(
-            opacity: locked ? 0.45 : 1,
-            child: PrizePoolBox(
-              items: [
-                for (final prize in ordered.take(5))
-                  PrizePoolItem(
-                    imageUrl: prize.icon,
-                    title: prize.name,
-                    isGold: prize.top1,
-                    badgeText: prize.top1 ? 'Top1 only' : null,
-                  ),
-              ],
+          if (done) ...[
+            const _ContributionRankingTab(),
+            const SizedBox(height: 8),
+            _TopThreeContributors(contributors: _svc.contributors),
+          ] else
+            Opacity(
+              opacity: locked ? 0.45 : 1,
+              child: PrizePoolBox(
+                items: [
+                  for (final prize in ordered.take(5))
+                    PrizePoolItem(
+                      imageUrl: prize.icon,
+                      title: prize.name,
+                      isGold: prize.top1,
+                      badgeText: prize.top1 ? 'Top1 only' : null,
+                    ),
+                ],
+              ),
             ),
-          ),
             ]),
           ),
         ),
@@ -267,14 +273,112 @@ class _CannonSheetState extends State<CannonSheet> {
 class _CannonVisual extends StatelessWidget {
   final CannonLevel level;
   final bool dim;
-  const _CannonVisual({required this.level, required this.dim});
+  final bool completed;
+  const _CannonVisual({required this.level, required this.dim, this.completed = false});
 
   @override
   Widget build(BuildContext context) => Stack(alignment: Alignment.center, children: [
     // The animated floor is supplied by the parent Stack. Keep only the cannon here
     // so changing levels moves the cannon without moving the fixed requirement label.
-    Positioned(bottom: 30, child: CannonArt(level: level.level, size: 210, dim: dim)),
+    Positioned(bottom: 30, child: CannonArt(level: level.level, size: 210, dim: dim, completed: completed)),
   ]);
+}
+
+class _ContributionRankingTab extends StatelessWidget {
+  const _ContributionRankingTab();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 260,
+    height: 30,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: const Color(0x33205BFF),
+      border: const Border(bottom: BorderSide(color: Color(0xFF3AA8FF), width: 1.2)),
+      borderRadius: BorderRadius.circular(5),
+    ),
+    child: const Text('ترتيب المساهمة', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+  );
+}
+
+class _TopThreeContributors extends StatelessWidget {
+  final List<CannonContributor> contributors;
+  const _TopThreeContributors({required this.contributors});
+
+  @override
+  Widget build(BuildContext context) {
+    CannonContributor? rank(int index) => contributors.length > index ? contributors[index] : null;
+    return SizedBox(
+      height: 142,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: _ContributorCard(rank: 3, contributor: rank(2))),
+          const SizedBox(width: 5),
+          Expanded(child: _ContributorCard(rank: 1, contributor: rank(0), gold: true)),
+          const SizedBox(width: 5),
+          Expanded(child: _ContributorCard(rank: 2, contributor: rank(1))),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContributorCard extends StatelessWidget {
+  final int rank;
+  final CannonContributor? contributor;
+  final bool gold;
+  const _ContributorCard({required this.rank, required this.contributor, this.gold = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final border = gold ? const Color(0xFFFFC94A) : const Color(0xFF368CFF);
+    final textColor = gold ? const Color(0xFFFFD66B) : const Color(0xFF55E9FF);
+    return Container(
+      height: gold ? 140 : 132,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(11),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+          colors: gold
+            ? const [Color(0xFF4A3410), Color(0xFF2A1C08)]
+            : const [Color(0xFF102C79), Color(0xFF0A1A58)],
+        ),
+        border: Border.all(color: border, width: gold ? 1.5 : 1.1),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('TOP$rank', style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w900)),
+          CircleAvatar(
+            radius: 19,
+            backgroundColor: const Color(0xFF33436D),
+            backgroundImage: contributor != null && contributor!.avatarUrl.startsWith('http')
+              ? NetworkImage(contributor!.avatarUrl) : null,
+            child: contributor == null || !contributor!.avatarUrl.startsWith('http')
+              ? const Icon(Icons.person, color: Colors.white54, size: 22) : null,
+          ),
+          Text(
+            contributor?.userName ?? 'مقعد فارغ',
+            maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+            style: TextStyle(color: gold ? const Color(0xFFFFE5A0) : Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.bolt, color: Color(0xFF2BE3A0), size: 13),
+              Flexible(child: Text(
+                contributor == null ? '—' : _fmt(contributor!.contribution),
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Color(0xFF2BE3A0), fontSize: 10, fontWeight: FontWeight.w800),
+              )),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Tab extends StatelessWidget {
