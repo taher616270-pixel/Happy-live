@@ -11,7 +11,7 @@ class CannonService extends ChangeNotifier {
   String? currentRoomId;
   CannonState? state;
   List<CannonBanner> banners = [];
-  CannonBanner? activeBanner;
+  CannonBanner? activeBanner;\n  List<CannonContributor> contributors = [];\n  String _contributorsLaunchId = '';\n  bool contributorsUnavailable = false;
 
   Timer? _roomTimer;
   Timer? _bannerTimer;
@@ -74,6 +74,19 @@ class CannonService extends ChangeNotifier {
     } finally {
       _roomRequestInFlight = false;
     }
+  }
+
+  Future<void> _loadContributors(String roomId, String launchId) async {
+    _contributorsLaunchId = launchId;
+    contributorsUnavailable = false;
+    final result = await CannonApi.fetchContributors(roomId, launchId);
+    if (currentRoomId != roomId || state?.launchId != launchId) return;
+    if (result == null) {
+      contributorsUnavailable = true;
+    } else {
+      contributors = result;
+    }
+    notifyListeners();
   }
 
   Future<bool> claim(CannonClaim c) async {
