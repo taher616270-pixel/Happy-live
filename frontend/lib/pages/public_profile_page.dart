@@ -564,7 +564,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             PageView.builder(
               itemCount: covers.length,
               onPageChanged: (i) => setState(() => _coverIndex = i),
-              itemBuilder: (_, i) => Image.network(
+              itemBuilder: (_, i) => HappyNetworkImage(
                 covers[i],
                 fit: BoxFit.cover,
                 width: double.infinity,
@@ -1987,7 +1987,7 @@ class _ProfilePostImageState extends State<_ProfilePostImage> {
       child: SizedBox(
         width: boxWidth.clamp(0.0, 210.0).toDouble(),
         height: boxHeight.clamp(0.0, 420.0).toDouble(),
-        child: Image.network(widget.url,
+        child: HappyNetworkImage(widget.url,
             fit: BoxFit.contain,
             alignment: Alignment.center,
             errorBuilder: (_, __, ___) => const Center(
