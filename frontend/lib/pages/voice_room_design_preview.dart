@@ -2241,11 +2241,20 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     }
   }
 
-  void _playTestFlight() {
-    if (!mounted || _flight.isAnimating) return;
-    _flightOverlayEntry?.remove();
-    _flightOverlayEntry = null;
-    _playLevelOneFlight();
+  void _playTestBoxDrop() {
+    if (!mounted || _boxDropOverlayEntry != null) return;
+    _boxRoundId = '';
+    _boxDropOverlayEntry = OverlayEntry(
+      builder: (overlayContext) => CannonBoxDropOverlay(
+        roundId: '',
+        demoMode: true,
+        onFinished: (_) {
+          _boxDropOverlayEntry?.remove();
+          _boxDropOverlayEntry = null;
+        },
+      ),
+    );
+    Overlay.of(context, rootOverlay: true).insert(_boxDropOverlayEntry!);
   }
 
   String _boxRoundId = '';
@@ -2522,11 +2531,11 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
                 color: const Color(0xFF16A6A0),
                 borderRadius: BorderRadius.circular(18),
                 child: InkWell(
-                  onTap: _playTestFlight,
+                  onTap: _playTestBoxDrop,
                   borderRadius: BorderRadius.circular(18),
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    child: Text('تجربة الطائرة', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    child: Text('تجربة الصناديق', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ),
