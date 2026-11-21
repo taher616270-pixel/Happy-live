@@ -256,7 +256,7 @@ class _ContributorRow extends StatelessWidget {
           Expanded(
             child: Text(
               hasContributor && entry!.name.trim().isNotEmpty
-                  ? entry.name
+                  ? entry!.name
                   : 'سيتم تحديده',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
