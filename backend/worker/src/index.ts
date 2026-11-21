@@ -1968,7 +1968,17 @@ export default {
         const action = body.action === "leave" ? "leave" : body.action === "join" ? "join" : "";
         if (!action) return json({ error: "invalid_chat_session_action" }, 400, origin, env);
         if (action === "join" && room.locked === 1 && room.owner_user_id !== user.id && !entryModerator) {
-          return json({ error: "room_locked", message: "الغرفة مقفلة حاليًا" }, 403, origin, env);
+          const password = typeof body.password === "string" ? body.password : "";
+          const saltHex = typeof entrySettings.roomPasswordSalt === "string" ? entrySettings.roomPasswordSalt : "";
+          const hashExpected = typeof entrySettings.roomPasswordHash === "string" ? entrySettings.roomPasswordHash : "";
+          if (!/^\\d{6}$/.test(password) || !/^[0-9a-f]{32}$/i.test(saltHex) || !/^[0-9a-f]{64}$/i.test(hashExpected)) {
+            return json({ error: "room_password_required", message: "أدخل كلمة مرور الغرفة المكوّنة من 6 أرقام" }, 423, origin, env);
+          }
+          const salt = new Uint8Array(saltHex.match(/.{2}/g)!.map((byte) => parseInt(byte, 16)));
+          const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+          const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 120000, hash: "SHA-256" }, key, 256);
+          const actual = Array.from(new Uint8Array(bits)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+          if (actual !== hashExpected) return json({ error: "room_password_incorrect", message: "كلمة المرور غير صحيحة" }, 403, origin, env);
         }
         const now = new Date().toISOString();
         if (action === "join") {
