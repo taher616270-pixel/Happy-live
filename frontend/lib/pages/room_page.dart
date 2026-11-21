@@ -103,6 +103,7 @@ class _RoomPageState extends State<RoomPage> {
   String _ownerName = 'صاحب الغرفة';
   String _ownerId = '';
   String _ownerAvatarUrl = '';
+  String _roomCoverUrl = '';
   String _ownerCountryName = '';
   List<Map<String, dynamic>> _seats = [];
   List<Map<String, dynamic>> _audienceUsers = [];
@@ -157,6 +158,7 @@ class _RoomPageState extends State<RoomPage> {
   void initState() {
     super.initState();
     _roomAnnouncement = (widget.room['announcement'] ?? widget.room['description'] ?? '').toString();
+    _roomCoverUrl = (widget.room['imageUrl'] ?? widget.room['image_url'] ?? widget.room['coverUrl'] ?? widget.room['cover_url'] ?? '').toString();
     _restoreRoomPreviewCache();
     unawaited(_restoreCountryNameCache());
 
@@ -2160,6 +2162,12 @@ class _RoomPageState extends State<RoomPage> {
     }
   }
 
+  void _applyRoomCoverUpdate(String url) {
+    final next = url.trim();
+    if (next.isEmpty || !mounted) return;
+    setState(() => _roomCoverUrl = next);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isMinimized) {
@@ -2178,6 +2186,8 @@ class _RoomPageState extends State<RoomPage> {
           child: VoiceRoomDesignPreview(
       room: {
         ...widget.room,
+        'imageUrl': _roomCoverUrl,
+        'coverUrl': _roomCoverUrl,
         'ownerId': _ownerId,
         'owner': {
           'id': _ownerId,
@@ -2222,6 +2232,7 @@ class _RoomPageState extends State<RoomPage> {
       onOpenGifts: _openRoomGiftPicker,
       onOpenCannonRoom: _openCannonBannerRoom,
       onRoomSettingsChanged: _refreshSeats,
+      onRoomCoverChanged: _applyRoomCoverUpdate,
       isRoomDataReady: _roomDataReady,
           ),
         ),        if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
