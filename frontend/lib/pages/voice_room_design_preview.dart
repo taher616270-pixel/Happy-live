@@ -2056,74 +2056,126 @@ class _CannonLaunchFireworksPainter extends CustomPainter {
 
   @override
   void paint(ui.Canvas canvas, Size size) {
-    // Repeating layered bursts keep the sky active for the complete ascent.
-    // Each burst has a bright core, a soft bloom, long sparks and falling trails.
-    const burstInterval = .105;
-    const burstLife = .30;
-    final activeBurst = (progress / burstInterval).floor();
-    for (var b = math.max(0, activeBurst - 3); b <= activeBurst; b++) {
-      final start = b * burstInterval;
-      final age = progress - start;
-      if (age < 0 || age > burstLife) continue;
-      final t = (age / burstLife).clamp(0.0, 1.0).toDouble();
-      final fade = math.pow(1 - t, 1.12).toDouble();
-      final radius = (18 + 172 * Curves.easeOutCubic.transform(t));
-      final seed = math.Random(9001 + b * 97);
-      final center = Offset(
-        (origin.dx + (seed.nextDouble() - .5) * size.width * .78)
-            .clamp(24.0, size.width - 24.0).toDouble(),
-        (origin.dy + (seed.nextDouble() - .5) * size.height * .26)
-            .clamp(40.0, size.height - 70.0).toDouble(),
-      );
-      final color = _colors[b % _colors.length];
+    // Long white/blue beam and twin engine flames trail behind the ascending jet.
+    final beamEnd = Offset(origin.dx, size.height + 30);
+    final beamStart = Offset(origin.dx, origin.dy + size.width * .16);
+    canvas.drawLine(
+      beamStart,
+      beamEnd,
+      ui.Paint()
+        ..shader = ui.Gradient.linear(
+          beamStart,
+          beamEnd,
+          [
+            const Color(0xFFF7FCFF).withOpacity(.92),
+            const Color(0xFF62C9FF).withOpacity(.62),
+            const Color(0xFF1D66FF).withOpacity(.02),
+          ],
+          const [0.0, .28, 1.0],
+        )
+        ..strokeWidth = size.width * .16
+        ..strokeCap = ui.StrokeCap.round
+        ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 24),
+    );
+    canvas.drawLine(
+      beamStart,
+      beamEnd,
+      ui.Paint()
+        ..color = Colors.white.withOpacity(.78)
+        ..strokeWidth = size.width * .025
+        ..strokeCap = ui.StrokeCap.round
+        ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 8),
+    );
 
-      canvas.drawCircle(
-        center,
-        radius * .42,
-        ui.Paint()
-          ..color = color.withOpacity(.23 * fade)
-          ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, 22 + 14 * (1 - t)),
+    // Two bright orange-white exhaust flames directly behind the twin engines.
+    for (final side in [-1.0, 1.0]) {
+      final flameStart = Offset(
+        origin.dx + side * size.width * .075,
+        origin.dy + size.width * .12,
       );
-      canvas.drawCircle(
-        center,
-        radius * .10,
-        ui.Paint()
-          ..color = Colors.white.withOpacity(.95 * fade)
-          ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 7),
+      final flameEnd = Offset(
+        flameStart.dx + side * size.width * .018,
+        flameStart.dy + size.height * (.12 + .05 * math.sin(progress * math.pi * 8)),
       );
-
-      const particles = 72;
-      for (var i = 0; i < particles; i++) {
-        final angle = (math.pi * 2 * i / particles) + (b % 5) * .13;
-        final variation = .62 + seed.nextDouble() * .55;
-        final distance = radius * variation;
-        final gravity = t * t * (18 + (i % 5) * 5);
-        final end = Offset(
-          center.dx + math.cos(angle) * distance,
-          center.dy + math.sin(angle) * distance + gravity,
-        );
-        final tailLength = (8 + (i % 7) * 3) * (1 - t * .35);
-        final tail = Offset(
-          end.dx - math.cos(angle) * tailLength,
-          end.dy - math.sin(angle) * tailLength - gravity * .12,
-        );
-        final sparkColor = _colors[(i + b) % _colors.length];
-        canvas.drawLine(
-          tail,
-          end,
-          ui.Paint()
-            ..color = sparkColor.withOpacity(.92 * fade)
-            ..strokeWidth = i % 6 == 0 ? 3.8 : 2.1
-            ..strokeCap = ui.StrokeCap.round
-            ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 1.8),
-        );
-        canvas.drawCircle(
-          end,
-          i % 6 == 0 ? 3.2 : 1.7,
-          ui.Paint()..color = Colors.white.withOpacity(.88 * fade),
-        );
-      }
+      canvas.drawLine(
+        flameStart,
+        flameEnd,
+        ui.Paint()
+          ..color = const Color(0xFFFF7A24).withOpacity(.92)
+          ..strokeWidth = size.width * .055
+          ..strokeCap = ui.StrokeCap.round
+          ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 13),
+      );
+      canvas.drawLine(
+        flameStart,
+        flameEnd,
+        ui.Paint()
+          ..color = const Color(0xFFFFF4D6).withOpacity(.96)
+          ..strokeWidth = size.width * .018
+          ..strokeCap = ui.StrokeCap.round
+          ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 5),
+      );
     }
+
+    // Soft white smoke curls along the flight path, never forming an explosion.
+    final smokeRandom = math.Random(7200);
+    for (var i = 0; i < 18; i++) {
+      final y = origin.dy + size.height * (.12 + i * .052);
+      final drift = math.sin(progress * 9 + i * .8) * (12 + i * 1.4);
+      final x = origin.dx + drift + (smokeRandom.nextDouble() - .5) * 18;
+      final radius = 9.0 + (i % 4) * 4.0;
+      canvas.drawCircle(
+        Offset(x, y),
+        radius,
+        ui.Paint()
+          ..color = Colors.white.withOpacity(.055 + (i % 3) * .012)
+          ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, radius * 1.7),
+      );
+    }
+
+    // Gold and blue sparks stream backward with long luminous tails.
+    final random = math.Random(9107);
+    for (var i = 0; i < 96; i++) {
+      final lane = (random.nextDouble() - .5) * size.width * .9;
+      final distance = random.nextDouble() * size.height * .82;
+      final phase = (progress * 1.8 + random.nextDouble()) % 1.0;
+      final y = origin.dy + size.height * (.10 + phase * .82);
+      final x = origin.dx + lane + math.sin(progress * 10 + i) * 9;
+      final length = 7 + random.nextDouble() * 24;
+      final gold = i % 2 == 0;
+      final color = gold ? const Color(0xFFFFD36B) : const Color(0xFF55BFFF);
+      final alpha = (.28 + random.nextDouble() * .65).clamp(0.0, 1.0);
+      canvas.drawLine(
+        Offset(x, y - length),
+        Offset(x + lane.sign * 2, y + length * .35),
+        ui.Paint()
+          ..color = color.withOpacity(alpha)
+          ..strokeWidth = i % 7 == 0 ? 2.8 : 1.4
+          ..strokeCap = ui.StrokeCap.round
+          ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 2),
+      );
+      canvas.drawCircle(
+        Offset(x, y),
+        i % 8 == 0 ? 2.7 : 1.5,
+        ui.Paint()..color = Colors.white.withOpacity(alpha * .9),
+      );
+    }
+
+    // A restrained blue/gold aura surrounds the jet's current position.
+    canvas.drawCircle(
+      origin,
+      size.width * .22,
+      ui.Paint()
+        ..color = const Color(0xFF398DFF).withOpacity(.10)
+        ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 30),
+    );
+    canvas.drawCircle(
+      origin,
+      size.width * .17,
+      ui.Paint()
+        ..color = const Color(0xFFFFD36B).withOpacity(.07)
+        ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 22),
+    );
   }
 
   @override
