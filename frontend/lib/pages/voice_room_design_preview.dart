@@ -2440,7 +2440,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
               : ui.lerpDouble(centerY, -planeSize * .8, exitEase)!;
           final planeLeft = planeCenterX - planeSize / 2;
           final planeTop = planeCenterY - planeSize / 2;
-          final cameraShake = (1 - eased) * 4.5;
+          final cameraShake = (1 - progress) * 4.5;
           final shake = Offset(
             math.sin(progress * math.pi * 42) * cameraShake,
             math.cos(progress * math.pi * 37) * cameraShake,
