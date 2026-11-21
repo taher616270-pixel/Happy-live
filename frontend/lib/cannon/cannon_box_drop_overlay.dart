@@ -73,7 +73,7 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    return Positioned.fill(
+    return SizedBox.expand(
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) => Stack(
