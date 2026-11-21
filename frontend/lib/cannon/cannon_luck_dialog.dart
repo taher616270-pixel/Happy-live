@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import 'cannon_api.dart';
 import 'cannon_models.dart';
 
@@ -153,11 +154,11 @@ class _WinnerTile extends StatelessWidget {
               style: const TextStyle(color: Color(0xFFD6D6D6), fontSize: 13, fontWeight: FontWeight.w800)),
           ),
           const SizedBox(width: 8),
-          CircleAvatar(
-            radius: 23,
+          HappyNetworkAvatar(
+            url: avatar,
+            size: 46,
             backgroundColor: const Color(0xFF33436D),
-            backgroundImage: avatar.startsWith('http') ? NetworkImage(avatar) : null,
-            child: avatar.startsWith('http') ? null : const Icon(Icons.person, color: Colors.white54),
+            fallback: const Icon(Icons.person, color: Colors.white54),
           ),
           const SizedBox(width: 10),
           Expanded(
