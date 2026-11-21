@@ -196,6 +196,50 @@ class _EditProfilePageState extends State<EditProfilePage> {
         onTap: () => Navigator.pop(sheetContext, value),
       );
 
+  // Force uploaded GIF avatars to repeat forever, even when the source GIF
+  // was authored with a finite loop count or without a loop extension.
+  List<int> _forceGifInfiniteLoop(List<int> source) {
+    final bytes = List<int>.from(source);
+    if (bytes.length < 13) return bytes;
+    final signature = String.fromCharCodes(bytes.take(6));
+    if (signature != 'GIF87a' && signature != 'GIF89a') return bytes;
+
+    const marker = 'NETSCAPE2.0';
+    final markerBytes = marker.codeUnits;
+    for (var i = 0; i <= bytes.length - markerBytes.length - 9; i++) {
+      var matches = true;
+      for (var j = 0; j < markerBytes.length; j++) {
+        if (bytes[i + j] != markerBytes[j]) {
+          matches = false;
+          break;
+        }
+      }
+      if (matches && i + 14 < bytes.length &&
+          bytes[i + 11] == 0x03 && bytes[i + 12] == 0x01) {
+        // A loop count of zero means infinite repetition.
+        bytes[i + 13] = 0;
+        bytes[i + 14] = 0;
+        return bytes;
+      }
+    }
+
+    // Add the standard looping application extension after the global
+    // color table (if present), before the first frame/extension block.
+    final packed = bytes[10];
+    var insertAt = 13;
+    if ((packed & 0x80) != 0) {
+      insertAt += 3 * (1 << ((packed & 0x07) + 1));
+    }
+    if (insertAt > bytes.length) return bytes;
+    final loopExtension = <int>[
+      0x21, 0xFF, 0x0B,
+      ...markerBytes,
+      0x03, 0x01, 0x00, 0x00, 0x00,
+    ];
+    bytes.insertAll(insertAt, loopExtension);
+    return bytes;
+  }
+
   Future<void> _pickAvatarGif() async {
     try {
       final selected = await FilePicker.pickFiles(
@@ -210,7 +254,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _message('تعذر قراءة ملف GIF من الجهاز');
         return;
       }
-      await _uploadAvatar(bytes, 'happy-avatar-${DateTime.now().millisecondsSinceEpoch}.gif');
+      final loopingGif = _forceGifInfiniteLoop(bytes);
+      await _uploadAvatar(loopingGif, 'happy-avatar-${DateTime.now().millisecondsSinceEpoch}.gif');
     } catch (error) {
       _message(error.toString().replaceFirst('Exception: ', ''));
     }
