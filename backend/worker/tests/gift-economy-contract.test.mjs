@@ -74,7 +74,7 @@ test("gift catalogue has owner-only management and public active listing", () =>
   assert.match(worker, /UPDATE gift_catalog SET name/);
   assert.match(worker, /duration_seconds AS durationSeconds/);
   assert.match(worker, /duration_seconds = \?/);
-  assert.match(worker, /Number\\(gift\\.durationSeconds \\?\\? 5\\) \\* 1000/);
+  assert.match(worker, /Number\(gift\.durationSeconds \?\? 5\) \* 1000/);
   assert.match(roomPage, /Timer\(Duration\(seconds: durationSeconds\)/);
   assert.match(worker, /\/api\/v1\/gifts\/catalog/);
   assert.match(adminPage, /giftCreateForm/);
