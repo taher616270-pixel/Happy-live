@@ -1692,9 +1692,13 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _openRoomBattleTools(BuildContext host) {
-    Future<void> submit(String action) async {
-      Navigator.of(host).pop();
-      try {
+    showModalBottomSheet<void>(
+      context: host,
+      backgroundColor: const Color(0xFF21152F),
+      builder: (sheetContext) {
+        Future<void> submit(String action) async {
+          Navigator.of(sheetContext).pop();
+          try {
         final response = await http.post(
           Uri.parse(_apiBase + '/rooms/' + Uri.encodeComponent(_roomId) + '/battle'),
           headers: _headers,
@@ -1713,18 +1717,15 @@ class _RoomPageState extends State<RoomPage> {
         }
       } catch (_) {
         _showMessage('تعذر الاتصال بخدمة PK');
-      }
-    }
+          }
+        }
 
-    showModalBottomSheet<void>(
-      context: host,
-      backgroundColor: const Color(0xFF21152F),
-      builder: (sheetContext) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
               const Text('إدارة تحدي PK', style: TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 14),
               ListTile(
@@ -1737,10 +1738,11 @@ class _RoomPageState extends State<RoomPage> {
                 title: const Text('إنهاء التحدي', style: TextStyle(color: Colors.white)),
                 onTap: () => submit('end'),
               ),
-            ]),
+              ]),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
