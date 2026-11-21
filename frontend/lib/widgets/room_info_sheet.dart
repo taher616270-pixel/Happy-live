@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:http/http.dart' as http;
 import 'square_country_flag.dart';
 import 'package:flutter/services.dart';
@@ -277,7 +278,7 @@ class _RoomInfoSheet extends StatelessWidget {
                           width: 32,
                           height: 32,
                           child: avatarUrl.startsWith('http')
-                              ? Image.network(
+                              ? HappyNetworkImage(
                                   avatarUrl,
                                   width: 32,
                                   height: 32,
@@ -333,7 +334,7 @@ class _RoomInfoSheet extends StatelessWidget {
                         const Text('مجموعة الغرفة', style: TextStyle(color: _RoomInfoColors.text, fontSize: 13, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 8),
                         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          CircleAvatar(radius: 20, backgroundColor: _RoomInfoColors.chip, backgroundImage: info.imageUrl.startsWith('http') ? NetworkImage(info.imageUrl) : null, child: info.imageUrl.startsWith('http') ? null : const Icon(Icons.groups, color: _RoomInfoColors.muted)),
+                          HappyNetworkAvatar(url: info.imageUrl, size: 40, backgroundColor: _RoomInfoColors.chip, fallback: const Icon(Icons.groups, color: _RoomInfoColors.muted)),
                           const SizedBox(width: 12),
                           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Row(children: [
@@ -612,15 +613,11 @@ class _RoomInfoSheet extends StatelessWidget {
                                         padding: const EdgeInsets.symmetric(vertical: 9),
                                         child: Row(
                                           children: [
-                                            CircleAvatar(
-                                              radius: 22,
+                                            HappyNetworkAvatar(
+                                              url: avatar,
+                                              size: 44,
                                               backgroundColor: _RoomInfoColors.chip,
-                                              backgroundImage: avatar.startsWith('http')
-                                                  ? NetworkImage(avatar)
-                                                  : null,
-                                              child: avatar.startsWith('http')
-                                                  ? null
-                                                  : const Icon(Icons.person, color: _RoomInfoColors.muted),
+                                              fallback: const Icon(Icons.person, color: _RoomInfoColors.muted),
                                             ),
                                             const SizedBox(width: 10),
                                             Expanded(
@@ -841,7 +838,7 @@ class _RoomInfoSheet extends StatelessWidget {
 
   static Widget _networkImage(String url, double width, double height) => ClipRRect(
     borderRadius: BorderRadius.circular(10),
-    child: url.startsWith('http') ? Image.network(url, width: width, height: height, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _imageFallback(width, height)) : _imageFallback(width, height),
+    child: url.startsWith('http') ? HappyNetworkImage(url, width: width, height: height, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _imageFallback(width, height)) : _imageFallback(width, height),
   );
 
   static Widget _imageFallback(double width, double height) => Container(width: width, height: height, color: _RoomInfoColors.chip, alignment: Alignment.center, child: const Icon(Icons.image_outlined, color: _RoomInfoColors.muted));
