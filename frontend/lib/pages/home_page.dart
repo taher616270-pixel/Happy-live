@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -228,12 +229,11 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 const SizedBox(height: 10),
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                  leading: CircleAvatar(
+                  leading: HappyNetworkAvatar(
+                    url: (foundUser!['avatarUrl'] ?? '').toString(),
+                    size: 40,
                     backgroundColor: const Color(0xFFEFE3C7),
-                    backgroundImage: (foundUser!['avatarUrl'] ?? '').toString().isNotEmpty
-                      ? NetworkImage(foundUser!['avatarUrl'].toString()) : null,
-                    child: (foundUser!['avatarUrl'] ?? '').toString().isEmpty
-                      ? const Icon(Icons.person, color: HappyHomeColors.gold) : null,
+                    fallback: const Icon(Icons.person, color: HappyHomeColors.gold),
                   ),
                   title: Text((foundUser!['name'] ?? 'مستخدم').toString(),
                     style: const TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.bold)),
@@ -775,7 +775,7 @@ class LiveHouseCard extends StatelessWidget {
                               itemCount: math.min(avatarUrls.length, 7),
                               separatorBuilder: (_, __) => const SizedBox(width: 5),
                               itemBuilder: (context, index) => ClipOval(
-                                child: Image.network(
+                                child: HappyNetworkImage(
                                   avatarUrls[index],
                                   width: 27,
                                   height: 27,
@@ -833,7 +833,7 @@ class LiveHouseCard extends StatelessWidget {
         child: const Icon(Icons.graphic_eq_rounded, color: kNeonLight, size: 38),
       );
     }
-    return Image.network(
+    return HappyNetworkImage(
       coverUrl,
       width: 82,
       height: 82,
