@@ -34,7 +34,7 @@ class _PermissionPickerPageState extends State<PermissionPickerPage> {
           child: Container(width: 50, height: 50, decoration: const BoxDecoration(color: RS.penBg, shape: BoxShape.circle), child: const Icon(Icons.edit_outlined, color: RS.penIcon, size: 22)),
         ))),
       const Spacer(),
-      SafeArea(top: false, child: Padding(padding: const EdgeInsets.fromLTRB(22, 0, 22, 18), child: PrimaryButton(label: 'تم', onTap: () async {
+      SafeArea(top: false, child: Padding(padding: const EdgeInsets.fromLTRB(22, 0, 22, 18), child: PrimaryButton(label: 'تم', backgroundColor: const Color(0xFFD4AF37), onTap: () async {
         try {
           await widget.c.savePermission(p, level, ids);
           if (context.mounted) { Navigator.pop(context); showRsToast(context, 'تم بنجاح'); }
@@ -47,5 +47,5 @@ class _Radio extends StatelessWidget {
   final bool on;
   const _Radio({required this.on});
   @override
-  Widget build(BuildContext context) => Container(width: 20, height: 20, decoration: BoxDecoration(shape: BoxShape.circle, color: on ? RS.primary : Colors.transparent, border: Border.all(color: on ? RS.primary : RS.lightGray, width: 1.2)), child: on ? const Icon(Icons.check, size: 14, color: Colors.white) : null);
+  Widget build(BuildContext context) => Container(width: 20, height: 20, decoration: BoxDecoration(shape: BoxShape.circle, color: on ? const Color(0xFFD4AF37) : Colors.transparent, border: Border.all(color: on ? const Color(0xFFD4AF37) : RS.lightGray, width: 1.2)), child: on ? const Icon(Icons.check, size: 14, color: Colors.white) : null);
 }
