@@ -2030,7 +2030,10 @@ Widget _roomActionButton({
               ),
             ),
             const SizedBox(width: 13),
-            const Icon(Icons.apps, color: Colors.white, size: 30),
+            const CustomPaint(
+              size: Size(30, 30),
+              painter: _RoomGridIconPainter(),
+            ),
           ],
         ),
       ),
@@ -2039,6 +2042,40 @@ Widget _roomActionButton({
 
 }
 
+
+
+class _RoomGridIconPainter extends CustomPainter {
+  const _RoomGridIconPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.9
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    const gap = 4.0;
+    final cell = (size.width - gap) / 2;
+    for (var row = 0; row < 2; row++) {
+      for (var column = 0; column < 2; column++) {
+        final rect = Rect.fromLTWH(
+          column * (cell + gap),
+          row * (cell + gap),
+          cell,
+          cell,
+        );
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(rect, const Radius.circular(3)),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RoomGridIconPainter oldDelegate) => false;
+}
 
 
 class _CannonLaunchFireworksPainter extends CustomPainter {
