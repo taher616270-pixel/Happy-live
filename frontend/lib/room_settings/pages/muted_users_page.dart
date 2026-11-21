@@ -14,6 +14,14 @@ class MutedUsersPage extends StatefulWidget {
 
 class _MutedUsersPageState extends State<MutedUsersPage> {
   String query = '';
+  bool searchVisible = false;
+  final TextEditingController searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -27,12 +35,34 @@ class _MutedUsersPageState extends State<MutedUsersPage> {
           }).toList();
           return Scaffold(
             backgroundColor: Colors.white,
-            appBar: const RsAppBar(title: 'قائمة الكتم'),
+            appBar: RsAppBar(
+              title: 'قائمة الكتم',
+              actions: [
+                IconButton(
+                  tooltip: searchVisible ? 'إغلاق البحث' : 'بحث',
+                  onPressed: () => setState(() {
+                    searchVisible = !searchVisible;
+                    if (!searchVisible) {
+                      query = '';
+                      searchController.clear();
+                    }
+                  }),
+                  icon: Icon(
+                    searchVisible ? Icons.close_rounded : Icons.search_rounded,
+                    color: const Color(0xFFD4AF37),
+                    size: 25,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
             body: Column(
               children: [
-                Padding(
+                if (searchVisible) Padding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
                   child: TextField(
+                    controller: searchController,
+                    autofocus: true,
                     onChanged: (value) => setState(() => query = value),
                     textInputAction: TextInputAction.search,
                     style: const TextStyle(color: Colors.black),
