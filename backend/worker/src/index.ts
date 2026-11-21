@@ -3,7 +3,7 @@ import { handleGamesApiRequest, isRegisteredGameOrigin } from "./games_api";
 import { handlePlatformCallbackRequest } from "./platform_callback";
 import { addCannonEnergy, handleCannonRequest } from "./cannon_api";
 import { addRoomContribution, handleRoomContrib } from "./room_contrib";
-import { handleRoomTools, isRoomLocked } from "./room_tools";
+import { handleRoomTools } from "./room_tools";
 export { RoomSeatsHub } from "./room_seats_hub";
 export { GlobalGiftHub } from "./global_gift_hub";
 import type { GlobalGiftHub } from "./global_gift_hub";
