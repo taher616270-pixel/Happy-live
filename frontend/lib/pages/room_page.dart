@@ -1749,12 +1749,12 @@ class _RoomPageState extends State<RoomPage> {
       _roomGiftOverlayNonce++;
     });
 
-    // Animated assets dismiss themselves from the decoder's completion event.
-    // Keep only a long safety timeout in case a remote file never finishes loading.
-    // Static/unsupported gifts retain a short fallback display time.
-    final isAnimated = mediaType == 'svga' || mediaType == 'gif' || mediaType == 'apng';
+    // Keep animated gifts visible long enough to download and render on web.
+    // Some GIF decoders report completion immediately for optimized/short files,
+    // so the room overlay uses a guarded display timer instead of onFinish.
     final overlayNonce = _roomGiftOverlayNonce;
-    final safetyMs = isAnimated ? 60000 : 4000;
+    final safetyMs = mediaType == 'svga' ? 18000 :
+        (mediaType == 'gif' || mediaType == 'apng') ? 8000 : 4000;
     _roomGiftOverlayTimer = Timer(Duration(milliseconds: safetyMs), () {
       _finishRoomGiftOverlay(overlayNonce);
     });
@@ -1806,10 +1806,9 @@ class _RoomPageState extends State<RoomPage> {
         key: ValueKey('room-gift-svga-$_roomGiftOverlayNonce'),
         resUrl: mediaUrl,
         fit: BoxFit.contain,
-        loops: false,
+        loops: true,
         volume: 0,
         muted: true,
-        onFinished: () => _finishRoomGiftOverlay(overlayNonce),
       );
     } else if (mediaUrl.startsWith('https://') &&
         (mediaType == 'gif' || mediaType == 'apng' || mediaUrl.toLowerCase().split('?').first.endsWith('.gif'))) {
@@ -1821,17 +1820,13 @@ class _RoomPageState extends State<RoomPage> {
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.contain,
-        // Keep the frame delays embedded in the original GIF/APNG.
-        loop: false,
-        onFinish: () => _finishRoomGiftOverlay(overlayNonce),
-        errorBuilder: (context, error, tryAgain) {
-          Future<void>.delayed(const Duration(seconds: 2), () {
-            _finishRoomGiftOverlay(overlayNonce);
-          });
-          return Center(
-            child: Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 110)),
-          );
-        },
+        // Loop briefly so the animation remains visible even when the
+        // decoder reports a zero/very short duration for optimized GIFs.
+        frameRate: 24,
+        loop: true,
+        errorBuilder: (context, error, tryAgain) => Center(
+          child: Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 110)),
+        ),
       );
     } else {
       animation = Center(
