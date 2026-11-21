@@ -25,6 +25,7 @@ import '../room_tools/room_tools_controller.dart';
 import '../room_tools/room_tools_models.dart';
 import '../room_tools/room_tools_api.dart';
 import '../room_tools/room_tools_sheet.dart';
+import '../room_tools/room_tools_media_sheet.dart';
 import '../room_settings/room_settings_controller.dart';
 import '../room_settings/my_workers_api.dart';
 import '../room_settings/pages/room_settings_page.dart';
@@ -985,8 +986,13 @@ class _RoomPageState extends State<RoomPage> {
       final decoded = jsonDecode(rawEvent.toString());
       if (decoded is! Map) return;
       final eventType = (decoded['type'] ?? 'message').toString();
+      if (eventType == 'clear_chat') {
+        _clearRoomChatLocally();
+        return;
+      }
       final rawMessage = decoded['message'];
-      if (rawMessage is! Map) return;      final item = Map<String, dynamic>.from(rawMessage);
+      if (rawMessage is! Map) return;
+      final item = Map<String, dynamic>.from(rawMessage);
       final type = eventType == 'system'
           ? 'system'
           : eventType == 'announcement'
@@ -1653,13 +1659,20 @@ class _RoomPageState extends State<RoomPage> {
           showCannonSheet(ctx, roomId: _roomId, onSendGift: () => _openRoomGiftPicker());
         },
         onOpenGifts: () => _openRoomGiftPicker(),
-        onMicToggle: (open) {
-          if (open != !_selfMicMuted) unawaited(_toggleSelfMic());
+        onMicToggle: (open) async {
+          if (open == !_selfMicMuted) return true;
+          return _toggleSelfMic();
         },
-        clearChat: _clearRoomChatForCurrentView,
+        clearChat: _clearRoomChatForEveryone,
         settings: _openRoomSettings,
-        games: _openRoomGames,
+        music: (ctx) => showRoomToolsMediaSheet(ctx, music: true),
+        soundEffect: (ctx) => showRoomToolsMediaSheet(ctx, music: false),
         micMode: _changeRoomMicLayout,
+        background: _openRoomSettings,
+        visualEffect: (ctx) => _openRoomGiftPicker(initialCategory: 'trending'),
+        redEnvelope: (ctx) => _openRoomGiftPicker(initialCategory: 'event'),
+        games: _openRoomGames,
+        lucky: (ctx) => _openRoomGiftPicker(initialCategory: 'lucky'),
         store: _openRoomWallet,
         activity: _openRoomActivity,
       ),
@@ -1852,27 +1865,50 @@ class _RoomPageState extends State<RoomPage> {
     ]),
   );
 
-  void _clearRoomChatForCurrentView(BuildContext host) {
+  void _clearRoomChatLocally() {
     final listState = _roomAnimatedListKey.currentState;
     if (listState == null) {
-      setState(() {
+      if (mounted) {
+        setState(() {
+          _messages.clear();
+          _messageIds.clear();
+        });
+      } else {
         _messages.clear();
         _messageIds.clear();
-      });
-    } else {
-      for (var index = _messages.length - 1; index >= 0; index--) {
-        final message = _messages.removeAt(index);
-        listState.removeItem(
-          index + 1,
-          (context, animation) => _roomMessageAnimatedItem(message, animation, removing: true),
-          duration: const Duration(milliseconds: 140),
-        );
       }
-      _messageIds.clear();
+      return;
     }
-    ScaffoldMessenger.maybeOf(host)?.showSnackBar(
-      const SnackBar(content: Text('تم مسح الرسائل من عرضك الحالي فقط')),
-    );
+    for (var index = _messages.length - 1; index >= 0; index--) {
+      final message = _messages.removeAt(index);
+      listState.removeItem(
+        index + 1,
+        (context, animation) => _roomMessageAnimatedItem(message, animation, removing: true),
+        duration: const Duration(milliseconds: 140),
+      );
+    }
+    _messageIds.clear();
+  }
+
+  Future<void> _clearRoomChatForEveryone(BuildContext host) async {
+    if (!_isRoomOwner && !_amRoomModerator) {
+      _showMessage('مسح الدردشة متاح لمالك الغرفة والمشرفين فقط');
+      return;
+    }
+    try {
+      final response = await http.delete(_messagesUri, headers: _headers)
+          .timeout(const Duration(seconds: 10));
+      final payload = jsonDecode(response.body);
+      if (response.statusCode == 200 && payload is Map && payload['ok'] == true) {
+        _clearRoomChatLocally();
+        if (host.mounted) _showMessage('تم مسح دردشة الغرفة للجميع');
+        return;
+      }
+      final message = payload is Map ? (payload['message'] ?? '').toString() : '';
+      if (host.mounted) _showMessage(message.isNotEmpty ? message : 'تعذر مسح دردشة الغرفة');
+    } catch (_) {
+      if (host.mounted) _showMessage('تعذر الاتصال بالخادم، لم يتم مسح الدردشة');
+    }
   }
 
   void _showChatToolMessage(String label) {
@@ -2130,7 +2166,10 @@ class _RoomPageState extends State<RoomPage> {
     );
   }
 
-  Future<void> _openRoomGiftPicker({Map<String, dynamic>? targetRecipient}) async {
+  Future<void> _openRoomGiftPicker({
+    Map<String, dynamic>? targetRecipient,
+    String initialCategory = 'trending',
+  }) async {
     if (_roomId.isEmpty || widget.accessToken.isEmpty) {
       _showMessage('تعذر فتح الهدايا: بيانات الغرفة غير مكتملة');
       return;
@@ -2196,6 +2235,7 @@ class _RoomPageState extends State<RoomPage> {
         avatarUrl: _seatStateStore.currentAvatarUrl,
         recipients: recipients,
         initialRecipientId: (targetRecipient?['userId'] ?? targetRecipient?['id'] ?? '').toString(),
+        initialTab: initialCategory,
         loadGifts: (category) async {
           final uri = Uri.parse('$_apiBase/gifts/catalog').replace(
             queryParameters: {'tab': category},
