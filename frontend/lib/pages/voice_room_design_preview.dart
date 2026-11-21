@@ -2031,7 +2031,7 @@ Widget _roomActionButton({
             ),
             const SizedBox(width: 13),
             const CustomPaint(
-              size: Size(30, 30),
+              size: Size(26, 26),
               painter: _RoomGridIconPainter(),
             ),
           ],
