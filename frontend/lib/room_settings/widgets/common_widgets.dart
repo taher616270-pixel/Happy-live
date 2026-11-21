@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart' show CupertinoSwitch;
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import '../theme.dart';
 
 class RsAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -130,11 +131,11 @@ class UserAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         width: size, height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle, color: const Color(0xFFD9DBE0),
-          image: url == null || url!.isEmpty ? null : DecorationImage(image: NetworkImage(url!), fit: BoxFit.cover),
-        ),
-        child: url == null || url!.isEmpty ? Icon(Icons.person, color: Colors.white, size: size * .6) : null,
+        decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFD9DBE0)),
+        clipBehavior: Clip.antiAlias,
+        child: url == null || url!.isEmpty
+            ? Icon(Icons.person, color: Colors.white, size: size * .6)
+            : HappyNetworkImage(url!, width: size, height: size, fit: BoxFit.cover),
       );
 }
 
