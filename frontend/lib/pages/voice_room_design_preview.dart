@@ -2371,7 +2371,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
               ? (1 - ((progress - .96) / .04)).clamp(0.0, 1.0).toDouble()
               : 1.0;
 
-          return Positioned.fill(
+          return SizedBox.expand(
             child: IgnorePointer(
               child: Stack(
                 clipBehavior: Clip.none,
