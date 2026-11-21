@@ -31,6 +31,8 @@ import '../room_settings/pages/room_settings_page.dart';
 import '../widgets/mic_count_sheet.dart';
 import '../models/mic_layout.dart';
 import '../widgets/dynamic_games_list.dart';
+import '../cannon/cannon_service.dart';
+import '../cannon/cannon_sheet.dart';
 
 class RoomPage extends StatefulWidget {
   const RoomPage({super.key, required this.room, required this.accessToken});
@@ -1646,6 +1648,10 @@ class _RoomPageState extends State<RoomPage> {
       actions: RoomToolsActions(
         counter: _showRoomCounter,
         pk: _openRoomBattleTools,
+        salute: (ctx) {
+          CannonService.instance.enterRoom(_roomId, widget.accessToken);
+          showCannonSheet(ctx, roomId: _roomId, onSendGift: () => _openRoomGiftPicker());
+        },
         onOpenGifts: () => _openRoomGiftPicker(),
         onMicToggle: (open) {
           if (open != !_selfMicMuted) unawaited(_toggleSelfMic());
