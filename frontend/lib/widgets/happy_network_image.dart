@@ -35,7 +35,6 @@ class HappyNetworkImage extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
-        frameRate: 24,
         autoPlay: true,
         loop: true,
         errorBuilder: (context, error, tryAgain) =>
