@@ -71,18 +71,14 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
     super.dispose();
   }
 
-  static const int _boxesPerBatch = 5;
-  static const int _batchFallMs = 1900;
-  static const int _batchPauseMs = 100;
-  static const int _batchCount = 10;
-  static const int _totalDropMs =
-      _batchCount * _batchFallMs + (_batchCount - 1) * _batchPauseMs;
+  // Keep the existing 19.9-second effect duration unchanged.
+  static const int _totalDropMs = 19900;
 
   // Stagger every gift independently so the boxes overlap like continuous rain.
   // The deterministic per-index timing keeps every viewer's animation consistent.
   int _startMs(int index) {
     final random = math.Random(index * 104729 + 31);
-    final interval = 245 + random.nextInt(76);
+    final interval = 245 + random.nextInt(41);
     return index * interval;
   }
 
