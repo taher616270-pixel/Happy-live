@@ -30,7 +30,7 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 5),
+      duration: const Duration(seconds: 16),
     )..addStatusListener((status) {
         if (status == AnimationStatus.completed) _finish();
       });
@@ -72,7 +72,7 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
   }
 
   double _fraction(int index) {
-    final stagger = (index / 50) * .72;
+    final stagger = (index / 50) * .92;
     return ((_controller.value - stagger) / (1 - stagger))
         .clamp(0.0, 1.0)
         .toDouble();
@@ -88,7 +88,7 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
           clipBehavior: Clip.none,
           children: [
             for (var index = 0; index < 50; index++)
-              if (!_opened.contains(index) && _controller.value >= (index / 50) * .72)
+              if (!_opened.contains(index) && _controller.value >= (index / 50) * .92)
                 _fallingBox(index, size),
             Positioned(
               left: 0,
