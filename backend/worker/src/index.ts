@@ -2564,9 +2564,14 @@ export default {
                 quantity
               })
             }));
-            if (!broadcastResponse.ok) {
-              const responseText = await broadcastResponse.text().catch(() => "");
-              console.warn("[gifts.room.broadcast] rejected", broadcastResponse.status, responseText.slice(0, 300));
+            const broadcastResult = await broadcastResponse.json().catch(() => null) as Record<string, unknown> | null;
+            const delivered = Number(broadcastResult?.delivered ?? 0);
+            if (!broadcastResponse.ok || delivered === 0) {
+              console.warn("[gifts.room.broadcast] no_live_recipients", {
+                status: broadcastResponse.status,
+                delivered,
+                roomId
+              });
             }
           }
         } catch (broadcastError) {
