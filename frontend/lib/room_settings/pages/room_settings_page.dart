@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -44,53 +46,85 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
     }
   }
 
-  Future<String?> _showCoverSourceSheet() => showModalBottomSheet<String>(
+  Future<String?> _showCoverSourceSheet() {
+    final isIOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+    if (isIOS) {
+      return showCupertinoModalPopup<String>(
         context: context,
-        backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-        ),
-        builder: (sheetContext) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD8D8DE),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _coverSourceOption(sheetContext, 'gif', 'GIF', Icons.gif_box_outlined),
-                  _coverSourceOption(sheetContext, 'album', 'البوم الهاتف', Icons.photo_library_outlined),
-                  _coverSourceOption(sheetContext, 'camera', 'التقاط الصور', Icons.camera_alt_outlined),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(sheetContext, 'cancel'),
-                      child: const Text(
-                        'الغاء',
-                        style: TextStyle(
-                          color: Color(0xFF777482),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+        builder: (sheetContext) => CupertinoActionSheet(
+          title: const Text('تغيير صورة الغرفة'),
+          message: const Text('اختر طريقة إضافة صورة الغرفة'),
+          actions: [
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(sheetContext, 'gif'),
+              child: const Text('اختيار ملف GIF'),
             ),
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(sheetContext, 'album'),
+              child: const Text('ألبوم الصور'),
+            ),
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(sheetContext, 'camera'),
+              child: const Text('التقاط صورة'),
+            ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(sheetContext, 'cancel'),
+            child: const Text('إلغاء'),
           ),
         ),
       );
+    }
+
+    return showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD8D8DE),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _coverSourceOption(sheetContext, 'gif', 'اختيار ملف GIF', Icons.gif_box_outlined),
+                _coverSourceOption(sheetContext, 'album', 'ألبوم الصور', Icons.photo_library_outlined),
+                _coverSourceOption(sheetContext, 'camera', 'التقاط صورة', Icons.camera_alt_outlined),
+                const SizedBox(height: 4),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(sheetContext, 'cancel'),
+                    child: const Text(
+                      'إلغاء',
+                      style: TextStyle(
+                        color: Color(0xFF777482),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _coverSourceOption(
     BuildContext sheetContext,
