@@ -1749,10 +1749,12 @@ class _RoomPageState extends State<RoomPage> {
       _roomGiftOverlayNonce++;
     });
 
-    // Show every room gift animation for exactly five seconds, then remove it.
-    // The nonce guard prevents an older timer from hiding a newer gift.
+    // Each gift uses its saved administrator-configured duration.
+    // Clamp the value defensively to keep malformed events from sticking.
+    final configuredSeconds = int.tryParse((gift['durationSeconds'] ?? '5').toString()) ?? 5;
+    final durationSeconds = configuredSeconds.clamp(1, 60);
     final overlayNonce = _roomGiftOverlayNonce;
-    _roomGiftOverlayTimer = Timer(const Duration(seconds: 5), () {
+    _roomGiftOverlayTimer = Timer(Duration(seconds: durationSeconds), () {
       _finishRoomGiftOverlay(overlayNonce);
     });
   }
