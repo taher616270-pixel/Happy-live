@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models.dart';
@@ -271,7 +272,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                               height: 48,
                               child: c.coverUrl == null || c.coverUrl!.isEmpty
                                   ? const ColoredBox(color: Color(0xFFE9EEF2), child: Icon(Icons.add_photo_alternate_outlined, color: RS.gray))
-                                  : Image.network(c.coverUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFE9EEF2), child: Icon(Icons.broken_image_outlined, color: RS.gray))),
+                                  : HappyNetworkImage(c.coverUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFE9EEF2), child: Icon(Icons.broken_image_outlined, color: RS.gray))),
                             ),
                           ),
                     onTap: _pickCover,
