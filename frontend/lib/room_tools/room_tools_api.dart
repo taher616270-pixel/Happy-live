@@ -33,13 +33,13 @@ class RoomToolsApi {
     }
   }
 
-  static Future<bool> setLocked(String roomId, bool locked) async {
+  static Future<bool> setLocked(String roomId, bool locked, {String? password}) async {
     try {
       final uri = Uri.parse('${RoomToolsConfig.apiBase}/api/room/lock');
       final response = await http.post(
         uri,
         headers: _headers,
-        body: jsonEncode({'room_id': roomId, 'locked': locked}),
+        body: jsonEncode({'room_id': roomId, 'locked': locked, if (password != null) 'password': password}),
       ).timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) return false;
       final payload = jsonDecode(utf8.decode(response.bodyBytes));
