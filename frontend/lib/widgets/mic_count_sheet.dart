@@ -86,7 +86,7 @@ class _MicCountSheetState extends State<MicCountSheet> {
               backgroundColor: kTeal,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: const StadiumBorder(),
+              shape: const StadiumBorder(side: BorderSide(color: Color(0xFFD4AF37), width: 2)),
             ),
             child: const Text('حسنا', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
           ),
