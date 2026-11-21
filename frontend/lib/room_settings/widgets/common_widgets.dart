@@ -76,10 +76,11 @@ class PrimaryButton extends StatelessWidget {
 class SettingsTile extends StatelessWidget {
   final String title;
   final String? value;
+  final int valueMaxLines;
   final Widget? trailing;
   final bool chevron;
   final VoidCallback? onTap;
-  const SettingsTile({super.key, required this.title, this.value, this.trailing, this.chevron = true, this.onTap});
+  const SettingsTile({super.key, required this.title, this.value, this.valueMaxLines = 1, this.trailing, this.chevron = true, this.onTap});
   @override
   Widget build(BuildContext context) => InkWell(
         onTap: onTap,
@@ -93,8 +94,9 @@ class SettingsTile extends StatelessWidget {
               Flexible(
                 child: Text(
                   value!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: valueMaxLines,
+                  softWrap: true,
+                  overflow: valueMaxLines == 1 ? TextOverflow.ellipsis : TextOverflow.visible,
                   style: const TextStyle(color: RS.text, fontSize: 13, fontWeight: FontWeight.w800),
                 ),
               ),
