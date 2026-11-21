@@ -313,7 +313,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
                           (item) => (item['userId'] ?? '').toString() == _comboRecipientId,
                           orElse: () => const <String, dynamic>{'name': 'المستلم'},
                         )['name'] ?? 'المستلم').toString(),
-                        giftImage: (_comboGift!['mediaUrl'] ?? _comboGift!['iconEmoji'] ?? '🎁').toString(),
+                        giftImage: (_comboGift!['thumbnailUrl'] ?? _comboGift!['iconEmoji'] ?? '🎁').toString(),
                         count: _comboCount,
                         child: GiftComboButton(
                           key: ValueKey('gift-combo-$_comboNonce'),
@@ -504,34 +504,25 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   }
 
   Widget _giftMedia(Map<String, dynamic> gift) {
-    final url = (gift['mediaUrl'] ?? '').toString().trim();
-    final type = (gift['mediaType'] ?? 'emoji').toString().toLowerCase();
-    if (url.isEmpty || type == 'emoji') {
-      return Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 34));
-    }
-    if (type == 'svga') {
-      return SVGAEasyPlayer(resUrl: url, fit: BoxFit.contain, volume: 0, muted: true);
-    }
-    if (type == 'gif' || type == 'apng') {
-      return GifView.network(
-        url,
-        width: 58,
-        height: 58,
-        fit: BoxFit.contain,
-        frameRate: 24,
-        errorBuilder: (context, error, tryAgain) => const Icon(Icons.broken_image_outlined, color: _muted, size: 28),
-      );
-    }
-    if (type == 'webp') {
+    // The picker always shows the administrator-selected static thumbnail.
+    // Animated mediaUrl is reserved for the fullscreen gift delivery animation.
+    final thumbnailUrl = (gift['thumbnailUrl'] ?? '').toString().trim();
+    if (thumbnailUrl.startsWith('https://')) {
       return Image.network(
-        url,
+        thumbnailUrl,
         width: 58,
         height: 58,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: _muted, size: 28),
+        errorBuilder: (_, __, ___) => Text(
+          (gift['iconEmoji'] ?? '🎁').toString(),
+          style: const TextStyle(fontSize: 34),
+        ),
       );
     }
-    return Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 34));
+    return Text(
+      (gift['iconEmoji'] ?? '🎁').toString(),
+      style: const TextStyle(fontSize: 34),
+    );
   }
 
   Widget _giftGrid() {
