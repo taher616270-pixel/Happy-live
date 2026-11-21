@@ -30,7 +30,7 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 12900),
+      duration: const Duration(milliseconds: 19900),
     )..addStatusListener((status) {
         if (status == AnimationStatus.completed) _finish();
       });
@@ -72,7 +72,7 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
   }
 
   static const int _boxesPerBatch = 5;
-  static const int _batchFallMs = 1200;
+  static const int _batchFallMs = 1900;
   static const int _batchPauseMs = 100;
   static const int _batchCount = 10;
   static const int _totalDropMs =
