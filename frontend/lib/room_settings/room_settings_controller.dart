@@ -175,7 +175,8 @@ class RoomSettingsController extends ChangeNotifier {
         };
         final date = DateTime.tryParse((row['created_at'] ?? '').toString())?.toLocal();
         final time = date == null ? '' : '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-        if (category.isEmpty) return null;\n        return AdminLogEntry(
+        if (category.isEmpty) return null;
+        return AdminLogEntry(
           user: RoomUser(id: '', name: actor, numericId: ''),
           text: text,
           time: time,
@@ -190,7 +191,9 @@ class RoomSettingsController extends ChangeNotifier {
     }
   }
 
-  String detailsRole(Map<String, dynamic> row) => (row['actor_role'] ?? row['role'] ?? '').toString();\n\n  List<Map<String, dynamic>> _mapRows(Object? value) => value is List
+  String detailsRole(Map<String, dynamic> row) => (row['actor_role'] ?? row['role'] ?? '').toString();
+
+  List<Map<String, dynamic>> _mapRows(Object? value) => value is List
       ? value.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList()
       : <Map<String, dynamic>>[];
 
