@@ -20,7 +20,7 @@ class MicLayoutPreview extends StatelessWidget {
       return Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: selected ? kTeal : Colors.transparent, width: 2.5),
+          border: Border.all(color: selected ? const Color(0xFFD4AF37) : Colors.transparent, width: 2.5),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(15),
@@ -83,7 +83,7 @@ class MicLayoutPreview extends StatelessWidget {
                 top: 4, left: 4,
                 child: Container(
                   width: 18, height: 18,
-                  decoration: const BoxDecoration(color: kTeal, shape: BoxShape.circle),
+                  decoration: const BoxDecoration(color: Color(0xFFD4AF37), shape: BoxShape.circle),
                   child: const Icon(Icons.check_rounded, color: Colors.white, size: 13),
                 ),
               ),
