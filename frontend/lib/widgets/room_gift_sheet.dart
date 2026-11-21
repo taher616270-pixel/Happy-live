@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:happy_live/widgets/global_gift_banner.dart';
 import 'package:flutter_svga/flutter_svga.dart';
-import 'package:gif_view/gif_view.dart';
 
 typedef GiftCatalogLoader = Future<List<Map<String, dynamic>>> Function(String category);
 typedef RoomGiftSender = Future<int> Function(Map<String, dynamic> gift, int quantity, String recipientId);
