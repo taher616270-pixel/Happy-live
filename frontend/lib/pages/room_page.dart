@@ -1844,10 +1844,23 @@ class _RoomPageState extends State<RoomPage> {
   );
 
   void _clearRoomChatForCurrentView(BuildContext host) {
-    setState(() {
-      _messages.clear();
+    final listState = _roomAnimatedListKey.currentState;
+    if (listState == null) {
+      setState(() {
+        _messages.clear();
+        _messageIds.clear();
+      });
+    } else {
+      for (var index = _messages.length - 1; index >= 0; index--) {
+        final message = _messages.removeAt(index);
+        listState.removeItem(
+          index + 1,
+          (context, animation) => _roomMessageAnimatedItem(message, animation, removing: true),
+          duration: const Duration(milliseconds: 140),
+        );
+      }
       _messageIds.clear();
-    });
+    }
     ScaffoldMessenger.maybeOf(host)?.showSnackBar(
       const SnackBar(content: Text('تم مسح الرسائل من عرضك الحالي فقط')),
     );
