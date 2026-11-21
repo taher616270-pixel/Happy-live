@@ -110,14 +110,13 @@ export async function handleRoomTools(
       return respond({ ok: false, error: "room_moderator_permission_required" }, 403);
     }
     const rows = await env.DB.prepare(
-      "SELECT l.target_id AS userId, COALESCE(p.display_name, 'مستخدم') AS name, " +
-      "COALESCE(p.avatar_key, '') AS avatar, " +
-      "COALESCE(json_extract(l.details_json, '$.adminUsername'), 'مشرف') AS by, " +
-      "COALESCE(json_extract(l.details_json, '$.reason'), '') AS reason, " +
-      "l.created_at AS time " +
-      "FROM admin_audit_logs l LEFT JOIN profiles p ON p.user_id = l.target_id " +
-      "WHERE l.action = 'room.user.kick' AND l.target_type = 'room_user' " +
-      "AND json_extract(l.details_json, '$.roomId') = ? " +
+      "SELECT l.target_user_id AS userId, COALESCE(t.display_name, 'مستخدم') AS name, " +
+      "COALESCE(t.avatar_key, '') AS avatar, COALESCE(a.display_name, 'مشرف') AS by, " +
+      "COALESCE(json_extract(l.details_json, '$.reason'), '') AS reason, l.created_at AS time " +
+      "FROM room_settings_logs l " +
+      "LEFT JOIN profiles t ON t.user_id = l.target_user_id " +
+      "LEFT JOIN profiles a ON a.user_id = l.actor_user_id " +
+      "WHERE l.room_id = ? AND l.action = 'kick' " +
       "ORDER BY l.created_at DESC LIMIT 100"
     ).bind(roomId).all();
     return respond({ ok: true, kicks: rows.results ?? [] });
