@@ -57,6 +57,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.onUpgradeRoom,
     this.onOpenGifts,
     this.onRoomSettingsChanged,
+    this.onRoomCoverChanged,
     required this.chatController,
     required this.chatFocusNode,
     required this.onSendChat,
@@ -89,6 +90,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final Future<void> Function(String roomId, int level)? onUpgradeRoom;
   final VoidCallback? onOpenGifts;
   final VoidCallback? onRoomSettingsChanged;
+  final ValueChanged<String>? onRoomCoverChanged;
   final TextEditingController chatController;
   final FocusNode chatFocusNode;
   final Future<void> Function() onSendChat;
@@ -817,6 +819,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 c: RoomSettingsController(
                   api: MyWorkersApi(roomId: roomId, accessToken: accessToken),
                 ),
+                onCoverChanged: onRoomCoverChanged,
               ),
             ),
           ).then((_) => onRoomSettingsChanged?.call());
