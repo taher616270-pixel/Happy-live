@@ -105,7 +105,7 @@ class SettingsTile extends StatelessWidget {
                 ),
               ),
             if (trailing != null) trailing!,
-            if (chevron) ...[const SizedBox(width: 4), const Icon(Icons.chevron_left, color: RS.lightGray, size: 18)],
+            if (chevron) ...[const SizedBox(width: 4), const Icon(Icons.chevron_right, color: RS.lightGray, size: 18)],
           ]),
         ),
       );
