@@ -102,7 +102,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                     title: 'الإسم',
                     value: c.name,
                     valueOffset: const Offset(-30, 0),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإسم', initial: c.name, maxLength: 30, onSave: c.setName))),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإسم', initial: c.name, maxLength: 20, onSave: c.setName))),
                   ),
                   SettingsTile(
                     title: 'الإعلان',
