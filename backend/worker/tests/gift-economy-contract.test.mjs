@@ -247,3 +247,11 @@ test("gift combo count reflects the original quantity sent", () => {
   assert.match(giftSheet, /final sentQuantity = _quantity/);
   assert.match(giftSheet, /_comboCount = sentQuantity/);
 });
+
+test("admin gift catalogue uploads SVGA, GIF, and PAG files to ImageKit", () => {
+  assert.match(adminPage, /newGiftMediaFile/);
+  assert.match(adminPage, /accept="\.svga,\.gif,\.pag"/);
+  assert.match(adminPage, /uploadGiftMedia\(file\)/);
+  assert.match(adminPage, /happy-live\/gifts/);
+  assert.match(worker, /"svga", "gif", "pag", "apng", "webp"/);
+});
