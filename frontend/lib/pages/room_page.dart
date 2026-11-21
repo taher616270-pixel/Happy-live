@@ -1741,8 +1741,14 @@ class _RoomPageState extends State<RoomPage> {
 
   void _showRoomGiftOverlay(Map<String, dynamic> event) {
     final gift = Map<String, dynamic>.from(event);
+    final mediaType = (gift['mediaType'] ?? '').toString().trim().toLowerCase();
     final durationValue = gift['mediaDurationMs'];
-    final durationMs = durationValue is num ? durationValue.toInt().clamp(1800, 5000) : 4000;
+    // SVGA assets may need several seconds to download and decode on mobile
+    // browsers. Do not remove the overlay while the animation is still loading.
+    final defaultDuration = mediaType == 'svga' ? 15000 : 5000;
+    final durationMs = durationValue is num
+        ? durationValue.toInt().clamp(mediaType == 'svga' ? 10000 : 1800, 20000)
+        : defaultDuration;
     _roomGiftOverlayTimer?.cancel();
     unawaited(_playGiftSound(gift));
     setState(() {
@@ -1794,6 +1800,7 @@ class _RoomPageState extends State<RoomPage> {
         key: ValueKey('room-gift-svga-$_roomGiftOverlayNonce'),
         resUrl: mediaUrl,
         fit: BoxFit.contain,
+        loops: true,
         volume: 0,
         muted: true,
       );
