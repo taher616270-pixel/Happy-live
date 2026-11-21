@@ -2267,11 +2267,11 @@ class _RoomPageState extends State<RoomPage> {
               ),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 20,
+                  HappyNetworkAvatar(
+                    url: ownerAvatar,
+                    size: 40,
                     backgroundColor: const Color(0xFF31515A),
-                    backgroundImage: ownerAvatar.startsWith('https://') ? NetworkImage(ownerAvatar) : null,
-                    child: !ownerAvatar.startsWith('https://') ? const Icon(Icons.person_rounded, color: Colors.white70) : null,
+                    fallback: const Icon(Icons.person_rounded, color: Colors.white70),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
