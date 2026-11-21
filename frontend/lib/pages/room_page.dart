@@ -1749,13 +1749,10 @@ class _RoomPageState extends State<RoomPage> {
       _roomGiftOverlayNonce++;
     });
 
-    // Keep animated gifts visible long enough to download and render on web.
-    // Some GIF decoders report completion immediately for optimized/short files,
-    // so the room overlay uses a guarded display timer instead of onFinish.
+    // Show every room gift animation for exactly five seconds, then remove it.
+    // The nonce guard prevents an older timer from hiding a newer gift.
     final overlayNonce = _roomGiftOverlayNonce;
-    final safetyMs = mediaType == 'svga' ? 60000 :
-        (mediaType == 'gif' || mediaType == 'apng') ? 45000 : 5000;
-    _roomGiftOverlayTimer = Timer(Duration(milliseconds: safetyMs), () {
+    _roomGiftOverlayTimer = Timer(const Duration(seconds: 5), () {
       _finishRoomGiftOverlay(overlayNonce);
     });
   }
