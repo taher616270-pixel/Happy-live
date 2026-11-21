@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 
 class GiftBannerData {
   const GiftBannerData({
@@ -178,7 +179,7 @@ class _GiftBannerCard extends StatelessWidget {
               child: imageIsUrl
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(9),
-                      child: Image.network(image, width: 39, height: 39, fit: BoxFit.contain,
+                      child: HappyNetworkImage(image, width: 39, height: 39, fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) => const Text('🎁', style: TextStyle(fontSize: 25))),
                     )
                   : Text(image.isEmpty ? '🎁' : image, style: const TextStyle(fontSize: 25)),
@@ -198,16 +199,14 @@ class _BannerAvatar extends StatelessWidget {
   final String name;
 
   @override
-  Widget build(BuildContext context) {
-    final valid = url.startsWith('https://') || url.startsWith('http://');
-    return CircleAvatar(
-      radius: 17,
-      backgroundColor: Colors.white.withOpacity(.18),
-      backgroundImage: valid ? NetworkImage(url) : null,
-      child: valid ? null : Text(name.isEmpty ? '؟' : name.characters.first, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
-    );
-  }
-}
+  Widget build(BuildContext context) => HappyNetworkAvatar(
+    url: url,
+    size: 34,
+    backgroundColor: Colors.white.withOpacity(.18),
+    fallback: Text(name.isEmpty ? '؟' : name.characters.first,
+      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+  );
+}}
 
 class GiftComboBanner extends StatelessWidget {
   const GiftComboBanner({
@@ -240,7 +239,7 @@ class GiftComboBanner extends StatelessWidget {
           if (isUrl)
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(giftImage, width: 34, height: 34, fit: BoxFit.contain,
+              child: HappyNetworkImage(giftImage, width: 34, height: 34, fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const SizedBox(width: 34, height: 34, child: Center(child: Text('🎁')))),
             )
           else
