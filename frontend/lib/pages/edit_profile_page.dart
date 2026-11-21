@@ -4,6 +4,7 @@ import 'package:happy_live/widgets/square_country_flag.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:file_picker/file_picker.dart';
 
 const _ink = Color(0xFF1E2233);
 const _grey = Color(0xFF8E8CA0);
@@ -148,15 +149,87 @@ class _EditProfilePageState extends State<EditProfilePage> {
       widget.onAvatarTap!();
       return;
     }
+
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 42, height: 4,
+                  decoration: BoxDecoration(color: const Color(0xFFD8D8DE),
+                    borderRadius: BorderRadius.circular(8))),
+                const SizedBox(height: 16),
+                _avatarPickerOption(sheetContext, 'gif', 'GIF', Icons.gif_box_outlined),
+                _avatarPickerOption(sheetContext, 'album', 'البوم الهاتف', Icons.photo_library_outlined),
+                _avatarPickerOption(sheetContext, 'camera', 'التقاط الصور', Icons.camera_alt_outlined),
+                const SizedBox(height: 4),
+                SizedBox(width: double.infinity, child: TextButton(
+                  onPressed: () => Navigator.pop(sheetContext, 'cancel'),
+                  child: const Text('الغاء', style: TextStyle(
+                    color: Color(0xFF777482), fontSize: 16, fontWeight: FontWeight.w700)),
+                )),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (choice == null || choice == 'cancel') return;
+    if (choice == 'gif') {
+      await _pickAvatarGif();
+    } else {
+      await _pickAvatarImage(choice == 'camera' ? ImageSource.camera : ImageSource.gallery);
+    }
+  }
+
+  Widget _avatarPickerOption(BuildContext sheetContext, String value, String title, IconData icon) =>
+      ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+        leading: Icon(icon, color: const Color(0xFFD99B25), size: 25),
+        title: Text(title, style: const TextStyle(
+          color: _ink, fontSize: 16, fontWeight: FontWeight.w700)),
+        onTap: () => Navigator.pop(sheetContext, value),
+      );
+
+  Future<void> _pickAvatarGif() async {
+    try {
+      final selected = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['gif'],
+        withData: true,
+      );
+      if (selected == null || selected.files.isEmpty) return;
+      final file = selected.files.single;
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        _message('تعذر قراءة ملف GIF من الجهاز');
+        return;
+      }
+      await _uploadAvatar(bytes, 'happy-avatar-${DateTime.now().millisecondsSinceEpoch}.gif');
+    } catch (error) {
+      _message(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _pickAvatarImage(ImageSource source) async {
     try {
       final file = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         imageQuality: 95,
         maxWidth: 2400,
       );
       if (file == null) return;
 
-      // Let the user position, zoom and crop the avatar before uploading.
       final cropped = await ImageCropper().cropImage(
         sourcePath: file.path,
         aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
@@ -198,8 +271,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ],
       );
       if (cropped == null) return;
+      await _uploadAvatar(await cropped.readAsBytes(),
+        'happy-avatar-${DateTime.now().millisecondsSinceEpoch}.jpg');
+    } catch (error) {
+      _message(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
 
-      setState(() => _uploading = true);
+  Future<void> _uploadAvatar(List<int> bytes, String fileName) async {
+    if (mounted) setState(() => _uploading = true);
+    try {
       final auth = await http.get(
         Uri.parse('${widget.apiBase}/imagekit/auth'),
         headers: {'Authorization': 'Bearer ${widget.accessToken}'},
@@ -215,7 +296,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'POST', Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
       );
       request.fields.addAll({
-        'fileName': 'happy-avatar-${DateTime.now().millisecondsSinceEpoch}.jpg',
+        'fileName': fileName,
         'publicKey': credentials['publicKey'].toString(),
         'signature': credentials['signature'].toString(),
         'token': credentials['token'].toString(),
@@ -224,7 +305,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'useUniqueFileName': 'true',
       });
       request.files.add(http.MultipartFile.fromBytes(
-        'file', await cropped.readAsBytes(), filename: 'avatar.jpg',
+        'file', bytes, filename: fileName,
       ));
       final streamed = await request.send().timeout(const Duration(seconds: 60));
       final response = await http.Response.fromStream(streamed);
@@ -235,7 +316,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final url = (result['url'] ?? '').toString();
       if (url.isEmpty) throw Exception('لم يرجع خادم الصور رابط الصورة');
       if (mounted) setState(() => _avatarUrl = url);
-      _message('تم رفع الصورة بنجاح');
+      _message(fileName.toLowerCase().endsWith('.gif')
+          ? 'تم رفع صورة GIF المتحركة بنجاح'
+          : 'تم رفع الصورة بنجاح');
     } catch (error) {
       _message(error.toString().replaceFirst('Exception: ', ''));
     } finally {
