@@ -2207,7 +2207,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
   Timer? _timer;
   late final AnimationController _flight = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 2800),
+    duration: const Duration(milliseconds: 4500),
   );
   final GlobalKey _cannonTileKey = GlobalKey();
   OverlayEntry? _flightOverlayEntry;
@@ -2427,14 +2427,20 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
           final screen = MediaQuery.sizeOf(overlayContext);
           final progress = _flight.value.clamp(0.0, 1.0).toDouble();
 
-          // Jet launches from the cannon tile and rises to the screen center.
-          // Responsive scale: 50% of screen width at launch, 70% at the center.
-          final eased = Curves.easeInOutCubic.transform(progress);
+          // Launch from the cannon tile, reach the center at 65%, then
+          // continue rising until the jet exits fully beyond the top edge.
           final startCenterX = origin.dx + renderObject.size.width / 2;
           final startCenterY = origin.dy + renderObject.size.height / 2;
-          final planeCenterX = ui.lerpDouble(startCenterX, screen.width / 2, eased)!;
-          final planeCenterY = ui.lerpDouble(startCenterY, screen.height / 2, eased)!;
-          final planeSize = screen.width * ui.lerpDouble(.50, .70, eased)!;
+          final ascent = (progress / .65).clamp(0.0, 1.0).toDouble();
+          final exit = ((progress - .65) / .35).clamp(0.0, 1.0).toDouble();
+          final centerEase = Curves.easeOutCubic.transform(ascent);
+          final exitEase = Curves.easeInCubic.transform(exit);
+          final planeCenterX = ui.lerpDouble(startCenterX, screen.width / 2, centerEase)!;
+          final centerY = ui.lerpDouble(startCenterY, screen.height / 2, centerEase)!;
+          final planeSize = screen.width * ui.lerpDouble(.65, .95, centerEase)!;
+          final planeCenterY = progress <= .65
+              ? centerY
+              : ui.lerpDouble(centerY, -planeSize * .8, exitEase)!;
           final planeLeft = planeCenterX - planeSize / 2;
           final planeTop = planeCenterY - planeSize / 2;
           final cameraShake = (1 - eased) * 4.5;
@@ -2442,9 +2448,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
             math.sin(progress * math.pi * 42) * cameraShake,
             math.cos(progress * math.pi * 37) * cameraShake,
           );
-          final planeOpacity = progress > .96
-              ? (1 - ((progress - .96) / .04)).clamp(0.0, 1.0).toDouble()
-              : 1.0;
+          final planeOpacity = 1.0;
 
           return SizedBox.expand(
             child: IgnorePointer(
