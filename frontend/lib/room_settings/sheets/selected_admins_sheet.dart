@@ -50,12 +50,12 @@ class _SheetState extends State<_Sheet> {
                   Row(children: [Flexible(child: Text(u.name, overflow: TextOverflow.ellipsis, style: const TextStyle(color: RS.text, fontSize: 14, fontWeight: FontWeight.w800))), const SizedBox(width: 6), LevelBadge(u.level)]),
                   const SizedBox(height: 4), Text('ID: ${u.numericId}', style: const TextStyle(color: RS.gray, fontSize: 12)),
                 ])),
-                Container(width: 22, height: 22, decoration: BoxDecoration(shape: BoxShape.circle, color: on ? RS.primary : Colors.transparent, border: Border.all(color: on ? RS.primary : RS.lightGray)), child: on ? const Icon(Icons.check, size: 15, color: Colors.white) : null),
+                Container(width: 22, height: 22, decoration: BoxDecoration(shape: BoxShape.circle, color: on ? const Color(0xFFD4AF37) : Colors.transparent, border: Border.all(color: on ? const Color(0xFFD4AF37) : RS.lightGray)), child: on ? const Icon(Icons.check, size: 15, color: Colors.white) : null),
               ]),
             ));
           },
         )),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 12), child: PrimaryButton(label: 'تم (${selected.length})', onTap: selected.isEmpty ? null : () => Navigator.pop(context, selected.toList()))),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 12), child: PrimaryButton(label: 'تم (${selected.length})', backgroundColor: const Color(0xFFD4AF37), onTap: selected.isEmpty ? null : () => Navigator.pop(context, selected.toList()))),
       ])),
     );
   }
