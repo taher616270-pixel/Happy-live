@@ -1,0 +1,1 @@
+Contributor podium frame images\n\nAdd three transparent PNG images here:\n- rank_1.png — first place (gold)\n- rank_2.png — second place (silver)\n- rank_3.png — third place (bronze)\n\nEach image should include the complete decorative frame and medal. The app places the contributor avatar and name over the transparent opening.\n
