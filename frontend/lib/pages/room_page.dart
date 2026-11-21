@@ -1699,24 +1699,24 @@ class _RoomPageState extends State<RoomPage> {
         Future<void> submit(String action) async {
           Navigator.of(sheetContext).pop();
           try {
-        final response = await http.post(
-          Uri.parse(_apiBase + '/rooms/' + Uri.encodeComponent(_roomId) + '/battle'),
-          headers: _headers,
-          body: jsonEncode({'action': action}),
-        ).timeout(const Duration(seconds: 10));
-        final payload = jsonDecode(response.body);
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          _showMessage(action == 'start' ? 'بدأ تحدي PK في الغرفة' : 'انتهى تحدي PK');
-        } else {
-          final error = payload is Map ? (payload['error'] ?? '').toString() : '';
-          _showMessage(error == 'battle_already_active'
-              ? 'يوجد تحدي PK نشط بالفعل'
-              : error == 'no_active_battle'
-                  ? 'لا يوجد تحدي PK نشط لإنهائه'
-                  : 'تعذر تنفيذ أمر PK');
-        }
-      } catch (_) {
-        _showMessage('تعذر الاتصال بخدمة PK');
+            final response = await http.post(
+              Uri.parse(_apiBase + '/rooms/' + Uri.encodeComponent(_roomId) + '/battle'),
+              headers: _headers,
+              body: jsonEncode({'action': action}),
+            ).timeout(const Duration(seconds: 10));
+            final payload = jsonDecode(response.body);
+            if (response.statusCode == 200 || response.statusCode == 201) {
+              _showMessage(action == 'start' ? 'بدأ تحدي PK في الغرفة' : 'انتهى تحدي PK');
+            } else {
+              final error = payload is Map ? (payload['error'] ?? '').toString() : '';
+              _showMessage(error == 'battle_already_active'
+                  ? 'يوجد تحدي PK نشط بالفعل'
+                  : error == 'no_active_battle'
+                      ? 'لا يوجد تحدي PK نشط لإنهائه'
+                      : 'تعذر تنفيذ أمر PK');
+            }
+          } catch (_) {
+            _showMessage('تعذر الاتصال بخدمة PK');
           }
         }
 
@@ -1725,20 +1725,23 @@ class _RoomPageState extends State<RoomPage> {
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(18),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Text('إدارة تحدي PK', style: TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 14),
-              ListTile(
-                leading: const Icon(Icons.play_circle_fill, color: Colors.greenAccent),
-                title: const Text('بدء التحدي', style: TextStyle(color: Colors.white)),
-                onTap: () => submit('start'),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('إدارة تحدي PK', style: TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 14),
+                  ListTile(
+                    leading: const Icon(Icons.play_circle_fill, color: Colors.greenAccent),
+                    title: const Text('بدء التحدي', style: TextStyle(color: Colors.white)),
+                    onTap: () => submit('start'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.stop_circle, color: Colors.redAccent),
+                    title: const Text('إنهاء التحدي', style: TextStyle(color: Colors.white)),
+                    onTap: () => submit('end'),
+                  ),
+                ],
               ),
-              ListTile(
-                leading: const Icon(Icons.stop_circle, color: Colors.redAccent),
-                title: const Text('إنهاء التحدي', style: TextStyle(color: Colors.white)),
-                onTap: () => submit('end'),
-              ),
-              ]),
             ),
           ),
         );
