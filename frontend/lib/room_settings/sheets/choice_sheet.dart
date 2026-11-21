@@ -12,7 +12,7 @@ Future<T?> showChoiceSheet<T>(BuildContext context, {required String title, requ
         for (final o in options)
           InkWell(onTap: () => Navigator.pop(ctx, o.key), child: SizedBox(height: 56, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Text(o.value, style: const TextStyle(color: RS.text, fontSize: 15, fontWeight: FontWeight.w800)),
-            if (o.key == selected) ...[const SizedBox(width: 10), const Icon(Icons.check, color: RS.primary, size: 20)],
+            if (o.key == selected) ...[const SizedBox(width: 10), const Icon(Icons.check, color: Color(0xFFD4AF37), size: 20)],
           ]))),
         Container(height: 8, color: RS.groupGap),
         InkWell(onTap: () => Navigator.pop(ctx), child: const SizedBox(height: 54, child: Center(child: Text('إلغاء', style: TextStyle(color: RS.gray, fontSize: 14))))),
