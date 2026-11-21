@@ -1016,14 +1016,25 @@ class _RoomPageState extends State<RoomPage> {
       ).timeout(const Duration(seconds: 10));
       var data = jsonDecode(response.body);
       if (response.statusCode == 423 && data is Map && data['error'] == 'room_password_required' && mounted) {
-        final password = await _askRoomEntryPassword();
-        if (password == null || !mounted) return;
-        response = await http.post(
-          _chatSessionUri,
-          headers: _headers,
-          body: jsonEncode({'action': 'join', 'password': password}),
-        ).timeout(const Duration(seconds: 10));
-        data = jsonDecode(response.body);
+        for (var attempt = 0; attempt < 3; attempt++) {
+          final password = await _askRoomEntryPassword();
+          if (password == null || !mounted) {
+            if (mounted) Navigator.of(context).maybePop();
+            return;
+          }
+          response = await http.post(
+            _chatSessionUri,
+            headers: _headers,
+            body: jsonEncode({'action': 'join', 'password': password}),
+          ).timeout(const Duration(seconds: 10));
+          data = jsonDecode(response.body);
+          if (response.statusCode == 200) break;
+          if (data is Map && data['error'] == 'room_password_incorrect') {
+            _showMessage('كلمة المرور غير صحيحة، حاول مرة أخرى');
+            continue;
+          }
+          break;
+        }
       }
       if (response.statusCode != 200 || data is! Map || data['ok'] != true) {
         if (mounted) {
