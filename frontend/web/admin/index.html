@@ -496,7 +496,7 @@ async function giftsPage(){
         const thumbnailFile=window.confirm("هل تريد اختيار أو استبدال الصورة الثابتة التي تظهر في نافذة الهدايا؟")?await chooseGiftThumbnailFile():null;
         const thumbnailUrl=thumbnailFile?await uploadGiftThumbnail(thumbnailFile):(gift.thumbnailUrl||null);
         const soundFile=window.confirm("هل تريد إضافة أو استبدال صوت الهدية؟")?await chooseGiftSoundFile():null;
-        const soundUrl=soundFile?await uploadGiftSound(soundFile):(gift.soundUrl||null);const durationSeconds=Number(window.prompt("مدة الحركة بالثواني (1 إلى 60)",String(gift.durationSeconds||5)));if(!Number.isInteger(durationSeconds)||durationSeconds<1||durationSeconds>60){alert("مدة الحركة يجب أن تكون من 1 إلى 60 ثانية.");return}
+        const soundUrl=soundFile?await uploadGiftSound(soundFile):(gift.soundUrl||null);const durationRaw=window.prompt("مدة الحركة بالثواني (1 إلى 60)",String(gift.durationSeconds||5));if(durationRaw===null)return;const durationSeconds=Number(durationRaw);if(!Number.isInteger(durationSeconds)||durationSeconds<1||durationSeconds>60){alert("مدة الحركة يجب أن تكون من 1 إلى 60 ثانية.");return}
         const raw=window.prompt("السعر بالعملات",String(gift.coinPrice));if(raw===null)return;
         const coinPrice=Number(raw);
         const orderRaw=window.prompt("ترتيب العرض",String(gift.sortOrder||0));if(orderRaw===null)return;
