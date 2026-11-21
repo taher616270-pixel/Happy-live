@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:happy_live/widgets/square_country_flag.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -606,7 +607,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     child: ClipOval(child: SizedBox(width: 80, height: 80,
       child: Stack(fit: StackFit.expand, children: [
         if ((_avatarUrl ?? '').isNotEmpty)
-          Image.network(_avatarUrl!, fit: BoxFit.cover,
+          HappyNetworkImage(_avatarUrl!, fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => _avatarFallback())
         else _avatarFallback(),
         if (_uploading) const ColoredBox(
