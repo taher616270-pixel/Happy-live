@@ -37,6 +37,7 @@ class _RoomToolsSheet extends StatelessWidget {
   void _run(BuildContext sheetCtx, ToolCb? cb, String name) {
     Navigator.of(sheetCtx).pop();
     Future.microtask(() {
+      if (!host.mounted) return;
       if (cb != null) {
         cb(host);
       } else {
@@ -82,16 +83,40 @@ class _RoomToolsSheet extends StatelessWidget {
         simple('settings', 'إعدادات', admin, _w(Icons.tune_rounded), actions.settings),
         simple('music', 'موسيقى', admin, _w(Icons.music_note_rounded), actions.music),
         simple('soundEffect', 'مؤثر صوتي', admin, _w(Icons.graphic_eq_rounded), actions.soundEffect),
-        tool('lock', c.loadingLock ? 'جارٍ التحميل' : (c.locked ? 'فتح الغرفة' : 'قفل الغرفة'), admin,
-            _w(c.loadingLock ? Icons.hourglass_top_rounded : (c.locked ? Icons.lock_open_rounded : Icons.lock_outline_rounded)), () async {
-          if (c.loadingLock) return;
-          final ok = await c.toggleLock();
-          if (!host.mounted) return;
-          ScaffoldMessenger.maybeOf(host)?.showSnackBar(SnackBar(
-            duration: const Duration(seconds: 1),
-            content: Text(ok ? (c.locked ? 'تم قفل الغرفة' : 'تم فتح الغرفة') : 'تعذر تنفيذ الأمر'),
-          ));
-        }),
+        tool(
+          'lock',
+          c.loadingLock
+              ? 'جارٍ التحميل'
+              : c.lockBusy
+                  ? 'جارٍ التنفيذ'
+                  : !c.lockReady
+                      ? 'إعادة تحميل القفل'
+                      : (c.locked ? 'فتح الغرفة' : 'قفل الغرفة'),
+          admin,
+          _w(c.loadingLock || c.lockBusy
+              ? Icons.hourglass_top_rounded
+              : !c.lockReady
+                  ? Icons.refresh_rounded
+                  : (c.locked ? Icons.lock_open_rounded : Icons.lock_outline_rounded)),
+          () async {
+            if (c.loadingLock || c.lockBusy) return;
+            if (!c.lockReady) {
+              await c.refreshLock();
+              if (!host.mounted) return;
+              ScaffoldMessenger.maybeOf(host)?.showSnackBar(SnackBar(
+                duration: const Duration(seconds: 1),
+                content: Text(c.lockReady ? 'تم تحديث حالة قفل الغرفة' : 'تعذر تحميل حالة القفل'),
+              ));
+              return;
+            }
+            final ok = await c.toggleLock();
+            if (!host.mounted) return;
+            ScaffoldMessenger.maybeOf(host)?.showSnackBar(SnackBar(
+              duration: const Duration(seconds: 1),
+              content: Text(ok ? (c.locked ? 'تم قفل الغرفة' : 'تم فتح الغرفة') : 'تعذر تنفيذ الأمر'),
+            ));
+          },
+        ),
         simple('micMode', 'وضع الميكروفون', admin, _w(Icons.event_seat_rounded), actions.micMode),
         simple('background', 'خلفية', admin, _w(Icons.image_outlined), actions.background),
         tool('kickLog', 'سجل الطرد', admin, _w(Icons.person_remove_alt_1_rounded), () {
@@ -111,8 +136,23 @@ class _RoomToolsSheet extends StatelessWidget {
           const SnackBar(content: Text('تم نسخ رابط الغرفة'), duration: Duration(seconds: 1)),
         );
       }),
-      tool('mic', c.micOpen ? 'المايك مفتوح' : 'المايك مغلق', other,
-          _w(c.micOpen ? Icons.volume_up_rounded : Icons.volume_off_rounded), c.toggleMic),
+      tool(
+        'mic',
+        c.micBusy ? 'جارٍ تحديث المايك' : (c.micOpen ? 'المايك مفتوح' : 'المايك مغلق'),
+        other,
+        _w(c.micBusy
+            ? Icons.hourglass_top_rounded
+            : (c.micOpen ? Icons.volume_up_rounded : Icons.volume_off_rounded)),
+        () async {
+          if (c.micBusy) return;
+          final ok = await c.toggleMic();
+          if (!ok && host.mounted) {
+            ScaffoldMessenger.maybeOf(host)?.showSnackBar(
+              const SnackBar(content: Text('تعذر تغيير حالة المايك')),
+            );
+          }
+        },
+      ),
 
       simple('store', 'متجر', more, _w(Icons.storefront_outlined), actions.store),
       simple('activity', 'نشاط', more, _w(Icons.flag_outlined), actions.activity),
