@@ -145,11 +145,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _chooseAvatar() async {
-    if (widget.onAvatarTap != null) {
-      widget.onAvatarTap!();
-      return;
-    }
-
     final choice = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.white,
