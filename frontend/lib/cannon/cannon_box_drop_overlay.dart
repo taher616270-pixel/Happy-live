@@ -30,7 +30,7 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 16),
+      duration: const Duration(milliseconds: 12900),
     )..addStatusListener((status) {
         if (status == AnimationStatus.completed) _finish();
       });
@@ -71,9 +71,18 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
     super.dispose();
   }
 
+  static const int _boxesPerBatch = 5;
+  static const int _batchFallMs = 1200;
+  static const int _batchPauseMs = 100;
+  static const int _batchCount = 10;
+  static const int _totalDropMs =
+      _batchCount * _batchFallMs + (_batchCount - 1) * _batchPauseMs;
+
   double _fraction(int index) {
-    final stagger = (index / 50) * .92;
-    return ((_controller.value - stagger) / (1 - stagger))
+    final batch = index ~/ _boxesPerBatch;
+    final startMs = batch * (_batchFallMs + _batchPauseMs);
+    final elapsedMs = _controller.value * _totalDropMs;
+    return ((elapsedMs - startMs) / _batchFallMs)
         .clamp(0.0, 1.0)
         .toDouble();
   }
@@ -88,7 +97,9 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
           clipBehavior: Clip.none,
           children: [
             for (var index = 0; index < 50; index++)
-              if (!_opened.contains(index) && _controller.value >= (index / 50) * .92)
+              if (!_opened.contains(index) &&
+                  _controller.value * _totalDropMs >=
+                      (index ~/ _boxesPerBatch) * (_batchFallMs + _batchPauseMs))
                 _fallingBox(index, size),
             Positioned(
               left: 0,
