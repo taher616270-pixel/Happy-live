@@ -86,14 +86,14 @@ class RoomToolsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> toggleLock() async {
+  Future<bool> toggleLock({String? password}) async {
     if (lockBusy || !lockReady || !role.canManage) return false;
     lockBusy = true;
     notifyListeners();
     final next = !locked;
     var ok = false;
     try {
-      ok = await RoomToolsApi.setLocked(roomId, next);
+      ok = await RoomToolsApi.setLocked(roomId, next, password: password);
     } catch (_) {
       ok = false;
     }
