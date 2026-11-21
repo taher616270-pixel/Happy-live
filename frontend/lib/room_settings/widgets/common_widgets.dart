@@ -48,13 +48,15 @@ class PrimaryButton extends StatelessWidget {
   final String label;
   final String? subtitle;
   final VoidCallback? onTap;
-  const PrimaryButton({super.key, required this.label, this.subtitle, this.onTap});
+  final Color? backgroundColor;
+  final Color? textColor;
+  const PrimaryButton({super.key, required this.label, this.subtitle, this.onTap, this.backgroundColor, this.textColor});
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
     final h = subtitle == null ? 44.0 : 54.0;
     return Material(
-      color: enabled ? RS.primary : RS.shade,
+      color: enabled ? (backgroundColor ?? RS.primary) : RS.shade,
       borderRadius: BorderRadius.circular(h / 2),
       child: InkWell(
         onTap: onTap,
@@ -62,7 +64,7 @@ class PrimaryButton extends StatelessWidget {
         child: SizedBox(
           height: h, width: double.infinity,
           child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(label, style: TextStyle(color: enabled ? Colors.white : RS.lightGray, fontSize: 15, fontWeight: FontWeight.w800)),
+            Text(label, style: TextStyle(color: enabled ? (textColor ?? Colors.white) : RS.lightGray, fontSize: 15, fontWeight: FontWeight.w800)),
             if (subtitle != null) Text(subtitle!, style: const TextStyle(color: Colors.white, fontSize: 10)),
           ])),
         ),
