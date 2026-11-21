@@ -1818,8 +1818,9 @@ export default {
           .bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
         const now = new Date().toISOString();
-        const [voiceEnabled, ban, kick, controlKick, profile, control, moderator, settingsRow] = await Promise.all([
-          isAgoraVoiceEnabled(env.DB, env),
+        // Keep the room realtime socket available for gifts and room state even
+        // when Agora voice is globally disabled. Voice publishing is gated separately.
+        const [ban, kick, controlKick, profile, control, moderator, settingsRow] = await Promise.all([
           env.DB!.prepare("SELECT user_id FROM room_bans WHERE room_id = ? AND user_id = ? LIMIT 1").bind(roomId, user.id).first(),
           env.DB!.prepare("SELECT kicked_until FROM room_kicks WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
           env.DB!.prepare("SELECT kicked_until FROM room_user_controls WHERE room_id = ? AND user_id = ? AND kicked_until > ? LIMIT 1").bind(roomId, user.id, now).first(),
@@ -1830,7 +1831,6 @@ export default {
         ]);
         if (kick || controlKick) return json({ error: "room_kicked" }, 403, origin, env);
         if (ban) return json({ error: "room_banned" }, 403, origin, env);
-        if (!voiceEnabled) return json({ error: "agora_voice_disabled" }, 503, origin, env);
         let roomSettings: Record<string, unknown> = {};
         try { roomSettings = settingsRow?.settings_json ? JSON.parse(settingsRow.settings_json) as Record<string, unknown> : {}; } catch { roomSettings = {}; }
         const isRoomOwner = room.owner_user_id === user.id;
