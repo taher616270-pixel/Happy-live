@@ -3,12 +3,13 @@ import 'room_tools_api.dart';
 import 'room_tools_models.dart';
 
 typedef ToolCb = void Function(BuildContext context);
+typedef RoomMicToggle = Future<bool> Function(bool open);
 
 class RoomToolsActions {
   final ToolCb? counter, pk, salute, redEnvelope, games, lucky;
   final ToolCb? clearChat, settings, music, soundEffect, micMode, background;
   final ToolCb? visualEffect, store, activity;
-  final void Function(bool open)? onMicToggle;
+  final RoomMicToggle? onMicToggle;
   final VoidCallback? onOpenGifts;
 
   const RoomToolsActions({
@@ -49,7 +50,9 @@ class RoomToolsController extends ChangeNotifier {
   bool locked = false;
   bool micOpen;
   bool loadingLock = true;
-  bool _busy = false;
+  bool lockReady = false;
+  bool lockBusy = false;
+  bool micBusy = false;
   bool _disposed = false;
 
   @override
@@ -61,27 +64,62 @@ class RoomToolsController extends ChangeNotifier {
   Future<void> _load() async {
     final state = await RoomToolsApi.fetchLocked(roomId);
     if (_disposed) return;
-    if (state != null) locked = state;
+    if (state != null) {
+      locked = state;
+      lockReady = true;
+    }
+    loadingLock = false;
+    notifyListeners();
+  }
+
+  Future<void> refreshLock() async {
+    if (loadingLock || lockBusy) return;
+    loadingLock = true;
+    notifyListeners();
+    final state = await RoomToolsApi.fetchLocked(roomId);
+    if (_disposed) return;
+    if (state != null) {
+      locked = state;
+      lockReady = true;
+    }
     loadingLock = false;
     notifyListeners();
   }
 
   Future<bool> toggleLock() async {
-    if (_busy || !role.canManage) return false;
-    _busy = true;
+    if (lockBusy || !lockReady || !role.canManage) return false;
+    lockBusy = true;
     notifyListeners();
     final next = !locked;
-    final ok = await RoomToolsApi.setLocked(roomId, next);
+    var ok = false;
+    try {
+      ok = await RoomToolsApi.setLocked(roomId, next);
+    } catch (_) {
+      ok = false;
+    }
     if (_disposed) return false;
     if (ok) locked = next;
-    _busy = false;
+    lockBusy = false;
     notifyListeners();
     return ok;
   }
 
-  void toggleMic() {
-    micOpen = !micOpen;
-    actions.onMicToggle?.call(micOpen);
+  Future<bool> toggleMic() async {
+    if (micBusy) return false;
+    micBusy = true;
     notifyListeners();
+    final next = !micOpen;
+    var ok = true;
+    try {
+      final callback = actions.onMicToggle;
+      if (callback != null) ok = await callback(next);
+    } catch (_) {
+      ok = false;
+    }
+    if (_disposed) return false;
+    if (ok) micOpen = next;
+    micBusy = false;
+    notifyListeners();
+    return ok;
   }
 }
