@@ -101,6 +101,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                   SettingsTile(
                     title: 'الإسم',
                     value: c.name,
+                    valueOffset: const Offset(-30, 0),
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإسم', initial: c.name, maxLength: 30, onSave: c.setName))),
                   ),
                   SettingsTile(
