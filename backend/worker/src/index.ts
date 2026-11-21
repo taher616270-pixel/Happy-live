@@ -1940,8 +1940,8 @@ export default {
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = decodeURIComponent(chatSessionRoute[1]);
         const room = await env.DB!.prepare(
-          "SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
-        ).bind(roomId).first<{ id: string; owner_user_id: string }>();
+          "SELECT id, owner_user_id, COALESCE(locked, 0) AS locked FROM rooms WHERE id = ? AND status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string; owner_user_id: string; locked: number }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
         const [entrySettingsRow, entryModerator] = await Promise.all([
           env.DB!.prepare("SELECT settings_json FROM room_settings WHERE room_id = ? LIMIT 1").bind(roomId).first<{ settings_json: string }>(),
@@ -1967,6 +1967,9 @@ export default {
         catch { return json({ error: "invalid_json" }, 400, origin, env); }
         const action = body.action === "leave" ? "leave" : body.action === "join" ? "join" : "";
         if (!action) return json({ error: "invalid_chat_session_action" }, 400, origin, env);
+        if (action === "join" && room.locked === 1 && room.owner_user_id !== user.id && !entryModerator) {
+          return json({ error: "room_locked", message: "الغرفة مقفلة حاليًا" }, 403, origin, env);
+        }
         const now = new Date().toISOString();
         if (action === "join") {
           // A new visit starts with a clean view of chat history. Any abandoned
