@@ -3,6 +3,7 @@ import { handleGamesApiRequest, isRegisteredGameOrigin } from "./games_api";
 import { handlePlatformCallbackRequest } from "./platform_callback";
 import { addCannonEnergy, handleCannonRequest } from "./cannon_api";
 import { addRoomContribution, handleRoomContrib } from "./room_contrib";
+import { handleRoomTools, isRoomLocked } from "./room_tools";
 export { RoomSeatsHub } from "./room_seats_hub";
 export { GlobalGiftHub } from "./global_gift_hub";
 import type { GlobalGiftHub } from "./global_gift_hub";
@@ -437,6 +438,18 @@ export default {
       }
       return new Response(null, { status: 204, headers });
     }
+
+    const roomToolsResponse = await handleRoomTools(
+      request,
+      env,
+      async () => {
+        if (!env.DB) return null;
+        const user = await authenticatedUser(request, env.DB);
+        return user ? { id: user.id, display_name: user.display_name } : null;
+      },
+      (data, status = 200) => json(data, status, origin, env)
+    );
+    if (roomToolsResponse) return roomToolsResponse;
 
     // Authenticated room contributor ranking. The current user is derived from
     // the session token; a query-string user_id is never trusted for self-rank.
@@ -3099,8 +3112,8 @@ export default {
         const now = new Date().toISOString();
         const dayKey = saudiDayKey(now);
         const room = await env.DB!.prepare(
-          "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, COALESCE(rl.level, 1) AS level, COALESCE(rx.total_exp, 0) AS total_exp, p.display_name AS owner_name, p.avatar_key AS owner_avatar_url, p.country_name AS owner_country_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN room_levels rl ON rl.room_id = r.id LEFT JOIN room_experience rx ON rx.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
-        ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; level: number; total_exp: number; owner_name: string | null; owner_avatar_url: string | null; owner_country_name: string | null }>();
+          "SELECT r.id, r.owner_user_id, r.name, r.description, COALESCE(ra.announcement, r.description, '') AS announcement, r.image_url, r.room_code, COALESCE(r.locked, 0) AS locked, COALESCE(rl.level, 1) AS level, COALESCE(rx.total_exp, 0) AS total_exp, p.display_name AS owner_name, p.avatar_key AS owner_avatar_url, p.country_name AS owner_country_name FROM rooms r LEFT JOIN room_announcements ra ON ra.room_id = r.id LEFT JOIN room_levels rl ON rl.room_id = r.id LEFT JOIN room_experience rx ON rx.room_id = r.id LEFT JOIN profiles p ON p.user_id = r.owner_user_id WHERE r.id = ? AND r.status = 'active' LIMIT 1"
+        ).bind(roomId).first<{ id: string; owner_user_id: string; name: string; description: string; announcement: string; image_url: string | null; room_code: string; locked: number; level: number; total_exp: number; owner_name: string | null; owner_avatar_url: string | null; owner_country_name: string | null }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
 
         const [voiceEnabled, activeBan, activeKick, controlKick, profile, myControl, roomModerator] = await Promise.all([
@@ -3119,6 +3132,12 @@ export default {
         try { roomSettings = savedRoomSettings?.settings_json ? JSON.parse(savedRoomSettings.settings_json) as Record<string, unknown> : {}; } catch { roomSettings = {}; }
         const isRoomOwner = room.owner_user_id === user.id;
         const isRoomModerator = !!roomModerator;
+        if (room.locked === 1 && !isRoomOwner && !isRoomModerator) {
+          const activeVisit = await env.DB!.prepare(
+            "SELECT 1 AS active FROM room_chat_visits WHERE room_id = ? AND user_id = ? AND exited_at IS NULL LIMIT 1"
+          ).bind(roomId, user.id).first();
+          if (!activeVisit) return json({ error: "room_locked", message: "الغرفة مقفلة حاليًا" }, 403, origin, env);
+        }
         if (String(roomSettings.whoEnter ?? "everyone") === "ownerAndAdmins" && !isRoomOwner && !isRoomModerator) {
           return json({ error: "room_entry_restricted", message: "دخول هذه الغرفة متاح للمالك والمشرفين فقط" }, 403, origin, env);
         }
@@ -3298,7 +3317,7 @@ export default {
           audienceUsers,
           voiceEnabled,
           seatRevision: snapshot.revision ?? 0,
-          room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code, level: room.level, palaceStatus: room.level >= 5 ? 'مفعّل' : 'غير مفعّل', experienceLevel: experience.level, experienceExp: experience.exp, experienceNextLevelExp: experience.nextLevelExp, experienceTotalExp: Number(room.total_exp ?? 0), micCount: Number(roomSettings.seats ?? 8), micLayoutId: String(roomSettings.micLayoutId ?? ("m" + Number(roomSettings.seats ?? 8))), dailyExperienceExp: Number(dailyExperience?.points ?? 0), dailyMicExperienceExp: Number(dailyMicExperience?.points ?? 0), dailyGiftExperienceExp: Number(dailyGiftExperience?.points ?? 0), dailyExperienceMax: ROOM_EXP_DAILY_ROOM_CAP, dailyResetInSeconds: secondsUntilSaudiMidnight(now), dailyExperienceUpdatedAt: now, dailyExperienceBreakdown: { total: Number(dailyExperience?.points ?? 0), microphone: Number(dailyMicExperience?.points ?? 0), gifts: Number(dailyGiftExperience?.points ?? 0) } },
+          room: { id: room.id, name: room.name, description: room.description, announcement: room.announcement, imageUrl: room.image_url, roomCode: room.room_code, locked: room.locked === 1, level: room.level, palaceStatus: room.level >= 5 ? 'مفعّل' : 'غير مفعّل', experienceLevel: experience.level, experienceExp: experience.exp, experienceNextLevelExp: experience.nextLevelExp, experienceTotalExp: Number(room.total_exp ?? 0), micCount: Number(roomSettings.seats ?? 8), micLayoutId: String(roomSettings.micLayoutId ?? ("m" + Number(roomSettings.seats ?? 8))), dailyExperienceExp: Number(dailyExperience?.points ?? 0), dailyMicExperienceExp: Number(dailyMicExperience?.points ?? 0), dailyGiftExperienceExp: Number(dailyGiftExperience?.points ?? 0), dailyExperienceMax: ROOM_EXP_DAILY_ROOM_CAP, dailyResetInSeconds: secondsUntilSaudiMidnight(now), dailyExperienceUpdatedAt: now, dailyExperienceBreakdown: { total: Number(dailyExperience?.points ?? 0), microphone: Number(dailyMicExperience?.points ?? 0), gifts: Number(dailyGiftExperience?.points ?? 0) } },
           owner: { id: room.owner_user_id, name: room.owner_name?.trim() || "صاحب الغرفة", avatarUrl: room.owner_avatar_url ?? "", countryName: room.owner_country_name ?? "" },
           me: { id: user.id, name: user.display_name?.trim() || "مستخدم", userCode: user.happy_id ?? "", avatarUrl: profile?.avatar_key ?? "", countryName: profile?.country_name ?? "", isMuted: myControl?.is_muted === 1, isBanned: !!activeBan },
           isOwner: room.owner_user_id === user.id,
