@@ -12,7 +12,7 @@ class AdminLogPage extends StatefulWidget {
 }
 
 class _AdminLogPageState extends State<AdminLogPage> {
-  static const cats = ['الكل', 'طرد', 'كتم', 'تعيين الأدوار', 'عمليات أخرى'];
+  static const cats = ['طرد', 'كتم', 'تعيين الأدوار'];
   int tab = 0;
   String query = '';
 
@@ -22,7 +22,7 @@ class _AdminLogPageState extends State<AdminLogPage> {
       animation: widget.c,
       builder: (context, _) {
         final items = widget.c.logs.where((e) {
-          final categoryMatches = tab == 0 || e.category == cats[tab];
+          final categoryMatches = e.category == cats[tab];
           final queryMatches = e.user.name.toLowerCase().contains(query.toLowerCase()) ||
               e.text.toLowerCase().contains(query.toLowerCase());
           return categoryMatches && queryMatches;
@@ -70,9 +70,9 @@ class _AdminLogPageState extends State<AdminLogPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: on ? RS.primaryDark : Colors.white,
+                        color: on ? const Color(0xFFD4AF37) : Colors.white,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: on ? RS.primaryDark : const Color(0xFFE3E4E8)),
+                        border: Border.all(color: on ? const Color(0xFFD4AF37) : const Color(0xFFE3E4E8)),
                       ),
                       child: Text(cats[i], style: TextStyle(color: on ? Colors.white : RS.gray, fontSize: 12, fontWeight: FontWeight.w800)),
                     ),
