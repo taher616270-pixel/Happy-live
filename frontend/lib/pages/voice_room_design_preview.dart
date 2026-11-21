@@ -52,6 +52,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.onModerateUser,
     this.showRoomActions = false,
     this.onRoomActions,
+    this.onRoomTools,
     this.onMinimizeRoom,
     this.onCloseRoom,
     this.onUpgradeRoom,
@@ -85,6 +86,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final Future<bool> Function(String targetUserId, String action)? onModerateUser;
   final bool showRoomActions;
   final VoidCallback? onRoomActions;
+  final VoidCallback? onRoomTools;
   final VoidCallback? onMinimizeRoom;
   final VoidCallback? onCloseRoom;
   final Future<void> Function(String roomId, int level)? onUpgradeRoom;
@@ -2030,9 +2032,13 @@ Widget _roomActionButton({
               ),
             ),
             const SizedBox(width: 13),
-            const CustomPaint(
-              size: Size(26, 26),
-              painter: _RoomGridIconPainter(),
+            InkWell(
+              onTap: onRoomTools,
+              borderRadius: BorderRadius.circular(8),
+              child: const CustomPaint(
+                size: Size(26, 26),
+                painter: _RoomGridIconPainter(),
+              ),
             ),
           ],
         ),
