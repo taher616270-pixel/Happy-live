@@ -6,10 +6,12 @@ class CannonBoxDropOverlay extends StatefulWidget {
   const CannonBoxDropOverlay({
     super.key,
     required this.roundId,
+    this.demoMode = false,
     required this.onFinished,
   });
 
   final String roundId;
+  final bool demoMode;
   final ValueChanged<List<Map<String, dynamic>>> onFinished;
 
   @override
@@ -38,7 +40,9 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
   Future<void> _open(int index) async {
     if (_finishing || _opened.contains(index) || !_busy.add(index)) return;
     setState(() {});
-    final success = await CannonApi.openBox(widget.roundId, index);
+    final success = widget.demoMode
+        ? true
+        : await CannonApi.openBox(widget.roundId, index);
     if (!mounted) return;
     _busy.remove(index);
     if (success) _opened.add(index);
@@ -48,6 +52,10 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
   Future<void> _finish() async {
     if (_finishing) return;
     _finishing = true;
+    if (widget.demoMode) {
+      if (mounted) widget.onFinished(<Map<String, dynamic>>[]);
+      return;
+    }
     List<Map<String, dynamic>>? results;
     for (var attempt = 0; attempt < 4 && results == null; attempt++) {
       if (attempt > 0) await Future<void>.delayed(const Duration(milliseconds: 250));
