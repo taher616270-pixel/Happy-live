@@ -200,30 +200,24 @@ class _ContribContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final entries = data.entries;
-    final rest = entries.length > 3 ? entries.skip(3).toList() : <ContribEntry>[];
+    final entries = data.entries.take(30).toList();
+    final top = entries.take(3).toList();
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       children: [
-        ContribPodium(top: entries.take(3).toList()),
+        ContribPodium(top: top),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 5),
           child: Divider(color: Colors.white.withOpacity(.16), height: 15),
         ),
-        if (rest.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 22),
-            child: Text(
-              entries.isEmpty ? 'لا توجد مساهمات في هذه الفترة بعد' : 'لا توجد مراكز إضافية',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-          )
-        else
-          ...List.generate(rest.length, (index) {
-            final entry = rest[index];
-            return _ContributorRow(rank: index + 4, entry: entry);
-          }),
+        // 3 podium places + 27 list places = 30 ranked contributors.
+        ...List.generate(27, (index) {
+          final rank = index + 4;
+          final entryIndex = rank - 1;
+          final entry = entryIndex < entries.length ? entries[entryIndex] : null;
+          return _ContributorRow(rank: rank, entry: entry);
+        }),
       ],
     );
   }
@@ -232,10 +226,11 @@ class _ContribContent extends StatelessWidget {
 class _ContributorRow extends StatelessWidget {
   const _ContributorRow({required this.rank, required this.entry});
   final int rank;
-  final ContribEntry entry;
+  final ContribEntry? entry;
 
   @override
   Widget build(BuildContext context) {
+    final hasContributor = entry != null;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 7),
       child: Row(
@@ -253,15 +248,20 @@ class _ContributorRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 9),
-          ContribAvatar(url: entry.avatarUrl, size: 39),
+          ContribAvatar(
+            url: entry?.avatarUrl ?? '',
+            size: 39,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              entry.name.isEmpty ? 'مستخدم' : entry.name,
+              hasContributor && entry!.name.trim().isNotEmpty
+                  ? entry.name
+                  : 'سيتم تحديده',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: hasContributor ? Colors.white : Colors.white54,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -270,7 +270,7 @@ class _ContributorRow extends StatelessWidget {
           const ContribCoin(size: 16),
           const SizedBox(width: 5),
           Text(
-            contribFmt(entry.amount),
+            hasContributor ? contribFmt(entry!.amount) : '—',
             style: const TextStyle(
               color: Color(0xFFFFE3A0),
               fontSize: 12,
