@@ -91,9 +91,13 @@ class SettingsTile extends StatelessWidget {
           child: Row(children: [
             Expanded(child: Text(title, style: const TextStyle(color: RS.text, fontSize: 14, fontWeight: FontWeight.w600))),
             if (value != null)
-              Flexible(
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.52,
+                ),
                 child: Text(
                   value!,
+                  textAlign: TextAlign.start,
                   maxLines: valueMaxLines,
                   softWrap: true,
                   overflow: valueMaxLines == 1 ? TextOverflow.ellipsis : TextOverflow.visible,
