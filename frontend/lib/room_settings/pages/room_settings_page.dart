@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models.dart';
 import '../room_settings_controller.dart';
 import '../sheets/choice_sheet.dart';
@@ -42,24 +43,166 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
     }
   }
 
+  Future<String?> _showCoverSourceSheet() => showModalBottomSheet<String>(
+        context: context,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        builder: (sheetContext) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD8D8DE),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _coverSourceOption(sheetContext, 'gif', 'GIF', Icons.gif_box_outlined),
+                  _coverSourceOption(sheetContext, 'album', 'البوم الهاتف', Icons.photo_library_outlined),
+                  _coverSourceOption(sheetContext, 'camera', 'التقاط الصور', Icons.camera_alt_outlined),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(sheetContext, 'cancel'),
+                      child: const Text(
+                        'الغاء',
+                        style: TextStyle(
+                          color: Color(0xFF777482),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+  Widget _coverSourceOption(
+    BuildContext sheetContext,
+    String value,
+    String title,
+    IconData icon,
+  ) =>
+      ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+        leading: const SizedBox.shrink(),
+        title: Row(
+          children: [
+            Icon(icon, color: const Color(0xFFD99B25), size: 25),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                color: RS.text,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        onTap: () => Navigator.pop(sheetContext, value),
+      );
+
+  List<int> _forceGifInfiniteLoop(List<int> source) {
+    final bytes = List<int>.from(source);
+    if (bytes.length < 13) return bytes;
+    final signature = String.fromCharCodes(bytes.take(6));
+    if (signature != 'GIF87a' && signature != 'GIF89a') return bytes;
+
+    const marker = 'NETSCAPE2.0';
+    final markerBytes = marker.codeUnits;
+    for (var i = 0; i <= bytes.length - markerBytes.length - 9; i++) {
+      var matches = true;
+      for (var j = 0; j < markerBytes.length; j++) {
+        if (bytes[i + j] != markerBytes[j]) {
+          matches = false;
+          break;
+        }
+      }
+      if (matches && i + 14 < bytes.length &&
+          bytes[i + 11] == 0x03 && bytes[i + 12] == 0x01) {
+        bytes[i + 13] = 0;
+        bytes[i + 14] = 0;
+        return bytes;
+      }
+    }
+
+    final packed = bytes[10];
+    var insertAt = 13;
+    if ((packed & 0x80) != 0) {
+      insertAt += 3 * (1 << ((packed & 0x07) + 1));
+    }
+    if (insertAt > bytes.length) return bytes;
+    bytes.insertAll(insertAt, [
+      0x21, 0xFF, 0x0B,
+      ...markerBytes,
+      0x03, 0x01, 0x00, 0x00, 0x00,
+    ]);
+    return bytes;
+  }
+
   Future<void> _pickCover() async {
     if (_uploadingCover) return;
+    final choice = await _showCoverSourceSheet();
+    if (!mounted || choice == null || choice == 'cancel') return;
+
     try {
-      final image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 88,
-        maxWidth: 1600,
-        maxHeight: 1600,
-      );
-      if (image == null || !mounted) return;
-      final bytes = await image.readAsBytes();
-      if (bytes.isEmpty || bytes.length > 5 * 1024 * 1024) {
-        showRsToast(context, 'حجم الصورة يجب ألا يتجاوز 5 ميجابايت');
-        return;
+      if (choice == 'gif') {
+        final selected = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: const ['gif'],
+          withData: true,
+        );
+        if (selected == null || selected.files.isEmpty) return;
+        final file = selected.files.single;
+        final bytes = file.bytes;
+        if (bytes == null || bytes.isEmpty) {
+          showRsToast(context, 'تعذر قراءة ملف GIF من الجهاز');
+          return;
+        }
+        if (bytes.length > 5 * 1024 * 1024) {
+          showRsToast(context, 'حجم الصورة يجب ألا يتجاوز 5 ميجابايت');
+          return;
+        }
+        setState(() => _uploadingCover = true);
+        await c.setCoverBytes(
+          Uint8List.fromList(_forceGifInfiniteLoop(bytes)),
+          file.name.isEmpty ? 'room-cover.gif' : file.name,
+        );
+      } else {
+        final image = await _imagePicker.pickImage(
+          source: choice == 'camera' ? ImageSource.camera : ImageSource.gallery,
+          imageQuality: 88,
+          maxWidth: 1600,
+          maxHeight: 1600,
+        );
+        if (image == null || !mounted) return;
+        final bytes = await image.readAsBytes();
+        if (bytes.isEmpty || bytes.length > 5 * 1024 * 1024) {
+          showRsToast(context, 'حجم الصورة يجب ألا يتجاوز 5 ميجابايت');
+          return;
+        }
+        setState(() => _uploadingCover = true);
+        await c.setCoverBytes(
+          bytes,
+          image.name.isEmpty ? 'room-cover.jpg' : image.name,
+        );
       }
-      setState(() => _uploadingCover = true);
-      await c.setCoverBytes(bytes, image.name.isEmpty ? 'room-cover.jpg' : image.name);
-      if (mounted) showRsToast(context, 'تم تحديث غلاف الغرفة');
+      if (mounted) showRsToast(context, 'تم تحديث صورة الغرفة');
     } catch (e) {
       if (mounted) showRsToast(context, e.toString().replaceFirst('Exception: ', ''));
     } finally {
