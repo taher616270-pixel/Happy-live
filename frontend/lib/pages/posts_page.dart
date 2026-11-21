@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
@@ -596,9 +597,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                                   child: Padding(
                                     padding: const EdgeInsets.all(7),
                                     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  InkWell(onTap: () => _openUserProfile(reply), child: CircleAvatar(radius: 14, backgroundColor: const Color(0xFFF3F0E8),
-                                    backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
-                                    child: avatar.isEmpty ? Text(replyName.isEmpty ? 'م' : replyName.characters.first, style: const TextStyle(color: Color(0xFF80602B), fontSize: 10, fontWeight: FontWeight.w900)) : null)),
+                                  InkWell(onTap: () => _openUserProfile(reply), child: HappyNetworkAvatar(url: avatar, size: 28, backgroundColor: const Color(0xFFF3F0E8), fallback: Text(replyName.isEmpty ? 'م' : replyName.characters.first, style: const TextStyle(color: Color(0xFF80602B), fontSize: 10, fontWeight: FontWeight.w900)))),
                                   const SizedBox(width: 8),
                                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                     InkWell(onTap: () => _openUserProfile(reply), child: Text(replyName, style: const TextStyle(color: _ink, fontSize: 11, fontWeight: FontWeight.w900))),
@@ -1095,7 +1094,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
           child: url.isEmpty
               ? Center(child: Text(name.isEmpty ? 'م' : name.characters.first,
                   style: const TextStyle(color: Color(0xFF80602B), fontWeight: FontWeight.w900, fontSize: 16)))
-              : Image.network(url, fit: BoxFit.cover,
+              : HappyNetworkImage(url, fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Center(child: Text(name.isEmpty ? 'م' : name.characters.first,
                     style: const TextStyle(color: Color(0xFF80602B), fontWeight: FontWeight.w900, fontSize: 16)))),
         ),
