@@ -82,8 +82,9 @@ class _RoomToolsSheet extends StatelessWidget {
         simple('settings', 'إعدادات', admin, _w(Icons.tune_rounded), actions.settings),
         simple('music', 'موسيقى', admin, _w(Icons.music_note_rounded), actions.music),
         simple('soundEffect', 'مؤثر صوتي', admin, _w(Icons.graphic_eq_rounded), actions.soundEffect),
-        tool('lock', c.locked ? 'فتح الغرفة' : 'قفل الغرفة', admin,
-            _w(c.locked ? Icons.lock_open_rounded : Icons.lock_outline_rounded), () async {
+        tool('lock', c.loadingLock ? 'جارٍ التحميل' : (c.locked ? 'فتح الغرفة' : 'قفل الغرفة'), admin,
+            _w(c.loadingLock ? Icons.hourglass_top_rounded : (c.locked ? Icons.lock_open_rounded : Icons.lock_outline_rounded)), () async {
+          if (c.loadingLock) return;
           final ok = await c.toggleLock();
           if (!host.mounted) return;
           ScaffoldMessenger.maybeOf(host)?.showSnackBar(SnackBar(
