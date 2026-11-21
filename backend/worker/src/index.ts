@@ -2027,7 +2027,7 @@ export default {
     }
 
     const chatRoute = url.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/messages$/);
-    if (chatRoute && (request.method === "GET" || request.method === "POST")) {
+    if (chatRoute && (request.method === "GET" || request.method === "POST" || request.method === "DELETE")) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
         const user = await authenticatedUser(request, env.DB);
@@ -2041,6 +2041,21 @@ export default {
           "SELECT entered_at FROM room_chat_visits WHERE room_id = ? AND user_id = ? AND exited_at IS NULL ORDER BY entered_at DESC LIMIT 1"
         ).bind(roomId, user.id).first<{ entered_at: string }>();
         if (!visit) return json({ error: "chat_session_not_active" }, 409, origin, env);
+
+        if (request.method === "DELETE") {
+          const moderator = await env.DB!.prepare(
+            "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
+          ).bind(roomId, user.id).first();
+          if (room.owner_user_id !== user.id && !moderator) {
+            return json({ error: "room_moderator_required", message: "مسح الدردشة متاح لمالك الغرفة والمشرفين فقط" }, 403, origin, env);
+          }
+          await broadcastRoomChat(env, roomId, {
+            type: "clear_chat",
+            clearedBy: user.id,
+            clearedAt: new Date().toISOString()
+          });
+          return json({ ok: true, cleared: true }, 200, origin, env);
+        }
 
         if (request.method === "POST") {
           const [settingsRow, roomModerator] = await Promise.all([
@@ -2903,6 +2918,7 @@ export default {
         catch { return json({ error: "invalid_json" }, 400, origin, env); }
         const action = String(body.action ?? "");
         const targetUserId = String(body.targetUserId ?? actor.id);
+        const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 240) : "";
         const isOwner = room.owner_user_id === actor.id;
         const moderator = await env.DB!.prepare(
           "SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1"
@@ -3033,8 +3049,16 @@ export default {
               "INSERT INTO room_bans (room_id, user_id, banned_by, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET banned_by = excluded.banned_by, created_at = excluded.created_at"
             ).bind(roomId, targetUserId, actor.id, now).run();
           }
-          await env.DB!.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, target_user_id, action, details_json, created_at) VALUES (?, ?, ?, ?, ?, '{}', ?)")
-            .bind(crypto.randomUUID(), roomId, actor.id, targetUserId, action, now).run();
+          await env.DB!.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, target_user_id, action, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+            .bind(
+              crypto.randomUUID(),
+              roomId,
+              actor.id,
+              targetUserId,
+              action,
+              action === "kick" ? JSON.stringify({ reason }) : "{}",
+              now
+            ).run();
           const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
           await seatHub.fetch(new Request("https://room-seats.internal/remove-user", {
             method: "POST",
