@@ -2545,7 +2545,7 @@ export default {
           ).bind(user.id, recipientUserId, giftId).first<Record<string, unknown>>();
           if (env.ROOM_SEATS && gift) {
             const hub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
-            await hub.fetch(new Request("https://room-seats.internal/gift", {
+            const broadcastResponse = await hub.fetch(new Request("https://room-seats.internal/gift", {
               method: "POST",
               headers: { "Content-Type": "application/json", "x-room-id": roomId },
               body: JSON.stringify({
@@ -2559,10 +2559,15 @@ export default {
                 mediaUrl: gift.mediaUrl,
                 mediaType: gift.mediaType,
                 soundUrl: gift.soundUrl,
-                mediaDurationMs: 5000,
+                // Give large SVGA files enough time to download and decode on web.
+                mediaDurationMs: String(gift.mediaType ?? '').trim().toLowerCase() === "svga" ? 15000 : 5000,
                 quantity
               })
             }));
+            if (!broadcastResponse.ok) {
+              const responseText = await broadcastResponse.text().catch(() => "");
+              console.warn("[gifts.room.broadcast] rejected", broadcastResponse.status, responseText.slice(0, 300));
+            }
           }
         } catch (broadcastError) {
           console.warn("[gifts.room.broadcast] skipped", broadcastError instanceof Error ? broadcastError.message : "UnknownError");
