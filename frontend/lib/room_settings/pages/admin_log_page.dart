@@ -15,6 +15,14 @@ class _AdminLogPageState extends State<AdminLogPage> {
   static const cats = ['طرد', 'كتم', 'تعيين الأدوار'];
   int tab = 0;
   String query = '';
+  bool searchVisible = false;
+  final TextEditingController searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,28 +41,43 @@ class _AdminLogPageState extends State<AdminLogPage> {
             title: 'سجل عمليات المشرف',
             actions: [
               IconButton(
-                icon: const Icon(Icons.refresh, color: RS.text),
-                onPressed: widget.c.refreshModeration,
-                tooltip: 'تحديث',
+                tooltip: searchVisible ? 'إغلاق البحث' : 'بحث',
+                onPressed: () => setState(() {
+                  searchVisible = !searchVisible;
+                  if (!searchVisible) {
+                    query = '';
+                    searchController.clear();
+                  }
+                }),
+                icon: Icon(
+                  searchVisible ? Icons.close_rounded : Icons.search_rounded,
+                  color: const Color(0xFFD4AF37),
+                  size: 25,
+                ),
               ),
+              const SizedBox(width: 8),
             ],
           ),
           body: Column(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
-              child: TextField(
-                onChanged: (value) => setState(() => query = value.trim()),
-                style: const TextStyle(color: Colors.black),
-                decoration: InputDecoration(
-                  hintText: 'بحث في السجل',
-                  hintStyle: const TextStyle(color: RS.gray, fontSize: 13),
-                  prefixIcon: const Icon(Icons.search, color: RS.gray, size: 20),
-                  filled: true,
-                  fillColor: const Color(0xFFF6F7F8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+            if (searchVisible)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
+                child: TextField(
+                  controller: searchController,
+                  autofocus: true,
+                  onChanged: (value) => setState(() => query = value),
+                  textInputAction: TextInputAction.search,
+                  style: const TextStyle(color: Colors.black),
+                  decoration: InputDecoration(
+                    hintText: 'بحث في السجل',
+                    hintStyle: const TextStyle(color: RS.gray, fontSize: 13),
+                    prefixIcon: const Icon(Icons.search, color: RS.gray, size: 20),
+                    filled: true,
+                    fillColor: const Color(0xFFF6F7F8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                  ),
                 ),
               ),
-            ),
             SizedBox(
               height: 48,
               child: ListView.separated(
@@ -85,7 +108,7 @@ class _AdminLogPageState extends State<AdminLogPage> {
               child: widget.c.moderationLoading
                   ? const Center(child: CircularProgressIndicator(color: RS.primary))
                   : items.isEmpty
-                      ? const EmptyState('لا توجد عمليات مسجلة للغرفة')
+                      ? EmptyState(query.isNotEmpty ? 'لا توجد نتائج مطابقة' : 'لا توجد عمليات مسجلة للغرفة')
                       : ListView.separated(
                           itemCount: items.length,
                           separatorBuilder: (_, __) => const Divider(height: 1, color: RS.divider),
