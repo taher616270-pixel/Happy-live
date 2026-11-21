@@ -10,17 +10,17 @@ class ContribPodium extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     ContribEntry? at(int rank) => top.length >= rank ? top[rank - 1] : null;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 17, 10, 12),
+      padding: const EdgeInsets.fromLTRB(5, 12, 5, 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(child: _TopContributor(entry: at(3), rank: 3, size: 78)),
-          const SizedBox(width: 3),
-          Expanded(child: _TopContributor(entry: at(1), rank: 1, size: 96)),
-          const SizedBox(width: 3),
-          Expanded(child: _TopContributor(entry: at(2), rank: 2, size: 78)),
+          Expanded(child: _TopContributor(entry: at(3), rank: 3)),
+          const SizedBox(width: 2),
+          Expanded(child: _TopContributor(entry: at(1), rank: 1)),
+          const SizedBox(width: 2),
+          Expanded(child: _TopContributor(entry: at(2), rank: 2)),
         ],
       ),
     );
@@ -28,152 +28,143 @@ class ContribPodium extends StatelessWidget {
 }
 
 class _TopContributor extends StatelessWidget {
-  const _TopContributor({
-    required this.entry,
-    required this.rank,
-    required this.size,
-  });
+  const _TopContributor({required this.entry, required this.rank});
 
   final ContribEntry? entry;
   final int rank;
-  final double size;
-
-  static const _gold = [Color(0xFFFFE7A0), Color(0xFFD79A36), Color(0xFF81501C)];
-  static const _silver = [Color(0xFFE9F0F2), Color(0xFF9CB5BD), Color(0xFF506B73)];
-  static const _bronze = [Color(0xFFF2C6A8), Color(0xFFC47C55), Color(0xFF70402F)];
 
   @override
   Widget build(BuildContext context) {
-    final colors = rank == 1 ? _gold : rank == 2 ? _silver : _bronze;
-    final shield = rank <= ContribAssets.shields.length
-        ? ContribAssets.shields[rank - 1]
-        : '';
-    final frame = rank <= ContribAssets.frames.length
-        ? ContribAssets.frames[rank - 1]
-        : '';
-    final badge = rank <= ContribAssets.badges.length
-        ? ContribAssets.badges[rank - 1]
-        : '';
-    final avatarSize = size * .57;
+    final frame = ContribAssets.frames[rank - 1];
+    final isFirst = rank == 1;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          height: size + 30,
-          child: Stack(
-            alignment: Alignment.topCenter,
-            clipBehavior: Clip.none,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final frameHeight = width * (isFirst ? 1.43 : 1.34);
+        final avatarSize = width * (isFirst ? .39 : .37);
+
+        return Transform.translate(
+          offset: Offset(0, isFirst ? 0 : 15),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              if (rank == 1)
-                const Positioned(
-                  top: -8,
-                  child: Text('👑', style: TextStyle(fontSize: 24)),
-                ),
-              Positioned(
-                top: rank == 1 ? 20 : 4,
-                child: SizedBox(
-                  width: size,
-                  height: size,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (shield.isNotEmpty)
-                        ContribImage(source: shield, width: size, height: size),
-                      if (shield.isEmpty)
-                        ClipPath(
-                          clipper: _ContribShieldClipper(),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: colors,
-                              ),
-                            ),
-                            child: SizedBox(width: size, height: size),
-                          ),
+              SizedBox(
+                width: width,
+                height: frameHeight,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    if (frame.isNotEmpty)
+                      Positioned.fill(
+                        child: ContribImage(
+                          source: frame,
+                          width: width,
+                          height: frameHeight,
+                          fit: BoxFit.fill,
+                          fallback: const SizedBox.shrink(),
                         ),
-                      ContribAvatar(
+                      ),
+                    if (frame.isEmpty)
+                      Positioned.fill(
+                        child: _FramePathPlaceholder(rank: rank),
+                      ),
+                    Positioned(
+                      top: frameHeight * .135,
+                      left: (width - avatarSize) / 2,
+                      child: ContribAvatar(
                         url: entry?.avatarUrl ?? '',
                         size: avatarSize,
                       ),
-                      if (frame.isNotEmpty)
-                        ContribImage(source: frame, width: size, height: size),
-                      if (badge.isNotEmpty)
-                        Positioned(
-                          bottom: 0,
-                          child: ContribImage(
-                            source: badge,
-                            width: size * .48,
-                            height: size * .30,
-                          ),
+                    ),
+                    Positioned(
+                      top: frameHeight * .635,
+                      left: 7,
+                      right: 7,
+                      child: Text(
+                        entry?.name.isNotEmpty == true ? entry!.name : 'سيتم تحديده',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: rank == 1
+                              ? const Color(0xFFFFE59A)
+                              : Colors.white.withOpacity(.88),
+                          fontSize: isFirst ? 14 : 12,
+                          fontWeight: FontWeight.w900,
+                          shadows: const [
+                            Shadow(color: Colors.black26, blurRadius: 3),
+                          ],
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Container(
+                height: 3,
+                margin: EdgeInsets.symmetric(horizontal: width * .08),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      rank == 1
+                          ? const Color(0xFF69D75D)
+                          : const Color(0xFF287C45).withOpacity(.75),
+                      Colors.transparent,
                     ],
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
-        Text(
-          entry?.name.isNotEmpty == true ? entry!.name : '—',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: rank == 1 ? 13 : 11,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const ContribCoin(size: 14),
-            const SizedBox(width: 3),
-            Flexible(
-              child: Text(
-                contribFmt(entry?.amount ?? 0),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFFFFE4A1),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+              const SizedBox(height: 5),
+              Text(
+                '$rank',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(.24),
+                  fontSize: isFirst ? 25 : 21,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 5),
-        Text(
-          '$rank',
-          style: TextStyle(
-            color: rank == 1 ? const Color(0xFFFFE5A0) : Colors.white70,
-            fontSize: rank == 1 ? 17 : 14,
-            fontWeight: FontWeight.w900,
+            ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
 
-class _ContribShieldClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    return Path()
-      ..moveTo(size.width * .5, 0)
-      ..lineTo(size.width * .94, size.height * .16)
-      ..lineTo(size.width * .88, size.height * .68)
-      ..lineTo(size.width * .5, size.height)
-      ..lineTo(size.width * .12, size.height * .68)
-      ..lineTo(size.width * .06, size.height * .16)
-      ..close();
-  }
+class _FramePathPlaceholder extends StatelessWidget {
+  const _FramePathPlaceholder({required this.rank});
+  final int rank;
 
   @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+  Widget build(BuildContext context) {
+    final colors = switch (rank) {
+      1 => const [Color(0xFFFFE6A1), Color(0xFFB96A22), Color(0xFF6E3518)],
+      2 => const [Color(0xFFE7F5FF), Color(0xFF6D9DBB), Color(0xFF31536D)],
+      _ => const [Color(0xFFFFD7B8), Color(0xFFB66B4B), Color(0xFF633A2C)],
+    };
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(4, 8, 4, 5),
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(48),
+          bottom: Radius.circular(24),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+        border: Border.all(color: const Color(0xFFFFE7B5), width: 2),
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3)),
+        ],
+      ),
+    );
+  }
 }
