@@ -17,7 +17,7 @@ class RsAppBar extends StatelessWidget implements PreferredSizeWidget {
         centerTitle: true,
         automaticallyImplyLeading: false,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18, color: RS.text),
+          icon: const Icon(Icons.chevron_right_rounded, size: 22, color: RS.text),
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
