@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import '../widgets/square_country_flag.dart';
 import 'package:happy_live/widgets/room_info_sheet.dart';
 import 'package:happy_live/widgets/room_level_sheet.dart';
@@ -888,7 +889,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         width: 38,
                         height: 37,
                         child: avatar.startsWith('http')
-                            ? Image.network(avatar, fit: BoxFit.cover,
+                            ? HappyNetworkImage(avatar, fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => const ColoredBox(
                                   color: Colors.white12,
                                   child: Icon(Icons.person, color: Colors.white70),
@@ -1480,17 +1481,22 @@ Widget _roomActionButton({
                             offset: Offset(0, 2),
                           ),
                         ],
-                        image: avatar.startsWith('http')
-                            ? DecorationImage(image: NetworkImage(avatar), fit: BoxFit.cover)
-                            : null,
                       ),
-                      child: avatar.startsWith('http')
-                          ? null
-                          : Icon(
-                              occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
-                              color: Colors.white.withOpacity(.92),
-                              size: slot.big ? 22 : 19,
-                            ),
+                      child: ClipOval(
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            if (avatar.startsWith('http'))
+                              HappyNetworkImage(avatar, fit: BoxFit.cover),
+                            if (!avatar.startsWith('http'))
+                              Icon(
+                                occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
+                                color: Colors.white.withOpacity(.92),
+                                size: slot.big ? 22 : 19,
+                              ),
+                          ],
+                        ),
+                      ),
                       ),
                     ),
                     ),
@@ -1705,16 +1711,11 @@ Widget _roomActionButton({
                           child: InkWell(
                             customBorder: const CircleBorder(),
                             onTap: () => _showUserProfile(context, user),
-                            child: CircleAvatar(
-                              radius: 11,
+                            child: HappyNetworkAvatar(
+                              url: avatar,
+                              size: 22,
                               backgroundColor: Colors.white24,
-                              backgroundImage: avatar.startsWith('http')
-                                  ? NetworkImage(avatar)
-                                  : null,
-                              child: !avatar.startsWith('http')
-                                  ? const Icon(Icons.person,
-                                      color: Colors.white70, size: 14)
-                                  : null,
+                              fallback: const Icon(Icons.person, color: Colors.white70, size: 14),
                             ),
                           ),
                         ),
@@ -2989,13 +2990,11 @@ class UserInfoBottomSheet extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 5),
                     boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 12, offset: Offset(0, 4))],
-                    image: avatar.startsWith('http')
-                        ? DecorationImage(image: NetworkImage(avatar), fit: BoxFit.cover)
-                        : null,
                     color: const Color(0xFFE8E4EC),
                   ),
+                  clipBehavior: Clip.antiAlias,
                   child: avatar.startsWith('http')
-                      ? null
+                      ? HappyNetworkImage(avatar, width: 110, height: 110, fit: BoxFit.cover)
                       : const Icon(Icons.person_rounded, size: 58, color: Color(0xFF9A93A1)),
                 ),
               ),
