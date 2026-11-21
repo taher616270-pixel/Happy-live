@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:happy_live/widgets/global_gift_banner.dart';
 import 'package:flutter_svga/flutter_svga.dart';
 
@@ -384,11 +385,11 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     final allSelected = allRecipientIds.isNotEmpty && _recipientIds.containsAll(allRecipientIds);
     Widget avatarFor(String url, String name, {bool selected = false, VoidCallback? onTap}) {
       final hasImage = url.startsWith('https://') || url.startsWith('http://');
-      final child = CircleAvatar(
-        radius: 16,
+      final child = HappyNetworkAvatar(
+        url: hasImage ? url : '',
+        size: 32,
         backgroundColor: const Color(0xFF302B36),
-        backgroundImage: hasImage ? NetworkImage(url) : null,
-        child: hasImage ? null : Text(name.isEmpty ? '؟' : name.characters.first,
+        fallback: Text(name.isEmpty ? '؟' : name.characters.first,
             style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
       );
       return GestureDetector(
@@ -507,7 +508,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
     // Animated mediaUrl is reserved for the fullscreen gift delivery animation.
     final thumbnailUrl = (gift['thumbnailUrl'] ?? '').toString().trim();
     if (thumbnailUrl.startsWith('https://')) {
-      return Image.network(
+      return HappyNetworkImage(
         thumbnailUrl,
         width: 58,
         height: 58,
