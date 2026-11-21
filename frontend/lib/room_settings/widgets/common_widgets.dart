@@ -76,11 +76,10 @@ class PrimaryButton extends StatelessWidget {
 class SettingsTile extends StatelessWidget {
   final String title;
   final String? value;
-  final double? valueWidth;
   final Widget? trailing;
   final bool chevron;
   final VoidCallback? onTap;
-  const SettingsTile({super.key, required this.title, this.value, this.valueWidth, this.trailing, this.chevron = true, this.onTap});
+  const SettingsTile({super.key, required this.title, this.value, this.trailing, this.chevron = true, this.onTap});
   @override
   Widget build(BuildContext context) => InkWell(
         onTap: onTap,
@@ -90,11 +89,17 @@ class SettingsTile extends StatelessWidget {
           decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFF0F0F3), width: 1))),
           child: Row(children: [
             Expanded(child: Text(title, style: const TextStyle(color: RS.text, fontSize: 14, fontWeight: FontWeight.w600))),
-            if (value != null) valueWidth == null
-                ? Flexible(child: Text(value!, overflow: TextOverflow.ellipsis, style: const TextStyle(color: RS.text, fontSize: 13, fontWeight: FontWeight.w800)))
-                : SizedBox(width: valueWidth, child: Text(value!, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: RS.text, fontSize: 13, fontWeight: FontWeight.w800))),
+            if (value != null)
+              Flexible(
+                child: Text(
+                  value!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: RS.text, fontSize: 13, fontWeight: FontWeight.w800),
+                ),
+              ),
             if (trailing != null) trailing!,
-            if (chevron) ...[const SizedBox(width: 10), const Icon(Icons.chevron_left, color: RS.lightGray, size: 18)],
+            if (chevron) ...[const SizedBox(width: 4), const Icon(Icons.chevron_left, color: RS.lightGray, size: 18)],
           ]),
         ),
       );
