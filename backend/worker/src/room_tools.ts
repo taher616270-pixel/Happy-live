@@ -47,14 +47,13 @@ export async function recordRoomKick(
     "SELECT display_name FROM profiles WHERE user_id = ? LIMIT 1"
   ).bind(adminId).first<{ display_name: string | null }>();
   await db.prepare(
-    "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'room.user.kick', 'room_user', ?, ?, ?)"
+    "INSERT INTO room_settings_logs (id, room_id, actor_user_id, target_user_id, action, details_json, created_at) VALUES (?, ?, ?, ?, 'kick', ?, ?)"
   ).bind(
     crypto.randomUUID(),
+    roomId,
+    adminId,
     targetId,
     JSON.stringify({
-      roomId,
-      targetUserId: targetId,
-      adminId,
       adminUsername: actor?.display_name ?? "مشرف",
       reason: reason.slice(0, 240),
       durationSeconds: 60
