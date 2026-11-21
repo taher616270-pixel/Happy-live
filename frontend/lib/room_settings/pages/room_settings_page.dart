@@ -220,7 +220,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
           Uint8List.fromList(_forceGifInfiniteLoop(bytes)),
           file.name.isEmpty ? 'room-cover.gif' : file.name,
         );
-        if (mounted && (c.coverUrl ?? '').isNotEmpty) onCoverChanged?.call(c.coverUrl!);
+        if (mounted && (c.coverUrl ?? '').isNotEmpty) widget.onCoverChanged?.call(c.coverUrl!);
       } else {
         final image = await _imagePicker.pickImage(
           source: choice == 'camera' ? ImageSource.camera : ImageSource.gallery,
@@ -239,7 +239,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
           bytes,
           image.name.isEmpty ? 'room-cover.jpg' : image.name,
         );
-        if (mounted && (c.coverUrl ?? '').isNotEmpty) onCoverChanged?.call(c.coverUrl!);
+        if (mounted && (c.coverUrl ?? '').isNotEmpty) widget.onCoverChanged?.call(c.coverUrl!);
       }
       if (mounted) showRsToast(context, 'تم تحديث صورة الغرفة');
     } catch (e) {
