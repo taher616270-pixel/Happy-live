@@ -42,6 +42,7 @@ flutter:
     - assets/images/microphone.PNG
     - assets/images/gift.PNG
     - assets/images/user_level_frame.PNG
+    - assets/images/contrib/
     - assets/images/room_level_10_40.PNG
     - assets/images/room_level_40_69.png
     - assets/images/room_level_70_89.png
