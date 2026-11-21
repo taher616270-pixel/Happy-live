@@ -2155,7 +2155,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
   Timer? _timer;
   late final AnimationController _flight = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 5500),
+    duration: const Duration(milliseconds: 2800),
   );
   final GlobalKey _cannonTileKey = GlobalKey();
   OverlayEntry? _flightOverlayEntry;
@@ -2166,6 +2166,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
   bool _requestInFlight = false;
   String _lastLaunchId = '';
   bool _hasInitialState = false;
+  bool _testFlightMode = false;
 
   double get _ratio => _need <= 0
       ? 0
@@ -2259,6 +2260,14 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
 
   String _boxRoundId = '';
   OverlayEntry? _boxDropOverlayEntry;
+
+  void _playTestFlight() {
+    if (!mounted || _flight.isAnimating || _boxDropOverlayEntry != null) return;
+    _testFlightMode = true;
+    _boxRoundId = '';
+    _insertFlightOverlay();
+    _flight.forward(from: 0);
+  }
 
   Future<void> _playLevelOneFlight({String launchId = ''}) async {
     if (_flight.isAnimating) return;
@@ -2366,23 +2375,30 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
           final screen = MediaQuery.sizeOf(overlayContext);
           final progress = _flight.value.clamp(0.0, 1.0).toDouble();
 
-          // The plane leaves the cannon tile immediately and keeps a single,
-          // smooth vertical trajectory until it exits above the screen.
-          final planeSize = screen.width * .52;
-          final planeCenterX = origin.dx + renderObject.size.width / 2;
+          // Jet launches from the cannon tile and rises to the screen center.
+          // Responsive scale: 50% of screen width at launch, 70% at the center.
+          final eased = Curves.easeInOutCubic.transform(progress);
+          final startCenterX = origin.dx + renderObject.size.width / 2;
           final startCenterY = origin.dy + renderObject.size.height / 2;
-          final endCenterY = -planeSize * .65;
-          final eased = Curves.easeInOutSine.transform(progress);
-          final planeCenterY = startCenterY + (endCenterY - startCenterY) * eased;
+          final planeCenterX = ui.lerpDouble(startCenterX, screen.width / 2, eased)!;
+          final planeCenterY = ui.lerpDouble(startCenterY, screen.height / 2, eased)!;
+          final planeSize = screen.width * ui.lerpDouble(.50, .70, eased)!;
           final planeLeft = planeCenterX - planeSize / 2;
           final planeTop = planeCenterY - planeSize / 2;
+          final cameraShake = (1 - eased) * 4.5;
+          final shake = Offset(
+            math.sin(progress * math.pi * 42) * cameraShake,
+            math.cos(progress * math.pi * 37) * cameraShake,
+          );
           final planeOpacity = progress > .96
               ? (1 - ((progress - .96) / .04)).clamp(0.0, 1.0).toDouble()
               : 1.0;
 
           return SizedBox.expand(
             child: IgnorePointer(
-              child: Stack(
+              child: Transform.translate(
+                offset: shake,
+                child: Stack(
                 clipBehavior: Clip.none,
                 children: [
                   Positioned.fill(
@@ -2409,6 +2425,7 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
                       ),
                     ),
                 ],
+                ),
               ),
             ),
           );
@@ -2422,6 +2439,11 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
     if (status != AnimationStatus.completed || !mounted) return;
     _flightOverlayEntry?.remove();
     _flightOverlayEntry = null;
+    if (_testFlightMode) {
+      _testFlightMode = false;
+      _playTestBoxDrop();
+      return;
+    }
     _showFallingGiftBoxes();
   }
 
@@ -2531,11 +2553,11 @@ class _CannonRoomTileState extends State<_CannonRoomTile>
                 color: const Color(0xFF16A6A0),
                 borderRadius: BorderRadius.circular(18),
                 child: InkWell(
-                  onTap: _playTestBoxDrop,
+                  onTap: _playTestFlight,
                   borderRadius: BorderRadius.circular(18),
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    child: Text('تجربة الصناديق', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    child: Text('تجربة الطائرة كاملة', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ),
