@@ -180,7 +180,276 @@ class _RoomToolsSheet extends StatelessWidget {
           child: StatefulBuilder(
             builder: (context, setDialogState) {
               password = fields.map((field) => field.text).join();
-              final ready = password.length == 6 && RegExp(r'^\\d{6}$').hasMatch(password);
+              final ready = password.length == 6 && RegExp(r'^[0-9]{6};
+              return Dialog(
+                backgroundColor: Colors.white,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('تعيين كلمة مرور الغرفة',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Color(0xFF242424), fontSize: 18, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 26),
+                      Row(
+                        textDirection: TextDirection.ltr,
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: List.generate(6, (index) => SizedBox(
+                          width: 38,
+                          height: 48,
+                          child: TextField(
+                            controller: fields[index],
+                            focusNode: focus[index],
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            maxLength: 1,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            style: const TextStyle(color: Color(0xFF222222), fontSize: 20, fontWeight: FontWeight.w700),
+                            decoration: InputDecoration(
+                              counterText: '',
+                              contentPadding: EdgeInsets.zero,
+                              filled: true,
+                              fillColor: const Color(0xFFF7F7F7),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: Color(0xFFE3E3E3))),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: Color(0xFFD5B66B), width: 1.6)),
+                            ),
+                            onChanged: (value) {
+                              if (value.isNotEmpty && index < 5) focus[index + 1].requestFocus();
+                              if (value.isEmpty && index > 0) focus[index - 1].requestFocus();
+                              setDialogState(() {});
+                            },
+                          ),
+                        )),
+                      ),
+                      const SizedBox(height: 28),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: saving ? null : () => Navigator.of(dialogContext).pop(false),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFB8B8B8),
+                                side: const BorderSide(color: Color(0xFFE9E9E9)),
+                                backgroundColor: const Color(0xFFF7F7F7),
+                                minimumSize: const Size(0, 46),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('إلغاء'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: ready
+                                      ? const [Color(0xFFC49A3A), Color(0xFFF2E4B8)]
+                                      : const [Color(0xFFE6E2D8), Color(0xFFF1EEE7)],
+                                ),
+                              ),
+                              child: SizedBox(
+                                height: 46,
+                                child: TextButton(
+                                  onPressed: ready && !saving ? () async {
+                                    setDialogState(() => saving = true);
+                                    final ok = await c.toggleLock(password: password);
+                                    if (!dialogContext.mounted) return;
+                                    if (ok) {
+                                      Navigator.of(dialogContext).pop(true);
+                                    } else {
+                                      setDialogState(() => saving = false);
+                                      ScaffoldMessenger.maybeOf(dialogContext)?.showSnackBar(
+                                        const SnackBar(content: Text('تعذر قفل الغرفة، حاول مرة أخرى')),
+                                      );
+                                    }
+                                  } : null,
+                                  style: TextButton.styleFrom(foregroundColor: const Color(0xFF4A3A19)),
+                                  child: Text(saving ? 'جارٍ الحفظ...' : 'نعم'),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      if (confirmed == true && host.mounted) {
+        ScaffoldMessenger.maybeOf(host)?.showSnackBar(
+          const SnackBar(content: Text('تم قفل الغرفة بنجاح')),
+        );
+      }
+    } finally {
+      for (final field in fields) { field.dispose(); }
+      for (final node in focus) { node.dispose(); }
+    }
+  }
+
+  void _confirmClear(BuildContext sheetCtx) {
+    showDialog<void>(
+      context: sheetCtx,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF2B1160),
+          title: const Text('مسح الكتابة', style: TextStyle(color: Colors.white, fontSize: 17)),
+          content: const Text('هل تريد مسح رسائل الدردشة؟', style: TextStyle(color: Color(0xFFB9A9DC))),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _run(sheetCtx, controller.actions.clearChat, 'مسح الكتابة');
+              },
+              child: const Text('مسح', style: TextStyle(color: Color(0xFFFF6B6B))),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.sizeOf(context).height;
+    return Container(
+      height: height * .72,
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2B0A5E), Color(0xFF1E0E5A), Color(0xFF1B2272)],
+        ),
+      ),
+      child: ListenableBuilder(
+        listenable: controller,
+        builder: (context, _) {
+          final tools = _tools(context);
+          const titles = {
+            ToolSection.interactive: 'الميزات التفاعلية',
+            ToolSection.admin: 'أداة إدارة',
+            ToolSection.other: 'أداة أخرى',
+            ToolSection.more: 'آخرون',
+          };
+          return LayoutBuilder(builder: (context, box) {
+            final columnWidth = (box.maxWidth - 16) / 4;
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(8, 0, 8, MediaQuery.paddingOf(context).bottom + 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final section in ToolSection.values)
+                    if (tools.any((item) => item.section == section)) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 26, 12, 14),
+                        child: Text(titles[section]!,
+                          style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+                      ),
+                      Wrap(
+                        runSpacing: 14,
+                        children: [
+                          for (final item in tools.where((item) => item.section == section))
+                            _Tile(tool: item, width: columnWidth),
+                        ],
+                      ),
+                    ],
+                ],
+              ),
+            );
+          });
+        },
+      ),
+    );
+  }
+}
+
+class _Tile extends StatelessWidget {
+  final RoomTool tool;
+  final double width;
+  const _Tile({required this.tool, required this.width});
+
+  @override
+  Widget build(BuildContext context) {
+    final pillWidth = width * .62;
+    final url = RoomToolsAssets.icons[tool.id];
+    final icon = url != null && url.isNotEmpty
+        ? Image.network(url, width: 34, height: 34, fit: BoxFit.contain, errorBuilder: (_, __, ___) => tool.icon)
+        : tool.icon;
+    return SizedBox(
+      width: width,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: tool.onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: pillWidth,
+              height: pillWidth * .69,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: const Color(0x1AFFFFFF),
+                borderRadius: BorderRadius.circular(pillWidth),
+              ),
+              child: icon,
+            ),
+            const SizedBox(height: 8),
+            Text(tool.label, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFFB9A9DC), fontSize: 12.5)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PkIcon extends StatelessWidget {
+  const _PkIcon();
+  @override
+  Widget build(BuildContext context) => ShaderMask(
+    shaderCallback: (rect) => const LinearGradient(colors: [Color(0xFFFF4FD8), Color(0xFF4FA3FF)]).createShader(rect),
+    child: const Text('PK', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic)),
+  );
+}
+
+class _RedEnvelopeIcon extends StatelessWidget {
+  const _RedEnvelopeIcon();
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 22, height: 30, alignment: Alignment.center,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(5),
+      gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFF5252), Color(0xFFD32F2F)]),
+    ),
+    child: Container(
+      width: 10, height: 10,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFFFD54F), border: Border.all(color: const Color(0xFFFFB300))),
+    ),
+  );
+}
+
+class _LuckyIcon extends StatelessWidget {
+  const _LuckyIcon();
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 32, height: 32,
+    decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFB57CFF), width: 2), color: const Color(0x33B57CFF)),
+    child: const Icon(Icons.apps_rounded, color: Colors.white, size: 22),
+  );
+}
+).hasMatch(password);
               return Dialog(
                 backgroundColor: Colors.white,
                 insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
