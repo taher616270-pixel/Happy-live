@@ -3079,7 +3079,7 @@ class _RoomPageState extends State<RoomPage> {
           fit: StackFit.expand,
           children: [
             if (_imageUrl != null)
-              Image.network(
+              HappyNetworkImage(
                 _imageUrl!,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF30213C)),
