@@ -17,6 +17,7 @@ Future<void> showRoomGiftSheet(
   required String avatarUrl,
   required List<Map<String, dynamic>> recipients,
   String initialRecipientId = '',
+  String initialTab = 'trending',
   required GiftCatalogLoader loadGifts,
   required RoomGiftSender onSend,
   required CustomGiftRequester onRequestCustomGift,
@@ -32,6 +33,7 @@ Future<void> showRoomGiftSheet(
       avatarUrl: avatarUrl,
       recipients: recipients,
       initialRecipientId: initialRecipientId,
+      initialTab: initialTab,
       loadGifts: loadGifts,
       onSend: onSend,
       onRequestCustomGift: onRequestCustomGift,
@@ -46,6 +48,7 @@ class _RoomGiftSheet extends StatefulWidget {
     required this.avatarUrl,
     required this.recipients,
     required this.initialRecipientId,
+    required this.initialTab,
     required this.loadGifts,
     required this.onSend,
     required this.onRequestCustomGift,
@@ -56,6 +59,7 @@ class _RoomGiftSheet extends StatefulWidget {
   final String avatarUrl;
   final List<Map<String, dynamic>> recipients;
   final String initialRecipientId;
+  final String initialTab;
   final GiftCatalogLoader loadGifts;
   final RoomGiftSender onSend;
   final CustomGiftRequester onRequestCustomGift;
@@ -80,7 +84,7 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
 
   late Future<List<Map<String, dynamic>>> _giftsFuture;
   late int _balance;
-  String _tab = 'trending';
+  late String _tab;
   final Set<String> _recipientIds = <String>{};
   Map<String, dynamic>? _selectedGift;
   int _quantity = 1;
@@ -105,6 +109,8 @@ class _RoomGiftSheetState extends State<_RoomGiftSheet> {
   void initState() {
     super.initState();
     _balance = widget.balance;
+    const supportedTabs = {'event', 'trending', 'country', 'lucky', 'custom'};
+    _tab = supportedTabs.contains(widget.initialTab) ? widget.initialTab : 'trending';
     _giftsFuture = widget.loadGifts(_tab);
     final initialId = widget.initialRecipientId.trim();
     if (initialId.isNotEmpty && widget.recipients.any((r) => (r['userId'] ?? '').toString() == initialId)) {
