@@ -1,9 +1,13 @@
-// حط صورك هنا. تقبل رابط (ImageKit مثلا) أو مسار asset. اتركها '' ويرسم تصميم افتراضي.
-// الترتيب: [المركز 1، المركز 2، المركز 3]
+// صور إطارات المراكز الثلاثة.
+// ضع صور PNG شفافة داخل frontend/assets/images/contrib/ بنفس الأسماء أدناه.
+// ترتيب القائمة ثابت: المركز الأول، ثم الثاني، ثم الثالث.
 class ContribAssets {
-  static const List<String> shields = ['', '', ''];
-  static const List<String> frames = ['', '', ''];
-  static const List<String> badges = ['', '', ''];
+  static const List<String> frames = [
+    'assets/images/contrib/rank_1.png',
+    'assets/images/contrib/rank_2.png',
+    'assets/images/contrib/rank_3.png',
+  ];
+
   static const String avatarPlaceholder = '';
   static const String coin = '';
 }
