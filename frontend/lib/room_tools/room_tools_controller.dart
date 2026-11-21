@@ -50,9 +50,17 @@ class RoomToolsController extends ChangeNotifier {
   bool micOpen;
   bool loadingLock = true;
   bool _busy = false;
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   Future<void> _load() async {
     final state = await RoomToolsApi.fetchLocked(roomId);
+    if (_disposed) return;
     if (state != null) locked = state;
     loadingLock = false;
     notifyListeners();
@@ -64,6 +72,7 @@ class RoomToolsController extends ChangeNotifier {
     notifyListeners();
     final next = !locked;
     final ok = await RoomToolsApi.setLocked(roomId, next);
+    if (_disposed) return false;
     if (ok) locked = next;
     _busy = false;
     notifyListeners();
