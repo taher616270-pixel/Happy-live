@@ -151,8 +151,8 @@ export class RoomSeatsHub {
       let event: Record<string, unknown>;
       try { event = await request.json() as Record<string, unknown>; }
       catch { return Response.json({ error: "invalid_json" }, { status: 400 }); }
-      this.broadcast({ type: "room_gift", ...event });
-      return Response.json({ ok: true });
+      const delivered = this.broadcast({ ...event, type: "room_gift" });
+      return Response.json({ ok: true, delivered });
     }
 
     if (url.pathname === "/clear" && request.method === "POST") {
@@ -578,12 +578,18 @@ export class RoomSeatsHub {
     catch { this.sockets.delete(socket); }
   }
 
-  private broadcast(payload: Record<string, unknown>, except?: WebSocket): void {
+  private broadcast(payload: Record<string, unknown>, except?: WebSocket): number {
     const encoded = JSON.stringify(payload);
+    let delivered = 0;
     for (const socket of this.sockets.keys()) {
       if (socket === except || socket.readyState !== WebSocket.OPEN) continue;
-      try { socket.send(encoded); }
-      catch { this.sockets.delete(socket); }
+      try {
+        socket.send(encoded);
+        delivered++;
+      } catch {
+        this.sockets.delete(socket);
+      }
     }
+    return delivered;
   }
 }
