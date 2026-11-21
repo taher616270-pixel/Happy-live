@@ -2,6 +2,7 @@ import { RtcTokenBuilder } from "agora-token";
 import { handleGamesApiRequest, isRegisteredGameOrigin } from "./games_api";
 import { handlePlatformCallbackRequest } from "./platform_callback";
 import { addCannonEnergy, handleCannonRequest } from "./cannon_api";
+import { addRoomContribution, handleRoomContrib } from "./room_contrib";
 export { RoomSeatsHub } from "./room_seats_hub";
 export { GlobalGiftHub } from "./global_gift_hub";
 import type { GlobalGiftHub } from "./global_gift_hub";
@@ -437,9 +438,24 @@ export default {
       return new Response(null, { status: 204, headers });
     }
 
-    // Public health check for the Worker root URL.
-    if (url.pathname === "/" && request.method === "GET") {
-      return json({ success: true }, 200, origin, env);
+    // Authenticated room contributor ranking. The current user is derived from
+    // the session token; a query-string user_id is never trusted for self-rank.
+    if (url.pathname === "/api/room/contributors") {
+      if (!env.DB) return json({ ok: false, error: "database_unavailable" }, 503, origin, env);
+      if (request.method !== "GET") return json({ ok: false, error: "method" }, 405, origin, env);
+      try {
+        const contributor = await authenticatedUser(request, env.DB);
+        if (!contributor) return json({ ok: false, error: "authentication_required" }, 401, origin, env);
+        return await handleRoomContrib(
+          request,
+          env.DB,
+          contributor.id,
+          (data, status = 200) => json(data, status, origin, env)
+        ) ?? json({ ok: false, error: "not_found" }, 404, origin, env);
+      } catch (error) {
+        console.error("[room.contributors] route failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ ok: false, error: "contributors_unavailable" }, 500, origin, env);
+      }
     }
 
     const platformCallbackResponse = await handlePlatformCallbackRequest(
@@ -2484,6 +2500,7 @@ export default {
             "UPDATE gift_transactions SET status = 'succeeded' WHERE id = ? AND status = 'processing' " +
             "AND EXISTS (SELECT 1 FROM gift_wallet_ledger WHERE gift_transaction_id = ? AND entry_type = 'sender_debit')"
           ).bind(transactionId, transactionId),
+          ...addRoomContribution(env.DB!, transactionId),
           env.DB!.prepare("DELETE FROM gift_transactions WHERE id = ? AND status = 'processing'").bind(transactionId)
         ];
         await env.DB!.batch(statements);

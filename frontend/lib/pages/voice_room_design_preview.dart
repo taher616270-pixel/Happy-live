@@ -18,7 +18,7 @@ import 'package:provider/provider.dart';
 import 'package:happy_live/models/seat_state.dart';
 import 'package:happy_live/models/mic_layout.dart';
 import 'edit_profile_page.dart';
-import 'ranking_sheet_pro.dart';
+import '../contrib/contrib_api.dart';
 import '../cannon/cannon_sheet.dart';
 import '../cannon/cannon_api.dart';
 import '../cannon/cannon_box_drop_overlay.dart';
@@ -1032,19 +1032,16 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           const Spacer(),
           const SizedBox(width: 10),
           InkWell(
-            onTap: () => showModalBottomSheet<void>(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              barrierColor: Colors.black.withOpacity(.55),
-              builder: (sheetContext) => SizedBox(
-                height: MediaQuery.sizeOf(sheetContext).height,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: const [RankingSheet()],
-                ),
-              ),
-            ),
+            onTap: () {
+              final roomId = _roomInfoString(['id', 'roomId', 'room_id']).trim();
+              if (roomId.isEmpty || accessToken.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('تعذر فتح تصنيف المساهمين: بيانات الغرفة أو الدخول غير مكتملة')),
+                );
+                return;
+              }
+              openContribSheet(context, roomId, accessToken: accessToken);
+            },
             borderRadius: BorderRadius.circular(8),
             child: Container(
               width: 38,
