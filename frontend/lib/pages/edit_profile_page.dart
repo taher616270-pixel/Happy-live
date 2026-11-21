@@ -198,7 +198,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Future<void> _pickAvatarGif() async {
     try {
-      final selected = await FilePicker.platform.pickFiles(
+      final selected = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: const ['gif'],
         withData: true,
