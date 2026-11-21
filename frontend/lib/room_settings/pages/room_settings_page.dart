@@ -106,6 +106,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                   SettingsTile(
                     title: 'الإعلان',
                     value: c.announcement,
+                    valueMaxLines: 5,
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإعلان', initial: c.announcement, maxLength: 200, onSave: c.setAnnouncement))),
                   ),
                   SettingsTile(
