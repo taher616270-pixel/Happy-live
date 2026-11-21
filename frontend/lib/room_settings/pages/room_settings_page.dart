@@ -259,7 +259,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
         backgroundColor: Colors.white,
         appBar: const RsAppBar(title: 'الإعدادات'),
         body: c.loading
-            ? const Center(child: CircularProgressIndicator(color: RS.primary))
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFFD4AF37)))
             : Container(
                 color: Colors.white,
                 child: ListView(padding: EdgeInsets.zero, children: [
