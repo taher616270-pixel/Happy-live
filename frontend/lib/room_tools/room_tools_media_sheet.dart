@@ -73,7 +73,7 @@ class _RoomToolsMediaSheetState extends State<_RoomToolsMediaSheet> {
       await _player.stop();
       _bytes = bytes;
       _fileName = file.name;
-      await _play();
+      await _player.play(BytesSource(bytes));
     } catch (error) {
       if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
     } finally {
