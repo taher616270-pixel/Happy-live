@@ -100,17 +100,19 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                   ),
                   SettingsTile(
                     title: 'الإسم',
+                    valueWidth: 132,
                     value: c.name,
-                    valueOffset: const Offset(-30, 0),
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإسم', initial: c.name, maxLength: 20, onSave: c.setName))),
                   ),
                   SettingsTile(
                     title: 'الإعلان',
+                    valueWidth: 132,
                     value: c.announcement,
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditTextPage(title: 'الإعلان', initial: c.announcement, maxLength: 200, onSave: c.setAnnouncement))),
                   ),
                   SettingsTile(
                     title: 'عدد المقاعد',
+                    valueWidth: 132,
                     value: c.seats.toString(),
                     onTap: () async {
                       final layoutId = await showMicCountSheet(
@@ -125,6 +127,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
 
                   SettingsTile(
                     title: 'من يمكنه دخول الغرفة',
+                    valueWidth: 132,
                     value: audienceLabel(c.whoEnter),
                     onTap: () async {
                       final value = await showChoiceSheet<Audience>(context, title: 'من يمكنه دخول الغرفة', options: _opts(entryOptions), selected: c.whoEnter);
@@ -133,6 +136,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                   ),
                   SettingsTile(
                     title: 'من يمكنه التحدث بالميكروفون',
+                    valueWidth: 132,
                     value: audienceLabel(c.whoMic),
                     onTap: () async {
                       final value = await showChoiceSheet<Audience>(context, title: 'من يمكنه التحدث بالميكروفون', options: _opts(three), selected: c.whoMic);
@@ -141,6 +145,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                   ),
                   SettingsTile(
                     title: 'من يمكنه الدردشة',
+                    valueWidth: 132,
                     value: audienceLabel(c.whoChat),
                     onTap: () async {
                       final value = await showChoiceSheet<Audience>(context, title: 'من يمكنه الدردشة', options: _opts(three), selected: c.whoChat);
@@ -149,6 +154,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                   ),
                   SettingsTile(
                     title: 'من يمكنه إرسال حقيبة الحظ',
+                    valueWidth: 132,
                     value: audienceLabel(c.whoLuck),
                     onTap: () async {
                       final value = await showChoiceSheet<Audience>(context, title: 'من يمكنه إرسال حقيبة الحظ', options: _opts(three), selected: c.whoLuck);
@@ -157,11 +163,13 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                   ),
                   SettingsTile(
                     title: 'قائمة الكتم',
+                    valueWidth: 132,
                     value: c.muted.length.toString(),
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MutedUsersPage(c: c))),
                   ),
                   SettingsTile(
                     title: 'القائمة السوداء',
+                    valueWidth: 132,
                     value: (c.bans.length + c.kicks.length).toString(),
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BlacklistPage(c: c))),
                   ),
