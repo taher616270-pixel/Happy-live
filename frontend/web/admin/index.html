@@ -77,6 +77,27 @@ async function uploadGiftSound(file){
   if(!response.ok||!result.url||!result.fileId)throw Error("فشل رفع ملف الصوت إلى ImageKit.");
   return result.url;
 }
+async function uploadGiftMedia(file){
+  if(!file)return null;
+  const ext=(file.name.split(".").pop()||"").toLowerCase();
+  if(!["svga","gif","pag"].includes(ext))throw Error("يسمح بملفات SVGA أو GIF أو PAG فقط.");
+  if(file.size<1||file.size>20*1024*1024)throw Error("حجم ملف الهدية يجب ألا يتجاوز 20MB.");
+  const authResponse=await fetch(API+"/imagekit/auth",{headers:{Authorization:"Bearer "+token}});
+  const auth=await authResponse.json();
+  if(!authResponse.ok||!auth.token||!auth.signature||!auth.expire||!auth.publicKey)throw Error(auth.message||auth.error||"تعذر تجهيز رفع ملف الهدية.");
+  const form=new FormData();
+  form.append("file",file);form.append("fileName",file.name);
+  form.append("publicKey",auth.publicKey);form.append("token",auth.token);
+  form.append("expire",String(auth.expire));form.append("signature",auth.signature);
+  form.append("folder","/happy-live/gifts");form.append("useUniqueFileName","true");
+  const response=await fetch("https://upload.imagekit.io/api/v1/files/upload",{method:"POST",body:form});
+  const result=await response.json();
+  if(!response.ok||!result.url||!result.fileId)throw Error(result.message||"فشل رفع ملف الهدية إلى ImageKit.");
+  return {url:result.url,type:ext,fileId:result.fileId};
+}
+function chooseGiftMediaFile(){
+  return new Promise(resolve=>{const input=document.createElement("input");input.type="file";input.accept=".svga,.gif,.pag";input.onchange=()=>resolve(input.files&&input.files[0]||null);input.click()});
+}
 async function uploadGameIcon(file){
   if(!file)return null;
   const allowed=["image/png","image/jpeg","image/webp"];
@@ -419,12 +440,12 @@ async function giftsPage(){
     '<div class="section"><div class="section-head"><div><h2>السحب عبر الوكالات</h2><p class="muted">البنية مهيأة لربط أرباح الهدايا بالوكالات مستقبلًا.</p></div><span class="badge warn">غير مفعّل</span></div><p class="notice">طلبات السحب والتحويل النقدي مغلقة حاليًا. لن تُقبل طلبات سحب حتى تفعيل الوكالات واعتماد التحويل والحد الأدنى وإجراءات التحقق.</p><div class="cards">'+metric("السحب مفعّل",withdrawals.enabled?"نعم":"لا")+metric("ربط الوكالات",withdrawals.agencyIntegrationReady?"جاهز":"بانتظار التفعيل")+'</div></div>'+
     '</div>'+
     '<div class="gift-tab-panel" data-gift-panel="catalog">'+
-    '<div class="section"><div class="section-head"><div><h2>كتالوج الهدايا</h2><p class="muted">إضافة الهدايا وتعديل أسعارها وربط ملفات SVGA وAPNG وWEBP عبر رابط HTTPS مباشر.</p></div></div>' +
+    '<div class="section"><div class="section-head"><div><h2>كتالوج الهدايا</h2><p class="muted">إضافة الهدايا برفع ملفات الحركة مباشرة بصيغ SVGA أو GIF أو PAG إلى ImageKit.</p></div></div>' +
     '<form id="giftCreateForm" class="room-tools" style="align-items:end;margin:16px 0">' +
     '<label style="display:grid;gap:6px">اسم الهدية<input id="newGiftName" class="search" maxlength="80" required placeholder="اسم الهدية"></label>' +
     '<label style="display:grid;gap:6px">الرمز الاحتياطي<input id="newGiftEmoji" class="search" maxlength="16" value="🎁" required></label>' +
-    '<label style="display:grid;gap:6px">نوع الوسائط<select id="newGiftMediaType" class="search"><option value="emoji">رمز تعبيري</option><option value="svga">SVGA</option><option value="apng">APNG</option><option value="webp">WEBP</option></select></label>' +
-    '<label style="display:grid;gap:6px">رابط ملف الهدية (HTTPS)<input id="newGiftMediaUrl" class="search" type="url" maxlength="2048" placeholder="https://..."></label>' +
+    '<label style="display:grid;gap:6px">نوع الوسائط<select id="newGiftMediaType" class="search"><option value="emoji">رمز تعبيري</option><option value="svga">SVGA</option><option value="gif">GIF</option><option value="pag">PAG</option></select></label>' +
+    '<label style="display:grid;gap:6px">ملف حركة الهدية<input id="newGiftMediaFile" class="search" type="file" accept=".svga,.gif,.pag"><small class="muted">SVGA أو GIF أو PAG — حتى 20MB. سيتم رفع الملف تلقائياً إلى ImageKit.</small></label><label style="display:grid;gap:6px">أو رابط ملف جاهز (اختياري)<input id="newGiftMediaUrl" class="search" type="url" maxlength="2048" placeholder="https://..."></label>' +
     '<label style="display:grid;gap:6px">ملف صوت الهدية MP3 (اختياري)<input id="newGiftSoundFile" class="search" type="file" accept=".mp3,audio/mpeg"></label>' +
     '<label style="display:grid;gap:6px">السعر بالعملات<input id="newGiftPrice" class="search" type="number" min="1" step="1" required placeholder="999"></label>' +
     '<label style="display:grid;gap:6px">التصنيف<select id="newGiftCategory" class="search"><option value="trending">رائج</option><option value="event">حدث</option><option value="country">الدولة</option><option value="lucky">حظ</option><option value="custom">مخصص</option></select></label>' +
@@ -464,7 +485,7 @@ async function giftsPage(){
         const countryCode=window.prompt("رمز الدولة (اتركه فارغًا لغير تصنيف الدولة)",gift.countryCode||"");if(countryCode===null)return;
         const startsAt=window.prompt("بداية العرض ISO (اختياري)",gift.startsAt||"");if(startsAt===null)return;
         const endsAt=window.prompt("نهاية العرض ISO (اختياري)",gift.endsAt||"");if(endsAt===null)return;
-        if(!name.trim()||!iconEmoji.trim()||!Number.isSafeInteger(coinPrice)||coinPrice<1||!Number.isSafeInteger(sortOrder)||sortOrder<0||!["event","trending","country","lucky","custom"].includes(category)||!["emoji","svga","apng","webp"].includes(mediaType)||((mediaType==="emoji")!==(!mediaUrl.trim()))||(mediaUrl.trim()&&!/^https:\/\//i.test(mediaUrl.trim()))){alert("تحقق من بيانات الهدية ورابط الوسائط ونوع الملف.");return}
+        if(!name.trim()||!iconEmoji.trim()||!Number.isSafeInteger(coinPrice)||coinPrice<1||!Number.isSafeInteger(sortOrder)||sortOrder<0||!["event","trending","country","lucky","custom"].includes(category)||!["emoji","svga","gif","pag","apng","webp"].includes(mediaType)||((mediaType==="emoji")!==(!mediaUrl.trim()))||(mediaUrl.trim()&&!/^https:\/\//i.test(mediaUrl.trim()))){alert("تحقق من بيانات الهدية ورابط الوسائط ونوع الملف.");return}
         try{await api("/admin/gifts/catalog/"+encodeURIComponent(gift.id),{method:"PATCH",body:JSON.stringify({name:name.trim(),iconEmoji,mediaType,mediaUrl:mediaUrl.trim()||null,soundUrl,coinPrice,sortOrder,category,countryCode,startsAt,endsAt})});catalogMessage.textContent="تم تحديث الهدية.";await loadCatalog()}catch(error){alert(error.message)}
       });
       document.querySelectorAll("[data-gift-toggle]").forEach(button=>button.onclick=async()=>{
@@ -474,10 +495,10 @@ async function giftsPage(){
     };
     $("giftCreateForm").onsubmit=async event=>{
       event.preventDefault();
-      const name=$("newGiftName").value.trim(),iconEmoji=$("newGiftEmoji").value.trim(),mediaType=$("newGiftMediaType").value,mediaUrl=$("newGiftMediaUrl").value.trim(),soundFile=$("newGiftSoundFile").files[0],coinPrice=Number($("newGiftPrice").value),sortOrder=Number($("newGiftOrder").value),category=$("newGiftCategory").value,countryCode=$("newGiftCountry").value.trim().toUpperCase(),startsValue=$("newGiftStarts").value,endsValue=$("newGiftEnds").value,startsAt=startsValue?new Date(startsValue).toISOString():null,endsAt=endsValue?new Date(endsValue).toISOString():null;
-      if(!name||!iconEmoji||!Number.isSafeInteger(coinPrice)||coinPrice<1||!Number.isSafeInteger(sortOrder)||sortOrder<0||(mediaType==="emoji"&&mediaUrl)||(mediaType!=="emoji"&&!mediaUrl)||(mediaUrl&&!/^https:\/\//i.test(mediaUrl))||(category==="country"&&!countryCode)||(startsAt&&endsAt&&new Date(endsAt)<=new Date(startsAt))){catalogMessage.textContent="تحقق من الاسم والرمز والسعر والتصنيف والدولة وفترة العرض.";return}
+      const name=$("newGiftName").value.trim(),iconEmoji=$("newGiftEmoji").value.trim(),mediaFile=$("newGiftMediaFile").files[0],selectedMediaType=$("newGiftMediaType").value,mediaUrlInput=$("newGiftMediaUrl").value.trim(),soundFile=$("newGiftSoundFile").files[0],coinPrice=Number($("newGiftPrice").value),sortOrder=Number($("newGiftOrder").value),category=$("newGiftCategory").value,countryCode=$("newGiftCountry").value.trim().toUpperCase(),startsValue=$("newGiftStarts").value,endsValue=$("newGiftEnds").value,startsAt=startsValue?new Date(startsValue).toISOString():null,endsAt=endsValue?new Date(endsValue).toISOString():null;
+      if(!name||!iconEmoji||!Number.isSafeInteger(coinPrice)||coinPrice<1||!Number.isSafeInteger(sortOrder)||sortOrder<0||(!mediaFile&&selectedMediaType==="emoji"&&mediaUrlInput)||(!mediaFile&&selectedMediaType!=="emoji"&&!mediaUrlInput)||(mediaUrlInput&&!/^https:\/\//i.test(mediaUrlInput))||(category==="country"&&!countryCode)||(startsAt&&endsAt&&new Date(endsAt)<=new Date(startsAt))){catalogMessage.textContent="تحقق من الاسم والرمز والسعر والتصنيف والدولة وفترة العرض.";return}
       const submit=event.submitter;submit.disabled=true;catalogMessage.textContent="جارٍ إضافة الهدية…";
-      try{const soundUrl=soundFile?await uploadGiftSound(soundFile):null;await api("/admin/gifts/catalog",{method:"POST",body:JSON.stringify({name,iconEmoji,mediaType,mediaUrl:mediaUrl||null,soundUrl,coinPrice,sortOrder,isActive:true,category,countryCode:countryCode||null,startsAt,endsAt})});$("giftCreateForm").reset();$("newGiftEmoji").value="🎁";$("newGiftMediaType").value="emoji";$("newGiftMediaUrl").value="";$("newGiftOrder").value="100";catalogMessage.textContent="تمت إضافة الهدية وتفعيلها.";await loadCatalog()}
+      try{const uploadedMedia=mediaFile?await uploadGiftMedia(mediaFile):null;const mediaType=uploadedMedia?.type||selectedMediaType;const mediaUrl=uploadedMedia?.url||mediaUrlInput;const soundUrl=soundFile?await uploadGiftSound(soundFile):null;await api("/admin/gifts/catalog",{method:"POST",body:JSON.stringify({name,iconEmoji,mediaType,mediaUrl:mediaUrl||null,soundUrl,coinPrice,sortOrder,isActive:true,category,countryCode:countryCode||null,startsAt,endsAt})});$("giftCreateForm").reset();$("newGiftEmoji").value="🎁";$("newGiftMediaType").value="emoji";$("newGiftMediaUrl").value="";$("newGiftOrder").value="100";catalogMessage.textContent="تمت إضافة الهدية وتفعيلها.";await loadCatalog()}
       catch(error){catalogMessage.textContent=error.message||"تعذرت إضافة الهدية."}
       finally{submit.disabled=false}
     };
