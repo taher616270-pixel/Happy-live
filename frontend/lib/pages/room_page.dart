@@ -1753,9 +1753,10 @@ class _RoomPageState extends State<RoomPage> {
     // Keep only a long safety timeout in case a remote file never finishes loading.
     // Static/unsupported gifts retain a short fallback display time.
     final isAnimated = mediaType == 'svga' || mediaType == 'gif' || mediaType == 'apng';
+    final overlayNonce = _roomGiftOverlayNonce;
     final safetyMs = isAnimated ? 60000 : 4000;
     _roomGiftOverlayTimer = Timer(Duration(milliseconds: safetyMs), () {
-      _finishRoomGiftOverlay(_roomGiftOverlayNonce);
+      _finishRoomGiftOverlay(overlayNonce);
     });
   }
 
@@ -1793,6 +1794,7 @@ class _RoomPageState extends State<RoomPage> {
 
   Widget _roomGiftFullscreenOverlay() {
     final gift = _activeRoomGift!;
+    final overlayNonce = _roomGiftOverlayNonce;
     final mediaUrl = (gift['mediaUrl'] ?? '').toString().trim();
     final mediaType = (gift['mediaType'] ?? '').toString().toLowerCase();
     final sender = (gift['senderName'] ?? 'مستخدم').toString();
@@ -1807,7 +1809,7 @@ class _RoomPageState extends State<RoomPage> {
         loops: false,
         volume: 0,
         muted: true,
-        onFinished: () => _finishRoomGiftOverlay(_roomGiftOverlayNonce),
+        onFinished: () => _finishRoomGiftOverlay(overlayNonce),
       );
     } else if (mediaUrl.startsWith('https://') &&
         (mediaType == 'gif' || mediaType == 'apng' || mediaUrl.toLowerCase().split('?').first.endsWith('.gif'))) {
@@ -1821,10 +1823,10 @@ class _RoomPageState extends State<RoomPage> {
         fit: BoxFit.contain,
         // Keep the frame delays embedded in the original GIF/APNG.
         loop: false,
-        onFinish: () => _finishRoomGiftOverlay(_roomGiftOverlayNonce),
+        onFinish: () => _finishRoomGiftOverlay(overlayNonce),
         errorBuilder: (context, error, tryAgain) {
           Future<void>.delayed(const Duration(seconds: 2), () {
-            _finishRoomGiftOverlay(_roomGiftOverlayNonce);
+            _finishRoomGiftOverlay(overlayNonce);
           });
           return Center(
             child: Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 110)),
