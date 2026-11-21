@@ -1751,10 +1751,10 @@ class _RoomPageState extends State<RoomPage> {
 
     // Each gift uses its saved administrator-configured duration.
     // Clamp the value defensively to keep malformed events from sticking.
-    final configuredSeconds = int.tryParse((gift['durationSeconds'] ?? '5').toString()) ?? 5;
-    final durationSeconds = configuredSeconds.clamp(1, 60).toInt();
+    final configuredSeconds = double.tryParse((gift['durationSeconds'] ?? '5').toString()) ?? 5.0;
+    final durationMilliseconds = (configuredSeconds.clamp(0.1, 60.0) * 1000).round();
     final overlayNonce = _roomGiftOverlayNonce;
-    _roomGiftOverlayTimer = Timer(Duration(seconds: durationSeconds), () {
+    _roomGiftOverlayTimer = Timer(Duration(milliseconds: durationMilliseconds), () {
       _finishRoomGiftOverlay(overlayNonce);
     });
   }
