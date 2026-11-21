@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:happy_live/widgets/square_country_flag.dart';
 import 'edit_profile_page.dart' show countryFlagForProfileName;
 import 'package:http/http.dart' as http;
@@ -766,7 +767,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         child: ClipOval(
           child: photo.isEmpty
               ? const Icon(Icons.person, color: _brownLight, size: 30)
-              : Image.network(photo,
+              : HappyNetworkImage(photo,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) =>
                       const Icon(Icons.person, color: _brownLight, size: 30)),
@@ -1386,9 +1387,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                           child: Padding(
                                             padding: const EdgeInsets.all(7),
                                             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                          InkWell(onTap: () => _openCommenterProfile(reply), child: CircleAvatar(radius: 14, backgroundColor: _chip,
-                                            backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
-                                            child: avatar.isEmpty ? const Icon(Icons.person_rounded, color: _muted, size: 14) : null)),
+                                          InkWell(onTap: () => _openCommenterProfile(reply), child: HappyNetworkAvatar(url: avatar, size: 28, backgroundColor: _chip, fallback: const Icon(Icons.person_rounded, color: _muted, size: 14))),
                                           const SizedBox(width: 8),
                                           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                             InkWell(onTap: () => _openCommenterProfile(reply), child: Text(replyName, style: const TextStyle(color: _brown, fontSize: 11, fontWeight: FontWeight.w900))),
@@ -1439,16 +1438,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                         InkWell(
                                           onTap: () => _openCommenterProfile(comment),
                                           customBorder: const CircleBorder(),
-                                          child: CircleAvatar(
-                                            radius: 17,
+                                          child: HappyNetworkAvatar(
+                                            url: commenterAvatar,
+                                            size: 34,
                                             backgroundColor: _chip,
-                                            backgroundImage: commenterAvatar.isNotEmpty
-                                                ? NetworkImage(commenterAvatar)
-                                                : null,
-                                            child: commenterAvatar.isEmpty
-                                                ? const Icon(Icons.person_rounded,
-                                                    color: _muted, size: 19)
-                                                : null,
+                                            fallback: const Icon(Icons.person_rounded, color: _muted, size: 19),
                                           ),
                                         ),
                                         const SizedBox(width: 9),
