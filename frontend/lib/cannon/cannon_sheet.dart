@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:gif_view/gif_view.dart';
 import 'cannon_art.dart';
 import 'cannon_models.dart';
@@ -411,13 +412,11 @@ class _ContributorCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text('TOP$rank', style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w900)),
-          CircleAvatar(
-            radius: 19,
+          HappyNetworkAvatar(
+            url: contributor?.avatarUrl ?? '',
+            size: 38,
             backgroundColor: const Color(0xFF33436D),
-            backgroundImage: contributor != null && contributor!.avatarUrl.startsWith('http')
-              ? NetworkImage(contributor!.avatarUrl) : null,
-            child: contributor == null || !contributor!.avatarUrl.startsWith('http')
-              ? const Icon(Icons.person, color: Colors.white54, size: 22) : null,
+            fallback: const Icon(Icons.person, color: Colors.white54, size: 22),
           ),
           Text(
             contributor?.userName ?? 'مقعد فارغ',
