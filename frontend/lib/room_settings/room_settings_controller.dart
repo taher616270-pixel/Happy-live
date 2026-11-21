@@ -143,8 +143,11 @@ class RoomSettingsController extends ChangeNotifier {
           'kick' || 'unkick' || 'ban' || 'unban' => 'طرد',
           'mute' || 'unmute' => 'كتم',
           'assign_moderator' || 'remove_moderator' => 'تعيين الأدوار',
-          _ => 'عمليات أخرى',
+          _ => '',
         };
+        final actorRole = (row['actor_role'] ?? row['actor_type'] ?? detailsRole(row)).toString().toLowerCase();
+        final isOwner = actorRole == 'owner' || actorRole == 'مالك' || actor == 'owner' || actor == 'مالك';
+        final byActor = isOwner ? 'بواسطتك' : 'بواسطة مشرف $actor';
         const settingLabels = {
           'name': 'اسم الغرفة',
           'announcement': 'إعلان الغرفة',
@@ -158,27 +161,27 @@ class RoomSettingsController extends ChangeNotifier {
           'whoLuck': 'صلاحية حقيبة الحظ',
         };
         final text = switch (action) {
-          'kick' => 'تم طرد $target مؤقتًا',
-          'unkick' => 'تم إلغاء الطرد المؤقت عن $target',
-          'ban' => 'تم حظر $target من الغرفة',
-          'unban' => 'تم رفع الحظر عن $target',
-          'mute' => 'تم كتم $target',
-          'unmute' => 'تم إلغاء كتم $target',
-          'assign_moderator' => 'تم تعيين $target مشرفًا',
-          'remove_moderator' => 'تمت إزالة $target من المشرفين',
-          'setting.update' => 'تم تحديث إعداد الغرفة: ${settingLabels[details['key']?.toString()] ?? details['key'] ?? 'إعداد'}',
-          'permission.update' => 'تم تحديث صلاحية المشرف: ${details['permissionId'] ?? ''}',
-          _ => 'إجراء على $target',
+          'kick' => 'تم طرد $target مؤقتًا $byActor',
+          'unkick' => 'تم إلغاء الطرد المؤقت عن $target $byActor',
+          'ban' => 'تمت الإضافة إلى القائمة السوداء للغرفة $byActor',
+          'unban' => 'تمت الإزالة من القائمة السوداء للغرفة $byActor',
+          'mute' => 'تم كتم $target $byActor',
+          'unmute' => 'تم إلغاء كتم $target $byActor',
+          'assign_moderator' => 'تم تعيينه كمشرف $byActor',
+          'remove_moderator' => 'تمت إزالته كعضو $byActor',
+          'setting.update' => 'تم تحديث إعداد الغرفة: ${settingLabels[details['key']?.toString()] ?? details['key'] ?? 'إعداد'} $byActor',
+          'permission.update' => 'تم تحديث صلاحية المشرف: ${details['permissionId'] ?? ''} $byActor',
+          _ => 'إجراء على $target $byActor',
         };
         final date = DateTime.tryParse((row['created_at'] ?? '').toString())?.toLocal();
         final time = date == null ? '' : '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-        return AdminLogEntry(
+        if (category.isEmpty) return null;\n        return AdminLogEntry(
           user: RoomUser(id: '', name: actor, numericId: ''),
           text: text,
           time: time,
           category: category,
         );
-      }).toList();
+      }).whereType<AdminLogEntry>().toList();
     } catch (e) {
       moderationError = e.toString().replaceFirst('Exception: ', '');
     } finally {
@@ -187,7 +190,7 @@ class RoomSettingsController extends ChangeNotifier {
     }
   }
 
-  List<Map<String, dynamic>> _mapRows(Object? value) => value is List
+  String detailsRole(Map<String, dynamic> row) => (row['actor_role'] ?? row['role'] ?? '').toString();\n\n  List<Map<String, dynamic>> _mapRows(Object? value) => value is List
       ? value.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList()
       : <Map<String, dynamic>>[];
 
