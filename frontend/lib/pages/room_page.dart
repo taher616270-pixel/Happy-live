@@ -1742,23 +1742,27 @@ class _RoomPageState extends State<RoomPage> {
   void _showRoomGiftOverlay(Map<String, dynamic> event) {
     final gift = Map<String, dynamic>.from(event);
     final mediaType = (gift['mediaType'] ?? '').toString().trim().toLowerCase();
-    final durationValue = gift['mediaDurationMs'];
-    // SVGA assets may need several seconds to download and decode on mobile
-    // browsers. Do not remove the overlay while the animation is still loading.
-    final defaultDuration = mediaType == 'svga' ? 15000 : 5000;
-    final durationMs = durationValue is num
-        ? durationValue.toInt().clamp(mediaType == 'svga' ? 10000 : 1800, 20000)
-        : defaultDuration;
     _roomGiftOverlayTimer?.cancel();
     unawaited(_playGiftSound(gift));
     setState(() {
       _activeRoomGift = gift;
       _roomGiftOverlayNonce++;
     });
-    _roomGiftOverlayTimer = Timer(Duration(milliseconds: durationMs), () {
-      if (!mounted) return;
-      setState(() => _activeRoomGift = null);
+
+    // Animated assets dismiss themselves from the decoder's completion event.
+    // Keep only a long safety timeout in case a remote file never finishes loading.
+    // Static/unsupported gifts retain a short fallback display time.
+    final isAnimated = mediaType == 'svga' || mediaType == 'gif' || mediaType == 'apng';
+    final safetyMs = isAnimated ? 60000 : 4000;
+    _roomGiftOverlayTimer = Timer(Duration(milliseconds: safetyMs), () {
+      _finishRoomGiftOverlay(_roomGiftOverlayNonce);
     });
+  }
+
+  void _finishRoomGiftOverlay(int nonce) {
+    if (!mounted || nonce != _roomGiftOverlayNonce || _activeRoomGift == null) return;
+    _roomGiftOverlayTimer?.cancel();
+    setState(() => _activeRoomGift = null);
   }
 
   Future<void> _unlockGiftAudio() async {
@@ -1800,9 +1804,10 @@ class _RoomPageState extends State<RoomPage> {
         key: ValueKey('room-gift-svga-$_roomGiftOverlayNonce'),
         resUrl: mediaUrl,
         fit: BoxFit.contain,
-        loops: true,
+        loops: false,
         volume: 0,
         muted: true,
+        onFinished: () => _finishRoomGiftOverlay(_roomGiftOverlayNonce),
       );
     } else if (mediaUrl.startsWith('https://') &&
         (mediaType == 'gif' || mediaType == 'apng' || mediaUrl.toLowerCase().split('?').first.endsWith('.gif'))) {
@@ -1814,10 +1819,17 @@ class _RoomPageState extends State<RoomPage> {
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.contain,
-        frameRate: 24,
-        errorBuilder: (context, error, tryAgain) => Center(
-          child: Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 110)),
-        ),
+        // Keep the frame delays embedded in the original GIF/APNG.
+        loop: false,
+        onFinish: () => _finishRoomGiftOverlay(_roomGiftOverlayNonce),
+        errorBuilder: (context, error, tryAgain) {
+          Future<void>.delayed(const Duration(seconds: 2), () {
+            _finishRoomGiftOverlay(_roomGiftOverlayNonce);
+          });
+          return Center(
+            child: Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 110)),
+          );
+        },
       );
     } else {
       animation = Center(
