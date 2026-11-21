@@ -56,31 +56,32 @@ class _BlacklistPageState extends State<BlacklistPage> {
           appBar: RsAppBar(
             title: 'القائمة السوداء',
             actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh, color: RS.text),
-                onPressed: widget.c.refreshModeration,
-                tooltip: 'تحديث',
+              Padding(
+                padding: const EdgeInsetsDirectional.only(end: 8),
+                child: SizedBox(
+                  width: 170,
+                  height: 36,
+                  child: TextField(
+                    onChanged: (v) => setState(() => query = v.trim()),
+                    style: const TextStyle(color: Colors.black, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'بحث بالاسم أو ID',
+                      hintStyle: const TextStyle(color: RS.gray, fontSize: 12),
+                      prefixIcon: const Icon(Icons.search, color: RS.gray, size: 18),
+                      prefixIconConstraints: const BoxConstraints(minWidth: 34),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+                      filled: true,
+                      fillColor: const Color(0xFFF6F7F8),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
           body: Column(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: TextField(
-                onChanged: (v) => setState(() => query = v.trim()),
-                style: const TextStyle(color: Colors.black),
-                decoration: InputDecoration(
-                  hintText: 'بحث بالاسم أو ID',
-                  hintStyle: const TextStyle(color: RS.gray),
-                  prefixIcon: const Icon(Icons.search, color: RS.gray),
-                  filled: true,
-                  fillColor: const Color(0xFFF6F7F8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                ),
-              ),
-            ),
             SizedBox(
-              height: 44,
+              height: 36,
               child: Row(
                 children: [
                   for (var i = 0; i < tabs.length; i++)
@@ -90,9 +91,9 @@ class _BlacklistPageState extends State<BlacklistPage> {
                         child: Container(
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            border: Border(bottom: BorderSide(color: tab == i ? RS.primary : RS.divider, width: tab == i ? 2 : 1)),
+                            border: Border(bottom: BorderSide(color: tab == i ? const Color(0xFFD4AF37) : RS.divider, width: tab == i ? 2 : 1)),
                           ),
-                          child: Text(tabs[i], style: TextStyle(color: tab == i ? Colors.black : RS.gray, fontWeight: FontWeight.w800)),
+                          child: Text(tabs[i], style: TextStyle(color: tab == i ? Colors.black : RS.gray, fontWeight: FontWeight.w700, fontSize: 13)),
                         ),
                       ),
                     ),
