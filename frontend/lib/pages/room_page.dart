@@ -21,6 +21,16 @@ import 'package:flutter_svga/flutter_svga.dart';
 import 'package:gif_view/gif_view.dart';
 import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:audioplayers/audioplayers.dart';
+import '../room_tools/room_tools_controller.dart';
+import '../room_tools/room_tools_models.dart';
+import '../room_tools/room_tools_api.dart';
+import '../room_tools/room_tools_sheet.dart';
+import '../room_settings/room_settings_controller.dart';
+import '../room_settings/my_workers_api.dart';
+import '../room_settings/pages/room_settings_page.dart';
+import '../widgets/mic_count_sheet.dart';
+import '../models/mic_layout.dart';
+import '../widgets/dynamic_games_list.dart';
 
 class RoomPage extends StatefulWidget {
   const RoomPage({super.key, required this.room, required this.accessToken});
@@ -1619,6 +1629,228 @@ class _RoomPageState extends State<RoomPage> {
 
 
 
+  Future<void> _openRoomTools() async {
+    if (_roomId.isEmpty || widget.accessToken.isEmpty || !_roomDataReady) {
+      _showMessage('انتظر حتى تكتمل بيانات الغرفة');
+      return;
+    }
+
+    RoomToolsConfig.authToken = () => widget.accessToken;
+    RoomToolsConfig.userId = () => _seatStateStore.currentUserId;
+    final controller = RoomToolsController(
+      roomId: _roomId,
+      role: _isRoomOwner
+          ? RoomRole.owner
+          : (_amRoomModerator ? RoomRole.admin : RoomRole.member),
+      micOpen: !_selfMicMuted,
+      actions: RoomToolsActions(
+        counter: _showRoomCounter,
+        pk: _openRoomBattleTools,
+        onOpenGifts: () => _openRoomGiftPicker(),
+        onMicToggle: (open) {
+          if (open != !_selfMicMuted) unawaited(_toggleSelfMic());
+        },
+        clearChat: _clearRoomChatForCurrentView,
+        settings: _openRoomSettings,
+        games: _openRoomGames,
+        micMode: _changeRoomMicLayout,
+        store: _openRoomWallet,
+        activity: _openRoomActivity,
+      ),
+    );
+
+    try {
+      await showRoomToolsSheet(context, controller);
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  void _showRoomCounter(BuildContext host) {
+    var value = 0;
+    showDialog<void>(
+      context: host,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF21152F),
+          title: const Text('عداد الغرفة', style: TextStyle(color: _gold, fontWeight: FontWeight.w800)),
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(onPressed: () => setDialogState(() => value = (value - 1).clamp(0, 999999)), icon: const Icon(Icons.remove_circle_outline, color: Colors.white70)),
+              Text('$value', style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
+              IconButton(onPressed: () => setDialogState(() => value = (value + 1).clamp(0, 999999)), icon: const Icon(Icons.add_circle_outline, color: _gold)),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => setDialogState(() => value = 0), child: const Text('تصفير')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إغلاق')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openRoomBattleTools(BuildContext host) {
+    Future<void> submit(String action) async {
+      Navigator.of(host).pop();
+      try {
+        final response = await http.post(
+          Uri.parse(_apiBase + '/rooms/' + Uri.encodeComponent(_roomId) + '/battle'),
+          headers: _headers,
+          body: jsonEncode({'action': action}),
+        ).timeout(const Duration(seconds: 10));
+        final payload = jsonDecode(response.body);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          _showMessage(action == 'start' ? 'بدأ تحدي PK في الغرفة' : 'انتهى تحدي PK');
+        } else {
+          final error = payload is Map ? (payload['error'] ?? '').toString() : '';
+          _showMessage(error == 'battle_already_active'
+              ? 'يوجد تحدي PK نشط بالفعل'
+              : error == 'no_active_battle'
+                  ? 'لا يوجد تحدي PK نشط لإنهائه'
+                  : 'تعذر تنفيذ أمر PK');
+        }
+      } catch (_) {
+        _showMessage('تعذر الاتصال بخدمة PK');
+      }
+    }
+
+    showModalBottomSheet<void>(
+      context: host,
+      backgroundColor: const Color(0xFF21152F),
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text('إدارة تحدي PK', style: TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 14),
+              ListTile(
+                leading: const Icon(Icons.play_circle_fill, color: Colors.greenAccent),
+                title: const Text('بدء التحدي', style: TextStyle(color: Colors.white)),
+                onTap: () => submit('start'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.stop_circle, color: Colors.redAccent),
+                title: const Text('إنهاء التحدي', style: TextStyle(color: Colors.white)),
+                onTap: () => submit('end'),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openRoomGames(BuildContext host) {
+    showModalBottomSheet<void>(
+      context: host,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          height: MediaQuery.sizeOf(sheetContext).height * .78,
+          padding: EdgeInsets.fromLTRB(16, 18, 16, MediaQuery.paddingOf(sheetContext).bottom + 12),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF5EEDC),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              const Text('مركز الألعاب', style: TextStyle(color: Color(0xFF211B16), fontSize: 19, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+              const Expanded(child: SingleChildScrollView(child: DynamicGamesList())),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openRoomSettings(BuildContext host) async {
+    await Navigator.of(host).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RoomSettingsPage(
+          c: RoomSettingsController(
+            api: MyWorkersApi(roomId: _roomId, accessToken: widget.accessToken),
+          ),
+          onCoverChanged: _applyRoomCoverUpdate,
+        ),
+      ),
+    );
+    if (mounted) await _refreshSeats();
+  }
+
+  Future<void> _changeRoomMicLayout(BuildContext host) async {
+    final selected = await showMicCountSheet(host, currentId: _micLayoutId);
+    if (selected == null || selected == _micLayoutId || !host.mounted) return;
+    final layout = micLayoutById(selected);
+    final settings = RoomSettingsController(
+      api: MyWorkersApi(roomId: _roomId, accessToken: widget.accessToken),
+    );
+    try {
+      await settings.load();
+      await settings.setMicLayout(layout.id, layout.count);
+      await _refreshSeats();
+      if (host.mounted) _showMessage('تم تحديث عدد المقاعد');
+    } catch (_) {
+      if (host.mounted) _showMessage('تعذر حفظ عدد المقاعد');
+    } finally {
+      settings.dispose();
+    }
+  }
+
+  void _openRoomWallet(BuildContext host) {
+    Navigator.of(host).push(MaterialPageRoute<void>(
+      builder: (_) => WalletPage(apiBase: _apiBase, accessToken: widget.accessToken),
+    ));
+  }
+
+  void _openRoomActivity(BuildContext host) {
+    showModalBottomSheet<void>(
+      context: host,
+      backgroundColor: const Color(0xFF21152F),
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('نشاط الغرفة', style: TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 14),
+              _roomActivityLine('مستوى الغرفة', '$_roomExperienceLevel'),
+              _roomActivityLine('نقاط الخبرة', _roomExperienceExp.toString()),
+              _roomActivityLine('خبرة اليوم', _roomDailyExperienceExp.toString()),
+              _roomActivityLine('عدد الحضور', _audienceCount.toString()),
+              _roomActivityLine('عدد المقاعد', _micCount.toString()),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _roomActivityLine(String label, String value) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 7),
+    child: Row(children: [
+      Expanded(child: Text(label, style: const TextStyle(color: Colors.white70))),
+      Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+    ]),
+  );
+
+  void _clearRoomChatForCurrentView(BuildContext host) {
+    setState(() {
+      _messages.clear();
+      _messageIds.clear();
+    });
+    ScaffoldMessenger.maybeOf(host)?.showSnackBar(
+      const SnackBar(content: Text('تم مسح الرسائل من عرضك الحالي فقط')),
+    );
+  }
+
   void _showChatToolMessage(String label) {
     _showMessage('$label — واجهة تجريبية للمرحلة الأولى');
   }
@@ -2226,6 +2458,7 @@ class _RoomPageState extends State<RoomPage> {
       onModerateUser: _moderateRoomUser,
       showRoomActions: _showRoomActions,
       onRoomActions: () => setState(() => _showRoomActions = !_showRoomActions),
+      onRoomTools: _openRoomTools,
       onMinimizeRoom: _minimizeRoom,
       onCloseRoom: _closeRoom,
       onUpgradeRoom: upgradeRoom,
