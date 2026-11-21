@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:happy_live/widgets/square_country_flag.dart';
 import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
@@ -1827,12 +1828,11 @@ class _HappyMessagesTabState extends State<_HappyMessagesTab> {
   }
 
   Widget _avatar(String? url, {double size = 48}) {
-    final value = (url ?? '').trim();
-    return CircleAvatar(
-      radius: size / 2,
+    return HappyNetworkAvatar(
+      url: (url ?? '').trim(),
+      size: size,
       backgroundColor: const Color(0xFFFFF2D3),
-      backgroundImage: value.isNotEmpty ? NetworkImage(value) : null,
-      child: value.isEmpty ? const Icon(Icons.person_rounded, color: Color(0xFFD0A044)) : null,
+      fallback: const Icon(Icons.person_rounded, color: Color(0xFFD0A044)),
     );
   }
 
