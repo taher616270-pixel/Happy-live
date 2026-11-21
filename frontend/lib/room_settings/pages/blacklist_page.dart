@@ -13,7 +13,15 @@ class BlacklistPage extends StatefulWidget {
 class _BlacklistPageState extends State<BlacklistPage> {
   int tab = 0;
   String query = '';
+  bool searchVisible = false;
+  final TextEditingController searchController = TextEditingController();
   static const tabs = ['حظر دائم', 'طرد مؤقت'];
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _run(String action, Map<String, dynamic> row) async {
     final userId = (row['user_id'] ?? '').toString();
@@ -49,37 +57,56 @@ class _BlacklistPageState extends State<BlacklistPage> {
         final items = source.where((row) {
           final name = (row['display_name'] ?? '').toString();
           final id = (row['public_id'] ?? '').toString();
-          return name.toLowerCase().contains(query.toLowerCase()) || id.contains(query);
+          final q = query.trim().toLowerCase();
+          return name.toLowerCase().contains(q) || id.toLowerCase().contains(q);
         }).toList();
         return Scaffold(
           backgroundColor: Colors.white,
           appBar: RsAppBar(
             title: 'القائمة السوداء',
             actions: [
+              IconButton(
+                tooltip: searchVisible ? 'إغلاق البحث' : 'بحث',
+                onPressed: () => setState(() {
+                  searchVisible = !searchVisible;
+                  if (!searchVisible) {
+                    query = '';
+                    searchController.clear();
+                  }
+                }),
+                icon: Icon(
+                  searchVisible ? Icons.close_rounded : Icons.search_rounded,
+                  color: const Color(0xFFD4AF37),
+                  size: 25,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          body: Column(children: [
+            if (searchVisible)
               Padding(
-                padding: const EdgeInsetsDirectional.only(end: 8),
-                child: SizedBox(
-                  width: 170,
-                  height: 36,
-                  child: TextField(
-                    onChanged: (v) => setState(() => query = v.trim()),
-                    style: const TextStyle(color: Colors.black, fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: 'بحث بالاسم أو ID',
-                      hintStyle: const TextStyle(color: RS.gray, fontSize: 12),
-                      prefixIcon: const Icon(Icons.search, color: RS.gray, size: 18),
-                      prefixIconConstraints: const BoxConstraints(minWidth: 34),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
-                      filled: true,
-                      fillColor: const Color(0xFFF6F7F8),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                child: TextField(
+                  controller: searchController,
+                  autofocus: true,
+                  onChanged: (value) => setState(() => query = value),
+                  textInputAction: TextInputAction.search,
+                  style: const TextStyle(color: Colors.black),
+                  decoration: InputDecoration(
+                    hintText: 'بحث بالاسم أو ID',
+                    hintStyle: const TextStyle(color: RS.gray),
+                    prefixIcon: const Icon(Icons.search, color: RS.gray),
+                    filled: true,
+                    fillColor: const Color(0xFFF6F7F8),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
-          body: Column(children: [
             SizedBox(
               height: 36,
               child: Row(
