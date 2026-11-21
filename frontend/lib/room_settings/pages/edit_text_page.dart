@@ -27,7 +27,7 @@ class _EditTextPageState extends State<EditTextPage> {
         Align(alignment: Alignment.centerLeft, child: Text('${t.text.runes.length}/${widget.maxLength}', style: const TextStyle(color: RS.lightGray, fontSize: 11))),
       ])),
       const SizedBox(height: 22),
-      PrimaryButton(label: saving ? 'جارٍ الحفظ' : 'حفظ', onTap: t.text.trim().isEmpty || saving ? null : () async {
+      PrimaryButton(label: saving ? 'جارٍ الحفظ' : 'حفظ', backgroundColor: const Color(0xFFD4AF37), textColor: Colors.white, onTap: t.text.trim().isEmpty || saving ? null : () async {
         setState(() => saving = true);
         try { await widget.onSave(t.text.trim()); if (context.mounted) { Navigator.pop(context); showRsToast(context, 'تم بنجاح'); } }
         catch (e) { if (context.mounted) showRsToast(context, e.toString().replaceFirst('Exception: ', '')); }
