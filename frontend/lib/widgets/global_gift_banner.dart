@@ -206,7 +206,7 @@ class _BannerAvatar extends StatelessWidget {
     fallback: Text(name.isEmpty ? '؟' : name.characters.first,
       style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
   );
-}}
+}
 
 class GiftComboBanner extends StatelessWidget {
   const GiftComboBanner({
