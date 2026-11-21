@@ -646,16 +646,12 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
                               InkWell(
                                 onTap: () => _openUserProfile(c),
                                 customBorder: const CircleBorder(),
-                                child: CircleAvatar(
-                                  radius: 18,
+                                child: HappyNetworkAvatar(
+                                  url: commenterAvatar,
+                                  size: 36,
                                   backgroundColor: const Color(0xFFF3F3F3),
-                                  backgroundImage: commenterAvatar.isNotEmpty
-                                      ? NetworkImage(commenterAvatar)
-                                      : null,
-                                  child: commenterAvatar.isEmpty
-                                      ? Text(commenterName.isEmpty ? 'م' : commenterName.characters.first,
-                                          style: const TextStyle(color: Color(0xFF80602B), fontWeight: FontWeight.w900))
-                                      : null,
+                                  fallback: Text(commenterName.isEmpty ? 'م' : commenterName.characters.first,
+                                    style: const TextStyle(color: Color(0xFF80602B), fontWeight: FontWeight.w900)),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -1253,7 +1249,7 @@ class _PostImageState extends State<_PostImage> {
       child: SizedBox(
         width: boxWidth.clamp(0.0, 240.0).toDouble(),
         height: boxHeight.clamp(0.0, 420.0).toDouble(),
-        child: Image.network(
+        child: HappyNetworkImage(
           widget.url,
           fit: BoxFit.contain,
           alignment: Alignment.center,
