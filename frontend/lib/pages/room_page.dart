@@ -1753,8 +1753,8 @@ class _RoomPageState extends State<RoomPage> {
     // Some GIF decoders report completion immediately for optimized/short files,
     // so the room overlay uses a guarded display timer instead of onFinish.
     final overlayNonce = _roomGiftOverlayNonce;
-    final safetyMs = mediaType == 'svga' ? 18000 :
-        (mediaType == 'gif' || mediaType == 'apng') ? 8000 : 4000;
+    final safetyMs = mediaType == 'svga' ? 60000 :
+        (mediaType == 'gif' || mediaType == 'apng') ? 45000 : 5000;
     _roomGiftOverlayTimer = Timer(Duration(milliseconds: safetyMs), () {
       _finishRoomGiftOverlay(overlayNonce);
     });
@@ -1823,7 +1823,11 @@ class _RoomPageState extends State<RoomPage> {
         // Loop briefly so the animation remains visible even when the
         // decoder reports a zero/very short duration for optimized GIFs.
         frameRate: 24,
+        autoPlay: true,
         loop: true,
+        progressBuilder: (context) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFFE8C477)),
+        ),
         errorBuilder: (context, error, tryAgain) => Center(
           child: Text((gift['iconEmoji'] ?? '🎁').toString(), style: const TextStyle(fontSize: 110)),
         ),
