@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 
@@ -247,7 +248,7 @@ class ProfilePage extends StatelessWidget {
               height: 60,
               child: avatar.isEmpty
                   ? _avatarFallback()
-                  : Image.network(
+                  : HappyNetworkImage(
                       avatar,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => _avatarFallback(),
