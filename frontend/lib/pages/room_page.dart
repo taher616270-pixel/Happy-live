@@ -19,6 +19,7 @@ import 'package:happy_live/pages/wallet_page.dart';
 import 'package:happy_live/widgets/room_gift_sheet.dart';
 import 'package:flutter_svga/flutter_svga.dart';
 import 'package:gif_view/gif_view.dart';
+import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 class RoomPage extends StatefulWidget {
@@ -1195,12 +1196,14 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Widget _chatAvatar(String avatar, String name, {double size = 34, VoidCallback? onTap}) {
-    final hasImage = avatar.startsWith('http://') || avatar.startsWith('https://');
-    final avatarWidget = CircleAvatar(
-      radius: size / 2,
+    final avatarWidget = HappyNetworkAvatar(
+      url: avatar,
+      size: size,
       backgroundColor: const Color(0xFF46304F),
-      backgroundImage: hasImage ? NetworkImage(avatar) : null,
-      child: hasImage ? null : Text(name.isEmpty ? '؟' : name.characters.first, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+      fallback: Text(
+        name.isEmpty ? '؟' : name.characters.first,
+        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+      ),
     );
     if (onTap == null) return avatarWidget;
     return SizedBox(
@@ -1210,11 +1213,7 @@ class _RoomPageState extends State<RoomPage> {
         color: Colors.transparent,
         shape: const CircleBorder(),
         clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: Center(child: avatarWidget),
-        ),
+        child: InkWell(customBorder: const CircleBorder(), onTap: onTap, child: avatarWidget),
       ),
     );
   }
@@ -2383,7 +2382,6 @@ class _RoomPageState extends State<RoomPage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: const Color(0xCC092A35),
-                  image: avatar.startsWith('https://') ? DecorationImage(image: NetworkImage(avatar), fit: BoxFit.cover) : null,
                   gradient: avatar.startsWith('https://') ? null : LinearGradient(
                     begin: Alignment.topLeft, end: Alignment.bottomRight,
                     colors: occupied
@@ -2396,11 +2394,21 @@ class _RoomPageState extends State<RoomPage> {
                   ),
                   boxShadow: [BoxShadow(color: occupied ? const Color(0x5539A2A5) : const Color(0x22000000), blurRadius: 12, offset: const Offset(0, 4))],
                 ),
-                child: avatar.startsWith('https://') ? null : Center(
-                  child: occupied
-                    ? Text(name.isEmpty ? '؟' : name.characters.first,
-                        style: TextStyle(color: Colors.white, fontSize: micSize * .35, fontWeight: FontWeight.w900))
-                    : Icon(Icons.add_rounded, color: const Color(0xFFFFD18A), size: micSize * .40),
+                child: ClipOval(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (avatar.startsWith('https://') || avatar.startsWith('http://'))
+                        HappyNetworkImage(avatar, fit: BoxFit.cover),
+                      if (!avatar.startsWith('https://') && !avatar.startsWith('http://'))
+                        Center(
+                          child: occupied
+                            ? Text(name.isEmpty ? '؟' : name.characters.first,
+                                style: TextStyle(color: Colors.white, fontSize: micSize * .35, fontWeight: FontWeight.w900))
+                            : Icon(Icons.add_rounded, color: const Color(0xFFFFD18A), size: micSize * .40),
+                        ),
+                    ],
+                  ),
                 ),
               ),
               Positioned(
