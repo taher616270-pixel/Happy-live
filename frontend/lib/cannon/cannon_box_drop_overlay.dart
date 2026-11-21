@@ -78,11 +78,22 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
   static const int _totalDropMs =
       _batchCount * _batchFallMs + (_batchCount - 1) * _batchPauseMs;
 
+  // Stagger every gift independently so the boxes overlap like continuous rain.
+  // The deterministic per-index timing keeps every viewer's animation consistent.
+  int _startMs(int index) {
+    final random = math.Random(index * 104729 + 31);
+    final interval = 245 + random.nextInt(76);
+    return index * interval;
+  }
+
+  int _fallDurationMs(int index) {
+    final random = math.Random(index * 15485863 + 47);
+    return 4300 + random.nextInt(1201);
+  }
+
   double _fraction(int index) {
-    final batch = index ~/ _boxesPerBatch;
-    final startMs = batch * (_batchFallMs + _batchPauseMs);
     final elapsedMs = _controller.value * _totalDropMs;
-    return ((elapsedMs - startMs) / _batchFallMs)
+    return ((elapsedMs - _startMs(index)) / _fallDurationMs(index))
         .clamp(0.0, 1.0)
         .toDouble();
   }
@@ -98,8 +109,8 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
           children: [
             for (var index = 0; index < 50; index++)
               if (!_opened.contains(index) &&
-                  _controller.value * _totalDropMs >=
-                      (index ~/ _boxesPerBatch) * (_batchFallMs + _batchPauseMs))
+                  _controller.value * _totalDropMs >= _startMs(index) &&
+                  _fraction(index) < 1.0)
                 _fallingBox(index, size),
             Positioned(
               left: 0,
@@ -138,17 +149,24 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
   Widget _fallingBox(int index, Size screen) {
     final progress = _fraction(index);
     final random = math.Random(index * 7919 + 17);
-    final boxSize = 48.0 + (index % 3) * 3;
+    final boxSize = 38.0 + random.nextDouble() * 19.0;
     final maxLeft = math.max(0.0, screen.width - boxSize - 8.0).toDouble();
-    final left = 4.0 + random.nextDouble() * maxLeft;
-    final sway = math.sin(progress * math.pi * 2 + index) * 13;
+    final startLeft = 4.0 + random.nextDouble() * maxLeft;
+    final drift = (random.nextDouble() - .5) * screen.width * .22;
+    final sway = math.sin(progress * math.pi * 3.2 + index * .7) * 17;
+    final left = (startLeft + drift * progress + sway)
+        .clamp(0.0, maxLeft)
+        .toDouble();
     final top = -boxSize - 20 + progress * (screen.height + boxSize + 50);
+    final rotation = math.sin(progress * math.pi * 2.4 + index) * .16;
     final isBusy = _busy.contains(index);
 
     return Positioned(
-      left: (left + sway).clamp(0.0, maxLeft).toDouble(),
+      left: left,
       top: top,
-      child: GestureDetector(
+      child: Transform.rotate(
+        angle: rotation,
+        child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: isBusy ? null : () => _open(index),
         child: AnimatedOpacity(
@@ -197,6 +215,7 @@ class _CannonBoxDropOverlayState extends State<CannonBoxDropOverlay>
             ),
           ),
         ),
+      ),
       ),
     );
   }
