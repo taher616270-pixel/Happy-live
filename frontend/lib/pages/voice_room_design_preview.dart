@@ -1344,7 +1344,9 @@ Widget _roomActionButton({
         : configuredMicCount > 0
             ? 'm$configuredMicCount'
             : 'm8';
-    final layout = micLayoutById(resolvedLayoutId);
+    // During the local PK visual preview, explicitly use the existing 12-seat
+    // layout so a stale room snapshot/layout ID cannot hide the PK arrangement.
+    final layout = micLayoutById(pkVisualMode ? 'm12' : resolvedLayoutId);
     final columns = layout.maxCols;
     // Preserve each row's own alignment by building a padded row-major list.
     final arrangedCells = <MicSeat?>[];
@@ -1382,7 +1384,7 @@ Widget _roomActionButton({
     const micColumnGap = 2.0;
     final gridHeight = (layout.rows.length * 88.0) +
         ((layout.rows.length - 1) * micRowGap);
-    final pkTwelveSeatLayout = pkVisualMode && layout.id == 'm12';
+    final pkTwelveSeatLayout = pkVisualMode;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: pkTwelveSeatLayout ? 8 : 12),
       child: SizedBox(
