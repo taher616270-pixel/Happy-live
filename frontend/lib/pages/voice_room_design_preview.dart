@@ -165,7 +165,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 // Keep the microphone grid, listener strip and everything
                 // below it in normal vertical flow. The listener strip now
                 // follows the actual measured grid height for every layout.
-                if (pkTeamMode) _pkBattleStrip(),
+                if (pkVisualMode) _pkBattleStrip(),
                 _seats(context),
                 const SizedBox(height: 1),
                 Transform.translate(
@@ -244,43 +244,97 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
   /// During entry, expose only the room identity tile and the close control.
   /// Mic seats, chat, gifts and every other action wait for the DB snapshot.
-  Widget _pkBattleStrip() => Padding(
-    padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-    child: Container(
-      height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF102C55), Color(0xFF241A25), Color(0xFF581D2B)],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x88E9C46A), width: 1),
-        boxShadow: const [BoxShadow(color: Color(0x44000000), blurRadius: 8, offset: Offset(0, 3))],
-      ),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text('الفريق الأزرق', textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF55A8FF), fontSize: 11, fontWeight: FontWeight.w900)),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
-            decoration: BoxDecoration(
-              color: const Color(0xFF171717),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE9C46A), width: .8),
+  Widget _pkBattleStrip() {
+    const scoreA = 0;
+    const scoreB = 0;
+    final total = (scoreA + scoreB).toDouble();
+    final percentA = total == 0 ? 0.5 : scoreA / total;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          height: 34,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF2B5CFF), Color(0xFFFF4D8D)],
             ),
-            child: Text(pkActive ? 'PK  •  مباشر' : 'PK  •  متوقف',
-              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 11, fontWeight: FontWeight.w900)),
           ),
-          const Expanded(
-            child: Text('الفريق الأحمر', textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFFFF6875), fontSize: 11, fontWeight: FontWeight.w900)),
+          child: Row(
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(left: 12),
+                child: Text(
+                  '$scoreA',
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Expanded(
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    AnimatedAlign(
+                      alignment: Alignment(
+                        (percentA * 2 - 1).clamp(-1.0, 1.0).toDouble(),
+                        0,
+                      ),
+                      duration: const Duration(milliseconds: 500),
+                      child: Container(
+                        width: 46,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Colors.white, Color(0xFFFF8AB0)],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Center(
+                          child: Text('• •', style: TextStyle(color: Colors.pink, fontSize: 10)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(right: 12),
+                child: Text(
+                  '$scoreB',
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
-  );
+        ),
+        Transform.translate(
+          offset: const Offset(0, -2),
+          child: Container(
+            width: 170,
+            height: 46,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF3A5BFF), Color(0xFFFF4D8D)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.6), width: 2),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.chevron_left, color: Colors.white54),
+                Text(
+                  'بدأ',
+                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                Icon(Icons.chevron_right, color: Colors.white54),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+      ],
+    );
+  }
 
   Widget _loadingRoomContent(BuildContext context) {
     final cover = _roomInfoString(['imageUrl', 'image_url', 'coverUrl', 'cover_url']);
@@ -1347,7 +1401,7 @@ Widget _roomActionButton({
     // During the local PK visual preview, explicitly use the existing 12-seat
     // layout so a stale room snapshot/layout ID cannot hide the PK arrangement.
     final layout = micLayoutById(pkVisualMode ? 'm12' : resolvedLayoutId);
-    final columns = layout.maxCols;
+    final columns = pkVisualMode ? 4 : layout.maxCols;
     // Preserve each row's own alignment by building a padded row-major list.
     final arrangedCells = <MicSeat?>[];
     for (final row in layout.rows) {
@@ -1364,7 +1418,7 @@ Widget _roomActionButton({
       arrangedCells
         ..clear()
         ..addAll(
-          [1, 2, 7, 8, 3, 4, 9, 10, 5, 6, 11, 12]
+          [4, 3, 2, 1, 8, 7, 6, 5, 12, 11, 10, 9]
               .map((number) => slotsByNumber[number]!)
               .toList(),
         );
@@ -1509,8 +1563,9 @@ Widget _roomActionButton({
         final voiceLevel = speakerUid == null ? 0.0 : (speakerLevels[speakerUid] ?? 0.0);
         final isSpeaking = occupied && !muted && voiceLevel >=
             (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
-        final seatDiameter = slot.big ? 50.0 : 44.0;
-        final seatBoxWidth = slot.big ? 66.0 : 58.0;
+        final seatDiameter = pkTwelveSeatLayout ? 72.0 : (slot.big ? 50.0 : 44.0);
+        final seatBoxWidth = pkTwelveSeatLayout ? 78.0 : (slot.big ? 66.0 : 58.0);
+        final isBluePkTeam = pkTwelveSeatLayout ? index % columns < 2 : number <= 6;
         // The row offset is applied by the parent Transform above;
         // the seat itself keeps its original 88px hit target and visuals.
         return Transform.translate(
@@ -1585,15 +1640,13 @@ Widget _roomActionButton({
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: pkTwelveSeatLayout
-                            ? (number <= 6
-                                ? const Color(0xFF2B2BD6).withOpacity(.20)
-                                : const Color(0xFFB01E5A).withOpacity(.20))
+                            ? Colors.white.withOpacity(.12)
                             : slot.big
                                 ? const Color(0x33E8C477)
                                 : Colors.white.withOpacity(.14),
                         border: Border.all(
                           color: pkTwelveSeatLayout
-                              ? (number <= 6 ? const Color(0xFF5555FF) : const Color(0xFFE64B91))
+                              ? Colors.white.withOpacity(.25)
                               : pkTeamMode && layout.id == 'm8'
                                   ? (number <= 4 ? const Color(0xFF258BFF) : const Color(0xFFFF4B5C))
                                   : mine
@@ -1624,9 +1677,15 @@ Widget _roomActionButton({
                               HappyNetworkImage(avatar, fit: BoxFit.cover),
                             if (!avatar.startsWith('http'))
                               Icon(
-                                occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
+                                occupied
+                                    ? Icons.person
+                                    : locked
+                                        ? Icons.lock_outline
+                                        : pkTwelveSeatLayout
+                                            ? Icons.event_seat_outlined
+                                            : Icons.weekend_outlined,
                                 color: Colors.white.withOpacity(.92),
-                                size: slot.big ? 22 : 19,
+                                size: pkTwelveSeatLayout ? 30 : (slot.big ? 22 : 19),
                               ),
                           ],
                         ),
@@ -1711,8 +1770,8 @@ Widget _roomActionButton({
                   child: Text(
                     locked ? 'مقفل' : '$number',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(.65),
-                      fontSize: 13,
+                      color: Colors.white.withOpacity(.7),
+                      fontSize: pkTwelveSeatLayout ? 16 : 13,
                       shadows: const [
                         Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 1)),
                       ],
