@@ -2115,22 +2115,24 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _openRoomBattleTools(BuildContext host) {
+    var busy = false;
+    String? busyAction;
+    var teamMode = _roomBattleTeamMode;
+    var active = _roomBattleActive;
+    String? errorMessage;
+    String? successMessage;
+
     showModalBottomSheet<void>(
       context: host,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) {
-          var busy = false;
-          var teamMode = _roomBattleTeamMode;
-          var active = _roomBattleActive;
-          String? errorMessage;
-          String? successMessage;
-
           Future<void> submit(String action) async {
             if (busy) return;
             setSheetState(() {
               busy = true;
+              busyAction = action;
               errorMessage = null;
               successMessage = null;
             });
@@ -2203,7 +2205,10 @@ class _RoomPageState extends State<RoomPage> {
               }
             } finally {
               if (sheetContext.mounted) {
-                setSheetState(() => busy = false);
+                setSheetState(() {
+                  busy = false;
+                  busyAction = null;
+                });
               }
             }
           }
@@ -2216,11 +2221,7 @@ class _RoomPageState extends State<RoomPage> {
             required String action,
             bool emphasized = false,
           }) {
-            final selected = busy && action == (action == 'start'
-                ? 'start'
-                : action == 'end'
-                    ? 'end'
-                    : 'reset');
+            final selected = busy && busyAction == action;
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Material(
