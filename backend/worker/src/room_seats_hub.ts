@@ -165,7 +165,11 @@ export class RoomSeatsHub {
 
     if (url.pathname === "/battle-state" && request.method === "POST") {
       const roomId = request.headers.get("x-room-id") ?? "";
-      if (!roomId || roomId !== this.roomId) return Response.json({ error: "room_mismatch" }, { status: 403 });
+      if (!roomId || (this.roomId && roomId !== this.roomId)) return Response.json({ error: "room_mismatch" }, { status: 403 });
+      if (!this.roomId) {
+        this.roomId = roomId;
+        await this.state.storage.put("room-id", roomId);
+      }
       let body: Record<string, unknown>;
       try { body = await request.json() as Record<string, unknown>; }
       catch { return Response.json({ error: "invalid_json" }, { status: 400 }); }
