@@ -466,7 +466,7 @@ export class RoomSeatsHub {
         return;
       }
       if (message.type === "stop_room_counter") {
-        await this.finishRoomCounter(identity.userId, "manual");
+        await this.finishRoomCounter(identity.userId, this.roomCounter?.endsAt && this.roomCounter.endsAt <= Date.now() ? "expired" : "manual");
         this.send(socket, { type: "room_counter_ack", ok: true });
         await this.scheduleExpiry();
         return;
@@ -638,7 +638,7 @@ export class RoomSeatsHub {
       id: crypto.randomUUID(),
       startedAt: current.startedAt,
       endedAt,
-      durationSeconds: Math.max(1, Math.round((current.endsAt - current.startedAt) / 1000)),
+      durationSeconds: Math.max(1, Math.round((endedAt - current.startedAt) / 1000)),
       scores: { ...current.scores },
       stoppedBy,
       reason
