@@ -368,7 +368,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         ),
         // 2. PK 12-seats Split Area (Blue on Left, Red on Right) - Compact
         Container(
-          height: 230,
+          height: 227,
           margin: const EdgeInsets.only(top: 6),
           child: Stack(
             children: [
