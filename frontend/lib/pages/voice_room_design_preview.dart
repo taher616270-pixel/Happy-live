@@ -288,23 +288,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             right: 0,
             child: PkScoreBar(scoreA: 0, scoreB: 0),
           ),
-          Positioned(
-            top: -5,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                width: 18,
-                height: 18,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [Colors.white, Color(0xFFFF8AB0), Colors.transparent],
-                  ),
-                ),
-              ),
-            ),
-          ),
           // Team panels touch the score strip with no vertical gap.
           Positioned(
             top: 6,
@@ -4615,60 +4598,11 @@ class _PkScoreBarState extends State<PkScoreBar>
               ],
             ),
           ),
-          AnimatedBuilder(
-            animation: _bounceCtrl,
-            builder: (context, child) => Align(
-              alignment: Alignment(
-                -0.92 + (_bounceCtrl.value * 1.84),
-                0,
-              ),
-              child: child,
-            ),
-            child: Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white,
-                      Color(0xFFFFB0C8),
-                      Color(0xFFFF4D8D),
-                    ],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.pink.withOpacity(0.6),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    Positioned(top: 4, left: 5, child: _pkScoreDot(2)),
-                    Positioned(top: 7, left: 10, child: _pkScoreDot(1.7)),
-                    Positioned(top: 12, left: 6, child: _pkScoreDot(1.5)),
-                    Positioned(bottom: 4, left: 9, child: _pkScoreDot(1.7)),
-                  ],
-                ),
-              ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _pkScoreDot(double size) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9),
-          shape: BoxShape.circle,
-        ),
-      );
 }
 
 class _PkChevronPainter extends CustomPainter {
