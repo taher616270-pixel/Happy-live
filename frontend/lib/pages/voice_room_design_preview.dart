@@ -4575,12 +4575,18 @@ class StartPkButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipPath(
-      clipper: StartButtonShape(),
-      child: SizedBox(
-        width: 280,
-        height: 62,
-        child: DecoratedBox(
+    return SizedBox(
+      width: 110,
+      height: 24,
+      child: Center(
+        child: Transform.scale(
+          scale: 0.39,
+          child: ClipPath(
+            clipper: StartButtonShape(),
+            child: SizedBox(
+              width: 280,
+              height: 62,
+              child: DecoratedBox(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.centerLeft,
@@ -4616,6 +4622,9 @@ class StartPkButton extends StatelessWidget {
                 ],
               ),
             ],
+          ),
+              ),
+            ),
           ),
         ),
       ),
