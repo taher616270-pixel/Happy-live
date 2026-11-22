@@ -6,6 +6,7 @@ Future<void> showPkSheet(
   BuildContext context, {
   required bool isPkVisualMode,
   required VoidCallback onToggle,
+  required VoidCallback onReset,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -13,7 +14,7 @@ Future<void> showPkSheet(
     backgroundColor: Colors.transparent,
     builder: (_) => Directionality(
       textDirection: TextDirection.rtl,
-      child: _PkSheet(isPkVisualMode: isPkVisualMode, onToggle: onToggle),
+      child: _PkSheet(isPkVisualMode: isPkVisualMode, onToggle: onToggle, onReset: onReset),
     ),
   );
 }
@@ -23,8 +24,9 @@ const _purple = [Color(0xFF9620F8), Color(0xFFB12FF2)];
 class _PkSheet extends StatelessWidget {
   final bool isPkVisualMode;
   final VoidCallback onToggle;
+  final VoidCallback onReset;
 
-  const _PkSheet({required this.isPkVisualMode, required this.onToggle});
+  const _PkSheet({required this.isPkVisualMode, required this.onToggle, required this.onReset});
 
   @override
   Widget build(BuildContext context) {
@@ -80,15 +82,41 @@ class _PkSheet extends StatelessWidget {
             style: TextStyle(color: Color(0x73FFFFFF), fontSize: 12.5, height: 1.35),
           ),
           const SizedBox(height: 26),
-          _Btn(
-            label: isPkVisualMode ? 'إغلاق' : 'فتح',
-            gradient: true,
-            onTap: () {
-              // Change the room state while the parent route is still mounted.
-              onToggle();
-              Navigator.of(context).pop();
-            },
-          ),
+          if (isPkVisualMode)
+            Row(
+              children: [
+                Expanded(
+                  child: _Btn(
+                    label: 'إغلاق',
+                    gradient: true,
+                    onTap: () {
+                      onToggle();
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 104,
+                  child: _Btn(
+                    label: 'إعادة',
+                    onTap: () {
+                      onReset();
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ),
+              ],
+            )
+          else
+            _Btn(
+              label: 'فتح',
+              gradient: true,
+              onTap: () {
+                onToggle();
+                Navigator.of(context).pop();
+              },
+            ),
         ]),
       ),
     );
@@ -235,7 +263,8 @@ class _Btn extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: gradient ? const LinearGradient(colors: _purple) : null,
-        color: gradient ? null : const Color(0x33FFFFFF),
+        color: gradient ? null : const Color(0x0DFFFFFF),
+        border: gradient ? null : Border.all(color: const Color(0x66FFFFFF), width: 1),
       ),
       child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
     ),
