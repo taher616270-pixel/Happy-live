@@ -167,8 +167,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 // follows the actual measured grid height for every layout.
                 if (pkVisualMode) ...[
                   _buildPkRoomView(context),
-                  // PK-only: place the people strip directly below the red/blue teams.
-                  _listeners(context),
+                  // Lift the PK people strip by 3px without moving the team panels.
+                  Transform.translate(
+                    offset: const Offset(0, -3),
+                    child: _listeners(context),
+                  ),
                 ] else ...[
                   _seats(context),
                   const SizedBox(height: 1),
@@ -390,15 +393,18 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 7),
-                        Row(
-                          textDirection: TextDirection.ltr,
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _buildPkSeatCell(context, 12),
-                            _buildPkSeatCell(context, 11),
-                            _buildPkSeatCell(context, 10),
-                            _buildPkSeatCell(context, 9),
-                          ],
+                        Transform.translate(
+                          offset: const Offset(0, -3),
+                          child: Row(
+                            textDirection: TextDirection.ltr,
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildPkSeatCell(context, 12),
+                              _buildPkSeatCell(context, 11),
+                              _buildPkSeatCell(context, 10),
+                              _buildPkSeatCell(context, 9),
+                            ],
+                          ),
                         ),
                       ],
                     ),
