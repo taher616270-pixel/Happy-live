@@ -259,7 +259,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             left: 0,
             right: 0,
             child: Container(
-              height: 25,
+              height: 22,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF1E35B8), Color(0xFF9C0E4B)],
@@ -378,7 +378,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ),
           // Timer badge is the last layer, above the red and blue panels.
           Positioned(
-            top: 34,
+            top: 37,
             left: 0,
             right: 0,
             child: Center(
