@@ -270,26 +270,32 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               child: const Row(
                 textDirection: TextDirection.ltr,
                 children: [
-                  Padding(
-                    padding: EdgeInsets.only(left: 9),
-                    child: Text(
-                      '0',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                  Transform.translate(
+                    offset: Offset(-3, 0),
+                    child: Padding(
+                      padding: EdgeInsets.only(left: 12),
+                      child: Text(
+                        '0',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
                   Spacer(),
-                  Padding(
-                    padding: EdgeInsets.only(right: 9),
-                    child: Text(
-                      '0',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
+                  Transform.translate(
+                    offset: Offset(3, 0),
+                    child: Padding(
+                      padding: EdgeInsets.only(right: 12),
+                      child: Text(
+                        '0',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
