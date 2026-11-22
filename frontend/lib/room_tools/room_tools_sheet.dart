@@ -265,7 +265,7 @@ class _RoomToolsSheet extends StatelessWidget {
                                     } else {
                                       setDialogState(() => saving = false);
                                       ScaffoldMessenger.maybeOf(dialogContext)?.showSnackBar(
-                                        const SnackBar(content: Text('تعذر قفل الغرفة، حاول مرة أخرى')),
+                                        SnackBar(content: Text(RoomToolsApi.lastLockError.isNotEmpty ? 'فشل القفل: ${RoomToolsApi.lastLockError}' : 'تعذر قفل الغرفة، حاول مرة أخرى')),
                                       );
                                     }
                                   } : null,
