@@ -178,7 +178,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     child: _listeners(context),
                   ),
                 ],
-                SizedBox(height: pkVisualMode ? 7 : 2),
+                SizedBox(height: pkVisualMode ? 5 : 2),
                 Expanded(
                   child: Stack(
                     clipBehavior: Clip.none,
