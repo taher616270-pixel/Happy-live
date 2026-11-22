@@ -459,10 +459,6 @@ export class RoomSeatsHub {
     }
 
     if (message.type === "start_room_counter" || message.type === "stop_room_counter") {
-      if (!identity.isRoomOwner && !identity.isRoomModerator) {
-        this.send(socket, { type: "room_counter_error", code: "permission_denied" });
-        return;
-      }
       if (message.type === "stop_room_counter") {
         this.roomCounter = null;
         await this.state.storage.delete("room-counter");
