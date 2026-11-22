@@ -311,9 +311,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ),
             ),
           ),
-          // Team panels and seats move up together with the score strip.
+          // Team panels touch the score strip with no vertical gap.
           Positioned(
-            top: 8,
+            top: 6,
             left: 0,
             right: 0,
             child: Container(
@@ -376,9 +376,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ),
             ),
           ),
-          // Timer badge moves up together with the teams and score strip.
+          // Timer badge moves up with the team panels.
           Positioned(
-            top: 16,
+            top: 14,
             left: 0,
             right: 0,
             child: Center(
