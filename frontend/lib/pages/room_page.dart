@@ -1890,19 +1890,18 @@ class _RoomPageState extends State<RoomPage> {
         child: Directionality(
           textDirection: TextDirection.ltr,
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (_isRoomOwner || _amRoomModerator)
-            InkWell(
-              onTap: () {
-                final sent = _seatSocket?.send({'type': 'stop_room_counter'}) ?? false;
-                if (!sent) _showMessage('تعذر إيقاف العداد، تحقق من اتصال الغرفة');
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                width: 23, height: 23,
-                decoration: const BoxDecoration(color: Color(0xFF6A3A18), shape: BoxShape.circle),
-                child: const Icon(Icons.close_rounded, color: Colors.white, size: 17),
-              ),
+          InkWell(
+            onTap: () {
+              final sent = _seatSocket?.send({'type': 'stop_room_counter'}) ?? false;
+              if (!sent) _showMessage('تعذر إيقاف العداد، تحقق من اتصال الغرفة');
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              width: 23, height: 23,
+              decoration: const BoxDecoration(color: Color(0xFF6A3A18), shape: BoxShape.circle),
+              child: const Icon(Icons.close_rounded, color: Colors.white, size: 17),
             ),
+          ),
           const SizedBox(width: 7),
           Text('$minutes:$seconds', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900)),
           const SizedBox(width: 5),
