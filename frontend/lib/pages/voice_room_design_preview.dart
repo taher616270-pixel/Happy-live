@@ -374,7 +374,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             _buildPkSeatCell(context, 1),
                           ],
                         ),
-                        const SizedBox(height: 7),
+                        const SizedBox(height: 14),
                         Row(
                           textDirection: TextDirection.ltr,
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
