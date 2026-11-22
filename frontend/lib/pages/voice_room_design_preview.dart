@@ -372,24 +372,19 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           margin: const EdgeInsets.only(top: 6),
           child: Stack(
             children: [
-              // Split background: Blue on Left, Red on Right
+              // Blue and red team panels touch directly with no gap or divider.
               Positioned.fill(
                 child: Row(
                   textDirection: TextDirection.ltr,
                   children: [
                     Expanded(
                       child: Container(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF2228A5),
-                        ),
+                        color: const Color(0xFF2228A5),
                       ),
                     ),
-                    Container(width: 1, color: Colors.white.withOpacity(0.08)),
                     Expanded(
                       child: Container(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF8B0D45),
-                        ),
+                        color: const Color(0xFF8B0D45),
                       ),
                     ),
                   ],
