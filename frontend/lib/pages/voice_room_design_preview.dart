@@ -597,8 +597,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      width: 42,
-                      height: 42,
+                      width: 46,
+                      height: 46,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.white.withOpacity(0.12),
@@ -657,7 +657,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       '$seatNumber',
                       style: TextStyle(
                         color: Colors.white.withOpacity(.7),
-                        fontSize: 16,
+                        fontSize: 12,
                         shadows: const [
                           Shadow(
                             color: Color(0xCC000000),
