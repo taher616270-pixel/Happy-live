@@ -56,6 +56,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.onMinimizeRoom,
     this.onCloseRoom,
     this.onPkReset,
+    this.onPkStart,
     this.onUpgradeRoom,
     this.onOpenGifts,
     this.onRoomSettingsChanged,
@@ -72,6 +73,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.pkTeamMode = false,
     this.pkActive = false,
     this.pkVisualMode = false,
+    this.pkStarted = false,
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
@@ -96,6 +98,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final VoidCallback? onMinimizeRoom;
   final VoidCallback? onCloseRoom;
   final VoidCallback? onPkReset;
+  final VoidCallback? onPkStart;
   final Future<void> Function(String roomId, int level)? onUpgradeRoom;
   final VoidCallback? onOpenGifts;
   final VoidCallback? onRoomSettingsChanged;
@@ -113,6 +116,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final bool pkTeamMode;
   final bool pkActive;
   final bool pkVisualMode;
+  final bool pkStarted;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -415,7 +419,21 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ),
             ),
           ),
-          // Timer badge moves up with the team panels.
+          if (!pkStarted)
+            Positioned(
+              top: 12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onPkStart,
+                  child: const StartPkButton(),
+                ),
+              ),
+            ),
+          // The countdown replaces the start button in the exact same position.
+          if (pkStarted)
           Positioned(
             top: 12,
             left: 0,
@@ -4551,6 +4569,105 @@ class HappyLevelBadge extends StatelessWidget {
 
 /// Asymmetric PK timer silhouette: straight top, inward side curves,
 /// deep lower corner cut-outs and a soft centered V-shaped dip.
+
+class StartPkButton extends StatelessWidget {
+  const StartPkButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipPath(
+      clipper: StartButtonShape(),
+      child: SizedBox(
+        width: 280,
+        height: 62,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [Color(0xFF3A5BFF), Color(0xFF7A4DFF), Color(0xFFFF4D8D)],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(child: CustomPaint(painter: StartButtonBorder())),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(children: [
+                    Icon(Icons.chevron_left, color: Colors.white.withOpacity(0.25), size: 34),
+                    Transform.translate(
+                      offset: const Offset(-12, 0),
+                      child: Icon(Icons.chevron_left, color: Colors.white.withOpacity(0.55), size: 34),
+                    ),
+                  ]),
+                  const SizedBox(width: 12),
+                  const Text('بدأ', style: TextStyle(
+                    color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900,
+                  )),
+                  const SizedBox(width: 12),
+                  Row(children: [
+                    Transform.translate(
+                      offset: const Offset(12, 0),
+                      child: Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.55), size: 34),
+                    ),
+                    Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.25), size: 34),
+                  ]),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class StartButtonShape extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final w = size.width, h = size.height;
+    const cut = 22.0, tip = 18.0;
+    return Path()
+      ..moveTo(cut + tip, 0)
+      ..lineTo(w - cut - tip, 0)
+      ..lineTo(w - tip, cut)
+      ..lineTo(w, h / 2)
+      ..lineTo(w - tip, h - cut)
+      ..lineTo(w - cut - tip, h)
+      ..lineTo(cut + tip, h)
+      ..lineTo(tip, h - cut)
+      ..lineTo(0, h / 2)
+      ..lineTo(tip, cut)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+class StartButtonBorder extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = StartButtonShape().getClip(size);
+    canvas.drawPath(path, Paint()
+      ..color = Colors.white.withOpacity(0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5);
+    final innerPath = StartButtonShape().getClip(Size(size.width - 6, size.height - 6));
+    canvas.save();
+    canvas.translate(3, 3);
+    canvas.drawPath(innerPath, Paint()
+      ..color = Colors.white.withOpacity(0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class PkTimerFrame extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
