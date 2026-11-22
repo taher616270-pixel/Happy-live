@@ -757,25 +757,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 child: Icon(Icons.close_rounded, color: Colors.white, size: 28),
               ),
             ),
-            const SizedBox(width: 4),
-            InkWell(
-              onTap: onPkReset,
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(.16),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Colors.white.withOpacity(.28)),
-                ),
-                child: const Icon(
-                  Icons.restart_alt_rounded,
-                  color: Colors.white,
-                  size: 23,
-                ),
-              ),
-            ),
           ],
         ),
     );
