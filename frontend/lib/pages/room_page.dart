@@ -2961,6 +2961,8 @@ class _RoomPageState extends State<RoomPage> {
       isRoomDataReady: _roomDataReady,
       roomGiftScores: _roomGiftScores,
       isRoomGiftCounterActive: _roomCounter != null,
+      pkTeamMode: _roomBattleTeamMode,
+      pkActive: _roomBattleActive,
           ),
         ),        if (_roomCounter != null) _roomCounterBanner(),
         if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
