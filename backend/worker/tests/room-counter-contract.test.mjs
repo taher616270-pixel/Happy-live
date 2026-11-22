@@ -7,7 +7,7 @@ const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8
 const roomPage = await readFile(new URL("../../../frontend/lib/pages/room_page.dart", import.meta.url), "utf8");
 const roomPreview = await readFile(new URL("../../../frontend/lib/pages/voice_room_design_preview.dart", import.meta.url), "utf8");
 
-test("room gift counter is a timed owner/moderator-controlled room feature", () => {
+test("room gift counter is a timed room-wide feature with manual and automatic stop", () => {
   assert.match(seatHub, /message\.type === "start_room_counter" \|\| message\.type === "stop_room_counter"/);
   assert.match(seatHub, /!identity\.isRoomOwner && !identity\.isRoomModerator/);
   assert.match(seatHub, /durationSeconds < 60 \|\| durationSeconds > 3600/);
