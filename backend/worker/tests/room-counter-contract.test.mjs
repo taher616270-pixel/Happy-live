@@ -48,3 +48,20 @@ test("Flutter shows the orange timer control and per-recipient green mic score b
   assert.match(roomPreview, /if \(occupied && isRoomGiftCounterActive\)/);
   assert.match(roomPreview, /Color\(0xFF00BFA5\)/);
 });
+
+test("PK stop preserves the blue/red seat split and reset is an independent room-wide action", () => {
+  assert.match(seatHub, /roomBattleTeamMode = false/);
+  assert.match(seatHub, /roomBattleActive = false/);
+  assert.match(seatHub, /room-battle-team-mode/);
+  assert.match(seatHub, /room-battle-active/);
+  assert.match(seatHub, /type: "room_battle", teamMode: this\.roomBattleTeamMode, active: this\.roomBattleActive/);
+  assert.match(worker, /action !== "start" && action !== "end" && action !== "reset"/);
+  assert.match(worker, /const teamMode = action !== "reset"/);
+  assert.match(worker, /body: JSON\.stringify\(\{ teamMode, active: false \}\)/);
+  assert.match(roomPage, /_roomBattleTeamMode/);
+  assert.match(roomPage, /_battleTeamLabel\('الفريق الأزرق'/);
+  assert.match(roomPage, /_battleTeamLabel\('الفريق الأحمر'/);
+  assert.match(roomPage, /submit\('end'\)/);
+  assert.match(roomPage, /submit\('reset'\)/);
+  assert.match(roomPage, /يتوقف التحدي ويبقى تقسيم الأزرق والأحمر/);
+});
