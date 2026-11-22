@@ -196,7 +196,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 transform: Matrix4.translationValues(
                                   0,
                                   (_is2MicLayout ? -11 : (_is8MicLayout ? -20 : (_micLayoutId == 'm14' ? -29 : -25))) +
-                                      (pkVisualMode ? 15 : 0) -
+                                      (pkVisualMode ? 22 : 0) -
                                       MediaQuery.viewInsetsOf(context).bottom,
                                   0,
                                 ),
@@ -507,7 +507,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ),
           if (overflowSlots.isNotEmpty)
             Transform.translate(
-              offset: const Offset(0, 15),
+              offset: const Offset(0, 20),
               child: SizedBox(
                 height: 72,
               child: Directionality(
@@ -2310,12 +2310,15 @@ Widget _roomActionButton({
                   ),
                 )
               else
-                Text(
-                  locked ? 'مقفل' : '$number',
-                  style: TextStyle(
+                Transform.translate(
+                  offset: const Offset(0, -4),
+                  child: Text(
+                    locked ? 'مقفل' : '$number',
+                    style: TextStyle(
                     color: Colors.white.withOpacity(.7),
                     fontSize: 11,
                     shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 1))],
+                    ),
                   ),
                 ),
             ],
