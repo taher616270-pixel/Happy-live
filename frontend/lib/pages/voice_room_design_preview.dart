@@ -4262,9 +4262,9 @@ class PkTimerFrame extends CustomClipper<Path> {
       w * 0.98, h * 0.85,
       w * 0.97, h * 0.25,
     );
-    // Extend the top edge to 99% of the frame width, evenly on both sides.
-    path.quadraticBezierTo(w, 0, w * 0.995, 0);
-    path.lineTo(w * 0.005, 0);
+    // Double the previous top-edge extension: extend 15% beyond each side.
+    path.quadraticBezierTo(w, 0, w * 1.15, 0);
+    path.lineTo(w * -0.15, 0);
     path.quadraticBezierTo(0, 0, w * 0.03, h * 0.25);
     path.cubicTo(
       w * 0.03, h * 0.85,
