@@ -364,24 +364,18 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        Row(
-                          textDirection: TextDirection.ltr,
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Transform.translate(
-                              offset: const Offset(0, 5),
-                              child: Row(
-                                textDirection: TextDirection.ltr,
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children: [
-                                  _buildPkSeatCell(context, 4),
-                                  _buildPkSeatCell(context, 3),
-                                  _buildPkSeatCell(context, 2),
-                                  _buildPkSeatCell(context, 1),
-                                ],
-                              ),
-                            ),
-                          ],
+                        Transform.translate(
+                          offset: const Offset(0, 5),
+                          child: Row(
+                            textDirection: TextDirection.ltr,
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildPkSeatCell(context, 4),
+                              _buildPkSeatCell(context, 3),
+                              _buildPkSeatCell(context, 2),
+                              _buildPkSeatCell(context, 1),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 14),
                         Row(
