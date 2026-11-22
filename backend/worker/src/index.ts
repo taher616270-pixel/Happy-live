@@ -2376,7 +2376,7 @@ export default {
         try { body = await request.json() as Record<string, unknown>; }
         catch { return json({ error: "invalid_json" }, 400, origin, env); }
         const action = body.action;
-        if (action !== "start" && action !== "end") return json({ error: "invalid_battle_action" }, 400, origin, env);
+        if (action !== "start" && action !== "end" && action !== "reset") return json({ error: "invalid_battle_action" }, 400, origin, env);
         const room = await env.DB!.prepare("SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
           .bind(roomId).first<{ id: string; owner_user_id: string }>();
         if (!room) return json({ error: "room_not_found" }, 404, origin, env);
@@ -2395,13 +2395,30 @@ export default {
               .bind(roomId).first<Record<string, unknown>>();
             return json({ error: "battle_already_active", battle: active ?? null }, 409, origin, env);
           }
-          return json({ ok: true, battle: { id: battleId, roomId, status: "active", startedAt: now } }, 201, origin, env);
+          if (!env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
+          const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+          const stateResponse = await seatHub.fetch(new Request("https://room-seats.internal/battle-state", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-room-id": roomId },
+            body: JSON.stringify({ teamMode: true, active: true })
+          }));
+          if (!stateResponse.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
+          return json({ ok: true, battle: { id: battleId, roomId, status: "active", startedAt: now }, teamMode: true, active: true }, 201, origin, env);
         }
         const ended = await env.DB!.prepare(
           "UPDATE room_battles SET status = 'finished', ended_at = ? WHERE room_id = ? AND status = 'active'"
         ).bind(now, roomId).run();
-        if ((ended.meta?.changes ?? 0) !== 1) return json({ error: "no_active_battle" }, 409, origin, env);
-        return json({ ok: true, roomId, status: "finished", endedAt: now }, 200, origin, env);
+        if (action === "end" && (ended.meta?.changes ?? 0) !== 1) return json({ error: "no_active_battle" }, 409, origin, env);
+        const teamMode = action !== "reset";
+        if (!env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
+        const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+        const stateResponse = await seatHub.fetch(new Request("https://room-seats.internal/battle-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-room-id": roomId },
+          body: JSON.stringify({ teamMode, active: false })
+        }));
+        if (!stateResponse.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
+        return json({ ok: true, roomId, status: action === "reset" ? "reset" : "finished", teamMode, active: false, endedAt: now }, 200, origin, env);
       } catch (error) {
         const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
         console.error("[rooms.battle] failed", diagnostic);
