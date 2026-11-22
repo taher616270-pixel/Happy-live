@@ -11,7 +11,7 @@ Future<void> showPkSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => const Directionality(
+    builder: (_) => Directionality(
       textDirection: TextDirection.rtl,
       child: _PkSheet(isPkVisualMode: isPkVisualMode, onToggle: onToggle),
     ),
