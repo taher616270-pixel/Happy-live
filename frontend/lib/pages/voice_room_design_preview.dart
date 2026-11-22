@@ -368,7 +368,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         ),
         // 2. PK 12-seats Split Area (Blue on Left, Red on Right) - Compact
         Container(
-          height: 285,
+          height: 230,
           margin: const EdgeInsets.only(top: 6),
           child: Stack(
             children: [
@@ -469,7 +469,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ? () => _showUserProfile(context, seat!)
               : () => onTapSeat(seatNumber),
           child: SizedBox(
-            width: 60,
+            width: 50,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -477,8 +477,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      width: 50,
-                      height: 50,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.white.withOpacity(0.12),
@@ -502,7 +502,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                       ? Icons.lock_outline
                                       : Icons.weekend_outlined,
                                   color: Colors.white.withOpacity(0.72),
-                                  size: locked ? 21 : 23,
+                                  size: locked ? 18 : 19,
                                 ),
                               ),
                       ),
@@ -512,8 +512,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         left: -2,
                         bottom: 2,
                         child: Container(
-                          width: 17,
-                          height: 17,
+                          width: 14,
+                          height: 14,
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.white,
@@ -522,7 +522,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             child: Icon(
                               Icons.mic_off,
                               color: Color(0xFFE53965),
-                              size: 10,
+                              size: 8,
                             ),
                           ),
                         ),
@@ -532,7 +532,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 const SizedBox(height: 4),
                 if (isSeat1)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
@@ -541,7 +541,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       'انضمام',
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 11,
+                        fontSize: 9,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
