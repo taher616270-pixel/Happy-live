@@ -378,7 +378,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ),
           // Timer badge is the last layer, above the red and blue panels.
           Positioned(
-            top: 20,
+            top: 27,
             left: 0,
             right: 0,
             child: Center(
