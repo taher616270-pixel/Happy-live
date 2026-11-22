@@ -1839,32 +1839,42 @@ Widget _roomActionButton({
                   textDirection: TextDirection.ltr,
                   children: [
                     Expanded(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              const Color(0xFF3B2FD6),
-                              const Color(0xFF2A1EB5),
-                              const Color(0xFF3A2BD6),
-                            ],
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(44),
+                        ),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                const Color(0xFF3B2FD6),
+                                const Color(0xFF2A1EB5),
+                                const Color(0xFF3A2BD6),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
                     Container(width: 1, color: Colors.white.withOpacity(.15)),
                     Expanded(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              const Color(0xFFB01E5A),
-                              const Color(0xFFC21E5E),
-                              const Color(0xFF9E174E),
-                            ],
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          bottomRight: Radius.circular(44),
+                        ),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                const Color(0xFFB01E5A),
+                                const Color(0xFFC21E5E),
+                                const Color(0xFF9E174E),
+                              ],
+                            ),
                           ),
                         ),
                       ),
