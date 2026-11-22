@@ -2,14 +2,18 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-Future<void> showPkSheet(BuildContext context) {
+Future<void> showPkSheet(
+  BuildContext context, {
+  required bool isPkVisualMode,
+  required VoidCallback onToggle,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => const Directionality(
       textDirection: TextDirection.rtl,
-      child: _PkSheet(),
+      child: _PkSheet(isPkVisualMode: isPkVisualMode, onToggle: onToggle),
     ),
   );
 }
@@ -17,7 +21,10 @@ Future<void> showPkSheet(BuildContext context) {
 const _purple = [Color(0xFF9620F8), Color(0xFFB12FF2)];
 
 class _PkSheet extends StatelessWidget {
-  const _PkSheet();
+  final bool isPkVisualMode;
+  final VoidCallback onToggle;
+
+  const _PkSheet({required this.isPkVisualMode, required this.onToggle});
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +80,14 @@ class _PkSheet extends StatelessWidget {
             style: TextStyle(color: Color(0x73FFFFFF), fontSize: 12.5, height: 1.35),
           ),
           const SizedBox(height: 26),
-          _Btn(label: 'فتح', gradient: true, onTap: () {}),
+          _Btn(
+            label: isPkVisualMode ? 'إغلاق' : 'فتح',
+            gradient: true,
+            onTap: () {
+              Navigator.of(context).pop();
+              onToggle();
+            },
+          ),
         ]),
       ),
     );
