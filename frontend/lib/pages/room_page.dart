@@ -3070,23 +3070,10 @@ class _RoomPageState extends State<RoomPage> {
             final micSize = isAndroid
                 ? (tileWidth * .62).clamp(34.0, 52.0)
                 : (tileWidth * .78).clamp(48.0, 70.0);
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_roomBattleTeamMode) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
-                    child: Row(children: [
-                      Expanded(child: _battleTeamLabel('الفريق الأزرق', const Color(0xFF258BFF))),
-                      const SizedBox(width: 8),
-                      Expanded(child: _battleTeamLabel('الفريق الأحمر', const Color(0xFFFF4B5C))),
-                    ]),
-                  ),
-                ],
-                GridView.builder(
+            Widget seatGrid(int firstSeat, int itemCount) => GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: 8,
+              itemCount: itemCount,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 4,
                 mainAxisSpacing: isAndroid ? 14 : 7,
@@ -3095,7 +3082,7 @@ class _RoomPageState extends State<RoomPage> {
                 childAspectRatio: isAndroid ? 1 : .78,
               ),
               itemBuilder: (context, index) {
-                final number = index < 4 ? 4 - index : 8 - (index - 4);
+                final number = firstSeat - index;
                 final seatCard = _premiumSeatCard(number, micSize);
                 if (isAndroid && number >= 5 && number <= 8) {
                   return Transform.translate(
@@ -3105,7 +3092,18 @@ class _RoomPageState extends State<RoomPage> {
                 }
                 return seatCard;
               },
-                ),
+            );
+            if (!_roomBattleTeamMode) return seatGrid(4, 8);
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _battleTeamLabel('الفريق الأزرق', const Color(0xFF258BFF)),
+                const SizedBox(height: 7),
+                seatGrid(4, 4),
+                const SizedBox(height: 10),
+                _battleTeamLabel('الفريق الأحمر', const Color(0xFFFF4B5C)),
+                const SizedBox(height: 7),
+                seatGrid(8, 4),
               ],
             );
           },
