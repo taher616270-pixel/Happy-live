@@ -307,7 +307,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             ),
             // Attached badge below: "< 04:58 PK"
             Positioned(
-              top: 15,
+              top: 20,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 3),
                 decoration: const BoxDecoration(
