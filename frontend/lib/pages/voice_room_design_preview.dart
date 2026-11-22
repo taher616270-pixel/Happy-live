@@ -4254,12 +4254,12 @@ class PkTimerFrame extends CustomClipper<Path> {
     final w = size.width;
     final h = size.height;
 
-    // Vertically mirrored version of the original S-curved frame.
-    path.moveTo(w * 0.08, h);
-    path.lineTo(w * 0.92, h);
+    // Large capsule-like rounding across both lower corners.
+    path.moveTo(w * 0.18, h);
+    path.lineTo(w * 0.82, h);
     path.cubicTo(
+      w * 0.94, h,
       w * 0.98, h * 0.85,
-      w * 0.88, h * 0.55,
       w * 0.97, h * 0.25,
     );
     // Make the straight top edge much longer while preserving the corner curves.
@@ -4269,9 +4269,9 @@ class PkTimerFrame extends CustomClipper<Path> {
     path.lineTo(w * 0.08, 0);
     path.quadraticBezierTo(0, 0, w * 0.03, h * 0.25);
     path.cubicTo(
-      w * 0.12, h * 0.55,
-      w * 0.02, h * 0.85,
-      w * 0.08, h,
+      w * 0.03, h * 0.85,
+      w * 0.06, h,
+      w * 0.18, h,
     );
     path.close();
     return path;
