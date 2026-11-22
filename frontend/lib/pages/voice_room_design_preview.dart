@@ -442,21 +442,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         Transform.rotate(
                           angle: -0.12,
                           child: const Text(
-                            'P',
-                            style: TextStyle(
-                              color: Color(0xFFFF4B9A),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              shadows: [
-                                Shadow(color: Color(0xFFFFB1D1), offset: Offset(-1, -1), blurRadius: 1),
-                                Shadow(color: Color(0xFF8A174F), offset: Offset(1, 2), blurRadius: 2),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Transform.rotate(
-                          angle: -0.12,
-                          child: const Text(
                             'K',
                             style: TextStyle(
                               color: Color(0xFF4D91FF),
@@ -465,6 +450,21 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               shadows: [
                                 Shadow(color: Color(0xFFB6D2FF), offset: Offset(-1, -1), blurRadius: 1),
                                 Shadow(color: Color(0xFF173E9A), offset: Offset(1, 2), blurRadius: 2),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Transform.rotate(
+                          angle: -0.12,
+                          child: const Text(
+                            'P',
+                            style: TextStyle(
+                              color: Color(0xFFFF4B9A),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              shadows: [
+                                Shadow(color: Color(0xFFFFB1D1), offset: Offset(-1, -1), blurRadius: 1),
+                                Shadow(color: Color(0xFF8A174F), offset: Offset(1, 2), blurRadius: 2),
                               ],
                             ),
                           ),
