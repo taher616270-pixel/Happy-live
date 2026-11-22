@@ -4539,10 +4539,6 @@ class _PkScoreBarState extends State<PkScoreBar>
 
   @override
   Widget build(BuildContext context) {
-    final total = (widget.scoreA + widget.scoreB).toDouble();
-    final percentA = total == 0 ? 0.5 : widget.scoreA / total;
-    final alignX = (percentA * 2 - 1).clamp(-0.96, 0.96).toDouble();
-
     return SizedBox(
       height: 18, // Keep the existing score-bar height unchanged.
       child: Stack(
@@ -4619,17 +4615,16 @@ class _PkScoreBarState extends State<PkScoreBar>
               ],
             ),
           ),
-          AnimatedAlign(
-            alignment: Alignment(alignX, 0),
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.easeOutBack,
-            child: AnimatedBuilder(
-              animation: _bounceCtrl,
-              builder: (context, child) => Transform.translate(
-                offset: Offset(0, -math.sin(_bounceCtrl.value * math.pi) * 2),
-                child: child,
+          AnimatedBuilder(
+            animation: _bounceCtrl,
+            builder: (context, child) => Align(
+              alignment: Alignment(
+                -0.92 + (_bounceCtrl.value * 1.84),
+                0,
               ),
-              child: Container(
+              child: child,
+            ),
+            child: Container(
                 width: 22,
                 height: 22,
                 decoration: BoxDecoration(
@@ -4660,7 +4655,6 @@ class _PkScoreBarState extends State<PkScoreBar>
                   ],
                 ),
               ),
-            ),
           ),
         ],
       ),
