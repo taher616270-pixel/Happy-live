@@ -2606,7 +2606,8 @@ export default {
                 soundUrl: gift.soundUrl,
                 durationSeconds: Number(gift.durationSeconds ?? 5),
                 mediaDurationMs: Number(gift.durationSeconds ?? 5) * 1000,
-                quantity
+                quantity,
+                coinCost: Number(transaction.coinCost ?? 0)
               })
             }));
             const broadcastResult = await broadcastResponse.json().catch(() => null) as Record<string, unknown> | null;
