@@ -4262,9 +4262,11 @@ class PkTimerFrame extends CustomClipper<Path> {
       w * 0.88, h * 0.55,
       w * 0.97, h * 0.25,
     );
-    // Widen only the two upper corners; keep both S-curves unchanged.
-    path.quadraticBezierTo(w, 0, w * 0.98, 0);
+    // Extend only the straight top edge; preserve both upper corners and S-curves.
+    path.quadraticBezierTo(w, 0, w * 0.92, 0);
+    path.lineTo(w * 0.98, 0);
     path.lineTo(w * 0.02, 0);
+    path.lineTo(w * 0.08, 0);
     path.quadraticBezierTo(0, 0, w * 0.03, h * 0.25);
     path.cubicTo(
       w * 0.12, h * 0.55,
