@@ -251,13 +251,13 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 1. Top Score & PK Timer bar
+        // 1. Top Score & PK Timer bar (compact)
         Stack(
           alignment: Alignment.topCenter,
           clipBehavior: Clip.none,
           children: [
             Container(
-              height: 38,
+              height: 32,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF1E35B8), Color(0xFF9C0E4B)],
@@ -266,24 +266,24 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               child: const Row(
                 children: [
                   Padding(
-                    padding: EdgeInsets.only(left: 14),
+                    padding: EdgeInsets.only(left: 12),
                     child: Text(
                       '0',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   Spacer(),
                   Padding(
-                    padding: EdgeInsets.only(right: 14),
+                    padding: EdgeInsets.only(right: 12),
                     child: Text(
                       '0',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -293,10 +293,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             ),
             // Center pearl/orb on the seam
             Positioned(
-              top: -6,
+              top: -5,
               child: Container(
-                width: 22,
-                height: 22,
+                width: 18,
+                height: 18,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
@@ -307,35 +307,35 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             ),
             // Attached badge below: "< 04:58 PK"
             Positioned(
-              top: 14,
+              top: 10,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 3),
                 decoration: const BoxDecoration(
                   color: Color(0xFF13132B),
-                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(14)),
                   boxShadow: [
                     BoxShadow(
                       color: Color(0x66000000),
-                      blurRadius: 6,
-                      offset: Offset(0, 3),
+                      blurRadius: 5,
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.chevron_left, color: Colors.white54, size: 18),
-                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_left, color: Colors.white54, size: 15),
+                    const SizedBox(width: 3),
                     const Text(
                       '04:58',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 5),
                     RichText(
                       text: const TextSpan(
                         children: [
@@ -343,7 +343,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             text: 'P',
                             style: TextStyle(
                               color: Color(0xFF5582FF),
-                              fontSize: 17,
+                              fontSize: 15,
                               fontWeight: FontWeight.w900,
                               fontStyle: FontStyle.italic,
                             ),
@@ -352,7 +352,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             text: 'K',
                             style: TextStyle(
                               color: Color(0xFFFF3377),
-                              fontSize: 17,
+                              fontSize: 15,
                               fontWeight: FontWeight.w900,
                               fontStyle: FontStyle.italic,
                             ),
@@ -366,10 +366,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             ),
           ],
         ),
-        // 2. PK 12-seats Split Area (Blue on Left, Red on Right)
+        // 2. PK 12-seats Split Area (Blue on Left, Red on Right) - Compact
         Container(
-          height: 440,
-          margin: const EdgeInsets.only(top: 8),
+          height: 285,
+          margin: const EdgeInsets.only(top: 6),
           child: Stack(
             children: [
               // Split background: Blue on Left, Red on Right
@@ -397,7 +397,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ),
               // 4 columns x 3 rows grid
               Padding(
-                padding: const EdgeInsets.fromLTRB(4, 28, 4, 16),
+                padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -469,7 +469,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ? () => _showUserProfile(context, seat!)
               : () => onTapSeat(seatNumber),
           child: SizedBox(
-            width: 78,
+            width: 60,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -477,14 +477,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      width: 68,
-                      height: 68,
+                      width: 50,
+                      height: 50,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.white.withOpacity(0.12),
                         border: Border.all(
                           color: isSpeaking ? const Color(0xFFFFD700) : Colors.white.withOpacity(0.24),
-                          width: isSpeaking ? 2.5 : 1.5,
+                          width: isSpeaking ? 2.0 : 1.2,
                         ),
                       ),
                       child: ClipOval(
@@ -494,7 +494,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 : Image.asset(
                                     'assets/images/app_icon.PNG',
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.white, size: 36),
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.white, size: 28),
                                   ))
                             : Center(
                                 child: Icon(
@@ -502,7 +502,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                       ? Icons.lock_outline
                                       : Icons.weekend_outlined,
                                   color: Colors.white.withOpacity(0.72),
-                                  size: locked ? 28 : 30,
+                                  size: locked ? 21 : 23,
                                 ),
                               ),
                       ),
@@ -510,10 +510,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     if (isMuted)
                       Positioned(
                         left: -2,
-                        bottom: 4,
+                        bottom: 2,
                         child: Container(
-                          width: 22,
-                          height: 22,
+                          width: 17,
+                          height: 17,
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.white,
@@ -522,26 +522,26 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             child: Icon(
                               Icons.mic_off,
                               color: Color(0xFFE53965),
-                              size: 13,
+                              size: 10,
                             ),
                           ),
                         ),
                       ),
                   ],
                 ),
-                const SizedBox(height: 7),
+                const SizedBox(height: 4),
                 if (isSeat1)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 2.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1.5),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Text(
                       'انضمام',
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 13,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -551,7 +551,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     '',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.70),
-                      fontSize: 16,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
