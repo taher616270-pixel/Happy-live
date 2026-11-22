@@ -593,41 +593,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               ),
                       ),
                     ),
-                    // Persistent PK seat number badge: blue 1–6, red 7–12.
-                    Positioned(
-                      top: -3,
-                      left: -3,
-                      child: IgnorePointer(
-                        child: Container(
-                          width: 19,
-                          height: 19,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: seatNumber <= 6
-                                ? const Color(0xFF1768D8)
-                                : const Color(0xFFD62955),
-                            borderRadius: BorderRadius.circular(5),
-                            border: Border.all(color: Colors.white, width: 1),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x99000000),
-                                blurRadius: 4,
-                                offset: Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            '$seatNumber',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              height: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
                     if (isMuted)
                       Positioned(
                         left: -2,
@@ -651,6 +616,42 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
+                if (!occupied)
+                  Transform.translate(
+                    offset: const Offset(0, 2),
+                    child: Text(
+                      locked ? 'مقفل' : '$seatNumber',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(.7),
+                        fontSize: 16,
+                        shadows: const [
+                          Shadow(
+                            color: Color(0xCC000000),
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Text(
+                    (seat?['name'] ?? seat?['displayName'] ?? '').toString(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      shadows: [
+                        Shadow(
+                          color: Color(0xCC000000),
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
                 if (isSeat1 && !occupied)
                   Material(
                     color: Colors.transparent,
