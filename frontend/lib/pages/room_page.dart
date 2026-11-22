@@ -1843,8 +1843,7 @@ class _RoomPageState extends State<RoomPage> {
 
   void _showRoomCounter(BuildContext host) {
     if (_roomCounter != null) {
-      final sent = _seatSocket?.send({'type': 'stop_room_counter'}) ?? false;
-      if (!sent) _showMessage('تعذر إيقاف العداد، تحقق من اتصال الغرفة');
+      _showMessage('العداد يعمل بالفعل؛ استخدم زر X لإيقافه');
       return;
     }
     const options = <(int, String)>[
