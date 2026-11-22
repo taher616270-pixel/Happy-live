@@ -395,7 +395,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 child: ClipPath(
                   clipper: PkTimerShape(),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 1),
                     decoration: const BoxDecoration(
                       color: Color(0xFF13132B),
                     ),
