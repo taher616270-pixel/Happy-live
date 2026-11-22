@@ -66,6 +66,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.onOpenCannonRoom,
     this.isRoomDataReady = true,
     this.currentUserCode = '',
+    this.roomGiftScores = const <String, int>{},
+    this.isRoomGiftCounterActive = false,
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
@@ -101,6 +103,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   /// True only after the authenticated room snapshot has loaded from the API.
   final bool isRoomDataReady;
   final String currentUserCode;
+  final Map<String, int> roomGiftScores;
+  final bool isRoomGiftCounterActive;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -1507,6 +1511,34 @@ Widget _roomActionButton({
                     ),
                   ),
 
+                  if (occupied && isRoomGiftCounterActive)
+                    Positioned(
+                      bottom: -8,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          constraints: const BoxConstraints(minWidth: 42, maxWidth: 58),
+                          height: 16,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF00BFA5), Color(0xFF00D7B0), Color(0xFF009F83)],
+                            ),
+                            border: Border.all(color: const Color(0xFF9CFFE8), width: .6),
+                            boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 3, offset: Offset(0, 1))],
+                          ),
+                          child: Text(
+                            (roomGiftScores[(seat?['userId'] ?? '').toString()] ?? 0).toString(),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, height: 1.1),
+                          ),
+                        ),
+                      ),
+                    ),
                   if (muted)
                     Positioned(
                       bottom: -2,
@@ -1525,7 +1557,7 @@ Widget _roomActionButton({
                     ),
                 ],
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: isRoomGiftCounterActive ? 12 : 4),
               if (occupied)
                 Container(
                   constraints: const BoxConstraints(maxWidth: 78),
