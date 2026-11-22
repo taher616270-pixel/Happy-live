@@ -262,12 +262,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     );
 
     return SizedBox(
-      height: 265 + (overflowSlots.isNotEmpty ? 92 : 0),
+      height: 283 + (overflowSlots.isNotEmpty ? 92 : 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            height: 265,
+            height: 283,
             child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -342,7 +342,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             left: 0,
             right: 0,
             child: Container(
-              height: 227,
+              height: 245,
               margin: const EdgeInsets.only(top: 6),
               child: Stack(
                 children: [
@@ -374,7 +374,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             _buildPkSeatCell(context, 1),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 7),
                         Row(
                           textDirection: TextDirection.ltr,
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -385,7 +385,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             _buildPkSeatCell(context, 5),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 7),
                         Row(
                           textDirection: TextDirection.ltr,
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -591,6 +591,41 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                   size: locked ? 18 : 19,
                                 ),
                               ),
+                      ),
+                    ),
+                    // Persistent PK seat number badge: blue 1–6, red 7–12.
+                    Positioned(
+                      top: -3,
+                      left: -3,
+                      child: IgnorePointer(
+                        child: Container(
+                          width: 19,
+                          height: 19,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: seatNumber <= 6
+                                ? const Color(0xFF1768D8)
+                                : const Color(0xFFD62955),
+                            borderRadius: BorderRadius.circular(5),
+                            border: Border.all(color: Colors.white, width: 1),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x99000000),
+                                blurRadius: 4,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            '$seatNumber',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              height: 1,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     if (isMuted)
@@ -1768,23 +1803,20 @@ Widget _roomActionButton({
     // Every microphone layout uses an exact 2px gap in both directions.
     // Give every layout an explicitly measured viewport so row offsets remain
     // visible and no bottom row is clipped by shrink-wrap measurement.
-    final pkTwelveSeatLayout = pkVisualMode;
-    // PK team rows are deliberately separated by exactly 7px.
-    final micRowGap = pkTwelveSeatLayout ? 7.0 : 2.0;
+    const micRowGap = 2.0;
     const micColumnGap = 2.0;
     final gridHeight = (layout.rows.length * 88.0) +
         ((layout.rows.length - 1) * micRowGap);
-    // Extend the colored team panels downward without changing mic sizing.
+    final pkTwelveSeatLayout = pkVisualMode;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: pkTwelveSeatLayout ? 8 : 12),
       child: SizedBox(
-        height: gridHeight + (pkTwelveSeatLayout ? 18 : 0) +
-            (pkTwelveSeatLayout && overflowSlots.isNotEmpty ? 92 : 0),
+        height: gridHeight + (pkTwelveSeatLayout && overflowSlots.isNotEmpty ? 92 : 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              height: gridHeight + (pkTwelveSeatLayout ? 18 : 0),
+              height: gridHeight,
               child: Stack(
                 children: [
             if (pkTwelveSeatLayout)
@@ -2056,37 +2088,6 @@ Widget _roomActionButton({
                             maxLines: 1,
                             overflow: TextOverflow.clip,
                             style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, height: 1.1),
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (pkTwelveSeatLayout)
-                    Positioned(
-                      top: 2,
-                      left: 2,
-                      child: IgnorePointer(
-                        child: Container(
-                          constraints: const BoxConstraints(minWidth: 19, minHeight: 19),
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            color: number <= 6
-                                ? const Color(0xFF1768D8)
-                                : const Color(0xFFD62955),
-                            borderRadius: BorderRadius.circular(5),
-                            border: Border.all(color: Colors.white.withOpacity(.9), width: 1),
-                            boxShadow: const [
-                              BoxShadow(color: Color(0x88000000), blurRadius: 4, offset: Offset(0, 1)),
-                            ],
-                          ),
-                          child: Text(
-                            '$number',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              height: 1,
-                            ),
                           ),
                         ),
                       ),
