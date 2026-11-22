@@ -4575,18 +4575,14 @@ class StartPkButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Match the countdown's natural compact footprint without scaling the
+    // original 280px button down (which made it difficult to see).
     return SizedBox(
       width: 110,
-      height: 24,
-      child: Center(
-        child: Transform.scale(
-          scale: 0.39,
-          child: ClipPath(
-            clipper: StartButtonShape(),
-            child: SizedBox(
-              width: 280,
-              height: 62,
-              child: DecoratedBox(
+      height: 22,
+      child: ClipPath(
+        clipper: StartButtonShape(),
+        child: DecoratedBox(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.centerLeft,
@@ -4600,31 +4596,16 @@ class StartPkButton extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Row(children: [
-                    Icon(Icons.chevron_left, color: Colors.white.withOpacity(0.25), size: 34),
-                    Transform.translate(
-                      offset: const Offset(-12, 0),
-                      child: Icon(Icons.chevron_left, color: Colors.white.withOpacity(0.55), size: 34),
-                    ),
-                  ]),
-                  const SizedBox(width: 12),
+                  Icon(Icons.chevron_left, color: Colors.white.withOpacity(0.45), size: 15),
+                  const SizedBox(width: 2),
                   const Text('بدأ', style: TextStyle(
-                    color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900,
+                    color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900,
                   )),
-                  const SizedBox(width: 12),
-                  Row(children: [
-                    Transform.translate(
-                      offset: const Offset(12, 0),
-                      child: Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.55), size: 34),
-                    ),
-                    Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.25), size: 34),
-                  ]),
+                  const SizedBox(width: 2),
+                  Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.45), size: 15),
                 ],
               ),
             ],
-          ),
-              ),
-            ),
           ),
         ),
       ),
