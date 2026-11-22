@@ -4560,7 +4560,6 @@ class StartButtonShape extends CustomClipper<Path> {
     final w = size.width;
     final h = size.height;
     final tip = h * 0.48;
-    final shoulder = h * 0.22;
     final radius = h * 0.12;
 
     return Path()
