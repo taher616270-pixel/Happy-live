@@ -362,7 +362,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Row(
                           textDirection: TextDirection.ltr,
@@ -374,6 +374,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             _buildPkSeatCell(context, 1),
                           ],
                         ),
+                        const SizedBox(height: 4),
                         Row(
                           textDirection: TextDirection.ltr,
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -384,6 +385,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             _buildPkSeatCell(context, 5),
                           ],
                         ),
+                        const SizedBox(height: 4),
                         Row(
                           textDirection: TextDirection.ltr,
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
