@@ -137,13 +137,15 @@ export class RoomSeatsHub {
       this.whoMicMode = (await this.state.storage.get<string>("room-who-mic-mode")) ?? "membersOnly";
       this.roomCounter = (await this.state.storage.get<typeof this.roomCounter>("room-counter")) ?? null;
       this.roomCounterHistory = (await this.state.storage.get<typeof this.roomCounterHistory>("room-counter-history")) ?? [];
-      if (this.roomCounter?.active && this.roomCounter.endsAt <= Date.now()) {
-        await this.finishRoomCounter("system", "expired");
-      } else if (this.roomCounter?.active && (!this.roomCounter.scores || !this.roomCounter.processedTransactions || !this.roomCounter.startedAt)) {
+      if (this.roomCounter?.active) {
         this.roomCounter.scores ??= {};
         this.roomCounter.processedTransactions ??= [];
         this.roomCounter.startedAt ??= this.roomCounter.endsAt - 60_000;
-        await this.state.storage.put("room-counter", this.roomCounter);
+        if (this.roomCounter.endsAt <= Date.now()) {
+          await this.finishRoomCounter("system", "expired");
+        } else {
+          await this.state.storage.put("room-counter", this.roomCounter);
+        }
       }
       await this.expireSeats(false);
     });
@@ -469,6 +471,10 @@ export class RoomSeatsHub {
         await this.finishRoomCounter(identity.userId, this.roomCounter?.endsAt && this.roomCounter.endsAt <= Date.now() ? "expired" : "manual");
         this.send(socket, { type: "room_counter_ack", ok: true });
         await this.scheduleExpiry();
+        return;
+      }
+      if (this.roomCounter?.active && this.roomCounter.endsAt > Date.now()) {
+        this.send(socket, { type: "room_counter_error", code: "counter_already_active" });
         return;
       }
       const durationSeconds = Number(message.durationSeconds);
