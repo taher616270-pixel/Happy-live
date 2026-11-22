@@ -4548,22 +4548,44 @@ class _PkScoreBarState extends State<PkScoreBar>
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+          // Two clearly framed team lanes: red on the left, blue on the right.
           Positioned.fill(
-            child: Row(
-              children: const [
-                Expanded(
-                  child: CustomPaint(
-                    painter: _PkChevronPainter(),
-                    child: ColoredBox(color: Color(0xFF2B4CFF)),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFE8DCE5), width: 1),
+                borderRadius: BorderRadius.circular(5),
+                color: const Color(0xFF17101C),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8F1E3F),
+                        border: Border.all(color: const Color(0xFFFF526F), width: 1.8),
+                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)),
+                      ),
+                      child: const CustomPaint(
+                        painter: _PkChevronPainter(),
+                        child: ColoredBox(color: Color(0x00FFFFFF)),
+                      ),
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: CustomPaint(
-                    painter: _PkChevronPainter(),
-                    child: ColoredBox(color: Color(0xFFFF2E7E)),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2236B8),
+                        border: Border.all(color: const Color(0xFF6688FF), width: 1.8),
+                        borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
+                      ),
+                      child: const CustomPaint(
+                        painter: _PkChevronPainter(),
+                        child: ColoredBox(color: Color(0x00FFFFFF)),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           Positioned.fill(
