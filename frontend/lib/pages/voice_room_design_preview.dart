@@ -342,7 +342,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             left: 0,
             right: 0,
             child: Container(
-              height: 252,
+              height: 259,
               margin: const EdgeInsets.only(top: 6),
               child: Stack(
                 children: [
