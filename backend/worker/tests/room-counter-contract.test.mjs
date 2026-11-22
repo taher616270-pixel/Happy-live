@@ -8,7 +8,7 @@ const roomPage = await readFile(new URL("../../../frontend/lib/pages/room_page.d
 const roomPreview = await readFile(new URL("../../../frontend/lib/pages/voice_room_design_preview.dart", import.meta.url), "utf8");
 
 test("room gift counter is a timed room-wide feature with manual and automatic stop", () => {
-  assert.match(seatHub, /message\.type === "start_room_counter" \|\| message\.type === "stop_room_counter"/);
+  assert.match(seatHub, /message\.type === "start_room_counter" \|\| message\.type === "stop_room_counter" \|\| message\.type === "get_room_counter_history"/);
   const counterHandler = seatHub.slice(seatHub.indexOf('if (message.type === "start_room_counter"'), seatHub.indexOf('if (message.type === "seat_heartbeat"'));
   assert.doesNotMatch(counterHandler, /permission_denied/);
   assert.match(seatHub, /durationSeconds < 60 \|\| durationSeconds > 3600/);
@@ -16,6 +16,9 @@ test("room gift counter is a timed room-wide feature with manual and automatic s
   assert.match(seatHub, /this\.state\.storage\.put\("room-counter", this\.roomCounter\)/);
   assert.match(seatHub, /this\.broadcast\(\{ type: "room_counter", counter: null, reason: "expired" \}\)/);
   assert.match(seatHub, /private async scheduleExpiry\(\)[\s\S]*?expiries\.push\(this\.roomCounter\.endsAt\)/);
+  assert.match(seatHub, /private async finishRoomCounter\([\s\S]*?room-counter-history/);
+  assert.match(seatHub, /private publicRoomCounterHistory\(\)/);
+  assert.match(roomPage, /_showRoomCounterHistory\(records\)/);
 });
 
 test("gift score is credited to the recipient using committed server-priced coins exactly once", () => {
