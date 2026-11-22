@@ -267,7 +267,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   colors: [Color(0xFF1E35B8), Color(0xFF9C0E4B)],
                 ),
               ),
-              child: const Row(
+              child: Row(
                 textDirection: TextDirection.ltr,
                 children: [
                   Transform.translate(
