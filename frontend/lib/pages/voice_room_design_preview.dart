@@ -196,7 +196,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 transform: Matrix4.translationValues(
                                   0,
                                   (_is2MicLayout ? -11 : (_is8MicLayout ? -20 : (_micLayoutId == 'm14' ? -29 : -25))) +
-                                      (pkVisualMode ? 10 : 0) -
+                                      (pkVisualMode ? 15 : 0) -
                                       MediaQuery.viewInsetsOf(context).bottom,
                                   0,
                                 ),
@@ -507,7 +507,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ),
           if (overflowSlots.isNotEmpty)
             Transform.translate(
-              offset: const Offset(0, 10),
+              offset: const Offset(0, 15),
               child: SizedBox(
                 height: 72,
               child: Directionality(
