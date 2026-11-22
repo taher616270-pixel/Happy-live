@@ -1876,7 +1876,7 @@ class _RoomPageState extends State<RoomPage> {
     final minutes = (remaining ~/ 60).toString().padLeft(2, '0');
     final seconds = (remaining % 60).toString().padLeft(2, '0');
     return Positioned(
-      top: MediaQuery.paddingOf(context).top + 112,
+      top: MediaQuery.paddingOf(context).top + 76,
       left: 10,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
