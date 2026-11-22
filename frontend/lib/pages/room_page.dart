@@ -308,7 +308,7 @@ class _RoomPageState extends State<RoomPage> {
       return;
     }
     if (type == 'room_counter_error') {
-      _showMessage('تعذر تشغيل العداد، تحقق من المدة المحددة');
+      _showMessage(event['code'] == 'counter_already_active' ? 'العداد يعمل بالفعل' : 'تعذر تشغيل العداد، تحقق من المدة المحددة');
       return;
     }
     final rawSeats = event['seats'];
