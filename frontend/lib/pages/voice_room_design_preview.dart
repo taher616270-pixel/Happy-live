@@ -259,7 +259,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             left: 0,
             right: 0,
             child: Container(
-              height: 32,
+              height: 25,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF1E35B8), Color(0xFF9C0E4B)],
