@@ -253,66 +253,67 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+          // Score strip remains above the team panels.
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            child: Stack(
-              alignment: Alignment.topCenter,
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF1E35B8), Color(0xFF9C0E4B)],
-                    ),
-                  ),
-                  child: const Row(
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(left: 12),
-                        child: Text(
-                          '0',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      Spacer(),
-                      Padding(
-                        padding: EdgeInsets.only(right: 12),
-                        child: Text(
-                          '0',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+            child: Container(
+              height: 32,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1E35B8), Color(0xFF9C0E4B)],
                 ),
-                // Center pearl/orb on the seam
-                Positioned(
-                  top: -5,
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [Colors.white, Color(0xFFFF8AB0), Colors.transparent],
+              ),
+              child: const Row(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(left: 12),
+                    child: Text(
+                      '0',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                ),,
+                  Spacer(),
+                  Padding(
+                    padding: EdgeInsets.only(right: 12),
+                    child: Text(
+                      '0',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           Positioned(
-            top: 38,
+            top: -5,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [Colors.white, Color(0xFFFF8AB0), Colors.transparent],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Team panels and seats keep their existing size and position.
+          Positioned(
+            top: 32,
             left: 0,
             right: 0,
             child: Container(
@@ -320,25 +321,19 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               margin: const EdgeInsets.only(top: 6),
               child: Stack(
                 children: [
-                  // Blue and red team panels touch directly with no gap or divider.
                   Positioned.fill(
                     child: Row(
                       textDirection: TextDirection.ltr,
                       children: [
                         Expanded(
-                          child: Container(
-                            color: const Color(0xFF2228A5),
-                          ),
+                          child: Container(color: const Color(0xFF2228A5)),
                         ),
                         Expanded(
-                          child: Container(
-                            color: const Color(0xFF8B0D45),
-                          ),
+                          child: Container(color: const Color(0xFF8B0D45)),
                         ),
                       ],
                     ),
                   ),
-                  // 4 columns x 3 rows grid
                   Padding(
                     padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
                     child: Column(
@@ -379,67 +374,71 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   ),
                 ],
               ),
-        ),,
+            ),
           ),
-          // Timer badge is painted last so it stays above both team panels.
-Positioned(
+          // Timer badge is the last layer, above the red and blue panels.
+          Positioned(
             top: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 3),
-              decoration: const BoxDecoration(
-              color: Color(0xFF13132B),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(14)),
-              boxShadow: [
-                BoxShadow(
-                color: Color(0x66000000),
-                blurRadius: 5,
-                offset: Offset(0, 2),
-                ),
-              ],
-              ),
-              child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.chevron_left, color: Colors.white54, size: 15),
-                const SizedBox(width: 3),
-                const Text(
-                '04:58',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-                ),
-                const SizedBox(width: 5),
-                RichText(
-                text: const TextSpan(
-                  children: [
-                  TextSpan(
-                    text: 'P',
-                    style: TextStyle(
-                    color: Color(0xFF5582FF),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    fontStyle: FontStyle.italic,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 3),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF13132B),
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(14)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x66000000),
+                      blurRadius: 5,
+                      offset: Offset(0, 2),
                     ),
-                  ),
-                  TextSpan(
-                    text: 'K',
-                    style: TextStyle(
-                    color: Color(0xFFFF3377),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    fontStyle: FontStyle.italic,
-                    ),
-                  ),
                   ],
                 ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.chevron_left, color: Colors.white54, size: 15),
+                    const SizedBox(width: 3),
+                    const Text(
+                      '04:58',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    RichText(
+                      text: const TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'P',
+                            style: TextStyle(
+                              color: Color(0xFF5582FF),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                          TextSpan(
+                            text: 'K',
+                            style: TextStyle(
+                              color: Color(0xFFFF3377),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
               ),
             ),
-            ),
+          ),
         ],
       ),
     );
