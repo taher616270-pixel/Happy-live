@@ -380,7 +380,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ),
           // Timer badge moves up with the team panels.
           Positioned(
-            top: 13,
+            top: 12,
             left: 0,
             right: 0,
             child: Center(
@@ -4262,9 +4262,9 @@ class PkTimerFrame extends CustomClipper<Path> {
       w * 0.98, h * 0.85,
       w * 0.97, h * 0.25,
     );
-    // Double the previous top-edge extension: extend 15% beyond each side.
-    path.quadraticBezierTo(w, 0, w * 1.15, 0);
-    path.lineTo(w * -0.15, 0);
+    // Double the previous extension: extend 30% beyond each side, preserving the edge shape.
+    path.quadraticBezierTo(w, 0, w * 1.30, 0);
+    path.lineTo(w * -0.30, 0);
     path.quadraticBezierTo(0, 0, w * 0.03, h * 0.25);
     path.cubicTo(
       w * 0.03, h * 0.85,
