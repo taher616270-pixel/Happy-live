@@ -253,9 +253,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Score strip remains above the team panels.
+          // Score strip moves with the PK teams and timer.
           Positioned(
-            top: 0,
+            top: -7,
             left: 0,
             right: 0,
             child: Container(
@@ -311,9 +311,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ),
             ),
           ),
-          // Team panels and seats keep their existing size and position.
+          // Team panels and seats move up together with the score strip.
           Positioned(
-            top: 15,
+            top: 8,
             left: 0,
             right: 0,
             child: Container(
@@ -376,9 +376,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ),
             ),
           ),
-          // Timer badge is the last layer, above the red and blue panels.
+          // Timer badge moves up together with the teams and score strip.
           Positioned(
-            top: 23,
+            top: 16,
             left: 0,
             right: 0,
             child: Center(
