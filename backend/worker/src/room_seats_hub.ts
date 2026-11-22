@@ -110,6 +110,7 @@ export class RoomSeatsHub {
   private readonly sockets = new Map<WebSocket, SocketIdentity>();
   private mutationQueue: Promise<void> = Promise.resolve();
   private whoMicMode = "membersOnly";
+  private roomCounter: { active: boolean; endsAt: number; totalCoins: number; startedBy: string } | null = null;
   private async configuredSeatLimit(): Promise<number> {
     if (!this.roomId) return 8;
     try {
@@ -133,6 +134,11 @@ export class RoomSeatsHub {
       if (!Number.isFinite(this.snapshot.revision)) this.snapshot.revision = 0;
       if (typeof this.snapshot.voiceEnabled !== "boolean") this.snapshot.voiceEnabled = true;
       this.whoMicMode = (await this.state.storage.get<string>("room-who-mic-mode")) ?? "membersOnly";
+      this.roomCounter = (await this.state.storage.get<typeof this.roomCounter>("room-counter")) ?? null;
+      if (this.roomCounter?.active && this.roomCounter.endsAt <= Date.now()) {
+        this.roomCounter = null;
+        await this.state.storage.delete("room-counter");
+      }
       await this.expireSeats(false);
     });
   }
@@ -152,6 +158,13 @@ export class RoomSeatsHub {
       try { event = await request.json() as Record<string, unknown>; }
       catch { return Response.json({ error: "invalid_json" }, { status: 400 }); }
       const delivered = this.broadcast({ ...event, type: "room_gift" });
+      const coinCost = Number(event.coinCost ?? 0);
+      if (this.roomCounter?.active && this.roomCounter.endsAt > Date.now() &&
+          Number.isSafeInteger(coinCost) && coinCost > 0) {
+        this.roomCounter.totalCoins += coinCost;
+        await this.state.storage.put("room-counter", this.roomCounter);
+        this.broadcast({ type: "room_counter", counter: this.roomCounter });
+      }
       return Response.json({ ok: true, delivered });
     }
 
@@ -398,6 +411,7 @@ export class RoomSeatsHub {
         await this.persist();
       }
       this.send(server, { type: "seat_snapshot", ...this.publicSnapshot(), mySeat: current?.seatNumber ?? null });
+      this.send(server, { type: "room_counter", counter: this.roomCounter });
       this.broadcast({ type: "seat_updated", ...this.publicSnapshot() }, server);
     });
 
@@ -425,6 +439,37 @@ export class RoomSeatsHub {
     try { message = JSON.parse(raw) as Record<string, unknown>; }
     catch {
       this.send(socket, { type: "error", code: "invalid_json" });
+      return;
+    }
+
+    if (message.type === "start_room_counter" || message.type === "stop_room_counter") {
+      if (!identity.isRoomOwner && !identity.isRoomModerator) {
+        this.send(socket, { type: "room_counter_error", code: "permission_denied" });
+        return;
+      }
+      if (message.type === "stop_room_counter") {
+        this.roomCounter = null;
+        await this.state.storage.delete("room-counter");
+        this.broadcast({ type: "room_counter", counter: null });
+        this.send(socket, { type: "room_counter_ack", ok: true });
+        await this.scheduleExpiry();
+        return;
+      }
+      const durationSeconds = Number(message.durationSeconds);
+      if (!Number.isSafeInteger(durationSeconds) || durationSeconds < 60 || durationSeconds > 3600) {
+        this.send(socket, { type: "room_counter_error", code: "invalid_duration" });
+        return;
+      }
+      this.roomCounter = {
+        active: true,
+        endsAt: Date.now() + durationSeconds * 1000,
+        totalCoins: 0,
+        startedBy: identity.userId
+      };
+      await this.state.storage.put("room-counter", this.roomCounter);
+      this.broadcast({ type: "room_counter", counter: this.roomCounter });
+      this.send(socket, { type: "room_counter_ack", ok: true });
+      await this.scheduleExpiry();
       return;
     }
 
@@ -549,6 +594,7 @@ export class RoomSeatsHub {
 
   private async scheduleExpiry(): Promise<void> {
     const expiries = Object.values(this.snapshot.seats).map((seat) => seat.expiresAt);
+    if (this.roomCounter?.active) expiries.push(this.roomCounter.endsAt);
     if (expiries.length === 0) {
       await this.state.storage.deleteAlarm();
       return;
@@ -558,7 +604,15 @@ export class RoomSeatsHub {
 
   async alarm(): Promise<void> {
     await this.ready;
-    await this.enqueue(async () => this.expireSeats(true));
+    await this.enqueue(async () => {
+      await this.expireSeats(true);
+      if (this.roomCounter?.active && this.roomCounter.endsAt <= Date.now()) {
+        this.roomCounter = null;
+        await this.state.storage.delete("room-counter");
+        this.broadcast({ type: "room_counter", counter: null, reason: "expired" });
+      }
+      await this.scheduleExpiry();
+    });
   }
 
   private async persist(): Promise<void> {
