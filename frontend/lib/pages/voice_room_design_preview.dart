@@ -273,7 +273,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   Transform.translate(
                     offset: Offset(-3, 0),
                     child: Padding(
-                      padding: EdgeInsets.only(left: 12),
+                      padding: EdgeInsets.only(left: 9),
                       child: Text(
                         '0',
                         style: TextStyle(
