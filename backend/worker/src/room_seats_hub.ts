@@ -110,7 +110,7 @@ export class RoomSeatsHub {
   private readonly sockets = new Map<WebSocket, SocketIdentity>();
   private mutationQueue: Promise<void> = Promise.resolve();
   private whoMicMode = "membersOnly";
-  private roomCounter: { active: boolean; endsAt: number; totalCoins: number; startedBy: string } | null = null;
+  private roomCounter: { active: boolean; endsAt: number; scores: Record<string, number>; startedBy: string } | null = null;
   private async configuredSeatLimit(): Promise<number> {
     if (!this.roomId) return 8;
     try {
@@ -138,6 +138,9 @@ export class RoomSeatsHub {
       if (this.roomCounter?.active && this.roomCounter.endsAt <= Date.now()) {
         this.roomCounter = null;
         await this.state.storage.delete("room-counter");
+      } else if (this.roomCounter?.active && !this.roomCounter.scores) {
+        this.roomCounter.scores = {};
+        await this.state.storage.put("room-counter", this.roomCounter);
       }
       await this.expireSeats(false);
     });
@@ -157,14 +160,20 @@ export class RoomSeatsHub {
       let event: Record<string, unknown>;
       try { event = await request.json() as Record<string, unknown>; }
       catch { return Response.json({ error: "invalid_json" }, { status: 400 }); }
-      const delivered = this.broadcast({ ...event, type: "room_gift" });
-      const coinCost = Number(event.coinCost ?? 0);
-      if (this.roomCounter?.active && this.roomCounter.endsAt > Date.now() &&
-          Number.isSafeInteger(coinCost) && coinCost > 0) {
-        this.roomCounter.totalCoins += coinCost;
-        await this.state.storage.put("room-counter", this.roomCounter);
-        this.broadcast({ type: "room_counter", counter: this.roomCounter });
-      }
+      let delivered = 0;
+      await this.enqueue(async () => {
+        delivered = this.broadcast({ ...event, type: "room_gift" });
+        const coinCost = Number(event.coinCost ?? 0);
+        const recipientUserId = String(event.recipientUserId ?? "").trim();
+        if (this.roomCounter?.active && this.roomCounter.endsAt > Date.now() &&
+            recipientUserId.length > 0 && Number.isSafeInteger(coinCost) && coinCost > 0) {
+          const scores = this.roomCounter.scores ?? {};
+          scores[recipientUserId] = (Number(scores[recipientUserId]) || 0) + coinCost;
+          this.roomCounter.scores = scores;
+          await this.state.storage.put("room-counter", this.roomCounter);
+          this.broadcast({ type: "room_counter", counter: this.roomCounter });
+        }
+      });
       return Response.json({ ok: true, delivered });
     }
 
@@ -463,7 +472,7 @@ export class RoomSeatsHub {
       this.roomCounter = {
         active: true,
         endsAt: Date.now() + durationSeconds * 1000,
-        totalCoins: 0,
+        scores: {},
         startedBy: identity.userId
       };
       await this.state.storage.put("room-counter", this.roomCounter);
@@ -605,13 +614,12 @@ export class RoomSeatsHub {
   async alarm(): Promise<void> {
     await this.ready;
     await this.enqueue(async () => {
-      await this.expireSeats(true);
       if (this.roomCounter?.active && this.roomCounter.endsAt <= Date.now()) {
         this.roomCounter = null;
         await this.state.storage.delete("room-counter");
         this.broadcast({ type: "room_counter", counter: null, reason: "expired" });
       }
-      await this.scheduleExpiry();
+      await this.expireSeats(true);
     });
   }
 
