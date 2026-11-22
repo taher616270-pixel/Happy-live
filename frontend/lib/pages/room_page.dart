@@ -138,6 +138,8 @@ class _RoomPageState extends State<RoomPage> {
   Map<String, int> _roomGiftScores = <String, int>{};
   bool _roomBattleTeamMode = false;
   bool _roomBattleActive = false;
+  // Local-only PK microphone appearance; no server battle is started.
+  bool _pkVisualMode = false;
   Timer? _roomCounterTicker;
   int _roomCounterNow = 0;
 
@@ -2116,7 +2118,14 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _openRoomBattleTools(BuildContext host) {
-    showPkSheet(host);
+    showPkSheet(
+      host,
+      isPkVisualMode: _pkVisualMode,
+      onToggle: () {
+        if (!mounted) return;
+        setState(() => _pkVisualMode = !_pkVisualMode);
+      },
+    );
   }
 
   void _openRoomGames(BuildContext host) {
@@ -2884,8 +2893,10 @@ class _RoomPageState extends State<RoomPage> {
       isRoomDataReady: _roomDataReady,
       roomGiftScores: _roomGiftScores,
       isRoomGiftCounterActive: _roomCounter != null,
-      pkTeamMode: _roomBattleTeamMode,
-      pkActive: _roomBattleActive,
+      // PK gameplay/server state stays disconnected during this visual-only stage.
+      pkTeamMode: false,
+      pkActive: false,
+      pkVisualMode: _pkVisualMode,
           ),
         ),        if (_roomCounter != null) _roomCounterBanner(),
         if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
