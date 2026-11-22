@@ -313,7 +313,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ),
           // Team panels and seats keep their existing size and position.
           Positioned(
-            top: 32,
+            top: 22,
             left: 0,
             right: 0,
             child: Container(
@@ -378,7 +378,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ),
           // Timer badge is the last layer, above the red and blue panels.
           Positioned(
-            top: 37,
+            top: 27,
             left: 0,
             right: 0,
             child: Center(
