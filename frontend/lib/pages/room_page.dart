@@ -134,6 +134,7 @@ class _RoomPageState extends State<RoomPage> {
   int _micCount = 0;
   String _micLayoutId = '';
   Map<String, dynamic>? _roomCounter;
+  Map<String, int> _roomGiftScores = <String, int>{};
   Timer? _roomCounterTicker;
   int _roomCounterNow = 0;
 
@@ -278,8 +279,18 @@ class _RoomPageState extends State<RoomPage> {
     if (type == 'room_counter') {
       final rawCounter = event['counter'];
       _roomCounterTicker?.cancel();
+      final nextCounter = rawCounter is Map ? Map<String, dynamic>.from(rawCounter) : null;
+      final rawScores = nextCounter?['scores'];
+      final nextScores = <String, int>{};
+      if (rawScores is Map) {
+        rawScores.forEach((key, value) {
+          final score = value is num ? value.toInt() : int.tryParse(value?.toString() ?? '');
+          if (score != null && score >= 0) nextScores[key.toString()] = score;
+        });
+      }
       setState(() {
-        _roomCounter = rawCounter is Map ? Map<String, dynamic>.from(rawCounter) : null;
+        _roomCounter = nextCounter;
+        _roomGiftScores = nextScores;
         _roomCounterNow = DateTime.now().millisecondsSinceEpoch;
       });
       if (_roomCounter != null) {
@@ -1864,35 +1875,37 @@ class _RoomPageState extends State<RoomPage> {
     final remaining = ((endsAt - _roomCounterNow) / 1000).ceil().clamp(0, 3600);
     final minutes = (remaining ~/ 60).toString().padLeft(2, '0');
     final seconds = (remaining % 60).toString().padLeft(2, '0');
-    final coins = (counter['totalCoins'] as num?)?.toInt() ?? 0;
     return Positioned(
-      top: MediaQuery.paddingOf(context).top + 54,
-      left: 18,
-      right: 18,
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: const LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight,
-              colors: [Color(0xFFFF8A00), Color(0xFFFFC04D), Color(0xFFB87916)]),
-            border: Border.all(color: const Color(0xFFFFE2A0), width: 1.4),
-            boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 12, offset: Offset(0, 4))],
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text('$minutes:$seconds', style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900)),
-            const SizedBox(width: 14),
-            Text(coins.toString(), style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
-            const SizedBox(width: 5),
-            const Icon(Icons.monetization_on_rounded, color: Color(0xFFFFF1B8), size: 20),
-            const SizedBox(width: 10),
-            InkWell(
-              onTap: () => _seatSocket?.send({'type': 'stop_room_counter'}),
-              borderRadius: BorderRadius.circular(20),
-              child: const Padding(padding: EdgeInsets.all(3), child: Icon(Icons.close_rounded, color: Colors.white, size: 21)),
-            ),
-          ]),
+      top: MediaQuery.paddingOf(context).top + 112,
+      left: 10,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight,
+            colors: [Color(0xFFFFA21A), Color(0xFFFFC85A), Color(0xFFE84A55)]),
+          border: Border.all(color: const Color(0xFFFFE6A6), width: 1.2),
+          boxShadow: const [BoxShadow(color: Color(0x77000000), blurRadius: 9, offset: Offset(0, 3))],
         ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (_isRoomOwner || _amRoomModerator)
+            InkWell(
+              onTap: () {
+                final sent = _seatSocket?.send({'type': 'stop_room_counter'}) ?? false;
+                if (!sent) _showMessage('تعذر إيقاف العداد، تحقق من اتصال الغرفة');
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 23, height: 23,
+                decoration: const BoxDecoration(color: Color(0xFF6A3A18), shape: BoxShape.circle),
+                child: const Icon(Icons.close_rounded, color: Colors.white, size: 17),
+              ),
+            ),
+          const SizedBox(width: 7),
+          Text('$minutes:$seconds', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900)),
+          const SizedBox(width: 5),
+          const Text('جاري', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+        ]),
       ),
     );
   }
@@ -2718,6 +2731,8 @@ class _RoomPageState extends State<RoomPage> {
       onRoomSettingsChanged: _refreshSeats,
       onRoomCoverChanged: _applyRoomCoverUpdate,
       isRoomDataReady: _roomDataReady,
+      roomGiftScores: _roomGiftScores,
+      isRoomGiftCounterActive: _roomCounter != null,
           ),
         ),        if (_roomCounter != null) _roomCounterBanner(),
         if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
