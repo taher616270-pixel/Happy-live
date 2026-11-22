@@ -167,7 +167,7 @@ export class RoomSeatsHub {
         const recipientUserId = String(event.recipientUserId ?? "").trim();
         if (this.roomCounter?.active && this.roomCounter.endsAt > Date.now() &&
             recipientUserId.length > 0 && Number.isSafeInteger(coinCost) && coinCost > 0) {
-          const scores = this.roomCounter.scores ?? {};
+          const scores = this.roomCounter.scores;
           scores[recipientUserId] = (Number(scores[recipientUserId]) || 0) + coinCost;
           this.roomCounter.scores = scores;
           await this.state.storage.put("room-counter", this.roomCounter);
