@@ -281,53 +281,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Score strip moves with the PK teams and timer.
-          Positioned(
+          // PK score strip: refreshed appearance, original 18px layout height retained.
+          const Positioned(
             top: -4,
             left: 0,
             right: 0,
-            child: Container(
-              height: 18,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1E35B8), Color(0xFF9C0E4B)],
-                ),
-              ),
-              child: Row(
-                textDirection: TextDirection.ltr,
-                children: [
-                  Transform.translate(
-                    offset: Offset(-3, 0),
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 9),
-                      child: Text(
-                        '0',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Spacer(),
-                  Transform.translate(
-                    offset: Offset(3, 0),
-                    child: Padding(
-                      padding: EdgeInsets.only(right: 12),
-                      child: Text(
-                        '0',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            child: PkScoreBar(scoreA: 0, scoreB: 0),
           ),
           Positioned(
             top: -5,
@@ -4569,6 +4528,173 @@ class HappyLevelBadge extends StatelessWidget {
 
 /// Asymmetric PK timer silhouette: straight top, inward side curves,
 /// deep lower corner cut-outs and a soft centered V-shaped dip.
+
+class PkScoreBar extends StatefulWidget {
+  final int scoreA;
+  final int scoreB;
+
+  const PkScoreBar({
+    super.key,
+    required this.scoreA,
+    required this.scoreB,
+  });
+
+  @override
+  State<PkScoreBar> createState() => _PkScoreBarState();
+}
+
+class _PkScoreBarState extends State<PkScoreBar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _bounceCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 800),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _bounceCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = (widget.scoreA + widget.scoreB).toDouble();
+    final percentA = total == 0 ? 0.5 : widget.scoreA / total;
+    final alignX = (percentA * 2 - 1).clamp(-0.96, 0.96).toDouble();
+
+    return SizedBox(
+      height: 18, // Keep the existing score-bar height unchanged.
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: Row(
+              children: const [
+                Expanded(
+                  child: CustomPaint(
+                    painter: _PkChevronPainter(),
+                    child: ColoredBox(color: Color(0xFF2B4CFF)),
+                  ),
+                ),
+                Expanded(
+                  child: CustomPaint(
+                    painter: _PkChevronPainter(),
+                    child: ColoredBox(color: Color(0xFFFF2E7E)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned.fill(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 9),
+                  child: Text(
+                    '${widget.scoreA}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      height: 1,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Text(
+                    '${widget.scoreB}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          AnimatedAlign(
+            alignment: Alignment(alignX, 0),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutBack,
+            child: AnimatedBuilder(
+              animation: _bounceCtrl,
+              builder: (context, child) => Transform.translate(
+                offset: Offset(0, -math.sin(_bounceCtrl.value * math.pi) * 2),
+                child: child,
+              ),
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white,
+                      Color(0xFFFFB0C8),
+                      Color(0xFFFF4D8D),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.pink.withOpacity(0.6),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(top: 4, left: 5, child: _pkScoreDot(2)),
+                    Positioned(top: 7, left: 10, child: _pkScoreDot(1.7)),
+                    Positioned(top: 12, left: 6, child: _pkScoreDot(1.5)),
+                    Positioned(bottom: 4, left: 9, child: _pkScoreDot(1.7)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pkScoreDot(double size) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.9),
+          shape: BoxShape.circle,
+        ),
+      );
+}
+
+class _PkChevronPainter extends CustomPainter {
+  const _PkChevronPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.08)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    for (double x = -10; x < size.width + 20; x += 14) {
+      final path = Path()
+        ..moveTo(x, 2)
+        ..lineTo(x + 7, size.height / 2)
+        ..lineTo(x, size.height - 2);
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PkChevronPainter oldDelegate) => false;
+}
 
 class StartPkButton extends StatelessWidget {
   const StartPkButton({super.key});
