@@ -2080,6 +2080,8 @@ Widget _roomActionButton({
           ),
         );
       },
+    ),
+    ),
                 ],
               ),
             ),
