@@ -72,14 +72,14 @@ class _EmbeddedGamePageState extends State<_EmbeddedGamePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF141414),
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: const Color(0xFF503C28),
         foregroundColor: Colors.white,
-        title: const Text('اللعبة'),
+        title: const Text('اللعبة', style: TextStyle(color: Color(0xFFFFFFFF))),
         leading: IconButton(
           tooltip: 'إغلاق اللعبة',
-          icon: const Icon(Icons.close),
+          icon: const Icon(Icons.close, color: Color(0xFFE9C46A)),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
