@@ -178,7 +178,7 @@ export class RoomSeatsHub {
             this.roomCounter.processedTransactions.splice(0, this.roomCounter.processedTransactions.length - 20_000);
           }
           await this.state.storage.put("room-counter", this.roomCounter);
-          this.broadcast({ type: "room_counter", counter: this.roomCounter });
+          this.broadcast({ type: "room_counter", counter: this.publicRoomCounter() });
         }
       });
       return Response.json({ ok: true, delivered });
@@ -427,7 +427,7 @@ export class RoomSeatsHub {
         await this.persist();
       }
       this.send(server, { type: "seat_snapshot", ...this.publicSnapshot(), mySeat: current?.seatNumber ?? null });
-      this.send(server, { type: "room_counter", counter: this.roomCounter });
+      this.send(server, { type: "room_counter", counter: this.publicRoomCounter() });
       this.broadcast({ type: "seat_updated", ...this.publicSnapshot() }, server);
     });
 
@@ -484,7 +484,7 @@ export class RoomSeatsHub {
         startedBy: identity.userId
       };
       await this.state.storage.put("room-counter", this.roomCounter);
-      this.broadcast({ type: "room_counter", counter: this.roomCounter });
+      this.broadcast({ type: "room_counter", counter: this.publicRoomCounter() });
       this.send(socket, { type: "room_counter_ack", ok: true });
       await this.scheduleExpiry();
       return;
@@ -629,6 +629,16 @@ export class RoomSeatsHub {
       }
       await this.expireSeats(true);
     });
+  }
+
+  private publicRoomCounter(): { active: boolean; endsAt: number; scores: Record<string, number>; startedBy: string } | null {
+    if (!this.roomCounter) return null;
+    return {
+      active: this.roomCounter.active,
+      endsAt: this.roomCounter.endsAt,
+      scores: this.roomCounter.scores,
+      startedBy: this.roomCounter.startedBy
+    };
   }
 
   private async persist(): Promise<void> {
