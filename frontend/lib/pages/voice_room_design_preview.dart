@@ -380,7 +380,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ),
           // Timer badge moves up with the team panels.
           Positioned(
-            top: 14,
+            top: 13,
             left: 0,
             right: 0,
             child: Center(
