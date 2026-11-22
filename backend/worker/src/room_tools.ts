@@ -98,28 +98,33 @@ export async function handleRoomTools(
     const room = await env.DB.prepare("SELECT owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1").bind(roomId).first<{ owner_user_id: string }>();
     if (!room) return respond({ ok: false, error: "room_not_found" }, 404);
     if (room.owner_user_id !== user.id) return respond({ ok: false, error: "room_owner_required", message: "قفل الغرفة متاح للمالك فقط" }, 403);
-    const settingsRow = await env.DB.prepare("SELECT settings_json FROM room_settings WHERE room_id = ? LIMIT 1").bind(roomId).first<{ settings_json: string }>();
-    let settings: Record<string, unknown> = {};
-    try { settings = settingsRow?.settings_json ? JSON.parse(settingsRow.settings_json) as Record<string, unknown> : {}; } catch { settings = {}; }
-    if (body.locked) {
-      const password = typeof body.password === "string" ? body.password : "";
-      if (!/^\d{6}$/.test(password)) return respond({ ok: false, error: "invalid_room_password", message: "كلمة المرور يجب أن تتكون من 6 أرقام" }, 400);
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-      const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 120000, hash: "SHA-256" }, key, 256);
-      settings.roomPasswordSalt = Array.from(salt).map(x => x.toString(16).padStart(2, "0")).join("");
-      settings.roomPasswordHash = Array.from(new Uint8Array(bits)).map(x => x.toString(16).padStart(2, "0")).join("");
-    } else {
-      delete settings.roomPasswordSalt;
-      delete settings.roomPasswordHash;
+    try {
+      const settingsRow = await env.DB.prepare("SELECT settings_json FROM room_settings WHERE room_id = ? LIMIT 1").bind(roomId).first<{ settings_json: string }>();
+      let settings: Record<string, unknown> = {};
+      try { settings = settingsRow?.settings_json ? JSON.parse(settingsRow.settings_json) as Record<string, unknown> : {}; } catch { settings = {}; }
+      if (body.locked) {
+        const password = typeof body.password === "string" ? body.password : "";
+        if (!/^\d{6}$/.test(password)) return respond({ ok: false, error: "invalid_room_password", message: "كلمة المرور يجب أن تتكون من 6 أرقام" }, 400);
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+        const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 120000, hash: "SHA-256" }, key, 256);
+        settings.roomPasswordSalt = Array.from(salt).map(x => x.toString(16).padStart(2, "0")).join("");
+        settings.roomPasswordHash = Array.from(new Uint8Array(bits)).map(x => x.toString(16).padStart(2, "0")).join("");
+      } else {
+        delete settings.roomPasswordSalt;
+        delete settings.roomPasswordHash;
+      }
+      const now = new Date().toISOString();
+      await env.DB.batch([
+        env.DB.prepare("UPDATE rooms SET locked = ? WHERE id = ?").bind(body.locked ? 1 : 0, roomId),
+        env.DB.prepare("INSERT INTO room_settings (room_id, settings_json, updated_at) VALUES (?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at")
+          .bind(roomId, JSON.stringify(settings), now)
+      ]);
+      return respond({ ok: true, roomId, locked: body.locked });
+    } catch (error) {
+      console.error("room_lock_failed", { roomId, userId: user.id, error: error instanceof Error ? error.message : String(error) });
+      return respond({ ok: false, error: "room_lock_failed", message: "تعذر حفظ إعدادات القفل. تحقق من اتصال قاعدة البيانات ثم أعد المحاولة." }, 500);
     }
-    const now = new Date().toISOString();
-    await env.DB.batch([
-      env.DB.prepare("UPDATE rooms SET locked = ? WHERE id = ?").bind(body.locked ? 1 : 0, roomId),
-      env.DB.prepare("INSERT INTO room_settings (room_id, settings_json, updated_at) VALUES (?, ?, ?) ON CONFLICT(room_id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at")
-        .bind(roomId, JSON.stringify(settings), now)
-    ]);
-    return respond({ ok: true, roomId, locked: body.locked });
   }
 
   if (url.pathname === "/api/room/kicks" && request.method === "GET") {
