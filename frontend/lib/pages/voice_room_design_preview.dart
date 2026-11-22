@@ -165,9 +165,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 // Keep the microphone grid, listener strip and everything
                 // below it in normal vertical flow. The listener strip now
                 // follows the actual measured grid height for every layout.
-                if (pkVisualMode)
-                  _buildPkRoomView(context)
-                else ...[
+                if (pkVisualMode) ...[
+                  _buildPkRoomView(context),
+                  // PK-only: place the people strip directly below the red/blue teams.
+                  _listeners(context),
+                ] else ...[
                   _seats(context),
                   const SizedBox(height: 1),
                   Transform.translate(
