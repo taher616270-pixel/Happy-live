@@ -260,6 +260,25 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   /// During entry, expose only the room identity tile and the close control.
   /// Mic seats, chat, gifts and every other action wait for the DB snapshot.
   Widget _buildPkRoomView(BuildContext context) {
+    int calculatedBlueScore = 0;
+    int calculatedRedScore = 0;
+    const blueSeatNumbers = [3, 4, 7, 8, 11, 12];
+    const redSeatNumbers = [1, 2, 5, 6, 9, 10];
+    for (final sNum in blueSeatNumbers) {
+      final s = _seatAt(sNum);
+      final uid = (s?['userId'] ?? '').toString();
+      if (uid.isNotEmpty) {
+        calculatedBlueScore += (roomGiftScores[uid] ?? 0);
+      }
+    }
+    for (final sNum in redSeatNumbers) {
+      final s = _seatAt(sNum);
+      final uid = (s?['userId'] ?? '').toString();
+      if (uid.isNotEmpty) {
+        calculatedRedScore += (roomGiftScores[uid] ?? 0);
+      }
+    }
+
     final roomLayout = micLayoutById(_micLayoutId);
     final overflowSlots = <MicSeat>[];
     for (final row in roomLayout.rows) {
@@ -281,12 +300,16 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // PK score strip: refreshed appearance, original 18px layout height retained.
-          const Positioned(
+          // PK score strip: dynamic score calculation, scrolling arrows, moving center glowing capsule
+          Positioned(
             top: -4,
             left: 0,
             right: 0,
-            child: PkScoreBar(blueScore: 0, redScore: 0, height: 18),
+            child: PkScoreBar(
+              scoreA: calculatedBlueScore,
+              scoreB: calculatedRedScore,
+              height: 24,
+            ),
           ),
           // Team panels touch the score strip with no vertical gap.
           Positioned(
@@ -4494,15 +4517,15 @@ class HappyLevelBadge extends StatelessWidget {
 /// deep lower corner cut-outs and a soft centered V-shaped dip.
 
 class PkScoreBar extends StatefulWidget {
-  final int blueScore;
-  final int redScore;
+  final int scoreA; // نقاط الفريق الأزرق (يسار)
+  final int scoreB; // نقاط الفريق الأحمر (يمين)
   final double height;
 
   const PkScoreBar({
     super.key,
-    required this.blueScore,
-    required this.redScore,
-    this.height = 36.0,
+    required this.scoreA,
+    required this.scoreB,
+    this.height = 24.0,
   });
 
   @override
@@ -4511,21 +4534,22 @@ class PkScoreBar extends StatefulWidget {
 
 class _PkScoreBarState extends State<PkScoreBar>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _animController = AnimationController(
+  late final AnimationController _arrowAnim = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
   )..repeat();
 
   @override
   void dispose() {
-    _animController.dispose();
+    _arrowAnim.dispose();
     super.dispose();
   }
 
   double _calculateBlueRatio() {
-    final total = widget.blueScore + widget.redScore;
-    if (total == 0) return 0.5;
-    return (widget.blueScore / total).clamp(0.12, 0.88);
+    final total = widget.scoreA + widget.scoreB;
+    if (total <= 0) return 0.5;
+    final ratio = widget.scoreA / total;
+    return ratio.clamp(0.10, 0.90);
   }
 
   @override
@@ -4542,105 +4566,111 @@ class _PkScoreBarState extends State<PkScoreBar>
           curve: Curves.easeOutCubic,
           builder: (context, ratio, child) {
             final splitX = totalWidth * ratio;
-            final capsuleLeft = (splitX - 35).clamp(
-              8.0,
-              math.max(8.0, totalWidth - 78.0),
-            );
 
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: widget.height,
-                  width: totalWidth,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(widget.height / 2),
-                        child: AnimatedBuilder(
-                          animation: _animController,
-                          builder: (context, _) => CustomPaint(
+            return SizedBox(
+              height: widget.height + 10,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // 1. الشريط الأساسي المقسم مع حركة الأسهم التنافسية
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: widget.height,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(widget.height / 2),
+                      child: AnimatedBuilder(
+                        animation: _arrowAnim,
+                        builder: (context, _) {
+                          return CustomPaint(
                             size: Size(totalWidth, widget.height),
-                            painter: _PkArrowsPainter(
+                            painter: _PkDynamicArrowsPainter(
                               splitX: splitX,
-                              progress: _animController.value,
+                              progress: _arrowAnim.value,
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
-                      Positioned(
-                        left: 14,
-                        top: 0,
-                        bottom: 0,
-                        child: Center(
-                          child: _AnimatedScoreText(
-                            score: widget.blueScore,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: 14,
-                        top: 0,
-                        bottom: 0,
-                        child: Center(
-                          child: _AnimatedScoreText(
-                            score: widget.redScore,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: splitX - (widget.height * 0.45),
-                        top: (widget.height - (widget.height * 0.9)) / 2,
-                        child: AnimatedBuilder(
-                          animation: _animController,
-                          builder: (context, _) => _CenterGlowingOrb(
-                            size: widget.height * 0.9,
-                            animProgress: _animController.value,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                SizedBox(
-                  width: totalWidth,
-                  height: 10,
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        left: capsuleLeft,
-                        child: Container(
-                          width: 70,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(5),
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF3B82F6), Color(0xFFEC4899)],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.white.withOpacity(0.2),
-                                blurRadius: 4,
-                              ),
-                            ],
+
+                  // 2. رقم نقاط الفريق الأزرق (يسار)
+                  Positioned(
+                    left: 10,
+                    top: 0,
+                    height: widget.height,
+                    child: Center(
+                      child: _PkScoreValueText(
+                        score: widget.scoreA,
+                        alignLeft: true,
+                      ),
+                    ),
+                  ),
+
+                  // 3. رقم نقاط الفريق الأحمر (يمين)
+                  Positioned(
+                    right: 10,
+                    top: 0,
+                    height: widget.height,
+                    child: Center(
+                      child: _PkScoreValueText(
+                        score: widget.scoreB,
+                        alignLeft: false,
+                      ),
+                    ),
+                  ),
+
+                  // 4. الكبسولة / الكرة المضيئة المتحركة عند حد الالتقاء
+                  Positioned(
+                    left: splitX - (widget.height * 0.5),
+                    top: -1,
+                    child: AnimatedBuilder(
+                      animation: _arrowAnim,
+                      builder: (context, _) {
+                        return _PkCenterGlowingOrb(
+                          size: widget.height + 2,
+                          progress: _arrowAnim.value,
+                        );
+                      },
+                    ),
+                  ),
+
+                  // 5. الكبسولة السفلية التفاعلية التي تتحرك مع حد التقسيم
+                  Positioned(
+                    top: widget.height - 2,
+                    left: (splitX - 35).clamp(6.0, totalWidth - 76.0),
+                    child: Container(
+                      width: 70,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(5),
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF3B82F6),
+                            Color(0xFF9333EA),
+                            Color(0xFFEC4899),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.25),
+                            blurRadius: 4,
+                            spreadRadius: 0.5,
                           ),
-                          child: Container(
-                            margin: const EdgeInsets.all(1),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0F1026).withOpacity(0.85),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
+                        ],
+                      ),
+                      child: Container(
+                        margin: const EdgeInsets.all(1.2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF140D23).withOpacity(0.92),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           },
         );
@@ -4649,79 +4679,80 @@ class _PkScoreBarState extends State<PkScoreBar>
   }
 }
 
-class _PkArrowsPainter extends CustomPainter {
+class _PkDynamicArrowsPainter extends CustomPainter {
   final double splitX;
   final double progress;
 
-  _PkArrowsPainter({required this.splitX, required this.progress});
+  _PkDynamicArrowsPainter({required this.splitX, required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bluePaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFF1E3A8A), Color(0xFF2563EB), Color(0xFF3B82F6)],
-      ).createShader(Rect.fromLTWH(0, 0, splitX, size.height));
+    // خلفية الفريق الأزرق
+    final blueShader = const LinearGradient(
+      colors: [Color(0xFF1D4ED8), Color(0xFF2563EB), Color(0xFF3B82F6)],
+    ).createShader(Rect.fromLTWH(0, 0, splitX, size.height));
+    final bluePaint = Paint()..shader = blueShader;
     canvas.drawRect(Rect.fromLTWH(0, 0, splitX, size.height), bluePaint);
 
-    final redPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFFEC4899), Color(0xFFDB2777), Color(0xFF9D174D)],
-      ).createShader(Rect.fromLTWH(splitX, 0, size.width - splitX, size.height));
-    canvas.drawRect(
-      Rect.fromLTWH(splitX, 0, size.width - splitX, size.height),
-      redPaint,
-    );
+    // خلفية الفريق الأحمر / الوردي
+    final redShader = const LinearGradient(
+      colors: [Color(0xFFEC4899), Color(0xFFDB2777), Color(0xFF9D174D)],
+    ).createShader(Rect.fromLTWH(splitX, 0, size.width - splitX, size.height));
+    final redPaint = Paint()..shader = redShader;
+    canvas.drawRect(Rect.fromLTWH(splitX, 0, size.width - splitX, size.height), redPaint);
 
+    const arrowSpacing = 20.0;
+
+    // الأسهم المتدفقة للفريق الأزرق نحو المنتصف (>>>)
     final blueArrowPaint = Paint()
-      ..color = Colors.white.withOpacity(0.18)
+      ..color = Colors.white.withOpacity(0.20)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
+      ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
-    const spacing = 22.0;
-    final blueOffset = progress * spacing;
-    for (double x = -spacing + blueOffset; x < splitX - 10; x += spacing) {
-      if (x < -10) continue;
+    final blueOffset = progress * arrowSpacing;
+    for (double x = -arrowSpacing + blueOffset; x < splitX - 8; x += arrowSpacing) {
+      if (x < -8) continue;
       final path = Path()
         ..moveTo(x, size.height * 0.22)
-        ..lineTo(x + 9, size.height * 0.5)
+        ..lineTo(x + 8, size.height * 0.5)
         ..lineTo(x, size.height * 0.78);
       canvas.drawPath(path, blueArrowPaint);
     }
 
+    // الأسهم المتدفقة للفريق الأحمر نحو المنتصف (<<<)
     final redArrowPaint = Paint()
-      ..color = Colors.white.withOpacity(0.18)
+      ..color = Colors.white.withOpacity(0.20)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
+      ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
-    final redOffset = progress * spacing;
-    for (double x = size.width + spacing - redOffset;
-        x > splitX + 10;
-        x -= spacing) {
-      if (x > size.width + 10) continue;
+    final redOffset = progress * arrowSpacing;
+    for (double x = size.width + arrowSpacing - redOffset; x > splitX + 8; x -= arrowSpacing) {
+      if (x > size.width + 8) continue;
       final path = Path()
         ..moveTo(x, size.height * 0.22)
-        ..lineTo(x - 9, size.height * 0.5)
+        ..lineTo(x - 8, size.height * 0.5)
         ..lineTo(x, size.height * 0.78);
       canvas.drawPath(path, redArrowPaint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _PkArrowsPainter oldDelegate) =>
-      oldDelegate.splitX != splitX || oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _PkDynamicArrowsPainter oldDelegate) {
+    return oldDelegate.splitX != splitX || oldDelegate.progress != progress;
+  }
 }
 
-class _CenterGlowingOrb extends StatelessWidget {
+class _PkCenterGlowingOrb extends StatelessWidget {
   final double size;
-  final double animProgress;
+  final double progress;
 
-  const _CenterGlowingOrb({
+  const _PkCenterGlowingOrb({
     required this.size,
-    required this.animProgress,
+    required this.progress,
   });
 
   @override
@@ -4731,6 +4762,7 @@ class _CenterGlowingOrb extends StatelessWidget {
       height: size,
       child: Stack(
         alignment: Alignment.center,
+        clipBehavior: Clip.none,
         children: [
           Container(
             width: size,
@@ -4739,45 +4771,50 @@ class _CenterGlowingOrb extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFF472B6).withOpacity(0.7),
-                  blurRadius: 12,
+                  color: const Color(0xFFF472B6).withOpacity(0.75),
+                  blurRadius: 10,
                   spreadRadius: 2,
                 ),
                 BoxShadow(
                   color: Colors.white.withOpacity(0.9),
-                  blurRadius: 6,
+                  blurRadius: 5,
+                  spreadRadius: 1,
                 ),
               ],
             ),
           ),
           Container(
-            width: size * 0.75,
-            height: size * 0.75,
+            width: size * 0.78,
+            height: size * 0.78,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
                   Colors.white,
-                  Color(0xFFFDF2F8),
+                  Color(0xFFFFF1F2),
                   Color(0xFFF472B6),
                 ],
-                stops: [0.3, 0.7, 1],
+                stops: [0.3, 0.7, 1.0],
               ),
             ),
           ),
           ...List.generate(3, (index) {
-            final angle = animProgress * 2 * math.pi +
-                (index * (2 * math.pi / 3));
+            final angle = (progress * 2 * math.pi) + (index * (2 * math.pi / 3));
             final radius = size * 0.44;
+            final px = math.cos(angle) * radius;
+            final py = math.sin(angle) * radius;
+
             return Transform.translate(
-              offset: Offset(math.cos(angle) * radius, math.sin(angle) * radius),
+              offset: Offset(px, py),
               child: Container(
-                width: 3.5,
-                height: 3.5,
+                width: 3.2,
+                height: 3.2,
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.white, blurRadius: 3)],
+                  boxShadow: [
+                    BoxShadow(color: Colors.white, blurRadius: 3),
+                  ],
                 ),
               ),
             );
@@ -4788,11 +4825,14 @@ class _CenterGlowingOrb extends StatelessWidget {
   }
 }
 
-class _AnimatedScoreText extends StatelessWidget {
+class _PkScoreValueText extends StatelessWidget {
   final int score;
-  final Color color;
+  final bool alignLeft;
 
-  const _AnimatedScoreText({required this.score, required this.color});
+  const _PkScoreValueText({
+    required this.score,
+    required this.alignLeft,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -4800,21 +4840,24 @@ class _AnimatedScoreText extends StatelessWidget {
       tween: IntTween(begin: 0, end: score),
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeOutQuad,
-      builder: (context, value, _) => Text(
-        '$value',
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w900,
-          fontSize: 16,
-          shadows: [
-            Shadow(
-              color: Colors.black.withOpacity(0.6),
-              offset: const Offset(1, 1),
-              blurRadius: 3,
-            ),
-          ],
-        ),
-      ),
+      builder: (context, value, _) {
+        return Text(
+          '$value',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
+            shadows: [
+              Shadow(
+                color: Colors.black54,
+                offset: Offset(0, 1),
+                blurRadius: 3,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
