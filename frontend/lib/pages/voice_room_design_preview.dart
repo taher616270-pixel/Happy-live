@@ -250,9 +250,25 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   /// During entry, expose only the room identity tile and the close control.
   /// Mic seats, chat, gifts and every other action wait for the DB snapshot.
   Widget _buildPkRoomView(BuildContext context) {
+    final roomLayout = micLayoutById(_micLayoutId);
+    final overflowSlots = <MicSeat>[];
+    for (final row in roomLayout.rows) {
+      for (final slot in row.whereType<MicSeat>()) {
+        if (roomLayout.seatNumber(slot) > 12) overflowSlots.add(slot);
+      }
+    }
+    overflowSlots.sort(
+      (a, b) => roomLayout.seatNumber(a).compareTo(roomLayout.seatNumber(b)),
+    );
+
     return SizedBox(
-      height: 265,
-      child: Stack(
+      height: 265 + (overflowSlots.isNotEmpty ? 92 : 0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 265,
+            child: Stack(
         clipBehavior: Clip.none,
         children: [
           // Score strip moves with the PK teams and timer.
@@ -480,6 +496,30 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               ),
             ),
           ),
+        ],
+            ),
+          ),
+          if (overflowSlots.isNotEmpty)
+            SizedBox(
+              height: 88,
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: overflowSlots.map((slot) {
+                      final number = roomLayout.seatNumber(slot);
+                      return Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 5),
+                        child: _pkOverflowSeat(context, slot, number),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
