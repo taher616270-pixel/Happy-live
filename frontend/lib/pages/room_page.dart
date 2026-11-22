@@ -135,6 +135,8 @@ class _RoomPageState extends State<RoomPage> {
   String _micLayoutId = '';
   Map<String, dynamic>? _roomCounter;
   Map<String, int> _roomGiftScores = <String, int>{};
+  bool _roomBattleTeamMode = false;
+  bool _roomBattleActive = false;
   Timer? _roomCounterTicker;
   int _roomCounterNow = 0;
 
@@ -274,6 +276,13 @@ class _RoomPageState extends State<RoomPage> {
     final type = event['type']?.toString();
     if (type == 'room_gift') {
       _showRoomGiftOverlay(event);
+      return;
+    }
+    if (type == 'room_battle') {
+      setState(() {
+        _roomBattleTeamMode = event['teamMode'] == true;
+        _roomBattleActive = event['active'] == true;
+      });
       return;
     }
     if (type == 'room_counter') {
@@ -2109,57 +2118,81 @@ class _RoomPageState extends State<RoomPage> {
     showModalBottomSheet<void>(
       context: host,
       backgroundColor: const Color(0xFF21152F),
-      builder: (sheetContext) {
-        Future<void> submit(String action) async {
-          Navigator.of(sheetContext).pop();
-          try {
-            final response = await http.post(
-              Uri.parse(_apiBase + '/rooms/' + Uri.encodeComponent(_roomId) + '/battle'),
-              headers: _headers,
-              body: jsonEncode({'action': action}),
-            ).timeout(const Duration(seconds: 10));
-            final payload = jsonDecode(response.body);
-            if (response.statusCode == 200 || response.statusCode == 201) {
-              _showMessage(action == 'start' ? 'بدأ تحدي PK في الغرفة' : 'انتهى تحدي PK');
-            } else {
-              final error = payload is Map ? (payload['error'] ?? '').toString() : '';
-              _showMessage(error == 'battle_already_active'
-                  ? 'يوجد تحدي PK نشط بالفعل'
-                  : error == 'no_active_battle'
-                      ? 'لا يوجد تحدي PK نشط لإنهائه'
-                      : 'تعذر تنفيذ أمر PK');
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          Future<void> submit(String action) async {
+            Navigator.of(sheetContext).pop();
+            try {
+              final response = await http.post(
+                Uri.parse(_apiBase + '/rooms/' + Uri.encodeComponent(_roomId) + '/battle'),
+                headers: _headers,
+                body: jsonEncode({'action': action}),
+              ).timeout(const Duration(seconds: 10));
+              final payload = jsonDecode(response.body);
+              if (response.statusCode == 200 || response.statusCode == 201) {
+                final teamMode = action != 'reset';
+                final active = action == 'start';
+                if (mounted) {
+                  setState(() {
+                    _roomBattleTeamMode = teamMode;
+                    _roomBattleActive = active;
+                  });
+                }
+                _showMessage(action == 'start'
+                    ? 'بدأت مبارزة PK'
+                    : action == 'end' ? 'توقفت المبارزة وبقي تقسيم الفريقين' : 'تمت إعادة تعيين PK');
+              } else {
+                final error = payload is Map ? (payload['error'] ?? '').toString() : '';
+                _showMessage(error == 'battle_already_active'
+                    ? 'مبارزة PK نشطة بالفعل'
+                    : error == 'no_active_battle'
+                        ? 'لا توجد مبارزة نشطة لإيقافها'
+                        : 'تعذر تنفيذ أمر PK');
+              }
+            } catch (_) {
+              _showMessage('تعذر الاتصال بخدمة PK');
             }
-          } catch (_) {
-            _showMessage('تعذر الاتصال بخدمة PK');
           }
-        }
 
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('إدارة تحدي PK', style: TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 14),
-                  ListTile(
-                    leading: const Icon(Icons.play_circle_fill, color: Colors.greenAccent),
-                    title: const Text('بدء التحدي', style: TextStyle(color: Colors.white)),
-                    onTap: () => submit('start'),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.stop_circle, color: Colors.redAccent),
-                    title: const Text('إنهاء التحدي', style: TextStyle(color: Colors.white)),
-                    onTap: () => submit('end'),
-                  ),
-                ],
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('إدارة تحدي PK', style: TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    Text(_roomBattleActive ? 'المبارزة نشطة' : _roomBattleTeamMode ? 'المبارزة متوقفة — تقسيم الفريقين محفوظ' : 'المبارزة غير مفعّلة',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                    const SizedBox(height: 12),
+                    if (!_roomBattleActive)
+                      ListTile(
+                        leading: const Icon(Icons.play_circle_fill, color: Colors.greenAccent),
+                        title: const Text('بدء PK', style: TextStyle(color: Colors.white)),
+                        onTap: () => submit('start'),
+                      ),
+                    if (_roomBattleActive)
+                      ListTile(
+                        leading: const Icon(Icons.stop_circle, color: Colors.orangeAccent),
+                        title: const Text('إيقاف PK', style: TextStyle(color: Colors.white)),
+                        subtitle: const Text('يتوقف التحدي ويبقى تقسيم الأزرق والأحمر', style: TextStyle(color: Colors.white60, fontSize: 11)),
+                        onTap: () => submit('end'),
+                      ),
+                    ListTile(
+                      leading: const Icon(Icons.restart_alt_rounded, color: Colors.redAccent),
+                      title: const Text('إعادة تعيين', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('إلغاء تقسيم الفريقين والعودة لتوزيع الغرفة', style: TextStyle(color: Colors.white60, fontSize: 11)),
+                      onTap: () => submit('reset'),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -3037,7 +3070,20 @@ class _RoomPageState extends State<RoomPage> {
             final micSize = isAndroid
                 ? (tileWidth * .62).clamp(34.0, 52.0)
                 : (tileWidth * .78).clamp(48.0, 70.0);
-            return GridView.builder(
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_roomBattleTeamMode) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+                    child: Row(children: [
+                      Expanded(child: _battleTeamLabel('الفريق الأزرق', const Color(0xFF258BFF))),
+                      const SizedBox(width: 8),
+                      Expanded(child: _battleTeamLabel('الفريق الأحمر', const Color(0xFFFF4B5C))),
+                    ]),
+                  ),
+                ],
+                GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: 8,
@@ -3059,12 +3105,25 @@ class _RoomPageState extends State<RoomPage> {
                 }
                 return seatCard;
               },
+                ),
+              ],
             );
           },
         ),
       ),
     );
   }
+
+  Widget _battleTeamLabel(String label, Color color) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 10),
+    decoration: BoxDecoration(
+      color: color.withOpacity(.16),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: color.withOpacity(.75), width: 1.2),
+    ),
+    child: Text(label, textAlign: TextAlign.center,
+      style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w900)),
+  );
 
   Widget _premiumSeatCard(int number, double micSize) {
     final seat = _seatAt(number);
@@ -3095,10 +3154,18 @@ class _RoomPageState extends State<RoomPage> {
                       : const [Color(0xAA164552), Color(0xAA092B38)],
                   ),
                   border: Border.all(
-                    color: mine ? Colors.transparent : occupied ? const Color(0xFF9BC6C8) : const Color(0x7797B9B8),
-                    width: mine ? 0 : 1.5,
+                    color: _roomBattleTeamMode
+                        ? (number <= 4 ? const Color(0xFF258BFF) : const Color(0xFFFF4B5C))
+                        : mine ? Colors.transparent : occupied ? const Color(0xFF9BC6C8) : const Color(0x7797B9B8),
+                    width: _roomBattleTeamMode ? 2.4 : mine ? 0 : 1.5,
                   ),
-                  boxShadow: [BoxShadow(color: occupied ? const Color(0x5539A2A5) : const Color(0x22000000), blurRadius: 12, offset: const Offset(0, 4))],
+                  boxShadow: [BoxShadow(
+                    color: _roomBattleTeamMode
+                        ? (number <= 4 ? const Color(0x66258BFF) : const Color(0x66FF4B5C))
+                        : occupied ? const Color(0x5539A2A5) : const Color(0x22000000),
+                    blurRadius: _roomBattleTeamMode ? 15 : 12,
+                    offset: const Offset(0, 4),
+                  )],
                 ),
                 child: ClipOval(
                   child: Stack(
