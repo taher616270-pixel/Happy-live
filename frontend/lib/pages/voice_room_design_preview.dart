@@ -342,7 +342,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             left: 0,
             right: 0,
             child: Container(
-              height: 245,
+              height: 252,
               margin: const EdgeInsets.only(top: 6),
               child: Stack(
                 children: [
@@ -368,10 +368,19 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           textDirection: TextDirection.ltr,
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildPkSeatCell(context, 4),
-                            _buildPkSeatCell(context, 3),
-                            _buildPkSeatCell(context, 2),
-                            _buildPkSeatCell(context, 1),
+                            Transform.translate(
+                              offset: const Offset(0, 5),
+                              child: Row(
+                                textDirection: TextDirection.ltr,
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                children: [
+                                  _buildPkSeatCell(context, 4),
+                                  _buildPkSeatCell(context, 3),
+                                  _buildPkSeatCell(context, 2),
+                                  _buildPkSeatCell(context, 1),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 14),
@@ -620,7 +629,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   Transform.translate(
                     offset: const Offset(0, 2),
                     child: Text(
-                      locked ? 'مقفل' : '$seatNumber',
+                      '$seatNumber',
                       style: TextStyle(
                         color: Colors.white.withOpacity(.7),
                         fontSize: 16,
