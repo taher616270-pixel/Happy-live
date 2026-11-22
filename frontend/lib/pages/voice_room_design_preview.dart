@@ -1413,8 +1413,8 @@ Widget _roomActionButton({
       for (final slot in arrangedCells) {
         if (slot != null) slotsByNumber[layout.seatNumber(slot)] = slot;
       }
-      // LTR grid: seats 1–6 stay on the physical left (blue),
-      // seats 7–12 stay on the physical right (pink).
+      // LTR grid: the first two columns reproduce leftSeats,
+      // and the last two columns reproduce rightSeats from the supplied design.
       arrangedCells
         ..clear()
         ..addAll(
@@ -1457,8 +1457,9 @@ Widget _roomActionButton({
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              const Color(0xFF2B2BD6).withOpacity(.35),
-                              Colors.transparent,
+                              const Color(0xFF3B2FD6),
+                              const Color(0xFF2A1EB5),
+                              const Color(0xFF3A2BD6),
                             ],
                           ),
                         ),
@@ -1472,8 +1473,9 @@ Widget _roomActionButton({
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              const Color(0xFFB01E5A).withOpacity(.35),
-                              Colors.transparent,
+                              const Color(0xFFB01E5A),
+                              const Color(0xFFC21E5E),
+                              const Color(0xFF9E174E),
                             ],
                           ),
                         ),
@@ -1565,7 +1567,6 @@ Widget _roomActionButton({
             (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
         final seatDiameter = pkTwelveSeatLayout ? 72.0 : (slot.big ? 50.0 : 44.0);
         final seatBoxWidth = pkTwelveSeatLayout ? 78.0 : (slot.big ? 66.0 : 58.0);
-        final isBluePkTeam = pkTwelveSeatLayout ? index % columns < 2 : number <= 6;
         // The row offset is applied by the parent Transform above;
         // the seat itself keeps its original 88px hit target and visuals.
         return Transform.translate(
