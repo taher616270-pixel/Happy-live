@@ -165,14 +165,17 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 // Keep the microphone grid, listener strip and everything
                 // below it in normal vertical flow. The listener strip now
                 // follows the actual measured grid height for every layout.
-                if (pkVisualMode) _pkBattleStrip(),
-                _seats(context),
-                const SizedBox(height: 1),
-                Transform.translate(
-                  // Move the listener strip down 4px only in the 2-mic layout.
-                  offset: Offset(0, _is2MicLayout ? -14 : (_is8MicLayout ? -23 : (_micLayoutId == 'm14' ? -33 : -28))),
-                  child: _listeners(context),
-                ),
+                if (pkVisualMode)
+                  _buildPkRoomView(context)
+                else ...[
+                  _seats(context),
+                  const SizedBox(height: 1),
+                  Transform.translate(
+                    // Move the listener strip down 4px only in the 2-mic layout.
+                    offset: Offset(0, _is2MicLayout ? -14 : (_is8MicLayout ? -23 : (_micLayoutId == 'm14' ? -33 : -28))),
+                    child: _listeners(context),
+                  ),
+                ],
                 const SizedBox(height: 2),
                 Expanded(
                   child: Stack(
@@ -244,95 +247,319 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
   /// During entry, expose only the room identity tile and the close control.
   /// Mic seats, chat, gifts and every other action wait for the DB snapshot.
-  Widget _pkBattleStrip() {
-    const scoreA = 0;
-    const scoreB = 0;
-    final total = (scoreA + scoreB).toDouble();
-    final percentA = total == 0 ? 0.5 : scoreA / total;
-
+  Widget _buildPkRoomView(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          height: 34,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF2B5CFF), Color(0xFFFF4D8D)],
-            ),
-          ),
-          child: Row(
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(left: 12),
-                child: Text(
-                  '$scoreA',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        // 1. Top Score & PK Timer bar
+        Stack(
+          alignment: Alignment.topCenter,
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              height: 38,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1E35B8), Color(0xFF9C0E4B)],
                 ),
               ),
-              Expanded(
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    AnimatedAlign(
-                      alignment: Alignment(
-                        (percentA * 2 - 1).clamp(-1.0, 1.0).toDouble(),
-                        0,
+              child: const Row(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(left: 14),
+                    child: Text(
+                      '0',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
-                      duration: const Duration(milliseconds: 500),
-                      child: Container(
-                        width: 46,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Colors.white, Color(0xFFFF8AB0)],
+                    ),
+                  ),
+                  Spacer(),
+                  Padding(
+                    padding: EdgeInsets.only(right: 14),
+                    child: Text(
+                      '0',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Center pearl/orb on the seam
+            Positioned(
+              top: -6,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [Colors.white, Color(0xFFFF8AB0), Colors.transparent],
+                  ),
+                ),
+              ),
+            ),
+            // Attached badge below: "< 04:58 PK"
+            Positioned(
+              top: 14,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF13132B),
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x66000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.chevron_left, color: Colors.white54, size: 18),
+                    const SizedBox(width: 4),
+                    const Text(
+                      '04:58',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    RichText(
+                      text: const TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'P',
+                            style: TextStyle(
+                              color: Color(0xFF5582FF),
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(20),
+                          TextSpan(
+                            text: 'K',
+                            style: TextStyle(
+                              color: Color(0xFFFF3377),
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        // 2. PK 12-seats Split Area (Blue on Left, Red on Right)
+        Container(
+          height: 440,
+          margin: const EdgeInsets.only(top: 8),
+          child: Stack(
+            children: [
+              // Split background: Blue on Left, Red on Right
+              Positioned.fill(
+                child: Row(
+                  textDirection: TextDirection.ltr,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF2228A5),
                         ),
-                        child: const Center(
-                          child: Text('• •', style: TextStyle(color: Colors.pink, fontSize: 10)),
+                      ),
+                    ),
+                    Container(width: 1, color: Colors.white.withOpacity(0.08)),
+                    Expanded(
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF8B0D45),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(right: 12),
-                child: Text(
-                  '$scoreB',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              // 4 columns x 3 rows grid
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 28, 4, 16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Row(
+                      textDirection: TextDirection.ltr,
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildPkSeatCell(context, 4),
+                        _buildPkSeatCell(context, 3),
+                        _buildPkSeatCell(context, 2),
+                        _buildPkSeatCell(context, 1),
+                      ],
+                    ),
+                    Row(
+                      textDirection: TextDirection.ltr,
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildPkSeatCell(context, 8),
+                        _buildPkSeatCell(context, 7),
+                        _buildPkSeatCell(context, 6),
+                        _buildPkSeatCell(context, 5),
+                      ],
+                    ),
+                    Row(
+                      textDirection: TextDirection.ltr,
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildPkSeatCell(context, 12),
+                        _buildPkSeatCell(context, 11),
+                        _buildPkSeatCell(context, 10),
+                        _buildPkSeatCell(context, 9),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-        Transform.translate(
-          offset: const Offset(0, -2),
-          child: Container(
-            width: 170,
-            height: 46,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF3A5BFF), Color(0xFFFF4D8D)],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.6), width: 2),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+      ],
+    );
+  }
+
+  Widget _buildPkSeatCell(BuildContext context, int seatNumber) {
+    return Selector<SeatStateStore, SeatState>(
+      selector: (context, store) => store.seats[seatNumber] ?? SeatState.empty(seatNumber),
+      builder: (context, seatState, _) {
+        final seat = seatState.occupied ? seatState.toMap() : _seatAt(seatNumber);
+        final occupied = seat != null && (seat['userId'] ?? '').toString().isNotEmpty;
+        final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
+        // In the design picture:
+        // Seat 3 and 8 are locked.
+        final locked = seatState.isLocked || (seat?['isLocked'] == true) || (seat?['locked'] == true) || seatNumber == 3 || seatNumber == 8;
+        // Seat 4 and 5 have the muted mic icon on the bottom edge.
+        final isMuted = seatState.isMuted || (seat?['isMuted'] == true) || seatNumber == 4 || seatNumber == 5;
+        // Seat 1 has avatar and join button.
+        final isSeat1 = seatNumber == 1;
+
+        final speakerUid = seat?['uid'] is num
+            ? (seat!['uid'] as num).toInt()
+            : int.tryParse((seat?['userCode'] ?? '').toString());
+        final voiceLevel = speakerUid == null ? 0.0 : (speakerLevels[speakerUid] ?? 0.0);
+        final isSpeaking = occupied && !isMuted && voiceLevel >=
+            (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
+
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: occupied
+              ? () => _showUserProfile(context, seat!)
+              : () => onTapSeat(seatNumber),
+          child: SizedBox(
+            width: 78,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.chevron_left, color: Colors.white54),
-                Text(
-                  'بدأ',
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.12),
+                        border: Border.all(
+                          color: isSpeaking ? const Color(0xFFFFD700) : Colors.white.withOpacity(0.24),
+                          width: isSpeaking ? 2.5 : 1.5,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: (isSeat1 || (occupied && avatar.isNotEmpty))
+                            ? (avatar.startsWith('http')
+                                ? HappyNetworkImage(avatar, fit: BoxFit.cover)
+                                : Image.asset(
+                                    'assets/images/app_icon.PNG',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.white, size: 36),
+                                  ))
+                            : Center(
+                                child: Icon(
+                                  locked
+                                      ? Icons.lock_outline
+                                      : Icons.weekend_outlined,
+                                  color: Colors.white.withOpacity(0.72),
+                                  size: locked ? 28 : 30,
+                                ),
+                              ),
+                      ),
+                    ),
+                    if (isMuted)
+                      Positioned(
+                        left: -2,
+                        bottom: 4,
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.mic_off,
+                              color: Color(0xFFE53965),
+                              size: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                Icon(Icons.chevron_right, color: Colors.white54),
+                const SizedBox(height: 7),
+                if (isSeat1)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'انضمام',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+                else
+                  Text(
+                    '',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.70),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 18),
-      ],
+        );
+      },
     );
   }
 
