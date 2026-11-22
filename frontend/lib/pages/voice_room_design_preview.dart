@@ -342,7 +342,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             left: 0,
             right: 0,
             child: Container(
-              height: 279,
+              height: 284,
               margin: const EdgeInsets.only(top: 6),
               child: Stack(
                 children: [
@@ -506,7 +506,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           ),
           if (overflowSlots.isNotEmpty)
             SizedBox(
-              height: 88,
+              height: 72,
               child: Directionality(
                 textDirection: TextDirection.rtl,
                 child: SingleChildScrollView(
@@ -2195,8 +2195,8 @@ Widget _roomActionButton({
 
   Widget _pkOverflowSeat(BuildContext context, MicSeat slot, int number) {
     return SizedBox(
-      width: 66,
-      height: 88,
+      width: 54,
+      height: 72,
       child: Selector<SeatStateStore, SeatState>(
         selector: (context, store) => store.seats[number] ?? SeatState.empty(number),
         builder: (context, seatState, child) {
@@ -2213,18 +2213,18 @@ Widget _roomActionButton({
           final voiceLevel = speakerUid == null ? 0.0 : (speakerLevels[speakerUid] ?? 0.0);
           final isSpeaking = occupied && !muted && voiceLevel >=
               (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
-          final diameter = slot.big ? 50.0 : 44.0;
+          final diameter = slot.big ? 38.0 : 34.0;
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                height: 56,
+                height: 46,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     Positioned(
                       top: 0,
-                      left: (66 - diameter) / 2,
+                      left: (54 - diameter) / 2,
                       child: GestureDetector(
                         onTap: occupied
                             ? () => _showUserProfile(context, seat!)
@@ -2266,7 +2266,7 @@ Widget _roomActionButton({
                                   : Icon(
                                       occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
                                       color: Colors.white.withOpacity(.92),
-                                      size: slot.big ? 22 : 19,
+                                      size: slot.big ? 18 : 16,
                                     ),
                             ),
                           ),
@@ -2291,7 +2291,7 @@ Widget _roomActionButton({
               const SizedBox(height: 2),
               if (occupied)
                 SizedBox(
-                  width: 66,
+                  width: 54,
                   child: Text(
                     name.isEmpty ? 'مستخدم' : name,
                     maxLines: 1,
@@ -2299,7 +2299,7 @@ Widget _roomActionButton({
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.w700,
                       shadows: [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 1))],
                     ),
@@ -2310,7 +2310,7 @@ Widget _roomActionButton({
                   locked ? 'مقفل' : '$number',
                   style: TextStyle(
                     color: Colors.white.withOpacity(.7),
-                    fontSize: 13,
+                    fontSize: 11,
                     shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 1))],
                   ),
                 ),
