@@ -133,6 +133,9 @@ class _RoomPageState extends State<RoomPage> {
   int _roomDailyExperienceExp = 0;
   int _micCount = 0;
   String _micLayoutId = '';
+  Map<String, dynamic>? _roomCounter;
+  Timer? _roomCounterTicker;
+  int _roomCounterNow = 0;
 
   String get _roomId => (widget.room['id'] ?? '').toString();
   String get _roomName => (widget.room['name'] ?? 'غرفة صوتية').toString();
@@ -272,6 +275,24 @@ class _RoomPageState extends State<RoomPage> {
       _showRoomGiftOverlay(event);
       return;
     }
+    if (type == 'room_counter') {
+      final rawCounter = event['counter'];
+      _roomCounterTicker?.cancel();
+      setState(() {
+        _roomCounter = rawCounter is Map ? Map<String, dynamic>.from(rawCounter) : null;
+        _roomCounterNow = DateTime.now().millisecondsSinceEpoch;
+      });
+      if (_roomCounter != null) {
+        _roomCounterTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (mounted) setState(() => _roomCounterNow = DateTime.now().millisecondsSinceEpoch);
+        });
+      }
+      return;
+    }
+    if (type == 'room_counter_error') {
+      _showMessage(event['code'] == 'permission_denied' ? 'هذه الميزة متاحة لصاحب الغرفة والمشرفين فقط' : 'تعذر تشغيل العداد');
+      return;
+    }
     final rawSeats = event['seats'];
     final seats = rawSeats is List ? rawSeats : const <dynamic>[];
 
@@ -400,6 +421,7 @@ class _RoomPageState extends State<RoomPage> {
     _miniOverlayEntry?.remove();
     _miniOverlayEntry = null;
     _roomGiftOverlayTimer?.cancel();
+    _roomCounterTicker?.cancel();
     unawaited(_giftAudioPlayer.dispose());
     _refreshTimer?.cancel();
     _volumeTimer?.cancel();
@@ -1802,25 +1824,74 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _showRoomCounter(BuildContext host) {
-    var value = 0;
-    showDialog<void>(
+    if (_roomCounter != null) {
+      _seatSocket?.send({'type': 'stop_room_counter'});
+      return;
+    }
+    const options = <int, String>{60: '1 دقيقة', 120: '2 دقيقة', 180: '3 دقائق', 300: '5 دقائق', 600: '10 دقائق', 1800: '30 دقيقة', 3600: '60 دقيقة'};
+    showModalBottomSheet<void>(
       context: host,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF21152F),
-          title: const Text('عداد الغرفة', style: TextStyle(color: _gold, fontWeight: FontWeight.w800)),
-          content: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(onPressed: () => setDialogState(() => value = (value - 1).clamp(0, 999999)), icon: const Icon(Icons.remove_circle_outline, color: Colors.white70)),
-              Text('$value', style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
-              IconButton(onPressed: () => setDialogState(() => value = (value + 1).clamp(0, 999999)), icon: const Icon(Icons.add_circle_outline, color: _gold)),
-            ],
+      backgroundColor: const Color(0xFF21152F),
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text('تحديد مدة العداد', style: TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              for (final option in options.entries)
+                ListTile(
+                  title: Text(option.value, style: const TextStyle(color: Colors.white)),
+                  trailing: const Icon(Icons.timer_outlined, color: _gold),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    final sent = _seatSocket?.send({'type': 'start_room_counter', 'durationSeconds': option.key}) ?? false;
+                    if (!sent) _showMessage('انتظر اتصال الغرفة ثم حاول تشغيل العداد');
+                  },
+                ),
+            ]),
           ),
-          actions: [
-            TextButton(onPressed: () => setDialogState(() => value = 0), child: const Text('تصفير')),
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إغلاق')),
-          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _roomCounterBanner() {
+    final counter = _roomCounter;
+    if (counter == null) return const SizedBox.shrink();
+    final endsAt = (counter['endsAt'] as num?)?.toInt() ?? 0;
+    final remaining = ((endsAt - _roomCounterNow) / 1000).ceil().clamp(0, 3600);
+    final minutes = (remaining ~/ 60).toString().padLeft(2, '0');
+    final seconds = (remaining % 60).toString().padLeft(2, '0');
+    final coins = (counter['totalCoins'] as num?)?.toInt() ?? 0;
+    return Positioned(
+      top: MediaQuery.paddingOf(context).top + 54,
+      left: 18,
+      right: 18,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: const LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight,
+              colors: [Color(0xFFFF8A00), Color(0xFFFFC04D), Color(0xFFB87916)]),
+            border: Border.all(color: const Color(0xFFFFE2A0), width: 1.4),
+            boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 12, offset: Offset(0, 4))],
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text('$minutes:$seconds', style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900)),
+            const SizedBox(width: 14),
+            Text(coins.toString(), style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
+            const SizedBox(width: 5),
+            const Icon(Icons.monetization_on_rounded, color: Color(0xFFFFF1B8), size: 20),
+            const SizedBox(width: 10),
+            InkWell(
+              onTap: () => _seatSocket?.send({'type': 'stop_room_counter'}),
+              borderRadius: BorderRadius.circular(20),
+              child: const Padding(padding: EdgeInsets.all(3), child: Icon(Icons.close_rounded, color: Colors.white, size: 21)),
+            ),
+          ]),
         ),
       ),
     );
@@ -2648,7 +2719,8 @@ class _RoomPageState extends State<RoomPage> {
       onRoomCoverChanged: _applyRoomCoverUpdate,
       isRoomDataReady: _roomDataReady,
           ),
-        ),        if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
+        ),        if (_roomCounter != null) _roomCounterBanner(),
+        if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
         ],
         ),
     );
