@@ -1565,8 +1565,8 @@ Widget _roomActionButton({
         final voiceLevel = speakerUid == null ? 0.0 : (speakerLevels[speakerUid] ?? 0.0);
         final isSpeaking = occupied && !muted && voiceLevel >=
             (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
-        final seatDiameter = pkTwelveSeatLayout ? 72.0 : (slot.big ? 50.0 : 44.0);
-        final seatBoxWidth = pkTwelveSeatLayout ? 78.0 : (slot.big ? 66.0 : 58.0);
+        final seatDiameter = slot.big ? 50.0 : 44.0;
+        final seatBoxWidth = slot.big ? 66.0 : 58.0;
         // The row offset is applied by the parent Transform above;
         // the seat itself keeps its original 88px hit target and visuals.
         return Transform.translate(
@@ -1678,15 +1678,9 @@ Widget _roomActionButton({
                               HappyNetworkImage(avatar, fit: BoxFit.cover),
                             if (!avatar.startsWith('http'))
                               Icon(
-                                occupied
-                                    ? Icons.person
-                                    : locked
-                                        ? Icons.lock_outline
-                                        : pkTwelveSeatLayout
-                                            ? Icons.event_seat_outlined
-                                            : Icons.weekend_outlined,
+                                occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
                                 color: Colors.white.withOpacity(.92),
-                                size: pkTwelveSeatLayout ? 30 : (slot.big ? 22 : 19),
+                                size: slot.big ? 22 : 19,
                               ),
                           ],
                         ),
