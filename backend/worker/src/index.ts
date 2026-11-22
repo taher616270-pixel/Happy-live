@@ -2390,12 +2390,16 @@ export default {
             "INSERT INTO room_battles (id, room_id, status, started_at, ended_at, created_by_user_id) " +
             "SELECT ?, ?, 'active', ?, NULL, ? WHERE NOT EXISTS (SELECT 1 FROM room_battles WHERE room_id = ? AND status = 'active')"
           ).bind(battleId, roomId, now, actor.id, roomId).run();
+          let activeBattle: Record<string, unknown> | null = null;
           if ((result.meta?.changes ?? 0) !== 1) {
-            const active = await env.DB!.prepare("SELECT id, started_at AS startedAt FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1")
+            activeBattle = await env.DB!.prepare("SELECT id, started_at AS startedAt FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1")
               .bind(roomId).first<Record<string, unknown>>();
-            return json({ error: "battle_already_active", battle: active ?? null }, 409, origin, env);
+            if (!activeBattle) return json({ error: "battle_state_conflict" }, 409, origin, env);
           }
           if (!env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
+          // Reconcile the Durable Object even when D1 already contains an active
+          // battle. This repairs the previous partial-write case where D1 committed
+          // but the room broadcast failed, leaving the seats in normal mode.
           const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
           const stateResponse = await seatHub.fetch(new Request("https://room-seats.internal/battle-state", {
             method: "POST",
@@ -2403,7 +2407,8 @@ export default {
             body: JSON.stringify({ teamMode: true, active: true })
           }));
           if (!stateResponse.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
-          return json({ ok: true, battle: { id: battleId, roomId, status: "active", startedAt: now }, teamMode: true, active: true }, 201, origin, env);
+          const battle = activeBattle ?? { id: battleId, roomId, status: "active", startedAt: now };
+          return json({ ok: true, battle, teamMode: true, active: true, reconciled: activeBattle != null }, activeBattle ? 200 : 201, origin, env);
         }
         const ended = await env.DB!.prepare(
           "UPDATE room_battles SET status = 'finished', ended_at = ? WHERE room_id = ? AND status = 'active'"
