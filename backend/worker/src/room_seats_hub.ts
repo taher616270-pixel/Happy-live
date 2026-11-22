@@ -473,7 +473,10 @@ export class RoomSeatsHub {
         await this.scheduleExpiry();
         return;
       }
-      if (this.roomCounter?.active && this.roomCounter.endsAt > Date.now()) {
+      if (this.roomCounter?.active && this.roomCounter.endsAt <= Date.now()) {
+        await this.finishRoomCounter("system", "expired");
+      }
+      if (this.roomCounter?.active) {
         this.send(socket, { type: "room_counter_error", code: "counter_already_active" });
         return;
       }
@@ -482,10 +485,11 @@ export class RoomSeatsHub {
         this.send(socket, { type: "room_counter_error", code: "invalid_duration" });
         return;
       }
+      const startedAt = Date.now();
       this.roomCounter = {
         active: true,
-        startedAt: Date.now(),
-        endsAt: Date.now() + durationSeconds * 1000,
+        startedAt,
+        endsAt: startedAt + durationSeconds * 1000,
         scores: {},
         processedTransactions: [],
         startedBy: identity.userId
