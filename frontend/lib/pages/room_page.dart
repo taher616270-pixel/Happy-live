@@ -1887,7 +1887,9 @@ class _RoomPageState extends State<RoomPage> {
           border: Border.all(color: const Color(0xFFFFE6A6), width: 1.2),
           boxShadow: const [BoxShadow(color: Color(0x77000000), blurRadius: 9, offset: Offset(0, 3))],
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
           if (_isRoomOwner || _amRoomModerator)
             InkWell(
               onTap: () {
@@ -1905,7 +1907,8 @@ class _RoomPageState extends State<RoomPage> {
           Text('$minutes:$seconds', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900)),
           const SizedBox(width: 5),
           const Text('جاري', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
-        ]),
+          ]),
+        ),
       ),
     );
   }
