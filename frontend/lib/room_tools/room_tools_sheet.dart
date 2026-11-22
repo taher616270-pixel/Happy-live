@@ -63,7 +63,7 @@ class _RoomToolsSheet extends StatelessWidget {
 
     return [
       simple('counter', 'عداد', interactive, const Icon(Icons.shield_rounded, color: Color(0xFFFFA726), size: 30), actions.counter),
-      simple('pk', 'PK', interactive, const _PkIcon(), actions.pk),
+      if (c.role.canManage) simple('pk', 'PK', interactive, const _PkIcon(), actions.pk),
       tool('salute', 'تحية', interactive, const CannonArt(level: 1, size: 36), () {
         Navigator.of(sheetCtx).pop();
         Future.microtask(() {
