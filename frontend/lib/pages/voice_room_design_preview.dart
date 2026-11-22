@@ -257,7 +257,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         children: [
           // Score strip moves with the PK teams and timer.
           Positioned(
-            top: -7,
+            top: -4,
             left: 0,
             right: 0,
             child: Container(
@@ -275,7 +275,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       '0',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 17,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
