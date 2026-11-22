@@ -439,20 +439,24 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        Transform.rotate(
-                          angle: -0.12,
-                          child: const Text(
-                            'K',
-                            style: TextStyle(
-                              color: Color(0xFF4D91FF),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              shadows: [
-                                Shadow(color: Color(0xFFB6D2FF), offset: Offset(-1, -1), blurRadius: 1),
-                                Shadow(color: Color(0xFF173E9A), offset: Offset(1, 2), blurRadius: 2),
-                              ],
-                            ),
-                          ),
+                        Transform.translate(
+                          offset: const Offset(-3, 0),
+                          child: Transform.rotate(
+                                                    angle: -0.12,
+                                                    child: const Text(
+                                                      'K',
+                                                      style: TextStyle(
+                                                        color: Color(0xFF4D91FF),
+                                                        fontSize: 16,
+                                                        fontWeight: FontWeight.w900,
+                                                        shadows: [
+                                                          Shadow(color: Color(0xFFB6D2FF), offset: Offset(-1, -1), blurRadius: 1),
+                                                          Shadow(color: Color(0xFF173E9A), offset: Offset(1, 2), blurRadius: 2),
+                                                        ],
+                                                      ),
+                                                    ),
+                          
+                        ),
                         ),
                         Transform.rotate(
                           angle: -0.12,
