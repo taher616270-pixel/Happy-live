@@ -1680,9 +1680,19 @@ Widget _roomActionButton({
         : configuredMicCount > 0
             ? 'm$configuredMicCount'
             : 'm8';
-    // During the local PK visual preview, explicitly use the existing 12-seat
-    // layout so a stale room snapshot/layout ID cannot hide the PK arrangement.
+    // PK always uses the 12-seat battle arrangement; higher seat numbers
+    // remain outside the battle in a separate naturally styled row.
+    final roomLayout = micLayoutById(resolvedLayoutId);
     final layout = micLayoutById(pkVisualMode ? 'm12' : resolvedLayoutId);
+    final overflowSlots = <MicSeat>[];
+    if (pkVisualMode) {
+      for (final row in roomLayout.rows) {
+        for (final slot in row.whereType<MicSeat>()) {
+          if (roomLayout.seatNumber(slot) > 12) overflowSlots.add(slot);
+        }
+      }
+      overflowSlots.sort((a, b) => roomLayout.seatNumber(a).compareTo(roomLayout.seatNumber(b)));
+    }
     final columns = pkVisualMode ? 4 : layout.maxCols;
     // Preserve each row's own alignment by building a padded row-major list.
     final arrangedCells = <MicSeat?>[];
@@ -1724,9 +1734,14 @@ Widget _roomActionButton({
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: pkTwelveSeatLayout ? 8 : 12),
       child: SizedBox(
-        height: gridHeight,
-        child: Stack(
+        height: gridHeight + (pkTwelveSeatLayout && overflowSlots.isNotEmpty ? 92 : 0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            SizedBox(
+              height: gridHeight,
+              child: Stack(
+                children: [
             if (pkTwelveSeatLayout)
               Positioned.fill(
                 child: Row(
@@ -2065,15 +2080,165 @@ Widget _roomActionButton({
           ),
         );
       },
-    ),
-    ),
-    ],
-    ),
-    ),
-  );
+                ],
+              ),
+            ),
+            if (pkTwelveSeatLayout && overflowSlots.isNotEmpty)
+              SizedBox(
+                height: 88,
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: overflowSlots.map((slot) {
+                        final number = roomLayout.seatNumber(slot);
+                        return Padding(
+                          padding: const EdgeInsetsDirectional.only(end: 5),
+                          child: _pkOverflowSeat(context, slot, number),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _showEmptySeatActions(BuildContext context, int seatNumber) {
+  Widget _pkOverflowSeat(BuildContext context, MicSeat slot, int number) {
+    return SizedBox(
+      width: 66,
+      height: 88,
+      child: Selector<SeatStateStore, SeatState>(
+        selector: (context, store) => store.seats[number] ?? SeatState.empty(number),
+        builder: (context, seatState, child) {
+          final seat = seatState.occupied ? seatState.toMap() : null;
+          final occupied = seat != null;
+          final mine = seat?['isMe'] == true;
+          final name = (seat?['name'] ?? '').toString();
+          final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
+          final muted = seat?['isMuted'] == true;
+          final locked = seat?['isLocked'] == true || seat?['locked'] == true;
+          final speakerUid = seat?['uid'] is num
+              ? (seat!['uid'] as num).toInt()
+              : int.tryParse((seat?['userCode'] ?? '').toString());
+          final voiceLevel = speakerUid == null ? 0.0 : (speakerLevels[speakerUid] ?? 0.0);
+          final isSpeaking = occupied && !muted && voiceLevel >=
+              (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
+          final diameter = slot.big ? 50.0 : 44.0;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: 56,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      top: 0,
+                      left: (66 - diameter) / 2,
+                      child: GestureDetector(
+                        onTap: occupied
+                            ? () => _showUserProfile(context, seat!)
+                            : (!isChangingSeat && !seatState.isPending && (canModerateUsers || !locked)
+                                ? () {
+                                    if (canModerateUsers) {
+                                      _showEmptySeatActions(context, number);
+                                    } else {
+                                      onTapSeat(number);
+                                    }
+                                  }
+                                : null),
+                        child: _GoldenVoiceWave(
+                          isSpeaking: isSpeaking,
+                          avatarSize: diameter,
+                          rippleStartSize: diameter + 5,
+                          rippleEndSize: diameter + 18,
+                          avatar: Container(
+                            width: diameter,
+                            height: diameter,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: slot.big ? const Color(0x33E8C477) : Colors.white.withOpacity(.14),
+                              border: Border.all(
+                                color: mine
+                                    ? Colors.transparent
+                                    : slot.big
+                                        ? const Color(0xFFFFD98A)
+                                        : Colors.white.withOpacity(occupied ? .82 : .48),
+                                width: mine ? 0 : slot.big ? 2.2 : occupied ? 2 : 1,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x99000000), blurRadius: 9, spreadRadius: 1, offset: Offset(0, 2)),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: avatar.startsWith('http')
+                                  ? HappyNetworkImage(avatar, fit: BoxFit.cover)
+                                  : Icon(
+                                      occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
+                                      color: Colors.white.withOpacity(.92),
+                                      size: slot.big ? 22 : 19,
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (muted)
+                      Positioned(
+                        bottom: 0,
+                        left: 2,
+                        child: IgnorePointer(
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                            child: const Icon(Icons.mic_off_rounded, size: 11, color: Color(0xFFE91E63)),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 2),
+              if (occupied)
+                SizedBox(
+                  width: 66,
+                  child: Text(
+                    name.isEmpty ? 'مستخدم' : name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      shadows: [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 1))],
+                    ),
+                  ),
+                )
+              else
+                Text(
+                  locked ? 'مقفل' : '$number',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(.7),
+                    fontSize: 13,
+                    shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 1))],
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+    void _showEmptySeatActions(BuildContext context, int seatNumber) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
