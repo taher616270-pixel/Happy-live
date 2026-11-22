@@ -12,7 +12,7 @@ test("room gift counter is a timed room-wide feature with manual and automatic s
   const counterHandler = seatHub.slice(seatHub.indexOf('if (message.type === "start_room_counter"'), seatHub.indexOf('if (message.type === "seat_heartbeat"'));
   assert.doesNotMatch(counterHandler, /permission_denied/);
   assert.match(seatHub, /durationSeconds < 60 \|\| durationSeconds > 3600/);
-  assert.match(seatHub, /endsAt: startedAt \\+ durationSeconds \\* 1000/);
+  assert.match(seatHub, /endsAt: startedAt \+ durationSeconds \* 1000/);
   assert.match(seatHub, /this\.state\.storage\.put\("room-counter", this\.roomCounter\)/);
   assert.match(seatHub, /this\.broadcast\(\{ type: "room_counter", counter: null, reason: "expired" \}\)/);
   assert.match(seatHub, /private async scheduleExpiry\(\)[\s\S]*?expiries\.push\(this\.roomCounter\.endsAt\)/);
