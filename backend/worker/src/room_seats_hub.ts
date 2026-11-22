@@ -110,6 +110,8 @@ export class RoomSeatsHub {
   private readonly sockets = new Map<WebSocket, SocketIdentity>();
   private mutationQueue: Promise<void> = Promise.resolve();
   private whoMicMode = "membersOnly";
+  private roomBattleTeamMode = false;
+  private roomBattleActive = false;
   private roomCounter: { active: boolean; startedAt: number; endsAt: number; scores: Record<string, number>; processedTransactions: string[]; startedBy: string } | null = null;
   private roomCounterHistory: Array<{ id: string; startedAt: number; endedAt: number; durationSeconds: number; scores: Record<string, number>; stoppedBy: string; reason: "manual" | "expired" }> = [];
   private async configuredSeatLimit(): Promise<number> {
@@ -136,6 +138,8 @@ export class RoomSeatsHub {
       if (typeof this.snapshot.voiceEnabled !== "boolean") this.snapshot.voiceEnabled = true;
       this.whoMicMode = (await this.state.storage.get<string>("room-who-mic-mode")) ?? "membersOnly";
       this.roomCounter = (await this.state.storage.get<typeof this.roomCounter>("room-counter")) ?? null;
+      this.roomBattleTeamMode = (await this.state.storage.get<boolean>("room-battle-team-mode")) ?? false;
+      this.roomBattleActive = (await this.state.storage.get<boolean>("room-battle-active")) ?? false;
       this.roomCounterHistory = (await this.state.storage.get<typeof this.roomCounterHistory>("room-counter-history")) ?? [];
       if (this.roomCounter?.active) {
         this.roomCounter.scores ??= {};
@@ -157,6 +161,25 @@ export class RoomSeatsHub {
 
     if (url.pathname === "/snapshot" && request.method === "GET") {
       return Response.json(this.publicSnapshot());
+    }
+
+    if (url.pathname === "/battle-state" && request.method === "POST") {
+      const roomId = request.headers.get("x-room-id") ?? "";
+      if (!roomId || roomId !== this.roomId) return Response.json({ error: "room_mismatch" }, { status: 403 });
+      let body: Record<string, unknown>;
+      try { body = await request.json() as Record<string, unknown>; }
+      catch { return Response.json({ error: "invalid_json" }, { status: 400 }); }
+      if (typeof body.teamMode !== "boolean" || typeof body.active !== "boolean" || (body.active && !body.teamMode)) {
+        return Response.json({ error: "invalid_battle_state" }, { status: 400 });
+      }
+      await this.enqueue(async () => {
+        this.roomBattleTeamMode = body.teamMode as boolean;
+        this.roomBattleActive = body.active as boolean;
+        await this.state.storage.put("room-battle-team-mode", this.roomBattleTeamMode);
+        await this.state.storage.put("room-battle-active", this.roomBattleActive);
+        this.broadcast({ type: "room_battle", teamMode: this.roomBattleTeamMode, active: this.roomBattleActive });
+      });
+      return Response.json({ ok: true, teamMode: this.roomBattleTeamMode, active: this.roomBattleActive });
     }
 
     if (url.pathname === "/gift" && request.method === "POST") {
@@ -432,6 +455,7 @@ export class RoomSeatsHub {
       }
       this.send(server, { type: "seat_snapshot", ...this.publicSnapshot(), mySeat: current?.seatNumber ?? null });
       this.send(server, { type: "room_counter", counter: this.publicRoomCounter() });
+      this.send(server, { type: "room_battle", teamMode: this.roomBattleTeamMode, active: this.roomBattleActive });
       this.broadcast({ type: "seat_updated", ...this.publicSnapshot() }, server);
     });
 
