@@ -505,8 +505,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             ),
           ),
           if (overflowSlots.isNotEmpty)
-            SizedBox(
-              height: 72,
+            Transform.translate(
+              offset: const Offset(0, 10),
+              child: SizedBox(
+                height: 72,
               child: Directionality(
                 textDirection: TextDirection.rtl,
                 child: SingleChildScrollView(
@@ -524,6 +526,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   ),
                 ),
               ),
+            ),
             ),
         ],
       ),
