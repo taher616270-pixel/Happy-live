@@ -4666,20 +4666,14 @@ class StartPkButton extends StatelessWidget {
 class StartButtonShape extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
-    final w = size.width, h = size.height;
-    const cut = 22.0, tip = 18.0;
-    return Path()
-      ..moveTo(cut + tip, 0)
-      ..lineTo(w - cut - tip, 0)
-      ..lineTo(w - tip, cut)
-      ..lineTo(w, h / 2)
-      ..lineTo(w - tip, h - cut)
-      ..lineTo(w - cut - tip, h)
-      ..lineTo(cut + tip, h)
-      ..lineTo(tip, h - cut)
-      ..lineTo(0, h / 2)
-      ..lineTo(tip, cut)
-      ..close();
+    // Keep the same button dimensions and contents, but remove the
+    // outward arrow-shaped tips on both sides of the frame.
+    return Path()..addRRect(
+      RRect.fromRectAndRadius(
+        Offset.zero & size,
+        const Radius.circular(3),
+      ),
+    );
   }
 
   @override
