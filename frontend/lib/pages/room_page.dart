@@ -2126,6 +2126,13 @@ class _RoomPageState extends State<RoomPage> {
         if (!mounted) return;
         setState(() => _pkVisualMode = !_pkVisualMode);
       },
+      onReset: () {
+        if (!mounted) return;
+        setState(() {
+          _pkVisualMode = false;
+          _pkStarted = false;
+        });
+      },
     );
   }
 
