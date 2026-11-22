@@ -286,7 +286,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             top: -4,
             left: 0,
             right: 0,
-            child: PkScoreBar(scoreA: 0, scoreB: 0),
+            child: PkScoreBar(blueScore: 0, redScore: 0, height: 18),
           ),
           // Team panels touch the score strip with no vertical gap.
           Positioned(
@@ -4494,13 +4494,15 @@ class HappyLevelBadge extends StatelessWidget {
 /// deep lower corner cut-outs and a soft centered V-shaped dip.
 
 class PkScoreBar extends StatefulWidget {
-  final int scoreA;
-  final int scoreB;
+  final int blueScore;
+  final int redScore;
+  final double height;
 
   const PkScoreBar({
     super.key,
-    required this.scoreA,
-    required this.scoreB,
+    required this.blueScore,
+    required this.redScore,
+    this.height = 36.0,
   });
 
   @override
@@ -4509,122 +4511,312 @@ class PkScoreBar extends StatefulWidget {
 
 class _PkScoreBarState extends State<PkScoreBar>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _bounceCtrl = AnimationController(
+  late final AnimationController _animController = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 800),
-  )..repeat(reverse: true);
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
 
   @override
   void dispose() {
-    _bounceCtrl.dispose();
+    _animController.dispose();
     super.dispose();
+  }
+
+  double _calculateBlueRatio() {
+    final total = widget.blueScore + widget.redScore;
+    if (total == 0) return 0.5;
+    return (widget.blueScore / total).clamp(0.12, 0.88);
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 18, // Keep the existing score-bar height unchanged.
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Two clearly framed team lanes: red on the left, blue on the right.
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFE8DCE5), width: 1),
-                borderRadius: BorderRadius.circular(5),
-                color: const Color(0xFF17101C),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF8F1E3F),
-                        border: Border.all(color: const Color(0xFFFF526F), width: 1.8),
-                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)),
-                      ),
-                      child: const CustomPaint(
-                        painter: _PkChevronPainter(),
-                        child: ColoredBox(color: Color(0x00FFFFFF)),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2236B8),
-                        border: Border.all(color: const Color(0xFF6688FF), width: 1.8),
-                        borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
-                      ),
-                      child: const CustomPaint(
-                        painter: _PkChevronPainter(),
-                        child: ColoredBox(color: Color(0x00FFFFFF)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final targetRatio = _calculateBlueRatio();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalWidth = constraints.maxWidth;
+
+        return TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0.5, end: targetRatio),
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOutCubic,
+          builder: (context, ratio, child) {
+            final splitX = totalWidth * ratio;
+            final capsuleLeft = (splitX - 35).clamp(
+              8.0,
+              math.max(8.0, totalWidth - 78.0),
+            );
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 9),
-                  child: Text(
-                    '${widget.scoreA}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      height: 1,
-                    ),
+                SizedBox(
+                  height: widget.height,
+                  width: totalWidth,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(widget.height / 2),
+                        child: AnimatedBuilder(
+                          animation: _animController,
+                          builder: (context, _) => CustomPaint(
+                            size: Size(totalWidth, widget.height),
+                            painter: _PkArrowsPainter(
+                              splitX: splitX,
+                              progress: _animController.value,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 14,
+                        top: 0,
+                        bottom: 0,
+                        child: Center(
+                          child: _AnimatedScoreText(
+                            score: widget.blueScore,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 14,
+                        top: 0,
+                        bottom: 0,
+                        child: Center(
+                          child: _AnimatedScoreText(
+                            score: widget.redScore,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: splitX - (widget.height * 0.45),
+                        top: (widget.height - (widget.height * 0.9)) / 2,
+                        child: AnimatedBuilder(
+                          animation: _animController,
+                          builder: (context, _) => _CenterGlowingOrb(
+                            size: widget.height * 0.9,
+                            animProgress: _animController.value,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Text(
-                    '${widget.scoreB}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      height: 1,
-                    ),
+                const SizedBox(height: 3),
+                SizedBox(
+                  width: totalWidth,
+                  height: 10,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: capsuleLeft,
+                        child: Container(
+                          width: 70,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(5),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF3B82F6), Color(0xFFEC4899)],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.white.withOpacity(0.2),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Container(
+                            margin: const EdgeInsets.all(1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F1026).withOpacity(0.85),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
-
 }
 
-class _PkChevronPainter extends CustomPainter {
-  const _PkChevronPainter();
+class _PkArrowsPainter extends CustomPainter {
+  final double splitX;
+  final double progress;
+
+  _PkArrowsPainter({required this.splitX, required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.08)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-    for (double x = -10; x < size.width + 20; x += 14) {
+    final bluePaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF1E3A8A), Color(0xFF2563EB), Color(0xFF3B82F6)],
+      ).createShader(Rect.fromLTWH(0, 0, splitX, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, splitX, size.height), bluePaint);
+
+    final redPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFEC4899), Color(0xFFDB2777), Color(0xFF9D174D)],
+      ).createShader(Rect.fromLTWH(splitX, 0, size.width - splitX, size.height));
+    canvas.drawRect(
+      Rect.fromLTWH(splitX, 0, size.width - splitX, size.height),
+      redPaint,
+    );
+
+    final blueArrowPaint = Paint()
+      ..color = Colors.white.withOpacity(0.18)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    const spacing = 22.0;
+    final blueOffset = progress * spacing;
+    for (double x = -spacing + blueOffset; x < splitX - 10; x += spacing) {
+      if (x < -10) continue;
       final path = Path()
-        ..moveTo(x, 2)
-        ..lineTo(x + 7, size.height / 2)
-        ..lineTo(x, size.height - 2);
-      canvas.drawPath(path, paint);
+        ..moveTo(x, size.height * 0.22)
+        ..lineTo(x + 9, size.height * 0.5)
+        ..lineTo(x, size.height * 0.78);
+      canvas.drawPath(path, blueArrowPaint);
+    }
+
+    final redArrowPaint = Paint()
+      ..color = Colors.white.withOpacity(0.18)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final redOffset = progress * spacing;
+    for (double x = size.width + spacing - redOffset;
+        x > splitX + 10;
+        x -= spacing) {
+      if (x > size.width + 10) continue;
+      final path = Path()
+        ..moveTo(x, size.height * 0.22)
+        ..lineTo(x - 9, size.height * 0.5)
+        ..lineTo(x, size.height * 0.78);
+      canvas.drawPath(path, redArrowPaint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _PkChevronPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _PkArrowsPainter oldDelegate) =>
+      oldDelegate.splitX != splitX || oldDelegate.progress != progress;
+}
+
+class _CenterGlowingOrb extends StatelessWidget {
+  final double size;
+  final double animProgress;
+
+  const _CenterGlowingOrb({
+    required this.size,
+    required this.animProgress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFF472B6).withOpacity(0.7),
+                  blurRadius: 12,
+                  spreadRadius: 2,
+                ),
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.9),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: size * 0.75,
+            height: size * 0.75,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  Colors.white,
+                  Color(0xFFFDF2F8),
+                  Color(0xFFF472B6),
+                ],
+                stops: [0.3, 0.7, 1],
+              ),
+            ),
+          ),
+          ...List.generate(3, (index) {
+            final angle = animProgress * 2 * math.pi +
+                (index * (2 * math.pi / 3));
+            final radius = size * 0.44;
+            return Transform.translate(
+              offset: Offset(math.cos(angle) * radius, math.sin(angle) * radius),
+              child: Container(
+                width: 3.5,
+                height: 3.5,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: Colors.white, blurRadius: 3)],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnimatedScoreText extends StatelessWidget {
+  final int score;
+  final Color color;
+
+  const _AnimatedScoreText({required this.score, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<int>(
+      tween: IntTween(begin: 0, end: score),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutQuad,
+      builder: (context, value, _) => Text(
+        '$value',
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w900,
+          fontSize: 16,
+          shadows: [
+            Shadow(
+              color: Colors.black.withOpacity(0.6),
+              offset: const Offset(1, 1),
+              blurRadius: 3,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class StartPkButton extends StatelessWidget {
