@@ -10,6 +10,7 @@ class RoomToolsConfig {
 }
 
 class RoomToolsApi {
+  static String lastLockError = '';
   static Map<String, String> get _headers {
     final token = RoomToolsConfig.authToken();
     return {
@@ -34,6 +35,7 @@ class RoomToolsApi {
   }
 
   static Future<bool> setLocked(String roomId, bool locked, {String? password}) async {
+    lastLockError = '';
     try {
       final uri = Uri.parse('${RoomToolsConfig.apiBase}/api/room/lock');
       final response = await http.post(
@@ -41,10 +43,15 @@ class RoomToolsApi {
         headers: _headers,
         body: jsonEncode({'room_id': roomId, 'locked': locked, if (password != null) 'password': password}),
       ).timeout(const Duration(seconds: 8));
-      if (response.statusCode != 200) return false;
       final payload = jsonDecode(utf8.decode(response.bodyBytes));
-      return payload is Map && payload['ok'] == true;
-    } catch (_) {
+      if (response.statusCode != 200 || payload is! Map || payload['ok'] != true) {
+        final serverMessage = payload is Map ? (payload['message'] ?? payload['error'] ?? '').toString() : '';
+        lastLockError = serverMessage.isNotEmpty ? '$serverMessage (HTTP ${response.statusCode})' : 'HTTP ${response.statusCode}';
+        return false;
+      }
+      return true;
+    } catch (error) {
+      lastLockError = 'تعذر الاتصال بالخادم: $error';
       return false;
     }
   }
