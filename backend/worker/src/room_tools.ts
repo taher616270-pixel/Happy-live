@@ -103,7 +103,7 @@ export async function handleRoomTools(
     try { settings = settingsRow?.settings_json ? JSON.parse(settingsRow.settings_json) as Record<string, unknown> : {}; } catch { settings = {}; }
     if (body.locked) {
       const password = typeof body.password === "string" ? body.password : "";
-      if (!/^\\d{6}$/.test(password)) return respond({ ok: false, error: "invalid_room_password", message: "كلمة المرور يجب أن تتكون من 6 أرقام" }, 400);
+      if (!/^\d{6}$/.test(password)) return respond({ ok: false, error: "invalid_room_password", message: "كلمة المرور يجب أن تتكون من 6 أرقام" }, 400);
       const salt = crypto.getRandomValues(new Uint8Array(16));
       const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
       const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 120000, hash: "SHA-256" }, key, 256);
