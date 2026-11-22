@@ -70,6 +70,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.isRoomGiftCounterActive = false,
     this.pkTeamMode = false,
     this.pkActive = false,
+    this.pkVisualMode = false,
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
@@ -109,6 +110,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final bool isRoomGiftCounterActive;
   final bool pkTeamMode;
   final bool pkActive;
+  final bool pkVisualMode;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -1350,7 +1352,21 @@ Widget _roomActionButton({
       arrangedCells.addAll(row);
       arrangedCells.addAll(List<MicSeat?>.filled(columns - row.length, null));
     }
-    if (pkTeamMode && layout.id == 'm8') {
+    if (pkVisualMode && layout.id == 'm12') {
+      final slotsByNumber = <int, MicSeat>{};
+      for (final slot in arrangedCells) {
+        if (slot != null) slotsByNumber[layout.seatNumber(slot)] = slot;
+      }
+      // LTR grid: seats 1–6 stay on the physical left (blue),
+      // seats 7–12 stay on the physical right (pink).
+      arrangedCells
+        ..clear()
+        ..addAll(
+          [1, 2, 7, 8, 3, 4, 9, 10, 5, 6, 11, 12]
+              .map((number) => slotsByNumber[number]!)
+              .toList(),
+        );
+    } else if (pkTeamMode && layout.id == 'm8') {
       final slotsByNumber = <int, MicSeat>{};
       for (final slot in arrangedCells) {
         if (slot != null) slotsByNumber[layout.seatNumber(slot)] = slot;
@@ -1366,22 +1382,65 @@ Widget _roomActionButton({
     const micColumnGap = 2.0;
     final gridHeight = (layout.rows.length * 88.0) +
         ((layout.rows.length - 1) * micRowGap);
+    final pkTwelveSeatLayout = pkVisualMode && layout.id == 'm12';
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: EdgeInsets.symmetric(horizontal: pkTwelveSeatLayout ? 8 : 12),
       child: SizedBox(
         height: gridHeight,
-        child: GridView.builder(
-          shrinkWrap: false,
-          physics: const NeverScrollableScrollPhysics(),
-          clipBehavior: Clip.none,
-          itemCount: arrangedCells.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            mainAxisSpacing: micRowGap,
-            crossAxisSpacing: micColumnGap,
-            mainAxisExtent: 88,
-          ),
-      itemBuilder: (context, index) {
+        child: Stack(
+          children: [
+            if (pkTwelveSeatLayout)
+              Positioned.fill(
+                child: Row(
+                  textDirection: TextDirection.ltr,
+                  children: [
+                    Expanded(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              const Color(0xFF2B2BD6).withOpacity(.35),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(width: 1, color: Colors.white.withOpacity(.15)),
+                    Expanded(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              const Color(0xFFB01E5A).withOpacity(.35),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Directionality(
+              textDirection: pkTwelveSeatLayout ? TextDirection.ltr : Directionality.of(context),
+              child: GridView.builder(
+                shrinkWrap: false,
+                physics: const NeverScrollableScrollPhysics(),
+                clipBehavior: Clip.none,
+                padding: EdgeInsets.symmetric(horizontal: pkTwelveSeatLayout ? 4 : 12),
+                itemCount: arrangedCells.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  mainAxisSpacing: micRowGap,
+                  crossAxisSpacing: micColumnGap,
+                  mainAxisExtent: 88,
+                ),
+                itemBuilder: (context, index) {
         final slot = arrangedCells[index];
         if (slot == null) return const SizedBox.shrink();
         final number = layout.seatNumber(slot);
@@ -1396,7 +1455,9 @@ Widget _roomActionButton({
                     ? -3.0
                     : 0.0;
         // The 15-seat layout must keep every seat level within its row.
-        final verticalOffset = layout.id == 'm8'
+        final verticalOffset = pkTwelveSeatLayout
+            ? 0.0
+            : layout.id == 'm8'
             ? 0.0
             : layout.id == 'm10'
                 ? (number >= 5 && number <= 8
@@ -1521,18 +1582,26 @@ Widget _roomActionButton({
                       height: seatDiameter,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: slot.big
-                            ? const Color(0x33E8C477)
-                            : Colors.white.withOpacity(.14),
+                        color: pkTwelveSeatLayout
+                            ? (number <= 6
+                                ? const Color(0xFF2B2BD6).withOpacity(.20)
+                                : const Color(0xFFB01E5A).withOpacity(.20))
+                            : slot.big
+                                ? const Color(0x33E8C477)
+                                : Colors.white.withOpacity(.14),
                         border: Border.all(
-                          color: pkTeamMode && layout.id == 'm8'
-                              ? (number <= 4 ? const Color(0xFF258BFF) : const Color(0xFFFF4B5C))
-                              : mine
-                                  ? Colors.transparent
-                                  : slot.big
-                                      ? const Color(0xFFFFD98A)
-                                      : Colors.white.withOpacity(occupied ? .82 : .48),
-                          width: pkTeamMode && layout.id == 'm8' ? 2.4 : mine ? 0 : slot.big ? 2.2 : occupied ? 2 : 1,
+                          color: pkTwelveSeatLayout
+                              ? (number <= 6 ? const Color(0xFF5555FF) : const Color(0xFFE64B91))
+                              : pkTeamMode && layout.id == 'm8'
+                                  ? (number <= 4 ? const Color(0xFF258BFF) : const Color(0xFFFF4B5C))
+                                  : mine
+                                      ? Colors.transparent
+                                      : slot.big
+                                          ? const Color(0xFFFFD98A)
+                                          : Colors.white.withOpacity(occupied ? .82 : .48),
+                          width: pkTwelveSeatLayout || (pkTeamMode && layout.id == 'm8')
+                              ? 2.4
+                              : mine ? 0 : slot.big ? 2.2 : occupied ? 2 : 1,
                         ),
                         // Improve separation from the new wallpaper without
                         // changing the seats' original transparency.
@@ -1658,6 +1727,9 @@ Widget _roomActionButton({
           ),
         );
       },
+    ),
+    ),
+    ],
     ),
     ),
   );
