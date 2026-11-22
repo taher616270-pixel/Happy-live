@@ -110,7 +110,8 @@ export class RoomSeatsHub {
   private readonly sockets = new Map<WebSocket, SocketIdentity>();
   private mutationQueue: Promise<void> = Promise.resolve();
   private whoMicMode = "membersOnly";
-  private roomCounter: { active: boolean; endsAt: number; scores: Record<string, number>; processedTransactions: string[]; startedBy: string } | null = null;
+  private roomCounter: { active: boolean; startedAt: number; endsAt: number; scores: Record<string, number>; processedTransactions: string[]; startedBy: string } | null = null;
+  private roomCounterHistory: Array<{ id: string; startedAt: number; endedAt: number; durationSeconds: number; scores: Record<string, number>; stoppedBy: string; reason: "manual" | "expired" }> = [];
   private async configuredSeatLimit(): Promise<number> {
     if (!this.roomId) return 8;
     try {
@@ -135,12 +136,13 @@ export class RoomSeatsHub {
       if (typeof this.snapshot.voiceEnabled !== "boolean") this.snapshot.voiceEnabled = true;
       this.whoMicMode = (await this.state.storage.get<string>("room-who-mic-mode")) ?? "membersOnly";
       this.roomCounter = (await this.state.storage.get<typeof this.roomCounter>("room-counter")) ?? null;
+      this.roomCounterHistory = (await this.state.storage.get<typeof this.roomCounterHistory>("room-counter-history")) ?? [];
       if (this.roomCounter?.active && this.roomCounter.endsAt <= Date.now()) {
-        this.roomCounter = null;
-        await this.state.storage.delete("room-counter");
-      } else if (this.roomCounter?.active && (!this.roomCounter.scores || !this.roomCounter.processedTransactions)) {
+        await this.finishRoomCounter("system", "expired");
+      } else if (this.roomCounter?.active && (!this.roomCounter.scores || !this.roomCounter.processedTransactions || !this.roomCounter.startedAt)) {
         this.roomCounter.scores ??= {};
         this.roomCounter.processedTransactions ??= [];
+        this.roomCounter.startedAt ??= this.roomCounter.endsAt - 60_000;
         await this.state.storage.put("room-counter", this.roomCounter);
       }
       await this.expireSeats(false);
@@ -459,10 +461,12 @@ export class RoomSeatsHub {
     }
 
     if (message.type === "start_room_counter" || message.type === "stop_room_counter") {
+      if (message.type === "get_room_counter_history") {
+        this.send(socket, { type: "room_counter_history", records: this.publicRoomCounterHistory() });
+        return;
+      }
       if (message.type === "stop_room_counter") {
-        this.roomCounter = null;
-        await this.state.storage.delete("room-counter");
-        this.broadcast({ type: "room_counter", counter: null });
+        await this.finishRoomCounter(identity.userId, "manual");
         this.send(socket, { type: "room_counter_ack", ok: true });
         await this.scheduleExpiry();
         return;
@@ -474,6 +478,7 @@ export class RoomSeatsHub {
       }
       this.roomCounter = {
         active: true,
+        startedAt: Date.now(),
         endsAt: Date.now() + durationSeconds * 1000,
         scores: {},
         processedTransactions: [],
@@ -619,18 +624,49 @@ export class RoomSeatsHub {
     await this.ready;
     await this.enqueue(async () => {
       if (this.roomCounter?.active && this.roomCounter.endsAt <= Date.now()) {
-        this.roomCounter = null;
-        await this.state.storage.delete("room-counter");
-        this.broadcast({ type: "room_counter", counter: null, reason: "expired" });
+        await this.finishRoomCounter("system", "expired");
       }
       await this.expireSeats(true);
     });
   }
 
-  private publicRoomCounter(): { active: boolean; endsAt: number; scores: Record<string, number>; startedBy: string } | null {
+  private async finishRoomCounter(stoppedBy: string, reason: "manual" | "expired"): Promise<void> {
+    const current = this.roomCounter;
+    if (!current) return;
+    const endedAt = Math.min(Date.now(), current.endsAt);
+    this.roomCounterHistory.unshift({
+      id: crypto.randomUUID(),
+      startedAt: current.startedAt,
+      endedAt,
+      durationSeconds: Math.max(1, Math.round((current.endsAt - current.startedAt) / 1000)),
+      scores: { ...current.scores },
+      stoppedBy,
+      reason
+    });
+    this.roomCounterHistory = this.roomCounterHistory.slice(0, 50);
+    await this.state.storage.put("room-counter-history", this.roomCounterHistory);
+    this.roomCounter = null;
+    await this.state.storage.delete("room-counter");
+    this.broadcast({ type: "room_counter", counter: null, reason });
+  }
+
+  private publicRoomCounterHistory(): Array<{ id: string; startedAt: number; endedAt: number; durationSeconds: number; totalCoins: number; participantCount: number; reason: "manual" | "expired" }> {
+    return this.roomCounterHistory.map((record) => ({
+      id: record.id,
+      startedAt: record.startedAt,
+      endedAt: record.endedAt,
+      durationSeconds: record.durationSeconds,
+      totalCoins: Object.values(record.scores).reduce((sum, value) => sum + (Number(value) || 0), 0),
+      participantCount: Object.keys(record.scores).length,
+      reason: record.reason
+    }));
+  }
+
+  private publicRoomCounter(): { active: boolean; startedAt: number; endsAt: number; scores: Record<string, number>; startedBy: string } | null {
     if (!this.roomCounter) return null;
     return {
       active: this.roomCounter.active,
+      startedAt: this.roomCounter.startedAt,
       endsAt: this.roomCounter.endsAt,
       scores: this.roomCounter.scores,
       startedBy: this.roomCounter.startedBy
