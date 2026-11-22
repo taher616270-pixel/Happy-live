@@ -55,6 +55,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.onRoomTools,
     this.onMinimizeRoom,
     this.onCloseRoom,
+    this.onPkReset,
     this.onUpgradeRoom,
     this.onOpenGifts,
     this.onRoomSettingsChanged,
@@ -94,6 +95,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final VoidCallback? onRoomTools;
   final VoidCallback? onMinimizeRoom;
   final VoidCallback? onCloseRoom;
+  final VoidCallback? onPkReset;
   final Future<void> Function(String roomId, int level)? onUpgradeRoom;
   final VoidCallback? onOpenGifts;
   final VoidCallback? onRoomSettingsChanged;
@@ -776,6 +778,25 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 width: 36,
                 height: 42,
                 child: Icon(Icons.close_rounded, color: Colors.white, size: 28),
+              ),
+            ),
+            const SizedBox(width: 4),
+            InkWell(
+              onTap: onPkReset,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(.16),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.white.withOpacity(.28)),
+                ),
+                child: const Icon(
+                  Icons.restart_alt_rounded,
+                  color: Colors.white,
+                  size: 23,
+                ),
               ),
             ),
           ],
