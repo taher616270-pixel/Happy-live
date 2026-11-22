@@ -383,10 +383,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             right: 0,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 3),
                 decoration: const BoxDecoration(
-                  color: Color(0xFF13132B),
-                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(14)),
                   boxShadow: [
                     BoxShadow(
                       color: Color(0x66000000),
@@ -395,7 +392,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Row(
+                child: ClipPath(
+                  clipper: PkTimerShape(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 3),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF13132B),
+                    ),
+                    child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.chevron_left, color: Colors.white54, size: 15),
@@ -434,7 +438,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         ],
                       ),
                     ),
-                  ],
+                    ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -4212,6 +4218,45 @@ class HappyLevelBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// Asymmetric PK timer silhouette: straight top, inward side curves,
+/// deep lower corner cut-outs and a soft centered V-shaped dip.
+class PkTimerShape extends CustomClipper<Path> {
+  const PkTimerShape();
+
+  @override
+  Path getClip(Size size) {
+    final w = size.width;
+    final h = size.height;
+    final path = Path()
+      ..moveTo(w * 0.065, 0)
+      ..lineTo(w * 0.935, 0)
+      // Slightly sharp upper-right corner.
+      ..quadraticBezierTo(w * 0.985, h * 0.005, w * 0.985, h * 0.09)
+      // Right side gently curves inward; this side is shorter/smaller.
+      ..cubicTo(w * 0.985, h * 0.25, w * 0.972, h * 0.40, w * 0.945, h * 0.55)
+      // Concave cut-out at the lower-right corner.
+      ..cubicTo(w * 0.925, h * 0.68, w * 0.875, h * 0.79, w * 0.825, h * 0.78)
+      ..quadraticBezierTo(w * 0.775, h * 0.77, w * 0.755, h * 0.69)
+      // Lower wave flows into a small rounded V dip.
+      ..cubicTo(w * 0.695, h * 0.79, w * 0.615, h * 0.91, w * 0.525, h * 0.94)
+      ..quadraticBezierTo(w * 0.5, h * 1.015, w * 0.475, h * 0.94)
+      // The left half is fuller, making the two sides feel interlocked.
+      ..cubicTo(w * 0.345, h * 0.91, w * 0.285, h * 0.79, w * 0.235, h * 0.73)
+      // Deep concave cut-out at the lower-left corner.
+      ..quadraticBezierTo(w * 0.205, h * 0.84, w * 0.145, h * 0.81)
+      ..cubicTo(w * 0.085, h * 0.78, w * 0.055, h * 0.66, w * 0.045, h * 0.53)
+      // Left side also curves inward instead of being vertical.
+      ..cubicTo(w * 0.025, h * 0.37, w * 0.015, h * 0.20, w * 0.02, h * 0.09)
+      ..quadraticBezierTo(w * 0.02, h * 0.005, w * 0.065, 0)
+      ..close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant PkTimerShape oldClipper) => false;
 }
 
 class _GamesTabPlaceholder extends StatelessWidget {
