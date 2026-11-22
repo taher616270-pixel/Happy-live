@@ -248,191 +248,200 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   /// During entry, expose only the room identity tile and the close control.
   /// Mic seats, chat, gifts and every other action wait for the DB snapshot.
   Widget _buildPkRoomView(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 1. Top Score & PK Timer bar (compact)
-        Stack(
-          alignment: Alignment.topCenter,
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              height: 32,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1E35B8), Color(0xFF9C0E4B)],
+    return SizedBox(
+      height: 265,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Stack(
+              alignment: Alignment.topCenter,
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF1E35B8), Color(0xFF9C0E4B)],
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.only(left: 12),
+                        child: Text(
+                          '0',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Spacer(),
+                      Padding(
+                        padding: EdgeInsets.only(right: 12),
+                        child: Text(
+                          '0',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              child: const Row(
-                children: [
-                  Padding(
-                    padding: EdgeInsets.only(left: 12),
-                    child: Text(
-                      '0',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
+                // Center pearl/orb on the seam
+                Positioned(
+                  top: -5,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [Colors.white, Color(0xFFFF8AB0), Colors.transparent],
                       ),
                     ),
                   ),
-                  Spacer(),
+                ),,
+          ),
+          Positioned(
+            top: 38,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 227,
+              margin: const EdgeInsets.only(top: 6),
+              child: Stack(
+                children: [
+                  // Blue and red team panels touch directly with no gap or divider.
+                  Positioned.fill(
+                    child: Row(
+                      textDirection: TextDirection.ltr,
+                      children: [
+                        Expanded(
+                          child: Container(
+                            color: const Color(0xFF2228A5),
+                          ),
+                        ),
+                        Expanded(
+                          child: Container(
+                            color: const Color(0xFF8B0D45),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 4 columns x 3 rows grid
                   Padding(
-                    padding: EdgeInsets.only(right: 12),
-                    child: Text(
-                      '0',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Row(
+                          textDirection: TextDirection.ltr,
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildPkSeatCell(context, 4),
+                            _buildPkSeatCell(context, 3),
+                            _buildPkSeatCell(context, 2),
+                            _buildPkSeatCell(context, 1),
+                          ],
+                        ),
+                        Row(
+                          textDirection: TextDirection.ltr,
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildPkSeatCell(context, 8),
+                            _buildPkSeatCell(context, 7),
+                            _buildPkSeatCell(context, 6),
+                            _buildPkSeatCell(context, 5),
+                          ],
+                        ),
+                        Row(
+                          textDirection: TextDirection.ltr,
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildPkSeatCell(context, 12),
+                            _buildPkSeatCell(context, 11),
+                            _buildPkSeatCell(context, 10),
+                            _buildPkSeatCell(context, 9),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-            // Center pearl/orb on the seam
-            Positioned(
-              top: -5,
-              child: Container(
-                width: 18,
-                height: 18,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [Colors.white, Color(0xFFFF8AB0), Colors.transparent],
-                  ),
-                ),
-              ),
-            ),
-            // Attached badge below: "< 04:58 PK"
-            Positioned(
-              top: 20,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 3),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF13132B),
-                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(14)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x66000000),
-                      blurRadius: 5,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.chevron_left, color: Colors.white54, size: 15),
-                    const SizedBox(width: 3),
-                    const Text(
-                      '04:58',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    RichText(
-                      text: const TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'P',
-                            style: TextStyle(
-                              color: Color(0xFF5582FF),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                          TextSpan(
-                            text: 'K',
-                            style: TextStyle(
-                              color: Color(0xFFFF3377),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        // 2. PK 12-seats Split Area (Blue on Left, Red on Right) - Compact
-        Container(
-          height: 227,
-          margin: const EdgeInsets.only(top: 6),
-          child: Stack(
-            children: [
-              // Blue and red team panels touch directly with no gap or divider.
-              Positioned.fill(
-                child: Row(
-                  textDirection: TextDirection.ltr,
-                  children: [
-                    Expanded(
-                      child: Container(
-                        color: const Color(0xFF2228A5),
-                      ),
-                    ),
-                    Expanded(
-                      child: Container(
-                        color: const Color(0xFF8B0D45),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // 4 columns x 3 rows grid
-              Padding(
-                padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Row(
-                      textDirection: TextDirection.ltr,
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildPkSeatCell(context, 4),
-                        _buildPkSeatCell(context, 3),
-                        _buildPkSeatCell(context, 2),
-                        _buildPkSeatCell(context, 1),
-                      ],
-                    ),
-                    Row(
-                      textDirection: TextDirection.ltr,
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildPkSeatCell(context, 8),
-                        _buildPkSeatCell(context, 7),
-                        _buildPkSeatCell(context, 6),
-                        _buildPkSeatCell(context, 5),
-                      ],
-                    ),
-                    Row(
-                      textDirection: TextDirection.ltr,
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildPkSeatCell(context, 12),
-                        _buildPkSeatCell(context, 11),
-                        _buildPkSeatCell(context, 10),
-                        _buildPkSeatCell(context, 9),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        ),,
           ),
-        ),
-      ],
+          // Timer badge is painted last so it stays above both team panels.
+Positioned(
+            top: 20,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 3),
+              decoration: const BoxDecoration(
+              color: Color(0xFF13132B),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(14)),
+              boxShadow: [
+                BoxShadow(
+                color: Color(0x66000000),
+                blurRadius: 5,
+                offset: Offset(0, 2),
+                ),
+              ],
+              ),
+              child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.chevron_left, color: Colors.white54, size: 15),
+                const SizedBox(width: 3),
+                const Text(
+                '04:58',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+                ),
+                const SizedBox(width: 5),
+                RichText(
+                text: const TextSpan(
+                  children: [
+                  TextSpan(
+                    text: 'P',
+                    style: TextStyle(
+                    color: Color(0xFF5582FF),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  TextSpan(
+                    text: 'K',
+                    style: TextStyle(
+                    color: Color(0xFFFF3377),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  ],
+                ),
+                ),
+              ],
+              ),
+            ),
+            ),
+        ],
+      ),
     );
   }
 
