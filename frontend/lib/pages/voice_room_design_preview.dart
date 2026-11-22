@@ -393,52 +393,74 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   ],
                 ),
                 child: ClipPath(
-                  clipper: PkTimerShape(),
+                  clipper: PkTimerFrame(),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 1),
                     decoration: const BoxDecoration(
-                      color: Color(0xFF13132B),
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          Color(0xFF0A0A2E),
+                          Color(0xFF2B0018),
+                        ],
+                        stops: [0.5, 0.5],
+                      ),
                     ),
                     child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.chevron_left, color: Colors.white54, size: 15),
-                    const SizedBox(width: 3),
-                    const Text(
-                      '04:58',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    RichText(
-                      text: const TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'P',
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          '<',
+                          style: TextStyle(
+                            color: Color(0x99B8B8C2),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          '04:58',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Transform.rotate(
+                          angle: -0.12,
+                          child: const Text(
+                            'P',
                             style: TextStyle(
-                              color: Color(0xFF5582FF),
-                              fontSize: 15,
+                              color: Color(0xFFFF4B9A),
+                              fontSize: 16,
                               fontWeight: FontWeight.w900,
-                              fontStyle: FontStyle.italic,
+                              shadows: [
+                                Shadow(color: Color(0xFFFFB1D1), offset: Offset(-1, -1), blurRadius: 1),
+                                Shadow(color: Color(0xFF8A174F), offset: Offset(1, 2), blurRadius: 2),
+                              ],
                             ),
                           ),
-                          TextSpan(
-                            text: 'K',
+                        ),
+                        Transform.rotate(
+                          angle: -0.12,
+                          child: const Text(
+                            'K',
                             style: TextStyle(
-                              color: Color(0xFFFF3377),
-                              fontSize: 15,
+                              color: Color(0xFF4D91FF),
+                              fontSize: 16,
                               fontWeight: FontWeight.w900,
-                              fontStyle: FontStyle.italic,
+                              shadows: [
+                                Shadow(color: Color(0xFFB6D2FF), offset: Offset(-1, -1), blurRadius: 1),
+                                Shadow(color: Color(0xFF173E9A), offset: Offset(1, 2), blurRadius: 2),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -4223,25 +4245,29 @@ class HappyLevelBadge extends StatelessWidget {
 
 /// Asymmetric PK timer silhouette: straight top, inward side curves,
 /// deep lower corner cut-outs and a soft centered V-shaped dip.
-class PkTimerShape extends CustomClipper<Path> {
+class PkTimerFrame extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     final path = Path();
-    double slant = 22; // مقدار الميول من الجانبين
-    double r = 18; // تقويسة الزوايا
+    final w = size.width;
+    final h = size.height;
 
-    // نبدأ من فوق يسار بعد الميول
-    path.moveTo(slant + r, 0);
-    // فوق
-    path.lineTo(size.width - r, 0);
-    path.quadraticBezierTo(size.width, 0, size.width - slant * 0.3, r);
-    // يمين مايل
-    path.lineTo(slant + r, size.height);
-    path.quadraticBezierTo(slant, size.height, 0, size.height - r);
-    // يسار مايل
-    path.lineTo(slant * 0.3, r);
-    path.quadraticBezierTo(slant, 0, slant + r, 0);
-
+    // Straight top, broad rounded lower corners, and inward S-curves.
+    path.moveTo(w * 0.08, 0);
+    path.lineTo(w * 0.92, 0);
+    path.cubicTo(
+      w * 0.98, h * 0.15,
+      w * 0.88, h * 0.45,
+      w * 0.97, h * 0.75,
+    );
+    path.quadraticBezierTo(w, h, w * 0.92, h);
+    path.lineTo(w * 0.08, h);
+    path.quadraticBezierTo(0, h, w * 0.03, h * 0.75);
+    path.cubicTo(
+      w * 0.12, h * 0.45,
+      w * 0.02, h * 0.15,
+      w * 0.08, 0,
+    );
     path.close();
     return path;
   }
