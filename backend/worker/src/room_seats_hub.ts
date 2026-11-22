@@ -460,7 +460,7 @@ export class RoomSeatsHub {
       return;
     }
 
-    if (message.type === "start_room_counter" || message.type === "stop_room_counter") {
+    if (message.type === "start_room_counter" || message.type === "stop_room_counter" || message.type === "get_room_counter_history") {
       if (message.type === "get_room_counter_history") {
         this.send(socket, { type: "room_counter_history", records: this.publicRoomCounterHistory() });
         return;
