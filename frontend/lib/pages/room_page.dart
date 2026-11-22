@@ -1882,19 +1882,19 @@ class _RoomPageState extends State<RoomPage> {
               child: Column(children: [
                 Row(children: [
                   IconButton(
-                    onPressed: () => _showRoomCounterHelp(context),
-                    icon: const Icon(Icons.help_outline_rounded, color: Colors.white70, size: 25),
+                    onPressed: () {
+                      final sent = _seatSocket?.send({'type': 'get_room_counter_history'}) ?? false;
+                      if (!sent) _showMessage('انتظر اتصال الغرفة لعرض السجل');
+                    },
+                    icon: const Icon(Icons.receipt_long_rounded, color: Colors.white70, size: 24),
                   ),
                   const Expanded(
                     child: Text('لوحة النتيجة', textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
                   ),
                   IconButton(
-                    onPressed: () {
-                      final sent = _seatSocket?.send({'type': 'get_room_counter_history'}) ?? false;
-                      if (!sent) _showMessage('انتظر اتصال الغرفة لعرض السجل');
-                    },
-                    icon: const Icon(Icons.receipt_long_rounded, color: Colors.white70, size: 24),
+                    onPressed: () => _showRoomCounterHelp(context),
+                    icon: const Icon(Icons.help_outline_rounded, color: Colors.white70, size: 25),
                   ),
                 ]),
                 const Spacer(),
@@ -1968,7 +1968,7 @@ class _RoomPageState extends State<RoomPage> {
               controller: controller,
               autofocus: true,
               keyboardType: TextInputType.number,
-              inputFormatters: const [],
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               style: const TextStyle(color: Colors.white, fontSize: 20),
               decoration: const InputDecoration(
                 labelText: 'مدة العداد بالدقائق',
