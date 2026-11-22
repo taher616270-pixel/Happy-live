@@ -170,7 +170,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   // Lift the PK people strip by 3px without moving the team panels.
                   Transform.translate(
                     offset: const Offset(0, -3),
-                    child: _listeners(context),
+                    child: _listeners(context, isPk: true),
                   ),
                 ] else ...[
                   _seats(context),
@@ -2445,9 +2445,9 @@ Widget _roomActionButton({
     );
   }
 
-  Widget _listeners(BuildContext context) => Container(
+  Widget _listeners(BuildContext context, {bool isPk = false}) => Container(
     height: 30,
-    margin: const EdgeInsets.symmetric(horizontal: 12),
+    margin: EdgeInsets.symmetric(horizontal: isPk ? 4 : 12),
     padding: const EdgeInsets.symmetric(horizontal: 12),
     decoration: BoxDecoration(
       color: Colors.black.withOpacity(.30),
