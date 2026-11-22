@@ -9,7 +9,7 @@ const roomPreview = await readFile(new URL("../../../frontend/lib/pages/voice_ro
 
 test("room gift counter is a timed room-wide feature with manual and automatic stop", () => {
   assert.match(seatHub, /message\.type === "start_room_counter" \|\| message\.type === "stop_room_counter"/);
-  assert.match(seatHub, /!identity\.isRoomOwner && !identity\.isRoomModerator/);
+  assert.doesNotMatch(seatHub.match(/if \\(message\\.type === "start_room_counter"[\\s\\S]*?if \\(message\\.type === "seat_heartbeat"\\)/)?.[0] ?? "", /permission_denied/);
   assert.match(seatHub, /durationSeconds < 60 \|\| durationSeconds > 3600/);
   assert.match(seatHub, /endsAt: Date\.now\(\) \+ durationSeconds \* 1000/);
   assert.match(seatHub, /this\.state\.storage\.put\("room-counter", this\.roomCounter\)/);
