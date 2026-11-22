@@ -118,9 +118,14 @@ class _DynamicGamesListState extends State<DynamicGamesList> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFF6E5D47), Color(0xFF503C28), Color(0xFF141414)],
+                        stops: [0.0, 0.48, 1.0],
+                      ),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFE9E5D9)),
+                      border: Border.all(color: const Color(0xFFE9C46A).withValues(alpha: 0.55)),
                     ),
                     child: Row(
                       children: [
@@ -128,7 +133,7 @@ class _DynamicGamesListState extends State<DynamicGamesList> {
                           width: 49,
                           height: 49,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF2D3),
+                            color: const Color(0xFF281414),
                             borderRadius: BorderRadius.circular(15),
                           ),
                           clipBehavior: Clip.antiAlias,
