@@ -178,7 +178,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     child: _listeners(context),
                   ),
                 ],
-                const SizedBox(height: 2),
+                SizedBox(height: pkVisualMode ? 7 : 2),
                 Expanded(
                   child: Stack(
                     clipBehavior: Clip.none,
@@ -195,7 +195,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                 curve: Curves.easeOutCubic,
                                 transform: Matrix4.translationValues(
                                   0,
-                                  (_is2MicLayout ? -11 : (_is8MicLayout ? -20 : (_micLayoutId == 'm14' ? -29 : -25))) -
+                                  (_is2MicLayout ? -11 : (_is8MicLayout ? -20 : (_micLayoutId == 'm14' ? -29 : -25))) +
+                                      (pkVisualMode ? 10 : 0) -
                                       MediaQuery.viewInsetsOf(context).bottom,
                                   0,
                                 ),
