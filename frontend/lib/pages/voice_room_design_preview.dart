@@ -486,6 +486,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           
                         ),
                         ),
+                        const SizedBox(width: 1),
                         Transform.rotate(
                           angle: -0.12,
                           child: const Text(
