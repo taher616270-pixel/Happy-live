@@ -2885,6 +2885,10 @@ class _RoomPageState extends State<RoomPage> {
       onRoomTools: _openRoomTools,
       onMinimizeRoom: _minimizeRoom,
       onCloseRoom: _closeRoom,
+      onPkReset: () {
+        if (!mounted) return;
+        setState(() => _pkVisualMode = false);
+      },
       onUpgradeRoom: upgradeRoom,
       onOpenGifts: _openRoomGiftPicker,
       onOpenCannonRoom: _openCannonBannerRoom,
