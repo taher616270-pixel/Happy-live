@@ -530,19 +530,30 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                if (isSeat1)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
+                if (isSeat1 && !occupied)
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: (isChangingSeat || locked)
+                          ? null
+                          : () => onTapSeat(seatNumber),
                       borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'انضمام',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: (isChangingSeat || locked)
+                              ? Colors.white.withOpacity(0.55)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          'انضمام',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   )
