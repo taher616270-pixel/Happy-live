@@ -4722,17 +4722,10 @@ class StartPkButton extends StatelessWidget {
           child: Stack(
             children: [
               Positioned.fill(child: CustomPaint(painter: StartButtonBorder())),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.chevron_left, color: Colors.white.withOpacity(0.45), size: 15),
-                  const SizedBox(width: 2),
-                  const Text('بدأ', style: TextStyle(
-                    color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900,
-                  )),
-                  const SizedBox(width: 2),
-                  Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.45), size: 15),
-                ],
+              const Center(
+                child: Text('بدأ', style: TextStyle(
+                  color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900,
+                )),
               ),
             ],
           ),
