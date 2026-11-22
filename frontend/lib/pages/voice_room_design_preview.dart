@@ -68,6 +68,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.currentUserCode = '',
     this.roomGiftScores = const <String, int>{},
     this.isRoomGiftCounterActive = false,
+    this.pkTeamMode = false,
+    this.pkActive = false,
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
@@ -105,6 +107,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final String currentUserCode;
   final Map<String, int> roomGiftScores;
   final bool isRoomGiftCounterActive;
+  final bool pkTeamMode;
+  final bool pkActive;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -159,6 +163,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 // Keep the microphone grid, listener strip and everything
                 // below it in normal vertical flow. The listener strip now
                 // follows the actual measured grid height for every layout.
+                if (pkTeamMode) _pkBattleStrip(),
                 _seats(context),
                 const SizedBox(height: 1),
                 Transform.translate(
@@ -237,6 +242,44 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
   /// During entry, expose only the room identity tile and the close control.
   /// Mic seats, chat, gifts and every other action wait for the DB snapshot.
+  Widget _pkBattleStrip() => Padding(
+    padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+    child: Container(
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF102C55), Color(0xFF241A25), Color(0xFF581D2B)],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0x88E9C46A), width: 1),
+        boxShadow: const [BoxShadow(color: Color(0x44000000), blurRadius: 8, offset: Offset(0, 3))],
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text('الفريق الأزرق', textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFF55A8FF), fontSize: 11, fontWeight: FontWeight.w900)),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFF171717),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE9C46A), width: .8),
+            ),
+            child: Text(pkActive ? 'PK  •  مباشر' : 'PK  •  متوقف',
+              style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 11, fontWeight: FontWeight.w900)),
+          ),
+          const Expanded(
+            child: Text('الفريق الأحمر', textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFFFF6875), fontSize: 11, fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+    ),
+  );
+
   Widget _loadingRoomContent(BuildContext context) {
     final cover = _roomInfoString(['imageUrl', 'image_url', 'coverUrl', 'cover_url']);
     final fallbackAvatar = ownerAvatarUrl.trim().isNotEmpty
@@ -1307,6 +1350,15 @@ Widget _roomActionButton({
       arrangedCells.addAll(row);
       arrangedCells.addAll(List<MicSeat?>.filled(columns - row.length, null));
     }
+    if (pkTeamMode && layout.id == 'm8') {
+      final slotsByNumber = <int, MicSeat>{};
+      for (final slot in arrangedCells) {
+        if (slot != null) slotsByNumber[layout.seatNumber(slot)] = slot;
+      }
+      arrangedCells
+        ..clear()
+        ..addAll([4, 3, 2, 1, 8, 7, 6, 5].map((number) => slotsByNumber[number]!).toList());
+    }
     // Every microphone layout uses an exact 2px gap in both directions.
     // Give every layout an explicitly measured viewport so row offsets remain
     // visible and no bottom row is clipped by shrink-wrap measurement.
@@ -1473,12 +1525,14 @@ Widget _roomActionButton({
                             ? const Color(0x33E8C477)
                             : Colors.white.withOpacity(.14),
                         border: Border.all(
-                          color: mine
-                              ? Colors.transparent
-                              : slot.big
-                                  ? const Color(0xFFFFD98A)
-                                  : Colors.white.withOpacity(occupied ? .82 : .48),
-                          width: mine ? 0 : slot.big ? 2.2 : occupied ? 2 : 1,
+                          color: pkTeamMode && layout.id == 'm8'
+                              ? (number <= 4 ? const Color(0xFF258BFF) : const Color(0xFFFF4B5C))
+                              : mine
+                                  ? Colors.transparent
+                                  : slot.big
+                                      ? const Color(0xFFFFD98A)
+                                      : Colors.white.withOpacity(occupied ? .82 : .48),
+                          width: pkTeamMode && layout.id == 'm8' ? 2.4 : mine ? 0 : slot.big ? 2.2 : occupied ? 2 : 1,
                         ),
                         // Improve separation from the new wallpaper without
                         // changing the seats' original transparency.
