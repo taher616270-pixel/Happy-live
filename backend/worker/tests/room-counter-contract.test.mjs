@@ -14,7 +14,7 @@ test("room gift counter is a timed room-wide feature with manual and automatic s
   assert.match(seatHub, /durationSeconds < 60 \|\| durationSeconds > 3600/);
   assert.match(seatHub, /endsAt: startedAt \+ durationSeconds \* 1000/);
   assert.match(seatHub, /this\.state\.storage\.put\("room-counter", this\.roomCounter\)/);
-  assert.match(seatHub, /this\\.broadcast\\(\\{ type: "room_counter", counter: null, reason \\}\\)/);
+  assert.match(seatHub, /this\.broadcast\(\{ type: "room_counter", counter: null, reason \}\)/);
   assert.match(seatHub, /private async scheduleExpiry\(\)[\s\S]*?expiries\.push\(this\.roomCounter\.endsAt\)/);
   assert.match(seatHub, /private async finishRoomCounter\([\s\S]*?room-counter-history/);
   assert.match(seatHub, /private publicRoomCounterHistory\(\)/);
