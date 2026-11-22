@@ -300,8 +300,15 @@ class _RoomPageState extends State<RoomPage> {
       }
       return;
     }
+    if (type == 'room_counter_history') {
+      final records = event['records'] is List
+          ? (event['records'] as List).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+          : <Map<String, dynamic>>[];
+      _showRoomCounterHistory(records);
+      return;
+    }
     if (type == 'room_counter_error') {
-      _showMessage(event['code'] == 'permission_denied' ? 'هذه الميزة متاحة لصاحب الغرفة والمشرفين فقط' : 'تعذر تشغيل العداد');
+      _showMessage('تعذر تشغيل العداد، تحقق من المدة المحددة');
       return;
     }
     final rawSeats = event['seats'];
@@ -1836,31 +1843,218 @@ class _RoomPageState extends State<RoomPage> {
 
   void _showRoomCounter(BuildContext host) {
     if (_roomCounter != null) {
-      _seatSocket?.send({'type': 'stop_room_counter'});
+      final sent = _seatSocket?.send({'type': 'stop_room_counter'}) ?? false;
+      if (!sent) _showMessage('تعذر إيقاف العداد، تحقق من اتصال الغرفة');
       return;
     }
-    const options = <int, String>{60: '1 دقيقة', 120: '2 دقيقة', 180: '3 دقائق', 300: '5 دقائق', 600: '10 دقائق', 1800: '30 دقيقة', 3600: '60 دقيقة'};
+    const options = <(int, String)>[
+      (0, 'التحكم اليدوي'),
+      (60, '1 دقيقة'),
+      (120, '2 دقيقة'),
+      (180, '3 دقائق'),
+      (240, '4 دقائق'),
+      (300, '5 دقائق'),
+      (600, '10 دقائق'),
+      (900, '15 دقيقة'),
+      (1200, '20 دقيقة'),
+      (1800, '30 دقيقة'),
+      (3600, '60 دقيقة'),
+    ];
+    final picker = FixedExtentScrollController(initialItem: 0);
+    var selectedIndex = 0;
     showModalBottomSheet<void>(
       context: host,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            top: false,
+            child: Container(
+              height: MediaQuery.sizeOf(context).height * .58,
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [Color(0xFF6428F5), Color(0xFF7334C5), Color(0xFF49245F)]),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(children: [
+                Row(children: [
+                  IconButton(
+                    onPressed: () => _showRoomCounterHelp(context),
+                    icon: const Icon(Icons.help_outline_rounded, color: Colors.white70, size: 25),
+                  ),
+                  const Expanded(
+                    child: Text('لوحة النتيجة', textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      final sent = _seatSocket?.send({'type': 'get_room_counter_history'}) ?? false;
+                      if (!sent) _showMessage('انتظر اتصال الغرفة لعرض السجل');
+                    },
+                    icon: const Icon(Icons.receipt_long_rounded, color: Colors.white70, size: 24),
+                  ),
+                ]),
+                const Spacer(),
+                SizedBox(
+                  height: 190,
+                  child: ListWheelScrollView(
+                    controller: picker,
+                    itemExtent: 48,
+                    diameterRatio: 1.8,
+                    perspective: .003,
+                    physics: const FixedExtentScrollPhysics(),
+                    onSelectedItemChanged: (index) => setSheetState(() => selectedIndex = index),
+                    children: [
+                      for (var i = 0; i < options.length; i++)
+                        Center(
+                          child: Text(options[i].$2,
+                            style: TextStyle(
+                              color: selectedIndex == i ? Colors.white : Colors.white.withOpacity(.35),
+                              fontSize: selectedIndex == i ? 22 : 17,
+                              fontWeight: selectedIndex == i ? FontWeight.w900 : FontWeight.w600,
+                            )),
+                        ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final selected = options[selectedIndex].$1;
+                      Navigator.pop(sheetContext);
+                      var durationSeconds = selected;
+                      if (durationSeconds == 0) {
+                        final minutes = await _askManualRoomCounterMinutes(host);
+                        if (minutes == null) return;
+                        durationSeconds = minutes * 60;
+                      }
+                      final sent = _seatSocket?.send({'type': 'start_room_counter', 'durationSeconds': durationSeconds}) ?? false;
+                      if (!sent) _showMessage('انتظر اتصال الغرفة ثم حاول تشغيل العداد');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF2B1B38),
+                      elevation: 0,
+                      shape: const StadiumBorder(),
+                    ),
+                    child: const Text('بدء', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    ).whenComplete(picker.dispose);
+  }
+
+  Future<int?> _askManualRoomCounterMinutes(BuildContext host) async {
+    final controller = TextEditingController(text: '1');
+    try {
+      return await showDialog<int>(
+        context: host,
+        builder: (dialogContext) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            backgroundColor: const Color(0xFF21152F),
+            title: const Text('التحكم اليدوي', style: TextStyle(color: _gold, fontWeight: FontWeight.w900)),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              inputFormatters: const [],
+              style: const TextStyle(color: Colors.white, fontSize: 20),
+              decoration: const InputDecoration(
+                labelText: 'مدة العداد بالدقائق',
+                labelStyle: TextStyle(color: Colors.white70),
+                helperText: 'من دقيقة واحدة إلى 60 دقيقة',
+                helperStyle: TextStyle(color: Colors.white54),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
+              ElevatedButton(
+                onPressed: () {
+                  final minutes = int.tryParse(controller.text.trim());
+                  if (minutes == null || minutes < 1 || minutes > 60) return;
+                  Navigator.pop(dialogContext, minutes);
+                },
+                child: const Text('تأكيد'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  void _showRoomCounterHelp(BuildContext dialogContext) {
+    showDialog<void>(
+      context: dialogContext,
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF21152F),
+          title: const Text('طريقة احتساب النتيجة', style: TextStyle(color: _gold, fontWeight: FontWeight.w900)),
+          content: const Text(
+            'بعد بدء العداد، تُضاف قيمة كل هدية إلى نتيجة مستلمها فوق المايك. يظهر الوقت المتبقي في الشريط البرتقالي، ويمكن إيقاف الجولة بزر X. عند انتهاء الوقت تُحفظ النتيجة في السجل وتبدأ الجولة التالية من الصفر.',
+            style: TextStyle(color: Colors.white, height: 1.6),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('حسناً'))],
+        ),
+      ),
+    );
+  }
+
+  void _showRoomCounterHistory(List<Map<String, dynamic>> records) {
+    if (!mounted) return;
+    showModalBottomSheet<void>(
+      context: context,
       backgroundColor: const Color(0xFF21152F),
+      isScrollControlled: true,
       builder: (sheetContext) => Directionality(
         textDirection: TextDirection.rtl,
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Text('تحديد مدة العداد', style: TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 12),
-              for (final option in options.entries)
-                ListTile(
-                  title: Text(option.value, style: const TextStyle(color: Colors.white)),
-                  trailing: const Icon(Icons.timer_outlined, color: _gold),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    final sent = _seatSocket?.send({'type': 'start_room_counter', 'durationSeconds': option.key}) ?? false;
-                    if (!sent) _showMessage('انتظر اتصال الغرفة ثم حاول تشغيل العداد');
-                  },
-                ),
+          child: SizedBox(
+            height: MediaQuery.sizeOf(sheetContext).height * .55,
+            child: Column(children: [
+              const Padding(
+                padding: EdgeInsets.all(18),
+                child: Text('سجل لوحة النتيجة', style: TextStyle(color: _gold, fontSize: 18, fontWeight: FontWeight.w900)),
+              ),
+              Expanded(
+                child: records.isEmpty
+                    ? const Center(child: Text('لا توجد جولات سابقة', style: TextStyle(color: Colors.white70)))
+                    : ListView.separated(
+                        itemCount: records.length,
+                        separatorBuilder: (_, __) => const Divider(color: Colors.white12, height: 1),
+                        itemBuilder: (context, index) {
+                          final record = records[index];
+                          final startedAt = (record['startedAt'] as num?)?.toInt() ?? 0;
+                          final date = startedAt > 0
+                              ? DateTime.fromMillisecondsSinceEpoch(startedAt).toLocal().toString().substring(0, 16)
+                              : '—';
+                          final seconds = (record['durationSeconds'] as num?)?.toInt() ?? 0;
+                          final coins = (record['totalCoins'] as num?)?.toInt() ?? 0;
+                          final members = (record['participantCount'] as num?)?.toInt() ?? 0;
+                          return ListTile(
+                            leading: const Icon(Icons.emoji_events_rounded, color: _gold),
+                            title: Text(date, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                            subtitle: Text('المدة: ${(seconds / 60).round()} دقيقة • المشاركون: $members',
+                              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                            trailing: Text(coins.toString(), style: const TextStyle(color: Color(0xFF55E0C2), fontWeight: FontWeight.w900)),
+                          );
+                        },
+                      ),
+              ),
             ]),
           ),
         ),
