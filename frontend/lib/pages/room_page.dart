@@ -2303,6 +2303,37 @@ class _RoomPageState extends State<RoomPage> {
     );
   }
 
+  // PK overflow microphones form a fixed first-come queue (13, 14, 15...).
+  // A user who has joined this queue cannot hop between its seats.
+  void _selectPkOverflowQueueSeat(int tappedSeatNumber) {
+    if (_mySeat != null && _mySeat! > 12) {
+      _showMessage('أنت في الطابور بالفعل، لا يمكنك التنقل بين مايكاته');
+      return;
+    }
+
+    final capacity = _micCount > 12 ? _micCount : tappedSeatNumber;
+    final occupiedByNumber = <int, Map<String, dynamic>>{};
+    for (final seat in _seats) {
+      final rawNumber = seat['seatNumber'];
+      if (rawNumber is num) {
+        occupiedByNumber[rawNumber.toInt()] = seat;
+      }
+    }
+
+    for (var number = 13; number <= capacity; number++) {
+      final seat = occupiedByNumber[number];
+      final userId = (seat?['userId'] ?? '').toString().trim();
+      final isLocked = seat?['isLocked'] == true || seat?['locked'] == true;
+      if (userId.isNotEmpty || isLocked || _pendingSeatNumbers.contains(number)) {
+        continue;
+      }
+      _selectSeat(number);
+      return;
+    }
+
+    _showMessage('طابور المايكات ممتلئ، لا يوجد مكان متاح');
+  }
+
   Future<void> _selectSeat(int seatNumber) async {
     if (!_voiceEnabled) {
       _showMessage('خدمة الصوت متوقفة حاليًا من إدارة التطبيق');
@@ -2875,7 +2906,13 @@ class _RoomPageState extends State<RoomPage> {
       currentUserCode: _seatStateStore.currentUserCode,
       seats: _seats,
       speakerLevels: _speakerLevels,
-      onTapSeat: _selectSeat,
+      onTapSeat: (seatNumber) {
+        if (_pkVisualMode && seatNumber > 12) {
+          _selectPkOverflowQueueSeat(seatNumber);
+        } else {
+          _selectSeat(seatNumber);
+        }
+      },
       isChangingSeat: _isChangingSeat,
       pendingSeatNumbers: _pendingSeatNumbers,
       audienceCount: _audienceCount,
