@@ -110,7 +110,7 @@ export class RoomSeatsHub {
   private readonly sockets = new Map<WebSocket, SocketIdentity>();
   private mutationQueue: Promise<void> = Promise.resolve();
   private whoMicMode = "membersOnly";
-  private roomCounter: { active: boolean; endsAt: number; scores: Record<string, number>; startedBy: string } | null = null;
+  private roomCounter: { active: boolean; endsAt: number; scores: Record<string, number>; processedTransactions: string[]; startedBy: string } | null = null;
   private async configuredSeatLimit(): Promise<number> {
     if (!this.roomId) return 8;
     try {
@@ -138,8 +138,9 @@ export class RoomSeatsHub {
       if (this.roomCounter?.active && this.roomCounter.endsAt <= Date.now()) {
         this.roomCounter = null;
         await this.state.storage.delete("room-counter");
-      } else if (this.roomCounter?.active && !this.roomCounter.scores) {
-        this.roomCounter.scores = {};
+      } else if (this.roomCounter?.active && (!this.roomCounter.scores || !this.roomCounter.processedTransactions)) {
+        this.roomCounter.scores ??= {};
+        this.roomCounter.processedTransactions ??= [];
         await this.state.storage.put("room-counter", this.roomCounter);
       }
       await this.expireSeats(false);
@@ -165,11 +166,17 @@ export class RoomSeatsHub {
         delivered = this.broadcast({ ...event, type: "room_gift" });
         const coinCost = Number(event.coinCost ?? 0);
         const recipientUserId = String(event.recipientUserId ?? "").trim();
+        const transactionId = String(event.transactionId ?? "").trim();
         if (this.roomCounter?.active && this.roomCounter.endsAt > Date.now() &&
-            recipientUserId.length > 0 && Number.isSafeInteger(coinCost) && coinCost > 0) {
+            recipientUserId.length > 0 && transactionId.length > 0 &&
+            Number.isSafeInteger(coinCost) && coinCost > 0 &&
+            !this.roomCounter.processedTransactions.includes(transactionId)) {
           const scores = this.roomCounter.scores;
           scores[recipientUserId] = (Number(scores[recipientUserId]) || 0) + coinCost;
-          this.roomCounter.scores = scores;
+          this.roomCounter.processedTransactions.push(transactionId);
+          if (this.roomCounter.processedTransactions.length > 20_000) {
+            this.roomCounter.processedTransactions.splice(0, this.roomCounter.processedTransactions.length - 20_000);
+          }
           await this.state.storage.put("room-counter", this.roomCounter);
           this.broadcast({ type: "room_counter", counter: this.roomCounter });
         }
@@ -473,6 +480,7 @@ export class RoomSeatsHub {
         active: true,
         endsAt: Date.now() + durationSeconds * 1000,
         scores: {},
+        processedTransactions: [],
         startedBy: identity.userId
       };
       await this.state.storage.put("room-counter", this.roomCounter);
