@@ -84,8 +84,9 @@ class _PkSheet extends StatelessWidget {
             label: isPkVisualMode ? 'إغلاق' : 'فتح',
             gradient: true,
             onTap: () {
-              Navigator.of(context).pop();
+              // Change the room state while the parent route is still mounted.
               onToggle();
+              Navigator.of(context).pop();
             },
           ),
         ]),
