@@ -140,6 +140,7 @@ class _RoomPageState extends State<RoomPage> {
   bool _roomBattleActive = false;
   // Local-only PK microphone appearance; no server battle is started.
   bool _pkVisualMode = false;
+  bool _pkStarted = false;
   Timer? _roomCounterTicker;
   int _roomCounterNow = 0;
 
@@ -2887,7 +2888,14 @@ class _RoomPageState extends State<RoomPage> {
       onCloseRoom: _closeRoom,
       onPkReset: () {
         if (!mounted) return;
-        setState(() => _pkVisualMode = false);
+        setState(() {
+          _pkVisualMode = false;
+          _pkStarted = false;
+        });
+      },
+      onPkStart: () {
+        if (!mounted) return;
+        setState(() => _pkStarted = true);
       },
       onUpgradeRoom: upgradeRoom,
       onOpenGifts: _openRoomGiftPicker,
@@ -2901,6 +2909,7 @@ class _RoomPageState extends State<RoomPage> {
       pkTeamMode: false,
       pkActive: false,
       pkVisualMode: _pkVisualMode,
+      pkStarted: _pkStarted,
           ),
         ),        if (_roomCounter != null) _roomCounterBanner(),
         if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
