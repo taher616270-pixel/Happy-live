@@ -365,7 +365,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Transform.translate(
-                          offset: const Offset(0, 5),
+                          offset: const Offset(0, 10),
                           child: Row(
                             textDirection: TextDirection.ltr,
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
