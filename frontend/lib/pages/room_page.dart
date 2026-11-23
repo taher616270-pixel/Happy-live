@@ -138,9 +138,17 @@ class _RoomPageState extends State<RoomPage> {
   Map<String, int> _roomGiftScores = <String, int>{};
   bool _roomBattleTeamMode = false;
   bool _roomBattleActive = false;
-  // Local-only PK microphone appearance; no server battle is started.
   bool _pkVisualMode = false;
   bool _pkStarted = false;
+  int _pkDurationMinutes = 5;
+  int _pkBlueScore = 0;
+  int _pkRedScore = 0;
+  Map<String, int> _pkUserScores = <String, int>{};
+  Map<String, String> _pkUserTeams = <String, String>{};
+  DateTime? _pkEndsAt;
+  Timer? _pkTicker;
+  int _pkNowMs = DateTime.now().millisecondsSinceEpoch;
+  bool _pkActionBusy = false;
   Timer? _roomCounterTicker;
   int _roomCounterNow = 0;
 
@@ -157,6 +165,7 @@ class _RoomPageState extends State<RoomPage> {
   Uri get _messagesUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/messages');
   Uri get _announcementUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/announcement');
   Uri get _moderationUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/moderation');
+  Uri get _roomBattleUri => Uri.parse('$_apiBase/rooms/${Uri.encodeComponent(_roomId)}/battle');
   Uri get _chatStreamUri {
     final base = Uri.parse(_apiBase);
     return base.replace(
@@ -192,6 +201,7 @@ class _RoomPageState extends State<RoomPage> {
       unawaited(_refreshSeats());
       unawaited(_startRoomChat());
       unawaited(_connectRoomSeatSocket());
+      unawaited(_loadRoomBattleState());
       unawaited(_joinAgora(publish: false));
     });
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -283,10 +293,11 @@ class _RoomPageState extends State<RoomPage> {
       return;
     }
     if (type == 'room_battle') {
-      setState(() {
-        _roomBattleTeamMode = event['teamMode'] == true;
-        _roomBattleActive = event['active'] == true;
-      });
+      _applyPkBattleState(event);
+      return;
+    }
+    if (type == 'room_battle_score') {
+      _applyPkBattleScores(event);
       return;
     }
     if (type == 'room_counter') {
@@ -453,6 +464,7 @@ class _RoomPageState extends State<RoomPage> {
     _miniOverlayEntry = null;
     _roomGiftOverlayTimer?.cancel();
     _roomCounterTicker?.cancel();
+    _pkTicker?.cancel();
     unawaited(_giftAudioPlayer.dispose());
     _refreshTimer?.cancel();
     _volumeTimer?.cancel();
@@ -2118,21 +2130,135 @@ class _RoomPageState extends State<RoomPage> {
     );
   }
 
+  String get _pkTimerLabel {
+    final remaining = _roomBattleActive && _pkEndsAt != null
+        ? ((_pkEndsAt!.millisecondsSinceEpoch - _pkNowMs) / 1000).ceil().clamp(0, 7200)
+        : _pkDurationMinutes * 60;
+    final minutes = (remaining ~/ 60).toString().padLeft(2, '0');
+    final seconds = (remaining % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  void _syncPkTicker() {
+    _pkTicker?.cancel();
+    if (!_roomBattleActive) return;
+    _pkTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _pkNowMs = DateTime.now().millisecondsSinceEpoch);
+    });
+  }
+
+  void _applyPkBattleScores(Map<String, dynamic> data) {
+    final rawUsers = data['userScores'];
+    final rawTeams = data['userTeams'];
+    final users = <String, int>{};
+    final teams = <String, String>{};
+    if (rawUsers is Map) {
+      rawUsers.forEach((key, value) {
+        final score = value is num ? value.toInt() : int.tryParse(value?.toString() ?? '');
+        if (score != null && score > 0) users[key.toString()] = score;
+      });
+    }
+    if (rawTeams is Map) {
+      rawTeams.forEach((key, value) {
+        final team = value?.toString();
+        if (team == 'blue' || team == 'red') teams[key.toString()] = team!;
+      });
+    }
+    setState(() {
+      _pkBlueScore = (data['blueScore'] as num?)?.toInt() ?? 0;
+      _pkRedScore = (data['redScore'] as num?)?.toInt() ?? 0;
+      _pkUserScores = users;
+      _pkUserTeams = teams;
+    });
+  }
+
+  void _applyPkBattleState(Map<String, dynamic> data) {
+    final endsAtValue = data['endsAt']?.toString();
+    final parsedEndsAt = endsAtValue == null || endsAtValue.isEmpty
+        ? null
+        : DateTime.tryParse(endsAtValue)?.toLocal();
+    setState(() {
+      _roomBattleTeamMode = data['teamMode'] == true;
+      _roomBattleActive = data['active'] == true;
+      _pkVisualMode = _roomBattleTeamMode;
+      _pkStarted = _roomBattleActive;
+      _pkEndsAt = parsedEndsAt;
+      final durationSeconds = (data['durationSeconds'] as num?)?.toInt();
+      if (durationSeconds != null && durationSeconds > 0) {
+        _pkDurationMinutes = (durationSeconds ~/ 60).clamp(1, 120);
+      }
+      _pkNowMs = DateTime.now().millisecondsSinceEpoch;
+    });
+    if (data.containsKey('userScores') || data.containsKey('blueScore') || data.containsKey('redScore')) {
+      _applyPkBattleScores(data);
+    }
+    _syncPkTicker();
+  }
+
+  Future<void> _loadRoomBattleState() async {
+    if (_roomId.isEmpty || widget.accessToken.isEmpty) return;
+    try {
+      final response = await http.get(_roomBattleUri, headers: _headers)
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return;
+      final decoded = jsonDecode(response.body);
+      if (mounted && decoded is Map && decoded['ok'] == true) {
+        _applyPkBattleState(Map<String, dynamic>.from(decoded));
+      }
+    } catch (error) {
+      debugPrint('[room-pk] state load failed: $error');
+    }
+  }
+
+  Future<void> _submitRoomBattleAction(String action) async {
+    if (_pkActionBusy || _roomId.isEmpty) return;
+    setState(() => _pkActionBusy = true);
+    try {
+      final response = await http.post(
+        _roomBattleUri,
+        headers: _headers,
+        body: jsonEncode({
+          'action': action,
+          if (action == 'start') 'durationMinutes': _pkDurationMinutes,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      final decoded = jsonDecode(response.body);
+      if (response.statusCode < 200 || response.statusCode >= 300 || decoded is! Map || decoded['ok'] != true) {
+        final code = decoded is Map ? (decoded['error'] ?? '').toString() : '';
+        final message = code == 'room_moderator_permission_required'
+            ? 'بدء تحدي PK متاح للمالك والمشرفين فقط'
+            : code == 'invalid_battle_duration'
+                ? 'مدة تحدي PK غير صحيحة'
+                : 'تعذر تنفيذ تحدي PK، حاول مرة أخرى';
+        if (mounted) _showMessage(message);
+        return;
+      }
+      if (mounted) {
+        _applyPkBattleState(Map<String, dynamic>.from(decoded));
+        await _loadRoomBattleState();
+      }
+    } catch (_) {
+      if (mounted) _showMessage('تعذر الاتصال بالخادم، لم يتم تغيير حالة PK');
+    } finally {
+      if (mounted) setState(() => _pkActionBusy = false);
+    }
+  }
+
+  Future<void> _startRoomBattle() => _submitRoomBattleAction('start');
+
   void _openRoomBattleTools(BuildContext host) {
     showPkSheet(
       host,
       isPkVisualMode: _pkVisualMode,
-      onToggle: () {
-        if (!mounted) return;
-        setState(() => _pkVisualMode = !_pkVisualMode);
+      selectedDurationMinutes: _pkDurationMinutes,
+      onDurationChanged: (minutes) {
+        if (!mounted || _roomBattleActive || ![5, 15, 30, 120].contains(minutes)) return;
+        setState(() => _pkDurationMinutes = minutes);
       },
-      onReset: () {
-        if (!mounted) return;
-        setState(() {
-          _pkVisualMode = false;
-          _pkStarted = false;
-        });
-      },
+      onToggle: () => unawaited(
+        _submitRoomBattleAction(_pkVisualMode ? 'end' : 'prepare'),
+      ),
+      onReset: () => unawaited(_submitRoomBattleAction('reset')),
     );
   }
 
@@ -2937,17 +3063,8 @@ class _RoomPageState extends State<RoomPage> {
       onRoomTools: _openRoomTools,
       onMinimizeRoom: _minimizeRoom,
       onCloseRoom: _closeRoom,
-      onPkReset: () {
-        if (!mounted) return;
-        setState(() {
-          _pkVisualMode = false;
-          _pkStarted = false;
-        });
-      },
-      onPkStart: () {
-        if (!mounted) return;
-        setState(() => _pkStarted = true);
-      },
+      onPkReset: () => unawaited(_submitRoomBattleAction('reset')),
+      onPkStart: () => unawaited(_startRoomBattle()),
       onPkOpen: (_isRoomOwner || _amRoomModerator)
           ? () => _openRoomBattleTools(context)
           : null,
@@ -2959,11 +3076,14 @@ class _RoomPageState extends State<RoomPage> {
       isRoomDataReady: _roomDataReady,
       roomGiftScores: _roomGiftScores,
       isRoomGiftCounterActive: _roomCounter != null,
-      // PK gameplay/server state stays disconnected during this visual-only stage.
-      pkTeamMode: false,
-      pkActive: false,
+      pkTeamMode: _roomBattleTeamMode,
+      pkActive: _roomBattleActive,
       pkVisualMode: _pkVisualMode,
       pkStarted: _pkStarted,
+      pkBlueScore: _pkBlueScore,
+      pkRedScore: _pkRedScore,
+      pkUserScores: _pkUserScores,
+      pkTimerLabel: _pkTimerLabel,
           ),
         ),        if (_roomCounter != null) _roomCounterBanner(),
         if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
