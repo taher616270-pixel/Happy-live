@@ -21,7 +21,9 @@ test("PK gift points are persisted once per successful gift transaction and attr
 });
 
 test("PK rounds support the four configured durations and preserve stop versus reset behavior", () => {
-  assert.match(worker, /\[5, 15, 30, 120\]\.includes\(durationMinutes\)/);
+  assert.match(worker, /configuredDurationOptions\.includes\(durationMinutes\)/);
+  assert.match(worker, /configuredDefaultDuration/);
+  assert.match(worker, /pk_disabled_by_admin/);
   assert.match(worker, /action === "prepare"/);
   assert.match(worker, /const teamMode = action === "end"/);
   assert.match(worker, /teamMode: true, active: false/);
