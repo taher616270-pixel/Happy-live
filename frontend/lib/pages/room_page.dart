@@ -212,8 +212,7 @@ class _RoomPageState extends State<RoomPage> {
       unawaited(_refreshSeats());
       unawaited(_startRoomChat());
       unawaited(_connectRoomSeatSocket());
-      unawaited(_loadPkSettings());
-      unawaited(_loadRoomBattleState());
+      unawaited(_loadInitialPkState());
       unawaited(_joinAgora(publish: false));
     });
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -2197,6 +2196,11 @@ class _RoomPageState extends State<RoomPage> {
       _applyPkBattleScores(data);
     }
     _syncPkTicker();
+  }
+
+  Future<void> _loadInitialPkState() async {
+    await _loadPkSettings();
+    await _loadRoomBattleState();
   }
 
   Future<void> _loadPkSettings() async {
