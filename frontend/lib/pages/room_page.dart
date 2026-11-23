@@ -2201,7 +2201,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Future<void> _submitRoomBattleAction(String action) async {
-    if (_pkActionBusy || _roomId.isEmpty) return;
+    if (!mounted || _pkActionBusy || _roomId.isEmpty) return;
     setState(() => _pkActionBusy = true);
     try {
       final response = await http.post(
