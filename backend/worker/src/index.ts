@@ -2487,10 +2487,19 @@ export default {
           if (!activeBattle) {
             const battleId = crypto.randomUUID();
             const expiresAt = new Date(Date.now() + durationMinutes * 60_000).toISOString();
-            await env.DB.prepare(
-              "INSERT INTO room_battles (id, room_id, status, started_at, ended_at, created_by_user_id, duration_seconds, expires_at) VALUES (?, ?, 'active', ?, NULL, ?, ?, ?)"
-            ).bind(battleId, roomId, now, actor.id, durationMinutes * 60, expiresAt).run();
-            activeBattle = { id: battleId, startedAt: now, durationSeconds: durationMinutes * 60, expiresAt };
+            const created = await env.DB.prepare(
+              "INSERT OR IGNORE INTO room_battles (id, room_id, status, started_at, ended_at, created_by_user_id, duration_seconds, expires_at) " +
+              "SELECT ?, ?, 'active', ?, NULL, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM room_battles WHERE room_id = ? AND status = 'active')"
+            ).bind(battleId, roomId, now, actor.id, durationMinutes * 60, expiresAt, roomId).run();
+            if ((created.meta?.changes ?? 0) === 1) {
+              activeBattle = { id: battleId, startedAt: now, durationSeconds: durationMinutes * 60, expiresAt };
+            } else {
+              activeBattle = await env.DB.prepare(
+                "SELECT id, started_at AS startedAt, duration_seconds AS durationSeconds, expires_at AS expiresAt " +
+                "FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1"
+              ).bind(roomId).first<{ id: string; startedAt: string; durationSeconds: number; expiresAt: string | null }>();
+              if (!activeBattle) return json({ error: "battle_state_conflict" }, 409, origin, env);
+            }
           }
           const expiresAt = activeBattle.expiresAt ?? new Date(Date.parse(activeBattle.startedAt) + Number(activeBattle.durationSeconds || 300) * 1000).toISOString();
           const response = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
