@@ -141,6 +141,7 @@ class _RoomPageState extends State<RoomPage> {
   bool _pkVisualMode = false;
   bool _pkStarted = false;
   int _pkDurationMinutes = 5;
+  int _pkDefaultDurationMinutes = 5;
   int _pkBlueScore = 0;
   int _pkRedScore = 0;
   Map<String, int> _pkUserScores = <String, int>{};
@@ -2187,8 +2188,10 @@ class _RoomPageState extends State<RoomPage> {
       _pkStarted = _roomBattleActive;
       _pkEndsAt = parsedEndsAt;
       final durationSeconds = (data['durationSeconds'] as num?)?.toInt();
-      if (durationSeconds != null && durationSeconds > 0) {
+      if (_roomBattleActive && durationSeconds != null && durationSeconds > 0) {
         _pkDurationMinutes = (durationSeconds ~/ 60).clamp(1, 120).toInt();
+      } else if (!_pkDurationOptions.contains(_pkDurationMinutes)) {
+        _pkDurationMinutes = _pkDefaultDurationMinutes;
       }
       _pkNowMs = DateTime.now().millisecondsSinceEpoch;
     });
@@ -2229,6 +2232,7 @@ class _RoomPageState extends State<RoomPage> {
         _pkMediaOpacity = (((settings['mediaOpacity'] as num?)?.toDouble() ?? 85) / 100).clamp(0, 1).toDouble();
         _pkDurationOptions = options.isEmpty ? <int>[5, 15, 30, 120] : options;
         final defaultDuration = (settings['defaultDurationMinutes'] as num?)?.toInt() ?? 5;
+        _pkDefaultDurationMinutes = _pkDurationOptions.contains(defaultDuration) ? defaultDuration : _pkDurationOptions.first;
         if (_pkDurationOptions.contains(defaultDuration) && !_roomBattleActive) {
           _pkDurationMinutes = defaultDuration;
         } else if (!_pkDurationOptions.contains(_pkDurationMinutes) && !_roomBattleActive) {
