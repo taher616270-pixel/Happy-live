@@ -22,7 +22,7 @@ class PkScoreBar extends StatefulWidget {
 
   static const double barH = 18;
   static const double stripH = 11;
-  static const double tabH = 30;
+  static const double tabH = 21;
   static const double tabW = 132;
   static const double capW = 26;
   static const double headerH = barH + stripH;
