@@ -94,7 +94,8 @@ test("each room member gets a private 50-box round and only sees rewards after t
   assert.match(cannonApi, /startBoxRound/);
   assert.match(cannonApi, /openBox/);
   assert.match(cannonApi, /fetchBoxResults/);
-  assert.match(boxOverlay, /Duration\(milliseconds: 19900\)/);\n  assert.match(boxOverlay, /4300 \+ random\.nextInt\(1201\)/);
+  assert.match(boxOverlay, /Duration(milliseconds: 19900)/);
+  assert.match(boxOverlay, /4300 \+ random.nextInt\(1201\)/);
   assert.match(boxOverlay, /for \(var index = 0; index < 50; index\+\+\)/);
   assert.match(preview, /_showFallingGiftBoxes\(\)/);
   assert.match(preview, /جوائز الصناديق/);
