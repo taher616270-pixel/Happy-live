@@ -672,28 +672,41 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: ClipOval(
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                if (visibleAvatar.startsWith('http'))
-                                  HappyNetworkImage(visibleAvatar, fit: BoxFit.cover)
-                                else if (occupied)
-                                  Icon(Icons.mic_rounded, color: Colors.white.withOpacity(.92), size: 20)
-                                else if (locked)
-                                  Icon(Icons.lock_outline, color: Colors.white.withOpacity(.92), size: 20)
-                                else
-                                  const Center(
-                                    child: CustomPaint(
-                                      size: Size(22, 22),
-                                      painter: ChairCustomPainter(
-                                        color: Color(0xFF9A98A6),
-                                        strokeWidth: 2.0,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              ClipOval(
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    if (visibleAvatar.startsWith('http'))
+                                      Opacity(
+                                        // صورة صاحب الطلب تبقى باهتة إلى أن يشغل المايك فعلياً.
+                                        opacity: occupied ? 1 : 0.35,
+                                        child: HappyNetworkImage(visibleAvatar, fit: BoxFit.cover),
+                                      )
+                                    else if (occupied)
+                                      Icon(Icons.mic_rounded, color: Colors.white.withOpacity(.92), size: 20)
+                                    else if (locked)
+                                      Icon(Icons.lock_outline, color: Colors.white.withOpacity(.92), size: 20)
+                                    else
+                                      const Center(
+                                        child: CustomPaint(
+                                          size: Size(22, 22),
+                                          painter: ChairCustomPainter(
+                                            color: Color(0xFF9A98A6),
+                                            strokeWidth: 2.0,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                              ],
-                            ),
+                                  ],
+                                ),
+                              ),
+                              if (!occupied && seatNumber == joinSeatNumber && visibleAvatar.startsWith('http'))
+                                const CustomPaint(
+                                  painter: _DashedCircleBorderPainter(),
+                                ),
+                            ],
                           ),
                         ),
                       ),
@@ -4560,6 +4573,37 @@ class _GoldenVoiceRipplePainter extends CustomPainter {
       oldDelegate.endSize != endSize;
 }
 
+
+// إطار دائري متقطع حول صورة المستخدم المنتظر لانضمامه للمايك.
+class _DashedCircleBorderPainter extends CustomPainter {
+  const _DashedCircleBorderPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFE6E0FF).withOpacity(.9)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - 1.5;
+    const dashCount = 22;
+    const dashSweep = .13;
+    for (var i = 0; i < dashCount; i++) {
+      final start = -math.pi / 2 + (2 * math.pi * i / dashCount);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        dashSweep,
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedCircleBorderPainter oldDelegate) => false;
+}
 
 class HappyLevelBadge extends StatelessWidget {
   final String level;
