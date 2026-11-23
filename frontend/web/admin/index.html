@@ -328,7 +328,7 @@ async function pkAdminPage(){
     '<label class="field">مدد الجولات بالدقائق (أضف أو احذف المدد)<input id="pkDurations" value="'+esc(options.join(", "))+'" placeholder="5, 15, 30, 120"><small class="muted">عدّل القائمة لإضافة مدة أو حذفها، وافصل بين الأرقام بفواصل. من 1 إلى 120 دقيقة، بحد أقصى 8 مدد.</small></label>'+
     '<label class="field">المدة الافتراضية بالدقائق<input id="pkDefaultDuration" type="number" min="1" max="120" value="'+Number(s.defaultDurationMinutes||5)+'"></label>'+
     '<label class="field">عرض مربع المبارزة (%)<input id="pkSquareWidth" type="number" min="50" max="100" value="'+Number(s.squareWidthPercent??100)+'"><small class="muted">من 50% إلى 100% من عرض الشاشة.</small></label>'+
-    '<label class="field">ارتفاع مربع المبارزة (px)<input id="pkSquareHeight" type="number" min="160" max="500" value="'+Number(s.squareHeight??284)+'"><small class="muted">من 160 إلى 500 بكسل.</small></label>'+
+    '<label class="field">ارتفاع مربع المبارزة (px)<input id="pkSquareHeight" type="number" min="240" max="500" value="'+Number(s.squareHeight??284)+'"><small class="muted">من 240 إلى 500 بكسل.</small></label>'+
     '<label class="field">استدارة زوايا مربع المبارزة<input id="pkRadius" type="number" min="0" max="48" value="'+Number(s.squareRadius??26)+'"></label>'+
     '<label class="field">شفافية الحركة داخل المربع (%)<input id="pkOpacity" type="number" min="0" max="100" value="'+Number(s.mediaOpacity??85)+'"></label></div>'+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:18px 0">'+
