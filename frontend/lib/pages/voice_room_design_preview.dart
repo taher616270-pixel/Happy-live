@@ -2020,8 +2020,8 @@ Widget _roomActionButton({
         final name = (seat?['name'] ?? '').toString();
         final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
         final visibleAvatar = occupied ? avatar : (number == firstJoinSeat ? seatStore.currentAvatarUrl : '');
-        final muted = seat?['isMuted'] == true;
-        final locked = seat?['isLocked'] == true || seat?['locked'] == true;
+        final muted = seatState.isMuted || seat?['isMuted'] == true;
+        final locked = seatState.isLocked || seat?['isLocked'] == true || seat?['locked'] == true;
         final speakerUid = seat?['uid'] is num
             ? (seat!['uid'] as num).toInt()
             : int.tryParse((seat?['userCode'] ?? '').toString());
@@ -2336,8 +2336,8 @@ Widget _roomActionButton({
           final name = (seat?['name'] ?? '').toString();
           final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
           final visibleAvatar = occupied ? avatar : (number == joinSeatNumber ? currentUserAvatarUrl : '');
-          final muted = seat?['isMuted'] == true;
-          final locked = seat?['isLocked'] == true || seat?['locked'] == true;
+          final muted = seatState.isMuted || seat?['isMuted'] == true;
+          final locked = seatState.isLocked || seat?['isLocked'] == true || seat?['locked'] == true;
           final speakerUid = seat?['uid'] is num
               ? (seat!['uid'] as num).toInt()
               : int.tryParse((seat?['userCode'] ?? '').toString());
