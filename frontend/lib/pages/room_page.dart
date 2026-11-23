@@ -2342,6 +2342,7 @@ class _RoomPageState extends State<RoomPage> {
       ),
       onReset: () => unawaited(_submitRoomBattleAction('reset')),
       durationOptions: _pkDurationOptions,
+      challengeTitle: _pkChallengeTitle,
     );
   }
 
