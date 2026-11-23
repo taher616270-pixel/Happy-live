@@ -158,6 +158,11 @@ class _RoomPageState extends State<RoomPage> {
   bool _pkShowChallengeTitle = true;
   bool _pkShowStartText = true;
   bool _pkShowTimer = true;
+  String _pkStartMediaUrl = '';
+  String _pkStartMediaType = '';
+  int _pkStartShowDurationSeconds = 3;
+  double _pkStartHideDurationSeconds = 0.5;
+  bool _pkStartHiding = false;
   double _pkSquareRadius = 26;
   double _pkMediaOpacity = 0.85;
   List<int> _pkDurationOptions = <int>[5, 15, 30, 120];
@@ -2336,6 +2341,10 @@ class _RoomPageState extends State<RoomPage> {
         _pkShowChallengeTitle = settings['showChallengeTitle'] != false;
         _pkShowStartText = settings['showStartText'] != false;
         _pkShowTimer = settings['showTimer'] != false;
+        _pkStartMediaUrl = (settings['startMediaUrl'] ?? '').toString();
+        _pkStartMediaType = (settings['startMediaType'] ?? '').toString().toLowerCase();
+        _pkStartShowDurationSeconds = ((settings['startShowDurationSeconds'] as num?)?.toInt() ?? 3).clamp(1, 30).toInt();
+        _pkStartHideDurationSeconds = ((settings['startHideDurationSeconds'] as num?)?.toDouble() ?? 0.5).clamp(0, 5).toDouble();
         _pkSquareRadius = ((settings['squareRadius'] as num?)?.toDouble() ?? 26).clamp(0, 48).toDouble();
         _pkMediaOpacity = (((settings['mediaOpacity'] as num?)?.toDouble() ?? 85) / 100).clamp(0, 1).toDouble();
         _pkDurationOptions = options.isEmpty ? <int>[5, 15, 30, 120] : options;
@@ -2375,6 +2384,17 @@ class _RoomPageState extends State<RoomPage> {
         autoPlay: true,
         loop: true,
       );
+    }
+    return null;
+  }
+
+  Widget? _buildPkStartAnimation() {
+    if (!_pkStartMediaUrl.startsWith('https://')) return null;
+    if (_pkStartMediaType == 'svga') {
+      return SVGAEasyPlayer(key: ValueKey('pk-start-svga-$_pkStartMediaUrl'), resUrl: _pkStartMediaUrl, fit: BoxFit.contain, loops: true, volume: 0, muted: true);
+    }
+    if (_pkStartMediaType == 'gif') {
+      return GifView.network(_pkStartMediaUrl, key: ValueKey('pk-start-gif-$_pkStartMediaUrl'), width: 240, height: 120, fit: BoxFit.contain, frameRate: 24, autoPlay: true, loop: true);
     }
     return null;
   }
@@ -2430,13 +2450,20 @@ class _RoomPageState extends State<RoomPage> {
 
   void _startRoomBattle() {
     if (!mounted || !_pkEnabled || _pkStartingCountdown || _roomBattleActive || _pkActionBusy) return;
-    // START is a 3-second visual announcement only. The PK battle and its
-    // server timer begin immediately and do not wait for this animation.
-    setState(() => _pkStartingCountdown = true);
+    // START is an independent visual cue. Its display/fade never delays PK start.
+    setState(() { _pkStartingCountdown = true; _pkStartHiding = false; });
     _pkStartCountdownTimer?.cancel();
-    _pkStartCountdownTimer = Timer(const Duration(seconds: 3), () {
+    _pkStartCountdownTimer = Timer(Duration(seconds: _pkStartShowDurationSeconds), () {
       if (!mounted) return;
-      setState(() => _pkStartingCountdown = false);
+      if (_pkStartHideDurationSeconds <= 0) {
+        setState(() { _pkStartingCountdown = false; _pkStartHiding = false; });
+        return;
+      }
+      setState(() => _pkStartHiding = true);
+      _pkStartCountdownTimer = Timer(Duration(milliseconds: (_pkStartHideDurationSeconds * 1000).round()), () {
+        if (!mounted) return;
+        setState(() { _pkStartingCountdown = false; _pkStartHiding = false; });
+      });
     });
     unawaited(_submitRoomBattleAction('start'));
   }
@@ -3290,6 +3317,9 @@ class _RoomPageState extends State<RoomPage> {
       pkUserScores: _pkUserScores,
       pkTimerLabel: _pkTimerLabel,
       pkStartingCountdown: _pkStartingCountdown,
+      pkStartHiding: _pkStartHiding,
+      pkStartHideDurationSeconds: _pkStartHideDurationSeconds,
+      pkStartAnimation: _buildPkStartAnimation(),
       pkEnabled: _pkEnabled,
       pkChallengeTitle: _pkChallengeTitle,
       pkShowChallengeTitle: _pkShowChallengeTitle,
