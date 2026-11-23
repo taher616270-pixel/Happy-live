@@ -2326,30 +2326,11 @@ Widget _roomActionButton({
                   ],
                 ),
               ),
-              const SizedBox(height: 2),
-              if (occupied)
-                SizedBox(
-                  width: 54,
-                  child: Text(
-                    name.isEmpty ? 'مستخدم' : name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      shadows: [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 1))],
-                    ),
-                  ),
-                )
-              else if (number == joinSeatNumber)
+              if (!occupied && number == joinSeatNumber)
                 _joinMicButton(
                   number,
                   disabled: isChangingSeat || seatState.isPending,
-                )
-              else
-                const SizedBox.shrink(),
+                ),
             ],
           );
         },
