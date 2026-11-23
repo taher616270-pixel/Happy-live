@@ -153,7 +153,7 @@ class _PkSheet extends StatelessWidget {
             )
           else
             _Btn(
-              label: 'فتح',
+              label: 'بدأ',
               gradient: true,
               onTap: () {
                 onToggle();
