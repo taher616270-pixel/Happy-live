@@ -2501,8 +2501,8 @@ export default {
         }
 
         if (action === "start") {
-          const durationMinutes = Number(body.durationMinutes ?? 5);
-          if (![5, 15, 30, 120].includes(durationMinutes)) return json({ error: "invalid_battle_duration" }, 400, origin, env);
+          const durationMinutes = Number(body.durationMinutes ?? configuredDefaultDuration);
+          if (!configuredDurationOptions.includes(durationMinutes)) return json({ error: "invalid_battle_duration" }, 400, origin, env);
           let activeBattle = await env.DB.prepare(
             "SELECT id, started_at AS startedAt, duration_seconds AS durationSeconds, expires_at AS expiresAt FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1"
           ).bind(roomId).first<{ id: string; startedAt: string; durationSeconds: number; expiresAt: string | null }>();
