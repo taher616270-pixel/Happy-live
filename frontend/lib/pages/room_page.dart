@@ -3153,7 +3153,7 @@ class _RoomPageState extends State<RoomPage> {
       onCloseRoom: _closeRoom,
       onPkReset: () => unawaited(_submitRoomBattleAction('reset')),
       onPkStart: (_isRoomOwner || _amRoomModerator)
-          ? () => unawaited(_startRoomBattle())
+          ? () => _startRoomBattle()
           : null,
       onPkOpen: (_isRoomOwner || _amRoomModerator)
           ? () => _openRoomBattleTools(context)
