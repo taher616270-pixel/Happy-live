@@ -1546,7 +1546,7 @@ export default {
           }));
           if (!controlResponse.ok) return json({ error: "seat_control_failed", message: "تعذر تحديث المايك" }, 503, origin, env);
           await env.DB!.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, target_user_id, action, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-            .bind(crypto.randomUUID(), roomId, actor.id, member?.userId ?? null, action, JSON.stringify({ seatNumber, isLocked: nextLocked, isMuted: nextMuted }), now).run();
+            .bind(crypto.randomUUID(), roomId, actor.id, member?.userId ?? actor.id, action, JSON.stringify({ seatNumber, isLocked: nextLocked, isMuted: nextMuted }), now).run();
           return json({ ok: true, seatNumber, isLocked: nextLocked, isMuted: nextMuted }, 200, origin, env);
         }
         if (action === "assign_moderator" || action === "remove_moderator") {
