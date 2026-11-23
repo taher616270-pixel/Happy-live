@@ -470,7 +470,9 @@ class _RoomPageState extends State<RoomPage> {
         if ((previous['userId'] ?? '').toString().isNotEmpty)
           (previous['userId'] ?? '').toString(): previous,
     };
-    final normalized = rawSeats.whereType<Map>().map((item) {
+    final normalizedByUser = <String, Map<String, dynamic>>{};
+    final normalizedEmptySeats = <Map<String, dynamic>>[];
+    for (final item in rawSeats.whereType<Map>()) {
       final seat = Map<String, dynamic>.from(item);
       final userId = (seat['userId'] ?? '').toString();
       final previous = previousSeatsByUserId[userId];
@@ -485,8 +487,25 @@ class _RoomPageState extends State<RoomPage> {
       }
       seat['isMe'] = userId.isNotEmpty &&
           userId == _seatStateStore.currentUserId;
-      return seat;
-    }).toList();
+      if (userId.isEmpty) {
+        normalizedEmptySeats.add(seat);
+        continue;
+      }
+      final existing = normalizedByUser[userId];
+      final seatNumber = seat['seatNumber'];
+      final existingNumber = existing?['seatNumber'];
+      final isPreferred = (mySeat != null && seatNumber is num && seatNumber.toInt() == mySeat) || seat['isMe'] == true;
+      final existingPreferred = existing != null &&
+          ((mySeat != null && existingNumber is num && existingNumber.toInt() == mySeat) || existing['isMe'] == true);
+      if (existing == null || (isPreferred && !existingPreferred)) {
+        normalizedByUser[userId] = seat;
+      }
+    }
+    final normalized = <Map<String, dynamic>>[
+      ...normalizedByUser.values,
+      ...normalizedEmptySeats,
+    ]..sort((a, b) => ((a['seatNumber'] as num?)?.toInt() ?? 0)
+        .compareTo((b['seatNumber'] as num?)?.toInt() ?? 0));
     _rememberCountryNames(normalized);
     final mine = normalized.where((seat) => seat['isMe'] == true).toList();
     final nextMySeat = mySeat ?? (mine.isEmpty ? null : (mine.first['seatNumber'] as num).toInt());
