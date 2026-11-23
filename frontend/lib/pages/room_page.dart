@@ -2371,7 +2371,8 @@ class _RoomPageState extends State<RoomPage> {
       return SVGAEasyPlayer(
         key: ValueKey('pk-square-svga-$_pkSquareMediaUrl'),
         resUrl: _pkSquareMediaUrl,
-        fit: BoxFit.contain,
+        // Stretch the uploaded SVGA to the admin-configured PK square bounds.
+        fit: BoxFit.fill,
         loops: true,
         volume: 0,
         muted: true,
@@ -2383,7 +2384,7 @@ class _RoomPageState extends State<RoomPage> {
         key: ValueKey('pk-square-gif-$_pkSquareMediaUrl'),
         width: double.infinity,
         height: double.infinity,
-        fit: BoxFit.contain,
+        fit: BoxFit.fill,
         frameRate: 24,
         autoPlay: true,
         loop: true,
