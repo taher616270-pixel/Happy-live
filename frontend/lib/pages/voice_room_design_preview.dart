@@ -316,10 +316,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       textDirection: TextDirection.ltr,
                       children: [
                         Expanded(
-                          child: Container(color: const Color(0xFF2228A5).withOpacity(0.45)),
+                          child: Container(color: const Color(0xFF2228A5).withOpacity(0.65)),
                         ),
                         Expanded(
-                          child: Container(color: const Color(0xFF8B0D45).withOpacity(0.45)),
+                          child: Container(color: const Color(0xFF8B0D45).withOpacity(0.65)),
                         ),
                       ],
                     ),
