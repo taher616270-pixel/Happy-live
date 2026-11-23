@@ -573,11 +573,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         color: occupied
                             ? Colors.white.withOpacity(0.12)
                             : const Color(0xFF1E1C2B).withOpacity(0.70),
+
                         border: Border.all(
-                          color: isSpeaking
-                              ? const Color(0xFFFFD700)
-                              : (occupied ? Colors.white.withOpacity(0.24) : const Color(0xFF2D2A3E)),
-                          width: isSpeaking ? 2.0 : 1.4,
+                          color: Colors.white.withOpacity(0.25),
+                          width: 2.4,
                         ),
                       ),
                       child: ClipOval(
