@@ -21,11 +21,10 @@ class PkScoreBar extends StatefulWidget {
   const PkScoreBar({super.key, required this.red, required this.blue, this.tab, this.onTapTab});
 
   static const double barH = 18;
-  static const double stripH = 11;
   static const double tabH = 21;
   static const double tabW = 132;
   static const double capW = 26;
-  static const double headerH = barH + stripH;
+  static const double headerH = barH;
   static const double height = barH + 2 + tabH;
 
   @override
@@ -221,10 +220,6 @@ class _BarPainter extends CustomPainter {
 
     _chevrons(canvas, Rect.fromLTRB(0, 0, x, h), toRight: true, t: t);
     _chevrons(canvas, Rect.fromLTRB(x + capW, 0, w, h), toRight: false, t: t);
-
-    final sx = (x + 6).clamp(0.0, w).toDouble();
-    canvas.drawRect(Rect.fromLTRB(0, h, sx, h + PkScoreBar.stripH), Paint()..color = const Color(0xFF28208F));
-    canvas.drawRect(Rect.fromLTRB(sx, h, w, h + PkScoreBar.stripH), Paint()..color = const Color(0xFF7A0A3D));
 
     final k = 1 + 0.14 * math.sin(bump.value * math.pi);
     final glow = math.sin(bump.value * math.pi);
