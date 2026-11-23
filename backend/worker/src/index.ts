@@ -3375,9 +3375,17 @@ export default {
         }
         const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
         const seatSnapshotResponse = await seatHub.fetch(new Request("https://room-seats.internal/snapshot"));
-        const seatSnapshot = await seatSnapshotResponse.json() as { seats?: Array<{ userId: string; expiresAt: number }> };
-        const hasSeat = (seatSnapshot.seats ?? []).some((entry) => entry.userId === user.id && entry.expiresAt > Date.now());
-        const canPublish = requestedPublish && hasSeat && control?.is_muted !== 1;
+        const seatSnapshot = await seatSnapshotResponse.json() as {
+          seats?: Array<{ userId: string; seatNumber: number; expiresAt: number; isMuted?: boolean }>;
+          seatControls?: Record<string, { isMuted?: boolean }>;
+        };
+        const currentSeat = (seatSnapshot.seats ?? []).find((entry) => entry.userId === user.id && entry.expiresAt > Date.now());
+        const hasSeat = !!currentSeat;
+        const seatMuted = !!currentSeat && (
+          currentSeat.isMuted === true ||
+          seatSnapshot.seatControls?.[String(currentSeat.seatNumber)]?.isMuted === true
+        );
+        const canPublish = requestedPublish && hasSeat && control?.is_muted !== 1 && !seatMuted;
         const numericUid = Number(user.happy_id);
         if (!Number.isSafeInteger(numericUid) || numericUid < 1 || numericUid > 2147483647) {
           return json({ error: "invalid_user_id" }, 400, origin, env);
