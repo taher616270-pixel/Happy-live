@@ -11,6 +11,7 @@ Future<void> showPkSheet(
   required VoidCallback onReset,
   required int selectedDurationMinutes,
   required ValueChanged<int> onDurationChanged,
+  List<int> durationOptions = const [5, 15, 30, 120],
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -27,6 +28,7 @@ Future<void> showPkSheet(
             onToggle: onToggle,
             onReset: onReset,
             selectedDurationMinutes: selectedDuration,
+            durationOptions: durationOptions,
             onDurationChanged: (minutes) {
               setSheetState(() => selectedDuration = minutes);
               onDurationChanged(minutes);
@@ -46,6 +48,7 @@ class _PkSheet extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onReset;
   final int selectedDurationMinutes;
+  final List<int> durationOptions;
   final ValueChanged<int> onDurationChanged;
 
   const _PkSheet({
@@ -54,6 +57,7 @@ class _PkSheet extends StatelessWidget {
     required this.onToggle,
     required this.onReset,
     required this.selectedDurationMinutes,
+    required this.durationOptions,
     required this.onDurationChanged,
   });
 
@@ -100,8 +104,8 @@ class _PkSheet extends StatelessWidget {
           const Text('مدة كل جولة', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 14),
           Row(children: [
-            for (final m in const [5, 15, 30, 120]) ...[
-              if (m != 5) const SizedBox(width: 16),
+            for (final m in durationOptions) ...[
+              if (m != durationOptions.first) const SizedBox(width: 16),
               _Chip(
                 minutes: m,
                 selected: m == selectedDurationMinutes,
