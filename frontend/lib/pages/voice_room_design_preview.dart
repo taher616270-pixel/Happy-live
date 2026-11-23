@@ -350,7 +350,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 children: [
                   Positioned.fill(
                     child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
+                      borderRadius: BorderRadius.only(
                         bottomLeft: Radius.circular(pkSquareRadius),
                         bottomRight: Radius.circular(pkSquareRadius),
                       ),
