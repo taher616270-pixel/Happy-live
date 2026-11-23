@@ -449,6 +449,8 @@ export class RoomSeatsHub {
         const member = Object.values(this.snapshot.seats).find((seat) => seat.userId === targetUserId);
         if (member) {
           member.isMuted = muted;
+          const controls = this.seatControls[String(member.seatNumber)] ?? { isLocked: false, isMuted: false };
+          this.seatControls[String(member.seatNumber)] = { ...controls, isMuted: muted };
           this.snapshot.revision++;
           await this.persist();
           this.broadcast({ type: "seat_updated", ...this.publicSnapshot() });
