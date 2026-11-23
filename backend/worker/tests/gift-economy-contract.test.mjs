@@ -120,7 +120,7 @@ test("wallet reports tagged earnings and room-upgrade spending consumes tagged l
 test("battle multiplier can only be enabled through owner/moderator server-side battle state", () => {
   assert.ok(worker.includes(String.raw`const roomBattleRoute = url.pathname.match(/^\/api\/v1\/rooms\/([0-9a-f-]{36})\/battle$/i);`));
   assert.match(worker, /room_moderators WHERE room_id = \? AND user_id = \?/);
-  assert.match(worker, /INSERT INTO room_battles/);
+  assert.match(worker, /INSERT (?:OR IGNORE )?INTO room_battles/);
   assert.match(worker, /UPDATE room_battles SET status = 'finished'/);
   assert.match(worker, /CASE WHEN b\.id IS NULL THEN 1 ELSE 2 END/);
 });
@@ -193,7 +193,7 @@ test("custom gift creation UI uploads only selected GIF or SVGA files and sends 
   assert.match(giftSheet, /_customHome\(\)/);
   assert.match(giftSheet, /widget\.loadGifts\(tab\)/);
   assert.match(giftSheet, /Expanded\(child: _giftGrid\(\)\)/);
-  assert.match(giftSheet, /type == 'gif' \|\| type == 'apng'/);
+  assert.match(giftSheet, /extension != 'gif' && extension != 'svga'/);
   assert.match(roomPage, /mediaType == 'gif' \|\| mediaType == 'apng'/);
   assert.match(roomPage, /upload\.imagekit\.io\/api\/v1\/files\/upload/);
   assert.match(roomPage, /mediaFileId/);
