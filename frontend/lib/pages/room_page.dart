@@ -414,18 +414,28 @@ class _RoomPageState extends State<RoomPage> {
     bool updateStore = true,
     bool reconcilePending = false,
   }) {
-    if (seatControls != null && seatControls.isNotEmpty) {
-      rawSeats = rawSeats.map((raw) {
-        if (raw is! Map) return raw;
-        final seat = Map<String, dynamic>.from(raw);
-        final number = (seat['seatNumber'] ?? '').toString();
-        final control = seatControls[number];
+    if (seatControls != null) {
+      final byNumber = <int, Map<String, dynamic>>{
+        for (final raw in rawSeats)
+          if (raw is Map && raw['seatNumber'] is num)
+            (raw['seatNumber'] as num).toInt(): Map<String, dynamic>.from(raw),
+      };
+      rawSeats = List<dynamic>.generate(_micCount, (index) {
+        final number = index + 1;
+        final seat = byNumber[number] ?? <String, dynamic>{
+          'seatNumber': number,
+          'userId': '',
+          'isMuted': false,
+          'isLocked': false,
+          'isMe': false,
+        };
+        final control = seatControls[number.toString()];
         if (control is Map) {
           seat['isLocked'] = control['isLocked'] == true;
           seat['isMuted'] = seat['isMuted'] == true || control['isMuted'] == true;
         }
         return seat;
-      }).toList();
+      });
     }
     final previousSeatsByUserId = <String, Map<String, dynamic>>{
       for (final previous in _seats)
