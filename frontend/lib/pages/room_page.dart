@@ -348,7 +348,33 @@ class _RoomPageState extends State<RoomPage> {
       return;
     }
     final rawSeats = event['seats'];
-    final seats = rawSeats is List ? rawSeats : const <dynamic>[];
+    var seats = rawSeats is List ? rawSeats : const <dynamic>[];
+    final socketSeatControls = event['seatControls'] is Map
+        ? Map<String, dynamic>.from(event['seatControls'] as Map)
+        : null;
+    if (socketSeatControls != null) {
+      final byNumber = <int, Map<String, dynamic>>{
+        for (final raw in seats)
+          if (raw is Map && raw['seatNumber'] is num)
+            (raw['seatNumber'] as num).toInt(): Map<String, dynamic>.from(raw),
+      };
+      seats = List<dynamic>.generate(_micCount, (index) {
+        final number = index + 1;
+        final seat = byNumber[number] ?? <String, dynamic>{
+          'seatNumber': number,
+          'userId': '',
+          'isMuted': false,
+          'isLocked': false,
+          'isMe': false,
+        };
+        final control = socketSeatControls[number.toString()];
+        if (control is Map) {
+          seat['isLocked'] = control['isLocked'] == true;
+          seat['isMuted'] = seat['isMuted'] == true || control['isMuted'] == true;
+        }
+        return seat;
+      });
+    }
 
     if (type == 'seat_snapshot') {
       _seatMoveTimers.clear();
@@ -394,6 +420,8 @@ class _RoomPageState extends State<RoomPage> {
           _showMessage('هذا المايك مشغول، اختر مايكًا آخر');
         } else if (!accepted && event['code'] == 'mic_restricted') {
           _showMessage('استخدام المايك متاح للمالك والمشرفين فقط');
+        } else if (!accepted && event['code'] == 'seat_locked') {
+          _showMessage('هذا المايك مقفل');
         } else if (!accepted) {
           _showMessage('تعذر تغيير المايك، تمت استعادة المقعد السابق');
         }
