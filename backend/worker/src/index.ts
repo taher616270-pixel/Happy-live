@@ -3522,20 +3522,32 @@ export default {
             const moveData = await moveResponse.json() as Record<string, unknown>;
             if (!moveResponse.ok || moveData.ok !== true) {
               const failedSnapshotResponse = await seatHub.fetch(new Request("https://room-seats.internal/snapshot"));
-              const failedSnapshot = await failedSnapshotResponse.json() as { seats?: Array<Record<string, unknown>> };
-              const failedSeats = (failedSnapshot.seats ?? []).map((seat) => ({
-                seatNumber: seat.seatNumber,
-                userId: seat.userId,
-                userCode: seat.userCode ?? "",
-                uid: seat.uid ?? null,
-                isMuted: seat.isMuted === true,
-                isRoomOwner: seat.isRoomOwner === true,
-                isRoomModerator: seat.isRoomModerator === true,
-                name: seat.name || "مستخدم",
-                avatarUrl: seat.avatarUrl ?? "",
-                countryName: seat.countryName ?? "",
-                isMe: seat.userId === user.id
-              }));
+              const failedSnapshot = await failedSnapshotResponse.json() as {
+                seats?: Array<Record<string, unknown>>;
+                seatControls?: Record<string, { isLocked?: boolean; isMuted?: boolean }>;
+              };
+              const failedSeatByNumber = new Map((failedSnapshot.seats ?? []).map((seat) => [Number(seat.seatNumber), seat]));
+              const failedSeatControls = failedSnapshot.seatControls ?? {};
+              const failedSeatCount = Math.min(24, Math.max(1, Number(roomSettings.seats ?? 8)));
+              const failedSeats = Array.from({ length: failedSeatCount }, (_, index) => {
+                const seatNumber = index + 1;
+                const seat = failedSeatByNumber.get(seatNumber);
+                const control = failedSeatControls[String(seatNumber)] ?? {};
+                return {
+                  seatNumber,
+                  userId: seat?.userId ?? "",
+                  userCode: seat?.userCode ?? "",
+                  uid: seat?.uid ?? null,
+                  isMuted: seat?.isMuted === true || control.isMuted === true,
+                  isLocked: control.isLocked === true,
+                  isRoomOwner: seat?.isRoomOwner === true,
+                  isRoomModerator: seat?.isRoomModerator === true,
+                  name: seat?.name || "",
+                  avatarUrl: seat?.avatarUrl ?? "",
+                  countryName: seat?.countryName ?? "",
+                  isMe: seat?.userId === user.id
+                };
+              });
               return json({
                 ok: false,
                 error: moveData.code === "seat_occupied" ? "seat_occupied" : moveData.code === "mic_restricted" ? "mic_restricted" : moveData.code === "seat_locked" ? "seat_locked" : "seat_move_failed",
