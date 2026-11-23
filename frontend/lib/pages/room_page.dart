@@ -2391,7 +2391,7 @@ class _RoomPageState extends State<RoomPage> {
   Widget? _buildPkStartAnimation() {
     if (!_pkStartMediaUrl.startsWith('https://')) return null;
     if (_pkStartMediaType == 'svga') {
-      return SVGAEasyPlayer(key: ValueKey('pk-start-svga-$_pkStartMediaUrl'), resUrl: _pkStartMediaUrl, fit: BoxFit.contain, loops: true, volume: 0, muted: true);
+      return SizedBox(width: 240, height: 120, child: SVGAEasyPlayer(key: ValueKey('pk-start-svga-$_pkStartMediaUrl'), resUrl: _pkStartMediaUrl, fit: BoxFit.contain, loops: true, volume: 0, muted: true));
     }
     if (_pkStartMediaType == 'gif') {
       return GifView.network(_pkStartMediaUrl, key: ValueKey('pk-start-gif-$_pkStartMediaUrl'), width: 240, height: 120, fit: BoxFit.contain, frameRate: 24, autoPlay: true, loop: true);
