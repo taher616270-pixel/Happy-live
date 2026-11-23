@@ -53,6 +53,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.selfMicMuted = false,
     this.onToggleSelfMic,
     this.onModerateUser,
+    this.onModerateSeat,
     this.showRoomActions = false,
     this.onRoomActions,
     this.onRoomTools,
@@ -110,6 +111,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final bool selfMicMuted;
   final Future<bool> Function()? onToggleSelfMic;
   final Future<bool> Function(String targetUserId, String action)? onModerateUser;
+  final Future<bool> Function(int seatNumber, String action)? onModerateSeat;
   final bool showRoomActions;
   final VoidCallback? onRoomActions;
   final VoidCallback? onRoomTools;
@@ -618,9 +620,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: occupied
-              ? () => _showUserProfile(context, seat!)
-              : () => onTapSeat(seatNumber),
+          onTap: canModerateUsers
+              ? () => _showEmptySeatActions(context, seatNumber)
+              : occupied
+                  ? () => _showUserProfile(context, seat!)
+                  : () => onTapSeat(seatNumber),
           child: SizedBox(
             width: 58,
             height: 78,
@@ -2049,19 +2053,13 @@ Widget _roomActionButton({
                 children: [
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: occupied
-                        ? () => _showUserProfile(context, seat!)
-                        : (!isChangingSeat &&
-                                !seatState.isPending &&
-                                (canModerateUsers || !locked)
-                            ? () {
-                                if (canModerateUsers) {
-                                  _showEmptySeatActions(context, number);
-                                } else {
-                                  onTapSeat(number);
-                                }
-                              }
-                            : null),
+                    onTap: canModerateUsers
+                        ? () => _showEmptySeatActions(context, number)
+                        : occupied
+                            ? () => _showUserProfile(context, seat!)
+                            : (!isChangingSeat && !seatState.isPending && !locked
+                                ? () => onTapSeat(number)
+                                : null),
                     child: _GoldenVoiceWave(
                     isSpeaking: isSpeaking,
                     avatarSize: seatDiameter,
@@ -2359,17 +2357,13 @@ Widget _roomActionButton({
                       top: 0,
                       left: (54 - diameter) / 2,
                       child: GestureDetector(
-                        onTap: occupied
-                            ? () => _showUserProfile(context, seat!)
-                            : (!isChangingSeat && !seatState.isPending && (canModerateUsers || !locked)
-                                ? () {
-                                    if (canModerateUsers) {
-                                      _showEmptySeatActions(context, number);
-                                    } else {
-                                      onTapSeat(number);
-                                    }
-                                  }
-                                : null),
+                        onTap: canModerateUsers
+                            ? () => _showEmptySeatActions(context, number)
+                            : occupied
+                                ? () => _showUserProfile(context, seat!)
+                                : (!isChangingSeat && !seatState.isPending && !locked
+                                    ? () => onTapSeat(number)
+                                    : null),
                         child: _GoldenVoiceWave(
                           isSpeaking: isSpeaking,
                           avatarSize: diameter,
@@ -2441,7 +2435,18 @@ Widget _roomActionButton({
     );
   }
 
-    void _showEmptySeatActions(BuildContext context, int seatNumber) {
+  void _showEmptySeatActions(BuildContext context, int seatNumber) {
+    final seat = _seatAt(seatNumber) ?? <String, dynamic>{};
+    final userId = (seat['userId'] ?? '').toString();
+    final occupied = userId.isNotEmpty;
+    final isLocked = seat['isLocked'] == true || seat['locked'] == true;
+    final isMuted = seat['isMuted'] == true;
+
+    Future<void> runAction(BuildContext sheetContext, String action) async {
+      Navigator.of(sheetContext).pop();
+      await onModerateSeat?.call(seatNumber, action);
+    }
+
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -2469,9 +2474,9 @@ Widget _roomActionButton({
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                   child: _EmptySeatAction(
-                    icon: Icons.lock_outline_rounded,
-                    label: 'إغلاق المايك',
-                    onTap: () {},
+                    icon: isLocked ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
+                    label: isLocked ? 'فتح المايك' : 'إغلاق المايك',
+                    onTap: () => runAction(sheetContext, 'toggle_seat_lock'),
                   ),
                 ),
               ),
@@ -2479,42 +2484,44 @@ Widget _roomActionButton({
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                   child: _EmptySeatAction(
-                    icon: Icons.mic_off_rounded,
-                    label: 'ميوت',
-                    onTap: () {},
+                    icon: isMuted ? Icons.mic_rounded : Icons.mic_off_rounded,
+                    label: isMuted ? 'فتح الكتم' : 'كتم المايك',
+                    onTap: () => runAction(sheetContext, 'toggle_seat_mute'),
                   ),
                 ),
               ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  child: _EmptySeatAction(
-                    icon: Icons.business_center_outlined,
-                    label: 'دعوة',
-                    onTap: () {},
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  child: _EmptySeatAction(
-                    icon: Icons.weekend_outlined,
-                    customIcon: const CustomPaint(
-                      size: Size(26, 26),
-                      painter: ChairCustomPainter(
-                        color: Color(0xFF9A98A6),
-                        strokeWidth: 2.2,
-                      ),
+              if (!occupied) ...[
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    child: _EmptySeatAction(
+                      icon: Icons.business_center_outlined,
+                      label: 'دعوة',
+                      onTap: () {},
                     ),
-                    label: 'اطلع المايك',
-                    onTap: () {
-                      Navigator.of(sheetContext).pop();
-                      onTapSeat(seatNumber);
-                    },
                   ),
                 ),
-              ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    child: _EmptySeatAction(
+                      icon: Icons.weekend_outlined,
+                      customIcon: const CustomPaint(
+                        size: Size(26, 26),
+                        painter: ChairCustomPainter(
+                          color: Color(0xFF9A98A6),
+                          strokeWidth: 2.2,
+                        ),
+                      ),
+                      label: 'اطلع المايك',
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        onTapSeat(seatNumber);
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
