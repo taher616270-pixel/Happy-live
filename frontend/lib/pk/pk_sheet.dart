@@ -15,16 +15,24 @@ Future<void> showPkSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => Directionality(
-      textDirection: TextDirection.rtl,
-      child: _PkSheet(
-        isPkVisualMode: isPkVisualMode,
-        onToggle: onToggle,
-        onReset: onReset,
-        selectedDurationMinutes: selectedDurationMinutes,
-        onDurationChanged: onDurationChanged,
-      ),
-    ),
+    builder: (_) {
+      var selectedDuration = selectedDurationMinutes;
+      return StatefulBuilder(
+        builder: (sheetContext, setSheetState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: _PkSheet(
+            isPkVisualMode: isPkVisualMode,
+            onToggle: onToggle,
+            onReset: onReset,
+            selectedDurationMinutes: selectedDuration,
+            onDurationChanged: (minutes) {
+              setSheetState(() => selectedDuration = minutes);
+              onDurationChanged(minutes);
+            },
+          ),
+        ),
+      );
+    },
   );
 }
 
