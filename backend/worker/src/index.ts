@@ -778,6 +778,62 @@ export default {
       try {
         const actor = await authenticatedAdmin(request, env.DB);
         if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
+        if (url.pathname === "/api/v1/admin/pk/settings" && (request.method === "GET" || request.method === "PATCH")) {
+          if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
+          const defaults = {
+            enabled: true, challengeTitle: "تحدي PK", mediaUrl: "", mediaType: "",
+            showChallengeTitle: true, showStartText: true, showTimer: true,
+            squareRadius: 26, mediaOpacity: 85, durationOptions: [5, 15, 30, 120],
+            defaultDurationMinutes: 5
+          };
+          const readSettings = async () => {
+            const row = await env.DB!.prepare(
+              "SELECT setting_value FROM platform_settings WHERE setting_key = 'pk_battle_settings' LIMIT 1"
+            ).first<{ setting_value: string }>();
+            let saved: Record<string, unknown> = {};
+            try { saved = row?.setting_value ? JSON.parse(row.setting_value) as Record<string, unknown> : {}; } catch { saved = {}; }
+            return { ...defaults, ...saved };
+          };
+          if (request.method === "GET") {
+            const settings = await readSettings();
+            return json({ ok: true, settings }, 200, origin, env);
+          }
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; }
+          catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const current = await readSettings();
+          const enabled = body.enabled === undefined ? current.enabled === true : body.enabled;
+          const challengeTitle = body.challengeTitle === undefined ? String(current.challengeTitle ?? defaults.challengeTitle) : typeof body.challengeTitle === "string" ? body.challengeTitle.trim() : "";
+          const mediaUrl = body.mediaUrl === undefined ? String(current.mediaUrl ?? "") : typeof body.mediaUrl === "string" ? body.mediaUrl.trim() : "";
+          const mediaType = body.mediaType === undefined ? String(current.mediaType ?? "") : typeof body.mediaType === "string" ? body.mediaType.toLowerCase() : "";
+          const showChallengeTitle = body.showChallengeTitle === undefined ? current.showChallengeTitle === true : body.showChallengeTitle;
+          const showStartText = body.showStartText === undefined ? current.showStartText === true : body.showStartText;
+          const showTimer = body.showTimer === undefined ? current.showTimer === true : body.showTimer;
+          const squareRadius = body.squareRadius === undefined ? Number(current.squareRadius) : Number(body.squareRadius);
+          const mediaOpacity = body.mediaOpacity === undefined ? Number(current.mediaOpacity) : Number(body.mediaOpacity);
+          const durationOptions = body.durationOptions === undefined ? current.durationOptions : body.durationOptions;
+          const defaultDurationMinutes = body.defaultDurationMinutes === undefined ? Number(current.defaultDurationMinutes) : Number(body.defaultDurationMinutes);
+          if (typeof enabled !== "boolean" || typeof showChallengeTitle !== "boolean" || typeof showStartText !== "boolean" || typeof showTimer !== "boolean" ||
+              !challengeTitle || challengeTitle.length > 80 || (mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) ||
+              !["", "gif", "svga"].includes(mediaType) || (mediaUrl && !mediaType) || (!mediaUrl && mediaType) ||
+              !Number.isInteger(squareRadius) || squareRadius < 0 || squareRadius > 60 ||
+              !Number.isInteger(mediaOpacity) || mediaOpacity < 0 || mediaOpacity > 100 ||
+              !Array.isArray(durationOptions) || durationOptions.length < 1 || durationOptions.length > 8 ||
+              durationOptions.some((value) => !Number.isInteger(value) || Number(value) < 1 || Number(value) > 120) ||
+              new Set(durationOptions).size !== durationOptions.length ||
+              !Number.isInteger(defaultDurationMinutes) || !durationOptions.includes(defaultDurationMinutes)) {
+            return json({ error: "invalid_pk_settings", message: "تحقق من إعدادات PK والمدد والوسائط." }, 400, origin, env);
+          }
+          const settings = { enabled, challengeTitle, mediaUrl, mediaType, showChallengeTitle, showStartText, showTimer, squareRadius, mediaOpacity, durationOptions, defaultDurationMinutes };
+          const now = new Date().toISOString();
+          await env.DB!.prepare(
+            "INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('pk_battle_settings', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at"
+          ).bind(JSON.stringify(settings), now).run();
+          await env.DB!.prepare(
+            "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'pk.settings.update', 'platform', 'pk_battle_settings', ?, ?)"
+          ).bind(crypto.randomUUID(), JSON.stringify({ adminId: actor.id, adminUsername: actor.username }), now).run();
+          return json({ ok: true, settings }, 200, origin, env);
+        }
         if (url.pathname === "/api/v1/admin/integrations/happy-food-wheel") {
           if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           if (request.method === "GET") {
