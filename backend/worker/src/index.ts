@@ -2518,7 +2518,7 @@ export default {
           method: "POST", headers: { "Content-Type": "application/json", "x-room-id": roomId },
           body: JSON.stringify({
             teamMode, active: false, battleId: keepBattleId, endsAt: null,
-            durationSeconds: Number(latestBattle?.durationSeconds ?? 300)
+            durationSeconds: Number(activeBattle?.durationSeconds ?? 300)
           })
         }));
         if (!response.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
