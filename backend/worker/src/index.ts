@@ -2365,65 +2365,151 @@ export default {
 
     // Battle state is controlled by the room owner or a room-scoped moderator.
     // Gift XP reads this server-side state; client flags can never enable the 2x multiplier.
+    // Authenticated PK lifecycle and durable score snapshot.
     const roomBattleRoute = url.pathname.match(/^\/api\/v1\/rooms\/([0-9a-f-]{36})\/battle$/i);
-    if (roomBattleRoute && request.method === "POST") {
+    if (roomBattleRoute && (request.method === "GET" || request.method === "POST")) {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
         const actor = await authenticatedUser(request, env.DB);
         if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
         const roomId = roomBattleRoute[1];
+        const room = await env.DB.prepare("SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
+          .bind(roomId).first<{ id: string; owner_user_id: string }>();
+        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
+
+        if (request.method === "GET") {
+          let activeBattle = await env.DB.prepare(
+            "SELECT id, started_at AS startedAt, duration_seconds AS durationSeconds, expires_at AS expiresAt " +
+            "FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1"
+          ).bind(roomId).first<{ id: string; startedAt: string; durationSeconds: number; expiresAt: string | null }>();
+          if (activeBattle) {
+            const expiresAt = activeBattle.expiresAt ??
+              new Date(Date.parse(activeBattle.startedAt) + Number(activeBattle.durationSeconds || 300) * 1000).toISOString();
+            if (Date.parse(expiresAt) <= Date.now()) {
+              const now = new Date().toISOString();
+              await env.DB.prepare("UPDATE room_battles SET status = 'finished', ended_at = ?, expires_at = COALESCE(expires_at, ?) WHERE id = ? AND status = 'active'")
+                .bind(now, expiresAt, activeBattle.id).run();
+              activeBattle = null;
+            } else if (!activeBattle.expiresAt) {
+              await env.DB.prepare("UPDATE room_battles SET expires_at = ? WHERE id = ? AND status = 'active'")
+                .bind(expiresAt, activeBattle.id).run();
+            }
+          }
+          if (!env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
+          const hub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+          if (activeBattle) {
+            const stateResponse = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-room-id": roomId },
+              body: JSON.stringify({
+                teamMode: true, active: true, battleId: activeBattle.id,
+                endsAt: activeBattle.expiresAt ?? new Date(Date.parse(activeBattle.startedAt) + Number(activeBattle.durationSeconds || 300) * 1000).toISOString(),
+                durationSeconds: Number(activeBattle.durationSeconds || 300)
+              })
+            }));
+            if (!stateResponse.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
+          }
+          const stateResponse = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
+            headers: { "x-room-id": roomId }
+          }));
+          const state = await stateResponse.json().catch(() => null) as Record<string, unknown> | null;
+          if (!stateResponse.ok || !state) return json({ error: "room_battle_state_unavailable" }, 503, origin, env);
+          return json({ ok: true, ...state }, 200, origin, env);
+        }
+
+        const moderator = await env.DB.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1")
+          .bind(roomId, actor.id).first<{ user_id: string }>();
+        if (room.owner_user_id !== actor.id && !moderator) return json({ error: "room_moderator_permission_required" }, 403, origin, env);
         let body: Record<string, unknown>;
         try { body = await request.json() as Record<string, unknown>; }
         catch { return json({ error: "invalid_json" }, 400, origin, env); }
         const action = body.action;
-        if (action !== "start" && action !== "end" && action !== "reset") return json({ error: "invalid_battle_action" }, 400, origin, env);
-        const room = await env.DB!.prepare("SELECT id, owner_user_id FROM rooms WHERE id = ? AND status = 'active' LIMIT 1")
-          .bind(roomId).first<{ id: string; owner_user_id: string }>();
-        if (!room) return json({ error: "room_not_found" }, 404, origin, env);
-        const moderator = await env.DB!.prepare("SELECT user_id FROM room_moderators WHERE room_id = ? AND user_id = ? LIMIT 1")
-          .bind(roomId, actor.id).first<{ user_id: string }>();
-        if (room.owner_user_id !== actor.id && !moderator) return json({ error: "room_moderator_permission_required" }, 403, origin, env);
-        const now = new Date().toISOString();
-        if (action === "start") {
-          const battleId = crypto.randomUUID();
-          const result = await env.DB!.prepare(
-            "INSERT INTO room_battles (id, room_id, status, started_at, ended_at, created_by_user_id) " +
-            "SELECT ?, ?, 'active', ?, NULL, ? WHERE NOT EXISTS (SELECT 1 FROM room_battles WHERE room_id = ? AND status = 'active')"
-          ).bind(battleId, roomId, now, actor.id, roomId).run();
-          let activeBattle: Record<string, unknown> | null = null;
-          if ((result.meta?.changes ?? 0) !== 1) {
-            activeBattle = await env.DB!.prepare("SELECT id, started_at AS startedAt FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1")
-              .bind(roomId).first<Record<string, unknown>>();
-            if (!activeBattle) return json({ error: "battle_state_conflict" }, 409, origin, env);
-          }
-          if (!env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
-          // Reconcile the Durable Object even when D1 already contains an active
-          // battle. This repairs the previous partial-write case where D1 committed
-          // but the room broadcast failed, leaving the seats in normal mode.
-          const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
-          const stateResponse = await seatHub.fetch(new Request("https://room-seats.internal/battle-state", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-room-id": roomId },
-            body: JSON.stringify({ teamMode: true, active: true })
-          }));
-          if (!stateResponse.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
-          const battle = activeBattle ?? { id: battleId, roomId, status: "active", startedAt: now };
-          return json({ ok: true, battle, teamMode: true, active: true, reconciled: activeBattle != null }, activeBattle ? 200 : 201, origin, env);
+        if (action !== "prepare" && action !== "start" && action !== "end" && action !== "reset") {
+          return json({ error: "invalid_battle_action" }, 400, origin, env);
         }
-        const ended = await env.DB!.prepare(
-          "UPDATE room_battles SET status = 'finished', ended_at = ? WHERE room_id = ? AND status = 'active'"
-        ).bind(now, roomId).run();
-        if (action === "end" && (ended.meta?.changes ?? 0) !== 1) return json({ error: "no_active_battle" }, 409, origin, env);
-        const teamMode = action !== "reset";
         if (!env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
-        const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
-        const stateResponse = await seatHub.fetch(new Request("https://room-seats.internal/battle-state", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-room-id": roomId },
-          body: JSON.stringify({ teamMode, active: false })
+        const hub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+        const now = new Date().toISOString();
+
+        if (action === "prepare") {
+          const activeBattle = await env.DB.prepare(
+            "SELECT id, started_at AS startedAt, duration_seconds AS durationSeconds, expires_at AS expiresAt FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1"
+          ).bind(roomId).first<{ id: string; startedAt: string; durationSeconds: number; expiresAt: string | null }>();
+          if (activeBattle) {
+            const expiresAt = activeBattle.expiresAt ?? new Date(Date.parse(activeBattle.startedAt) + Number(activeBattle.durationSeconds || 300) * 1000).toISOString();
+            const response = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
+              method: "POST", headers: { "Content-Type": "application/json", "x-room-id": roomId },
+              body: JSON.stringify({ teamMode: true, active: true, battleId: activeBattle.id, endsAt: expiresAt, durationSeconds: Number(activeBattle.durationSeconds || 300) })
+            }));
+            if (!response.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
+            return json({ ok: true, teamMode: true, active: true, battleId: activeBattle.id, endsAt: expiresAt, durationSeconds: Number(activeBattle.durationSeconds || 300) }, 200, origin, env);
+          }
+          const response = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
+            method: "POST", headers: { "Content-Type": "application/json", "x-room-id": roomId },
+            body: JSON.stringify({ teamMode: true, active: false, battleId: null, endsAt: null, durationSeconds: 300 })
+          }));
+          if (!response.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
+          return json({ ok: true, teamMode: true, active: false, battleId: null, endsAt: null, durationSeconds: 300 }, 200, origin, env);
+        }
+
+        if (action === "start") {
+          const durationMinutes = Number(body.durationMinutes ?? 5);
+          if (![5, 15, 30, 120].includes(durationMinutes)) return json({ error: "invalid_battle_duration" }, 400, origin, env);
+          let activeBattle = await env.DB.prepare(
+            "SELECT id, started_at AS startedAt, duration_seconds AS durationSeconds, expires_at AS expiresAt FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1"
+          ).bind(roomId).first<{ id: string; startedAt: string; durationSeconds: number; expiresAt: string | null }>();
+          if (activeBattle) {
+            const oldExpiry = activeBattle.expiresAt ?? new Date(Date.parse(activeBattle.startedAt) + Number(activeBattle.durationSeconds || 300) * 1000).toISOString();
+            if (Date.parse(oldExpiry) <= Date.now()) {
+              await env.DB.prepare("UPDATE room_battles SET status = 'finished', ended_at = ?, expires_at = COALESCE(expires_at, ?) WHERE id = ? AND status = 'active'")
+                .bind(now, oldExpiry, activeBattle.id).run();
+              activeBattle = null;
+            }
+          }
+          if (!activeBattle) {
+            const battleId = crypto.randomUUID();
+            const expiresAt = new Date(Date.now() + durationMinutes * 60_000).toISOString();
+            await env.DB.prepare(
+              "INSERT INTO room_battles (id, room_id, status, started_at, ended_at, created_by_user_id, duration_seconds, expires_at) VALUES (?, ?, 'active', ?, NULL, ?, ?, ?)"
+            ).bind(battleId, roomId, now, actor.id, durationMinutes * 60, expiresAt).run();
+            activeBattle = { id: battleId, startedAt: now, durationSeconds: durationMinutes * 60, expiresAt };
+          }
+          const expiresAt = activeBattle.expiresAt ?? new Date(Date.parse(activeBattle.startedAt) + Number(activeBattle.durationSeconds || 300) * 1000).toISOString();
+          const response = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
+            method: "POST", headers: { "Content-Type": "application/json", "x-room-id": roomId },
+            body: JSON.stringify({
+              teamMode: true, active: true, battleId: activeBattle.id,
+              endsAt: expiresAt, durationSeconds: Number(activeBattle.durationSeconds || durationMinutes * 60)
+            })
+          }));
+          if (!response.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
+          return json({
+            ok: true, teamMode: true, active: true, battleId: activeBattle.id,
+            startedAt: activeBattle.startedAt, endsAt: expiresAt,
+            durationSeconds: Number(activeBattle.durationSeconds || durationMinutes * 60)
+          }, 200, origin, env);
+        }
+
+        const latestBattle = await env.DB.prepare(
+          "SELECT id, duration_seconds AS durationSeconds FROM room_battles WHERE room_id = ? ORDER BY started_at DESC LIMIT 1"
+        ).bind(roomId).first<{ id: string; durationSeconds: number }>();
+        await env.DB.prepare(
+          "UPDATE room_battles SET status = 'finished', ended_at = COALESCE(ended_at, ?) WHERE room_id = ? AND status = 'active'"
+        ).bind(now, roomId).run();
+        const teamMode = action === "end";
+        const keepBattleId = action === "end" ? (latestBattle?.id ?? null) : null;
+        const response = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
+          method: "POST", headers: { "Content-Type": "application/json", "x-room-id": roomId },
+          body: JSON.stringify({
+            teamMode, active: false, battleId: keepBattleId, endsAt: null,
+            durationSeconds: Number(latestBattle?.durationSeconds ?? 300)
+          })
         }));
-        if (!stateResponse.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
-        return json({ ok: true, roomId, status: action === "reset" ? "reset" : "finished", teamMode, active: false, endedAt: now }, 200, origin, env);
+        if (!response.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
+        return json({
+          ok: true, roomId, status: action === "reset" ? "reset" : "finished",
+          teamMode, active: false, battleId: keepBattleId, endedAt: now
+        }, 200, origin, env);
       } catch (error) {
         const diagnostic = error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError", message: "Non-Error exception" };
         console.error("[rooms.battle] failed", diagnostic);
@@ -2469,14 +2555,43 @@ export default {
         }
         const now = new Date().toISOString();
         const dayKey = saudiDayKey(now);
+        let pkRecipientSeat: number | null = null;
+        let pkRecipientTeam: "blue" | "red" | null = null;
+        if (env.ROOM_SEATS) {
+          try {
+            const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+            const seatResponse = await seatHub.fetch(new Request("https://room-seats.internal/snapshot", {
+              headers: { "x-room-id": roomId }
+            }));
+            const seatPayload = await seatResponse.json().catch(() => null) as { seats?: Array<{ userId?: string; seatNumber?: number }> } | null;
+            const recipientSeat = (seatPayload?.seats ?? []).find((seat) => seat.userId === recipientUserId);
+            const seatNumber = Number(recipientSeat?.seatNumber);
+            if (Number.isInteger(seatNumber) && seatNumber >= 1 && seatNumber <= 12) {
+              pkRecipientSeat = seatNumber;
+              pkRecipientTeam = [3, 4, 7, 8, 11, 12].includes(seatNumber) ? "blue" : "red";
+            }
+          } catch (seatError) {
+            console.warn("[gifts.pk-seat] lookup skipped", seatError instanceof Error ? seatError.message : "UnknownError");
+          }
+        }
         const existing = await env.DB!.prepare(
-          "SELECT id, status, coin_cost AS coinCost, experience_awarded AS experienceAwarded, recipient_coins AS recipientCoins " +
+          "SELECT id, status, coin_cost AS coinCost, experience_awarded AS experienceAwarded, recipient_coins AS recipientCoins, battle_id AS battleId " +
           "FROM gift_transactions WHERE sender_user_id = ? AND idempotency_key = ? LIMIT 1"
         ).bind(user.id, idempotencyKey).first<Record<string, unknown>>();
         if (existing) {
           if (existing.status === "succeeded") {
             try { await addCannonEnergy(env.DB!, String(existing.id), roomId, user.id, Number(existing.coinCost ?? 0)); }
             catch (cannonError) { console.warn("[cannon.gift-energy] skipped", cannonError instanceof Error ? cannonError.message : "UnknownError"); }
+            if (existing.battleId && env.ROOM_SEATS) {
+              try {
+                const hub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+                await hub.fetch(new Request("https://room-seats.internal/battle-score/broadcast", {
+                  method: "POST", headers: { "x-room-id": roomId }
+                }));
+              } catch (scoreError) {
+                console.warn("[gifts.pk-score] duplicate sync skipped", scoreError instanceof Error ? scoreError.message : "UnknownError");
+              }
+            }
             return json({ ok: true, duplicate: true, transaction: existing }, 200, origin, env);
           }
           return json({ error: "gift_request_in_progress" }, 409, origin, env);
@@ -2556,6 +2671,15 @@ export default {
             "WHERE t.id = ? AND t.status = 'processing' AND t.experience_awarded > 0 " +
             "AND EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
           ).bind(crypto.randomUUID(), dayKey, now, transactionId),
+          ...(pkRecipientTeam && pkRecipientSeat !== null ? [
+            env.DB!.prepare(
+              "INSERT OR IGNORE INTO room_battle_gift_scores (id, gift_transaction_id, battle_id, room_id, user_id, team, seat_number, points, created_at) " +
+              "SELECT ?, t.id, t.battle_id, t.room_id, t.recipient_user_id, ?, ?, t.coin_cost, ? FROM gift_transactions t " +
+              "JOIN room_battles b ON b.id = t.battle_id AND b.status = 'active' " +
+              "WHERE t.id = ? AND t.status = 'processing' AND t.battle_id IS NOT NULL " +
+              "AND EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
+            ).bind(crypto.randomUUID(), pkRecipientTeam, pkRecipientSeat, now, transactionId)
+          ] : []),
           env.DB!.prepare(
             "UPDATE room_exp_daily SET points = points + COALESCE((SELECT points FROM room_exp_gift_awards WHERE gift_transaction_id = ?), 0) " +
             "WHERE user_id = ? AND day_key = ? AND EXISTS (SELECT 1 FROM room_exp_gift_awards WHERE gift_transaction_id = ?)"
@@ -2574,7 +2698,7 @@ export default {
         ];
         await env.DB!.batch(statements);
         const transaction = await env.DB!.prepare(
-          "SELECT id, sender_user_id AS senderUserId, recipient_user_id AS recipientUserId, room_id AS roomId, gift_id AS giftId, quantity, coin_cost AS coinCost, app_coins AS appCoins, recipient_coins AS recipientCoins, experience_awarded AS experienceAwarded, experience_multiplier AS experienceMultiplier, status, created_at AS createdAt " +
+          "SELECT id, sender_user_id AS senderUserId, recipient_user_id AS recipientUserId, room_id AS roomId, gift_id AS giftId, quantity, coin_cost AS coinCost, app_coins AS appCoins, recipient_coins AS recipientCoins, experience_awarded AS experienceAwarded, experience_multiplier AS experienceMultiplier, battle_id AS battleId, status, created_at AS createdAt " +
           "FROM gift_transactions WHERE sender_user_id = ? AND idempotency_key = ? LIMIT 1"
         ).bind(user.id, idempotencyKey).first<Record<string, unknown>>();
         if (!transaction) {
@@ -2644,6 +2768,16 @@ export default {
           }
         } catch (broadcastError) {
           console.warn("[gifts.room.broadcast] skipped", broadcastError instanceof Error ? broadcastError.message : "UnknownError");
+        }
+        if (transaction.battleId && env.ROOM_SEATS) {
+          try {
+            const hub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+            await hub.fetch(new Request("https://room-seats.internal/battle-score/broadcast", {
+              method: "POST", headers: { "x-room-id": roomId }
+            }));
+          } catch (scoreError) {
+            console.warn("[gifts.pk-score] realtime sync skipped", scoreError instanceof Error ? scoreError.message : "UnknownError");
+          }
         }
         // A qualifying gift also produces one application-wide banner, including for users outside rooms.
         try {
