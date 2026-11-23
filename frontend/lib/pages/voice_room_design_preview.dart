@@ -507,21 +507,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   : null,
             ),
           ),
-          if (pkShowChallengeTitle && pkChallengeTitle.trim().isNotEmpty)
-            Positioned(
-              bottom: 5,
-              left: 0,
-              right: 0,
-              child: IgnorePointer(
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(color: const Color(0x990B0A16), borderRadius: BorderRadius.circular(12)),
-                    child: Text(pkChallengeTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
-                  ),
-                ),
-              ),
-            ),
           if (pkStartingCountdown && pkShowStartText)
             Positioned.fill(
               child: IgnorePointer(
