@@ -4610,22 +4610,22 @@ class PkTimerFrame extends CustomClipper<Path> {
     final w = size.width;
     final h = size.height;
 
-    // Same original silhouette, flipped vertically: upper and lower edges are exchanged.
-    path.moveTo(w * 0.18, 0);
-    path.lineTo(w * 0.82, 0);
+    // Large capsule-like rounding across both lower corners.
+    path.moveTo(w * 0.18, h);
+    path.lineTo(w * 0.82, h);
     path.cubicTo(
-      w * 0.94, 0,
-      w * 0.98, h * 0.15,
-      w * 0.97, h * 0.75,
+      w * 0.94, h,
+      w * 0.98, h * 0.85,
+      w * 0.97, h * 0.25,
     );
-    // Preserve the exact side extensions and curve while mirroring top to bottom.
-    path.quadraticBezierTo(w, h, w * 1.30, h);
-    path.lineTo(w * -0.30, h);
-    path.quadraticBezierTo(0, h, w * 0.03, h * 0.75);
+    // Double the previous extension: extend 30% beyond each side, preserving the edge shape.
+    path.quadraticBezierTo(w, 0, w * 1.30, 0);
+    path.lineTo(w * -0.30, 0);
+    path.quadraticBezierTo(0, 0, w * 0.03, h * 0.25);
     path.cubicTo(
-      w * 0.03, h * 0.15,
-      w * 0.06, 0,
-      w * 0.18, 0,
+      w * 0.03, h * 0.85,
+      w * 0.06, h,
+      w * 0.18, h,
     );
     path.close();
     return path;
