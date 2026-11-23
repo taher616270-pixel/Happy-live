@@ -2322,13 +2322,15 @@ class _RoomPageState extends State<RoomPage> {
 
   void _startRoomBattle() {
     if (!mounted || !_pkEnabled || _pkStartingCountdown || _roomBattleActive || _pkActionBusy) return;
+    // START is a 3-second visual announcement only. The PK battle and its
+    // server timer begin immediately and do not wait for this animation.
     setState(() => _pkStartingCountdown = true);
     _pkStartCountdownTimer?.cancel();
     _pkStartCountdownTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted) return;
       setState(() => _pkStartingCountdown = false);
-      unawaited(_submitRoomBattleAction('start'));
     });
+    unawaited(_submitRoomBattleAction('start'));
   }
 
   void _openRoomBattleTools(BuildContext host) {
