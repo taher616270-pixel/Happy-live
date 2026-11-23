@@ -3155,6 +3155,18 @@ export default {
           if (current?.is_muted === 1 && current.muted_by && current.muted_by !== actor.id) {
             return json({ error: "moderator_muted", message: "تم كتم مايكك بواسطة إدارة الغرفة" }, 403, origin, env);
           }
+          if (current?.is_muted !== 1) {
+            const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+            const seatSnapshotResponse = await seatHub.fetch(new Request("https://room-seats.internal/snapshot"));
+            const seatSnapshot = await seatSnapshotResponse.json() as {
+              seats?: Array<{ userId: string; seatNumber: number }>;
+              seatControls?: Record<string, { isMuted?: boolean }>;
+            };
+            const mySeat = (seatSnapshot.seats ?? []).find((seat) => seat.userId === actor.id);
+            if (mySeat && seatSnapshot.seatControls?.[String(mySeat.seatNumber)]?.isMuted === true) {
+              return json({ error: "moderator_muted", message: "هذا المايك مكتوم بواسطة إدارة الغرفة" }, 403, origin, env);
+            }
+          }
           const nextMuted = current?.is_muted === 1 ? 0 : 1;
           await env.DB!.prepare(
             "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, NULL, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = NULL, updated_at = excluded.updated_at"
