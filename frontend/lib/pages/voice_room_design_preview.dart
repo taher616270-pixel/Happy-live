@@ -93,6 +93,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.pkShowTimer = true,
     this.pkEnabled = true,
     this.pkSquareRadius = 26,
+    this.pkSquareWidthPercent = 100,
+    this.pkSquareHeight = 284,
     this.pkMediaOpacity = 0.85,
     this.pkSquareAnimation,
   });
@@ -155,6 +157,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final bool pkShowTimer;
   final bool pkEnabled;
   final double pkSquareRadius;
+  final double pkSquareWidthPercent;
+  final double pkSquareHeight;
   final double pkMediaOpacity;
   final Widget? pkSquareAnimation;
 
@@ -336,13 +340,16 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       (a, b) => roomLayout.seatNumber(a).compareTo(roomLayout.seatNumber(b)),
     );
 
+    final squareHeight = pkSquareHeight.clamp(160.0, 500.0).toDouble();
+    final squareWidth = MediaQuery.sizeOf(context).width *
+        (pkSquareWidthPercent.clamp(50.0, 100.0).toDouble() / 100);
     return SizedBox(
-      height: 283 + (overflowSlots.isNotEmpty ? 92 : 0),
+      height: squareHeight + (overflowSlots.isNotEmpty ? 92 : 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            height: 283,
+            height: squareHeight,
             child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -351,10 +358,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             top: 6,
             left: 0,
             right: 0,
-            child: Container(
-              height: 284,
-              margin: const EdgeInsets.only(top: 6),
-              child: Stack(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: squareWidth,
+                height: squareHeight,
+                child: Container(
+                  margin: const EdgeInsets.only(top: 6),
+                  child: Stack(
                 children: [
                   if (pkSquareAnimation != null)
                     Positioned.fill(
@@ -419,7 +430,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       ],
                     ),
                   ),
-                ],
+                  ],
+                  ),
+                ),
               ),
             ),
           ),
