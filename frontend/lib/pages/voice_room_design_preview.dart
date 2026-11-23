@@ -2276,17 +2276,7 @@ Widget _roomActionButton({
                   ),
                 )
               else
-                Transform.translate(
-                  offset: const Offset(0, -4),
-                  child: Text(
-                    locked ? 'مقفل' : '$number',
-                    style: TextStyle(
-                    color: Colors.white.withOpacity(.7),
-                    fontSize: 11,
-                    shadows: const [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 1))],
-                    ),
-                  ),
-                ),
+                const SizedBox.shrink(),
             ],
           );
         },
