@@ -537,7 +537,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         // Seats 4 and 5 have the muted mic icon on the bottom edge.
         final isMuted = seatState.isMuted || (seat?['isMuted'] == true) || seatNumber == 4 || seatNumber == 5;
 
-            final userId = (seat?['userId'] ?? '').toString();
+        final userId = (seat?['userId'] ?? '').toString();
         final pkPoints = pkUserScores[userId] ?? 0;
         final isBlueTeamSeat = const [3, 4, 7, 8, 11, 12].contains(seatNumber);
         final speakerUid = seat?['uid'] is num
