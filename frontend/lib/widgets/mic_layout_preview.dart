@@ -1,3 +1,4 @@
+import 'voice_seat_chair_icon.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/mic_layout.dart';
@@ -63,9 +64,15 @@ class MicLayoutPreview extends StatelessWidget {
                                             BoxShadow(color: Color(0x99000000), blurRadius: 4, offset: Offset(0, 1)),
                                           ],
                                         ),
-                                        child: Icon(Icons.weekend_outlined,
-                                          color: Colors.white.withOpacity(.92),
-                                          size: diameter * (seat.big ? .46 : .42)),
+                                        child: Center(
+                                          child: CustomPaint(
+                                            size: Size(diameter * (seat.big ? .52 : .48), diameter * (seat.big ? .52 : .48)),
+                                            painter: const ChairCustomPainter(
+                                              color: Color(0xFF9A98A6),
+                                              strokeWidth: 1.5,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                       const SizedBox(height: 1),
                                       Text(seat.label,
