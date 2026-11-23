@@ -3227,8 +3227,8 @@ export default {
           }
           const previous = snapshot.seatControls?.[String(seatNumber)] ?? { isLocked: false, isMuted: false };
           const effectiveMuted = previous.isMuted === true || member?.isMuted === true;
-          const nextLocked = action === "toggle_seat_lock" ? !previous.isLocked : previous.isLocked;
-          const nextMuted = action === "toggle_seat_mute" ? !effectiveMuted : previous.isMuted;
+          const nextLocked = action === "toggle_seat_lock" ? previous.isLocked !== true : previous.isLocked === true;
+          const nextMuted = action === "toggle_seat_mute" ? !effectiveMuted : previous.isMuted === true;
           const now = new Date().toISOString();
           if (member && action === "toggle_seat_mute") {
             await env.DB!.prepare(
