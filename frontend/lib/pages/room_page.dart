@@ -2131,7 +2131,7 @@ class _RoomPageState extends State<RoomPage> {
 
   String get _pkTimerLabel {
     final remaining = _roomBattleActive && _pkEndsAt != null
-        ? ((_pkEndsAt!.millisecondsSinceEpoch - _pkNowMs) / 1000).ceil().clamp(0, 7200)
+        ? ((_pkEndsAt!.millisecondsSinceEpoch - _pkNowMs) / 1000).ceil().clamp(0, 7200).toInt()
         : _pkDurationMinutes * 60;
     final minutes = (remaining ~/ 60).toString().padLeft(2, '0');
     final seconds = (remaining % 60).toString().padLeft(2, '0');
@@ -2175,7 +2175,7 @@ class _RoomPageState extends State<RoomPage> {
       _pkEndsAt = parsedEndsAt;
       final durationSeconds = (data['durationSeconds'] as num?)?.toInt();
       if (durationSeconds != null && durationSeconds > 0) {
-        _pkDurationMinutes = (durationSeconds ~/ 60).clamp(1, 120);
+        _pkDurationMinutes = (durationSeconds ~/ 60).clamp(1, 120).toInt();
       }
       _pkNowMs = DateTime.now().millisecondsSinceEpoch;
     });
@@ -2240,6 +2240,7 @@ class _RoomPageState extends State<RoomPage> {
     showPkSheet(
       host,
       isPkVisualMode: _pkVisualMode,
+      isPkActive: _roomBattleActive,
       selectedDurationMinutes: _pkDurationMinutes,
       onDurationChanged: (minutes) {
         if (!mounted || _roomBattleActive || ![5, 15, 30, 120].contains(minutes)) return;
