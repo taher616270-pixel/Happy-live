@@ -3526,7 +3526,7 @@ export default {
                 seats?: Array<Record<string, unknown>>;
                 seatControls?: Record<string, { isLocked?: boolean; isMuted?: boolean }>;
               };
-              const failedSeatByNumber = new Map((failedSnapshot.seats ?? []).map((seat) => [Number(seat.seatNumber), seat]));
+              const failedSeatByNumber = new Map((failedSnapshot.seats ?? []).map((seat) => [Number(seat.seatNumber), seat] as const));
               const failedSeatControls = failedSnapshot.seatControls ?? {};
               const failedSeatCount = Math.min(24, Math.max(1, Number(roomSettings.seats ?? 8)));
               const failedSeats = Array.from({ length: failedSeatCount }, (_, index) => {
@@ -3593,7 +3593,7 @@ export default {
             profileByUserId.set(row.user_id, row);
           }
         }
-        const activeSeatByNumber = new Map(activeSeats.map((seat) => [Number(seat.seatNumber), seat]));
+        const activeSeatByNumber = new Map(activeSeats.map((seat) => [Number(seat.seatNumber), seat] as const));
         const configuredSeatCount = Math.min(24, Math.max(1, Number(roomSettings.seats ?? 8)));
         const seats = Array.from({ length: configuredSeatCount }, (_, index) => {
           const seatNumber = index + 1;
