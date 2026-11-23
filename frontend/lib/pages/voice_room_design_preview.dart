@@ -366,10 +366,18 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         textDirection: TextDirection.ltr,
                         children: [
                           Expanded(
-                            child: Container(color: const Color(0xFF2228A5).withOpacity(0.65)),
+                            child: Container(
+                              color: pkSquareAnimation == null
+                                  ? const Color(0xFF2228A5).withOpacity(0.65)
+                                  : Colors.transparent,
+                            ),
                           ),
                           Expanded(
-                            child: Container(color: const Color(0xFF8B0D45).withOpacity(0.65)),
+                            child: Container(
+                              color: pkSquareAnimation == null
+                                  ? const Color(0xFF8B0D45).withOpacity(0.65)
+                                  : Colors.transparent,
+                            ),
                           ),
                         ],
                       ),
@@ -384,7 +392,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         ),
                         child: IgnorePointer(
                           child: Opacity(
-                            opacity: pkMediaOpacity.clamp(0, 1).toDouble(),
+                            // The uploaded PK square replaces the fallback panel.
+                            // Full opacity prevents the old blue/red panel ghosting through it.
+                            opacity: 1.0,
                             child: pkSquareAnimation!,
                           ),
                         ),
