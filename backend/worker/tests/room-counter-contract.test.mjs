@@ -54,7 +54,7 @@ test("PK stop preserves the blue/red seat split and reset is an independent room
   assert.match(seatHub, /this\.roomBattleActive = body\.active as boolean/);
   assert.match(seatHub, /room-battle-team-mode/);
   assert.match(seatHub, /room-battle-active/);
-  assert.match(seatHub, /type: "room_battle", teamMode: this\.roomBattleTeamMode, active: this\.roomBattleActive/);
+  assert.match(seatHub, /type: "room_battle",\s*teamMode: this\.roomBattleTeamMode,\s*active: this\.roomBattleActive/);
   assert.match(worker, /action !== "prepare" && action !== "start" && action !== "end" && action !== "reset"/);
   assert.match(worker, /const teamMode = action === "end"/);
   assert.match(worker, /teamMode, active: false, battleId: keepBattleId/);
