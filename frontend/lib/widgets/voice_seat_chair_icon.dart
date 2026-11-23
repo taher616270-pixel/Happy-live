@@ -8,6 +8,7 @@ class VoiceSeatChairIcon extends StatelessWidget {
   final bool showBackgroundCircle;
   final Color backgroundColor;
   final Color borderColor;
+  final bool showShadow;
 
   const VoiceSeatChairIcon({
     Key? key,
@@ -17,6 +18,7 @@ class VoiceSeatChairIcon extends StatelessWidget {
     this.showBackgroundCircle = true,
     this.backgroundColor = const Color(0xFF1E1C2B),
     this.borderColor = const Color(0xFF2D2A3E),
+    this.showShadow = true,
   }) : super(key: key);
 
   @override
@@ -45,13 +47,15 @@ class VoiceSeatChairIcon extends StatelessWidget {
           color: borderColor,
           width: size >= 60 ? 2.0 : 1.5,
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
+        boxShadow: showShadow
+            ? const [
+                BoxShadow(
+                  color: Color(0x33000000),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ]
+            : const [],
       ),
       alignment: Alignment.center,
       child: chair,
