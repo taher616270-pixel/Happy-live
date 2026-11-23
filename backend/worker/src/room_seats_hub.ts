@@ -112,6 +112,9 @@ export class RoomSeatsHub {
   private whoMicMode = "membersOnly";
   private roomBattleTeamMode = false;
   private roomBattleActive = false;
+  private roomBattleId: string | null = null;
+  private roomBattleEndsAt: string | null = null;
+  private roomBattleDurationSeconds = 300;
   private roomCounter: { active: boolean; startedAt: number; endsAt: number; scores: Record<string, number>; processedTransactions: string[]; startedBy: string } | null = null;
   private roomCounterHistory: Array<{ id: string; startedAt: number; endedAt: number; durationSeconds: number; scores: Record<string, number>; stoppedBy: string; reason: "manual" | "expired" }> = [];
   private async configuredSeatLimit(): Promise<number> {
@@ -140,6 +143,9 @@ export class RoomSeatsHub {
       this.roomCounter = (await this.state.storage.get<typeof this.roomCounter>("room-counter")) ?? null;
       this.roomBattleTeamMode = (await this.state.storage.get<boolean>("room-battle-team-mode")) ?? false;
       this.roomBattleActive = (await this.state.storage.get<boolean>("room-battle-active")) ?? false;
+      this.roomBattleId = (await this.state.storage.get<string | null>("room-battle-id")) ?? null;
+      this.roomBattleEndsAt = (await this.state.storage.get<string | null>("room-battle-ends-at")) ?? null;
+      this.roomBattleDurationSeconds = (await this.state.storage.get<number>("room-battle-duration-seconds")) ?? 300;
       this.roomCounterHistory = (await this.state.storage.get<typeof this.roomCounterHistory>("room-counter-history")) ?? [];
       if (this.roomCounter?.active) {
         this.roomCounter.scores ??= {};
@@ -151,7 +157,11 @@ export class RoomSeatsHub {
           await this.state.storage.put("room-counter", this.roomCounter);
         }
       }
+      if (this.roomBattleActive && this.roomBattleEndsAt && Date.parse(this.roomBattleEndsAt) <= Date.now()) {
+        await this.finishRoomBattle();
+      }
       await this.expireSeats(false);
+      await this.scheduleExpiry();
     });
   }
 
@@ -160,7 +170,21 @@ export class RoomSeatsHub {
     const url = new URL(request.url);
 
     if (url.pathname === "/snapshot" && request.method === "GET") {
+      await this.expireSeats(false);
       return Response.json(this.publicSnapshot());
+    }
+
+    if (url.pathname === "/battle-state" && request.method === "GET") {
+      const roomId = request.headers.get("x-room-id") ?? "";
+      if (!roomId || (this.roomId && roomId !== this.roomId)) return Response.json({ error: "room_mismatch" }, { status: 403 });
+      return Response.json(await this.publicBattleState());
+    }
+
+    if (url.pathname === "/battle-score/broadcast" && request.method === "POST") {
+      const roomId = request.headers.get("x-room-id") ?? "";
+      if (!roomId || roomId !== this.roomId) return Response.json({ error: "room_mismatch" }, { status: 403 });
+      await this.broadcastBattleScore();
+      return Response.json({ ok: true });
     }
 
     if (url.pathname === "/battle-state" && request.method === "POST") {
@@ -179,9 +203,29 @@ export class RoomSeatsHub {
       await this.enqueue(async () => {
         this.roomBattleTeamMode = body.teamMode as boolean;
         this.roomBattleActive = body.active as boolean;
+        this.roomBattleId = typeof body.battleId === "string" && body.battleId.trim() ? body.battleId.trim() : null;
+        this.roomBattleEndsAt = typeof body.endsAt === "string" && body.endsAt.trim() ? body.endsAt.trim() : null;
+        this.roomBattleDurationSeconds = Number.isSafeInteger(Number(body.durationSeconds)) && Number(body.durationSeconds) > 0
+          ? Number(body.durationSeconds) : 300;
         await this.state.storage.put("room-battle-team-mode", this.roomBattleTeamMode);
         await this.state.storage.put("room-battle-active", this.roomBattleActive);
-        this.broadcast({ type: "room_battle", teamMode: this.roomBattleTeamMode, active: this.roomBattleActive });
+        await this.state.storage.put("room-battle-id", this.roomBattleId);
+        await this.state.storage.put("room-battle-ends-at", this.roomBattleEndsAt);
+        await this.state.storage.put("room-battle-duration-seconds", this.roomBattleDurationSeconds);
+        this.broadcast({
+          type: "room_battle",
+          teamMode: this.roomBattleTeamMode,
+          active: this.roomBattleActive,
+          battleId: this.roomBattleId,
+          endsAt: this.roomBattleEndsAt,
+          durationSeconds: this.roomBattleDurationSeconds
+        });
+        if (!this.roomBattleTeamMode) {
+          this.broadcast({ type: "room_battle_score", battleId: null, blueScore: 0, redScore: 0, userScores: {}, userTeams: {} });
+        } else {
+          await this.broadcastBattleScore();
+        }
+        await this.scheduleExpiry();
       });
       return Response.json({ ok: true, teamMode: this.roomBattleTeamMode, active: this.roomBattleActive });
     }
@@ -459,7 +503,15 @@ export class RoomSeatsHub {
       }
       this.send(server, { type: "seat_snapshot", ...this.publicSnapshot(), mySeat: current?.seatNumber ?? null });
       this.send(server, { type: "room_counter", counter: this.publicRoomCounter() });
-      this.send(server, { type: "room_battle", teamMode: this.roomBattleTeamMode, active: this.roomBattleActive });
+      this.send(server, {
+        type: "room_battle",
+        teamMode: this.roomBattleTeamMode,
+        active: this.roomBattleActive,
+        battleId: this.roomBattleId,
+        endsAt: this.roomBattleEndsAt,
+        durationSeconds: this.roomBattleDurationSeconds
+      });
+      this.send(server, { type: "room_battle_score", ...(await this.publicBattleScore()) });
       this.broadcast({ type: "seat_updated", ...this.publicSnapshot() }, server);
     });
 
@@ -651,6 +703,10 @@ export class RoomSeatsHub {
   private async scheduleExpiry(): Promise<void> {
     const expiries = Object.values(this.snapshot.seats).map((seat) => seat.expiresAt);
     if (this.roomCounter?.active) expiries.push(this.roomCounter.endsAt);
+    if (this.roomBattleActive && this.roomBattleEndsAt) {
+      const battleExpiry = Date.parse(this.roomBattleEndsAt);
+      if (Number.isFinite(battleExpiry)) expiries.push(battleExpiry);
+    }
     if (expiries.length === 0) {
       await this.state.storage.deleteAlarm();
       return;
@@ -663,6 +719,9 @@ export class RoomSeatsHub {
     await this.enqueue(async () => {
       if (this.roomCounter?.active && this.roomCounter.endsAt <= Date.now()) {
         await this.finishRoomCounter("system", "expired");
+      }
+      if (this.roomBattleActive && this.roomBattleEndsAt && Date.parse(this.roomBattleEndsAt) <= Date.now()) {
+        await this.finishRoomBattle();
       }
       await this.expireSeats(true);
     });
@@ -698,6 +757,66 @@ export class RoomSeatsHub {
       participantCount: Object.keys(record.scores).length,
       reason: record.reason
     }));
+  }
+
+  private async publicBattleScore(): Promise<Record<string, unknown>> {
+    if (!this.roomBattleId) {
+      return { battleId: null, blueScore: 0, redScore: 0, userScores: {}, userTeams: {} };
+    }
+    const result = await this.env.DB.prepare(
+      "SELECT team, user_id AS userId, SUM(points) AS points FROM room_battle_gift_scores WHERE battle_id = ? GROUP BY team, user_id"
+    ).bind(this.roomBattleId).all<{ team: string; userId: string; points: number }>();
+    let blueScore = 0;
+    let redScore = 0;
+    const userScores: Record<string, number> = {};
+    const userTeams: Record<string, string> = {};
+    for (const row of result.results ?? []) {
+      const points = Math.max(0, Number(row.points) || 0);
+      userScores[row.userId] = (userScores[row.userId] ?? 0) + points;
+      userTeams[row.userId] = row.team;
+      if (row.team === "blue") blueScore += points;
+      if (row.team === "red") redScore += points;
+    }
+    return { battleId: this.roomBattleId, blueScore, redScore, userScores, userTeams };
+  }
+
+  private async publicBattleState(): Promise<Record<string, unknown>> {
+    return {
+      teamMode: this.roomBattleTeamMode,
+      active: this.roomBattleActive,
+      battleId: this.roomBattleId,
+      endsAt: this.roomBattleEndsAt,
+      durationSeconds: this.roomBattleDurationSeconds,
+      ...(await this.publicBattleScore())
+    };
+  }
+
+  private async broadcastBattleScore(): Promise<void> {
+    this.broadcast({ type: "room_battle_score", ...(await this.publicBattleScore()) });
+  }
+
+  private async finishRoomBattle(): Promise<void> {
+    if (!this.roomBattleActive) return;
+    const now = new Date().toISOString();
+    if (this.roomBattleId) {
+      await this.env.DB.prepare(
+        "UPDATE room_battles SET status = 'finished', ended_at = ? WHERE id = ? AND status = 'active'"
+      ).bind(now, this.roomBattleId).run();
+    }
+    this.roomBattleActive = false;
+    this.roomBattleEndsAt = null;
+    await this.state.storage.put("room-battle-active", false);
+    await this.state.storage.put("room-battle-ends-at", null);
+    this.broadcast({
+      type: "room_battle",
+      teamMode: this.roomBattleTeamMode,
+      active: false,
+      battleId: this.roomBattleId,
+      endsAt: null,
+      durationSeconds: this.roomBattleDurationSeconds,
+      reason: "expired"
+    });
+    await this.broadcastBattleScore();
   }
 
   private publicRoomCounter(): { active: boolean; startedAt: number; endsAt: number; scores: Record<string, number>; startedBy: string } | null {
