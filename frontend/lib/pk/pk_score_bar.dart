@@ -295,15 +295,19 @@ class _TabPainter extends CustomPainter {
     canvas.drawPath(
       fill,
       Paint()
-        ..shader = const LinearGradient(colors: [Color(0xFF3447D8), Color(0xFF8A2FA8), Color(0xFFD02A78)])
-            .createShader(rect),
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF405BFA), Color(0xFF9635C8), Color(0xFFE83B83)],
+        ).createShader(rect),
     );
+    // A clearer, slightly brighter outline makes the PK tab stand out without changing its shape.
     canvas.drawPath(
       open,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..shader = const LinearGradient(colors: [Color(0xFF7F8CFF), Color(0xFFFF73B8)]).createShader(rect),
+        ..strokeWidth = 2.8
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFB4BEFF), Color(0xFFFFA0D0)],
+        ).createShader(rect),
     );
     canvas.restore();
   }
