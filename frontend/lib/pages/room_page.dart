@@ -2478,8 +2478,10 @@ class _RoomPageState extends State<RoomPage> {
         if (!mounted || _roomBattleActive || !_pkDurationOptions.contains(minutes)) return;
         setState(() => _pkDurationMinutes = minutes);
       },
+      // زر «بدأ» يبدأ الجولة فعلياً فوراً؛ لا يمر بمرحلة prepare.
+      // عند وجود جولة نشطة يتحول نفس الزر إلى إيقاف PK.
       onToggle: () => unawaited(
-        _submitRoomBattleAction(_pkVisualMode ? 'end' : 'prepare'),
+        _pkVisualMode ? _submitRoomBattleAction('end') : Future<void>(() => _startRoomBattle()),
       ),
       onReset: () => unawaited(_submitRoomBattleAction('reset')),
       durationOptions: _pkDurationOptions,
