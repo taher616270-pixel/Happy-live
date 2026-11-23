@@ -526,16 +526,28 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             Positioned.fill(
               child: IgnorePointer(
                 child: Center(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: const Color(0xCC101018),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withOpacity(0.65), width: 1.5),
-                      boxShadow: const [BoxShadow(color: Color(0x884F78FF), blurRadius: 18)],
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0.65, end: 1),
+                    duration: const Duration(milliseconds: 550),
+                    curve: Curves.elasticOut,
+                    builder: (context, scale, child) => Opacity(
+                      opacity: scale.clamp(0.0, 1.0),
+                      child: Transform.scale(scale: scale, child: child),
                     ),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                      child: Text('START', style: TextStyle(color: Colors.white, fontSize: 27, fontWeight: FontWeight.w900, letterSpacing: 3)),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: const Color(0xCC101018),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.75), width: 1.5),
+                        boxShadow: const [
+                          BoxShadow(color: Color(0xAA4F78FF), blurRadius: 24, spreadRadius: 2),
+                          BoxShadow(color: Color(0x66FF4B9A), blurRadius: 14),
+                        ],
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                        child: Text('START', style: TextStyle(color: Colors.white, fontSize: 27, fontWeight: FontWeight.w900, letterSpacing: 3)),
+                      ),
                     ),
                   ),
                 ),
