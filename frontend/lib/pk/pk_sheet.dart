@@ -143,6 +143,9 @@ class _Preview extends StatelessWidget {
             size: d,
             color: Color(0xFF9A98A6),
             showBackgroundCircle: true,
+            backgroundColor: Colors.transparent,
+            borderColor: Colors.transparent,
+            showShadow: false,
           ),
         ),
       );
