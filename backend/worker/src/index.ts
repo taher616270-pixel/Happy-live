@@ -1503,7 +1503,53 @@ export default {
           ));
           await env.DB!.batch(statements);
           const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
-          if (action === "assign_moderator" || action === "remove_moderator") {
+          if (action === "toggle_seat_mute" || action === "toggle_seat_lock") {
+          const seatNumber = Number(body.seatNumber);
+          const seatLimit = await env.DB!.prepare("SELECT settings_json FROM room_settings WHERE room_id = ? LIMIT 1")
+            .bind(roomId).first<{ settings_json: string }>();
+          let seatSettings: Record<string, unknown> = {};
+          try { seatSettings = seatLimit?.settings_json ? JSON.parse(seatLimit.settings_json) as Record<string, unknown> : {}; } catch { seatSettings = {}; }
+          const configuredSeats = Number(seatSettings.seats ?? 8);
+          if (!Number.isInteger(seatNumber) || seatNumber < 1 || seatNumber > configuredSeats || seatNumber > 24) {
+            return json({ error: "invalid_seat_number", message: "رقم المايك غير صحيح" }, 400, origin, env);
+          }
+          const seatHub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
+          const snapshotResponse = await seatHub.fetch(new Request("https://room-seats.internal/snapshot"));
+          const snapshot = await snapshotResponse.json() as {
+            seats?: Array<{ seatNumber: number; userId: string; isRoomOwner?: boolean; isRoomModerator?: boolean; isMuted?: boolean }>;
+            seatControls?: Record<string, { isLocked?: boolean; isMuted?: boolean }>;
+          };
+          const member = (snapshot.seats ?? []).find((seat) => seat.seatNumber === seatNumber);
+          if (member && (member.isRoomOwner || member.isRoomModerator)) {
+            return json({ error: "cannot_moderate_room_staff", message: "لا يمكن التحكم بمايك المالك أو مشرف الغرفة" }, 403, origin, env);
+          }
+          const previous = snapshot.seatControls?.[String(seatNumber)] ?? { isLocked: false, isMuted: member?.isMuted === true };
+          const nextLocked = action === "toggle_seat_lock" ? !previous.isLocked : previous.isLocked;
+          const nextMuted = action === "toggle_seat_mute" ? !previous.isMuted : previous.isMuted;
+          const now = new Date().toISOString();
+          if (member && action === "toggle_seat_mute") {
+            await env.DB!.prepare(
+              "INSERT INTO room_user_controls (room_id, user_id, is_muted, muted_by, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(room_id, user_id) DO UPDATE SET is_muted = excluded.is_muted, muted_by = CASE WHEN excluded.is_muted = 1 THEN excluded.muted_by ELSE NULL END, updated_at = excluded.updated_at"
+            ).bind(roomId, member.userId, nextMuted ? 1 : 0, nextMuted ? actor.id : null, now).run();
+            await seatHub.fetch(new Request("https://room-seats.internal/set-muted", {
+              method: "POST",
+              headers: { "x-target-user-id": member.userId, "x-is-muted": nextMuted ? "true" : "false" }
+            }));
+          }
+          const controlResponse = await seatHub.fetch(new Request("https://room-seats.internal/set-seat-control", {
+            method: "POST",
+            headers: {
+              "x-seat-number": String(seatNumber),
+              "x-is-locked": nextLocked ? "true" : "false",
+              "x-is-muted": nextMuted ? "true" : "false"
+            }
+          }));
+          if (!controlResponse.ok) return json({ error: "seat_control_failed", message: "تعذر تحديث المايك" }, 503, origin, env);
+          await env.DB!.prepare("INSERT INTO room_settings_logs (id, room_id, actor_user_id, target_user_id, action, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+            .bind(crypto.randomUUID(), roomId, actor.id, member?.userId ?? null, action, JSON.stringify({ seatNumber, isLocked: nextLocked, isMuted: nextMuted }), now).run();
+          return json({ ok: true, seatNumber, isLocked: nextLocked, isMuted: nextMuted }, 200, origin, env);
+        }
+        if (action === "assign_moderator" || action === "remove_moderator") {
             await seatHub.fetch(new Request("https://room-seats.internal/set-moderator", {
               method: "POST",
               headers: {
@@ -3168,7 +3214,7 @@ export default {
         }
         if (!canModerate) return json({ error: "room_moderator_required", message: "هذه الصلاحية لمالك الغرفة ومشرفيها فقط" }, 403, origin, env);
         if (!isOwner) {
-          const permissionId = action === "toggle_mute" || action === "unmute" ? "mute"
+          const permissionId = action === "toggle_mute" || action === "unmute" || action === "toggle_seat_mute" || action === "toggle_seat_lock" ? "mute"
             : action === "kick" || action === "unkick" ? "kick"
             : action === "ban" || action === "unban" ? "blacklist"
             : action === "lower" ? "super"
