@@ -2941,6 +2941,7 @@ class _RoomPageState extends State<RoomPage> {
         if (!mounted) return;
         setState(() => _pkStarted = true);
       },
+      onPkOpen: () => _openRoomBattleTools(context),
       onUpgradeRoom: upgradeRoom,
       onOpenGifts: _openRoomGiftPicker,
       onOpenCannonRoom: _openCannonBannerRoom,
