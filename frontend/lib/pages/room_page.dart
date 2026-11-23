@@ -2349,7 +2349,7 @@ class _RoomPageState extends State<RoomPage> {
         _pkStartHideDurationSeconds = ((settings['startHideDurationSeconds'] as num?)?.toDouble() ?? 0.5).clamp(0, 5).toDouble();
         _pkSquareRadius = ((settings['squareRadius'] as num?)?.toDouble() ?? 26).clamp(0, 48).toDouble();
         _pkSquareWidthPercent = ((settings['squareWidthPercent'] as num?)?.toDouble() ?? 100).clamp(50, 100).toDouble();
-        _pkSquareHeight = ((settings['squareHeight'] as num?)?.toDouble() ?? 284).clamp(160, 500).toDouble();
+        _pkSquareHeight = ((settings['squareHeight'] as num?)?.toDouble() ?? 284).clamp(240, 500).toDouble();
         _pkMediaOpacity = (((settings['mediaOpacity'] as num?)?.toDouble() ?? 85) / 100).clamp(0, 1).toDouble();
         _pkDurationOptions = options.isEmpty ? <int>[5, 15, 30, 120] : options;
         final defaultDuration = (settings['defaultDurationMinutes'] as num?)?.toInt() ?? 5;
