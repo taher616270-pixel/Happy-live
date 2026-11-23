@@ -1,3 +1,4 @@
+import '../widgets/voice_seat_chair_icon.dart';
 // نافذة PK المرئية فقط — لا تشغّل المبارزة ولا تتصل بالخادم.
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -138,7 +139,11 @@ class _Preview extends StatelessWidget {
         child: const SizedBox(
           width: d,
           height: d,
-          child: CustomPaint(painter: _SingleSofaChairPainter()),
+          child: VoiceSeatChairIcon(
+            size: d,
+            color: Color(0xFF9A98A6),
+            showBackgroundCircle: true,
+          ),
         ),
       );
       return SizedBox(height: h, child: Stack(clipBehavior: Clip.none, children: [
