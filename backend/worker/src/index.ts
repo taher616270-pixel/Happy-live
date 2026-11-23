@@ -3560,7 +3560,11 @@ export default {
             "SELECT COUNT(DISTINCT v.user_id) AS count FROM room_chat_visits v WHERE v.room_id = ? AND v.exited_at IS NULL AND v.last_seen_at >= ?"
           ).bind(roomId, new Date(Date.now() - 45000).toISOString()).first<{ count: number }>()
         ]);
-        const snapshot = await snapshotResponse.json() as { seats?: Array<Record<string, unknown>>; revision?: number };
+        const snapshot = await snapshotResponse.json() as {
+          seats?: Array<Record<string, unknown>>;
+          seatControls?: Record<string, { isLocked?: boolean; isMuted?: boolean }>;
+          revision?: number;
+        };
         const activeSeats = snapshot.seats ?? [];
         const seatControls = snapshot.seatControls ?? {};
         const activeSeatIds = activeSeats
