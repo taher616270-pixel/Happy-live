@@ -3225,9 +3225,10 @@ export default {
           if (member && (member.isRoomOwner || member.isRoomModerator)) {
             return json({ error: "cannot_moderate_room_staff", message: "لا يمكن التحكم بمايك المالك أو مشرف الغرفة" }, 403, origin, env);
           }
-          const previous = snapshot.seatControls?.[String(seatNumber)] ?? { isLocked: false, isMuted: member?.isMuted === true };
+          const previous = snapshot.seatControls?.[String(seatNumber)] ?? { isLocked: false, isMuted: false };
+          const effectiveMuted = previous.isMuted === true || member?.isMuted === true;
           const nextLocked = action === "toggle_seat_lock" ? !previous.isLocked : previous.isLocked;
-          const nextMuted = action === "toggle_seat_mute" ? !previous.isMuted : previous.isMuted;
+          const nextMuted = action === "toggle_seat_mute" ? !effectiveMuted : previous.isMuted;
           const now = new Date().toISOString();
           if (member && action === "toggle_seat_mute") {
             await env.DB!.prepare(
