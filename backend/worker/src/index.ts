@@ -2453,6 +2453,18 @@ export default {
         if (action !== "prepare" && action !== "start" && action !== "end" && action !== "reset") {
           return json({ error: "invalid_battle_action" }, 400, origin, env);
         }
+        const pkConfigRow = await env.DB.prepare("SELECT setting_value FROM platform_settings WHERE setting_key = 'pk_battle_settings' LIMIT 1")
+          .first<{ setting_value: string }>();
+        let pkConfig: Record<string, unknown> = {};
+        try { pkConfig = pkConfigRow?.setting_value ? JSON.parse(pkConfigRow.setting_value) as Record<string, unknown> : {}; } catch { pkConfig = {}; }
+        if (pkConfig.enabled === false && (action === "prepare" || action === "start")) {
+          return json({ error: "pk_disabled_by_admin", message: "تحدي PK متوقف من الإدارة" }, 403, origin, env);
+        }
+        const configuredDurationOptions = Array.isArray(pkConfig.durationOptions)
+          ? pkConfig.durationOptions.map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 120)
+          : [5, 15, 30, 120];
+        const configuredDefaultDuration = Number(pkConfig.defaultDurationMinutes ?? 5);
+
         if (!env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
         const hub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
         const now = new Date().toISOString();
@@ -2478,8 +2490,8 @@ export default {
             if (!response.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
             return json({ ok: true, teamMode: true, active: true, battleId: activeBattle.id, endsAt: expiresAt, durationSeconds: Number(activeBattle.durationSeconds || 300) }, 200, origin, env);
           }
-          const durationMinutes = Number(body.durationMinutes ?? 5);
-          if (![5, 15, 30, 120].includes(durationMinutes)) return json({ error: "invalid_battle_duration" }, 400, origin, env);
+          const durationMinutes = Number(body.durationMinutes ?? configuredDefaultDuration);
+          if (!configuredDurationOptions.includes(durationMinutes)) return json({ error: "invalid_battle_duration" }, 400, origin, env);
           const response = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
             method: "POST", headers: { "Content-Type": "application/json", "x-room-id": roomId },
             body: JSON.stringify({ teamMode: true, active: false, battleId: null, endsAt: null, durationSeconds: durationMinutes * 60 })
