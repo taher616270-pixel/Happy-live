@@ -301,16 +301,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // PK score strip: dynamic score calculation, scrolling arrows, moving center glowing capsule
-          Positioned(
-            top: -4,
-            left: 0,
-            right: 0,
-            child: PkScoreBar(
-              blue: calculatedBlueScore,
-              red: calculatedRedScore,
-            ),
-          ),
           // Team panels touch the score strip with no vertical gap.
           Positioned(
             top: 6,
@@ -382,6 +372,16 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ),
+          // PK score strip: dynamic score calculation, scrolling arrows, moving center glowing capsule
+          Positioned(
+            top: -4,
+            left: 0,
+            right: 0,
+            child: PkScoreBar(
+              blue: calculatedBlueScore,
+              red: calculatedRedScore,
             ),
           ),
           if (!pkStarted)
