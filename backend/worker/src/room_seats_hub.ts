@@ -427,13 +427,10 @@ export class RoomSeatsHub {
       await this.enqueue(async () => {
         this.seatControls[String(seatNumber)] = { isLocked, isMuted };
         const member = this.snapshot.seats[String(seatNumber)];
-        if (member) {
-          member.isMuted = isMuted;
-          this.snapshot.revision++;
-          await this.persist();
-          this.broadcast({ type: "seat_updated", ...this.publicSnapshot() });
-        }
-        await this.state.storage.put("room-seat-controls", this.seatControls);
+        if (member) member.isMuted = isMuted;
+        this.snapshot.revision++;
+        await this.persist();
+        this.broadcast({ type: "seat_updated", ...this.publicSnapshot() });
       });
       return Response.json({ ok: true, ...this.publicSnapshot() });
     }
