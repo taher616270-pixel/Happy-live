@@ -144,7 +144,6 @@ class _RoomPageState extends State<RoomPage> {
   int _pkBlueScore = 0;
   int _pkRedScore = 0;
   Map<String, int> _pkUserScores = <String, int>{};
-  Map<String, String> _pkUserTeams = <String, String>{};
   DateTime? _pkEndsAt;
   Timer? _pkTicker;
   int _pkNowMs = DateTime.now().millisecondsSinceEpoch;
@@ -2149,26 +2148,17 @@ class _RoomPageState extends State<RoomPage> {
 
   void _applyPkBattleScores(Map<String, dynamic> data) {
     final rawUsers = data['userScores'];
-    final rawTeams = data['userTeams'];
     final users = <String, int>{};
-    final teams = <String, String>{};
     if (rawUsers is Map) {
       rawUsers.forEach((key, value) {
         final score = value is num ? value.toInt() : int.tryParse(value?.toString() ?? '');
         if (score != null && score > 0) users[key.toString()] = score;
       });
     }
-    if (rawTeams is Map) {
-      rawTeams.forEach((key, value) {
-        final team = value?.toString();
-        if (team == 'blue' || team == 'red') teams[key.toString()] = team!;
-      });
-    }
     setState(() {
       _pkBlueScore = (data['blueScore'] as num?)?.toInt() ?? 0;
       _pkRedScore = (data['redScore'] as num?)?.toInt() ?? 0;
       _pkUserScores = users;
-      _pkUserTeams = teams;
     });
   }
 
@@ -2219,7 +2209,7 @@ class _RoomPageState extends State<RoomPage> {
         headers: _headers,
         body: jsonEncode({
           'action': action,
-          if (action == 'start') 'durationMinutes': _pkDurationMinutes,
+          if (action == 'start' || action == 'prepare') 'durationMinutes': _pkDurationMinutes,
         }),
       ).timeout(const Duration(seconds: 15));
       final decoded = jsonDecode(response.body);
@@ -3064,7 +3054,9 @@ class _RoomPageState extends State<RoomPage> {
       onMinimizeRoom: _minimizeRoom,
       onCloseRoom: _closeRoom,
       onPkReset: () => unawaited(_submitRoomBattleAction('reset')),
-      onPkStart: () => unawaited(_startRoomBattle()),
+      onPkStart: (_isRoomOwner || _amRoomModerator)
+          ? () => unawaited(_startRoomBattle())
+          : null,
       onPkOpen: (_isRoomOwner || _amRoomModerator)
           ? () => _openRoomBattleTools(context)
           : null,
