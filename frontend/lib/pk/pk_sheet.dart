@@ -1,5 +1,5 @@
 import '../widgets/voice_seat_chair_icon.dart';
-// نافذة PK المرئية فقط — لا تشغّل المبارزة ولا تتصل بالخادم.
+// نافذة إعدادات وتحكم تحدي PK.
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
