@@ -2225,8 +2225,8 @@ class _RoomPageState extends State<RoomPage> {
         _pkShowChallengeTitle = settings['showChallengeTitle'] != false;
         _pkShowStartText = settings['showStartText'] != false;
         _pkShowTimer = settings['showTimer'] != false;
-        _pkSquareRadius = ((settings['squareRadius'] as num?)?.toDouble() ?? 26).clamp(0, 48);
-        _pkMediaOpacity = (((settings['mediaOpacity'] as num?)?.toDouble() ?? 85) / 100).clamp(0, 1);
+        _pkSquareRadius = ((settings['squareRadius'] as num?)?.toDouble() ?? 26).clamp(0, 48).toDouble();
+        _pkMediaOpacity = (((settings['mediaOpacity'] as num?)?.toDouble() ?? 85) / 100).clamp(0, 1).toDouble();
         _pkDurationOptions = options.isEmpty ? <int>[5, 15, 30, 120] : options;
         final defaultDuration = (settings['defaultDurationMinutes'] as num?)?.toInt() ?? 5;
         if (_pkDurationOptions.contains(defaultDuration) && !_roomBattleActive) {
