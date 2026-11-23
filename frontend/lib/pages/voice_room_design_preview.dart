@@ -83,6 +83,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.pkUserScores = const <String, int>{},
     this.pkTimerLabel = '05:00',
     this.pkStartingCountdown = false,
+    this.pkChallengeTitle = 'تحدي PK',
+    this.pkShowChallengeTitle = true,
+    this.pkShowStartText = true,
+    this.pkShowTimer = true,
+    this.pkSquareRadius = 26,
+    this.pkSquareAnimation,
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
@@ -133,6 +139,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final Map<String, int> pkUserScores;
   final String pkTimerLabel;
   final bool pkStartingCountdown;
+  final String pkChallengeTitle;
+  final bool pkShowChallengeTitle;
+  final bool pkShowStartText;
+  final bool pkShowTimer;
+  final double pkSquareRadius;
+  final Widget? pkSquareAnimation;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -335,8 +347,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   Positioned.fill(
                     child: ClipRRect(
                       borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(26),
-                        bottomRight: Radius.circular(26),
+                        bottomLeft: Radius.circular(pkSquareRadius),
+                        bottomRight: Radius.circular(pkSquareRadius),
                       ),
                       child: Row(
                         textDirection: TextDirection.ltr,
@@ -351,6 +363,15 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (pkSquareAnimation != null)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: Opacity(
+                          opacity: 0.85,
+                          child: pkSquareAnimation!,
+                        ),
+                      ),
+                    ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
                     child: Column(
@@ -426,7 +447,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        Text(
+                        if (pkShowTimer) Text(
                           pkTimerLabel,
                           style: const TextStyle(
                             color: Colors.white,
@@ -476,7 +497,22 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   : null,
             ),
           ),
-          if (pkStartingCountdown)
+          if (pkShowChallengeTitle && pkChallengeTitle.trim().isNotEmpty)
+            Positioned(
+              bottom: 5,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(color: const Color(0x990B0A16), borderRadius: BorderRadius.circular(12)),
+                    child: Text(pkChallengeTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ),
+            ),
+          if (pkStartingCountdown && pkShowStartText)
             Positioned.fill(
               child: IgnorePointer(
                 child: Center(
