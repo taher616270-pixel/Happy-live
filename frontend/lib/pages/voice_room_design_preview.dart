@@ -58,6 +58,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.onCloseRoom,
     this.onPkReset,
     this.onPkStart,
+    this.onPkOpen,
     this.onUpgradeRoom,
     this.onOpenGifts,
     this.onRoomSettingsChanged,
@@ -100,6 +101,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final VoidCallback? onCloseRoom;
   final VoidCallback? onPkReset;
   final VoidCallback? onPkStart;
+  final VoidCallback? onPkOpen;
   final Future<void> Function(String roomId, int level)? onUpgradeRoom;
   final VoidCallback? onOpenGifts;
   final VoidCallback? onRoomSettingsChanged;
@@ -383,7 +385,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               blue: calculatedBlueScore,
               red: calculatedRedScore,
               tab: pkStarted
-                  ? Row(
+                  ? GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onPkOpen,
+                      child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Text(
@@ -441,6 +446,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
                     )
                   : null,
             ),
