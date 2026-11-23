@@ -602,11 +602,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         final occupied = seat != null && (seat['userId'] ?? '').toString().isNotEmpty;
         final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
         final visibleAvatar = occupied ? avatar : (seatNumber == joinSeatNumber ? currentUserAvatarUrl : '');
-        // In the design picture, seats 3 and 8 are locked.
-        final locked = seatState.isLocked || (seat?['isLocked'] == true) || (seat?['locked'] == true) || seatNumber == 3 || seatNumber == 8;
-        // Seats 4 and 5 have the muted mic icon on the bottom edge.
-        final isMuted = seatState.isMuted || (seat?['isMuted'] == true) || seatNumber == 4 || seatNumber == 5;
-
+        final locked = seatState.isLocked || seat?['isLocked'] == true ||
+            seat?['locked'] == true || seatNumber == 3 || seatNumber == 8;
+        final isMuted = seatState.isMuted || seat?['isMuted'] == true ||
+            seatNumber == 4 || seatNumber == 5;
         final userId = (seat?['userId'] ?? '').toString();
         final pkPoints = pkUserScores[userId] ?? 0;
         final isBlueTeamSeat = const [3, 4, 7, 8, 11, 12].contains(seatNumber);
@@ -616,57 +615,76 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         final voiceLevel = speakerUid == null ? 0.0 : (speakerLevels[speakerUid] ?? 0.0);
         final isSpeaking = occupied && !isMuted && voiceLevel >=
             (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
+
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: occupied
               ? () => _showUserProfile(context, seat!)
               : () => onTapSeat(seatNumber),
           child: SizedBox(
-            width: 50,
+            width: 58,
+            height: 78,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: occupied
-                            ? Colors.white.withOpacity(0.12)
-                            : const Color(0xFF1E1C2B).withOpacity(0.70),
-
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.25),
-                          width: 2.4,
-                        ),
-                      ),
-                      child: ClipOval(
-                        child: (seatNumber == 1 || occupied || seatNumber == joinSeatNumber)
-                            ? (visibleAvatar.startsWith('http')
-                                ? HappyNetworkImage(visibleAvatar, fit: BoxFit.cover)
-                                : Image.asset(
-                                    'assets/images/app_icon.PNG',
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.white, size: 28),
-                                  ))
-                            : Center(
-                                child: locked
-                                    ? Icon(
-                                        Icons.lock_outline,
-                                        color: Colors.white.withOpacity(0.72),
-                                        size: 18,
-                                      )
-                                    : const CustomPaint(
-                                        size: Size(22, 22),
-                                        painter: ChairCustomPainter(
-                                          color: Color(0xFF9A98A6),
-                                          strokeWidth: 2.0,
-                                        ),
-                                      ),
+                    _GoldenVoiceWave(
+                      isSpeaking: isSpeaking,
+                      avatarSize: 46,
+                      rippleStartSize: 51,
+                      rippleEndSize: 64,
+                      avatar: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 460),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: Container(
+                          key: ValueKey<String>(userId.isNotEmpty ? userId : 'empty-$seatNumber'),
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: occupied
+                                ? Colors.white.withOpacity(.14)
+                                : const Color(0xFF1E1C2B).withOpacity(.70),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(occupied ? .82 : .48),
+                              width: 2,
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x99000000),
+                                blurRadius: 9,
+                                spreadRadius: 1,
+                                offset: Offset(0, 2),
                               ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                if (visibleAvatar.startsWith('http'))
+                                  HappyNetworkImage(visibleAvatar, fit: BoxFit.cover)
+                                else if (occupied)
+                                  Icon(Icons.mic_rounded, color: Colors.white.withOpacity(.92), size: 20)
+                                else if (locked)
+                                  Icon(Icons.lock_outline, color: Colors.white.withOpacity(.92), size: 20)
+                                else
+                                  const Center(
+                                    child: CustomPaint(
+                                      size: Size(22, 22),
+                                      painter: ChairCustomPainter(
+                                        color: Color(0xFF9A98A6),
+                                        strokeWidth: 2.0,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     if (occupied && pkPoints > 0)
@@ -695,64 +713,35 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     if (isMuted)
                       Positioned(
                         left: -2,
-                        bottom: 2,
-                        child: Container(
-                          width: 14,
-                          height: 14,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.mic_off,
-                              color: Color(0xFFE53965),
-                              size: 8,
-                            ),
+                        bottom: 0,
+                        child: IgnorePointer(
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                            child: const Icon(Icons.mic_off_rounded, size: 10, color: Color(0xFFE91E63)),
                           ),
                         ),
                       ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                if (!occupied)
-                  Transform.translate(
-                    offset: const Offset(0, 2),
-                    child: Text(
-                      seatNumber == joinSeatNumber ? 'انضمام' : '$seatNumber',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(.7),
-                        fontSize: seatNumber == joinSeatNumber ? 10 : 12,
-                        fontWeight: seatNumber == joinSeatNumber ? FontWeight.w700 : FontWeight.normal,
-                        shadows: const [
-                          Shadow(
-                            color: Color(0xCC000000),
-                            blurRadius: 4,
-                            offset: Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  Text(
-                    (seat?['name'] ?? seat?['displayName'] ?? '').toString(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      shadows: [
-                        Shadow(
-                          color: Color(0xCC000000),
-                          blurRadius: 4,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
-                    ),
+                Text(
+                  occupied
+                      ? (seat?['name'] ?? seat?['displayName'] ?? 'مستخدم').toString()
+                      : (seatNumber == joinSeatNumber ? 'انضمام' : (locked ? 'مقفل' : '$seatNumber')),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(occupied ? 1 : .7),
+                    fontSize: occupied ? 10 : (seatNumber == joinSeatNumber ? 10 : 12),
+                    fontWeight: occupied || seatNumber == joinSeatNumber
+                        ? FontWeight.w700
+                        : FontWeight.normal,
+                    shadows: const [
+                      Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 1)),
+                    ],
                   ),
-
+                ),
               ],
             ),
           ),
