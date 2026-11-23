@@ -376,7 +376,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         ),
                         child: IgnorePointer(
                           child: Opacity(
-                            opacity: pkMediaOpacity.clamp(0, 1),
+                            opacity: pkMediaOpacity.clamp(0, 1).toDouble(),
                             child: pkSquareAnimation!,
                           ),
                         ),
