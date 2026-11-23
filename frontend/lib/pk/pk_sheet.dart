@@ -107,16 +107,18 @@ class _PkSheet extends StatelessWidget {
           const SizedBox(height: 16),
           const Text('مدة كل جولة', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 14),
-          Row(children: [
-            for (final m in durationOptions) ...[
-              if (m != durationOptions.first) const SizedBox(width: 16),
-              _Chip(
-                minutes: m,
-                selected: m == selectedDurationMinutes,
-                onTap: isPkActive ? null : () => onDurationChanged(m),
-              ),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final m in durationOptions)
+                _Chip(
+                  minutes: m,
+                  selected: m == selectedDurationMinutes,
+                  onTap: isPkActive ? null : () => onDurationChanged(m),
+                ),
             ],
-          ]),
+          ),
           const SizedBox(height: 22),
           const Text(
             'ملاحظة: في أوضاع 15 و20 و30 مقعدًا صوتيًا، لا يمكن المشاركة في الـ PK إلا للمضيفين الموجودين في أول 12 مقعدًا صوتيًا',
