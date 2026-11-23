@@ -340,7 +340,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
       (a, b) => roomLayout.seatNumber(a).compareTo(roomLayout.seatNumber(b)),
     );
 
-    final squareHeight = pkSquareHeight.clamp(160.0, 500.0).toDouble();
+    final squareHeight = pkSquareHeight.clamp(240.0, 500.0).toDouble();
     final squareWidth = MediaQuery.sizeOf(context).width *
         (pkSquareWidthPercent.clamp(50.0, 100.0).toDouble() / 100);
     return SizedBox(
