@@ -50,8 +50,8 @@ test("Flutter shows the orange timer control and per-recipient green mic score b
 });
 
 test("PK stop preserves the blue/red seat split and reset is an independent room-wide action", () => {
-  assert.match(seatHub, /roomBattleTeamMode = false/);
-  assert.match(seatHub, /roomBattleActive = false/);
+  assert.match(seatHub, /this\.roomBattleTeamMode = body\.teamMode as boolean/);
+  assert.match(seatHub, /this\.roomBattleActive = body\.active as boolean/);
   assert.match(seatHub, /room-battle-team-mode/);
   assert.match(seatHub, /room-battle-active/);
   assert.match(seatHub, /type: "room_battle", teamMode: this\.roomBattleTeamMode, active: this\.roomBattleActive/);
