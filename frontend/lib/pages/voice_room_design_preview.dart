@@ -78,6 +78,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.pkActive = false,
     this.pkVisualMode = false,
     this.pkStarted = false,
+    this.pkBlueScore = 0,
+    this.pkRedScore = 0,
+    this.pkUserScores = const <String, int>{},
+    this.pkTimerLabel = '05:00',
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
@@ -123,6 +127,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final bool pkActive;
   final bool pkVisualMode;
   final bool pkStarted;
+  final int pkBlueScore;
+  final int pkRedScore;
+  final Map<String, int> pkUserScores;
+  final String pkTimerLabel;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -266,24 +274,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   /// During entry, expose only the room identity tile and the close control.
   /// Mic seats, chat, gifts and every other action wait for the DB snapshot.
   Widget _buildPkRoomView(BuildContext context) {
-    int calculatedBlueScore = 0;
-    int calculatedRedScore = 0;
-    const blueSeatNumbers = [3, 4, 7, 8, 11, 12];
-    const redSeatNumbers = [1, 2, 5, 6, 9, 10];
-    for (final sNum in blueSeatNumbers) {
-      final s = _seatAt(sNum);
-      final uid = (s?['userId'] ?? '').toString();
-      if (uid.isNotEmpty) {
-        calculatedBlueScore += (roomGiftScores[uid] ?? 0);
-      }
-    }
-    for (final sNum in redSeatNumbers) {
-      final s = _seatAt(sNum);
-      final uid = (s?['userId'] ?? '').toString();
-      if (uid.isNotEmpty) {
-        calculatedRedScore += (roomGiftScores[uid] ?? 0);
-      }
-    }
+    final calculatedBlueScore = pkBlueScore;
+    final calculatedRedScore = pkRedScore;
 
     final roomLayout = micLayoutById(_micLayoutId);
     final seatStore = context.watch<SeatStateStore>();
@@ -427,7 +419,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         const Text(
-                          '04:58',
+                          pkTimerLabel,
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -545,6 +537,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         // Seats 4 and 5 have the muted mic icon on the bottom edge.
         final isMuted = seatState.isMuted || (seat?['isMuted'] == true) || seatNumber == 4 || seatNumber == 5;
 
+            final userId = (seat?['userId'] ?? '').toString();
+        final pkPoints = pkUserScores[userId] ?? 0;
+        final isBlueTeamSeat = const [3, 4, 7, 8, 11, 12].contains(seatNumber);
         final speakerUid = seat?['uid'] is num
             ? (seat!['uid'] as num).toInt()
             : int.tryParse((seat?['userCode'] ?? '').toString());
@@ -603,6 +598,29 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                               ),
                       ),
                     ),
+                    if (occupied && pkPoints > 0)
+                      Positioned(
+                        top: -8,
+                        right: -7,
+                        child: Container(
+                          constraints: const BoxConstraints(minWidth: 25),
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isBlueTeamSeat ? const Color(0xFF244BDA) : const Color(0xFFB51E58),
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(color: Colors.white.withOpacity(.85), width: .7),
+                          ),
+                          child: Text(
+                            pkPoints >= 1000000
+                                ? '${(pkPoints / 1000000).toStringAsFixed(1)}M'
+                                : pkPoints >= 1000
+                                    ? '${(pkPoints / 1000).toStringAsFixed(1)}K'
+                                    : pkPoints.toString(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900, height: 1.1),
+                          ),
+                        ),
+                      ),
                     if (isMuted)
                       Positioned(
                         left: -2,
