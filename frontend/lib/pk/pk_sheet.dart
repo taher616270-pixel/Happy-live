@@ -50,7 +50,7 @@ class _PkSheet extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: GestureDetector(
-                  onTap: () {},
+                  onTap: () => showPkRulesSheet(context),
                   child: Container(
                     width: 32, height: 32,
                     decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0x1FFFFFFF)),
@@ -344,4 +344,79 @@ class _Btn extends StatelessWidget {
       child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
     ),
   );
+}
+
+/// نافذة قواعد تحدي PK — محتواها يبقى فارغاً إلى أن تُضاف القواعد.
+Future<void> showPkRulesSheet(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: _PkRulesSheet(),
+    ),
+  );
+}
+
+class _PkRulesSheet extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).padding.bottom;
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: Container(
+        height: 446 + bottom,
+        padding: EdgeInsets.fromLTRB(16, 13, 16, 14 + bottom),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            stops: [0, 0.5, 1],
+            colors: [Color(0xFF5A1228), Color(0xFF2A1060), Color(0xFF141480)],
+          ),
+        ),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 32,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Text(
+                    'قواعد التحدي',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0x1FFFFFFF),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Expanded(child: SizedBox()),
+          ],
+        ),
+      ),
+    );
+  }
 }
