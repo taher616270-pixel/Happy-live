@@ -531,7 +531,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     duration: const Duration(milliseconds: 550),
                     curve: Curves.elasticOut,
                     builder: (context, scale, child) => Opacity(
-                      opacity: scale.clamp(0.0, 1.0),
+                      opacity: scale.clamp(0.0, 1.0).toDouble(),
                       child: Transform.scale(scale: scale, child: child),
                     ),
                     child: DecoratedBox(
