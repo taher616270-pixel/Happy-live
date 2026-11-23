@@ -38,6 +38,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     required this.seats,
     this.speakerLevels = const <int, double>{},
     required this.onTapSeat,
+    this.onJoinSeat,
     required this.isChangingSeat,
     this.pendingSeatNumbers = const <int>{},
     required this.audienceCount,
@@ -81,6 +82,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final List<Map<String, dynamic>> seats;
   final Map<int, double> speakerLevels;
   final ValueChanged<int> onTapSeat;
+  final ValueChanged<int>? onJoinSeat;
   final bool isChangingSeat;
   final Set<int> pendingSeatNumbers;
   final int audienceCount;
@@ -1731,6 +1733,25 @@ Widget _roomActionButton({
     // remain outside the battle in a separate naturally styled row.
     final roomLayout = micLayoutById(resolvedLayoutId);
     final layout = micLayoutById(pkVisualMode ? 'm12' : resolvedLayoutId);
+    final seatStore = context.watch<SeatStateStore>();
+    final roomSeatNumbers = <int>{
+      for (final row in roomLayout.rows)
+        for (final slot in row.whereType<MicSeat>())
+          roomLayout.seatNumber(slot),
+    }.toList()..sort();
+    int? firstJoinSeat;
+    if (seatStore.mySeat == null) {
+      for (final number in roomSeatNumbers) {
+        final state = seatStore.seats[number] ?? SeatState.empty(number);
+        final pending = state.isPending ||
+            seatStore.isPending(number) ||
+            pendingSeatNumbers.contains(number);
+        if (state.occupied || pending) continue;
+        if (state.isLocked && !canModerateUsers) continue;
+        firstJoinSeat = number;
+        break;
+      }
+    }
     final overflowSlots = <MicSeat>[];
     if (pkVisualMode) {
       for (final row in roomLayout.rows) {
@@ -1911,6 +1932,7 @@ Widget _roomActionButton({
         final mine = seat?['isMe'] == true;
         final name = (seat?['name'] ?? '').toString();
         final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
+        final visibleAvatar = occupied ? avatar : (number == firstJoinSeat ? seatStore.currentAvatarUrl : '');
         final muted = seat?['isMuted'] == true;
         final locked = seat?['isLocked'] == true || seat?['locked'] == true;
         final speakerUid = seat?['uid'] is num
@@ -2028,9 +2050,9 @@ Widget _roomActionButton({
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            if (avatar.startsWith('http'))
-                              HappyNetworkImage(avatar, fit: BoxFit.cover),
-                            if (!avatar.startsWith('http'))
+                            if (visibleAvatar.startsWith('http'))
+                              HappyNetworkImage(visibleAvatar, fit: BoxFit.cover),
+                            if (!visibleAvatar.startsWith('http'))
                               Icon(
                                 occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
                                 color: Colors.white.withOpacity(.92),
@@ -2113,6 +2135,11 @@ Widget _roomActionButton({
                     ),
                   ),
                 )
+              else if (number == firstJoinSeat)
+                _joinMicButton(
+                  number,
+                  disabled: isChangingSeat || seatState.isPending,
+                )
               else
                 Transform.translate(
                   offset: const Offset(0, 2),
@@ -2156,7 +2183,13 @@ Widget _roomActionButton({
                         final number = roomLayout.seatNumber(slot);
                         return Padding(
                           padding: const EdgeInsetsDirectional.only(end: 5),
-                          child: _pkOverflowSeat(context, slot, number),
+                          child: _pkOverflowSeat(
+                            context,
+                            slot,
+                            number,
+                            joinSeatNumber: firstJoinSeat,
+                            currentUserAvatarUrl: seatStore.currentAvatarUrl,
+                          ),
                         );
                       }).toList(),
                     ),
@@ -2169,7 +2202,39 @@ Widget _roomActionButton({
     );
   }
 
-  Widget _pkOverflowSeat(BuildContext context, MicSeat slot, int number) {
+  Widget _joinMicButton(int number, {required bool disabled}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: disabled ? null : () => (onJoinSeat ?? onTapSeat)(number),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(
+            color: disabled ? Colors.white.withOpacity(.55) : Colors.white,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Text(
+            'انضمام',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              height: 1.1,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _pkOverflowSeat(
+    BuildContext context,
+    MicSeat slot,
+    int number, {
+    required int? joinSeatNumber,
+    required String currentUserAvatarUrl,
+  }) {
     return SizedBox(
       width: 54,
       height: 72,
@@ -2181,6 +2246,7 @@ Widget _roomActionButton({
           final mine = seat?['isMe'] == true;
           final name = (seat?['name'] ?? '').toString();
           final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
+          final visibleAvatar = occupied ? avatar : (number == joinSeatNumber ? currentUserAvatarUrl : '');
           final muted = seat?['isMuted'] == true;
           final locked = seat?['isLocked'] == true || seat?['locked'] == true;
           final speakerUid = seat?['uid'] is num
@@ -2237,8 +2303,8 @@ Widget _roomActionButton({
                               ],
                             ),
                             child: ClipOval(
-                              child: avatar.startsWith('http')
-                                  ? HappyNetworkImage(avatar, fit: BoxFit.cover)
+                              child: visibleAvatar.startsWith('http')
+                                  ? HappyNetworkImage(visibleAvatar, fit: BoxFit.cover)
                                   : Icon(
                                       occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
                                       color: Colors.white.withOpacity(.92),
@@ -2280,6 +2346,11 @@ Widget _roomActionButton({
                       shadows: [Shadow(color: Color(0xCC000000), blurRadius: 4, offset: Offset(0, 1))],
                     ),
                   ),
+                )
+              else if (number == joinSeatNumber)
+                _joinMicButton(
+                  number,
+                  disabled: isChangingSeat || seatState.isPending,
                 )
               else
                 const SizedBox.shrink(),
