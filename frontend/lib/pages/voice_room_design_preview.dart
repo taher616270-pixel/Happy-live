@@ -605,9 +605,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
         final visibleAvatar = occupied ? avatar : (seatNumber == joinSeatNumber ? currentUserAvatarUrl : '');
         final locked = seatState.isLocked || seat?['isLocked'] == true ||
-            seat?['locked'] == true || seatNumber == 3 || seatNumber == 8;
-        final isMuted = seatState.isMuted || seat?['isMuted'] == true ||
-            seatNumber == 4 || seatNumber == 5;
+            seat?['locked'] == true;
+        final isMuted = seatState.isMuted || seat?['isMuted'] == true;
         final userId = (seat?['userId'] ?? '').toString();
         final pkPoints = pkUserScores[userId] ?? 0;
         final isBlueTeamSeat = const [3, 4, 7, 8, 11, 12].contains(seatNumber);
