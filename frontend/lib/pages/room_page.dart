@@ -146,6 +146,8 @@ class _RoomPageState extends State<RoomPage> {
   Map<String, int> _pkUserScores = <String, int>{};
   DateTime? _pkEndsAt;
   Timer? _pkTicker;
+  Timer? _pkStartCountdownTimer;
+  bool _pkStartingCountdown = false;
   int _pkNowMs = DateTime.now().millisecondsSinceEpoch;
   bool _pkActionBusy = false;
   Timer? _roomCounterTicker;
@@ -464,6 +466,7 @@ class _RoomPageState extends State<RoomPage> {
     _roomGiftOverlayTimer?.cancel();
     _roomCounterTicker?.cancel();
     _pkTicker?.cancel();
+    _pkStartCountdownTimer?.cancel();
     unawaited(_giftAudioPlayer.dispose());
     _refreshTimer?.cancel();
     _volumeTimer?.cancel();
@@ -2234,7 +2237,16 @@ class _RoomPageState extends State<RoomPage> {
     }
   }
 
-  Future<void> _startRoomBattle() => _submitRoomBattleAction('start');
+  void _startRoomBattle() {
+    if (!mounted || _pkStartingCountdown || _roomBattleActive || _pkActionBusy) return;
+    setState(() => _pkStartingCountdown = true);
+    _pkStartCountdownTimer?.cancel();
+    _pkStartCountdownTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() => _pkStartingCountdown = false);
+      unawaited(_submitRoomBattleAction('start'));
+    });
+  }
 
   void _openRoomBattleTools(BuildContext host) {
     showPkSheet(
@@ -3077,6 +3089,7 @@ class _RoomPageState extends State<RoomPage> {
       pkRedScore: _pkRedScore,
       pkUserScores: _pkUserScores,
       pkTimerLabel: _pkTimerLabel,
+      pkStartingCountdown: _pkStartingCountdown,
           ),
         ),        if (_roomCounter != null) _roomCounterBanner(),
         if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
