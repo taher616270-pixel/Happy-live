@@ -135,14 +135,10 @@ class _Preview extends StatelessWidget {
       Widget seat(double fx) => Positioned(
         left: w * fx - d / 2,
         top: (h - d) / 2,
-        child: Container(
-          width: d, height: d,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0x38FFFFFF),
-            border: Border.all(color: const Color(0x22FFFFFF)),
-          ),
-          child: const Icon(Icons.chair_alt_outlined, color: Color(0xBFFFFFFF), size: 24),
+        child: const SizedBox(
+          width: d,
+          height: d,
+          child: CustomPaint(painter: _SingleSofaChairPainter()),
         ),
       );
       return SizedBox(height: h, child: Stack(clipBehavior: Clip.none, children: [
@@ -170,6 +166,72 @@ Path _roundedPoly(List<Offset> pts, double r) {
   }
   path.close();
   return path;
+}
+
+// كرسي كنب فردي بذراعين وظهر ومقعد واضح، يستخدم في معاينة فريقي PK.
+class _SingleSofaChairPainter extends CustomPainter {
+  const _SingleSofaChairPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final sx = size.width / 43;
+    final sy = size.height / 43;
+    canvas.save();
+    canvas.scale(sx, sy);
+
+    final fill = Paint()
+      ..color = const Color(0xBFFFFFFF)
+      ..style = PaintingStyle.fill;
+    final edge = Paint()
+      ..color = const Color(0xF2FFFFFF)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.7
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round;
+
+    // ظهر الكرسي المبطن.
+    final back = RRect.fromRectAndRadius(
+      const Rect.fromLTRB(10, 4, 33, 23),
+      const Radius.circular(6),
+    );
+    canvas.drawRRect(back, fill);
+    canvas.drawRRect(back, edge);
+
+    // الذراعان الجانبيان.
+    final leftArm = RRect.fromRectAndRadius(
+      const Rect.fromLTRB(3, 17, 12, 34),
+      const Radius.circular(4),
+    );
+    final rightArm = RRect.fromRectAndRadius(
+      const Rect.fromLTRB(31, 17, 40, 34),
+      const Radius.circular(4),
+    );
+    canvas.drawRRect(leftArm, fill);
+    canvas.drawRRect(leftArm, edge);
+    canvas.drawRRect(rightArm, fill);
+    canvas.drawRRect(rightArm, edge);
+
+    // وسادة المقعد الأمامية.
+    final cushion = RRect.fromRectAndRadius(
+      const Rect.fromLTRB(9, 22, 34, 33),
+      const Radius.circular(5),
+    );
+    canvas.drawRRect(cushion, fill);
+    canvas.drawRRect(cushion, edge);
+
+    // أرجل قصيرة أسفل الكرسي.
+    final legs = Paint()
+      ..color = const Color(0xF2FFFFFF)
+      ..strokeWidth = 2.2
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(const Offset(11, 33), const Offset(10, 39), legs);
+    canvas.drawLine(const Offset(32, 33), const Offset(33, 39), legs);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _SingleSofaChairPainter oldDelegate) => false;
 }
 
 class _TeamsPainter extends CustomPainter {
