@@ -2458,12 +2458,14 @@ export default {
             if (!response.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
             return json({ ok: true, teamMode: true, active: true, battleId: activeBattle.id, endsAt: expiresAt, durationSeconds: Number(activeBattle.durationSeconds || 300) }, 200, origin, env);
           }
+          const durationMinutes = Number(body.durationMinutes ?? 5);
+          if (![5, 15, 30, 120].includes(durationMinutes)) return json({ error: "invalid_battle_duration" }, 400, origin, env);
           const response = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
             method: "POST", headers: { "Content-Type": "application/json", "x-room-id": roomId },
-            body: JSON.stringify({ teamMode: true, active: false, battleId: null, endsAt: null, durationSeconds: 300 })
+            body: JSON.stringify({ teamMode: true, active: false, battleId: null, endsAt: null, durationSeconds: durationMinutes * 60 })
           }));
           if (!response.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
-          return json({ ok: true, teamMode: true, active: false, battleId: null, endsAt: null, durationSeconds: 300 }, 200, origin, env);
+          return json({ ok: true, teamMode: true, active: false, battleId: null, endsAt: null, durationSeconds: durationMinutes * 60 }, 200, origin, env);
         }
 
         if (action === "start") {
