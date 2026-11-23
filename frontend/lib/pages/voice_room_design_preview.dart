@@ -382,54 +382,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             child: PkScoreBar(
               blue: calculatedBlueScore,
               red: calculatedRedScore,
-            ),
-          ),
-          if (!pkStarted)
-            Positioned(
-              top: 12,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onPkStart,
-                  child: const StartPkButton(),
-                ),
-              ),
-            ),
-          // The countdown replaces the start button in the exact same position.
-          if (pkStarted)
-          Positioned(
-            top: 12,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                decoration: const BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x66000000),
-                      blurRadius: 5,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: ClipPath(
-                  clipper: PkTimerFrame(),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 1),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                        colors: [
-                          Color(0xFF0A0A2E),
-                          Color(0xFF2B0018),
-                        ],
-                        stops: [0.5, 0.5],
-                      ),
-                    ),
-                    child: Row(
+              tab: pkStarted
+                  ? Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Text(
@@ -455,21 +409,20 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         Transform.translate(
                           offset: const Offset(-3, 0),
                           child: Transform.rotate(
-                                                    angle: -0.12,
-                                                    child: const Text(
-                                                      'K',
-                                                      style: TextStyle(
-                                                        color: Color(0xFF4D91FF),
-                                                        fontSize: 16,
-                                                        fontWeight: FontWeight.w900,
-                                                        shadows: [
-                                                          Shadow(color: Color(0xFFB6D2FF), offset: Offset(-1, -1), blurRadius: 1),
-                                                          Shadow(color: Color(0xFF173E9A), offset: Offset(1, 2), blurRadius: 2),
-                                                        ],
-                                                      ),
-                                                    ),
-                          
-                        ),
+                            angle: -0.12,
+                            child: const Text(
+                              'K',
+                              style: TextStyle(
+                                color: Color(0xFF4D91FF),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                shadows: [
+                                  Shadow(color: Color(0xFFB6D2FF), offset: Offset(-1, -1), blurRadius: 1),
+                                  Shadow(color: Color(0xFF173E9A), offset: Offset(1, 2), blurRadius: 2),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 1),
                         Transform.rotate(
@@ -488,12 +441,23 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           ),
                         ),
                       ],
-                    ),
-                  ),
+                    )
+                  : null,
+            ),
+          ),
+          if (!pkStarted)
+            Positioned(
+              top: 12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onPkStart,
+                  child: const StartPkButton(),
                 ),
               ),
             ),
-          ),
         ],
             ),
           ),
