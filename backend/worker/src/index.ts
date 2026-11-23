@@ -729,6 +729,23 @@ export default {
       }
     }
 
+    // Public PK presentation settings; all mutations remain owner-only in the admin route.
+    if (url.pathname === "/api/v1/pk/settings" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const row = await env.DB.prepare("SELECT setting_value FROM platform_settings WHERE setting_key = 'pk_battle_settings' LIMIT 1")
+          .first<{ setting_value: string }>();
+        let saved: Record<string, unknown> = {};
+        try { saved = row?.setting_value ? JSON.parse(row.setting_value) as Record<string, unknown> : {}; } catch { saved = {}; }
+        const defaults = { enabled: true, challengeTitle: "تحدي PK", mediaUrl: "", mediaType: "", showChallengeTitle: true, showStartText: true, showTimer: true, squareRadius: 26, mediaOpacity: 85, durationOptions: [5, 15, 30, 120], defaultDurationMinutes: 5 };
+        const options = Array.isArray(saved.durationOptions) ? saved.durationOptions : defaults.durationOptions;
+        return json({ ok: true, settings: { ...defaults, ...saved, durationOptions: options } }, 200, origin, env);
+      } catch (error) {
+        console.error("[pk.settings.public] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "pk_settings_unavailable" }, 500, origin, env);
+      }
+    }
+
     // Admin API: authentication uses a separate admin-only session table.
     if (
       url.pathname === "/api/v1/admin/me" ||
@@ -736,6 +753,7 @@ export default {
       url.pathname === "/api/v1/admin/stats" ||
       url.pathname === "/api/v1/admin/users" ||
       url.pathname === "/api/v1/admin/wallets" ||
+      url.pathname === "/api/v1/admin/pk/settings" ||
       url.pathname === "/api/v1/admin/gifts/settings" ||
       url.pathname === "/api/v1/admin/gifts/banner-settings" ||
       url.pathname === "/api/v1/admin/gifts/catalog" ||
