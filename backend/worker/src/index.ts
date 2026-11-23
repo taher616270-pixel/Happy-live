@@ -2490,14 +2490,14 @@ export default {
           }, 200, origin, env);
         }
 
-        const latestBattle = await env.DB.prepare(
-          "SELECT id, duration_seconds AS durationSeconds FROM room_battles WHERE room_id = ? ORDER BY started_at DESC LIMIT 1"
+        const activeBattle = await env.DB.prepare(
+          "SELECT id, duration_seconds AS durationSeconds FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1"
         ).bind(roomId).first<{ id: string; durationSeconds: number }>();
         await env.DB.prepare(
           "UPDATE room_battles SET status = 'finished', ended_at = COALESCE(ended_at, ?) WHERE room_id = ? AND status = 'active'"
         ).bind(now, roomId).run();
         const teamMode = action === "end";
-        const keepBattleId = action === "end" ? (latestBattle?.id ?? null) : null;
+        const keepBattleId = action === "end" ? (activeBattle?.id ?? null) : null;
         const response = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
           method: "POST", headers: { "Content-Type": "application/json", "x-room-id": roomId },
           body: JSON.stringify({
@@ -2620,12 +2620,12 @@ export default {
             "JOIN users recipient ON recipient.id = ? AND recipient.status = 'active' " +
             "JOIN user_wallets sender_wallet ON sender_wallet.user_id = ? AND sender_wallet.balance >= g.coin_price * ? " +
             "LEFT JOIN room_exp_daily d ON d.user_id = ? AND d.day_key = ? " +
-            "LEFT JOIN room_battles b ON b.room_id = r.id AND b.status = 'active' " +
+            "LEFT JOIN room_battles b ON b.room_id = r.id AND b.status = 'active' AND (b.expires_at IS NULL OR b.expires_at > ?) " +
             "WHERE r.id = ? AND r.status = 'active' AND r.owner_user_id IS NOT NULL AND ? <> recipient.id " +
             "AND EXISTS (SELECT 1 FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = recipient.id) " +
             "AND (g.category <> 'country' OR g.country_code = CASE WHEN UPPER(TRIM(COALESCE(sender_profile.country_name, ''))) IN ('SOUTH_ARABIA', 'SOUTH ARABIA', 'الجنوب العربي') THEN 'SOUTH_ARABIA' ELSE UPPER(TRIM(COALESCE(sender_profile.country_code, ''))) END)"
           ).bind(transactionId, user.id, recipientUserId, quantity, quantity, quantity, quantity, quantity, quantity,
-            dayKey, dayKey, dayKey, idempotencyKey, now, giftId, now, now, user.id, recipientUserId, user.id, quantity, user.id, dayKey, roomId, user.id),
+            dayKey, dayKey, dayKey, idempotencyKey, now, giftId, now, now, user.id, recipientUserId, user.id, quantity, user.id, dayKey, now, roomId, user.id),
           env.DB!.prepare(
             "UPDATE user_wallets SET balance = balance - (SELECT coin_cost FROM gift_transactions WHERE id = ? AND status = 'processing'), " +
             "updated_at = ? WHERE user_id = ? AND EXISTS (SELECT 1 FROM gift_transactions WHERE id = ? AND status = 'processing') " +
@@ -2675,10 +2675,10 @@ export default {
             env.DB!.prepare(
               "INSERT OR IGNORE INTO room_battle_gift_scores (id, gift_transaction_id, battle_id, room_id, user_id, team, seat_number, points, created_at) " +
               "SELECT ?, t.id, t.battle_id, t.room_id, t.recipient_user_id, ?, ?, t.coin_cost, ? FROM gift_transactions t " +
-              "JOIN room_battles b ON b.id = t.battle_id AND b.status = 'active' " +
+              "JOIN room_battles b ON b.id = t.battle_id AND b.status = 'active' AND (b.expires_at IS NULL OR b.expires_at > ?) " +
               "WHERE t.id = ? AND t.status = 'processing' AND t.battle_id IS NOT NULL " +
               "AND EXISTS (SELECT 1 FROM gift_wallet_ledger l WHERE l.gift_transaction_id = t.id AND l.entry_type = 'sender_debit')"
-            ).bind(crypto.randomUUID(), pkRecipientTeam, pkRecipientSeat, now, transactionId)
+            ).bind(crypto.randomUUID(), pkRecipientTeam, pkRecipientSeat, now, now, transactionId)
           ] : []),
           env.DB!.prepare(
             "UPDATE room_exp_daily SET points = points + COALESCE((SELECT points FROM room_exp_gift_awards WHERE gift_transaction_id = ?), 0) " +
