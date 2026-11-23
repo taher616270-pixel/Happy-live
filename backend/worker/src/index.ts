@@ -784,7 +784,8 @@ export default {
             enabled: true, challengeTitle: "تحدي PK", mediaUrl: "", mediaType: "",
             showChallengeTitle: true, showStartText: true, showTimer: true,
             squareRadius: 26, mediaOpacity: 85, durationOptions: [5, 15, 30, 120],
-            defaultDurationMinutes: 5
+            defaultDurationMinutes: 5, startMediaUrl: "", startMediaType: "",
+            startShowDurationSeconds: 3, startHideDurationSeconds: 0.5
           };
           const readSettings = async () => {
             const row = await env.DB!.prepare(
@@ -813,6 +814,10 @@ export default {
           const mediaOpacity = body.mediaOpacity === undefined ? Number(current.mediaOpacity) : Number(body.mediaOpacity);
           const durationOptions = body.durationOptions === undefined ? current.durationOptions : body.durationOptions;
           const defaultDurationMinutes = body.defaultDurationMinutes === undefined ? Number(current.defaultDurationMinutes) : Number(body.defaultDurationMinutes);
+          const startMediaUrl = body.startMediaUrl === undefined ? String(current.startMediaUrl ?? "") : typeof body.startMediaUrl === "string" ? body.startMediaUrl.trim() : "";
+          const startMediaType = body.startMediaType === undefined ? String(current.startMediaType ?? "") : typeof body.startMediaType === "string" ? body.startMediaType.toLowerCase() : "";
+          const startShowDurationSeconds = body.startShowDurationSeconds === undefined ? Number(current.startShowDurationSeconds ?? 3) : Number(body.startShowDurationSeconds);
+          const startHideDurationSeconds = body.startHideDurationSeconds === undefined ? Number(current.startHideDurationSeconds ?? 0.5) : Number(body.startHideDurationSeconds);
           if (typeof enabled !== "boolean" || typeof showChallengeTitle !== "boolean" || typeof showStartText !== "boolean" || typeof showTimer !== "boolean" ||
               !challengeTitle || challengeTitle.length > 80 || (mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) ||
               !["", "gif", "svga"].includes(mediaType) || (mediaUrl && !mediaType) || (!mediaUrl && mediaType) ||
@@ -821,10 +826,14 @@ export default {
               !Array.isArray(durationOptions) || durationOptions.length < 1 || durationOptions.length > 8 ||
               durationOptions.some((value) => !Number.isInteger(value) || Number(value) < 1 || Number(value) > 120) ||
               new Set(durationOptions).size !== durationOptions.length ||
-              !Number.isInteger(defaultDurationMinutes) || !durationOptions.includes(defaultDurationMinutes)) {
+              !Number.isInteger(defaultDurationMinutes) || !durationOptions.includes(defaultDurationMinutes) ||
+              (startMediaUrl && (startMediaUrl.length > 2048 || !/^https:\/\//i.test(startMediaUrl))) ||
+              !["", "gif", "svga"].includes(startMediaType) || (startMediaUrl && !startMediaType) || (!startMediaUrl && startMediaType) ||
+              !Number.isFinite(startShowDurationSeconds) || startShowDurationSeconds < 1 || startShowDurationSeconds > 30 ||
+              !Number.isFinite(startHideDurationSeconds) || startHideDurationSeconds < 0 || startHideDurationSeconds > 5) {
             return json({ error: "invalid_pk_settings", message: "تحقق من إعدادات PK والمدد والوسائط." }, 400, origin, env);
           }
-          const settings = { enabled, challengeTitle, mediaUrl, mediaType, showChallengeTitle, showStartText, showTimer, squareRadius, mediaOpacity, durationOptions, defaultDurationMinutes };
+          const settings = { enabled, challengeTitle, mediaUrl, mediaType, showChallengeTitle, showStartText, showTimer, squareRadius, mediaOpacity, durationOptions, defaultDurationMinutes, startMediaUrl, startMediaType, startShowDurationSeconds, startHideDurationSeconds };
           const now = new Date().toISOString();
           await env.DB!.prepare(
             "INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('pk_battle_settings', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at"
