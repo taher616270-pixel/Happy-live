@@ -2382,11 +2382,13 @@ export default {
             "SELECT id, started_at AS startedAt, duration_seconds AS durationSeconds, expires_at AS expiresAt " +
             "FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1"
           ).bind(roomId).first<{ id: string; startedAt: string; durationSeconds: number; expiresAt: string | null }>();
+          let expiredBattleId: string | null = null;
           if (activeBattle) {
             const expiresAt = activeBattle.expiresAt ??
               new Date(Date.parse(activeBattle.startedAt) + Number(activeBattle.durationSeconds || 300) * 1000).toISOString();
             if (Date.parse(expiresAt) <= Date.now()) {
               const now = new Date().toISOString();
+              expiredBattleId = activeBattle.id;
               await env.DB.prepare("UPDATE room_battles SET status = 'finished', ended_at = ?, expires_at = COALESCE(expires_at, ?) WHERE id = ? AND status = 'active'")
                 .bind(now, expiresAt, activeBattle.id).run();
               activeBattle = null;
@@ -2397,14 +2399,18 @@ export default {
           }
           if (!env.ROOM_SEATS) return json({ error: "room_seats_unavailable" }, 503, origin, env);
           const hub = env.ROOM_SEATS.get(env.ROOM_SEATS.idFromName(roomId));
-          if (activeBattle) {
+          if (activeBattle || expiredBattleId) {
+            const battle = activeBattle;
             const stateResponse = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
               method: "POST",
               headers: { "Content-Type": "application/json", "x-room-id": roomId },
               body: JSON.stringify({
-                teamMode: true, active: true, battleId: activeBattle.id,
-                endsAt: activeBattle.expiresAt ?? new Date(Date.parse(activeBattle.startedAt) + Number(activeBattle.durationSeconds || 300) * 1000).toISOString(),
-                durationSeconds: Number(activeBattle.durationSeconds || 300)
+                teamMode: true, active: battle != null,
+                battleId: battle?.id ?? expiredBattleId,
+                endsAt: battle
+                  ? (battle.expiresAt ?? new Date(Date.parse(battle.startedAt) + Number(battle.durationSeconds || 300) * 1000).toISOString())
+                  : null,
+                durationSeconds: Number(battle?.durationSeconds || 300)
               })
             }));
             if (!stateResponse.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
@@ -2432,9 +2438,17 @@ export default {
         const now = new Date().toISOString();
 
         if (action === "prepare") {
-          const activeBattle = await env.DB.prepare(
+          let activeBattle = await env.DB.prepare(
             "SELECT id, started_at AS startedAt, duration_seconds AS durationSeconds, expires_at AS expiresAt FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1"
           ).bind(roomId).first<{ id: string; startedAt: string; durationSeconds: number; expiresAt: string | null }>();
+          if (activeBattle) {
+            const expiresAt = activeBattle.expiresAt ?? new Date(Date.parse(activeBattle.startedAt) + Number(activeBattle.durationSeconds || 300) * 1000).toISOString();
+            if (Date.parse(expiresAt) <= Date.now()) {
+              await env.DB.prepare("UPDATE room_battles SET status = 'finished', ended_at = ?, expires_at = COALESCE(expires_at, ?) WHERE id = ? AND status = 'active'")
+                .bind(now, expiresAt, activeBattle.id).run();
+              activeBattle = null;
+            }
+          }
           if (activeBattle) {
             const expiresAt = activeBattle.expiresAt ?? new Date(Date.parse(activeBattle.startedAt) + Number(activeBattle.durationSeconds || 300) * 1000).toISOString();
             const response = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
