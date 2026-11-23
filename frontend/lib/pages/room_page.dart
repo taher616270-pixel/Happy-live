@@ -2243,7 +2243,7 @@ class _RoomPageState extends State<RoomPage> {
         key: ValueKey('pk-square-svga-$_pkSquareMediaUrl'),
         resUrl: _pkSquareMediaUrl,
         fit: BoxFit.contain,
-        loops: 0,
+        loops: true,
         volume: 0,
         muted: true,
       );
