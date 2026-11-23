@@ -178,6 +178,7 @@ function app(){
   $("adminIdentity").textContent=admin.name+" · "+admin.username+" · "+(roleNames[admin.role]||"دور غير معروف");
   const m=document.querySelector('[data-page="moderators"]');if(m)m.classList.toggle("hidden",admin.role!=="owner");
   const a=document.querySelector('[data-page="agora"]');if(a)a.classList.toggle("hidden",admin.role==="moderator");
+  const pk=document.querySelector('[data-page="pk"]');if(pk)pk.classList.toggle("hidden",admin.role!=="owner");
 }
 async function verify(){
   if(!token)return login();
