@@ -400,7 +400,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           // The countdown replaces the start button in the exact same position.
           if (pkStarted)
           Positioned(
-            top: 39,
+            top: 12,
             left: 0,
             right: 0,
             child: Center(
