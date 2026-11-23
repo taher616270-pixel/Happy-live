@@ -737,7 +737,7 @@ export default {
           .first<{ setting_value: string }>();
         let saved: Record<string, unknown> = {};
         try { saved = row?.setting_value ? JSON.parse(row.setting_value) as Record<string, unknown> : {}; } catch { saved = {}; }
-        const defaults = { enabled: true, challengeTitle: "تحدي PK", mediaUrl: "", mediaType: "", showChallengeTitle: true, showStartText: true, showTimer: true, squareRadius: 26, mediaOpacity: 85, durationOptions: [5, 15, 30, 120], defaultDurationMinutes: 5, startMediaUrl: "", startMediaType: "", startShowDurationSeconds: 3, startHideDurationSeconds: 0.5 };
+        const defaults = { enabled: true, challengeTitle: "تحدي PK", mediaUrl: "", mediaType: "", showChallengeTitle: true, showStartText: true, showTimer: true, squareRadius: 26, squareWidthPercent: 100, squareHeight: 284, mediaOpacity: 85, durationOptions: [5, 15, 30, 120], defaultDurationMinutes: 5, startMediaUrl: "", startMediaType: "", startShowDurationSeconds: 3, startHideDurationSeconds: 0.5 };
         const options = Array.isArray(saved.durationOptions) ? saved.durationOptions : defaults.durationOptions;
         return json({ ok: true, settings: { ...defaults, ...saved, durationOptions: options } }, 200, origin, env);
       } catch (error) {
@@ -811,6 +811,8 @@ export default {
           const showStartText = body.showStartText === undefined ? current.showStartText === true : body.showStartText;
           const showTimer = body.showTimer === undefined ? current.showTimer === true : body.showTimer;
           const squareRadius = body.squareRadius === undefined ? Number(current.squareRadius) : Number(body.squareRadius);
+          const squareWidthPercent = body.squareWidthPercent === undefined ? Number(current.squareWidthPercent ?? 100) : Number(body.squareWidthPercent);
+          const squareHeight = body.squareHeight === undefined ? Number(current.squareHeight ?? 284) : Number(body.squareHeight);
           const mediaOpacity = body.mediaOpacity === undefined ? Number(current.mediaOpacity) : Number(body.mediaOpacity);
           const durationOptions = body.durationOptions === undefined ? current.durationOptions : body.durationOptions;
           const defaultDurationMinutes = body.defaultDurationMinutes === undefined ? Number(current.defaultDurationMinutes) : Number(body.defaultDurationMinutes);
@@ -822,6 +824,8 @@ export default {
               !challengeTitle || challengeTitle.length > 80 || (mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) ||
               !["", "gif", "svga"].includes(mediaType) || (mediaUrl && !mediaType) || (!mediaUrl && mediaType) ||
               !Number.isInteger(squareRadius) || squareRadius < 0 || squareRadius > 60 ||
+              !Number.isInteger(squareWidthPercent) || squareWidthPercent < 50 || squareWidthPercent > 100 ||
+              !Number.isInteger(squareHeight) || squareHeight < 160 || squareHeight > 500 ||
               !Number.isInteger(mediaOpacity) || mediaOpacity < 0 || mediaOpacity > 100 ||
               !Array.isArray(durationOptions) || durationOptions.length < 1 || durationOptions.length > 8 ||
               durationOptions.some((value) => !Number.isInteger(value) || Number(value) < 1 || Number(value) > 120) ||
@@ -833,7 +837,7 @@ export default {
               !Number.isFinite(startHideDurationSeconds) || startHideDurationSeconds < 0 || startHideDurationSeconds > 5) {
             return json({ error: "invalid_pk_settings", message: "تحقق من إعدادات PK والمدد والوسائط." }, 400, origin, env);
           }
-          const settings = { enabled, challengeTitle, mediaUrl, mediaType, showChallengeTitle, showStartText, showTimer, squareRadius, mediaOpacity, durationOptions, defaultDurationMinutes, startMediaUrl, startMediaType, startShowDurationSeconds, startHideDurationSeconds };
+          const settings = { enabled, challengeTitle, mediaUrl, mediaType, showChallengeTitle, showStartText, showTimer, squareRadius, squareWidthPercent, squareHeight, mediaOpacity, durationOptions, defaultDurationMinutes, startMediaUrl, startMediaType, startShowDurationSeconds, startHideDurationSeconds };
           const now = new Date().toISOString();
           await env.DB!.prepare(
             "INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('pk_battle_settings', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at"
