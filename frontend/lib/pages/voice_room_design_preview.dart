@@ -411,7 +411,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           child: Transform.rotate(
                             angle: -0.12,
                             child: const Text(
-                              'K',
+                              'P',
                               style: TextStyle(
                                 color: Color(0xFF4D91FF),
                                 fontSize: 16,
@@ -428,7 +428,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         Transform.rotate(
                           angle: -0.12,
                           child: const Text(
-                            'P',
+                            'K',
                             style: TextStyle(
                               color: Color(0xFFFF4B9A),
                               fontSize: 16,
