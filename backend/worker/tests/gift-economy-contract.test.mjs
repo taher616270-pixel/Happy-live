@@ -170,7 +170,7 @@ test("custom gift animation uploads use ImageKit and are limited to GIF/SVGA und
   assert.match(worker, /mediaDurationMs > 5000/);
   assert.match(worker, /media_file_id/);
   assert.match(roomSeatsHub, /type: "room_gift"/);
-  assert.match(roomSeatsHub, /const delivered = this\.broadcast/);
+  assert.match(roomSeatsHub, /delivered = this\.broadcast/);
   assert.match(roomSeatsHub, /private broadcast\(payload: Record<string, unknown>, except\?: WebSocket\): number/);
   assert.match(worker, /Keep the room realtime socket available for gifts/);
   assert.match(worker, /gifts\.room\.broadcast/);
