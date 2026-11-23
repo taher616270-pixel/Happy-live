@@ -356,33 +356,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               margin: const EdgeInsets.only(top: 6),
               child: Stack(
                 children: [
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(pkSquareRadius),
-                        bottomRight: Radius.circular(pkSquareRadius),
-                      ),
-                      child: Row(
-                        textDirection: TextDirection.ltr,
-                        children: [
-                          Expanded(
-                            child: Container(
-                              color: pkSquareAnimation == null
-                                  ? const Color(0xFF2228A5).withOpacity(0.65)
-                                  : Colors.transparent,
-                            ),
-                          ),
-                          Expanded(
-                            child: Container(
-                              color: pkSquareAnimation == null
-                                  ? const Color(0xFF8B0D45).withOpacity(0.65)
-                                  : Colors.transparent,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                   if (pkSquareAnimation != null)
                     Positioned.fill(
                       child: ClipRRect(
