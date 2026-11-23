@@ -2480,9 +2480,13 @@ class _RoomPageState extends State<RoomPage> {
       },
       // زر «بدأ» يبدأ الجولة فعلياً فوراً؛ لا يمر بمرحلة prepare.
       // عند وجود جولة نشطة يتحول نفس الزر إلى إيقاف PK.
-      onToggle: () => unawaited(
-        _pkVisualMode ? _submitRoomBattleAction('end') : Future<void>(() => _startRoomBattle()),
-      ),
+      onToggle: () {
+        if (_pkVisualMode) {
+          unawaited(_submitRoomBattleAction('end'));
+        } else {
+          _startRoomBattle();
+        }
+      },
       onReset: () => unawaited(_submitRoomBattleAction('reset')),
       durationOptions: _pkDurationOptions,
       challengeTitle: _pkShowChallengeTitle ? _pkChallengeTitle : '',
