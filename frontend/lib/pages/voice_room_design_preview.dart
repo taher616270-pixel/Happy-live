@@ -89,6 +89,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.pkShowTimer = true,
     this.pkEnabled = true,
     this.pkSquareRadius = 26,
+    this.pkMediaOpacity = 0.85,
     this.pkSquareAnimation,
   });
   final Map<String, dynamic> room;
@@ -146,6 +147,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final bool pkShowTimer;
   final bool pkEnabled;
   final double pkSquareRadius;
+  final double pkMediaOpacity;
   final Widget? pkSquareAnimation;
 
   Map<String, dynamic>? _seatAt(int number) {
@@ -369,7 +371,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     Positioned.fill(
                       child: IgnorePointer(
                         child: Opacity(
-                          opacity: 0.85,
+                          opacity: pkMediaOpacity.clamp(0, 1),
                           child: pkSquareAnimation!,
                         ),
                       ),
