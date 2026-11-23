@@ -737,7 +737,7 @@ export default {
           .first<{ setting_value: string }>();
         let saved: Record<string, unknown> = {};
         try { saved = row?.setting_value ? JSON.parse(row.setting_value) as Record<string, unknown> : {}; } catch { saved = {}; }
-        const defaults = { enabled: true, challengeTitle: "تحدي PK", mediaUrl: "", mediaType: "", showChallengeTitle: true, showStartText: true, showTimer: true, squareRadius: 26, mediaOpacity: 85, durationOptions: [5, 15, 30, 120], defaultDurationMinutes: 5 };
+        const defaults = { enabled: true, challengeTitle: "تحدي PK", mediaUrl: "", mediaType: "", showChallengeTitle: true, showStartText: true, showTimer: true, squareRadius: 26, mediaOpacity: 85, durationOptions: [5, 15, 30, 120], defaultDurationMinutes: 5, startMediaUrl: "", startMediaType: "", startShowDurationSeconds: 3, startHideDurationSeconds: 0.5 };
         const options = Array.isArray(saved.durationOptions) ? saved.durationOptions : defaults.durationOptions;
         return json({ ok: true, settings: { ...defaults, ...saved, durationOptions: options } }, 200, origin, env);
       } catch (error) {
