@@ -2120,7 +2120,7 @@ Widget _roomActionButton({
                                 : Colors.white.withOpacity(.14),
                         border: Border.all(
                           color: pkTwelveSeatLayout
-                              ? Colors.white.withOpacity(.25)
+                              ? Colors.white
                               : pkTeamMode && layout.id == 'm8'
                                   ? (number <= 4 ? const Color(0xFF258BFF) : const Color(0xFFFF4B5C))
                                   : mine
