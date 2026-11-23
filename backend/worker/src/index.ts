@@ -2383,12 +2383,14 @@ export default {
             "FROM room_battles WHERE room_id = ? AND status = 'active' LIMIT 1"
           ).bind(roomId).first<{ id: string; startedAt: string; durationSeconds: number; expiresAt: string | null }>();
           let expiredBattleId: string | null = null;
+          let expiredBattleDurationSeconds = 300;
           if (activeBattle) {
             const expiresAt = activeBattle.expiresAt ??
               new Date(Date.parse(activeBattle.startedAt) + Number(activeBattle.durationSeconds || 300) * 1000).toISOString();
             if (Date.parse(expiresAt) <= Date.now()) {
               const now = new Date().toISOString();
               expiredBattleId = activeBattle.id;
+              expiredBattleDurationSeconds = Number(activeBattle.durationSeconds || 300);
               await env.DB.prepare("UPDATE room_battles SET status = 'finished', ended_at = ?, expires_at = COALESCE(expires_at, ?) WHERE id = ? AND status = 'active'")
                 .bind(now, expiresAt, activeBattle.id).run();
               activeBattle = null;
@@ -2410,7 +2412,7 @@ export default {
                 endsAt: battle
                   ? (battle.expiresAt ?? new Date(Date.parse(battle.startedAt) + Number(battle.durationSeconds || 300) * 1000).toISOString())
                   : null,
-                durationSeconds: Number(battle?.durationSeconds || 300)
+                durationSeconds: Number(battle?.durationSeconds || expiredBattleDurationSeconds)
               })
             }));
             if (!stateResponse.ok) return json({ error: "room_battle_state_sync_failed" }, 503, origin, env);
