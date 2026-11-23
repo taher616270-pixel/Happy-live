@@ -1,3 +1,4 @@
+import '../widgets/voice_seat_chair_icon.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -568,10 +569,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       height: 46,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.12),
+                        color: occupied ? Colors.white.withOpacity(0.12) : const Color(0xFF1E1C2B),
                         border: Border.all(
-                          color: isSpeaking ? const Color(0xFFFFD700) : Colors.white.withOpacity(0.24),
-                          width: isSpeaking ? 2.0 : 1.2,
+                          color: isSpeaking
+                              ? const Color(0xFFFFD700)
+                              : (occupied ? Colors.white.withOpacity(0.24) : const Color(0xFF2D2A3E)),
+                          width: isSpeaking ? 2.0 : 1.4,
                         ),
                       ),
                       child: ClipOval(
@@ -584,13 +587,19 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                     errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.white, size: 28),
                                   ))
                             : Center(
-                                child: Icon(
-                                  locked
-                                      ? Icons.lock_outline
-                                      : Icons.weekend_outlined,
-                                  color: Colors.white.withOpacity(0.72),
-                                  size: locked ? 18 : 19,
-                                ),
+                                child: locked
+                                    ? Icon(
+                                        Icons.lock_outline,
+                                        color: Colors.white.withOpacity(0.72),
+                                        size: 18,
+                                      )
+                                    : const CustomPaint(
+                                        size: Size(22, 22),
+                                        painter: ChairCustomPainter(
+                                          color: Color(0xFF9A98A6),
+                                          strokeWidth: 2.0,
+                                        ),
+                                      ),
                               ),
                       ),
                     ),
@@ -2049,11 +2058,19 @@ Widget _roomActionButton({
                             if (visibleAvatar.startsWith('http'))
                               HappyNetworkImage(visibleAvatar, fit: BoxFit.cover),
                             if (!visibleAvatar.startsWith('http'))
-                              Icon(
-                                occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
-                                color: Colors.white.withOpacity(.92),
-                                size: slot.big ? 22 : 19,
-                              ),
+                              occupied
+                                  ? Icon(Icons.mic_rounded, color: Colors.white.withOpacity(.92), size: slot.big ? 22 : 19)
+                                  : locked
+                                      ? Icon(Icons.lock_outline, color: Colors.white.withOpacity(.92), size: slot.big ? 22 : 19)
+                                      : Center(
+                                          child: CustomPaint(
+                                            size: Size(slot.big ? 24 : 20, slot.big ? 24 : 20),
+                                            painter: const ChairCustomPainter(
+                                              color: Color(0xFF9A98A6),
+                                              strokeWidth: 2.0,
+                                            ),
+                                          ),
+                                        ),
                           ],
                         ),
                       ),
@@ -2301,11 +2318,19 @@ Widget _roomActionButton({
                             child: ClipOval(
                               child: visibleAvatar.startsWith('http')
                                   ? HappyNetworkImage(visibleAvatar, fit: BoxFit.cover)
-                                  : Icon(
-                                      occupied ? Icons.mic_rounded : locked ? Icons.lock_outline : Icons.weekend_outlined,
-                                      color: Colors.white.withOpacity(.92),
-                                      size: slot.big ? 18 : 16,
-                                    ),
+                                  : (occupied
+                                      ? Icon(Icons.mic_rounded, color: Colors.white.withOpacity(.92), size: slot.big ? 18 : 16)
+                                      : locked
+                                          ? Icon(Icons.lock_outline, color: Colors.white.withOpacity(.92), size: slot.big ? 18 : 16)
+                                          : Center(
+                                              child: CustomPaint(
+                                                size: Size(slot.big ? 22 : 18, slot.big ? 22 : 18),
+                                                painter: const ChairCustomPainter(
+                                                  color: Color(0xFF9A98A6),
+                                                  strokeWidth: 1.8,
+                                                ),
+                                              ),
+                                            )),
                             ),
                           ),
                         ),
@@ -2397,6 +2422,13 @@ Widget _roomActionButton({
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                   child: _EmptySeatAction(
                     icon: Icons.weekend_outlined,
+                    customIcon: const CustomPaint(
+                      size: Size(26, 26),
+                      painter: ChairCustomPainter(
+                        color: Color(0xFF9A98A6),
+                        strokeWidth: 2.2,
+                      ),
+                    ),
                     label: 'اطلع المايك',
                     onTap: () {
                       Navigator.of(sheetContext).pop();
@@ -3865,11 +3897,13 @@ class _EmptySeatAction extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.customIcon,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final Widget? customIcon;
 
   @override
   Widget build(BuildContext context) => InkWell(
@@ -3886,7 +3920,7 @@ class _EmptySeatAction extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
           ),
           alignment: Alignment.center,
-          child: Icon(icon, color: const Color(0xFFE5DFF0), size: 26),
+          child: customIcon ?? Icon(icon, color: const Color(0xFFE5DFF0), size: 26),
         ),
         const SizedBox(height: 8),
         Text(
