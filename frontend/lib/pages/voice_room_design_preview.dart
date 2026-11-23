@@ -84,6 +84,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.pkUserScores = const <String, int>{},
     this.pkTimerLabel = '05:00',
     this.pkStartingCountdown = false,
+    this.pkStartHiding = false,
+    this.pkStartHideDurationSeconds = 0.5,
+    this.pkStartAnimation,
     this.pkChallengeTitle = 'تحدي PK',
     this.pkShowChallengeTitle = true,
     this.pkShowStartText = true,
@@ -143,6 +146,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final Map<String, int> pkUserScores;
   final String pkTimerLabel;
   final bool pkStartingCountdown;
+  final bool pkStartHiding;
+  final double pkStartHideDurationSeconds;
+  final Widget? pkStartAnimation;
   final String pkChallengeTitle;
   final bool pkShowChallengeTitle;
   final bool pkShowStartText;
@@ -513,27 +519,29 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             Positioned.fill(
               child: IgnorePointer(
                 child: Center(
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0.65, end: 1),
-                    duration: const Duration(milliseconds: 550),
-                    curve: Curves.elasticOut,
-                    builder: (context, scale, child) => Opacity(
-                      opacity: scale.clamp(0.0, 1.0).toDouble(),
-                      child: Transform.scale(scale: scale, child: child),
-                    ),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: const Color(0xCC101018),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withOpacity(0.75), width: 1.5),
-                        boxShadow: const [
-                          BoxShadow(color: Color(0xAA4F78FF), blurRadius: 24, spreadRadius: 2),
-                          BoxShadow(color: Color(0x66FF4B9A), blurRadius: 14),
-                        ],
-                      ),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                        child: Text('START', style: TextStyle(color: Colors.white, fontSize: 27, fontWeight: FontWeight.w900, letterSpacing: 3)),
+                  child: AnimatedOpacity(
+                    opacity: pkStartHiding ? 0 : 1,
+                    duration: Duration(milliseconds: (pkStartHideDurationSeconds * 1000).round()),
+                    curve: Curves.easeOut,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.65, end: 1),
+                      duration: const Duration(milliseconds: 550),
+                      curve: Curves.elasticOut,
+                      builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
+                      child: pkStartAnimation ?? DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: const Color(0xCC101018),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.75), width: 1.5),
+                          boxShadow: const [
+                            BoxShadow(color: Color(0xAA4F78FF), blurRadius: 24, spreadRadius: 2),
+                            BoxShadow(color: Color(0x66FF4B9A), blurRadius: 14),
+                          ],
+                        ),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                          child: Text('START', style: TextStyle(color: Colors.white, fontSize: 27, fontWeight: FontWeight.w900, letterSpacing: 3)),
+                        ),
                       ),
                     ),
                   ),
