@@ -621,10 +621,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   Transform.translate(
                     offset: const Offset(0, 2),
                     child: Text(
-                      '$seatNumber',
+                      seatNumber == joinSeatNumber ? 'انضمام' : '$seatNumber',
                       style: TextStyle(
                         color: Colors.white.withOpacity(.7),
-                        fontSize: 12,
+                        fontSize: seatNumber == joinSeatNumber ? 10 : 12,
+                        fontWeight: seatNumber == joinSeatNumber ? FontWeight.w700 : FontWeight.normal,
                         shadows: const [
                           Shadow(
                             color: Color(0xCC000000),
@@ -653,20 +654,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       ],
                     ),
                   ),
-                if (seatNumber == joinSeatNumber)
-                  _joinMicButton(
-                    seatNumber,
-                    disabled: isChangingSeat || locked || seatState.isPending,
-                  )
-                else
-                  Text(
-                    '',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.70),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+
               ],
             ),
           ),
