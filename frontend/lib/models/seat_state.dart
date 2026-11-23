@@ -147,13 +147,27 @@ class SeatStateStore extends ChangeNotifier {
     final next = <int, SeatState>{
       for (var number = 1; number <= 24; number++) number: SeatState.empty(number),
     };
-    for (final raw in rawSeats) {
-      if (raw is! Map) continue;
+    final orderedSeats = rawSeats.whereType<Map>().toList()
+      ..sort((a, b) {
+        bool preferred(Map value) {
+          final number = value['seatNumber'];
+          final userId = (value['userId'] ?? '').toString();
+          return (mySeat != null && number is num && number.toInt() == mySeat) ||
+              (currentUserId.isNotEmpty && userId == currentUserId) ||
+              value['isMe'] == true;
+        }
+        return (preferred(b) ? 1 : 0).compareTo(preferred(a) ? 1 : 0);
+      });
+    final seenUsers = <String>{};
+    for (final raw in orderedSeats) {
       final map = Map<String, dynamic>.from(raw);
       final number = map['seatNumber'];
       if (number is! num || number < 1 || number > 24) continue;
       final seatNumber = number.toInt();
       final ownerId = (map['userId'] ?? '').toString();
+      // A user may occupy only one microphone, even if a stale snapshot
+      // briefly contains both the old and new seat during a move.
+      if (ownerId.isNotEmpty && !seenUsers.add(ownerId)) continue;
       final isMine = mySeat == seatNumber ||
           (ownerId.isNotEmpty && ownerId == currentUserId) ||
           map['isMe'] == true;
