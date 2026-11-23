@@ -2913,6 +2913,13 @@ class _RoomPageState extends State<RoomPage> {
           _selectSeat(seatNumber);
         }
       },
+      onJoinSeat: (seatNumber) {
+        if (_pkVisualMode && seatNumber > 12) {
+          _selectPkOverflowQueueSeat(seatNumber);
+        } else {
+          unawaited(_selectSeat(seatNumber));
+        }
+      },
       isChangingSeat: _isChangingSeat,
       pendingSeatNumbers: _pendingSeatNumbers,
       audienceCount: _audienceCount,
