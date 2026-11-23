@@ -280,6 +280,11 @@ class _TabPainter extends CustomPainter {
     final w = s.width, h = s.height;
     const inset = 10.0, r = 8.0;
 
+    // Mirror the same tab silhouette vertically; dimensions, curves and colors stay unchanged.
+    canvas.save();
+    canvas.translate(0, h);
+    canvas.scale(1, -1);
+
     final open = Path()
       ..moveTo(0, h)
       ..lineTo(inset, r)
@@ -303,6 +308,7 @@ class _TabPainter extends CustomPainter {
         ..strokeWidth = 2
         ..shader = const LinearGradient(colors: [Color(0xFF7F8CFF), Color(0xFFFF73B8)]).createShader(rect),
     );
+    canvas.restore();
   }
 
   @override
