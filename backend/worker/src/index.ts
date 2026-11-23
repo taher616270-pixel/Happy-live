@@ -825,7 +825,7 @@ export default {
               !["", "gif", "svga"].includes(mediaType) || (mediaUrl && !mediaType) || (!mediaUrl && mediaType) ||
               !Number.isInteger(squareRadius) || squareRadius < 0 || squareRadius > 60 ||
               !Number.isInteger(squareWidthPercent) || squareWidthPercent < 50 || squareWidthPercent > 100 ||
-              !Number.isInteger(squareHeight) || squareHeight < 160 || squareHeight > 500 ||
+              !Number.isInteger(squareHeight) || squareHeight < 240 || squareHeight > 500 ||
               !Number.isInteger(mediaOpacity) || mediaOpacity < 0 || mediaOpacity > 100 ||
               !Array.isArray(durationOptions) || durationOptions.length < 1 || durationOptions.length > 8 ||
               durationOptions.some((value) => !Number.isInteger(value) || Number(value) < 1 || Number(value) > 120) ||
