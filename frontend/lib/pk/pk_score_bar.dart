@@ -228,7 +228,7 @@ class _BarPainter extends CustomPainter {
 
     final k = 1 + 0.14 * math.sin(bump.value * math.pi);
     final glow = math.sin(bump.value * math.pi);
-    final capL = x, capR = x + capW;
+    final capL = x - 3, capR = x + capW;
     canvas.save();
     final c = Offset(capL + h / 2, h / 2);
     canvas.translate(c.dx, c.dy);
