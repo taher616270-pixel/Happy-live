@@ -28,7 +28,7 @@ test("each cannon launch stores an isolated contributor snapshot and resets that
   assert.match(cannon, /INSERT INTO cannon_launch_contributors/);
   assert.match(cannon, /UPDATE cannon_contrib SET amount=0/);
   assert.match(cannon, /WHERE c\.launch_id=\? AND c\.room_id=\?/);
-  assert.match(cannonSheet, /st\.launchId\.isNotEmpty && !st\.launching/);
+  assert.match(cannonSheet, /_TopThreeContributors\(contributors: _svc\.contributors\)/);
 });
 
 test("cannon energy uses only server-confirmed successful gift transactions", () => {
@@ -94,7 +94,7 @@ test("each room member gets a private 50-box round and only sees rewards after t
   assert.match(cannonApi, /startBoxRound/);
   assert.match(cannonApi, /openBox/);
   assert.match(cannonApi, /fetchBoxResults/);
-  assert.match(boxOverlay, /Duration\(seconds: 5\)/);
+  assert.match(boxOverlay, /Duration\(milliseconds: 19900\)/);\n  assert.match(boxOverlay, /4300 \+ random\.nextInt\(1201\)/);
   assert.match(boxOverlay, /for \(var index = 0; index < 50; index\+\+\)/);
   assert.match(preview, /_showFallingGiftBoxes\(\)/);
   assert.match(preview, /جوائز الصناديق/);
