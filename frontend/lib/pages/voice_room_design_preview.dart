@@ -369,10 +369,16 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   ),
                   if (pkSquareAnimation != null)
                     Positioned.fill(
-                      child: IgnorePointer(
-                        child: Opacity(
-                          opacity: pkMediaOpacity.clamp(0, 1),
-                          child: pkSquareAnimation!,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(pkSquareRadius),
+                          bottomRight: Radius.circular(pkSquareRadius),
+                        ),
+                        child: IgnorePointer(
+                          child: Opacity(
+                            opacity: pkMediaOpacity.clamp(0, 1),
+                            child: pkSquareAnimation!,
+                          ),
                         ),
                       ),
                     ),
