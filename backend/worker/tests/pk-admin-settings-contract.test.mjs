@@ -24,6 +24,14 @@ test("PK admin controls title, GIF or SVGA media, text visibility, square style 
   assert.match(adminPage, /pkShowTimer/);
   assert.match(adminPage, /pkDurations/);
   assert.match(adminPage, /pkRadius/);
+  assert.match(adminPage, /pkStartShowDuration/);
+  assert.match(adminPage, /pkStartHideDuration/);
+  assert.match(adminPage, /pkStartMediaFile/);
+  assert.match(worker, /startShowDurationSeconds/);
+  assert.match(worker, /startHideDurationSeconds/);
+  assert.match(roomPage, /_pkStartShowDurationSeconds/);
+  assert.match(roomPage, /_buildPkStartAnimation/);
+  assert.match(roomPreview, /pkStartHiding/);
 });
 
 test("room PK uses admin-configured animation, title, timer and duration options", () => {
