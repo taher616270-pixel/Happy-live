@@ -8,6 +8,8 @@ Future<void> showPkSheet(
   required bool isPkVisualMode,
   required VoidCallback onToggle,
   required VoidCallback onReset,
+  required int selectedDurationMinutes,
+  required ValueChanged<int> onDurationChanged,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -15,7 +17,13 @@ Future<void> showPkSheet(
     backgroundColor: Colors.transparent,
     builder: (_) => Directionality(
       textDirection: TextDirection.rtl,
-      child: _PkSheet(isPkVisualMode: isPkVisualMode, onToggle: onToggle, onReset: onReset),
+      child: _PkSheet(
+        isPkVisualMode: isPkVisualMode,
+        onToggle: onToggle,
+        onReset: onReset,
+        selectedDurationMinutes: selectedDurationMinutes,
+        onDurationChanged: onDurationChanged,
+      ),
     ),
   );
 }
@@ -26,8 +34,16 @@ class _PkSheet extends StatelessWidget {
   final bool isPkVisualMode;
   final VoidCallback onToggle;
   final VoidCallback onReset;
+  final int selectedDurationMinutes;
+  final ValueChanged<int> onDurationChanged;
 
-  const _PkSheet({required this.isPkVisualMode, required this.onToggle, required this.onReset});
+  const _PkSheet({
+    required this.isPkVisualMode,
+    required this.onToggle,
+    required this.onReset,
+    required this.selectedDurationMinutes,
+    required this.onDurationChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +90,11 @@ class _PkSheet extends StatelessWidget {
           Row(children: [
             for (final m in const [5, 15, 30, 120]) ...[
               if (m != 5) const SizedBox(width: 16),
-              _Chip(minutes: m, selected: m == 5),
+              _Chip(
+                minutes: m,
+                selected: m == selectedDurationMinutes,
+                onTap: isPkVisualMode ? null : () => onDurationChanged(m),
+              ),
             ],
           ]),
           const SizedBox(height: 22),
@@ -316,20 +336,25 @@ class _HexBadgePainter extends CustomPainter {
 class _Chip extends StatelessWidget {
   final int minutes;
   final bool selected;
-  const _Chip({required this.minutes, required this.selected});
+  final VoidCallback? onTap;
+  const _Chip({required this.minutes, required this.selected, this.onTap});
   @override
-  Widget build(BuildContext context) => Container(
-    width: 63, height: 31, alignment: Alignment.center,
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(16),
-      color: selected ? const Color(0x22FFFFFF) : const Color(0x18FFFFFF),
-      border: selected ? Border.all(color: Colors.white, width: 1.6) : null,
+  Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.opaque,
+    onTap: onTap,
+    child: Container(
+      width: 63, height: 31, alignment: Alignment.center,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: selected ? const Color(0x22FFFFFF) : const Color(0x18FFFFFF),
+        border: selected ? Border.all(color: Colors.white, width: 1.6) : null,
+      ),
+      child: FittedBox(fit: BoxFit.scaleDown, child: Text('$minutes دقائق',
+        style: TextStyle(
+          color: selected ? Colors.white : const Color(0x66FFFFFF),
+          fontSize: 14, fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+        ))),
     ),
-    child: FittedBox(fit: BoxFit.scaleDown, child: Text('$minutes دقائق',
-      style: TextStyle(
-        color: selected ? Colors.white : const Color(0x66FFFFFF),
-        fontSize: 14, fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-      ))),
   );
 }
 
