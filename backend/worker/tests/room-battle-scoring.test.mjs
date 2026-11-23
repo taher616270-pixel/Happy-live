@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const migration = await readFile(new URL("../migrations/0034_room_battle_gift_scores.sql", import.meta.url), "utf8");
+const migration = await readFile(new URL("../migrations/0057_room_battle_gift_scores.sql", import.meta.url), "utf8");
 const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
 const hub = await readFile(new URL("../src/room_seats_hub.ts", import.meta.url), "utf8");
 const roomPage = await readFile(new URL("../../../frontend/lib/pages/room_page.dart", import.meta.url), "utf8");
