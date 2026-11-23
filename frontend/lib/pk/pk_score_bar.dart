@@ -99,8 +99,9 @@ class _PkScoreBarState extends State<PkScoreBar> with TickerProviderStateMixin {
                     right: 10, top: PkScoreBar.barH,
                     child: _FloatUp(key: ValueKey('r$_redEvt'), text: '+${_fmt(_redDelta)}', color: const Color(0xFFFFB3CF)),
                   ),
+                if (widget.tab != null)
                 Positioned(
-                  top: PkScoreBar.barH + 2,
+                  top: PkScoreBar.barH,
                   left: (w - PkScoreBar.tabW) / 2,
                   width: PkScoreBar.tabW,
                   height: PkScoreBar.tabH,
