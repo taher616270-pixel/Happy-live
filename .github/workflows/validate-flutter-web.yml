@@ -17,9 +17,10 @@ on:
 
 jobs:
   build-web:
+    name: Flutter Web Build & Analysis
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Flutter
@@ -33,6 +34,10 @@ jobs:
         run: |
           flutter pub get
           dart run flutter_launcher_icons
+
+      - name: Analyze code (Catch compile & type errors early)
+        working-directory: frontend
+        run: flutter analyze
 
       - name: Build web release
         working-directory: frontend
