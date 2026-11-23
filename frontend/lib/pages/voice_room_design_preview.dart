@@ -331,16 +331,22 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: Row(
-                      textDirection: TextDirection.ltr,
-                      children: [
-                        Expanded(
-                          child: Container(color: const Color(0xFF2228A5).withOpacity(0.65)),
-                        ),
-                        Expanded(
-                          child: Container(color: const Color(0xFF8B0D45).withOpacity(0.65)),
-                        ),
-                      ],
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(26),
+                        bottomRight: Radius.circular(26),
+                      ),
+                      child: Row(
+                        textDirection: TextDirection.ltr,
+                        children: [
+                          Expanded(
+                            child: Container(color: const Color(0xFF2228A5).withOpacity(0.65)),
+                          ),
+                          Expanded(
+                            child: Container(color: const Color(0xFF8B0D45).withOpacity(0.65)),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   Padding(
@@ -564,7 +570,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       height: 46,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: occupied ? Colors.white.withOpacity(0.12) : const Color(0xFF1E1C2B),
+                        color: occupied
+                            ? Colors.white.withOpacity(0.12)
+                            : const Color(0xFF1E1C2B).withOpacity(0.70),
                         border: Border.all(
                           color: isSpeaking
                               ? const Color(0xFFFFD700)
