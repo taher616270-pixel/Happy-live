@@ -355,12 +355,16 @@ class _RoomPageState extends State<RoomPage> {
       _applyRealtimeSeatSnapshot(
         seats,
         mySeat: event['mySeat'] is num ? (event['mySeat'] as num).toInt() : null,
+        seatControls: event['seatControls'] is Map ? Map<String, dynamic>.from(event['seatControls'] as Map) : null,
         reconcilePending: true,
       );
       return;
     }
     if (type == 'seat_updated') {
-      _applyRealtimeSeatSnapshot(seats);
+      _applyRealtimeSeatSnapshot(
+        seats,
+        seatControls: event['seatControls'] is Map ? Map<String, dynamic>.from(event['seatControls'] as Map) : null,
+      );
       return;
     }
 
@@ -406,9 +410,23 @@ class _RoomPageState extends State<RoomPage> {
   void _applyRealtimeSeatSnapshot(
     List<dynamic> rawSeats, {
     int? mySeat,
+    Map<String, dynamic>? seatControls,
     bool updateStore = true,
     bool reconcilePending = false,
   }) {
+    if (seatControls != null && seatControls.isNotEmpty) {
+      rawSeats = rawSeats.map((raw) {
+        if (raw is! Map) return raw;
+        final seat = Map<String, dynamic>.from(raw);
+        final number = (seat['seatNumber'] ?? '').toString();
+        final control = seatControls[number];
+        if (control is Map) {
+          seat['isLocked'] = control['isLocked'] == true;
+          seat['isMuted'] = seat['isMuted'] == true || control['isMuted'] == true;
+        }
+        return seat;
+      }).toList();
+    }
     final previousSeatsByUserId = <String, Map<String, dynamic>>{
       for (final previous in _seats)
         if ((previous['userId'] ?? '').toString().isNotEmpty)
@@ -989,6 +1007,39 @@ class _RoomPageState extends State<RoomPage> {
     return false;
   }
 
+  Future<bool> _moderateRoomSeat(int seatNumber, String action) async {
+    if (!_isRoomOwner && !_amRoomModerator) {
+      _showMessage('هذه الصلاحية لمالك الغرفة ومشرفيها فقط');
+      return false;
+    }
+    if (seatNumber < 1 || seatNumber > _micCount) {
+      _showMessage('رقم المايك غير صحيح');
+      return false;
+    }
+    try {
+      final response = await http.post(
+        _moderationUri,
+        headers: _headers,
+        body: jsonEncode({'action': action, 'seatNumber': seatNumber}),
+      ).timeout(const Duration(seconds: 8));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+        _showMessage(action == 'toggle_seat_lock'
+            ? ((data['isLocked'] == true) ? 'تم قفل المايك' : 'تم فتح المايك')
+            : ((data['isMuted'] == true) ? 'تم كتم المايك' : 'تم فتح كتم المايك'));
+        await _refreshSeats();
+        return true;
+      }
+      final message = data is Map ? (data['message'] ?? '').toString() : '';
+      _showMessage(message.isNotEmpty ? message : response.statusCode == 403
+          ? 'ليست لديك صلاحية للتحكم بهذا المايك'
+          : 'تعذر تحديث المايك، حاول مرة أخرى');
+    } catch (_) {
+      _showMessage('تعذر الاتصال بالخادم، لم تتغير حالة المايك');
+    }
+    return false;
+  }
+
   Future<void> _sendHeartbeat() async {
     if (DateTime.now().difference(_lastHeartbeat) < const Duration(seconds: 15)) return;
     _lastHeartbeat = DateTime.now();
@@ -1502,6 +1553,7 @@ class _RoomPageState extends State<RoomPage> {
             selfMicMuted: isMe ? _selfMicMuted : user['isMuted'] == true,
             onToggleSelfMic: _toggleSelfMic,
             onModerateUser: _moderateRoomUser,
+      onModerateSeat: _moderateRoomSeat,
           );
         },
       ),
