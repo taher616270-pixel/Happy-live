@@ -107,6 +107,7 @@ async function awardRoomSeatExperience(
 export class RoomSeatsHub {
   private snapshot: RoomSeatSnapshot = structuredClone(EMPTY_SNAPSHOT);
   private roomId = '';
+  private seatControls: Record<string, { isLocked: boolean; isMuted: boolean }> = {};
   private readonly sockets = new Map<WebSocket, SocketIdentity>();
   private mutationQueue: Promise<void> = Promise.resolve();
   private whoMicMode = "membersOnly";
@@ -134,6 +135,7 @@ export class RoomSeatsHub {
   constructor(private readonly state: DurableObjectState, private readonly env: RoomSeatsEnv) {
     this.ready = this.state.blockConcurrencyWhile(async () => {
       this.roomId = (await this.state.storage.get<string>("room-id")) ?? '';
+      this.seatControls = (await this.state.storage.get<Record<string, { isLocked: boolean; isMuted: boolean }>>("room-seat-controls")) ?? {};
       this.snapshot = (await this.state.storage.get<RoomSeatSnapshot>("room-seat-snapshot")) ?? structuredClone(EMPTY_SNAPSHOT);
       if (!this.snapshot.seats) this.snapshot.seats = {};
       if (!this.snapshot.versions) this.snapshot.versions = {};
@@ -415,6 +417,27 @@ export class RoomSeatsHub {
       return Response.json({ ok: true, ...this.publicSnapshot() });
     }
 
+    if (url.pathname === "/set-seat-control" && request.method === "POST") {
+      const seatNumber = Number(request.headers.get("x-seat-number"));
+      const isLocked = request.headers.get("x-is-locked") === "true";
+      const isMuted = request.headers.get("x-is-muted") === "true";
+      if (!Number.isInteger(seatNumber) || seatNumber < 1 || seatNumber > 24) {
+        return Response.json({ error: "invalid_seat_number" }, { status: 400 });
+      }
+      await this.enqueue(async () => {
+        this.seatControls[String(seatNumber)] = { isLocked, isMuted };
+        const member = this.snapshot.seats[String(seatNumber)];
+        if (member) {
+          member.isMuted = isMuted;
+          this.snapshot.revision++;
+          await this.persist();
+          this.broadcast({ type: "seat_updated", ...this.publicSnapshot() });
+        }
+        await this.state.storage.put("room-seat-controls", this.seatControls);
+      });
+      return Response.json({ ok: true, ...this.publicSnapshot() });
+    }
+
     if (url.pathname === "/set-muted" && request.method === "POST") {
       const targetUserId = request.headers.get("x-target-user-id") ?? "";
       const muted = request.headers.get("x-is-muted") === "true";
@@ -642,6 +665,9 @@ export class RoomSeatsHub {
     identity.lastVersion = version;
     this.snapshot.versions[identity.userId] = version;
     const current = Object.values(this.snapshot.seats).find((seat) => seat.userId === identity.userId);
+    if (to !== null && this.seatControls[String(to)]?.isLocked === true) {
+      return { type: "ack", ok: false, code: "seat_locked", version, mySeat: current?.seatNumber ?? null, ...this.publicSnapshot() };
+    }
     if (to !== null) {
       const occupant = this.snapshot.seats[String(to)];
       if (occupant && occupant.userId !== identity.userId) {
@@ -660,7 +686,7 @@ export class RoomSeatsHub {
         avatarUrl: identity.avatarUrl,
         countryName: identity.countryName,
         uid: identity.uid,
-        isMuted: identity.isMuted,
+        isMuted: identity.isMuted || this.seatControls[String(to)]?.isMuted === true,
         isRoomOwner: identity.isRoomOwner,
         isRoomModerator: identity.isRoomModerator,
         expiresAt: Date.now() + SEAT_LEASE_MS
@@ -836,11 +862,13 @@ export class RoomSeatsHub {
 
   private async persist(): Promise<void> {
     await this.state.storage.put("room-seat-snapshot", this.snapshot);
+    await this.state.storage.put("room-seat-controls", this.seatControls);
   }
 
-  private publicSnapshot(): { seats: RoomSeatMember[]; revision: number } {
+  private publicSnapshot(): { seats: RoomSeatMember[]; seatControls: Record<string, { isLocked: boolean; isMuted: boolean }>; revision: number } {
     return {
       seats: Object.values(this.snapshot.seats).sort((a, b) => a.seatNumber - b.seatNumber),
+      seatControls: this.seatControls,
       revision: this.snapshot.revision
     };
   }
