@@ -550,12 +550,6 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         final voiceLevel = speakerUid == null ? 0.0 : (speakerLevels[speakerUid] ?? 0.0);
         final isSpeaking = occupied && !isMuted && voiceLevel >=
             (Theme.of(context).platform == TargetPlatform.android ? 0.02 : 0.6);
-        // Match the natural room-seat treatment while keeping each PK side distinct.
-        final isBlueTeamSeat = const {3, 4, 7, 8, 11, 12}.contains(seatNumber);
-        final teamSeatColor = isBlueTeamSeat
-            ? const Color(0xFF65A9FF)
-            : const Color(0xFFFF7198);
-
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: occupied
@@ -574,28 +568,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       height: 46,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: occupied
-                            ? Colors.white.withOpacity(0.12)
-                            : teamSeatColor.withOpacity(0.18),
+                        color: Colors.white.withOpacity(0.12),
                         border: Border.all(
-                          color: isSpeaking
-                              ? const Color(0xFFFFD700)
-                              : teamSeatColor.withOpacity(0.95),
-                          width: isSpeaking ? 2.5 : 2.2,
+                          color: isSpeaking ? const Color(0xFFFFD700) : Colors.white.withOpacity(0.24),
+                          width: isSpeaking ? 2.0 : 1.2,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: teamSeatColor.withOpacity(0.24),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                            offset: const Offset(0, 2),
-                          ),
-                          const BoxShadow(
-                            color: Color(0x88000000),
-                            blurRadius: 5,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
                       ),
                       child: ClipOval(
                         child: (seatNumber == 1 || occupied || seatNumber == joinSeatNumber)
