@@ -1563,7 +1563,6 @@ class _RoomPageState extends State<RoomPage> {
             selfMicMuted: isMe ? _selfMicMuted : user['isMuted'] == true,
             onToggleSelfMic: _toggleSelfMic,
             onModerateUser: _moderateRoomUser,
-      onModerateSeat: _moderateRoomSeat,
           );
         },
       ),
@@ -3210,6 +3209,7 @@ class _RoomPageState extends State<RoomPage> {
       selfMicMuted: _selfMicMuted,
       onToggleSelfMic: _toggleSelfMic,
       onModerateUser: _moderateRoomUser,
+      onModerateSeat: _moderateRoomSeat,
       showRoomActions: _showRoomActions,
       onRoomActions: () => setState(() => _showRoomActions = !_showRoomActions),
       onRoomTools: _openRoomTools,
