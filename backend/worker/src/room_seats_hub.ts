@@ -177,6 +177,10 @@ export class RoomSeatsHub {
     if (url.pathname === "/battle-state" && request.method === "GET") {
       const roomId = request.headers.get("x-room-id") ?? "";
       if (!roomId || (this.roomId && roomId !== this.roomId)) return Response.json({ error: "room_mismatch" }, { status: 403 });
+      if (!this.roomId) {
+        this.roomId = roomId;
+        await this.state.storage.put("room-id", roomId);
+      }
       return Response.json(await this.publicBattleState());
     }
 
