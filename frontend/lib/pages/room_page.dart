@@ -150,6 +150,16 @@ class _RoomPageState extends State<RoomPage> {
   bool _pkStartingCountdown = false;
   int _pkNowMs = DateTime.now().millisecondsSinceEpoch;
   bool _pkActionBusy = false;
+  bool _pkEnabled = true;
+  String _pkChallengeTitle = 'تحدي PK';
+  String _pkSquareMediaUrl = '';
+  String _pkSquareMediaType = '';
+  bool _pkShowChallengeTitle = true;
+  bool _pkShowStartText = true;
+  bool _pkShowTimer = true;
+  double _pkSquareRadius = 26;
+  double _pkMediaOpacity = 0.85;
+  List<int> _pkDurationOptions = <int>[5, 15, 30, 120];
   Timer? _roomCounterTicker;
   int _roomCounterNow = 0;
 
@@ -202,6 +212,7 @@ class _RoomPageState extends State<RoomPage> {
       unawaited(_refreshSeats());
       unawaited(_startRoomChat());
       unawaited(_connectRoomSeatSocket());
+      unawaited(_loadPkSettings());
       unawaited(_loadRoomBattleState());
       unawaited(_joinAgora(publish: false));
     });
@@ -2188,6 +2199,70 @@ class _RoomPageState extends State<RoomPage> {
     _syncPkTicker();
   }
 
+  Future<void> _loadPkSettings() async {
+    try {
+      final response = await http.get(Uri.parse('$_apiBase/pk/settings'))
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map || decoded['ok'] != true || decoded['settings'] is! Map) return;
+      final settings = Map<String, dynamic>.from(decoded['settings'] as Map);
+      final rawOptions = settings['durationOptions'];
+      final options = rawOptions is List
+          ? (rawOptions.map((value) => value is num ? value.toInt() : int.tryParse(value.toString()))
+              .whereType<int>().where((value) => value >= 1 && value <= 120).toSet().toList()..sort())
+          : <int>[5, 15, 30, 120];
+      if (!mounted) return;
+      setState(() {
+        _pkEnabled = settings['enabled'] != false;
+        _pkChallengeTitle = (settings['challengeTitle'] ?? 'تحدي PK').toString();
+        _pkSquareMediaUrl = (settings['mediaUrl'] ?? '').toString();
+        _pkSquareMediaType = (settings['mediaType'] ?? '').toString().toLowerCase();
+        _pkShowChallengeTitle = settings['showChallengeTitle'] != false;
+        _pkShowStartText = settings['showStartText'] != false;
+        _pkShowTimer = settings['showTimer'] != false;
+        _pkSquareRadius = ((settings['squareRadius'] as num?)?.toDouble() ?? 26).clamp(0, 48);
+        _pkMediaOpacity = (((settings['mediaOpacity'] as num?)?.toDouble() ?? 85) / 100).clamp(0, 1);
+        _pkDurationOptions = options.isEmpty ? <int>[5, 15, 30, 120] : options;
+        final defaultDuration = (settings['defaultDurationMinutes'] as num?)?.toInt() ?? 5;
+        if (_pkDurationOptions.contains(defaultDuration) && !_roomBattleActive) {
+          _pkDurationMinutes = defaultDuration;
+        } else if (!_pkDurationOptions.contains(_pkDurationMinutes) && !_roomBattleActive) {
+          _pkDurationMinutes = _pkDurationOptions.first;
+        }
+      });
+    } catch (error) {
+      debugPrint('[room-pk] settings load failed: $error');
+    }
+  }
+
+  Widget? _buildPkSquareAnimation() {
+    if (!_pkSquareMediaUrl.startsWith('https://')) return null;
+    if (_pkSquareMediaType == 'svga') {
+      return SVGAEasyPlayer(
+        key: ValueKey('pk-square-svga-$_pkSquareMediaUrl'),
+        resUrl: _pkSquareMediaUrl,
+        fit: BoxFit.contain,
+        loops: 0,
+        volume: 0,
+        muted: true,
+      );
+    }
+    if (_pkSquareMediaType == 'gif') {
+      return GifView.network(
+        _pkSquareMediaUrl,
+        key: ValueKey('pk-square-gif-$_pkSquareMediaUrl'),
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.contain,
+        frameRate: 24,
+        autoPlay: true,
+        loop: true,
+      );
+    }
+    return null;
+  }
+
   Future<void> _loadRoomBattleState() async {
     if (_roomId.isEmpty || widget.accessToken.isEmpty) return;
     try {
@@ -2238,7 +2313,7 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _startRoomBattle() {
-    if (!mounted || _pkStartingCountdown || _roomBattleActive || _pkActionBusy) return;
+    if (!mounted || !_pkEnabled || _pkStartingCountdown || _roomBattleActive || _pkActionBusy) return;
     setState(() => _pkStartingCountdown = true);
     _pkStartCountdownTimer?.cancel();
     _pkStartCountdownTimer = Timer(const Duration(seconds: 3), () {
@@ -2255,13 +2330,14 @@ class _RoomPageState extends State<RoomPage> {
       isPkActive: _roomBattleActive,
       selectedDurationMinutes: _pkDurationMinutes,
       onDurationChanged: (minutes) {
-        if (!mounted || _roomBattleActive || ![5, 15, 30, 120].contains(minutes)) return;
+        if (!mounted || _roomBattleActive || !_pkDurationOptions.contains(minutes)) return;
         setState(() => _pkDurationMinutes = minutes);
       },
       onToggle: () => unawaited(
         _submitRoomBattleAction(_pkVisualMode ? 'end' : 'prepare'),
       ),
       onReset: () => unawaited(_submitRoomBattleAction('reset')),
+      durationOptions: _pkDurationOptions,
     );
   }
 
@@ -3090,6 +3166,14 @@ class _RoomPageState extends State<RoomPage> {
       pkUserScores: _pkUserScores,
       pkTimerLabel: _pkTimerLabel,
       pkStartingCountdown: _pkStartingCountdown,
+      pkEnabled: _pkEnabled,
+      pkChallengeTitle: _pkChallengeTitle,
+      pkShowChallengeTitle: _pkShowChallengeTitle,
+      pkShowStartText: _pkShowStartText,
+      pkShowTimer: _pkShowTimer,
+      pkSquareRadius: _pkSquareRadius,
+      pkSquareAnimation: _buildPkSquareAnimation(),
+      pkMediaOpacity: _pkMediaOpacity,
           ),
         ),        if (_roomCounter != null) _roomCounterBanner(),
         if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
