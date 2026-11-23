@@ -82,6 +82,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.pkRedScore = 0,
     this.pkUserScores = const <String, int>{},
     this.pkTimerLabel = '05:00',
+    this.pkStartingCountdown = false,
   });
   final Map<String, dynamic> room;
   final List<Map<String, dynamic>> seats;
@@ -131,6 +132,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final int pkRedScore;
   final Map<String, int> pkUserScores;
   final String pkTimerLabel;
+  final bool pkStartingCountdown;
 
   Map<String, dynamic>? _seatAt(int number) {
     for (final seat in seats) {
@@ -474,7 +476,26 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   : null,
             ),
           ),
-          if (!pkStarted)
+          if (pkStartingCountdown)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Center(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0xCC101018),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withOpacity(0.65), width: 1.5),
+                      boxShadow: const [BoxShadow(color: Color(0x884F78FF), blurRadius: 18)],
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                      child: Text('START', style: TextStyle(color: Colors.white, fontSize: 27, fontWeight: FontWeight.w900, letterSpacing: 3)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (!pkStarted && !pkStartingCountdown)
             Positioned(
               top: 12,
               left: 0,
