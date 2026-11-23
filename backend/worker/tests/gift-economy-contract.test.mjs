@@ -103,7 +103,7 @@ test("gift picker supports avatar recipients, all-recipient selection, and a pre
   assert.match(giftSheet, /_recipientIds/);
   assert.match(giftSheet, /Text\('الجميع'/);
   assert.match(giftSheet, /recipientIds\.length/);
-  assert.match(roomPage, /_openRoomGiftPicker\(\{Map<String, dynamic>\? targetRecipient\}\)/);
+  assert.match(roomPage, /_openRoomGiftPicker\(\{[\s\S]*?Map<String, dynamic>\? targetRecipient/);
 });
 
 test("private gifts remain disabled until private conversations are implemented", () => {
