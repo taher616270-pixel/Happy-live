@@ -164,6 +164,8 @@ class _RoomPageState extends State<RoomPage> {
   double _pkStartHideDurationSeconds = 0.5;
   bool _pkStartHiding = false;
   double _pkSquareRadius = 26;
+  double _pkSquareWidthPercent = 100;
+  double _pkSquareHeight = 284;
   double _pkMediaOpacity = 0.85;
   List<int> _pkDurationOptions = <int>[5, 15, 30, 120];
   Timer? _roomCounterTicker;
@@ -2346,6 +2348,8 @@ class _RoomPageState extends State<RoomPage> {
         _pkStartShowDurationSeconds = ((settings['startShowDurationSeconds'] as num?)?.toInt() ?? 3).clamp(1, 30).toInt();
         _pkStartHideDurationSeconds = ((settings['startHideDurationSeconds'] as num?)?.toDouble() ?? 0.5).clamp(0, 5).toDouble();
         _pkSquareRadius = ((settings['squareRadius'] as num?)?.toDouble() ?? 26).clamp(0, 48).toDouble();
+        _pkSquareWidthPercent = ((settings['squareWidthPercent'] as num?)?.toDouble() ?? 100).clamp(50, 100).toDouble();
+        _pkSquareHeight = ((settings['squareHeight'] as num?)?.toDouble() ?? 284).clamp(160, 500).toDouble();
         _pkMediaOpacity = (((settings['mediaOpacity'] as num?)?.toDouble() ?? 85) / 100).clamp(0, 1).toDouble();
         _pkDurationOptions = options.isEmpty ? <int>[5, 15, 30, 120] : options;
         final defaultDuration = (settings['defaultDurationMinutes'] as num?)?.toInt() ?? 5;
@@ -3332,6 +3336,8 @@ class _RoomPageState extends State<RoomPage> {
       pkShowStartText: _pkShowStartText,
       pkShowTimer: _pkShowTimer,
       pkSquareRadius: _pkSquareRadius,
+      pkSquareWidthPercent: _pkSquareWidthPercent,
+      pkSquareHeight: _pkSquareHeight,
       pkSquareAnimation: _buildPkSquareAnimation(),
       pkMediaOpacity: _pkMediaOpacity,
           ),
