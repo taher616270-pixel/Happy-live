@@ -408,7 +408,7 @@ class _PkRulesSheet extends StatelessWidget {
                           color: Color(0x1FFFFFFF),
                         ),
                         child: const Icon(
-                          Icons.arrow_back_rounded,
+                          Icons.chevron_left_rounded,
                           color: Colors.white,
                           size: 20,
                         ),
