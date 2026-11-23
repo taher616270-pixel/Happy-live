@@ -12,6 +12,7 @@ Future<void> showPkSheet(
   required int selectedDurationMinutes,
   required ValueChanged<int> onDurationChanged,
   List<int> durationOptions = const [5, 15, 30, 120],
+  String challengeTitle = 'تحدي PK',
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -29,6 +30,7 @@ Future<void> showPkSheet(
             onReset: onReset,
             selectedDurationMinutes: selectedDuration,
             durationOptions: durationOptions,
+            challengeTitle: challengeTitle,
             onDurationChanged: (minutes) {
               setSheetState(() => selectedDuration = minutes);
               onDurationChanged(minutes);
@@ -49,6 +51,7 @@ class _PkSheet extends StatelessWidget {
   final VoidCallback onReset;
   final int selectedDurationMinutes;
   final List<int> durationOptions;
+  final String challengeTitle;
   final ValueChanged<int> onDurationChanged;
 
   const _PkSheet({
@@ -58,6 +61,7 @@ class _PkSheet extends StatelessWidget {
     required this.onReset,
     required this.selectedDurationMinutes,
     required this.durationOptions,
+    required this.challengeTitle,
     required this.onDurationChanged,
   });
 
@@ -79,7 +83,7 @@ class _PkSheet extends StatelessWidget {
           SizedBox(
             height: 32,
             child: Stack(alignment: Alignment.center, children: [
-              const Text('PK', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+              Text(challengeTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
               Align(
                 alignment: Alignment.centerLeft,
                 child: GestureDetector(
@@ -474,7 +478,7 @@ class _PkRulesSheet extends StatelessWidget {
                     ),
                     _PkRuleItem(
                       question: 'كم تستمر مدة تحدي الـ PK؟',
-                      answer: 'يمكن اختيار مدة الـ PK قبل بدء المنافسة. المدد المتاحة هي: 5 و15 و30 و120 دقيقة.',
+                      answer: 'يمكن اختيار مدة الـ PK قبل بدء المنافسة وفق المدد التي تحددها الإدارة.',
                     ),
                     _PkRuleItem(
                       question: 'ما أوضاع المقاعد الصوتية التي تدعم الـ PK؟',
