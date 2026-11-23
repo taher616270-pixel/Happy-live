@@ -285,6 +285,28 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     }
 
     final roomLayout = micLayoutById(_micLayoutId);
+    final seatStore = context.watch<SeatStateStore>();
+    final roomSeatNumbers = <int>{
+      for (final row in roomLayout.rows)
+        for (final slot in row.whereType<MicSeat>())
+          roomLayout.seatNumber(slot),
+    }.toList()..sort();
+    int? firstJoinSeat;
+    if (seatStore.mySeat == null) {
+      for (final number in roomSeatNumbers) {
+        if (number == 3 || number == 8) continue;
+        final state = seatStore.seats[number] ?? SeatState.empty(number);
+        if (state.occupied ||
+            state.isPending ||
+            seatStore.isPending(number) ||
+            pendingSeatNumbers.contains(number) ||
+            state.isLocked) {
+          continue;
+        }
+        firstJoinSeat = number;
+        break;
+      }
+    }
     final overflowSlots = <MicSeat>[];
     for (final row in roomLayout.rows) {
       for (final slot in row.whereType<MicSeat>()) {
@@ -339,10 +361,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             textDirection: TextDirection.ltr,
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildPkSeatCell(context, 4),
-                              _buildPkSeatCell(context, 3),
-                              _buildPkSeatCell(context, 2),
-                              _buildPkSeatCell(context, 1),
+                              _buildPkSeatCell(context, 4, joinSeatNumber: firstJoinSeat, currentUserAvatarUrl: seatStore.currentAvatarUrl),
+                              _buildPkSeatCell(context, 3, joinSeatNumber: firstJoinSeat, currentUserAvatarUrl: seatStore.currentAvatarUrl),
+                              _buildPkSeatCell(context, 2, joinSeatNumber: firstJoinSeat, currentUserAvatarUrl: seatStore.currentAvatarUrl),
+                              _buildPkSeatCell(context, 1, joinSeatNumber: firstJoinSeat, currentUserAvatarUrl: seatStore.currentAvatarUrl),
                             ],
                           ),
                         ),
@@ -351,10 +373,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           textDirection: TextDirection.ltr,
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildPkSeatCell(context, 8),
-                            _buildPkSeatCell(context, 7),
-                            _buildPkSeatCell(context, 6),
-                            _buildPkSeatCell(context, 5),
+                            _buildPkSeatCell(context, 8, joinSeatNumber: firstJoinSeat, currentUserAvatarUrl: seatStore.currentAvatarUrl),
+                            _buildPkSeatCell(context, 7, joinSeatNumber: firstJoinSeat, currentUserAvatarUrl: seatStore.currentAvatarUrl),
+                            _buildPkSeatCell(context, 6, joinSeatNumber: firstJoinSeat, currentUserAvatarUrl: seatStore.currentAvatarUrl),
+                            _buildPkSeatCell(context, 5, joinSeatNumber: firstJoinSeat, currentUserAvatarUrl: seatStore.currentAvatarUrl),
                           ],
                         ),
                         const SizedBox(height: 7),
@@ -364,10 +386,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                             textDirection: TextDirection.ltr,
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildPkSeatCell(context, 12),
-                              _buildPkSeatCell(context, 11),
-                              _buildPkSeatCell(context, 10),
-                              _buildPkSeatCell(context, 9),
+                              _buildPkSeatCell(context, 12, joinSeatNumber: firstJoinSeat, currentUserAvatarUrl: seatStore.currentAvatarUrl),
+                              _buildPkSeatCell(context, 11, joinSeatNumber: firstJoinSeat, currentUserAvatarUrl: seatStore.currentAvatarUrl),
+                              _buildPkSeatCell(context, 10, joinSeatNumber: firstJoinSeat, currentUserAvatarUrl: seatStore.currentAvatarUrl),
+                              _buildPkSeatCell(context, 9, joinSeatNumber: firstJoinSeat, currentUserAvatarUrl: seatStore.currentAvatarUrl),
                             ],
                           ),
                         ),
@@ -485,7 +507,13 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       final number = roomLayout.seatNumber(slot);
                       return Padding(
                         padding: const EdgeInsetsDirectional.only(end: 5),
-                        child: _pkOverflowSeat(context, slot, number),
+                        child: _pkOverflowSeat(
+                          context,
+                          slot,
+                          number,
+                          joinSeatNumber: firstJoinSeat,
+                          currentUserAvatarUrl: seatStore.currentAvatarUrl,
+                        ),
                       );
                     }).toList(),
                   ),
@@ -498,20 +526,23 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     );
   }
 
-  Widget _buildPkSeatCell(BuildContext context, int seatNumber) {
+  Widget _buildPkSeatCell(
+    BuildContext context,
+    int seatNumber, {
+    required int? joinSeatNumber,
+    required String currentUserAvatarUrl,
+  }) {
     return Selector<SeatStateStore, SeatState>(
       selector: (context, store) => store.seats[seatNumber] ?? SeatState.empty(seatNumber),
       builder: (context, seatState, _) {
         final seat = seatState.occupied ? seatState.toMap() : _seatAt(seatNumber);
         final occupied = seat != null && (seat['userId'] ?? '').toString().isNotEmpty;
         final avatar = (seat?['avatar'] ?? seat?['avatarUrl'] ?? seat?['photoUrl'] ?? '').toString();
-        // In the design picture:
-        // Seat 3 and 8 are locked.
+        final visibleAvatar = occupied ? avatar : (seatNumber == joinSeatNumber ? currentUserAvatarUrl : '');
+        // In the design picture, seats 3 and 8 are locked.
         final locked = seatState.isLocked || (seat?['isLocked'] == true) || (seat?['locked'] == true) || seatNumber == 3 || seatNumber == 8;
-        // Seat 4 and 5 have the muted mic icon on the bottom edge.
+        // Seats 4 and 5 have the muted mic icon on the bottom edge.
         final isMuted = seatState.isMuted || (seat?['isMuted'] == true) || seatNumber == 4 || seatNumber == 5;
-        // Seat 1 has avatar and join button.
-        final isSeat1 = seatNumber == 1;
 
         final speakerUid = seat?['uid'] is num
             ? (seat!['uid'] as num).toInt()
@@ -545,9 +576,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         ),
                       ),
                       child: ClipOval(
-                        child: (isSeat1 || (occupied && avatar.isNotEmpty))
-                            ? (avatar.startsWith('http')
-                                ? HappyNetworkImage(avatar, fit: BoxFit.cover)
+                        child: (seatNumber == 1 || occupied || seatNumber == joinSeatNumber)
+                            ? (visibleAvatar.startsWith('http')
+                                ? HappyNetworkImage(visibleAvatar, fit: BoxFit.cover)
                                 : Image.asset(
                                     'assets/images/app_icon.PNG',
                                     fit: BoxFit.cover,
@@ -623,32 +654,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       ],
                     ),
                   ),
-                if (isSeat1 && !occupied)
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: (isChangingSeat || locked)
-                          ? null
-                          : () => onTapSeat(seatNumber),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: (isChangingSeat || locked)
-                              ? Colors.white.withOpacity(0.55)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text(
-                          'انضمام',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
+                if (seatNumber == joinSeatNumber)
+                  _joinMicButton(
+                    seatNumber,
+                    disabled: isChangingSeat || locked || seatState.isPending,
                   )
                 else
                   Text(
