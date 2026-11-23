@@ -87,6 +87,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.pkShowChallengeTitle = true,
     this.pkShowStartText = true,
     this.pkShowTimer = true,
+    this.pkEnabled = true,
     this.pkSquareRadius = 26,
     this.pkSquareAnimation,
   });
@@ -143,6 +144,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final bool pkShowChallengeTitle;
   final bool pkShowStartText;
   final bool pkShowTimer;
+  final bool pkEnabled;
   final double pkSquareRadius;
   final Widget? pkSquareAnimation;
 
@@ -531,7 +533,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 ),
               ),
             ),
-          if (!pkStarted && !pkStartingCountdown)
+          if (!pkStarted && !pkStartingCountdown && pkEnabled)
             Positioned(
               top: 12,
               left: 0,
