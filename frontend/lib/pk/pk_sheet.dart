@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 Future<void> showPkSheet(
   BuildContext context, {
   required bool isPkVisualMode,
+  required bool isPkActive,
   required VoidCallback onToggle,
   required VoidCallback onReset,
   required int selectedDurationMinutes,
@@ -22,6 +23,7 @@ Future<void> showPkSheet(
           textDirection: TextDirection.rtl,
           child: _PkSheet(
             isPkVisualMode: isPkVisualMode,
+            isPkActive: isPkActive,
             onToggle: onToggle,
             onReset: onReset,
             selectedDurationMinutes: selectedDuration,
@@ -40,6 +42,7 @@ const _purple = [Color(0xFF9620F8), Color(0xFFB12FF2)];
 
 class _PkSheet extends StatelessWidget {
   final bool isPkVisualMode;
+  final bool isPkActive;
   final VoidCallback onToggle;
   final VoidCallback onReset;
   final int selectedDurationMinutes;
@@ -47,6 +50,7 @@ class _PkSheet extends StatelessWidget {
 
   const _PkSheet({
     required this.isPkVisualMode,
+    required this.isPkActive,
     required this.onToggle,
     required this.onReset,
     required this.selectedDurationMinutes,
@@ -101,7 +105,7 @@ class _PkSheet extends StatelessWidget {
               _Chip(
                 minutes: m,
                 selected: m == selectedDurationMinutes,
-                onTap: isPkVisualMode ? null : () => onDurationChanged(m),
+                onTap: isPkActive ? null : () => onDurationChanged(m),
               ),
             ],
           ]),
