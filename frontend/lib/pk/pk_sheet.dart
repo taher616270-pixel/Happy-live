@@ -151,14 +151,19 @@ class _Preview extends StatelessWidget {
   }
 }
 
-Path _roundedPoly(List<Offset> pts, double r) {
+Path _roundedPoly(
+  List<Offset> pts,
+  double r, {
+  Map<int, double> cornerRadii = const <int, double>{},
+}) {
   final path = Path();
   final n = pts.length;
   for (var i = 0; i < n; i++) {
     final p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n];
     final v1 = p0 - p1, v2 = p2 - p1;
     final l1 = v1.distance, l2 = v2.distance;
-    final rr = math.min(r, math.min(l1, l2) / 2);
+    final requestedRadius = cornerRadii[i] ?? r;
+    final rr = math.min(requestedRadius, math.min(l1, l2) / 2);
     final a = p1 + v1 / l1 * rr;
     final b = p1 + v2 / l2 * rr;
     if (i == 0) { path.moveTo(a.dx, a.dy); } else { path.lineTo(a.dx, a.dy); }
@@ -238,8 +243,16 @@ class _TeamsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size s) {
     final w = s.width, h = s.height, cx = w / 2;
-    final red = _roundedPoly([Offset(0, 0), Offset(cx + 5, 0), Offset(cx - 15, h), Offset(0, h)], 15);
-    final blue = _roundedPoly([Offset(cx + 13, 0), Offset(w, 0), Offset(w, h), Offset(cx - 5, h)], 15);
+    final red = _roundedPoly(
+      [Offset(0, 0), Offset(cx + 5, 0), Offset(cx - 15, h), Offset(0, h)],
+      15,
+      cornerRadii: const {2: 30},
+    );
+    final blue = _roundedPoly(
+      [Offset(cx + 13, 0), Offset(w, 0), Offset(w, h), Offset(cx - 5, h)],
+      15,
+      cornerRadii: const {3: 30},
+    );
     canvas.drawPath(red, Paint()..shader = const LinearGradient(
       begin: Alignment.topRight, end: Alignment.bottomLeft,
       colors: [Color(0xFFC22B4C), Color(0xFF8F1E3F)],
