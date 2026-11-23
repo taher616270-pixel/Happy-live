@@ -2649,6 +2649,10 @@ class _RoomPageState extends State<RoomPage> {
       return;
     }
 
+    if (_seatStateStore.seats[seatNumber]?.isLocked == true) {
+      _showMessage('هذا المايك مقفل');
+      return;
+    }
     final tapTimer = Stopwatch()..start();
     final command = _seatStateStore.beginOptimisticMove(seatNumber);
     if (command == null) return;
