@@ -3542,6 +3542,7 @@ export default {
         ]);
         const snapshot = await snapshotResponse.json() as { seats?: Array<Record<string, unknown>>; revision?: number };
         const activeSeats = snapshot.seats ?? [];
+        const seatControls = snapshot.seatControls ?? {};
         const activeSeatIds = activeSeats
           .map((seat) => String(seat.userId ?? ""))
           .filter((id) => id.length > 0);
@@ -3555,14 +3556,37 @@ export default {
             profileByUserId.set(row.user_id, row);
           }
         }
-        const seats = activeSeats.map((seat) => {
+        const activeSeatByNumber = new Map(activeSeats.map((seat) => [Number(seat.seatNumber), seat]));
+        const configuredSeatCount = Math.min(24, Math.max(1, Number(roomSettings.seats ?? 8)));
+        const seats = Array.from({ length: configuredSeatCount }, (_, index) => {
+          const seatNumber = index + 1;
+          const seat = activeSeatByNumber.get(seatNumber);
+          const control = seatControls[String(seatNumber)] ?? {};
+          if (!seat) {
+            return {
+              seatNumber,
+              userId: "",
+              userCode: "",
+              uid: null,
+              isMuted: control.isMuted === true,
+              isLocked: control.isLocked === true,
+              isRoomOwner: false,
+              isRoomModerator: false,
+              name: "",
+              avatarUrl: "",
+              countryName: "",
+              joinedAt: null,
+              isMe: false
+            };
+          }
           const profile = profileByUserId.get(String(seat.userId ?? ""));
           return {
             seatNumber: seat.seatNumber,
             userId: seat.userId,
             userCode: seat.userCode ?? "",
             uid: seat.uid ?? null,
-            isMuted: seat.isMuted === true,
+            isMuted: seat.isMuted === true || control.isMuted === true,
+            isLocked: control.isLocked === true,
             isRoomOwner: seat.isRoomOwner === true,
             isRoomModerator: seat.isRoomModerator === true,
             name: profile?.display_name?.trim() || seat.name || "مستخدم",
