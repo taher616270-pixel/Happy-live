@@ -181,9 +181,10 @@ class _BarPainter extends CustomPainter {
     final off = (toRight ? t : -t) * gap;
     final p = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 5
+      ..strokeWidth = 4
       ..strokeJoin = StrokeJoin.miter
-      ..color = const Color(0x24FFFFFF);
+      // Subtle moving chevrons tinted to match each team's bar.
+      ..color = toRight ? const Color(0x664F78FF) : const Color(0x66FF5A91);
     canvas.save();
     canvas.clipRect(area);
     for (double cx = -gap * 2 + (off % gap); cx < area.right + gap; cx += gap) {
