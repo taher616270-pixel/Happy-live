@@ -2152,7 +2152,11 @@ Widget _roomActionButton({
                           fit: StackFit.expand,
                           children: [
                             if (visibleAvatar.startsWith('http'))
-                              HappyNetworkImage(visibleAvatar, fit: BoxFit.cover),
+                              Opacity(
+                                // Keep the pending joiner's avatar faded until the mic is occupied.
+                                opacity: occupied ? 1 : 0.35,
+                                child: HappyNetworkImage(visibleAvatar, fit: BoxFit.cover),
+                              ),
                             if (!visibleAvatar.startsWith('http'))
                               occupied
                                   ? Icon(Icons.mic_rounded, color: Colors.white.withOpacity(.92), size: slot.big ? 22 : 19)
@@ -2167,6 +2171,8 @@ Widget _roomActionButton({
                                             ),
                                           ),
                                         ),
+                            if (!occupied && number == firstJoinSeat && visibleAvatar.startsWith('http'))
+                              const CustomPaint(painter: _DashedCircleBorderPainter()),
                           ],
                         ),
                       ),
@@ -2408,21 +2414,32 @@ Widget _roomActionButton({
                               ],
                             ),
                             child: ClipOval(
-                              child: visibleAvatar.startsWith('http')
-                                  ? HappyNetworkImage(visibleAvatar, fit: BoxFit.cover)
-                                  : (occupied
-                                      ? Icon(Icons.mic_rounded, color: Colors.white.withOpacity(.92), size: slot.big ? 18 : 16)
-                                      : locked
-                                          ? Icon(Icons.lock_outline, color: Colors.white.withOpacity(.92), size: slot.big ? 18 : 16)
-                                          : Center(
-                                              child: CustomPaint(
-                                                size: Size(slot.big ? 22 : 18, slot.big ? 22 : 18),
-                                                painter: const ChairCustomPainter(
-                                                  color: Color(0xFF9A98A6),
-                                                  strokeWidth: 1.8,
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  if (visibleAvatar.startsWith('http'))
+                                    Opacity(
+                                      opacity: occupied ? 1 : 0.35,
+                                      child: HappyNetworkImage(visibleAvatar, fit: BoxFit.cover),
+                                    )
+                                  else
+                                    occupied
+                                        ? Icon(Icons.mic_rounded, color: Colors.white.withOpacity(.92), size: slot.big ? 18 : 16)
+                                        : locked
+                                            ? Icon(Icons.lock_outline, color: Colors.white.withOpacity(.92), size: slot.big ? 18 : 16)
+                                            : Center(
+                                                child: CustomPaint(
+                                                  size: Size(slot.big ? 22 : 18, slot.big ? 22 : 18),
+                                                  painter: const ChairCustomPainter(
+                                                    color: Color(0xFF9A98A6),
+                                                    strokeWidth: 1.8,
+                                                  ),
                                                 ),
                                               ),
-                                            )),
+                                  if (!occupied && number == joinSeatNumber && visibleAvatar.startsWith('http'))
+                                    const CustomPaint(painter: _DashedCircleBorderPainter()),
+                                ],
+                              ),
                             ),
                           ),
                         ),
