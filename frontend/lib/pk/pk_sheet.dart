@@ -346,7 +346,7 @@ class _Btn extends StatelessWidget {
   );
 }
 
-/// نافذة قواعد تحدي PK — محتواها يبقى فارغاً إلى أن تُضاف القواعد.
+/// نافذة قواعد تحدي PK.
 Future<void> showPkRulesSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
@@ -413,9 +413,87 @@ class _PkRulesSheet extends StatelessWidget {
                 ],
               ),
             ),
-            const Expanded(child: SizedBox()),
+            const SizedBox(height: 14),
+            const Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _PkRuleItem(
+                      question: 'من يستطيع بدء التحدي؟',
+                      answer: 'يمكن لمالك الغرفة والمشرفين تفعيل وضع الـ PK وبدء المنافسة.',
+                    ),
+                    _PkRuleItem(
+                      question: 'كم تستمر مدة تحدي الـ PK؟',
+                      answer: 'يمكن اختيار مدة الـ PK قبل بدء المنافسة. المدد المتاحة هي: 5 و15 و30 و120 دقيقة.',
+                    ),
+                    _PkRuleItem(
+                      question: 'ما أوضاع المقاعد الصوتية التي تدعم الـ PK؟',
+                      answer: 'يمكن بدء الـ PK في أوضاع 2 و5 و8 و9 و12 و15 و20 و30 مقعدًا صوتيًا.\n\nملاحظة: في أوضاع 15 و20 و30 مقعدًا صوتيًا، لا يمكن المشاركة في الـ PK إلا للمضيفين الموجودين في أول 12 مقعدًا صوتيًا. أما المضيفون في المقعد 13 وما بعده، فسيتم نقلهم إلى المقاعد الصوتية المفتوحة، ثم سيعودون إلى مقاعدهم الصوتية العادية بعد إيقاف الـ PK.',
+                    ),
+                    _PkRuleItem(
+                      question: 'كيف يمكن إعادة ضبط أو إيقاف وضع الـ PK أثناء التحدي؟',
+                      answer: 'يمكن لمالك الغرفة أو المشرفين الضغط على شريط الـ PK أو المؤقت لفتح لوحة الـ PK، ثم إعادة تعيين الـ PK أو إيقافه. تؤدي إعادة التعيين إلى مسح نقاط الـ PK لجميع المضيفين وإعادة الغرفة إلى مرحلة الاستعداد للـ PK. بعد ذلك، يجب على مالك الغرفة أو المشرفين بدء الجولة التالية يدويًا. أما عند إيقاف الـ PK، فستعود الغرفة مباشرةً إلى وضع المقاعد الصوتية العادي.',
+                    ),
+                    _PkRuleItem(
+                      question: 'كيف يتم تقسيم الفرق في الـ PK؟',
+                      answer: 'بعد بدء الـ PK، يتم تقسيم جميع المضيفين الموجودين على مقاعد المايك تلقائيًا إلى الفريق الأحمر والفريق الأزرق، وذلك بناءً على مواقعهم الحالية على مقاعد المايك.',
+                    ),
+                    _PkRuleItem(
+                      question: 'هل يمكن للمضيفين مغادرة فرقهم أو الانتقال إلى فريق آخر أثناء الـ PK؟',
+                      answer: 'نعم، يمكن للمضيف مغادرة فريقه أو الانتقال إلى فريق آخر بعد بدء الـ PK. ملاحظة: إذا غادر المضيف فريقه أو انتقل إلى فريق آخر، فسيتم تصفير نقاطه الشخصية في جولة الـ PK الحالية وإعادة احتسابها من الصفر، بينما ستظل النقاط التي سبق أن ساهم بها لفريقه محفوظة ولن يتم خصمها.',
+                    ),
+                    _PkRuleItem(
+                      question: 'كيف يصبح المضيف MVP؟',
+                      answer: 'المستخدم الذي يرسل أكبر عدد من الهدايا إلى الفريق الفائز خلال جولة الـ PK يحصل على لقب MVP.',
+                    ),
+                    SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PkRuleItem extends StatelessWidget {
+  const _PkRuleItem({required this.question, required this.answer});
+
+  final String question;
+  final String answer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 17),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'س: $question',
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'ج: $answer',
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: Color(0xCCFFFFFF),
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              height: 1.55,
+            ),
+          ),
+        ],
       ),
     );
   }
