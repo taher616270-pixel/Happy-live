@@ -418,9 +418,9 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        const Text(
+                        Text(
                           pkTimerLabel,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
