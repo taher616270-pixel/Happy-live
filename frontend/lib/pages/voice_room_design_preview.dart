@@ -4585,8 +4585,12 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
                 ),
               ),
             ),
-          // Keep the participant avatar above the animated microphone frame.
-          widget.avatar,
+          // Keep the participant visible in front while leaving the SVGA
+          // microphone frame exposed around the avatar.
+          Transform.scale(
+            scale: widget.micStyleUrl.startsWith('https://') ? 0.76 : 1.0,
+            child: widget.avatar,
+          ),
           if (widget.isLocked)
             Positioned.fill(
               child: IgnorePointer(
