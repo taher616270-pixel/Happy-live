@@ -116,6 +116,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.pkBlueMicBorderColor = '#258BFF',
     this.pkRedMicBorderColor = '#FF4B5C',
     this.micStyleUrl = '',
+    this.micChairStyleUrl = '',
+    this.micLockStyleUrl = '',
     this.pkSquareAnimation,
   });
   final Map<String, dynamic> room;
