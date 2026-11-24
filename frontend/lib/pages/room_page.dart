@@ -2812,32 +2812,43 @@ class _RoomPageState extends State<RoomPage> {
   // PK overflow microphones form a fixed first-come queue (13, 14, 15...).
   // A user who has joined this queue cannot hop between its seats.
   void _selectPkOverflowQueueSeat(int tappedSeatNumber) {
+    if (tappedSeatNumber <= 12) {
+      _selectSeat(tappedSeatNumber);
+      return;
+    }
+
     if (_mySeat != null && _mySeat! > 12) {
       _showMessage('أنت في الطابور بالفعل، لا يمكنك التنقل بين مايكاته');
       return;
     }
 
-    final capacity = _micCount > 12 ? _micCount : tappedSeatNumber;
-    final occupiedByNumber = <int, Map<String, dynamic>>{};
-    for (final seat in _seats) {
-      final rawNumber = seat['seatNumber'];
-      if (rawNumber is num) {
-        occupiedByNumber[rawNumber.toInt()] = seat;
-      }
-    }
+    // The overflow row is interactive: join the exact seat the user tapped.
+    // Do not silently redirect the tap to the first available queue seat.
+    final selectedSeat = _seatStateStore.seats[tappedSeatNumber];
+    final seatFromSnapshot = _seats.cast<Map<String, dynamic>?>().firstWhere(
+      (seat) => seat?['seatNumber'] == tappedSeatNumber,
+      orElse: () => null,
+    );
+    final occupied = selectedSeat?.occupied == true ||
+        (seatFromSnapshot?['userId'] ?? '').toString().trim().isNotEmpty;
+    final locked = selectedSeat?.isLocked == true ||
+        seatFromSnapshot?['isLocked'] == true ||
+        seatFromSnapshot?['locked'] == true;
 
-    for (var number = 13; number <= capacity; number++) {
-      final seat = occupiedByNumber[number];
-      final userId = (seat?['userId'] ?? '').toString().trim();
-      final isLocked = seat?['isLocked'] == true || seat?['locked'] == true;
-      if (userId.isNotEmpty || isLocked || _pendingSeatNumbers.contains(number)) {
-        continue;
-      }
-      _selectSeat(number);
+    if (occupied) {
+      _showMessage('هذا المايك مشغول، اختر مايكًا فارغًا');
+      return;
+    }
+    if (locked) {
+      _showMessage('هذا المايك مقفل');
+      return;
+    }
+    if (_pendingSeatNumbers.contains(tappedSeatNumber) ||
+        selectedSeat?.isPending == true) {
       return;
     }
 
-    _showMessage('طابور المايكات ممتلئ، لا يوجد مكان متاح');
+    unawaited(_selectSeat(tappedSeatNumber));
   }
 
   Future<void> _selectSeat(int seatNumber) async {
