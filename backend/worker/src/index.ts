@@ -785,7 +785,10 @@ export default {
             showChallengeTitle: true, showStartText: true, showTimer: true,
             squareRadius: 26, mediaOpacity: 85, durationOptions: [5, 15, 30, 120],
             defaultDurationMinutes: 5, startMediaUrl: "", startMediaType: "",
-            startShowDurationSeconds: 3, startHideDurationSeconds: 0.5
+            startShowDurationSeconds: 3, startHideDurationSeconds: 0.5,
+            normalMicBorderColor: "#FFFFFF", normalMicBorderWidth: 1.5, normalMicFillColor: "#FFFFFF", normalMicFillOpacity: 14,
+            pkMicBorderColor: "#FFFFFF", pkMicBorderWidth: 2.4, pkMicFillColor: "#FFFFFF", pkMicFillOpacity: 12,
+            pkBlueMicBorderColor: "#258BFF", pkRedMicBorderColor: "#FF4B5C"
           };
           const readSettings = async () => {
             const row = await env.DB!.prepare(
@@ -820,6 +823,16 @@ export default {
           const startMediaType = body.startMediaType === undefined ? String(current.startMediaType ?? "") : typeof body.startMediaType === "string" ? body.startMediaType.toLowerCase() : "";
           const startShowDurationSeconds = body.startShowDurationSeconds === undefined ? Number(current.startShowDurationSeconds ?? 3) : Number(body.startShowDurationSeconds);
           const startHideDurationSeconds = body.startHideDurationSeconds === undefined ? Number(current.startHideDurationSeconds ?? 0.5) : Number(body.startHideDurationSeconds);
+          const normalMicBorderColor = body.normalMicBorderColor === undefined ? String(current.normalMicBorderColor ?? "#FFFFFF") : String(body.normalMicBorderColor);
+          const normalMicBorderWidth = body.normalMicBorderWidth === undefined ? Number(current.normalMicBorderWidth ?? 1.5) : Number(body.normalMicBorderWidth);
+          const normalMicFillColor = body.normalMicFillColor === undefined ? String(current.normalMicFillColor ?? "#FFFFFF") : String(body.normalMicFillColor);
+          const normalMicFillOpacity = body.normalMicFillOpacity === undefined ? Number(current.normalMicFillOpacity ?? 14) : Number(body.normalMicFillOpacity);
+          const pkMicBorderColor = body.pkMicBorderColor === undefined ? String(current.pkMicBorderColor ?? "#FFFFFF") : String(body.pkMicBorderColor);
+          const pkMicBorderWidth = body.pkMicBorderWidth === undefined ? Number(current.pkMicBorderWidth ?? 2.4) : Number(body.pkMicBorderWidth);
+          const pkMicFillColor = body.pkMicFillColor === undefined ? String(current.pkMicFillColor ?? "#FFFFFF") : String(body.pkMicFillColor);
+          const pkMicFillOpacity = body.pkMicFillOpacity === undefined ? Number(current.pkMicFillOpacity ?? 12) : Number(body.pkMicFillOpacity);
+          const pkBlueMicBorderColor = body.pkBlueMicBorderColor === undefined ? String(current.pkBlueMicBorderColor ?? "#258BFF") : String(body.pkBlueMicBorderColor);
+          const pkRedMicBorderColor = body.pkRedMicBorderColor === undefined ? String(current.pkRedMicBorderColor ?? "#FF4B5C") : String(body.pkRedMicBorderColor);
           if (typeof enabled !== "boolean" || typeof showChallengeTitle !== "boolean" || typeof showStartText !== "boolean" || typeof showTimer !== "boolean" ||
               !challengeTitle || challengeTitle.length > 80 || (mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) ||
               !["", "gif", "svga"].includes(mediaType) || (mediaUrl && !mediaType) || (!mediaUrl && mediaType) ||
@@ -834,10 +847,15 @@ export default {
               (startMediaUrl && (startMediaUrl.length > 2048 || !/^https:\/\//i.test(startMediaUrl))) ||
               !["", "gif", "svga"].includes(startMediaType) || (startMediaUrl && !startMediaType) || (!startMediaUrl && startMediaType) ||
               !Number.isFinite(startShowDurationSeconds) || startShowDurationSeconds < 1 || startShowDurationSeconds > 30 ||
-              !Number.isFinite(startHideDurationSeconds) || startHideDurationSeconds < 0 || startHideDurationSeconds > 5) {
+              !Number.isFinite(startHideDurationSeconds) || startHideDurationSeconds < 0 || startHideDurationSeconds > 5 ||
+              !/^#[0-9a-f]{6}$/i.test(normalMicBorderColor) || !Number.isFinite(normalMicBorderWidth) || normalMicBorderWidth < 0 || normalMicBorderWidth > 8 ||
+              !/^#[0-9a-f]{6}$/i.test(normalMicFillColor) || !Number.isInteger(normalMicFillOpacity) || normalMicFillOpacity < 0 || normalMicFillOpacity > 100 ||
+              !/^#[0-9a-f]{6}$/i.test(pkMicBorderColor) || !Number.isFinite(pkMicBorderWidth) || pkMicBorderWidth < 0 || pkMicBorderWidth > 8 ||
+              !/^#[0-9a-f]{6}$/i.test(pkMicFillColor) || !Number.isInteger(pkMicFillOpacity) || pkMicFillOpacity < 0 || pkMicFillOpacity > 100 ||
+              !/^#[0-9a-f]{6}$/i.test(pkBlueMicBorderColor) || !/^#[0-9a-f]{6}$/i.test(pkRedMicBorderColor)) {
             return json({ error: "invalid_pk_settings", message: "تحقق من إعدادات PK والمدد والوسائط." }, 400, origin, env);
           }
-          const settings = { enabled, challengeTitle, mediaUrl, mediaType, showChallengeTitle, showStartText, showTimer, squareRadius, squareWidthPercent, squareHeight, mediaOpacity, durationOptions, defaultDurationMinutes, startMediaUrl, startMediaType, startShowDurationSeconds, startHideDurationSeconds };
+          const settings = { enabled, challengeTitle, mediaUrl, mediaType, showChallengeTitle, showStartText, showTimer, squareRadius, squareWidthPercent, squareHeight, mediaOpacity, durationOptions, defaultDurationMinutes, startMediaUrl, startMediaType, startShowDurationSeconds, startHideDurationSeconds, normalMicBorderColor, normalMicBorderWidth, normalMicFillColor, normalMicFillOpacity, pkMicBorderColor, pkMicBorderWidth, pkMicFillColor, pkMicFillOpacity, pkBlueMicBorderColor, pkRedMicBorderColor };
           const now = new Date().toISOString();
           await env.DB!.prepare(
             "INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('pk_battle_settings', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at"
