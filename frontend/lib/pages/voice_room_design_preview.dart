@@ -684,21 +684,27 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                           height: 46,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: occupied
-                                ? Colors.white.withOpacity(.14)
-                                : const Color(0xFF1E1C2B).withOpacity(.70),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(occupied ? .82 : .48),
-                              width: 2,
-                            ),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x99000000),
-                                blurRadius: 9,
-                                spreadRadius: 1,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
+                            color: micStyleUrl.startsWith('https://')
+                                ? Colors.transparent
+                                : occupied
+                                    ? Colors.white.withOpacity(.14)
+                                    : const Color(0xFF1E1C2B).withOpacity(.70),
+                            border: micStyleUrl.startsWith('https://')
+                                ? Border.all(color: Colors.transparent, width: 0)
+                                : Border.all(
+                                    color: Colors.white.withOpacity(occupied ? .82 : .48),
+                                    width: 2,
+                                  ),
+                            boxShadow: micStyleUrl.startsWith('https://')
+                                ? const []
+                                : const [
+                                    BoxShadow(
+                                      color: Color(0x99000000),
+                                      blurRadius: 9,
+                                      spreadRadius: 1,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
                           ),
                           child: Stack(
                             fit: StackFit.expand,
@@ -713,11 +719,11 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                         opacity: occupied ? 1 : 0.35,
                                         child: HappyNetworkImage(visibleAvatar, fit: BoxFit.cover),
                                       )
-                                    else if (occupied)
+                                    else if (occupied && !micStyleUrl.startsWith('https://'))
                                       Icon(Icons.mic_rounded, color: Colors.white.withOpacity(.92), size: 20)
-                                    else if (locked)
+                                    else if (locked && !micStyleUrl.startsWith('https://'))
                                       Icon(Icons.lock_outline, color: Colors.white.withOpacity(.92), size: 20)
-                                    else
+                                    else if (!micStyleUrl.startsWith('https://'))
                                       const Center(
                                         child: CustomPaint(
                                           size: Size(22, 22),
@@ -2152,31 +2158,36 @@ Widget _roomActionButton({
                       height: seatDiameter,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: (pkTwelveSeatLayout ? pkFillColor : micFillColor).withOpacity(
-                          pkTwelveSeatLayout ? pkMicFillOpacity : normalMicFillOpacity,
-                        ),
-                        border: Border.all(
-                          color: pkTwelveSeatLayout
-                              ? pkBorderColor
-                              : pkTeamMode && layout.id == 'm8'
-                                  ? (number <= 4 ? pkBlueBorderColor : pkRedBorderColor)
-                                  : micBorderColor,
-                          width: pkTwelveSeatLayout
-                              ? pkMicBorderWidth
-                              : pkTeamMode && layout.id == 'm8'
-                                  ? pkMicBorderWidth
-                                  : normalMicBorderWidth,
-                        ),
-                        // Improve separation from the new wallpaper without
-                        // changing the seats' original transparency.
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x99000000),
-                            blurRadius: 9,
-                            spreadRadius: 1,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
+                        color: micStyleUrl.startsWith('https://')
+                            ? Colors.transparent
+                            : (pkTwelveSeatLayout ? pkFillColor : micFillColor).withOpacity(
+                                pkTwelveSeatLayout ? pkMicFillOpacity : normalMicFillOpacity,
+                              ),
+                        border: micStyleUrl.startsWith('https://')
+                            ? Border.all(color: Colors.transparent, width: 0)
+                            : Border.all(
+                                color: pkTwelveSeatLayout
+                                    ? pkBorderColor
+                                    : pkTeamMode && layout.id == 'm8'
+                                        ? (number <= 4 ? pkBlueBorderColor : pkRedBorderColor)
+                                        : micBorderColor,
+                                width: pkTwelveSeatLayout
+                                    ? pkMicBorderWidth
+                                    : pkTeamMode && layout.id == 'm8'
+                                        ? pkMicBorderWidth
+                                        : normalMicBorderWidth,
+                              ),
+                        // The uploaded SVGA replaces the old seat shell entirely.
+                        boxShadow: micStyleUrl.startsWith('https://')
+                            ? const []
+                            : const [
+                                BoxShadow(
+                                  color: Color(0x99000000),
+                                  blurRadius: 9,
+                                  spreadRadius: 1,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
                       ),
                       child: ClipOval(
                         child: Stack(
@@ -2188,7 +2199,7 @@ Widget _roomActionButton({
                                 opacity: occupied ? 1 : 0.35,
                                 child: HappyNetworkImage(visibleAvatar, fit: BoxFit.cover),
                               ),
-                            if (!visibleAvatar.startsWith('http'))
+                            if (!visibleAvatar.startsWith('http') && !micStyleUrl.startsWith('https://'))
                               occupied
                                   ? Icon(Icons.mic_rounded, color: Colors.white.withOpacity(.92), size: slot.big ? 22 : 19)
                                   : locked
@@ -2432,18 +2443,24 @@ Widget _roomActionButton({
                             height: diameter,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: slot.big ? const Color(0x33E8C477) : Colors.white.withOpacity(.14),
-                              border: Border.all(
-                                color: mine
-                                    ? Colors.transparent
-                                    : slot.big
-                                        ? const Color(0xFFFFD98A)
-                                        : Colors.white.withOpacity(occupied ? .82 : .48),
-                                width: mine ? 0 : slot.big ? 2.2 : occupied ? 2 : 1,
-                              ),
-                              boxShadow: const [
-                                BoxShadow(color: Color(0x99000000), blurRadius: 9, spreadRadius: 1, offset: Offset(0, 2)),
-                              ],
+                              color: micStyleUrl.startsWith('https://')
+                                  ? Colors.transparent
+                                  : slot.big ? const Color(0x33E8C477) : Colors.white.withOpacity(.14),
+                              border: micStyleUrl.startsWith('https://')
+                                  ? Border.all(color: Colors.transparent, width: 0)
+                                  : Border.all(
+                                      color: mine
+                                          ? Colors.transparent
+                                          : slot.big
+                                              ? const Color(0xFFFFD98A)
+                                              : Colors.white.withOpacity(occupied ? .82 : .48),
+                                      width: mine ? 0 : slot.big ? 2.2 : occupied ? 2 : 1,
+                                    ),
+                              boxShadow: micStyleUrl.startsWith('https://')
+                                  ? const []
+                                  : const [
+                                      BoxShadow(color: Color(0x99000000), blurRadius: 9, spreadRadius: 1, offset: Offset(0, 2)),
+                                    ],
                             ),
                             child: ClipOval(
                               child: Stack(
@@ -2454,7 +2471,7 @@ Widget _roomActionButton({
                                       opacity: occupied ? 1 : 0.35,
                                       child: HappyNetworkImage(visibleAvatar, fit: BoxFit.cover),
                                     )
-                                  else
+                                  else if (!micStyleUrl.startsWith('https://'))
                                     occupied
                                         ? Icon(Icons.mic_rounded, color: Colors.white.withOpacity(.92), size: slot.big ? 18 : 16)
                                         : locked
