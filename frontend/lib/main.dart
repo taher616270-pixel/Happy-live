@@ -6,6 +6,7 @@ import 'pages/profile_page.dart';
 import 'pages/posts_page.dart';
 import 'pages/edit_profile_page.dart';
 import 'widgets/dynamic_games_list.dart';
+import 'widgets/centered_notification.dart';
 import 'pages/wallet_page.dart';
 import 'package:flutter/services.dart';
 import 'package:country_picker/country_picker.dart';
@@ -524,7 +525,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _showNotConnected() {
-    ScaffoldMessenger.of(context).showSnackBar(
+    showCenteredNotification(context, 
       const SnackBar(
         content: Text('طريقة تسجيل الدخول هذه غير مفعلة بعد'),
         behavior: SnackBarBehavior.floating,
@@ -793,13 +794,14 @@ class _LoginPageState extends State<LoginPage> {
   void _showValidationNotice(String message) {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
+    showCenteredNotification(context, 
       SnackBar(
         content: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.info_outline_rounded, color: HappyLiveApp.gold, size: 21),
             const SizedBox(width: 10),
-            Expanded(
+            Flexible(
               child: Text(
                 message,
                 textAlign: TextAlign.right,
@@ -1584,14 +1586,14 @@ class _SessionHomePageState extends State<SessionHomePage> {
         'country_name': _profileCountry, 'avatar_url': _profileAvatarUrl}));
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث الملف الشخصي بنجاح'), behavior: SnackBarBehavior.floating));
+        showCenteredNotification(context, const SnackBar(content: Text('تم تحديث الملف الشخصي بنجاح'), behavior: SnackBarBehavior.floating));
       }
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString().replaceFirst('Exception: ', '')), behavior: SnackBarBehavior.floating));
+      if (mounted) showCenteredNotification(context, SnackBar(content: Text(error.toString().replaceFirst('Exception: ', '')), behavior: SnackBarBehavior.floating));
     }
   }
   void _soon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$feature قيد التجهيز وستتوفر قريباً'), behavior: SnackBarBehavior.floating));
+    showCenteredNotification(context, SnackBar(content: Text('$feature قيد التجهيز وستتوفر قريباً'), behavior: SnackBarBehavior.floating));
   }
 
   Future<void> _openWallet() async {
@@ -1831,7 +1833,7 @@ class _HappyMessagesTabState extends State<_HappyMessagesTab> {
       _openConversation({'id': id, 'kind': 'direct', 'displayName': user['name'], 'avatarUrl': user['avatarUrl'], 'otherUserId': user['userId']});
       await _loadConversations();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      if (mounted) showCenteredNotification(context, SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
     }
   }
 
@@ -2076,7 +2078,7 @@ class _HappyConversationPageState extends State<_HappyConversationPage> {
         }
       });
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      if (mounted) showCenteredNotification(context, SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
