@@ -374,8 +374,31 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       ),
       const SizedBox(height: 10),
       _buildMyRoomsTabs(),
+      const SizedBox(height: 8),
+      SizedBox(
+        height: 230,
+        child: PageView(
+          scrollDirection: Axis.horizontal,
+          physics: const PageScrollPhysics(),
+          children: [
+            _buildMyRoomsTabContent('لا توجد غرف تتابعها حالياً'),
+            _buildMyRoomsTabContent('لا توجد غرف للانضمام إليها حالياً'),
+            _buildMyRoomsTabContent('لا توجد غرف زرتها مؤخراً'),
+          ],
+        ),
+      ),
     ],
   );
+
+  Widget _buildMyRoomsTabContent(String emptyMessage) {
+    return Center(
+      child: Text(
+        emptyMessage,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Color(0xFF9A98AD), fontSize: 12),
+      ),
+    );
+  }
 
   Widget _buildMyRoomsTabs() {
     const labels = ['متابعة', 'انضم', 'مؤخراً'];
