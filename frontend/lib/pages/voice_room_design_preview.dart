@@ -191,6 +191,8 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final String pkBlueMicBorderColor;
   final String pkRedMicBorderColor;
   final String micStyleUrl;
+  final String micChairStyleUrl;
+  final String micLockStyleUrl;
   final Widget? pkSquareAnimation;
 
   Map<String, dynamic>? _seatAt(int number) {
@@ -671,7 +673,10 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     _GoldenVoiceWave(
                       isSpeaking: isSpeaking,
                       isLocked: locked,
+                      isOccupied: occupied,
                       micStyleUrl: micStyleUrl,
+                      micChairStyleUrl: micChairStyleUrl,
+                      micLockStyleUrl: micLockStyleUrl,
                       avatarSize: 46,
                       rippleStartSize: 51,
                       rippleEndSize: 64,
@@ -2124,7 +2129,10 @@ Widget _roomActionButton({
                     child: _GoldenVoiceWave(
                     isSpeaking: isSpeaking,
                       isLocked: locked,
-                      micStyleUrl: micStyleUrl,
+                    isOccupied: occupied,
+                    micStyleUrl: micStyleUrl,
+                    micChairStyleUrl: micChairStyleUrl,
+                    micLockStyleUrl: micLockStyleUrl,
                     avatarSize: seatDiameter,
                     rippleStartSize: seatDiameter + 5,
                     rippleEndSize: seatDiameter + 18,
@@ -2437,7 +2445,10 @@ Widget _roomActionButton({
                         child: _GoldenVoiceWave(
                           isSpeaking: isSpeaking,
                           isLocked: locked,
-                      micStyleUrl: micStyleUrl,
+                          isOccupied: occupied,
+                          micStyleUrl: micStyleUrl,
+                          micChairStyleUrl: micChairStyleUrl,
+                          micLockStyleUrl: micLockStyleUrl,
                           avatarSize: diameter,
                           rippleStartSize: diameter + 5,
                           rippleEndSize: diameter + 18,
@@ -4490,15 +4501,21 @@ class _GoldenVoiceWave extends StatefulWidget {
     this.rippleStartSize = 60,
     this.rippleEndSize = 120,
     this.micStyleUrl = '',
+    this.micChairStyleUrl = '',
+    this.micLockStyleUrl = '',
+    this.isOccupied = false,
   });
 
   final bool isSpeaking;
   final bool isLocked;
+  final bool isOccupied;
   final Widget avatar;
   final double avatarSize;
   final double rippleStartSize;
   final double rippleEndSize;
   final String micStyleUrl;
+  final String micChairStyleUrl;
+  final String micLockStyleUrl;
 
   @override
   State<_GoldenVoiceWave> createState() => _GoldenVoiceWaveState();
@@ -4576,7 +4593,7 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
             Positioned.fill(
               child: IgnorePointer(
                 child: SVGAEasyPlayer(
-                  key: ValueKey('global-mic-style-${widget.micStyleUrl}'),
+                  key: ValueKey('mic-circle-${widget.micStyleUrl}'),
                   resUrl: widget.micStyleUrl,
                   fit: BoxFit.contain,
                   loops: true,
@@ -4585,31 +4602,41 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
                 ),
               ),
             ),
-          // Keep the participant visible in front while leaving the SVGA
-          // microphone frame exposed around the avatar.
-          Transform.scale(
-            scale: widget.micStyleUrl.startsWith('https://') ? 0.76 : 1.0,
-            child: widget.avatar,
-          ),
-          if (widget.isLocked && widget.micStyleUrl.startsWith('https://'))
+          if (!widget.isOccupied && widget.isLocked && widget.micLockStyleUrl.startsWith('https://'))
             Positioned.fill(
               child: IgnorePointer(
-                child: Center(
-                  child: Container(
-                    width: widget.avatarSize * 0.42,
-                    height: widget.avatarSize * 0.42,
-                    decoration: const BoxDecoration(
-                      color: Color(0xCC17131F),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.lock_rounded,
-                      color: Colors.white,
-                      size: 17,
-                    ),
-                  ),
+                child: SVGAEasyPlayer(
+                  key: ValueKey('mic-lock-${widget.micLockStyleUrl}'),
+                  resUrl: widget.micLockStyleUrl,
+                  fit: BoxFit.contain,
+                  loops: true,
+                  volume: 0,
+                  muted: true,
                 ),
               ),
+            ),
+          if (!widget.isOccupied && !widget.isLocked && widget.micChairStyleUrl.startsWith('https://'))
+            Positioned.fill(
+              child: IgnorePointer(
+                child: SVGAEasyPlayer(
+                  key: ValueKey('mic-chair-${widget.micChairStyleUrl}'),
+                  resUrl: widget.micChairStyleUrl,
+                  fit: BoxFit.contain,
+                  loops: true,
+                  volume: 0,
+                  muted: true,
+                ),
+              ),
+            ),
+          // Custom chair/lock animations replace the default empty-seat icon;
+          // occupied seats always keep the participant avatar in front.
+          if (widget.isOccupied ||
+              (widget.isLocked
+                  ? !widget.micLockStyleUrl.startsWith('https://')
+                  : !widget.micChairStyleUrl.startsWith('https://')))
+            Transform.scale(
+              scale: widget.micStyleUrl.startsWith('https://') ? 0.76 : 1.0,
+              child: widget.avatar,
             ),
         ],
       ),
