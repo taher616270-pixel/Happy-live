@@ -184,6 +184,12 @@ class _RoomPageState extends State<RoomPage> {
   double _micCircleScale = 100;
   double _micChairScale = 100;
   double _micLockScale = 100;
+  double _micCircleClarity = 100;
+  double _micChairClarity = 100;
+  double _micLockClarity = 100;
+  double _micCircleOpacity = 100;
+  double _micChairOpacity = 100;
+  double _micLockOpacity = 100;
   List<int> _pkDurationOptions = <int>[5, 15, 30, 120];
   Timer? _roomCounterTicker;
   int _roomCounterNow = 0;
@@ -2431,6 +2437,12 @@ class _RoomPageState extends State<RoomPage> {
         _micCircleScale = ((settings['micCircleScale'] as num?)?.toDouble() ?? 100).clamp(50, 150).toDouble();
         _micChairScale = ((settings['micChairScale'] as num?)?.toDouble() ?? 100).clamp(50, 150).toDouble();
         _micLockScale = ((settings['micLockScale'] as num?)?.toDouble() ?? 100).clamp(50, 150).toDouble();
+        _micCircleClarity = ((settings['micCircleClarity'] as num?)?.toDouble() ?? 100).clamp(50, 150).toDouble();
+        _micChairClarity = ((settings['micChairClarity'] as num?)?.toDouble() ?? 100).clamp(50, 150).toDouble();
+        _micLockClarity = ((settings['micLockClarity'] as num?)?.toDouble() ?? 100).clamp(50, 150).toDouble();
+        _micCircleOpacity = ((settings['micCircleOpacity'] as num?)?.toDouble() ?? 100).clamp(0, 100).toDouble();
+        _micChairOpacity = ((settings['micChairOpacity'] as num?)?.toDouble() ?? 100).clamp(0, 100).toDouble();
+        _micLockOpacity = ((settings['micLockOpacity'] as num?)?.toDouble() ?? 100).clamp(0, 100).toDouble();
         _pkDurationOptions = options.isEmpty ? <int>[5, 15, 30, 120] : options;
         final defaultDuration = (settings['defaultDurationMinutes'] as num?)?.toInt() ?? 5;
         _pkDefaultDurationMinutes = _pkDurationOptions.contains(defaultDuration) ? defaultDuration : _pkDurationOptions.first;
@@ -3480,6 +3492,12 @@ class _RoomPageState extends State<RoomPage> {
       micCircleScale: _micCircleScale,
       micChairScale: _micChairScale,
       micLockScale: _micLockScale,
+      micCircleClarity: _micCircleClarity,
+      micChairClarity: _micChairClarity,
+      micLockClarity: _micLockClarity,
+      micCircleOpacity: _micCircleOpacity,
+      micChairOpacity: _micChairOpacity,
+      micLockOpacity: _micLockOpacity,
           ),
         ),        if (_roomCounter != null) _roomCounterBanner(),
         if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
