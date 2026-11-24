@@ -167,6 +167,16 @@ class _RoomPageState extends State<RoomPage> {
   double _pkSquareWidthPercent = 100;
   double _pkSquareHeight = 284;
   double _pkMediaOpacity = 0.85;
+  String _normalMicBorderColor = '#FFFFFF';
+  double _normalMicBorderWidth = 1.5;
+  String _normalMicFillColor = '#FFFFFF';
+  double _normalMicFillOpacity = 0.14;
+  String _pkMicBorderColor = '#FFFFFF';
+  double _pkMicBorderWidth = 2.4;
+  String _pkMicFillColor = '#FFFFFF';
+  double _pkMicFillOpacity = 0.12;
+  String _pkBlueMicBorderColor = '#258BFF';
+  String _pkRedMicBorderColor = '#FF4B5C';
   List<int> _pkDurationOptions = <int>[5, 15, 30, 120];
   Timer? _roomCounterTicker;
   int _roomCounterNow = 0;
@@ -2351,6 +2361,16 @@ class _RoomPageState extends State<RoomPage> {
         _pkSquareWidthPercent = ((settings['squareWidthPercent'] as num?)?.toDouble() ?? 100).clamp(50, 100).toDouble();
         _pkSquareHeight = ((settings['squareHeight'] as num?)?.toDouble() ?? 284).clamp(240, 500).toDouble();
         _pkMediaOpacity = (((settings['mediaOpacity'] as num?)?.toDouble() ?? 85) / 100).clamp(0, 1).toDouble();
+        _normalMicBorderColor = (settings['normalMicBorderColor'] ?? '#FFFFFF').toString();
+        _normalMicBorderWidth = ((settings['normalMicBorderWidth'] as num?)?.toDouble() ?? 1.5).clamp(0, 8).toDouble();
+        _normalMicFillColor = (settings['normalMicFillColor'] ?? '#FFFFFF').toString();
+        _normalMicFillOpacity = (((settings['normalMicFillOpacity'] as num?)?.toDouble() ?? 14) / 100).clamp(0, 1).toDouble();
+        _pkMicBorderColor = (settings['pkMicBorderColor'] ?? '#FFFFFF').toString();
+        _pkMicBorderWidth = ((settings['pkMicBorderWidth'] as num?)?.toDouble() ?? 2.4).clamp(0, 8).toDouble();
+        _pkMicFillColor = (settings['pkMicFillColor'] ?? '#FFFFFF').toString();
+        _pkMicFillOpacity = (((settings['pkMicFillOpacity'] as num?)?.toDouble() ?? 12) / 100).clamp(0, 1).toDouble();
+        _pkBlueMicBorderColor = (settings['pkBlueMicBorderColor'] ?? '#258BFF').toString();
+        _pkRedMicBorderColor = (settings['pkRedMicBorderColor'] ?? '#FF4B5C').toString();
         _pkDurationOptions = options.isEmpty ? <int>[5, 15, 30, 120] : options;
         final defaultDuration = (settings['defaultDurationMinutes'] as num?)?.toInt() ?? 5;
         _pkDefaultDurationMinutes = _pkDurationOptions.contains(defaultDuration) ? defaultDuration : _pkDurationOptions.first;
@@ -3384,6 +3404,16 @@ class _RoomPageState extends State<RoomPage> {
       pkSquareHeight: _pkSquareHeight,
       pkSquareAnimation: _buildPkSquareAnimation(),
       pkMediaOpacity: _pkMediaOpacity,
+      normalMicBorderColor: _normalMicBorderColor,
+      normalMicBorderWidth: _normalMicBorderWidth,
+      normalMicFillColor: _normalMicFillColor,
+      normalMicFillOpacity: _normalMicFillOpacity,
+      pkMicBorderColor: _pkMicBorderColor,
+      pkMicBorderWidth: _pkMicBorderWidth,
+      pkMicFillColor: _pkMicFillColor,
+      pkMicFillOpacity: _pkMicFillOpacity,
+      pkBlueMicBorderColor: _pkBlueMicBorderColor,
+      pkRedMicBorderColor: _pkRedMicBorderColor,
           ),
         ),        if (_roomCounter != null) _roomCounterBanner(),
         if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
