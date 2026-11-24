@@ -121,6 +121,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.micCircleScale = 100,
     this.micChairScale = 100,
     this.micLockScale = 100,
+    this.micCircleClarity = 100,
+    this.micChairClarity = 100,
+    this.micLockClarity = 100,
+    this.micCircleOpacity = 100,
+    this.micChairOpacity = 100,
+    this.micLockOpacity = 100,
     this.pkSquareAnimation,
   });
   final Map<String, dynamic> room;
@@ -201,6 +207,12 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final double micCircleScale;
   final double micChairScale;
   final double micLockScale;
+  final double micCircleClarity;
+  final double micChairClarity;
+  final double micLockClarity;
+  final double micCircleOpacity;
+  final double micChairOpacity;
+  final double micLockOpacity;
   final Widget? pkSquareAnimation;
 
   Map<String, dynamic>? _seatAt(int number) {
@@ -686,8 +698,14 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                       micChairStyleUrl: micChairStyleUrl,
                       micLockStyleUrl: micLockStyleUrl,
                        micCircleScale: micCircleScale,
-                       micChairScale: micChairScale,
-                       micLockScale: micLockScale,
+                      micChairScale: micChairScale,
+                      micLockScale: micLockScale,
+                      micCircleClarity: micCircleClarity,
+                      micChairClarity: micChairClarity,
+                      micLockClarity: micLockClarity,
+                      micCircleOpacity: micCircleOpacity,
+                      micChairOpacity: micChairOpacity,
+                      micLockOpacity: micLockOpacity,
                       avatarSize: 46,
                       rippleStartSize: 51,
                       rippleEndSize: 64,
@@ -2145,8 +2163,14 @@ Widget _roomActionButton({
                     micChairStyleUrl: micChairStyleUrl,
                     micLockStyleUrl: micLockStyleUrl,
                        micCircleScale: micCircleScale,
-                       micChairScale: micChairScale,
-                       micLockScale: micLockScale,
+                      micChairScale: micChairScale,
+                      micLockScale: micLockScale,
+                      micCircleClarity: micCircleClarity,
+                      micChairClarity: micChairClarity,
+                      micLockClarity: micLockClarity,
+                      micCircleOpacity: micCircleOpacity,
+                      micChairOpacity: micChairOpacity,
+                      micLockOpacity: micLockOpacity,
                     avatarSize: seatDiameter,
                     rippleStartSize: seatDiameter + 5,
                     rippleEndSize: seatDiameter + 18,
@@ -2464,8 +2488,14 @@ Widget _roomActionButton({
                           micChairStyleUrl: micChairStyleUrl,
                           micLockStyleUrl: micLockStyleUrl,
                        micCircleScale: micCircleScale,
-                       micChairScale: micChairScale,
-                       micLockScale: micLockScale,
+                      micChairScale: micChairScale,
+                      micLockScale: micLockScale,
+                      micCircleClarity: micCircleClarity,
+                      micChairClarity: micChairClarity,
+                      micLockClarity: micLockClarity,
+                      micCircleOpacity: micCircleOpacity,
+                      micChairOpacity: micChairOpacity,
+                      micLockOpacity: micLockOpacity,
                           avatarSize: diameter,
                           rippleStartSize: diameter + 5,
                           rippleEndSize: diameter + 18,
@@ -4523,6 +4553,12 @@ class _GoldenVoiceWave extends StatefulWidget {
     this.micCircleScale = 100,
     this.micChairScale = 100,
     this.micLockScale = 100,
+    this.micCircleClarity = 100,
+    this.micChairClarity = 100,
+    this.micLockClarity = 100,
+    this.micCircleOpacity = 100,
+    this.micChairOpacity = 100,
+    this.micLockOpacity = 100,
     this.isOccupied = false,
   });
 
@@ -4539,6 +4575,12 @@ class _GoldenVoiceWave extends StatefulWidget {
   final double micCircleScale;
   final double micChairScale;
   final double micLockScale;
+  final double micCircleClarity;
+  final double micChairClarity;
+  final double micLockClarity;
+  final double micCircleOpacity;
+  final double micChairOpacity;
+  final double micLockOpacity;
 
   @override
   State<_GoldenVoiceWave> createState() => _GoldenVoiceWaveState();
@@ -4616,7 +4658,10 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
             Positioned.fill(
               child: IgnorePointer(
                 child: Center(
-                  child: Transform.scale(
+                  child: _MicAssetEffects(
+                    clarity: widget.micCircleClarity,
+                    opacity: widget.micCircleOpacity,
+                    child: Transform.scale(
                     scale: (widget.micCircleScale / 100).clamp(0.5, 1.5).toDouble(),
                     child: SVGAEasyPlayer(
                   key: ValueKey('mic-circle-${widget.micStyleUrl}'),
@@ -4627,6 +4672,7 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
                   muted: true,
                 ),
                     ),
+                    ),
                   ),
               ),
             ),
@@ -4634,7 +4680,10 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
             Positioned.fill(
               child: IgnorePointer(
                 child: Center(
-                  child: Transform.scale(
+                  child: _MicAssetEffects(
+                    clarity: widget.micLockClarity,
+                    opacity: widget.micLockOpacity,
+                    child: Transform.scale(
                     scale: (widget.micLockScale / 100).clamp(0.5, 1.5).toDouble(),
                     child: SVGAEasyPlayer(
                   key: ValueKey('mic-lock-${widget.micLockStyleUrl}'),
@@ -4645,6 +4694,7 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
                   muted: true,
                 ),
                     ),
+                    ),
                   ),
               ),
             ),
@@ -4652,7 +4702,10 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
             Positioned.fill(
               child: IgnorePointer(
                 child: Center(
-                  child: Transform.scale(
+                  child: _MicAssetEffects(
+                    clarity: widget.micChairClarity,
+                    opacity: widget.micChairOpacity,
+                    child: Transform.scale(
                     scale: (widget.micChairScale / 100).clamp(0.5, 1.5).toDouble(),
                     child: SVGAEasyPlayer(
                   key: ValueKey('mic-chair-${widget.micChairStyleUrl}'),
@@ -4662,6 +4715,7 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
                   volume: 0,
                   muted: true,
                 ),
+                    ),
                     ),
                   ),
               ),
@@ -5019,4 +5073,30 @@ class _GamesTabPlaceholder extends StatelessWidget {
       ],
     ),
   );
+}
+
+
+class _MicAssetEffects extends StatelessWidget {
+  const _MicAssetEffects({required this.child, required this.clarity, required this.opacity});
+  final Widget child;
+  final double clarity;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    final factor = (clarity / 100).clamp(0.5, 1.5).toDouble();
+    final alpha = (opacity / 100).clamp(0.0, 1.0).toDouble();
+    return Opacity(
+      opacity: alpha,
+      child: ColorFiltered(
+        colorFilter: ColorFilter.matrix(<double>[
+          factor, 0, 0, 0, 0,
+          0, factor, 0, 0, 0,
+          0, 0, factor, 0, 0,
+          0, 0, 0, 1, 0,
+        ]),
+        child: child,
+      ),
+    );
+  }
 }
