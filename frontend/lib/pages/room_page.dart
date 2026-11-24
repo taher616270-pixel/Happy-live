@@ -1151,7 +1151,7 @@ class _RoomPageState extends State<RoomPage> {
           ? 'ليست لديك صلاحية للتحكم بهذا المايك'
           : 'تعذر تحديث المايك، حاول مرة أخرى');
     } catch (_) {
-      _applyRealtimeSeatSnapshot(previousSeats, mySeat: _mySeat);
+      _applyRealtimeSeatSnapshot(originalSeats, mySeat: _mySeat);
       unawaited(_refreshSeats());
       _showMessage('تعذر الاتصال بالخادم، لم تتغير حالة المايك');
     }
