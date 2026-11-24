@@ -122,13 +122,43 @@
     }
   }
 
+  function waitForAgora(timeoutMs) {
+    if (window.AgoraRTC) return Promise.resolve(window.AgoraRTC);
+    return new Promise(function (resolve, reject) {
+      let settled = false;
+      const script = document.getElementById("happy-live-agora-sdk");
+      const interval = window.setInterval(function () {
+        if (window.AgoraRTC) finish(null, window.AgoraRTC);
+      }, 50);
+      const timeout = window.setTimeout(function () {
+        finish(new Error("انتهت مهلة تحميل مكتبة الصوت. تحقق من الاتصال وحاول مجدداً."));
+      }, timeoutMs || 15000);
+
+      function finish(error, sdk) {
+        if (settled) return;
+        settled = true;
+        window.clearInterval(interval);
+        window.clearTimeout(timeout);
+        if (script) script.removeEventListener("error", onError);
+        if (error) reject(error);
+        else resolve(sdk);
+      }
+
+      function onError() {
+        finish(new Error("تعذر تحميل مكتبة Agora من خادم الصوت."));
+      }
+
+      if (script) script.addEventListener("error", onError, { once: true });
+    });
+  }
+
   async function join(appId, channel, token, uid, publish) {
-    if (!window.AgoraRTC) throw new Error("تعذر تحميل مكتبة Agora");
     if (joining) throw new Error("اتصال الصوت قيد التجهيز");
     joining = true;
     try {
+      const agora = await waitForAgora(15000);
       await leaveCurrent();
-      const nextClient = window.AgoraRTC.createClient({ mode: "live", codec: "vp8" });
+      const nextClient = agora.createClient({ mode: "live", codec: "vp8" });
       client = nextClient;
 
       registerAudioEvents();
