@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../widgets/centered_notification.dart';
 import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'dart:convert';
@@ -161,7 +162,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         }
       });
       if (!showErrorView) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showCenteredNotification(context, 
           const SnackBar(content: Text('تعذر تحديث الملف الشخصي. حاول مرة أخرى.')),
         );
       }
@@ -170,14 +171,14 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
   Future<void> _openPrivateChat() async {
     if (_isMine) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showCenteredNotification(context, 
         const SnackBar(content: Text('لا يمكنك مراسلة نفسك')),
       );
       return;
     }
     final recipientId = widget.userId.trim();
     if (recipientId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showCenteredNotification(context, 
         const SnackBar(content: Text('تعذر تحديد حساب هذا المستخدم')),
       );
       return;
@@ -227,7 +228,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      showCenteredNotification(context, 
         SnackBar(
           content: Text(
             error.toString().replaceFirst('Exception: ', ''),
@@ -266,7 +267,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       await _loadProfile(showErrorView: false);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showCenteredNotification(context, 
           const SnackBar(content: Text('تعذر تحديث المتابعة. حاول مرة أخرى.')),
         );
       }
@@ -402,7 +403,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                               icon: Icon(Icons.more_horiz_rounded,
                                                   color: iconColor, size: 28),
                                               onPressed: () {
-                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                showCenteredNotification(context, 
                                                   const SnackBar(
                                                       content: Text('لا توجد خيارات إضافية حالياً')),
                                                 );
@@ -667,7 +668,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     onTap: () {
                       if (code.isEmpty) return;
                       Clipboard.setData(ClipboardData(text: code));
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      showCenteredNotification(context, 
                         const SnackBar(content: Text('تم نسخ المعرف')),
                       );
                     },
@@ -1023,7 +1024,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         post['likesCount'] = oldCount;
         post['_likeBusy'] = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
+      showCenteredNotification(context, 
         const SnackBar(content: Text('تعذر تسجيل الإعجاب')),
       );
     }
@@ -1032,7 +1033,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   void _openCommenterProfile(Map<String, dynamic> comment) {
     final commenterId = (comment['userId'] ?? comment['user_id'] ?? '').toString().trim();
     if (commenterId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      showCenteredNotification(context, 
         const SnackBar(content: Text('تعذر فتح ملف هذا المستخدم')),
       );
       return;
@@ -1306,10 +1307,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                   ),
                 );
               } else if (mounted) {
-                ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('تم إرسال البلاغ')));
+                showCenteredNotification(this.context, const SnackBar(content: Text('تم إرسال البلاغ')));
               }
             } catch (_) {
-              if (mounted) ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text(action == 'delete' ? 'تعذر حذف التعليق' : 'تعذر إرسال البلاغ')));
+              if (mounted) showCenteredNotification(this.context, SnackBar(content: Text(action == 'delete' ? 'تعذر حذف التعليق' : 'تعذر إرسال البلاغ')));
             }
           }
 
@@ -1832,7 +1833,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       const SizedBox(width: 9),
       circle(
         Icons.person_rounded,
-        () => ScaffoldMessenger.of(context).showSnackBar(
+        () => showCenteredNotification(context, 
           const SnackBar(content: Text('قريباً')),
         ),
       ),
