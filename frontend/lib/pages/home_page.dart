@@ -435,43 +435,70 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
     if (_recentRooms.isEmpty) return _buildMyRoomsTabContent('لا توجد غرف زرتها مؤخراً');
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(14, 5, 14, 0),
+      padding: const EdgeInsets.fromLTRB(12, 5, 12, 0),
       itemCount: _recentRooms.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, __) => const SizedBox(height: 9),
       itemBuilder: (context, index) {
         final room = _recentRooms[index];
         final name = (room['name'] ?? 'غرفة صوتية').toString();
-        final code = (room['roomCode'] ?? '').toString();
+        final announcement = (room['announcement'] ?? room['description'] ?? '').toString().trim();
         final image = (room['imageUrl'] ?? '').toString();
         final status = (room['status'] ?? 'active').toString();
+        final level = (room['experienceLevel'] ?? 1) is num
+            ? (room['experienceLevel'] as num).toInt() : 1;
         return Material(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(17),
           child: InkWell(
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(17),
             onTap: status == 'active' ? () => _openRecentRoom(room) : null,
             child: Container(
-              padding: const EdgeInsets.all(9),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(13),
-                border: Border.all(color: const Color(0x44D9A93C)),
+                borderRadius: BorderRadius.circular(17),
+                border: Border.all(color: const Color(0x66D9A93C), width: 1.2),
+                boxShadow: const [BoxShadow(color: Color(0x0AD9A93C), blurRadius: 8, offset: Offset(0, 2))],
               ),
-              child: Row(children: [
+              child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: SizedBox(width: 43, height: 43,
+                  borderRadius: BorderRadius.circular(13),
+                  child: SizedBox(width: 66, height: 66,
                     child: image.startsWith('https://')
-                      ? HappyNetworkImage(image, width: 43, height: 43, fit: BoxFit.cover,
+                      ? HappyNetworkImage(image, width: 66, height: 66, fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => _recentRoomPlaceholder())
                       : _recentRoomPlaceholder()),
                 ),
-                const SizedBox(width: 10),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Color(0xFF1E2233), fontSize: 12, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 3),
-                  Text('ID: $code', style: const TextStyle(color: HappyHomeColors.muted, fontSize: 10)),
-                ])),
+                const SizedBox(width: 12),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Color(0xFF1E2233), fontSize: 14, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 5),
+                    Text(announcement.isEmpty ? 'لا يوجد إعلان للغرفة' : announcement,
+                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: HappyHomeColors.muted, fontSize: 11, height: 1.25)),
+                    const SizedBox(height: 7),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3D5),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFD9A93C).withOpacity(0.65)),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.workspace_premium_rounded, size: 13, color: HappyHomeColors.gold),
+                          const SizedBox(width: 4),
+                          Text('Lv.$level', style: const TextStyle(color: Color(0xFF8A6420), fontSize: 10, fontWeight: FontWeight.w900)),
+                        ]),
+                      ),
+                    ),
+                  ],
+                )),
+                const SizedBox(width: 7),
                 Icon(status == 'active' ? Icons.arrow_forward_ios_rounded : Icons.lock_outline_rounded,
                   size: 14, color: HappyHomeColors.gold),
               ]),
