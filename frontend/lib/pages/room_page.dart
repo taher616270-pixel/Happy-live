@@ -1017,6 +1017,13 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   Future<bool> _toggleSelfMic() async {
+    final previousMuted = _selfMicMuted;
+    final targetMuted = !previousMuted;
+    // Mute is applied to the local audio track immediately; server sync follows.
+    if (targetMuted) {
+      if (mounted) setState(() => _selfMicMuted = true);
+      unawaited(AgoraRoomBridge.setMuted(true));
+    }
     try {
       final response = await http.post(
         _moderationUri,
@@ -1025,22 +1032,25 @@ class _RoomPageState extends State<RoomPage> {
       ).timeout(const Duration(seconds: 8));
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data is Map && data['ok'] == true) {
-        if (mounted) setState(() => _selfMicMuted = data['isMuted'] == true);
-        if (_selfMicMuted) {
-          // Mute locally immediately, then downgrade to a subscriber token.
-          await AgoraRoomBridge.setMuted(true);
-          await _joinAgora(publish: false);
+        final confirmedMuted = data['isMuted'] == true;
+        if (mounted) setState(() => _selfMicMuted = confirmedMuted);
+        if (confirmedMuted) {
+          unawaited(AgoraRoomBridge.setMuted(true));
+          unawaited(_joinAgora(publish: false));
         } else {
-          // Unmuting requires a fresh token with publisher privileges.
           await _joinAgora(publish: true);
         }
-        _showMessage(_selfMicMuted ? 'تم كتم مايكك' : 'تم فتح مايكك');
+        _showMessage(confirmedMuted ? 'تم كتم مايكك' : 'تم فتح مايكك');
         unawaited(_refreshSeats());
         return true;
       }
+      if (mounted) setState(() => _selfMicMuted = previousMuted);
+      if (targetMuted) unawaited(AgoraRoomBridge.setMuted(false));
       final message = data is Map ? (data['message'] ?? '').toString() : '';
       _showMessage(message.isNotEmpty ? message : 'تعذر تغيير حالة المايك');
     } catch (_) {
+      if (mounted) setState(() => _selfMicMuted = previousMuted);
+      if (targetMuted) unawaited(AgoraRoomBridge.setMuted(false));
       _showMessage('تعذر الاتصال بالخادم، لم تتغير حالة المايك');
     }
     return false;
@@ -1092,6 +1102,23 @@ class _RoomPageState extends State<RoomPage> {
       _showMessage('رقم المايك غير صحيح');
       return false;
     }
+    final previousSeats = _seats.map((seat) => Map<String, dynamic>.from(seat)).toList();
+    final targetIndex = previousSeats.indexWhere((seat) => (seat['seatNumber'] as num?)?.toInt() == seatNumber);
+    final currentSeat = targetIndex >= 0 ? previousSeats[targetIndex] : <String, dynamic>{};
+    final wasLocked = currentSeat['isLocked'] == true || currentSeat['locked'] == true;
+    final wasMuted = currentSeat['isMuted'] == true || currentSeat['muted'] == true;
+    final optimisticLocked = action == 'toggle_seat_lock' ? !wasLocked : wasLocked;
+    final optimisticMuted = action == 'toggle_seat_mute' ? !wasMuted : wasMuted;
+
+    // Update the visible seat state on this frame instead of waiting for HTTP + a second refresh.
+    if (targetIndex >= 0) {
+      previousSeats[targetIndex]['isLocked'] = optimisticLocked;
+      previousSeats[targetIndex]['locked'] = optimisticLocked;
+      previousSeats[targetIndex]['isMuted'] = optimisticMuted;
+      previousSeats[targetIndex]['muted'] = optimisticMuted;
+      _applyRealtimeSeatSnapshot(previousSeats, mySeat: _mySeat);
+    }
+
     try {
       final response = await http.post(
         _moderationUri,
@@ -1100,17 +1127,31 @@ class _RoomPageState extends State<RoomPage> {
       ).timeout(const Duration(seconds: 8));
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+        final confirmedLocked = data['isLocked'] == true;
+        final confirmedMuted = data['isMuted'] == true;
+        final confirmedSeats = _seats.map((seat) => Map<String, dynamic>.from(seat)).toList();
+        final confirmedIndex = confirmedSeats.indexWhere((seat) => (seat['seatNumber'] as num?)?.toInt() == seatNumber);
+        if (confirmedIndex >= 0) {
+          confirmedSeats[confirmedIndex]['isLocked'] = confirmedLocked;
+          confirmedSeats[confirmedIndex]['locked'] = confirmedLocked;
+          confirmedSeats[confirmedIndex]['isMuted'] = confirmedMuted;
+          confirmedSeats[confirmedIndex]['muted'] = confirmedMuted;
+          _applyRealtimeSeatSnapshot(confirmedSeats, mySeat: _mySeat);
+        }
         _showMessage(action == 'toggle_seat_lock'
-            ? ((data['isLocked'] == true) ? 'تم قفل المايك' : 'تم فتح المايك')
-            : ((data['isMuted'] == true) ? 'تم كتم المايك' : 'تم فتح كتم المايك'));
-        await _refreshSeats();
+            ? (confirmedLocked ? 'تم قفل المايك' : 'تم فتح المايك')
+            : (confirmedMuted ? 'تم كتم المايك' : 'تم فتح كتم المايك'));
         return true;
       }
+      _applyRealtimeSeatSnapshot(previousSeats, mySeat: _mySeat);
+      unawaited(_refreshSeats());
       final message = data is Map ? (data['message'] ?? '').toString() : '';
       _showMessage(message.isNotEmpty ? message : response.statusCode == 403
           ? 'ليست لديك صلاحية للتحكم بهذا المايك'
           : 'تعذر تحديث المايك، حاول مرة أخرى');
     } catch (_) {
+      _applyRealtimeSeatSnapshot(previousSeats, mySeat: _mySeat);
+      unawaited(_refreshSeats());
       _showMessage('تعذر الاتصال بالخادم، لم تتغير حالة المايك');
     }
     return false;
