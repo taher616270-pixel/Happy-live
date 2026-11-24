@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../widgets/centered_notification.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/game_link_launcher.dart';
@@ -109,7 +110,7 @@ class _DynamicGamesListState extends State<DynamicGamesList> {
                       await widget.onGameClosed?.call();
                     } catch (_) {
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        showCenteredNotification(context, 
                           const SnackBar(content: Text('تعذر فتح اللعبة داخل التطبيق.')),
                         );
                       }
