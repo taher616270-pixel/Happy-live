@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../widgets/centered_notification.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:happy_live/widgets/happy_network_image.dart';
@@ -192,7 +193,7 @@ class _RoomInfoSheet extends StatelessWidget {
                       GestureDetector(
                         onTap: () async {
                           await Clipboard.setData(ClipboardData(text: info.id));
-                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ الـ ID'), duration: Duration(seconds: 1)));
+                          if (context.mounted) showCenteredNotification(context, const SnackBar(content: Text('تم نسخ الـ ID'), duration: Duration(seconds: 1)));
                         },
                         child: Transform.translate(
                           offset: const Offset(7, 6),
@@ -1088,7 +1089,7 @@ class _RoomReportPageState extends State<_RoomReportPage> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      showCenteredNotification(context, 
         SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
       );
     } finally {
