@@ -402,17 +402,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         onTap: _openMyRoom,
       ),
       const SizedBox(height: 14),
-      LiveHouseCard(
-        title: 'غرف صوتية',
-        subtitle: 'اكتشف الأجواء وشارك الجميع',
-        coverUrl: '',
-        avatarUrls: const [],
-        listeners: 0,
-        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => VoiceRoomsPage(accessToken: widget.accessToken),
-        )),
-      ),
-      const SizedBox(height: 10),
       _buildMyRoomsTabs(),
       const SizedBox(height: 8),
       SizedBox(
