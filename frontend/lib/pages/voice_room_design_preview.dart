@@ -2148,10 +2148,13 @@ Widget _roomActionButton({
                 children: [
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: canModerateUsers
-                        ? () => _showEmptySeatActions(context, number)
-                        : occupied
-                            ? () => _showUserProfile(context, seat!)
+                    // Occupied microphones always open the participant
+                    // profile, including when the current user is the owner.
+                    // Moderation actions are only for empty microphones.
+                    onTap: occupied
+                        ? () => _showUserProfile(context, seat!)
+                        : canModerateUsers
+                            ? () => _showEmptySeatActions(context, number)
                             : (!isChangingSeat && !seatState.isPending && !locked
                                 ? () => onTapSeat(number)
                                 : null),
@@ -2477,10 +2480,10 @@ Widget _roomActionButton({
                         // Empty overflow microphones must remain joinable even
                         // for the room owner/moderators. Moderation of an empty
                         // seat is available with a long press instead.
+                        // Match the normal microphone: occupied seats
+                        // always open their profile, never the empty-seat menu.
                         onTap: occupied
-                            ? (canModerateUsers
-                                ? () => _showEmptySeatActions(context, number)
-                                : () => _showUserProfile(context, seat!))
+                            ? () => _showUserProfile(context, seat!)
                             : (!isChangingSeat && !seatState.isPending && !locked
                                 ? () => onTapSeat(number)
                                 : null),
