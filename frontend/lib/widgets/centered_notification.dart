@@ -36,7 +36,7 @@ void showCenteredNotification(BuildContext context, SnackBar snackBar) {
                   child: Padding(
                     padding: snackBar.padding ?? const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
                     child: DefaultTextStyle.merge(
-                      style: snackBar.contentTextStyle ?? theme.contentTextStyle ??
+                      style: theme.contentTextStyle ??
                           const TextStyle(color: Colors.white, fontFamily: 'Tajawal', fontSize: 14, fontWeight: FontWeight.w700),
                       child: snackBar.content,
                     ),
