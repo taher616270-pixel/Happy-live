@@ -2007,6 +2007,11 @@ class _RoomPageState extends State<RoomPage> {
   }
 
   void _showRoomCounter(BuildContext host) {
+    // The room counter is unavailable while the room is in PK mode.
+    if (_pkVisualMode || _roomBattleActive) {
+      _showMessage('لا يمكن تبديل وضع الغرفة في هذا الوقت');
+      return;
+    }
     if (_roomCounter != null) {
       _showMessage('العداد يعمل بالفعل؛ استخدم زر X لإيقافه');
       return;
