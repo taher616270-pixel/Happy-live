@@ -3287,7 +3287,7 @@ export default {
         }
         if (!canModerate) return json({ error: "room_moderator_required", message: "هذه الصلاحية لمالك الغرفة ومشرفيها فقط" }, 403, origin, env);
         if (!isOwner) {
-          const permissionId = action === "toggle_mute" || action === "unmute" || action === "toggle_seat_mute" || action === "toggle_seat_lock" ? "mute"
+          const permissionId = action === "toggle_mute" || action === "unmute" || action === "toggle_seat_mute" || action === "toggle_seat_lock" || action === "set_seat_lock" ? "mute"
             : action === "kick" || action === "unkick" ? "kick"
             : action === "ban" || action === "unban" ? "blacklist"
             : action === "lower" ? "super"
@@ -3334,7 +3334,7 @@ export default {
           }
           const previous = snapshot.seatControls?.[String(seatNumber)] ?? { isLocked: false, isMuted: false };
           const effectiveMuted = previous.isMuted === true || member?.isMuted === true;
-          const nextLocked = action === "toggle_seat_lock" ? previous.isLocked !== true : previous.isLocked === true;
+          const nextLocked = action === "set_seat_lock" ? body.isLocked === true : action === "toggle_seat_lock" ? previous.isLocked !== true : previous.isLocked === true;
           const nextMuted = action === "toggle_seat_mute" ? !effectiveMuted : previous.isMuted === true;
           const now = new Date().toISOString();
           if (member && action === "toggle_seat_mute") {
