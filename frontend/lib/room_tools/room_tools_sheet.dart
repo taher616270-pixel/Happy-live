@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/centered_notification.dart';
 import 'package:flutter/services.dart';
 import '../cannon/cannon_art.dart';
 import '../cannon/cannon_sheet.dart';
@@ -29,7 +30,7 @@ class _RoomToolsSheet extends StatelessWidget {
   const _RoomToolsSheet({required this.controller, required this.host});
 
   void _soon(String name) {
-    ScaffoldMessenger.maybeOf(host)?.showSnackBar(
+    showCenteredNotification(host, 
       SnackBar(content: Text('$name: لم يتم ربط خدمته بعد'), duration: const Duration(seconds: 2)),
     );
   }
@@ -116,7 +117,7 @@ class _RoomToolsSheet extends StatelessWidget {
         final link = '${RoomToolsConfig.shareBase}/room/${c.roomId}';
         await Clipboard.setData(ClipboardData(text: link));
         if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
-        ScaffoldMessenger.maybeOf(host)?.showSnackBar(
+        showCenteredNotification(host, 
           const SnackBar(content: Text('تم نسخ رابط الغرفة'), duration: Duration(seconds: 1)),
         );
       }),
@@ -131,7 +132,7 @@ class _RoomToolsSheet extends StatelessWidget {
           if (c.micBusy) return;
           final ok = await c.toggleMic();
           if (!ok && host.mounted) {
-            ScaffoldMessenger.maybeOf(host)?.showSnackBar(
+            showCenteredNotification(host, 
               const SnackBar(content: Text('تعذر تغيير حالة المايك')),
             );
           }
@@ -149,7 +150,7 @@ class _RoomToolsSheet extends StatelessWidget {
     if (!c.lockReady) {
       await c.refreshLock();
       if (host.mounted) {
-        ScaffoldMessenger.maybeOf(host)?.showSnackBar(SnackBar(
+        showCenteredNotification(host, SnackBar(
           content: Text(c.lockReady ? 'تم تحديث حالة القفل' : 'تعذر تحميل حالة القفل'),
         ));
       }
@@ -160,7 +161,7 @@ class _RoomToolsSheet extends StatelessWidget {
     if (c.locked) {
       final ok = await c.toggleLock();
       if (host.mounted) {
-        ScaffoldMessenger.maybeOf(host)?.showSnackBar(SnackBar(
+        showCenteredNotification(host, SnackBar(
           content: Text(ok ? 'تم فتح الغرفة' : 'تعذر فتح الغرفة'),
         ));
       }
@@ -264,7 +265,7 @@ class _RoomToolsSheet extends StatelessWidget {
                                       Navigator.of(dialogContext).pop(true);
                                     } else {
                                       setDialogState(() => saving = false);
-                                      ScaffoldMessenger.maybeOf(dialogContext)?.showSnackBar(
+                                      showCenteredNotification(dialogContext, 
                                         SnackBar(content: Text(RoomToolsApi.lastLockError.isNotEmpty ? 'فشل القفل: ${RoomToolsApi.lastLockError}' : 'تعذر قفل الغرفة، حاول مرة أخرى')),
                                       );
                                     }
@@ -286,7 +287,7 @@ class _RoomToolsSheet extends StatelessWidget {
         ),
       );
       if (confirmed == true && host.mounted) {
-        ScaffoldMessenger.maybeOf(host)?.showSnackBar(
+        showCenteredNotification(host, 
           const SnackBar(content: Text('تم قفل الغرفة بنجاح')),
         );
       }
