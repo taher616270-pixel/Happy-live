@@ -1,4 +1,5 @@
 import '../widgets/voice_seat_chair_icon.dart';
+import '../widgets/centered_notification.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -1326,7 +1327,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
           Navigator.of(context).pop();
           final roomId = (room['id'] ?? '').toString().trim();
           if (roomId.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            showCenteredNotification(context, 
               const SnackBar(content: Text('تعذر تحديد رقم الغرفة للترقية')),
             );
             return;
@@ -1350,13 +1351,13 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                     room['level'] = levelIndex + 1;
                     if (!context.mounted) return;
                     Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    showCenteredNotification(context, 
                       SnackBar(content: Text('تمت ترقية الغرفة إلى ${kLevels[levelIndex].name}')),
                     );
                   } catch (error) {
                     if (context.mounted) {
                       final message = error.toString().replaceFirst('Exception: ', '');
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      showCenteredNotification(context, 
                         SnackBar(content: Text(message)),
                       );
                     }
@@ -1368,17 +1369,17 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         },
         onFollow: () {
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ميزة المتابعة قريبًا')));
+          showCenteredNotification(context, const SnackBar(content: Text('ميزة المتابعة قريبًا')));
         },
         onJoin: () {
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ميزة الانضمام للمجموعة قريبًا')));
+          showCenteredNotification(context, const SnackBar(content: Text('ميزة الانضمام للمجموعة قريبًا')));
         },
         onSettings: () {
           Navigator.of(context).pop();
           final roomId = (room['id'] ?? room['roomId'] ?? room['room_id'] ?? '').toString().trim();
           if (roomId.isEmpty || accessToken.trim().isEmpty || !info.isRoomOwner) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            showCenteredNotification(context, 
               const SnackBar(content: Text('تعذر فتح إعدادات الغرفة: تحقق من صلاحية المالك واتصال الحساب')),
             );
             return;
@@ -1396,7 +1397,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
         },
         onInvite: () {
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('دعوة الأعضاء قريبًا')));
+          showCenteredNotification(context, const SnackBar(content: Text('دعوة الأعضاء قريبًا')));
         },
         accessToken: accessToken,
       );
@@ -1609,7 +1610,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
             onTap: () {
               final roomId = _roomInfoString(['id', 'roomId', 'room_id']).trim();
               if (roomId.isEmpty || accessToken.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                showCenteredNotification(context, 
                   const SnackBar(content: Text('تعذر فتح تصنيف المساهمين: بيانات الغرفة أو الدخول غير مكتملة')),
                 );
                 return;
@@ -1718,7 +1719,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                         onTap: () {
                           Navigator.of(dialogContext).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          showCenteredNotification(context, 
                             SnackBar(
                               content: Text('سيتم تفعيل ${item['label']} لاحقاً'),
                               duration: const Duration(seconds: 2),
@@ -3869,7 +3870,7 @@ class UserInfoBottomSheet extends StatelessWidget {
                         InkWell(
                           onTap: id == '—' ? null : () {
                             Clipboard.setData(ClipboardData(text: id));
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            showCenteredNotification(context, 
                               const SnackBar(content: Text('تم نسخ ID')),
                             );
                           },
