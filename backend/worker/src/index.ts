@@ -4288,17 +4288,21 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const rows = await env.DB!.prepare(
-          "SELECT r.id, r.room_code, r.name, r.description, r.image_url, r.visibility, r.status, " +
+          "SELECT r.id, r.room_code, r.name, r.description, r.announcement, r.image_url, r.visibility, r.status, r.level, " +
+          "COALESCE(rx.total_exp, 0) AS total_exp, " +
           "(SELECT MAX(v.entered_at) FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = ?) AS last_visited_at " +
-          "FROM rooms r WHERE EXISTS (SELECT 1 FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = ?) " +
+          "FROM rooms r LEFT JOIN room_experience rx ON rx.room_id = r.id " +
+          "WHERE EXISTS (SELECT 1 FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = ?) " +
           "ORDER BY last_visited_at DESC LIMIT 30"
         ).bind(user.id, user.id).all<{
-          id: string; room_code: string; name: string; description: string;
-          image_url: string | null; visibility: string; status: string; last_visited_at: string | null;
+          id: string; room_code: string; name: string; description: string; announcement: string | null;
+          image_url: string | null; visibility: string; status: string; level: number;
+          total_exp: number; last_visited_at: string | null;
         }>();
         return json({ ok: true, rooms: (rows.results ?? []).map((room) => ({
           id: room.id, roomCode: room.room_code, name: room.name,
-          description: room.description, imageUrl: room.image_url,
+          description: room.description, announcement: room.announcement, imageUrl: room.image_url,
+          level: room.level, experienceLevel: roomExperienceProgress(Number(room.total_exp ?? 0)).level,
           isPrivate: room.visibility === "private", status: room.status,
           lastVisitedAt: room.last_visited_at
         })) }, 200, origin, env);
