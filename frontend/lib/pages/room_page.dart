@@ -181,6 +181,9 @@ class _RoomPageState extends State<RoomPage> {
   String _micStyleSvgaUrl = '';
   String _micChairSvgaUrl = '';
   String _micLockSvgaUrl = '';
+  double _micCircleScale = 100;
+  double _micChairScale = 100;
+  double _micLockScale = 100;
   List<int> _pkDurationOptions = <int>[5, 15, 30, 120];
   Timer? _roomCounterTicker;
   int _roomCounterNow = 0;
@@ -2425,6 +2428,9 @@ class _RoomPageState extends State<RoomPage> {
         _micStyleSvgaUrl = (settings['micCircleSvgaUrl'] ?? '').toString();
         _micChairSvgaUrl = (settings['micChairSvgaUrl'] ?? '').toString();
         _micLockSvgaUrl = (settings['micLockSvgaUrl'] ?? '').toString();
+        _micCircleScale = ((settings['micCircleScale'] as num?)?.toDouble() ?? 100).clamp(50, 150).toDouble();
+        _micChairScale = ((settings['micChairScale'] as num?)?.toDouble() ?? 100).clamp(50, 150).toDouble();
+        _micLockScale = ((settings['micLockScale'] as num?)?.toDouble() ?? 100).clamp(50, 150).toDouble();
         _pkDurationOptions = options.isEmpty ? <int>[5, 15, 30, 120] : options;
         final defaultDuration = (settings['defaultDurationMinutes'] as num?)?.toInt() ?? 5;
         _pkDefaultDurationMinutes = _pkDurationOptions.contains(defaultDuration) ? defaultDuration : _pkDurationOptions.first;
@@ -3471,6 +3477,9 @@ class _RoomPageState extends State<RoomPage> {
       micStyleUrl: _micStyleSvgaUrl,
       micChairStyleUrl: _micChairSvgaUrl,
       micLockStyleUrl: _micLockSvgaUrl,
+      micCircleScale: _micCircleScale,
+      micChairScale: _micChairScale,
+      micLockScale: _micLockScale,
           ),
         ),        if (_roomCounter != null) _roomCounterBanner(),
         if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
