@@ -393,7 +393,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _buildOriginalHomeContent() => ListView(
-    padding: const EdgeInsets.fromLTRB(0, 8, 0, 28),
+    padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
     children: [
       const SizedBox(height: 24),
       MyPartyRoomButton(
@@ -446,7 +446,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
     if (_recentRooms.isEmpty) return _buildMyRoomsTabContent('لا توجد غرف زرتها مؤخراً');
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+      padding: const EdgeInsets.fromLTRB(14, 5, 14, 0),
       itemCount: _recentRooms.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
