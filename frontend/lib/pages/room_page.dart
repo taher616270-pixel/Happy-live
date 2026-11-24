@@ -102,6 +102,7 @@ class _RoomPageState extends State<RoomPage> {
   Route<dynamic>? _roomRoute;
   bool _isChangingSeat = false;
   final Set<int> _pendingSeatNumbers = <int>{};
+  final Map<int, int> _seatModerationRevision = <int, int>{};
   final Map<int, Stopwatch> _seatMoveTimers = <int, Stopwatch>{};
   final SeatStateStore _seatStateStore = SeatStateStore();
   RoomSeatSocket? _seatSocket;
@@ -1120,6 +1121,9 @@ class _RoomPageState extends State<RoomPage> {
     final wasLocked = currentSeat['isLocked'] == true || currentSeat['locked'] == true;
     final wasMuted = currentSeat['isMuted'] == true || currentSeat['muted'] == true;
     final optimisticLocked = action == 'toggle_seat_lock' ? !wasLocked : wasLocked;
+    final requestAction = action == 'toggle_seat_lock' ? 'set_seat_lock' : action;
+    final revision = (_seatModerationRevision[seatNumber] ?? 0) + 1;
+    _seatModerationRevision[seatNumber] = revision;
     final optimisticMuted = action == 'toggle_seat_mute' ? !wasMuted : wasMuted;
 
     // Update the visible seat state on this frame instead of waiting for HTTP + a second refresh.
@@ -1135,10 +1139,11 @@ class _RoomPageState extends State<RoomPage> {
       final response = await http.post(
         _moderationUri,
         headers: _headers,
-        body: jsonEncode({'action': action, 'seatNumber': seatNumber}),
+        body: jsonEncode({'action': requestAction, 'seatNumber': seatNumber, if (requestAction == 'set_seat_lock') 'isLocked': optimisticLocked}),
       ).timeout(const Duration(seconds: 8));
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data is Map && data['ok'] == true) {
+        if (_seatModerationRevision[seatNumber] != revision) return true;
         final confirmedLocked = data['isLocked'] == true;
         final confirmedMuted = data['isMuted'] == true;
         final confirmedSeats = _seats.map((seat) => Map<String, dynamic>.from(seat)).toList();
@@ -1155,7 +1160,11 @@ class _RoomPageState extends State<RoomPage> {
             : (confirmedMuted ? 'تم كتم المايك' : 'تم فتح كتم المايك'));
         return true;
       }
-      _applyRealtimeSeatSnapshot(originalSeats, mySeat: _mySeat);
+      if (_seatModerationRevision[seatNumber] == revision) {
+        if (_seatModerationRevision[seatNumber] == revision) {
+        _applyRealtimeSeatSnapshot(originalSeats, mySeat: _mySeat);
+      }
+      }
       unawaited(_refreshSeats());
       final message = data is Map ? (data['message'] ?? '').toString() : '';
       _showMessage(message.isNotEmpty ? message : response.statusCode == 403
