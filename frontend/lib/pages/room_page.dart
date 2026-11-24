@@ -1161,19 +1161,21 @@ class _RoomPageState extends State<RoomPage> {
         return true;
       }
       if (_seatModerationRevision[seatNumber] == revision) {
-        if (_seatModerationRevision[seatNumber] == revision) {
         _applyRealtimeSeatSnapshot(originalSeats, mySeat: _mySeat);
+        unawaited(_refreshSeats());
       }
-      }
-      unawaited(_refreshSeats());
       final message = data is Map ? (data['message'] ?? '').toString() : '';
       _showMessage(message.isNotEmpty ? message : response.statusCode == 403
           ? 'ليست لديك صلاحية للتحكم بهذا المايك'
           : 'تعذر تحديث المايك، حاول مرة أخرى');
     } catch (_) {
-      _applyRealtimeSeatSnapshot(originalSeats, mySeat: _mySeat);
-      unawaited(_refreshSeats());
-      _showMessage('تعذر الاتصال بالخادم، لم تتغير حالة المايك');
+      // Ignore stale failures from an older tap; a newer microphone action
+      // may already have updated the visible state.
+      if (_seatModerationRevision[seatNumber] == revision) {
+        _applyRealtimeSeatSnapshot(originalSeats, mySeat: _mySeat);
+        unawaited(_refreshSeats());
+        _showMessage('تعذر الاتصال بالخادم، لم تتغير حالة المايك');
+      }
     }
     return false;
   }
