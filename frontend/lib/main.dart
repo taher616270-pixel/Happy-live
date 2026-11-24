@@ -94,8 +94,6 @@ class HappyLiveApp extends StatelessWidget {
         ...GlobalMaterialLocalizations.delegates,
       ],
       builder: (context, child) {
-        final screen = MediaQuery.sizeOf(context);
-        final horizontalInset = screen.width * 0.225;
         return SnackBarTheme(
           data: SnackBarThemeData(
             behavior: SnackBarBehavior.floating,
@@ -110,13 +108,6 @@ class HappyLiveApp extends StatelessWidget {
               side: BorderSide(color: Color(0x66E8C477), width: 1),
             ),
             elevation: 10,
-            // Keep all standard app notifications centered vertically and
-            // constrained to roughly half the screen width.
-            margin: EdgeInsets.only(
-              left: horizontalInset,
-              right: horizontalInset,
-              bottom: screen.height * 0.42,
-            ),
           ),
           child: CannonGlobalBannerHost(
             accessToken: CannonConfig.authToken(),
