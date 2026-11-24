@@ -788,7 +788,7 @@ export default {
             startShowDurationSeconds: 3, startHideDurationSeconds: 0.5,
             normalMicBorderColor: "#FFFFFF", normalMicBorderWidth: 1.5, normalMicFillColor: "#FFFFFF", normalMicFillOpacity: 14,
             pkMicBorderColor: "#FFFFFF", pkMicBorderWidth: 2.4, pkMicFillColor: "#FFFFFF", pkMicFillOpacity: 12,
-            pkBlueMicBorderColor: "#258BFF", pkRedMicBorderColor: "#FF4B5C", micSvgaUrl: "", micCircleSvgaUrl: "", micChairSvgaUrl: "", micLockSvgaUrl: ""
+            pkBlueMicBorderColor: "#258BFF", pkRedMicBorderColor: "#FF4B5C", micSvgaUrl: "", micCircleSvgaUrl: "", micChairSvgaUrl: "", micLockSvgaUrl: "", micCircleScale: 100, micChairScale: 100, micLockScale: 100
           };
           const readSettings = async () => {
             const row = await env.DB!.prepare(
@@ -837,6 +837,9 @@ export default {
           const micCircleSvgaUrl = body.micCircleSvgaUrl === undefined ? String(current.micCircleSvgaUrl ?? micSvgaUrl) : typeof body.micCircleSvgaUrl === "string" ? body.micCircleSvgaUrl.trim() : "";
           const micChairSvgaUrl = body.micChairSvgaUrl === undefined ? String(current.micChairSvgaUrl ?? "") : typeof body.micChairSvgaUrl === "string" ? body.micChairSvgaUrl.trim() : "";
           const micLockSvgaUrl = body.micLockSvgaUrl === undefined ? String(current.micLockSvgaUrl ?? "") : typeof body.micLockSvgaUrl === "string" ? body.micLockSvgaUrl.trim() : "";
+          const micCircleScale = body.micCircleScale === undefined ? Number(current.micCircleScale ?? 100) : Number(body.micCircleScale);
+          const micChairScale = body.micChairScale === undefined ? Number(current.micChairScale ?? 100) : Number(body.micChairScale);
+          const micLockScale = body.micLockScale === undefined ? Number(current.micLockScale ?? 100) : Number(body.micLockScale);
           if (typeof enabled !== "boolean" || typeof showChallengeTitle !== "boolean" || typeof showStartText !== "boolean" || typeof showTimer !== "boolean" ||
               !challengeTitle || challengeTitle.length > 80 || (mediaUrl && (mediaUrl.length > 2048 || !/^https:\/\//i.test(mediaUrl))) ||
               !["", "gif", "svga"].includes(mediaType) || (mediaUrl && !mediaType) || (!mediaUrl && mediaType) ||
@@ -858,10 +861,10 @@ export default {
               !/^#[0-9a-f]{6}$/i.test(pkMicFillColor) || !Number.isInteger(pkMicFillOpacity) || pkMicFillOpacity < 0 || pkMicFillOpacity > 100 ||
               !/^#[0-9a-f]{6}$/i.test(pkBlueMicBorderColor) || !/^#[0-9a-f]{6}$/i.test(pkRedMicBorderColor) ||
               (micSvgaUrl && (micSvgaUrl.length > 2048 || !/^https:\/\//i.test(micSvgaUrl))) ||
-              [micCircleSvgaUrl, micChairSvgaUrl, micLockSvgaUrl].some((value) => value.length > 2048 || (value !== "" && !/^https:\/\//i.test(value)))) {
+              [micCircleSvgaUrl, micChairSvgaUrl, micLockSvgaUrl].some((value) => value.length > 2048 || (value !== "" && !/^https:\/\//i.test(value))) ||\n              [micCircleScale, micChairScale, micLockScale].some((value) => !Number.isFinite(value) || value < 50 || value > 150)) {
             return json({ error: "invalid_pk_settings", message: "تحقق من إعدادات PK والمدد والوسائط." }, 400, origin, env);
           }
-          const settings = { enabled, challengeTitle, mediaUrl, mediaType, showChallengeTitle, showStartText, showTimer, squareRadius, squareWidthPercent, squareHeight, mediaOpacity, durationOptions, defaultDurationMinutes, startMediaUrl, startMediaType, startShowDurationSeconds, startHideDurationSeconds, normalMicBorderColor, normalMicBorderWidth, normalMicFillColor, normalMicFillOpacity, pkMicBorderColor, pkMicBorderWidth, pkMicFillColor, pkMicFillOpacity, pkBlueMicBorderColor, pkRedMicBorderColor, micSvgaUrl, micCircleSvgaUrl, micChairSvgaUrl, micLockSvgaUrl };
+          const settings = { enabled, challengeTitle, mediaUrl, mediaType, showChallengeTitle, showStartText, showTimer, squareRadius, squareWidthPercent, squareHeight, mediaOpacity, durationOptions, defaultDurationMinutes, startMediaUrl, startMediaType, startShowDurationSeconds, startHideDurationSeconds, normalMicBorderColor, normalMicBorderWidth, normalMicFillColor, normalMicFillOpacity, pkMicBorderColor, pkMicBorderWidth, pkMicFillColor, pkMicFillOpacity, pkBlueMicBorderColor, pkRedMicBorderColor, micSvgaUrl, micCircleSvgaUrl, micChairSvgaUrl, micLockSvgaUrl, micCircleScale, micChairScale, micLockScale };
           const now = new Date().toISOString();
           await env.DB!.prepare(
             "INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('pk_battle_settings', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at"
