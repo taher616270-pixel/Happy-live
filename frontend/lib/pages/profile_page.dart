@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../widgets/centered_notification.dart';
 import 'package:flutter/material.dart';
 import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:http/http.dart' as http;
@@ -274,7 +275,7 @@ class ProfilePage extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: data.userId));
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    showCenteredNotification(context, 
                       const SnackBar(content: Text('تم النسخ')),
                     );
                   },
