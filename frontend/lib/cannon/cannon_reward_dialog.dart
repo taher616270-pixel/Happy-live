@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/centered_notification.dart';
 import 'cannon_models.dart';
 import 'cannon_service.dart';
 
@@ -30,7 +31,7 @@ Future<void> showCannonRewardDialog(BuildContext context, CannonClaim claim) {
               if (ok) {
                 Navigator.pop(dialogContext);
               } else {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('تعذر استلام المكافأة، حاول مرة أخرى')));
+                showCenteredNotification(dialogContext, const SnackBar(content: Text('تعذر استلام المكافأة، حاول مرة أخرى')));
               }
             },
             child: const Text('استلام المكافأة'),
