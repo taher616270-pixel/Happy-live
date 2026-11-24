@@ -2421,7 +2421,25 @@ class _RoomPageState extends State<RoomPage> {
 
   Future<void> _submitRoomBattleAction(String action) async {
     if (!mounted || _pkActionBusy || _roomId.isEmpty) return;
-    setState(() => _pkActionBusy = true);
+    // إغلاق PK يعيد شكل المايكات محلياً فور الضغط، دون انتظار استجابة الشبكة.
+    final previousPkState = (
+      teamMode: _roomBattleTeamMode,
+      visualMode: _pkVisualMode,
+      active: _roomBattleActive,
+      started: _pkStarted,
+      endsAt: _pkEndsAt,
+    );
+    setState(() {
+      _pkActionBusy = true;
+      if (action == 'end') {
+        _roomBattleTeamMode = false;
+        _pkVisualMode = false;
+        _roomBattleActive = false;
+        _pkStarted = false;
+        _pkEndsAt = null;
+      }
+    });
+    if (action == 'end') _syncPkTicker();
     try {
       final response = await http.post(
         _roomBattleUri,
@@ -2439,15 +2457,40 @@ class _RoomPageState extends State<RoomPage> {
             : code == 'invalid_battle_duration'
                 ? 'مدة تحدي PK غير صحيحة'
                 : 'تعذر تنفيذ تحدي PK، حاول مرة أخرى';
-        if (mounted) _showMessage(message);
+        if (mounted) {
+          _showMessage(message);
+          if (action == 'end') {
+            setState(() {
+              _roomBattleTeamMode = previousPkState.teamMode;
+              _pkVisualMode = previousPkState.visualMode;
+              _roomBattleActive = previousPkState.active;
+              _pkStarted = previousPkState.started;
+              _pkEndsAt = previousPkState.endsAt;
+            });
+            _syncPkTicker();
+          }
+        }
         return;
       }
       if (mounted) {
         _applyPkBattleState(Map<String, dynamic>.from(decoded));
-        await _loadRoomBattleState();
+        // استجابة الإغلاق تحتوي الحالة النهائية؛ لا نؤخرها بطلب GET إضافي.
+        if (action != 'end') await _loadRoomBattleState();
       }
     } catch (_) {
-      if (mounted) _showMessage('تعذر الاتصال بالخادم، لم يتم تغيير حالة PK');
+      if (mounted) {
+        _showMessage('تعذر الاتصال بالخادم، لم يتم تغيير حالة PK');
+        if (action == 'end') {
+          setState(() {
+            _roomBattleTeamMode = previousPkState.teamMode;
+            _pkVisualMode = previousPkState.visualMode;
+            _roomBattleActive = previousPkState.active;
+            _pkStarted = previousPkState.started;
+            _pkEndsAt = previousPkState.endsAt;
+          });
+          _syncPkTicker();
+        }
+      }
     } finally {
       if (mounted) setState(() => _pkActionBusy = false);
     }
