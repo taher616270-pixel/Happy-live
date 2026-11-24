@@ -4637,7 +4637,11 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
                   ? !widget.micLockStyleUrl.startsWith('https://')
                   : !widget.micChairStyleUrl.startsWith('https://')))
             Transform.scale(
-              scale: widget.micStyleUrl.startsWith('https://') ? 0.76 : 1.0,
+              // صورة الشخص المشغول تملأ دائرة المايك بالكامل؛ لا نصغّرها
+              // عند استخدام إطار SVGA مخصص.
+              scale: widget.isOccupied
+                  ? 1.0
+                  : (widget.micStyleUrl.startsWith('https://') ? 0.76 : 1.0),
               child: widget.avatar,
             ),
         ],
