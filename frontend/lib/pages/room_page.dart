@@ -1164,6 +1164,7 @@ class _RoomPageState extends State<RoomPage> {
         if (_seatModerationRevision[seatNumber] != revision) return true;
         final confirmedLocked = data['isLocked'] == true;
         final confirmedMuted = data['isMuted'] == true;
+        if (isLockAction) _pendingSeatLockValues[seatNumber] = confirmedLocked;
         final confirmedSeats = _seats.map((seat) => Map<String, dynamic>.from(seat)).toList();
         final confirmedIndex = confirmedSeats.indexWhere((seat) => (seat['seatNumber'] as num?)?.toInt() == seatNumber);
         if (confirmedIndex >= 0) {
@@ -1197,12 +1198,13 @@ class _RoomPageState extends State<RoomPage> {
         _showMessage('تعذر الاتصال بالخادم، لم تتغير حالة المايك');
       }
     }
-    return false;
   } finally {
     if (isLockAction) {
       _pendingSeatLockRequests.remove(seatNumber);
       _pendingSeatLockValues.remove(seatNumber);
     }
+  }
+    return false;
   }
 
   Future<void> _sendHeartbeat() async {
