@@ -2622,7 +2622,8 @@ export default {
         await env.DB.prepare(
           "UPDATE room_battles SET status = 'finished', ended_at = COALESCE(ended_at, ?) WHERE room_id = ? AND status = 'active'"
         ).bind(now, roomId).run();
-        const teamMode = action === "end";
+        // Both end and reset leave PK layout mode; end preserves the finished battle record.
+        const teamMode = false;
         const keepBattleId = action === "end" ? (activeBattle?.id ?? null) : null;
         const response = await hub.fetch(new Request("https://room-seats.internal/battle-state", {
           method: "POST", headers: { "Content-Type": "application/json", "x-room-id": roomId },
