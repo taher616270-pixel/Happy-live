@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../widgets/centered_notification.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -773,7 +774,7 @@ class _HappyPostsPageState extends State<HappyPostsPage> {
   }
 
   void _toast(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    showCenteredNotification(context, SnackBar(
       content: Text(text, textAlign: TextAlign.right),
       behavior: SnackBarBehavior.floating,
       backgroundColor: const Color(0xFF393329),
@@ -1446,7 +1447,7 @@ class _CreatePostPageState extends State<_CreatePostPage> {
       if (!mounted) return;
       setState(() => _selectedImageBytes = bytes);
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) showCenteredNotification(context, 
         const SnackBar(content: Text('تعذر فتح الصور. تحقق من صلاحية الوصول ثم حاول مرة أخرى.')),
       );
     }
@@ -1484,7 +1485,7 @@ class _CreatePostPageState extends State<_CreatePostPage> {
       if (mounted) Navigator.of(context).pop(published);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        showCenteredNotification(context, SnackBar(
           content: Text(error.toString().replaceFirst('Exception: ', ''), textAlign: TextAlign.right),
           behavior: SnackBarBehavior.floating,
           backgroundColor: const Color(0xFF393329),
