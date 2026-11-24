@@ -4591,7 +4591,7 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
             scale: widget.micStyleUrl.startsWith('https://') ? 0.76 : 1.0,
             child: widget.avatar,
           ),
-          if (widget.isLocked)
+          if (widget.isLocked && widget.micStyleUrl.startsWith('https://'))
             Positioned.fill(
               child: IgnorePointer(
                 child: Center(
