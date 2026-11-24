@@ -103,6 +103,9 @@ class _RoomPageState extends State<RoomPage> {
   bool _isChangingSeat = false;
   final Set<int> _pendingSeatNumbers = <int>{};
   final Map<int, int> _seatModerationRevision = <int, int>{};
+  // Prevent overlapping lock/unlock writes for the same microphone.
+  final Set<int> _pendingSeatLockRequests = <int>{};
+  final Map<int, bool> _pendingSeatLockValues = <int, bool>{};
   final Map<int, Stopwatch> _seatMoveTimers = <int, Stopwatch>{};
   final SeatStateStore _seatStateStore = SeatStateStore();
   RoomSeatSocket? _seatSocket;
@@ -537,6 +540,16 @@ class _RoomPageState extends State<RoomPage> {
       ...normalizedEmptySeats,
     ]..sort((a, b) => ((a['seatNumber'] as num?)?.toInt() ?? 0)
         .compareTo((b['seatNumber'] as num?)?.toInt() ?? 0));
+    // Keep an optimistic lock state stable while HTTP/socket/periodic snapshots
+    // are still catching up with the server write.
+    for (final seat in normalized) {
+      final number = (seat['seatNumber'] as num?)?.toInt();
+      final pendingLock = number == null ? null : _pendingSeatLockValues[number];
+      if (pendingLock != null) {
+        seat['isLocked'] = pendingLock;
+        seat['locked'] = pendingLock;
+      }
+    }
     _rememberCountryNames(normalized);
     final mine = normalized.where((seat) => seat['isMe'] == true).toList();
     final nextMySeat = mySeat ?? (mine.isEmpty ? null : (mine.first['seatNumber'] as num).toInt());
@@ -1114,6 +1127,10 @@ class _RoomPageState extends State<RoomPage> {
       _showMessage('رقم المايك غير صحيح');
       return false;
     }
+    final isLockAction = action == 'toggle_seat_lock';
+    // A second tap while the first write is in flight must not invert the
+    // requested state again or race a second HTTP write against it.
+    if (isLockAction && !_pendingSeatLockRequests.add(seatNumber)) return true;
     final originalSeats = _seats.map((seat) => Map<String, dynamic>.from(seat)).toList();
     final optimisticSeats = originalSeats.map((seat) => Map<String, dynamic>.from(seat)).toList();
     final targetIndex = optimisticSeats.indexWhere((seat) => (seat['seatNumber'] as num?)?.toInt() == seatNumber);
@@ -1124,6 +1141,7 @@ class _RoomPageState extends State<RoomPage> {
     final requestAction = action == 'toggle_seat_lock' ? 'set_seat_lock' : action;
     final revision = (_seatModerationRevision[seatNumber] ?? 0) + 1;
     _seatModerationRevision[seatNumber] = revision;
+    if (isLockAction) _pendingSeatLockValues[seatNumber] = optimisticLocked;
     final optimisticMuted = action == 'toggle_seat_mute' ? !wasMuted : wasMuted;
 
     // Update the visible seat state on this frame instead of waiting for HTTP + a second refresh.
@@ -1161,6 +1179,7 @@ class _RoomPageState extends State<RoomPage> {
         return true;
       }
       if (_seatModerationRevision[seatNumber] == revision) {
+        if (isLockAction) _pendingSeatLockValues.remove(seatNumber);
         _applyRealtimeSeatSnapshot(originalSeats, mySeat: _mySeat);
         unawaited(_refreshSeats());
       }
@@ -1172,12 +1191,18 @@ class _RoomPageState extends State<RoomPage> {
       // Ignore stale failures from an older tap; a newer microphone action
       // may already have updated the visible state.
       if (_seatModerationRevision[seatNumber] == revision) {
+        if (isLockAction) _pendingSeatLockValues.remove(seatNumber);
         _applyRealtimeSeatSnapshot(originalSeats, mySeat: _mySeat);
         unawaited(_refreshSeats());
         _showMessage('تعذر الاتصال بالخادم، لم تتغير حالة المايك');
       }
     }
     return false;
+  } finally {
+    if (isLockAction) {
+      _pendingSeatLockRequests.remove(seatNumber);
+      _pendingSeatLockValues.remove(seatNumber);
+    }
   }
 
   Future<void> _sendHeartbeat() async {
