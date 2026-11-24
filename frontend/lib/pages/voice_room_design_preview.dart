@@ -821,7 +821,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                 Text(
                   occupied
                       ? (seat?['name'] ?? seat?['displayName'] ?? 'مستخدم').toString()
-                      : (seatNumber == joinSeatNumber ? 'انضمام' : (locked ? 'مقفل' : '$seatNumber')),
+                      : (seatNumber == joinSeatNumber ? 'انضمام' : '$seatNumber'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -2349,7 +2349,7 @@ Widget _roomActionButton({
                 Transform.translate(
                   offset: const Offset(0, 2),
                   child: Text(
-                    locked ? 'مقفل' : '$number',
+                    '$number',
                     style: TextStyle(
                       color: Colors.white.withOpacity(.7),
                       fontSize: pkTwelveSeatLayout ? 16 : 13,
