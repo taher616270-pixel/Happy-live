@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../widgets/centered_notification.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -165,7 +166,7 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
       _scrollToLatest();
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showCenteredNotification(context, 
           SnackBar(
             content: Text(error.toString().replaceFirst('Exception: ', '')),
           ),
