@@ -4281,6 +4281,33 @@ export default {
       }
     }
 
+    // Return rooms the signed-in user has entered before, newest visit first.
+    if (url.pathname === "/api/v1/rooms/recent" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const rows = await env.DB!.prepare(
+          "SELECT r.id, r.room_code, r.name, r.description, r.image_url, r.visibility, r.status, " +
+          "(SELECT MAX(v.entered_at) FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = ?) AS last_visited_at " +
+          "FROM rooms r WHERE EXISTS (SELECT 1 FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = ?) " +
+          "ORDER BY last_visited_at DESC LIMIT 30"
+        ).bind(user.id, user.id).all<{
+          id: string; room_code: string; name: string; description: string;
+          image_url: string | null; visibility: string; status: string; last_visited_at: string | null;
+        }>();
+        return json({ ok: true, rooms: (rows.results ?? []).map((room) => ({
+          id: room.id, roomCode: room.room_code, name: room.name,
+          description: room.description, imageUrl: room.image_url,
+          isPrivate: room.visibility === "private", status: room.status,
+          lastVisitedAt: room.last_visited_at
+        })) }, 200, origin, env);
+      } catch (error) {
+        console.error("[rooms.recent] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "recent_rooms_lookup_failed" }, 500, origin, env);
+      }
+    }
+
     // Return the signed-in user's permanent room, if one has already been created.
     if (url.pathname === "/api/v1/rooms/mine" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
