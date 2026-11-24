@@ -38,6 +38,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   int _selectedMyRoomsTab = 0;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
+  List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
+  bool _loadingRecentRooms = false;
+  String? _recentRoomsError;
   bool _myRoomLookupInFlight = false;
   bool _myRoomRetryScheduled = false;
   static const String _apiBase = 'https://happy-live-api.taher616270.workers.dev/api/v1';
@@ -77,6 +80,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     super.initState();
     _loadCountry();
     _loadMyRoom();
+    _loadRecentRooms();
   }
 
   @override
@@ -95,6 +99,40 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         if (mounted && country.isNotEmpty) setState(() => _countryName = country);
       }
     } catch (_) {}
+  }
+
+  Future<void> _loadRecentRooms() async {
+    if (_loadingRecentRooms || widget.accessToken.isEmpty) return;
+    if (mounted) setState(() { _loadingRecentRooms = true; _recentRoomsError = null; });
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiBase/rooms/recent'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+      ).timeout(const Duration(seconds: 12));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data is Map && data['ok'] == true && data['rooms'] is List) {
+        final rooms = (data['rooms'] as List).whereType<Map>()
+            .map((room) => Map<String, dynamic>.from(room)).toList();
+        if (mounted) setState(() { _recentRooms = rooms; _recentRoomsError = null; });
+      } else {
+        if (mounted) setState(() => _recentRoomsError = 'تعذر تحميل الغرف التي زرتها');
+      }
+    } catch (_) {
+      if (mounted) setState(() => _recentRoomsError = 'تحقق من اتصال الإنترنت ثم حاول التحديث');
+    } finally {
+      if (mounted) setState(() => _loadingRecentRooms = false);
+    }
+  }
+
+  Future<void> _openRecentRoom(Map<String, dynamic> room) async {
+    await Navigator.of(context).push(PageRouteBuilder<void>(
+      opaque: false,
+      barrierColor: Colors.transparent,
+      pageBuilder: (_, __, ___) => RoomPage(room: room, accessToken: widget.accessToken),
+      transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+      transitionDuration: const Duration(milliseconds: 180),
+    ));
+    if (mounted) _loadRecentRooms();
   }
 
   Future<void> _loadMyRoom() async {
@@ -387,11 +425,78 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           children: [
             _buildMyRoomsTabContent('لا توجد غرف تتابعها حالياً'),
             _buildMyRoomsTabContent('لا توجد غرف للانضمام إليها حالياً'),
-            _buildMyRoomsTabContent('لا توجد غرف زرتها مؤخراً'),
+            _buildRecentRoomsContent(),
           ],
         ),
       ),
     ],
+  );
+
+  Widget _buildRecentRoomsContent() {
+    if (_loadingRecentRooms && _recentRooms.isEmpty) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: HappyHomeColors.gold));
+    }
+    if (_recentRoomsError != null && _recentRooms.isEmpty) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text(_recentRoomsError!, textAlign: TextAlign.center,
+          style: const TextStyle(color: Color(0xFF9A98AD), fontSize: 11)),
+        TextButton(onPressed: _loadRecentRooms,
+          child: const Text('إعادة المحاولة', style: TextStyle(color: HappyHomeColors.gold, fontSize: 11))),
+      ]));
+    }
+    if (_recentRooms.isEmpty) return _buildMyRoomsTabContent('لا توجد غرف زرتها مؤخراً');
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+      itemCount: _recentRooms.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final room = _recentRooms[index];
+        final name = (room['name'] ?? 'غرفة صوتية').toString();
+        final code = (room['roomCode'] ?? '').toString();
+        final image = (room['imageUrl'] ?? '').toString();
+        final status = (room['status'] ?? 'active').toString();
+        return Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(13),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(13),
+            onTap: status == 'active' ? () => _openRecentRoom(room) : null,
+            child: Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: const Color(0x44D9A93C)),
+              ),
+              child: Row(children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(width: 43, height: 43,
+                    child: image.startsWith('https://')
+                      ? HappyNetworkImage(image, width: 43, height: 43, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _recentRoomPlaceholder())
+                      : _recentRoomPlaceholder()),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Color(0xFF1E2233), fontSize: 12, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 3),
+                  Text('ID: $code', style: const TextStyle(color: HappyHomeColors.muted, fontSize: 10)),
+                ])),
+                Icon(status == 'active' ? Icons.arrow_forward_ios_rounded : Icons.lock_outline_rounded,
+                  size: 14, color: HappyHomeColors.gold),
+              ]),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _recentRoomPlaceholder() => Container(
+    color: const Color(0xFFFAF6EA),
+    alignment: Alignment.center,
+    child: const Icon(Icons.graphic_eq_rounded, color: HappyHomeColors.gold, size: 22),
   );
 
   Widget _buildMyRoomsTabContent(String emptyMessage) {
