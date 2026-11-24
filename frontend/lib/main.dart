@@ -93,20 +93,48 @@ class HappyLiveApp extends StatelessWidget {
         CountryLocalizations.delegate,
         ...GlobalMaterialLocalizations.delegates,
       ],
-      builder: (context, child) => CannonGlobalBannerHost(
-        accessToken: CannonConfig.authToken(),
-        onOpenRoom: (roomId) => _openGlobalCannonRoom(context, roomId),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned.fill(child: PurpleTechBackground()),
-            if (child != null) child,
-            Positioned.fill(
-              child: GiftBannerHost(stream: GlobalGiftEvents.instance.events),
+      builder: (context, child) {
+        final screen = MediaQuery.sizeOf(context);
+        final horizontalInset = screen.width * 0.225;
+        return SnackBarTheme(
+          data: SnackBarThemeData(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xEE24202B),
+            contentTextStyle: const TextStyle(
+              color: Colors.white,
+              fontFamily: 'Tajawal',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
             ),
-          ],
-        ),
-      ),
+            shape: const StadiumBorder(
+              side: BorderSide(color: Color(0x66E8C477), width: 1),
+            ),
+            elevation: 10,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            // Keep all standard app notifications centered vertically and
+            // constrained to roughly half the screen width.
+            margin: EdgeInsets.only(
+              left: horizontalInset,
+              right: horizontalInset,
+              bottom: screen.height * 0.42,
+            ),
+          ),
+          child: CannonGlobalBannerHost(
+            accessToken: CannonConfig.authToken(),
+            onOpenRoom: (roomId) => _openGlobalCannonRoom(context, roomId),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fill(child: PurpleTechBackground()),
+                if (child != null) child,
+                Positioned.fill(
+                  child: GiftBannerHost(stream: GlobalGiftEvents.instance.events),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: Colors.transparent,
