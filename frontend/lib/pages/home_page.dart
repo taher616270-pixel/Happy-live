@@ -32,6 +32,7 @@ class HappyHomeTab extends StatefulWidget {
 
 class HappyHomeTabState extends State<HappyHomeTab> {
   final PageController _pageController = PageController();
+  final PageController _myRoomsTabController = PageController();
   String _countryName = 'الدولة';
   int _currentPage = 0;
   int _selectedMyRoomsTab = 0;
@@ -81,6 +82,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   @override
   void dispose() {
     _pageController.dispose();
+    _myRoomsTabController.dispose();
     super.dispose();
   }
 
@@ -378,8 +380,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       SizedBox(
         height: 230,
         child: PageView(
+          controller: _myRoomsTabController,
           scrollDirection: Axis.horizontal,
           physics: const PageScrollPhysics(),
+          onPageChanged: (index) => setState(() => _selectedMyRoomsTab = index),
           children: [
             _buildMyRoomsTabContent('لا توجد غرف تتابعها حالياً'),
             _buildMyRoomsTabContent('لا توجد غرف للانضمام إليها حالياً'),
@@ -418,7 +422,14 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             return Expanded(
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: () => setState(() => _selectedMyRoomsTab = index),
+                onTap: () {
+                  setState(() => _selectedMyRoomsTab = index);
+                  _myRoomsTabController.animateToPage(
+                    index,
+                    duration: const Duration(milliseconds: 240),
+                    curve: Curves.easeInOutCubic,
+                  );
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOut,
