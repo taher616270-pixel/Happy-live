@@ -861,7 +861,8 @@ export default {
               !/^#[0-9a-f]{6}$/i.test(pkMicFillColor) || !Number.isInteger(pkMicFillOpacity) || pkMicFillOpacity < 0 || pkMicFillOpacity > 100 ||
               !/^#[0-9a-f]{6}$/i.test(pkBlueMicBorderColor) || !/^#[0-9a-f]{6}$/i.test(pkRedMicBorderColor) ||
               (micSvgaUrl && (micSvgaUrl.length > 2048 || !/^https:\/\//i.test(micSvgaUrl))) ||
-              [micCircleSvgaUrl, micChairSvgaUrl, micLockSvgaUrl].some((value) => value.length > 2048 || (value !== "" && !/^https:\/\//i.test(value))) ||\n              [micCircleScale, micChairScale, micLockScale].some((value) => !Number.isFinite(value) || value < 50 || value > 150)) {
+              [micCircleSvgaUrl, micChairSvgaUrl, micLockSvgaUrl].some((value) => value.length > 2048 || (value !== "" && !/^https:\/\//i.test(value))) ||
+              [micCircleScale, micChairScale, micLockScale].some((value) => !Number.isFinite(value) || value < 50 || value > 150)) {
             return json({ error: "invalid_pk_settings", message: "تحقق من إعدادات PK والمدد والوسائط." }, 400, origin, env);
           }
           const settings = { enabled, challengeTitle, mediaUrl, mediaType, showChallengeTitle, showStartText, showTimer, squareRadius, squareWidthPercent, squareHeight, mediaOpacity, durationOptions, defaultDurationMinutes, startMediaUrl, startMediaType, startShowDurationSeconds, startHideDurationSeconds, normalMicBorderColor, normalMicBorderWidth, normalMicFillColor, normalMicFillOpacity, pkMicBorderColor, pkMicBorderWidth, pkMicFillColor, pkMicFillOpacity, pkBlueMicBorderColor, pkRedMicBorderColor, micSvgaUrl, micCircleSvgaUrl, micChairSvgaUrl, micLockSvgaUrl, micCircleScale, micChairScale, micLockScale };
