@@ -620,7 +620,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           textDirection: TextDirection.ltr,
           child: PageView(
             controller: _pageController,
-            reverse: false,
+            reverse: true,
             onPageChanged: (index) => setState(() => _currentPage = index),
             children: [
               Directionality(
