@@ -783,7 +783,7 @@ export default {
           const defaults = {
             enabled: true, challengeTitle: "تحدي PK", mediaUrl: "", mediaType: "",
             showChallengeTitle: true, showStartText: true, showTimer: true,
-            squareRadius: 26, mediaOpacity: 85, durationOptions: [5, 15, 30, 120],
+            squareRadius: 26, squareWidthPercent: 100, squareHeight: 284, mediaOpacity: 85, durationOptions: [5, 15, 30, 120],
             defaultDurationMinutes: 5, startMediaUrl: "", startMediaType: "",
             startShowDurationSeconds: 3, startHideDurationSeconds: 0.5,
             normalMicBorderColor: "#FFFFFF", normalMicBorderWidth: 1.5, normalMicFillColor: "#FFFFFF", normalMicFillOpacity: 14,
