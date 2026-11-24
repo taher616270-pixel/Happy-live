@@ -3312,7 +3312,7 @@ export default {
             }
           }
         }
-        if (action === "toggle_seat_mute" || action === "toggle_seat_lock") {
+        if (action === "toggle_seat_mute" || action === "toggle_seat_lock" || action === "set_seat_lock") {
           const seatNumber = Number(body.seatNumber);
           const seatLimit = await env.DB!.prepare("SELECT settings_json FROM room_settings WHERE room_id = ? LIMIT 1")
             .bind(roomId).first<{ settings_json: string }>();
