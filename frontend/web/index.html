@@ -75,8 +75,8 @@
   </style>
 </head>
 <body>
-  <!-- Start Flutter before optional third-party SDKs so a slow CDN cannot block app startup. -->
-  <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.24.8.js" defer></script>
+  <!-- Load the room bridge before Flutter; the Agora SDK is optional and must never block app startup. -->
+  <script id="happy-live-agora-sdk" src="https://download.agora.io/sdk/release/AgoraRTC_N-4.24.8.js" async></script>
   <script src="agora_bridge.js" defer></script>
   <script>
     // Adjust only iPhone Safari to the actually visible browser viewport.
