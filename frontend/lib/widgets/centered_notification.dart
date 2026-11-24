@@ -21,7 +21,7 @@ void showCenteredNotification(BuildContext context, SnackBar snackBar) {
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
               builder: (context, scale, child) => Opacity(
-                opacity: ((scale - .92) / .08).clamp(0.0, 1.0),
+                opacity: ((scale - .92) / .08).clamp(0.0, 1.0).toDouble(),
                 child: Transform.scale(scale: scale, child: child),
               ),
               child: ConstrainedBox(
