@@ -1102,9 +1102,10 @@ class _RoomPageState extends State<RoomPage> {
       _showMessage('رقم المايك غير صحيح');
       return false;
     }
-    final previousSeats = _seats.map((seat) => Map<String, dynamic>.from(seat)).toList();
-    final targetIndex = previousSeats.indexWhere((seat) => (seat['seatNumber'] as num?)?.toInt() == seatNumber);
-    final currentSeat = targetIndex >= 0 ? previousSeats[targetIndex] : <String, dynamic>{};
+    final originalSeats = _seats.map((seat) => Map<String, dynamic>.from(seat)).toList();
+    final optimisticSeats = originalSeats.map((seat) => Map<String, dynamic>.from(seat)).toList();
+    final targetIndex = optimisticSeats.indexWhere((seat) => (seat['seatNumber'] as num?)?.toInt() == seatNumber);
+    final currentSeat = targetIndex >= 0 ? optimisticSeats[targetIndex] : <String, dynamic>{};
     final wasLocked = currentSeat['isLocked'] == true || currentSeat['locked'] == true;
     final wasMuted = currentSeat['isMuted'] == true || currentSeat['muted'] == true;
     final optimisticLocked = action == 'toggle_seat_lock' ? !wasLocked : wasLocked;
@@ -1112,11 +1113,11 @@ class _RoomPageState extends State<RoomPage> {
 
     // Update the visible seat state on this frame instead of waiting for HTTP + a second refresh.
     if (targetIndex >= 0) {
-      previousSeats[targetIndex]['isLocked'] = optimisticLocked;
-      previousSeats[targetIndex]['locked'] = optimisticLocked;
-      previousSeats[targetIndex]['isMuted'] = optimisticMuted;
-      previousSeats[targetIndex]['muted'] = optimisticMuted;
-      _applyRealtimeSeatSnapshot(previousSeats, mySeat: _mySeat);
+      optimisticSeats[targetIndex]['isLocked'] = optimisticLocked;
+      optimisticSeats[targetIndex]['locked'] = optimisticLocked;
+      optimisticSeats[targetIndex]['isMuted'] = optimisticMuted;
+      optimisticSeats[targetIndex]['muted'] = optimisticMuted;
+      _applyRealtimeSeatSnapshot(optimisticSeats, mySeat: _mySeat);
     }
 
     try {
@@ -1143,7 +1144,7 @@ class _RoomPageState extends State<RoomPage> {
             : (confirmedMuted ? 'تم كتم المايك' : 'تم فتح كتم المايك'));
         return true;
       }
-      _applyRealtimeSeatSnapshot(previousSeats, mySeat: _mySeat);
+      _applyRealtimeSeatSnapshot(originalSeats, mySeat: _mySeat);
       unawaited(_refreshSeats());
       final message = data is Map ? (data['message'] ?? '').toString() : '';
       _showMessage(message.isNotEmpty ? message : response.statusCode == 403
