@@ -2473,13 +2473,19 @@ Widget _roomActionButton({
                       top: 0,
                       left: (54 - diameter) / 2,
                       child: GestureDetector(
-                        onTap: canModerateUsers
+                        // Empty overflow microphones must remain joinable even
+                        // for the room owner/moderators. Moderation of an empty
+                        // seat is available with a long press instead.
+                        onTap: occupied
+                            ? (canModerateUsers
+                                ? () => _showEmptySeatActions(context, number)
+                                : () => _showUserProfile(context, seat!))
+                            : (!isChangingSeat && !seatState.isPending && !locked
+                                ? () => onTapSeat(number)
+                                : null),
+                        onLongPress: canModerateUsers && !occupied
                             ? () => _showEmptySeatActions(context, number)
-                            : occupied
-                                ? () => _showUserProfile(context, seat!)
-                                : (!isChangingSeat && !seatState.isPending && !locked
-                                    ? () => onTapSeat(number)
-                                    : null),
+                            : null,
                         child: _GoldenVoiceWave(
                           isSpeaking: isSpeaking,
                           isLocked: locked,
