@@ -2477,19 +2477,16 @@ Widget _roomActionButton({
                       left: (54 - diameter) / 2,
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        // Empty overflow microphones must remain joinable even
-                        // for the room owner/moderators. Moderation of an empty
-                        // seat is available with a long press instead.
-                        // Match the normal microphone: occupied seats
-                        // always open their profile, never the empty-seat menu.
-                        onTap: occupied
-                            ? () => _showUserProfile(context, seat!)
-                            : (!isChangingSeat && !seatState.isPending && !locked
-                                ? () => onTapSeat(number)
-                                : null),
-                        onLongPress: canModerateUsers && !occupied
+                        // Owners and moderators get the seat action sheet on
+                        // a single tap for every PK overflow microphone.
+                        // Other participants keep the normal profile/join behavior.
+                        onTap: canModerateUsers
                             ? () => _showEmptySeatActions(context, number)
-                            : null,
+                            : occupied
+                                ? () => _showUserProfile(context, seat!)
+                                : (!isChangingSeat && !seatState.isPending && !locked
+                                    ? () => onTapSeat(number)
+                                    : null),
                         child: _GoldenVoiceWave(
                           isSpeaking: isSpeaking,
                           isLocked: locked,
@@ -2647,7 +2644,24 @@ Widget _roomActionButton({
                   ),
                 ),
               ),
-              if (!occupied) ...[
+              if (occupied)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    child: _EmptySeatAction(
+                      icon: Icons.person_outline_rounded,
+                      label: 'معلومات المستخدم',
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        final selectedUser = _seatAt(seatNumber);
+                        if (selectedUser != null) {
+                          _showUserProfile(context, selectedUser);
+                        }
+                      },
+                    ),
+                  ),
+                )
+              else ...[
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 5),
