@@ -110,7 +110,6 @@ class HappyLiveApp extends StatelessWidget {
               side: BorderSide(color: Color(0x66E8C477), width: 1),
             ),
             elevation: 10,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             // Keep all standard app notifications centered vertically and
             // constrained to roughly half the screen width.
             margin: EdgeInsets.only(
