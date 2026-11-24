@@ -670,6 +670,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   children: [
                     _GoldenVoiceWave(
                       isSpeaking: isSpeaking,
+                      isLocked: locked,
                       micStyleUrl: micStyleUrl,
                       avatarSize: 46,
                       rippleStartSize: 51,
@@ -2122,6 +2123,7 @@ Widget _roomActionButton({
                                 : null),
                     child: _GoldenVoiceWave(
                     isSpeaking: isSpeaking,
+                      isLocked: locked,
                       micStyleUrl: micStyleUrl,
                     avatarSize: seatDiameter,
                     rippleStartSize: seatDiameter + 5,
@@ -2434,6 +2436,7 @@ Widget _roomActionButton({
                                     : null),
                         child: _GoldenVoiceWave(
                           isSpeaking: isSpeaking,
+                          isLocked: locked,
                       micStyleUrl: micStyleUrl,
                           avatarSize: diameter,
                           rippleStartSize: diameter + 5,
@@ -4481,6 +4484,7 @@ class _SeatVoiceGlowPainter extends CustomPainter {
 class _GoldenVoiceWave extends StatefulWidget {
   const _GoldenVoiceWave({
     required this.isSpeaking,
+    this.isLocked = false,
     required this.avatar,
     this.avatarSize = 48,
     this.rippleStartSize = 60,
@@ -4489,6 +4493,7 @@ class _GoldenVoiceWave extends StatefulWidget {
   });
 
   final bool isSpeaking;
+  final bool isLocked;
   final Widget avatar;
   final double avatarSize;
   final double rippleStartSize;
@@ -4567,7 +4572,6 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
               ),
             ),
           ),
-          widget.avatar,
           if (widget.micStyleUrl.startsWith('https://'))
             Positioned.fill(
               child: IgnorePointer(
@@ -4578,6 +4582,28 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
                   loops: true,
                   volume: 0,
                   muted: true,
+                ),
+              ),
+            ),
+          // Keep the participant avatar above the animated microphone frame.
+          widget.avatar,
+          if (widget.isLocked)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Center(
+                  child: Container(
+                    width: widget.avatarSize * 0.42,
+                    height: widget.avatarSize * 0.42,
+                    decoration: const BoxDecoration(
+                      color: Color(0xCC17131F),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.lock_rounded,
+                      color: Colors.white,
+                      size: 17,
+                    ),
+                  ),
                 ),
               ),
             ),
