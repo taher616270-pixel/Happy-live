@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../widgets/centered_notification.dart';
 import 'package:flutter/material.dart';
 import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:happy_live/widgets/square_country_flag.dart';
@@ -140,7 +141,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   void _message(String value) {
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+    if (mounted) showCenteredNotification(context, 
       SnackBar(content: Text(value), behavior: SnackBarBehavior.floating),
     );
   }
