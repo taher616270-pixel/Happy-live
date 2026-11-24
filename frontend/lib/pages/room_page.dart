@@ -177,6 +177,7 @@ class _RoomPageState extends State<RoomPage> {
   double _pkMicFillOpacity = 0.12;
   String _pkBlueMicBorderColor = '#258BFF';
   String _pkRedMicBorderColor = '#FF4B5C';
+  String _micStyleSvgaUrl = '';
   List<int> _pkDurationOptions = <int>[5, 15, 30, 120];
   Timer? _roomCounterTicker;
   int _roomCounterNow = 0;
@@ -2371,6 +2372,7 @@ class _RoomPageState extends State<RoomPage> {
         _pkMicFillOpacity = (((settings['pkMicFillOpacity'] as num?)?.toDouble() ?? 12) / 100).clamp(0, 1).toDouble();
         _pkBlueMicBorderColor = (settings['pkBlueMicBorderColor'] ?? '#258BFF').toString();
         _pkRedMicBorderColor = (settings['pkRedMicBorderColor'] ?? '#FF4B5C').toString();
+        _micStyleSvgaUrl = (settings['micSvgaUrl'] ?? '').toString();
         _pkDurationOptions = options.isEmpty ? <int>[5, 15, 30, 120] : options;
         final defaultDuration = (settings['defaultDurationMinutes'] as num?)?.toInt() ?? 5;
         _pkDefaultDurationMinutes = _pkDurationOptions.contains(defaultDuration) ? defaultDuration : _pkDurationOptions.first;
@@ -3414,6 +3416,7 @@ class _RoomPageState extends State<RoomPage> {
       pkMicFillOpacity: _pkMicFillOpacity,
       pkBlueMicBorderColor: _pkBlueMicBorderColor,
       pkRedMicBorderColor: _pkRedMicBorderColor,
+      micStyleUrl: _micStyleSvgaUrl,
           ),
         ),        if (_roomCounter != null) _roomCounterBanner(),
         if (_activeRoomGift != null) _roomGiftFullscreenOverlay(),
