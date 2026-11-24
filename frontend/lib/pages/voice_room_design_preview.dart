@@ -2481,7 +2481,13 @@ Widget _roomActionButton({
                         // a single tap for every PK overflow microphone.
                         // Other participants keep the normal profile/join behavior.
                         onTap: canModerateUsers
-                            ? () => _showEmptySeatActions(context, number)
+                            ? () => _showEmptySeatActions(
+                                  context,
+                                  number,
+                                  seatOverride: seatState.occupied
+                                      ? seatState.toMap()
+                                      : _seatAt(number),
+                                )
                             : occupied
                                 ? () => _showUserProfile(context, seat!)
                                 : (!isChangingSeat && !seatState.isPending && !locked
@@ -2589,8 +2595,14 @@ Widget _roomActionButton({
     );
   }
 
-  void _showEmptySeatActions(BuildContext context, int seatNumber) {
-    final seat = _seatAt(seatNumber) ?? <String, dynamic>{};
+  void _showEmptySeatActions(
+    BuildContext context,
+    int seatNumber, {
+    Map<String, dynamic>? seatOverride,
+  }) {
+    // Use the live seat snapshot when this is called from PK overflow seats,
+    // while keeping the exact same action sheet used by regular room mics.
+    final seat = seatOverride ?? _seatAt(seatNumber) ?? <String, dynamic>{};
     final userId = (seat['userId'] ?? '').toString();
     final occupied = userId.isNotEmpty;
     final isLocked = seat['isLocked'] == true || seat['locked'] == true;
