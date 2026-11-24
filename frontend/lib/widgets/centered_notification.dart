@@ -52,7 +52,7 @@ void showCenteredNotification(BuildContext context, SnackBar snackBar) {
 
   _activeNotifications[overlay] = entry;
   overlay.insert(entry);
-  Timer(snackBar.duration, () {
+  Timer(const Duration(seconds: 2), () {
     if (_activeNotifications[overlay] == entry) {
       _activeNotifications.remove(overlay);
       entry.remove();
