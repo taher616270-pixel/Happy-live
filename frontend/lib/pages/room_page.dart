@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../widgets/centered_notification.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -2725,7 +2726,7 @@ class _RoomPageState extends State<RoomPage> {
     if (_roomCode.length != 8) return;
     await Clipboard.setData(ClipboardData(text: _roomCode));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    showCenteredNotification(context, 
       const SnackBar(content: Text('تم نسخ رقم الغرفة'), behavior: SnackBarBehavior.floating),
     );
   }
@@ -3252,7 +3253,7 @@ class _RoomPageState extends State<RoomPage> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    showCenteredNotification(context, 
       SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
