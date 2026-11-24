@@ -61,7 +61,7 @@ test("PK stop preserves the blue/red seat split and reset is an independent room
   assert.match(roomPage, /_roomBattleTeamMode/);
   assert.match(roomPage, /_battleTeamLabel\('الفريق الأزرق'/);
   assert.match(roomPage, /_battleTeamLabel\('الفريق الأحمر'/);
-  assert.match(roomPage, /_pkVisualMode \? 'end' : 'prepare'/);
+  assert.match(roomPage, /if \(_pkVisualMode\) \{\s*unawaited\(_submitRoomBattleAction\('end'\)\);\s*\} else \{\s*_startRoomBattle\(\);\s*\}/);
   assert.match(roomPage, /_submitRoomBattleAction\('reset'\)/);
   assert.match(roomPage, /pkTeamMode: _roomBattleTeamMode/);
 });
