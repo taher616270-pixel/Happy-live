@@ -7,6 +7,7 @@ import '../pk/pk_score_bar.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svga/flutter_svga.dart';
 
 import 'package:happy_live/widgets/happy_network_image.dart';
 import '../widgets/square_country_flag.dart';
@@ -113,6 +114,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.pkMicFillOpacity = 0.12,
     this.pkBlueMicBorderColor = '#258BFF',
     this.pkRedMicBorderColor = '#FF4B5C',
+    this.micStyleUrl = '',
     this.pkSquareAnimation,
   });
   final Map<String, dynamic> room;
@@ -187,6 +189,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final double pkMicFillOpacity;
   final String pkBlueMicBorderColor;
   final String pkRedMicBorderColor;
+  final String micStyleUrl;
   final Widget? pkSquareAnimation;
 
   Map<String, dynamic>? _seatAt(int number) {
@@ -666,6 +669,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                   children: [
                     _GoldenVoiceWave(
                       isSpeaking: isSpeaking,
+                      micStyleUrl: micStyleUrl,
                       avatarSize: 46,
                       rippleStartSize: 51,
                       rippleEndSize: 64,
@@ -2111,6 +2115,7 @@ Widget _roomActionButton({
                                 : null),
                     child: _GoldenVoiceWave(
                     isSpeaking: isSpeaking,
+                      micStyleUrl: micStyleUrl,
                     avatarSize: seatDiameter,
                     rippleStartSize: seatDiameter + 5,
                     rippleEndSize: seatDiameter + 18,
@@ -2417,6 +2422,7 @@ Widget _roomActionButton({
                                     : null),
                         child: _GoldenVoiceWave(
                           isSpeaking: isSpeaking,
+                      micStyleUrl: micStyleUrl,
                           avatarSize: diameter,
                           rippleStartSize: diameter + 5,
                           rippleEndSize: diameter + 18,
@@ -4461,6 +4467,7 @@ class _GoldenVoiceWave extends StatefulWidget {
     this.avatarSize = 48,
     this.rippleStartSize = 60,
     this.rippleEndSize = 120,
+    this.micStyleUrl = '',
   });
 
   final bool isSpeaking;
@@ -4468,6 +4475,7 @@ class _GoldenVoiceWave extends StatefulWidget {
   final double avatarSize;
   final double rippleStartSize;
   final double rippleEndSize;
+  final String micStyleUrl;
 
   @override
   State<_GoldenVoiceWave> createState() => _GoldenVoiceWaveState();
@@ -4542,6 +4550,19 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
             ),
           ),
           widget.avatar,
+          if (widget.micStyleUrl.startsWith('https://'))
+            Positioned.fill(
+              child: IgnorePointer(
+                child: SVGAEasyPlayer(
+                  key: ValueKey('global-mic-style-${widget.micStyleUrl}'),
+                  resUrl: widget.micStyleUrl,
+                  fit: BoxFit.contain,
+                  loops: true,
+                  volume: 0,
+                  muted: true,
+                ),
+              ),
+            ),
         ],
       ),
     );
