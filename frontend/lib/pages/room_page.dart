@@ -1197,13 +1197,12 @@ class _RoomPageState extends State<RoomPage> {
         unawaited(_refreshSeats());
         _showMessage('تعذر الاتصال بالخادم، لم تتغير حالة المايك');
       }
+    } finally {
+      if (isLockAction) {
+        _pendingSeatLockRequests.remove(seatNumber);
+        _pendingSeatLockValues.remove(seatNumber);
+      }
     }
-  } finally {
-    if (isLockAction) {
-      _pendingSeatLockRequests.remove(seatNumber);
-      _pendingSeatLockValues.remove(seatNumber);
-    }
-  }
     return false;
   }
 
