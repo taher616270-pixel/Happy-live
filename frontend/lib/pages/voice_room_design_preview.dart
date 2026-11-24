@@ -604,6 +604,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
               right: 0,
               child: Center(
                 child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                   behavior: HitTestBehavior.opaque,
                   onTap: onPkStart,
                   child: const StartPkButton(),
@@ -2464,30 +2465,28 @@ Widget _roomActionButton({
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              GestureDetector(
-                // Keep the complete visible mic hit area interactive. The
-                // animated SVGA is decorative only and must never replace the
-                // original seat tap target.
-                behavior: HitTestBehavior.opaque,
-                onTap: occupied
-                    ? (canModerateUsers
-                        ? () => _showEmptySeatActions(context, number)
-                        : () => _showUserProfile(context, seat!))
-                    : (!isChangingSeat && !seatState.isPending && !locked
-                        ? () => onTapSeat(number)
-                        : null),
-                onLongPress: canModerateUsers && !occupied
-                    ? () => _showEmptySeatActions(context, number)
-                    : null,
-                child: SizedBox(
-                  width: 54,
-                  height: 46,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Positioned(
-                        top: 0,
-                        left: (54 - diameter) / 2,
+              SizedBox(
+                height: 46,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      top: 0,
+                      left: (54 - diameter) / 2,
+                      child: GestureDetector(
+                        // Empty overflow microphones must remain joinable even
+                        // for the room owner/moderators. Moderation of an empty
+                        // seat is available with a long press instead.
+                        onTap: occupied
+                            ? (canModerateUsers
+                                ? () => _showEmptySeatActions(context, number)
+                                : () => _showUserProfile(context, seat!))
+                            : (!isChangingSeat && !seatState.isPending && !locked
+                                ? () => onTapSeat(number)
+                                : null),
+                        onLongPress: canModerateUsers && !occupied
+                            ? () => _showEmptySeatActions(context, number)
+                            : null,
                         child: _GoldenVoiceWave(
                           isSpeaking: isSpeaking,
                           isLocked: locked,
@@ -2562,10 +2561,7 @@ Widget _roomActionButton({
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
+                    ),
                     if (muted)
                       Positioned(
                         bottom: 0,
