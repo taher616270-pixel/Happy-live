@@ -34,6 +34,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   final PageController _pageController = PageController();
   String _countryName = 'الدولة';
   int _currentPage = 0;
+  int _selectedMyRoomsTab = 0;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
   bool _myRoomLookupInFlight = false;
@@ -371,8 +372,54 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           builder: (_) => VoiceRoomsPage(accessToken: widget.accessToken),
         )),
       ),
+      const SizedBox(height: 10),
+      _buildMyRoomsTabs(),
     ],
   );
+
+  Widget _buildMyRoomsTabs() {
+    const labels = ['متابعة', 'انضم', 'مؤخراً'];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: const Color(0xFFD9A93C).withOpacity(0.55)),
+        ),
+        child: Row(
+          children: List.generate(labels.length, (index) {
+            final selected = _selectedMyRoomsTab == index;
+            return Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _selectedMyRoomsTab = index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected ? const Color(0xFFD9A93C) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Text(
+                    labels[index],
+                    style: TextStyle(
+                      color: selected ? Colors.white : const Color(0xFF8C806B),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Container(
