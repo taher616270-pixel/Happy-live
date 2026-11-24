@@ -4617,7 +4617,7 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
               child: IgnorePointer(
                 child: Center(
                   child: Transform.scale(
-                    scale: (widget.micCircleScale / 100).clamp(0.5, 1.5),
+                    scale: (widget.micCircleScale / 100).clamp(0.5, 1.5).toDouble(),
                     child: SVGAEasyPlayer(
                   key: ValueKey('mic-circle-${widget.micStyleUrl}'),
                   resUrl: widget.micStyleUrl,
@@ -4635,7 +4635,7 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
               child: IgnorePointer(
                 child: Center(
                   child: Transform.scale(
-                    scale: (widget.micLockScale / 100).clamp(0.5, 1.5),
+                    scale: (widget.micLockScale / 100).clamp(0.5, 1.5).toDouble(),
                     child: SVGAEasyPlayer(
                   key: ValueKey('mic-lock-${widget.micLockStyleUrl}'),
                   resUrl: widget.micLockStyleUrl,
@@ -4653,7 +4653,7 @@ class _GoldenVoiceWaveState extends State<_GoldenVoiceWave>
               child: IgnorePointer(
                 child: Center(
                   child: Transform.scale(
-                    scale: (widget.micChairScale / 100).clamp(0.5, 1.5),
+                    scale: (widget.micChairScale / 100).clamp(0.5, 1.5).toDouble(),
                     child: SVGAEasyPlayer(
                   key: ValueKey('mic-chair-${widget.micChairStyleUrl}'),
                   resUrl: widget.micChairStyleUrl,
