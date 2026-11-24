@@ -373,7 +373,7 @@ async function pkAdminPage(){
 }
 
 
-async async function micStyleAdminPage(){
+async function micStyleAdminPage(){
   const data=await api("/admin/pk/settings"),s=data.settings||{};
   const fields=[
     {key:"micCircleSvgaUrl",label:"دائرة المايك",id:"micCircle"},
