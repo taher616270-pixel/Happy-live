@@ -376,15 +376,19 @@ async function pkAdminPage(){
 async function micStyleAdminPage(){
   const data=await api("/admin/pk/settings"),s=data.settings||{};
   const fields=[
-    {key:"micCircleSvgaUrl",label:"دائرة المايك",id:"micCircle",scaleKey:"micCircleScale",scaleLabel:"حجم الدائرة"},
-    {key:"micChairSvgaUrl",label:"كرسي المقعد",id:"micChair",scaleKey:"micChairScale",scaleLabel:"حجم الكرسي"},
-    {key:"micLockSvgaUrl",label:"قفل المقعد",id:"micLock",scaleKey:"micLockScale",scaleLabel:"حجم القفل"}
+    {key:"micCircleSvgaUrl",label:"دائرة المايك",id:"micCircle",scaleKey:"micCircleScale",scaleLabel:"حجم الدائرة",clarityKey:"micCircleClarity",opacityKey:"micCircleOpacity"},
+    {key:"micChairSvgaUrl",label:"كرسي المقعد",id:"micChair",scaleKey:"micChairScale",scaleLabel:"حجم الكرسي",clarityKey:"micChairClarity",opacityKey:"micChairOpacity"},
+    {key:"micLockSvgaUrl",label:"قفل المقعد",id:"micLock",scaleKey:"micLockScale",scaleLabel:"حجم القفل",clarityKey:"micLockClarity",opacityKey:"micLockOpacity"}
   ];
   const value=f=>String(s[f.key]||"");
   const scale=f=>Math.max(50,Math.min(150,Number(s[f.scaleKey]??100)));
+  const clarity=f=>Math.max(50,Math.min(150,Number(s[f.clarityKey]??100)));
+  const opacity=f=>Math.max(0,Math.min(100,Number(s[f.opacityKey]??100)));
   const card=f=>'<section class="mic-style-card" style="padding:16px;border:1px solid var(--line);border-radius:14px;background:#100d17;min-width:0">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3 style="margin:0">'+f.label+'</h3><span class="badge good">مستقل</span></div>'+
     '<label class="field" style="margin:14px 0 8px">'+f.scaleLabel+' <output id="'+f.id+'ScaleValue">'+scale(f)+'%</output><input id="'+f.id+'Scale" type="range" min="50" max="150" step="1" value="'+scale(f)+'" style="width:100%;accent-color:var(--gold)"><small class="muted">من 50% إلى 150% من الحجم الأساسي.</small></label>'+
+    '<label class="field" style="margin:8px 0">الوضوح / السطوع <output id="'+f.id+'ClarityValue">'+clarity(f)+'%</output><input id="'+f.id+'Clarity" type="range" min="50" max="150" step="1" value="'+clarity(f)+'" style="width:100%;accent-color:var(--gold)"></label>'+
+    '<label class="field" style="margin:8px 0">الشفافية <output id="'+f.id+'OpacityValue">'+opacity(f)+'%</output><input id="'+f.id+'Opacity" type="range" min="0" max="100" step="1" value="'+opacity(f)+'" style="width:100%;accent-color:var(--gold)"></label>'+
     '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0">'+
     '<button class="action" id="'+f.id+'Choose" type="button">رفع ملف SVGA</button><button class="action danger" id="'+f.id+'Remove" type="button">إزالة الملف</button></div>'+
     '<input id="'+f.id+'File" type="file" accept=".svga,application/octet-stream" hidden><input id="'+f.id+'Url" type="hidden" value="'+esc(value(f))+'">'+
@@ -396,6 +400,8 @@ async function micStyleAdminPage(){
     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px"><button class="primary" id="micStyleSave" type="button" style="width:auto;min-width:180px">حفظ وتطبيق الأحجام والتصاميم</button><button class="action" id="micStyleReload" type="button">إعادة تحميل</button></div><div id="micStyleMessage" class="notice" style="margin-top:12px" aria-live="polite"></div></div>';
   fields.forEach(f=>{
     $(f.id+"Scale").oninput=()=>$(f.id+"ScaleValue").textContent=$(f.id+"Scale").value+"%";
+    $(f.id+"Clarity").oninput=()=>$(f.id+"ClarityValue").textContent=$(f.id+"Clarity").value+"%";
+    $(f.id+"Opacity").oninput=()=>$(f.id+"OpacityValue").textContent=$(f.id+"Opacity").value+"%";
     $(f.id+"Choose").onclick=()=>$(f.id+"File").click();
     $(f.id+"Remove").onclick=()=>{$(f.id+"Url").value="";$(f.id+"Name").textContent="سيتم إزالة الملف بعد الحفظ";$(f.id+"Preview").textContent="سيُستخدم الشكل الافتراضي لهذا العنصر."};
     $(f.id+"File").onchange=async()=>{
@@ -418,9 +424,11 @@ async function micStyleAdminPage(){
   $("micStyleSave").onclick=async()=>{
     const msg=$("micStyleMessage");try{
       const body={micCircleSvgaUrl:$("micCircleUrl").value.trim(),micChairSvgaUrl:$("micChairUrl").value.trim(),micLockSvgaUrl:$("micLockUrl").value.trim(),
-        micCircleScale:Number($("micCircleScale").value),micChairScale:Number($("micChairScale").value),micLockScale:Number($("micLockScale").value)};
+        micCircleScale:Number($("micCircleScale").value),micChairScale:Number($("micChairScale").value),micLockScale:Number($("micLockScale").value),
+        micCircleClarity:Number($("micCircleClarity").value),micChairClarity:Number($("micChairClarity").value),micLockClarity:Number($("micLockClarity").value),
+        micCircleOpacity:Number($("micCircleOpacity").value),micChairOpacity:Number($("micChairOpacity").value),micLockOpacity:Number($("micLockOpacity").value)};
       await api("/admin/pk/settings",{method:"PATCH",body:JSON.stringify(body)});
-      msg.textContent="تم حفظ أحجام الدائرة والكرسي والقفل والتصاميم بنجاح.";
+      msg.textContent="تم حفظ الحجم والوضوح والشفافية والتصاميم للدائرة والكرسي والقفل بنجاح.";
       fields.forEach(f=>$(f.id+"Name").textContent=body[f.key]?"تم حفظ الملف":"استخدام الشكل الافتراضي");
     }catch(e){msg.textContent=e.message}
   };
