@@ -736,7 +736,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              if (!occupied && seatNumber == joinSeatNumber && visibleAvatar.startsWith('http'))
+                              if (!micStyleUrl.startsWith('https://') && !occupied && seatNumber == joinSeatNumber && visibleAvatar.startsWith('http'))
                                 const CustomPaint(
                                   painter: _DashedCircleBorderPainter(),
                                 ),
@@ -2213,7 +2213,7 @@ Widget _roomActionButton({
                                             ),
                                           ),
                                         ),
-                            if (!occupied && number == firstJoinSeat && visibleAvatar.startsWith('http'))
+                            if (!micStyleUrl.startsWith('https://') && !occupied && number == firstJoinSeat && visibleAvatar.startsWith('http'))
                               const CustomPaint(painter: _DashedCircleBorderPainter()),
                           ],
                         ),
@@ -2485,7 +2485,7 @@ Widget _roomActionButton({
                                                   ),
                                                 ),
                                               ),
-                                  if (!occupied && number == joinSeatNumber && visibleAvatar.startsWith('http'))
+                                  if (!micStyleUrl.startsWith('https://') && !occupied && number == joinSeatNumber && visibleAvatar.startsWith('http'))
                                     const CustomPaint(painter: _DashedCircleBorderPainter()),
                                 ],
                               ),
