@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../widgets/centered_notification.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -102,7 +103,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
       final bytes = await cropped.readAsBytes();
       if (bytes.length > 5 * 1024 * 1024) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        showCenteredNotification(context, 
           const SnackBar(content: Text('حجم الصورة بعد القص يجب ألا يتجاوز 5 ميجابايت')),
         );
         return;
@@ -114,7 +115,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
       });
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      showCenteredNotification(context, 
         const SnackBar(content: Text('تعذر اختيار الصورة أو قصها، حاول مرة أخرى')),
       );
     }
@@ -212,13 +213,13 @@ class _CreateRoomPageState extends State<CreateRoomPage> with SingleTickerProvid
                           ? 'الوصف يجب ألا يتجاوز 120 حرفًا'
                           : 'تعذر إنشاء الغرفة، حاول مرة أخرى';
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showCenteredNotification(context, 
           SnackBar(content: Text(friendlyMessage), behavior: SnackBarBehavior.floating),
         );
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        showCenteredNotification(context, 
           const SnackBar(
             content: Text('تعذر رفع الصورة أو الاتصال بالخادم، تحقق من الإنترنت وحاول مجددًا'),
             behavior: SnackBarBehavior.floating,
