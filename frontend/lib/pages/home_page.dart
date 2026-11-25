@@ -659,6 +659,13 @@ class MyPartyRoomButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasRoom = room != null;
+    final roomCoverUrl = (room?['imageUrl'] ??
+            room?['image_url'] ??
+            room?['coverUrl'] ??
+            room?['cover_url'] ??
+            '')
+        .toString()
+        .trim();
     final roomName = (room?['name'] ?? '').toString().trim();
     final title = hasRoom
         ? (roomName.isEmpty ? 'غرفة الحفلة الخاصة بي' : roomName)
@@ -759,11 +766,43 @@ class MyPartyRoomButton extends StatelessWidget {
               right: -15,
               top: -49,
               bottom: -20,
-              child: Image.asset(
-                'assets/images/boy_headset.png.png',
-                width: 105,
-                fit: BoxFit.contain,
-              ),
+              child: hasRoom
+                  ? SizedBox(
+                      width: 105,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: roomCoverUrl.startsWith('https://')
+                            ? HappyNetworkImage(
+                                roomCoverUrl,
+                                width: 105,
+                                height: 123,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: const Color(0xFFFAEDC8),
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.meeting_room_rounded,
+                                    color: Color(0xFFD9A93C),
+                                    size: 34,
+                                  ),
+                                ),
+                              )
+                            : Container(
+                                color: const Color(0xFFFAEDC8),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.meeting_room_rounded,
+                                  color: Color(0xFFD9A93C),
+                                  size: 34,
+                                ),
+                              ),
+                      ),
+                    )
+                  : Image.asset(
+                      'assets/images/boy_headset.png.png',
+                      width: 105,
+                      fit: BoxFit.contain,
+                    ),
             ),
           ],
         ),
