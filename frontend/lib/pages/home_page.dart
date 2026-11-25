@@ -213,6 +213,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       color: Colors.transparent,
       backgroundColor: Colors.transparent,
       displacement: 48,
+      notificationPredicate: (notification) => notification.depth == 1,
       onRefresh: _refreshHomePage,
       child: Stack(
         children: [
@@ -608,7 +609,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       padding: const EdgeInsets.only(top: 8),
       child: innerIndex == 2
           ? _buildRecentRoomsContent()
-          : _homeRefreshWrapper(
+          : 
               ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
@@ -622,7 +623,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   ),
                 ],
               ),
-            ),
+            ,
     ),
   );
 
@@ -639,7 +640,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       ]));
     }
     if (_recentRooms.isEmpty) {
-      return _homeRefreshWrapper(
+      return 
         ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: const [
@@ -652,9 +653,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             ),
           ],
         ),
-      );
+      ;
     }
-    return _homeRefreshWrapper(ListView.separated(
+    return ListView.separated(
       key: const PageStorageKey<String>('happy-live-recent-rooms-scroll'),
       padding: const EdgeInsets.fromLTRB(8, 5, 8, 0),
       itemCount: _recentRooms.length,
@@ -745,7 +746,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           ),
         );
       },
-    ));
+    );
   }
 
   Widget _recentRoomPlaceholder() => Container(
@@ -900,7 +901,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       );
     }
     if (_recommendedRooms.isEmpty) {
-      return _homeRefreshWrapper(
+      return 
         ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: const [
@@ -913,9 +914,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             ),
           ],
         ),
-      );
+      ;
     }
-    return _homeRefreshWrapper(ListView.separated(
+    return ListView.separated(
         key: const PageStorageKey<String>('happy-live-recommended-rooms'),
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(8, 5, 8, 0),
@@ -928,11 +929,11 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             onTap: () => _openRecommendedRoom(room),
           );
         },
-      ));
+      );
   }
 
   Widget _buildExplorePage() {
-    return _homeRefreshWrapper(ListView(
+    return ListView(
       key: const PageStorageKey<String>('happy-live-explore-scroll'),
       padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 16),
       children: [
@@ -986,14 +987,14 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           ),
         ),
       ],
-    ));
+    );
   }
 
   // The country section is a separate top-level page in the same swipe sequence.
   // Its content is intentionally limited to the currently detected country until
   // a country-specific room feed is available from the API.
   Widget _buildCountryPage() {
-    return _homeRefreshWrapper(ListView(
+    return ListView(
       key: const PageStorageKey<String>('happy-live-country-scroll'),
       padding: const EdgeInsets.fromLTRB(16, 28, 16, 16),
       children: [
@@ -1040,7 +1041,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           ),
         ),
       ],
-    ));
+    );
   }
 
   Widget _buildMyRoomsTabContent(String emptyMessage) {
@@ -1177,9 +1178,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           ),
         ),
         Expanded(
-          child: Directionality(
-            textDirection: TextDirection.ltr,
-            child: PageView(
+          child: _homeRefreshWrapper(
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: PageView(
               controller: _pageController,
               reverse: true,
               // Recent-tab horizontal gestures are routed deliberately below:
@@ -1283,6 +1285,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ],
