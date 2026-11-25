@@ -392,34 +392,34 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
-  Widget _buildOriginalHomeContent() => ListView(
-    physics: const NeverScrollableScrollPhysics(),
+  Widget _buildOriginalHomeContent() => Padding(
     padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
-    children: [
-      const SizedBox(height: 24),
-      MyPartyRoomButton(
-        room: _myRoom,
-        loading: _loadingMyRoom,
-        onTap: _openMyRoom,
-      ),
-      const SizedBox(height: 14),
-      _buildMyRoomsTabs(),
-      const SizedBox(height: 8),
-      SizedBox(
-        height: 230,
-        child: PageView(
-          controller: _myRoomsTabController,
-          scrollDirection: Axis.horizontal,
-          physics: const PageScrollPhysics(),
-          onPageChanged: (index) => setState(() => _selectedMyRoomsTab = index),
-          children: [
-            _buildMyRoomsTabContent('لا توجد غرف تتابعها حالياً'),
-            _buildMyRoomsTabContent('لا توجد غرف للانضمام إليها حالياً'),
-            _buildRecentRoomsContent(),
-          ],
+    child: Column(
+      children: [
+        const SizedBox(height: 24),
+        MyPartyRoomButton(
+          room: _myRoom,
+          loading: _loadingMyRoom,
+          onTap: _openMyRoom,
         ),
-      ),
-    ],
+        const SizedBox(height: 14),
+        _buildMyRoomsTabs(),
+        const SizedBox(height: 8),
+        Expanded(
+          child: PageView(
+            controller: _myRoomsTabController,
+            scrollDirection: Axis.horizontal,
+            physics: const PageScrollPhysics(),
+            onPageChanged: (index) => setState(() => _selectedMyRoomsTab = index),
+            children: [
+              _buildMyRoomsTabContent('لا توجد غرف تتابعها حالياً'),
+              _buildMyRoomsTabContent('لا توجد غرف للانضمام إليها حالياً'),
+              _buildRecentRoomsContent(),
+            ],
+          ),
+        ),
+      ],
+    ),
   );
 
   Widget _buildRecentRoomsContent() {
