@@ -18,24 +18,35 @@ class FeedScreen extends StatefulWidget {
  @override State<FeedScreen> createState()=>_FeedScreenState();
 }
 class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
- final PageController _pc=PageController(); final Map<int,VideoPlayerController> _ctrls={}; List<FeedVideo> _videos=[];
+ final PageController _pc=PageController(); final Map<int,VideoPlayerController> _ctrls={}; final Map<int,String> _videoErrors={}; List<FeedVideo> _videos=[];
  FeedTab _tab=FeedTab.forYou; int _cur=0,_page=0; bool _loading=true,_more=false;
  @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);_load();}
  @override void didUpdateWidget(covariant FeedScreen oldWidget){super.didUpdateWidget(oldWidget);if(oldWidget.isActive!=widget.isActive){if(widget.isActive){_sync();}else{for(final c in _ctrls.values){c.pause();}}}}
  @override void dispose(){WidgetsBinding.instance.removeObserver(this);for(final c in _ctrls.values){c.dispose();}_pc.dispose();super.dispose();}
  @override void didChangeAppLifecycleState(AppLifecycleState s){final c=_ctrls[_cur];if(c==null)return;if(s==AppLifecycleState.resumed&&widget.isActive){c.play();}else{c.pause();}}
  Future<void> _load() async {
-  if(mounted)setState(()=>_loading=true);for(final c in _ctrls.values){c.dispose();}_ctrls.clear();_page=0;_cur=0;
+  if(mounted)setState(()=>_loading=true);for(final c in _ctrls.values){c.dispose();}_ctrls.clear();_videoErrors.clear();_page=0;_cur=0;
   try{_videos=await widget.repo.feed(_tab);}catch(_){_videos=[];}
   if(!mounted)return;setState(()=>_loading=false);if(_pc.hasClients)_pc.jumpToPage(0);_sync();
  }
  Future<void> _ensure(int i) async {
   if (i < 0 || i >= _videos.length || _ctrls.containsKey(i)) return;
+  _videoErrors.remove(i);
   // Photo posts are rendered directly by FeedItem; never initialize a video
   // decoder for an image URL (which leaves the feed spinner running forever).
   if (_videos[i].isImage) return;
   final c=VideoPlayerController.networkUrl(Uri.parse(_videos[i].url));_ctrls[i]=c;
-  try{await c.initialize();await c.setLooping(true);}catch(_){}
+  try {
+   await c.initialize().timeout(const Duration(seconds: 25));
+   await c.setLooping(true);
+  } catch (error) {
+   if (_ctrls[i] == c) {
+    _ctrls.remove(i);
+    await c.dispose();
+    if (mounted) setState(() => _videoErrors[i] = error.toString());
+   }
+   return;
+  }
   if(!mounted||_ctrls[i]!=c)return;setState((){});if(i==_cur&&widget.isActive){c.play();}else{c.pause();}
  }
  void _sync(){
@@ -79,7 +90,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   final top=MediaQuery.of(context).padding.top;
   return Directionality(textDirection:TextDirection.rtl,child:Scaffold(backgroundColor:Colors.black,body:Stack(children:[
    Column(children:[
-    Expanded(child:_loading?const Center(child:CircularProgressIndicator(color:Colors.white54,strokeWidth:2)):_videos.isEmpty?const Center(child:Text('لا توجد فيديوهات حالياً',style:TextStyle(color:Colors.white54))):PageView.builder(controller:_pc,scrollDirection:Axis.vertical,itemCount:_videos.length,onPageChanged:_onPage,itemBuilder:(_,i){final v=_videos[i];return FeedItem(key:ValueKey(v.id),video:v,ctrl:_ctrls[i],repo:widget.repo,onComments:()=>showFeedComments(context,widget.repo,v,()=>setState((){})),onShare:()=>showFeedShare(context,widget.repo,v,()=>setState(()=>v.shares++)));})),
+    Expanded(child:_loading?const Center(child:CircularProgressIndicator(color:Colors.white54,strokeWidth:2)):_videos.isEmpty?const Center(child:Text('لا توجد فيديوهات حالياً',style:TextStyle(color:Colors.white54))):PageView.builder(controller:_pc,scrollDirection:Axis.vertical,itemCount:_videos.length,onPageChanged:_onPage,itemBuilder:(_,i){final v=_videos[i];return FeedItem(key:ValueKey(v.id),video:v,ctrl:_ctrls[i],videoError:_videoErrors[i],onRetry:(){setState(()=>_videoErrors.remove(i));_ensure(i);},repo:widget.repo,onComments:()=>showFeedComments(context,widget.repo,v,()=>setState((){})),onShare:()=>showFeedShare(context,widget.repo,v,()=>setState(()=>v.shares++)));})),
     if(widget.showBottomNav)FeedBottomNav(current:0,onTap:widget.onNavTap)
    ]),
    Positioned(top:top+6,left:0,right:0,height:44,child:Stack(alignment:Alignment.center,children:[
