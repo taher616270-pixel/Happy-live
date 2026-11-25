@@ -1245,6 +1245,10 @@ class _RecommendedRoomCard extends StatelessWidget {
     final level = levelValue is num
         ? levelValue.toInt()
         : int.tryParse(levelValue.toString()) ?? 1;
+    final membersValue = room['membersCount'] ?? room['members_count'] ?? 0;
+    final membersCount = membersValue is num
+        ? membersValue.toInt()
+        : int.tryParse(membersValue.toString()) ?? 0;
 
     return SizedBox(
       width: double.infinity,
@@ -1353,6 +1357,21 @@ class _RecommendedRoomCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(width: 7),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3D5),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0x66D9A93C)),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const _RoomMemberWave(),
+                    const SizedBox(width: 4),
+                    Text('$membersCount',
+                      style: const TextStyle(color: Color(0xFF8A6420), fontSize: 11, fontWeight: FontWeight.w900)),
+                  ]),
                 ),
               ],
             ),
