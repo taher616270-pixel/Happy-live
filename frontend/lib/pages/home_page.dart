@@ -1228,22 +1228,36 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       // Following -> Join: swipe right.
                       // Join -> Recent: swipe right; Join -> Following: swipe left.
                       if (_currentPage == 0 &&
-                          (_lastInnerIndex == 0 || _lastInnerIndex == 1)) {
+                          (_lastInnerIndex == 0 ||
+                              _lastInnerIndex == 1 ||
+                              _lastInnerIndex == 2)) {
                         _roomSwipeDelta += details.delta.dx;
                       }
                     },
                     onHorizontalDragEnd: (details) {
                       final velocity = details.primaryVelocity ?? 0;
+                      final swipeRight = _roomSwipeDelta >= 45 || velocity > 320;
+                      final swipeLeft = _roomSwipeDelta <= -45 || velocity < -320;
                       int? targetIndex;
-                      if (_currentPage == 0 && _lastInnerIndex == 0 &&
-                          (_roomSwipeDelta >= 45 || velocity > 320)) {
+                      if (_currentPage == 0 && _lastInnerIndex == 0 && swipeRight) {
                         targetIndex = 1;
                       } else if (_currentPage == 0 && _lastInnerIndex == 1) {
-                        if (_roomSwipeDelta >= 45 || velocity > 320) {
+                        if (swipeRight) {
                           targetIndex = 2;
-                        } else if (_roomSwipeDelta <= -45 || velocity < -320) {
+                        } else if (swipeLeft) {
                           targetIndex = 0;
                         }
+                      } else if (_currentPage == 0 && _lastInnerIndex == 2 && swipeRight) {
+                        // At the last Rooms sub-tab, continue right to Explore.
+                        _roomSwipeDelta = 0;
+                        if (_pageController.hasClients) {
+                          _pageController.animateToPage(
+                            1,
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.easeOutCubic,
+                          );
+                        }
+                        return;
                       }
                       _roomSwipeDelta = 0;
                       if (targetIndex == null || !_roomsTabController.hasClients) return;
