@@ -580,26 +580,27 @@ async function uploadExploreBannerImage(file){
 async function exploreBannersPage(){
   if(admin.role!=="owner"&&admin.role!=="admin"){$("content").innerHTML='<div class="section"><p class="notice">إدارة بنرات استكشف متاحة للمالك ومدير التطبيق.</p></div>';return}
   const data=await api("/admin/explore/banners"),settings=data.settings||{};let draft=(settings.banners||[]).map(x=>({...x}));
+  const canEdit=admin.role==="owner";
   let enabled=settings.enabled!==false,intervalSeconds=Number(settings.intervalSeconds||4);
   const countryOptions=[["ALL","كل الدول"],["SA","السعودية"],["YE","اليمن"],["LB","لبنان"],["AE","الإمارات"],["KW","الكويت"],["QA","قطر"],["BH","البحرين"],["OM","عُمان"],["EG","مصر"],["MA","المغرب"],["DZ","الجزائر"],["IQ","العراق"],["JO","الأردن"],["SY","سوريا"],["TR","تركيا"],["PK","باكستان"],["PS","فلسطين"],["SD","السودان"]];
   const destinationOptions=[["none","بدون وجهة"],["vip","صفحة VIP"],["event","صفحة حدث"],["rules","صفحة القوانين"],["url","رابط ويب"]];
   const renderRows=()=>{
-    $("exploreBannerRows").innerHTML=draft.map((item,index)=>'<article class="section" data-banner-index="'+index+'"><div class="section-head"><div><h2>بانر '+(index+1)+'</h2><p class="muted">الصورة والوجهة والدولة</p></div><button type="button" class="action danger" data-remove-banner="'+index+'">حذف</button></div>'+
-      '<div class="form-grid"><label>عنوان البانر<input data-field="title" value="'+esc(item.title||"")+'" maxlength="80"></label>'+
-      '<label>الدولة<select data-field="countryCode">'+countryOptions.map(([v,l])=>'<option value="'+v+'" '+((item.countryCode||"ALL")===v?"selected":"")+'>'+l+'</option>').join("")+'</select></label>'+
-      '<label>وجهة الضغط<select data-field="destinationType">'+destinationOptions.map(([v,l])=>'<option value="'+v+'" '+((item.destinationType||"none")===v?"selected":"")+'>'+l+'</option>').join("")+'</select></label>'+
-      '<label>رابط الوجهة (اختياري)<input data-field="destinationUrl" type="url" dir="ltr" value="'+esc(item.destinationUrl||"")+'" placeholder="https://..."></label>'+
+    $("exploreBannerRows").innerHTML=draft.map((item,index)=>'<article class="section" data-banner-index="'+index+'"><div class="section-head"><div><h2>بانر '+(index+1)+'</h2><p class="muted">الصورة والوجهة والدولة</p></div><button type="button" class="action danger" data-remove-banner="'+index+'" '+(canEdit?"":"disabled")+'>حذف</button></div>'+
+      '<div class="form-grid"><label>عنوان البانر<input data-field="title" value="'+esc(item.title||"")+'" maxlength="80" '+(canEdit?"":"disabled")+'></label>'+
+      '<label>الدولة<select data-field="countryCode" '+(canEdit?"":"disabled")+'>'+countryOptions.map(([v,l])=>'<option value="'+v+'" '+((item.countryCode||"ALL")===v?"selected":"")+'>'+l+'</option>').join("")+'</select></label>'+
+      '<label>وجهة الضغط<select data-field="destinationType" '+(canEdit?"":"disabled")+'>'+destinationOptions.map(([v,l])=>'<option value="'+v+'" '+((item.destinationType||"none")===v?"selected":"")+'>'+l+'</option>').join("")+'</select></label>'+
+      '<label>رابط الوجهة (اختياري)<input data-field="destinationUrl" type="url" dir="ltr" value="'+esc(item.destinationUrl||"")+'" placeholder="https://..." '+(canEdit?"":"disabled")+'></label>'+
       '<label>عنوان صفحة الوجهة<input data-field="destinationTitle" value="'+esc(item.destinationTitle||"")+'" maxlength="80"></label>'+
-      '<label class="form-wide">وصف / نص الصفحة<input data-field="description" value="'+esc(item.description||"")+'" maxlength="1500"></label>'+
+      '<label class="form-wide">وصف / نص الصفحة<input data-field="description" value="'+esc(item.description||"")+'" maxlength="1500" '+(canEdit?"":"disabled")+'></label>'+
       '<label class="form-wide">رابط الصورة<input data-field="imageUrl" type="url" dir="ltr" value="'+esc(item.imageUrl||"")+'" placeholder="https://..."></label>'+
-      '<label><span>صورة البانر</span><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-upload-banner="'+index+'"></label>'+
-      '<label style="display:flex;align-items:center;gap:9px"><input type="checkbox" data-field="isActive" '+(item.isActive!==false?"checked":"")+' style="width:18px;height:18px"> مفعل</label></div>'+
+      '<label><span>صورة البانر</span><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-upload-banner="'+index+'" '+(canEdit?"":"disabled")+'></label>'+
+      '<label style="display:flex;align-items:center;gap:9px"><input type="checkbox" data-field="isActive" '+(item.isActive!==false?"checked":"")+' style="width:18px;height:18px" '+(canEdit?"":"disabled")+'> مفعل</label></div>'+
       (item.imageUrl?'<div style="margin-top:12px;border-radius:12px;overflow:hidden;max-width:420px;aspect-ratio:16/7;background:#100d17"><img src="'+esc(item.imageUrl)+'" alt="معاينة البانر" style="width:100%;height:100%;object-fit:cover"></div>':'<p class="muted">لم ترفع صورة لهذا البانر بعد.</p>')+'</article>').join("")||'<div class="empty">لا توجد بنرات. أضف أول بانر للبدء.</div>';
   };
   $("content").innerHTML='<div class="section"><div class="section-head"><div><h2>بنرات صفحة استكشف</h2><p class="muted">هذه الإعدادات تتحكم في المربع العلوي الموجود في صفحة استكشف فقط.</p></div><span class="badge">16:7 · تبديل تلقائي</span></div>'+
-    '<div class="form-grid"><label style="display:flex;align-items:center;gap:9px"><input id="exploreBannersEnabled" type="checkbox" '+(enabled?"checked":"")+' style="width:18px;height:18px"> تفعيل عرض البنرات</label>'+
-    '<label>مدة عرض كل بانر بالثواني<input id="exploreBannerInterval" type="number" min="2" max="30" step="1" value="'+intervalSeconds+'"></label></div>'+
-    '<div class="form-actions" style="margin-top:16px"><button class="action" id="addExploreBanner">＋ إضافة بانر</button><button class="primary" id="saveExploreBanners">حفظ إعدادات البنرات</button><span class="muted" id="exploreBannerMessage" aria-live="polite"></span></div></div>'+
+    '<div class="form-grid"><label style="display:flex;align-items:center;gap:9px"><input id="exploreBannersEnabled" type="checkbox" '+(enabled?"checked":"")+' style="width:18px;height:18px" '+(canEdit?"":"disabled")+'> تفعيل عرض البنرات</label>'+
+    '<label>مدة عرض كل بانر بالثواني<input id="exploreBannerInterval" type="number" min="2" max="30" step="1" value="'+intervalSeconds+'" '+(canEdit?"":"disabled")+'></label></div>'+
+    (canEdit?'':'<p class="notice" style="margin-top:12px">هذا الحساب لديه صلاحية العرض فقط. التعديل متاح للمالك.</p>')+    '<div class="form-actions" style="margin-top:16px"><button class="action" id="addExploreBanner" '+(canEdit?"":"disabled")+'>＋ إضافة بانر</button><button class="primary" id="saveExploreBanners" '+(canEdit?"":"disabled")+'>حفظ إعدادات البنرات</button><span class="muted" id="exploreBannerMessage" aria-live="polite"></span></div></div>'+
     '<div id="exploreBannerRows"></div>';
   renderRows();
   $("addExploreBanner").onclick=()=>{if(draft.length>=20){$("exploreBannerMessage").textContent="الحد الأقصى 20 بانر.";return}draft.push({id:"banner-"+Date.now(),title:"بانر جديد",imageUrl:"",countryCode:"ALL",destinationType:"none",destinationUrl:"",destinationTitle:"",description:"",isActive:true});renderRows()};
