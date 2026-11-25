@@ -901,20 +901,18 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       );
     }
     if (_recommendedRooms.isEmpty) {
-      return 
-        ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 90),
-            Center(
-              child: Text(
-                'لا توجد غرف نشطة حالياً',
-                style: TextStyle(color: HappyHomeColors.muted, fontSize: 12),
-              ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 90),
+          Center(
+            child: Text(
+              'لا توجد غرف نشطة حالياً',
+              style: TextStyle(color: HappyHomeColors.muted, fontSize: 12),
             ),
-          ],
-        ),
-      ;
+          ),
+        ],
+      );
     }
     return ListView.separated(
         key: const PageStorageKey<String>('happy-live-recommended-rooms'),
