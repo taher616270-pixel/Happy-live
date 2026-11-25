@@ -192,7 +192,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: const Color(0xFFF6F7FB),
         body: SafeArea(
           child: Stack(
             fit: StackFit.expand,
@@ -220,7 +220,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
                 child: IconButton(
                   tooltip: 'إغلاق',
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close_rounded, color: Colors.white, size: 29),
+                  icon: const Icon(Icons.close_rounded, color: Color(0xFF1E2233), size: 27),
                 ),
               ),
               if (selected)
@@ -230,7 +230,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
                   child: IconButton(
                     tooltip: 'إعادة التصوير',
                     onPressed: _busy ? null : _retake,
-                    icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 27),
+                    icon: const Icon(Icons.refresh_rounded, color: Color(0xFF1E2233), size: 26),
                   ),
                 ),
               if (selected)
@@ -241,8 +241,8 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
                   child: FilledButton(
                     onPressed: () => Navigator.of(context).pop(_selected),
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFF0A62B),
-                      foregroundColor: Colors.black,
+                      backgroundColor: const Color(0xFFD9A93C),
+                      foregroundColor: const Color(0xFF1E2233),
                       minimumSize: const Size.fromHeight(50),
                     ),
                     child: const Text('استخدام هذا الملف', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -257,7 +257,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (_error != null) ...[
-                        Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF1E2233), fontSize: 12)),
                         if (_cameraDenied) ...[
                           const SizedBox(height: 8),
                           TextButton(onPressed: _initializeCamera, child: const Text('إعادة المحاولة')),
@@ -279,7 +279,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
                           IconButton(
                             tooltip: 'اختيار من المعرض',
                             onPressed: _busy || _recording ? null : _chooseFromGallery,
-                            icon: const Icon(Icons.photo_library_outlined, color: Colors.white, size: 30),
+                            icon: const Icon(Icons.photo_library_outlined, color: Color(0xFF1E2233), size: 29),
                           ),
                           GestureDetector(
                             onTap: _busy ? null : _capture,
@@ -289,12 +289,12 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
                               padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 4),
+                                border: Border.all(color: const Color(0xFFD9A93C), width: 4),
                               ),
                               child: Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: _recording ? Colors.white : (_videoMode ? const Color(0xFFE53935) : Colors.white),
+                                  color: _recording ? const Color(0xFFE53E4D) : (_videoMode ? const Color(0xFFD9A93C) : const Color(0xFFFFFEFA)),
                                 ),
                                 child: _busy
                                     ? const Padding(padding: EdgeInsets.all(18), child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
@@ -305,14 +305,14 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
                           IconButton(
                             tooltip: _videoMode ? (_recording ? 'إيقاف التسجيل' : 'بدء التسجيل') : 'التقاط صورة',
                             onPressed: _busy ? null : _capture,
-                            icon: Icon(_videoMode ? Icons.videocam_outlined : Icons.camera_alt_outlined, color: Colors.white, size: 30),
+                            icon: Icon(_videoMode ? Icons.videocam_outlined : Icons.camera_alt_outlined, color: const Color(0xFF1E2233), size: 29),
                           ),
                         ],
                       ),
                       const SizedBox(height: 10),
                       Text(
                         _recording ? 'جارٍ تسجيل الفيديو — اضغط لإيقافه' : 'صوّر الآن أو اختر صورة أو فيديو من المعرض',
-                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        style: const TextStyle(color: Color(0xFF6F6047), fontSize: 12, fontWeight: FontWeight.w600),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -341,6 +341,7 @@ class _CameraLoadingPreview extends StatelessWidget {
               Text('جارٍ تشغيل الكاميرا...', style: TextStyle(color: Colors.white70, fontSize: 13)),
             ],
           ),
+          ),
         ),
       );
 }
@@ -354,10 +355,17 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => TextButton(
         onPressed: onTap,
-        child: Text(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFEAD09A) : const Color(0xFFFFFEFA),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: selected ? const Color(0xFFD9A93C) : const Color(0xFFE8D8B5)),
+          ),
+          child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : Colors.white60,
+            color: selected ? const Color(0xFF1E2233) : const Color(0xFF8B899A),
             fontSize: 15,
             fontWeight: selected ? FontWeight.w900 : FontWeight.w500,
           ),
