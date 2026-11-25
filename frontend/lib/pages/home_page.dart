@@ -51,6 +51,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   int? _roomSwipeTargetIndex;
   bool _roomSwipeUsesOuterPager = false;
   int _roomSwipeStartIndex = 0;
+  bool _roomSwipeInProgress = false;
   int? _recentSwipeTargetPage;
   bool _recentTabSwipeActive = false;
   Map<String, dynamic>? _myRoom;
@@ -1229,6 +1230,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       _roomSwipeTargetIndex = null;
                       _roomSwipeUsesOuterPager = false;
                       _roomSwipeStartIndex = _lastInnerIndex;
+                      _roomSwipeInProgress = true;
                     },
                     onHorizontalDragUpdate: (details) {
                       if (_currentPage != 0) return;
@@ -1258,7 +1260,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       // Move the page continuously with the finger; clamp to one adjacent page.
                       if (_roomSwipeUsesOuterPager && _pageController.hasClients) {
                         final p = _pageController.position;
-                        final next = (p.pixels - dx)
+                        final next = (p.pixels + dx)
                             .clamp(p.minScrollExtent, p.maxScrollExtent)
                             .toDouble();
                         _pageController.jumpTo(next);
@@ -1279,6 +1281,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       _roomSwipeDelta = 0;
                       _roomSwipeTargetIndex = null;
                       _roomSwipeUsesOuterPager = false;
+                      _roomSwipeInProgress = false;
 
                       if (useOuter && _pageController.hasClients) {
                         final p = _pageController.position;
@@ -1292,9 +1295,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                         final p = _roomsTabController.position;
                         final completedFullPage = distance >= p.viewportDimension;
                         final destination = completedFullPage ? target : start;
-                        if (completedFullPage) {
-                          setState(() => _lastInnerIndex = destination);
-                        }
+                        if (mounted) setState(() => _lastInnerIndex = destination);
                         _roomsTabController.animateToPage(
                           destination,
                           duration: const Duration(milliseconds: 260),
@@ -1306,6 +1307,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       _roomSwipeDelta = 0;
                       _roomSwipeTargetIndex = null;
                       _roomSwipeUsesOuterPager = false;
+                      _roomSwipeInProgress = false;
                       if (_roomsTabController.hasClients) {
                         _roomsTabController.animateToPage(
                           _roomSwipeStartIndex,
@@ -1343,7 +1345,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                             // parent GestureDetector across the whole page.
                             physics: const NeverScrollableScrollPhysics(),
                             onPageChanged: (index) {
-                              if (_currentPage == 0 && !_preservingRoomsTab) {
+                              if (_currentPage == 0 && !_preservingRoomsTab && !_roomSwipeInProgress) {
                                 setState(() => _lastInnerIndex = index);
                               }
                             },
