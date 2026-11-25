@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// Reusable black-and-purple technology background for Happy Live pages.
@@ -129,8 +131,6 @@ class _PurpleBokehPainter extends CustomPainter {
   bool shouldRepaint(covariant _PurpleBokehPainter oldDelegate) => false;
 }
 
-
-import 'package:flutter/material.dart';
 
 /// Reusable notification banner matching the Happy Live purple neon style.
 class PurpleNotificationCard extends StatelessWidget {
