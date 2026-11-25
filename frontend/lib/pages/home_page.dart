@@ -210,7 +210,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
 
   Widget _homeRefreshWrapper(Widget child) {
     return RefreshIndicator.noSpinner(
-      displacement: 48,
       notificationPredicate: (notification) =>
           notification.metrics.axis == Axis.vertical &&
           notification.depth > 0 &&
