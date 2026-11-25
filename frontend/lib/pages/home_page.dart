@@ -1225,21 +1225,31 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       _roomSwipeDelta = 0;
                     },
                     onHorizontalDragUpdate: (details) {
-                      // Only rightward swipes from Following -> Join are enabled.
-                      if (_currentPage == 0 && _lastInnerIndex == 0) {
+                      // Following -> Join: swipe right.
+                      // Join -> Recent: swipe right; Join -> Following: swipe left.
+                      if (_currentPage == 0 &&
+                          (_lastInnerIndex == 0 || _lastInnerIndex == 1)) {
                         _roomSwipeDelta += details.delta.dx;
                       }
                     },
                     onHorizontalDragEnd: (details) {
-                      final shouldOpenJoin = _currentPage == 0 &&
-                          _lastInnerIndex == 0 &&
-                          (_roomSwipeDelta >= 45 ||
-                              (details.primaryVelocity ?? 0) > 320);
+                      final velocity = details.primaryVelocity ?? 0;
+                      int? targetIndex;
+                      if (_currentPage == 0 && _lastInnerIndex == 0 &&
+                          (_roomSwipeDelta >= 45 || velocity > 320)) {
+                        targetIndex = 1;
+                      } else if (_currentPage == 0 && _lastInnerIndex == 1) {
+                        if (_roomSwipeDelta >= 45 || velocity > 320) {
+                          targetIndex = 2;
+                        } else if (_roomSwipeDelta <= -45 || velocity < -320) {
+                          targetIndex = 0;
+                        }
+                      }
                       _roomSwipeDelta = 0;
-                      if (!shouldOpenJoin || !_roomsTabController.hasClients) return;
-                      setState(() => _lastInnerIndex = 1);
+                      if (targetIndex == null || !_roomsTabController.hasClients) return;
+                      setState(() => _lastInnerIndex = targetIndex!);
                       _roomsTabController.animateToPage(
-                        1,
+                        targetIndex,
                         duration: const Duration(milliseconds: 260),
                         curve: Curves.easeOutCubic,
                       );
