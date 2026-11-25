@@ -213,7 +213,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       color: Colors.transparent,
       backgroundColor: Colors.transparent,
       displacement: 48,
-      notificationPredicate: (notification) => notification.depth == 1,
+      notificationPredicate: (notification) => notification.depth > 0,
       onRefresh: _refreshHomePage,
       child: Stack(
         children: [
@@ -1136,10 +1136,11 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         stops: [0.0, 0.3, 0.55],
       ),
     ),
-    child: Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
+    child: _homeRefreshWrapper(
+      Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
           child: SizedBox(
             width: double.infinity,
             height: 40,
@@ -1177,9 +1178,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             ),
           ),
         ),
-        Expanded(
-          child: _homeRefreshWrapper(
-            Directionality(
+          Expanded(
+            child: Directionality(
               textDirection: TextDirection.ltr,
               child: PageView(
               controller: _pageController,
@@ -1286,9 +1286,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               ],
             ),
           ),
-          ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }
@@ -1949,18 +1948,8 @@ class _FiveBarRefreshAnimationState extends State<_FiveBarRefreshAnimation>
       Color(0xFFE8C978),
       Color(0xFFD9A93C),
     ];
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.94),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0x66D9A93C)),
-        boxShadow: const [
-          BoxShadow(color: Color(0x1AD9A93C), blurRadius: 9, offset: Offset(0, 2)),
-        ],
-      ),
-      child: AnimatedBuilder(
-        animation: _controller,
+    return AnimatedBuilder(
+      animation: _controller,
         builder: (context, _) => Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -1978,8 +1967,7 @@ class _FiveBarRefreshAnimationState extends State<_FiveBarRefreshAnimation>
             );
           }),
         ),
-      ),
-    );
+      );
   }
 }
 
