@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
@@ -107,21 +106,6 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
     }
   }
 
-  MediaType _contentType(String? mime, String extension) {
-    final parts = (mime ?? '').split('/');
-    if (parts.length == 2 && parts.every((part) => part.isNotEmpty)) {
-      return MediaType(parts[0], parts[1]);
-    }
-    const types = <String, List<String>>{
-      'mp4': ['video', 'mp4'], 'mov': ['video', 'quicktime'],
-      'webm': ['video', 'webm'], 'm4v': ['video', 'x-m4v'],
-      'jpg': ['image', 'jpeg'], 'jpeg': ['image', 'jpeg'],
-      'png': ['image', 'png'], 'webp': ['image', 'webp'], 'gif': ['image', 'gif'],
-    };
-    final pair = types[extension.toLowerCase()] ?? const ['application', 'octet-stream'];
-    return MediaType(pair[0], pair[1]);
-  }
-
   Future<String> _uploadMedia() async {
     final file = _selected;
     final bytes = _mediaBytes;
@@ -152,7 +136,6 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
     });
     request.files.add(http.MultipartFile.fromBytes(
       'file', bytes, filename: fileName,
-      contentType: _contentType(file.mimeType, extension),
     ));
     final streamed = await request.send().timeout(const Duration(minutes: 3));
     final response = await http.Response.fromStream(streamed);
