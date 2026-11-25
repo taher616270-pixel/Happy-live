@@ -772,8 +772,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: AspectRatio(
-                aspectRatio: 1,
+              child: SizedBox(
+                height: 82,
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -785,8 +785,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: AspectRatio(
-                aspectRatio: 1,
+              child: SizedBox(
+                height: 82,
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
