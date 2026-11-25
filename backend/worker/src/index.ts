@@ -4288,10 +4288,14 @@ export default {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const rows = await env.DB!.prepare(
-          "SELECT r.id, r.room_code, r.name, r.description, r.announcement, r.image_url, r.visibility, r.status, r.level, " +
+          "SELECT r.id, r.room_code, r.name, r.description, COALESCE(ra.announcement, r.description) AS announcement, " +
+          "r.image_url, r.visibility, r.status, COALESCE(rl.level, 1) AS level, " +
           "COALESCE(rx.total_exp, 0) AS total_exp, " +
           "(SELECT MAX(v.entered_at) FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = ?) AS last_visited_at " +
-          "FROM rooms r LEFT JOIN room_experience rx ON rx.room_id = r.id " +
+          "FROM rooms r " +
+          "LEFT JOIN room_announcements ra ON ra.room_id = r.id " +
+          "LEFT JOIN room_levels rl ON rl.room_id = r.id " +
+          "LEFT JOIN room_experience rx ON rx.room_id = r.id " +
           "WHERE EXISTS (SELECT 1 FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = ?) " +
           "ORDER BY last_visited_at DESC LIMIT 30"
         ).bind(user.id, user.id).all<{
