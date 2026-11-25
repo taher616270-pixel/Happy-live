@@ -7,8 +7,8 @@ import 'feed_models.dart';
 import 'feed_repository.dart';
 class _Burst {final int id;final Offset pos;final double angle;_Burst(this.id,this.pos,this.angle);}
 class FeedItem extends StatefulWidget {
- final FeedVideo video;final VideoPlayerController? ctrl;final FeedRepository repo;final VoidCallback onComments,onShare;
- const FeedItem({super.key,required this.video,required this.ctrl,required this.repo,required this.onComments,required this.onShare});
+ final FeedVideo video;final VideoPlayerController? ctrl;final String? videoError;final VoidCallback onRetry;final FeedRepository repo;final VoidCallback onComments,onShare;
+ const FeedItem({super.key,required this.video,required this.ctrl,this.videoError,required this.onRetry,required this.repo,required this.onComments,required this.onShare});
  @override State<FeedItem> createState()=>_FeedItemState();
 }
 class _FeedItemState extends State<FeedItem> with TickerProviderStateMixin {
@@ -70,6 +70,14 @@ class _FeedItemState extends State<FeedItem> with TickerProviderStateMixin {
          child: VideoPlayer(c),
         ),
        ))
+   else if (widget.videoError != null)
+    Center(child: Column(mainAxisSize:MainAxisSize.min,children:[
+     const Icon(Icons.error_outline_rounded,color:Colors.white70,size:42),
+     const SizedBox(height:10),
+     const Text('تعذر تشغيل الفيديو',style:TextStyle(color:Colors.white,fontSize:15)),
+     const SizedBox(height:8),
+     TextButton.icon(onPressed:widget.onRetry,icon:const Icon(Icons.refresh,color:Colors.white),label:const Text('إعادة المحاولة',style:TextStyle(color:Colors.white))),
+    ]))
    else
     const Center(
      child: SizedBox(
