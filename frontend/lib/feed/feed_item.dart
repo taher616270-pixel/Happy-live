@@ -30,8 +30,54 @@ class _FeedItemState extends State<FeedItem> with TickerProviderStateMixin {
   final c=widget.ctrl;final ready=c!=null&&c.value.isInitialized;final landscape=ready&&c.value.aspectRatio>1.05;
   return Stack(fit:StackFit.expand,children:[
    const ColoredBox(color:Colors.black),
-   if(ready)(landscape?Center(child:AspectRatio(aspectRatio:c.value.aspectRatio,child:VideoPlayer(c))):FittedBox(fit:BoxFit.cover,clipBehavior:Clip.hardEdge,child:SizedBox(width:c.value.size.width,height:c.value.size.height,child:VideoPlayer(c))))
-   else const Center(child:SizedBox(width:26,height:26,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white54))),
+   if (v.isImage)
+    Positioned.fill(
+     child: Image.network(
+      v.url,
+      fit: BoxFit.cover,
+      gaplessPlayback: true,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+       if (wasSynchronouslyLoaded || frame != null) return child;
+       return const Center(
+        child: SizedBox(
+         width: 26,
+         height: 26,
+         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
+        ),
+       );
+      },
+      errorBuilder: (context, error, stackTrace) => const Center(
+       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+         Icon(Icons.broken_image_outlined, color: Colors.white70, size: 42),
+         SizedBox(height: 8),
+         Text('تعذر تحميل الصورة', style: TextStyle(color: Colors.white70)),
+        ],
+       ),
+      ),
+     ),
+    )
+   else if (ready)
+    (landscape
+     ? Center(child: AspectRatio(aspectRatio: c.value.aspectRatio, child: VideoPlayer(c)))
+     : FittedBox(
+        fit: BoxFit.cover,
+        clipBehavior: Clip.hardEdge,
+        child: SizedBox(
+         width: c.value.size.width,
+         height: c.value.size.height,
+         child: VideoPlayer(c),
+        ),
+       ))
+   else
+    const Center(
+     child: SizedBox(
+      width: 26,
+      height: 26,
+      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
+     ),
+    ),
    const Positioned(left:0,right:0,bottom:0,height:220,child:IgnorePointer(child:DecoratedBox(decoration:BoxDecoration(gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,colors:[Color(0x00000000),Color(0x99000000)]))))),
    Positioned.fill(child:GestureDetector(behavior:HitTestBehavior.translucent,onTapUp:_tapUp)),
    if(_paused)const IgnorePointer(child:Center(child:Icon(Icons.play_arrow_rounded,color:Color(0xCCFFFFFF),size:90))),
