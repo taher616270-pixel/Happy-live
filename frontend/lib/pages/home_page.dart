@@ -46,6 +46,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   int _lastInnerIndex = 0;
   bool _preservingRoomsTab = false;
   double _recentTabSwipeDelta = 0;
+  int? _recentSwipeTargetPage;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
@@ -422,34 +423,79 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
+  void _updateRecentTabSwipe(DragUpdateDetails details) {
+    if (_currentPage != 0 || _lastInnerIndex != 2) return;
+    final dx = details.delta.dx;
+    if (dx.abs() < 0.1) return;
+
+    _recentTabSwipeDelta += dx;
+    _recentSwipeTargetPage ??= dx < 0 ? 1 : 2;
+
+    // Follow the finger: left drags move the outer Rooms/Explore pager;
+    // right drags move the inner Recent/Join pager.
+    if (_recentSwipeTargetPage == 1 && _pageController.hasClients) {
+      final position = _pageController.position;
+      final pageOneMax = position.minScrollExtent + position.viewportDimension;
+      final next = (position.pixels - dx)
+          .clamp(position.minScrollExtent, pageOneMax)
+          .toDouble();
+      _pageController.jumpTo(next);
+    } else if (_recentSwipeTargetPage == 2 &&
+        _roomsTabController.hasClients) {
+      final position = _roomsTabController.position;
+      final pageOneMin = position.maxScrollExtent - position.viewportDimension;
+      final next = (position.pixels - dx)
+          .clamp(pageOneMin, position.maxScrollExtent)
+          .toDouble();
+      _roomsTabController.jumpTo(next);
+    }
+  }
+
   void _finishRecentTabSwipe(DragEndDetails details) {
     if (_currentPage != 0 || _lastInnerIndex != 2) {
       _recentTabSwipeDelta = 0;
+      _recentSwipeTargetPage = null;
       return;
     }
     final velocity = details.primaryVelocity ?? 0;
-    final delta = _recentTabSwipeDelta;
+    final target = _recentSwipeTargetPage;
     _recentTabSwipeDelta = 0;
+    _recentSwipeTargetPage = null;
 
-    // In this reversed LTR pager, a left swipe moves Rooms -> Explore,
-    // while a right swipe moves Recent -> Join inside Rooms.
-    final goToExplore = delta < -36 || (delta.abs() <= 36 && velocity < -320);
-    final goToJoin = delta > 36 || (delta.abs() <= 36 && velocity > 320);
-
-    if (goToExplore && _currentPage == 0 && _pageController.hasClients) {
+    if (target == 1 && _pageController.hasClients) {
+      final page = _pageController.page ?? 0;
+      final settleOnExplore = page >= 0.5 || velocity < -320;
       _pageController.animateToPage(
-        1,
-        duration: const Duration(milliseconds: 360),
-        curve: Curves.easeInOutCubic,
+        settleOnExplore ? 1 : 0,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
       );
-    } else if (goToJoin &&
-        _currentPage == 0 &&
-        _lastInnerIndex == 2 &&
-        _roomsTabController.hasClients) {
+    } else if (target == 2 && _roomsTabController.hasClients) {
+      final page = _roomsTabController.page ?? 2;
+      final settleOnJoin = page <= 1.5 || velocity > 320;
       _roomsTabController.animateToPage(
-        1,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeInOutCubic,
+        settleOnJoin ? 1 : 2,
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  void _cancelRecentTabSwipe() {
+    final target = _recentSwipeTargetPage;
+    _recentTabSwipeDelta = 0;
+    _recentSwipeTargetPage = null;
+    if (target == 1 && _pageController.hasClients) {
+      _pageController.animateToPage(
+        0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    } else if (target == 2 && _roomsTabController.hasClients) {
+      _roomsTabController.animateToPage(
+        2,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
       );
     }
   }
@@ -972,11 +1018,14 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                             behavior: HitTestBehavior.opaque,
                             onHorizontalDragStart:
                                 _currentPage == 0 && _lastInnerIndex == 2
-                                    ? (_) => _recentTabSwipeDelta = 0
+                                    ? (_) {
+                                        _recentTabSwipeDelta = 0;
+                                        _recentSwipeTargetPage = null;
+                                      }
                                     : null,
                             onHorizontalDragUpdate:
                                 _currentPage == 0 && _lastInnerIndex == 2
-                                    ? (details) => _recentTabSwipeDelta += details.delta.dx
+                                    ? _updateRecentTabSwipe
                                     : null,
                             onHorizontalDragEnd:
                                 _currentPage == 0 && _lastInnerIndex == 2
@@ -984,7 +1033,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                                     : null,
                             onHorizontalDragCancel:
                                 _currentPage == 0 && _lastInnerIndex == 2
-                                    ? () => _recentTabSwipeDelta = 0
+                                    ? _cancelRecentTabSwipe
                                     : null,
                             child: PageView(
                               key: const PageStorageKey<String>('happy-live-my-rooms-inner-pages'),
