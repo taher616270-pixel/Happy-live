@@ -372,9 +372,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   void _goToPage(int index) {
-    if (index == 2) return; // The country label is not a page in the four-page swipe sequence.
-    if (index != 0 && index != 3) return;
-    final target = index == 3 ? 1 : 0;
+    final target = index == 0 ? 0 : index == 3 ? 1 : index == 2 ? 2 : -1;
+    if (target < 0 || !_pageController.hasClients) return;
     _pageController.animateToPage(
       target,
       duration: const Duration(milliseconds: 280),
@@ -383,7 +382,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _topButton(int index, IconData icon, String label) {
-    final selected = index == 0 ? _currentPage < 3 : index == 3 && _currentPage == 3;
+    final selected = (index == 0 && _currentPage == 0) ||
+        (index == 3 && _currentPage == 1) ||
+        (index == 2 && _currentPage == 2);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
@@ -701,6 +702,60 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
+  // The country section is a separate top-level page in the same swipe sequence.
+  // Its content is intentionally limited to the currently detected country until
+  // a country-specific room feed is available from the API.
+  Widget _buildCountryPage() {
+    return ListView(
+      key: const PageStorageKey<String>('happy-live-country-scroll'),
+      padding: const EdgeInsets.fromLTRB(16, 28, 16, 16),
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 26),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0x66D9A93C)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 58,
+                height: 58,
+                decoration: const BoxDecoration(
+                  color: Color(0x1FD9A93C),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.public_rounded,
+                    color: HappyHomeColors.gold, size: 30),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'الدولة',
+                style: TextStyle(
+                  color: Color(0xFF1E2233),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _countryName,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: HappyHomeColors.gold,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMyRoomsTabContent(String emptyMessage) {
     return Center(
       child: Text(
@@ -840,7 +895,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               controller: _pageController,
               reverse: true,
               physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
-              onPageChanged: (index) => setState(() => _currentPage = index == 0 ? 0 : 3),
+              onPageChanged: (index) => setState(() => _currentPage = index),
               children: [
                 Directionality(
                   textDirection: TextDirection.rtl,
@@ -897,6 +952,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 Directionality(
                   textDirection: TextDirection.rtl,
                   child: _buildExplorePage(),
+                ),
+                Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: _buildCountryPage(),
                 ),
               ],
             ),
