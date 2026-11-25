@@ -1376,7 +1376,18 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 ),
                 Directionality(
                   textDirection: TextDirection.rtl,
-                  child: _buildCouclass _RecommendedRoomCard extends StatelessWidget {
+                  child: _buildCountryPage(),
+                ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+class _RecommendedRoomCard extends StatelessWidget {
   const _RecommendedRoomCard({
     required this.room,
     required this.onTap,
@@ -1478,14 +1489,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           Icons.graphic_eq_rounded,
           color: HappyHomeColors.gold,
           size: 28,
-        ),
-      );
-}
-
-onst Icon(
-          Icons.graphic_eq_rounded,
-          color: HappyHomeColors.gold,
-          size: 22,
         ),
       );
 }
