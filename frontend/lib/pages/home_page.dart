@@ -954,7 +954,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                             ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
