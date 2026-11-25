@@ -3891,7 +3891,7 @@ export default {
       const videoIdFrom = (value: unknown) => typeof value === "string" && value.length <= 100 ? value.trim() : "";
       // Stream published feed media through this Worker so Safari receives
       // byte-range responses and explicit CORS headers from our own origin.
-      const mediaMatch = url.pathname.match(/^\\/api\\/feed\\/media\\/([0-9a-f-]{36})$/i);
+      const mediaMatch = url.pathname.match(/^\/api\/feed\/media\/([0-9a-f-]{36})$/i);
       if (mediaMatch && (request.method === "GET" || request.method === "HEAD")) {
         const media = await env.DB.prepare(
           "SELECT video_url FROM feed_videos WHERE id = ? AND status = 'published' LIMIT 1"
