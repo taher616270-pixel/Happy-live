@@ -5,7 +5,6 @@ import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/posts_page.dart';
 import 'pages/edit_profile_page.dart';
-import 'widgets/dynamic_games_list.dart';
 import 'widgets/centered_notification.dart';
 import 'pages/wallet_page.dart';
 import 'package:flutter/services.dart';
@@ -1639,6 +1638,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
       FeedScreen(
         repo: HttpFeedRepository(),
         showBottomNav: false,
+        isActive: _currentIndex == 0,
         onLiveTap: () => _soon('البث المباشر'),
       ),
       HappyHomeTab(

@@ -3895,7 +3895,7 @@ export default {
           const page = Math.max(0, Math.min(500, Number(url.searchParams.get("page") ?? "0") || 0));
           const tab = url.searchParams.get("tab") ?? "forYou";
           const query = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
-          const params: unknown[] = [user.id, user.id];
+          const params: Array<string | number> = [user.id, user.id];
           let where = "v.status = 'published'";
           if (url.pathname.endsWith("/search")) {
             if (!query) return json({ ok: true, videos: [] }, 200, origin, env);
@@ -3919,7 +3919,7 @@ export default {
             "EXISTS(SELECT 1 FROM user_follows uf WHERE uf.follower_id = ? AND uf.following_id = v.user_id) AS following " +
             "FROM feed_videos v INNER JOIN profiles p ON p.user_id = v.user_id " +
             "WHERE " + where + " ORDER BY v.created_at DESC LIMIT ? OFFSET ?"
-          ).bind(...params.slice(0, 0), user.id, user.id, user.id, ...params.slice(2), limit, offset).all<{
+          ).bind(user.id, user.id, user.id, ...params.slice(2), limit, offset).all<{
             id:string;video_url:string;caption:string;sound:string;template:string|null;repost_label:string|null;
             author_name:string;author_avatar:string;likes:number;comments:number;saves:number;shares:number;
             liked:number; saved:number; following:number;

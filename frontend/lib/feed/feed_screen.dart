@@ -10,16 +10,17 @@ import 'feed_repository.dart';
 import 'feed_search_page.dart';
 import 'feed_share_sheet.dart';
 class FeedScreen extends StatefulWidget {
- final FeedRepository repo; final bool showBottomNav; final ValueChanged<int>? onNavTap; final VoidCallback? onLiveTap;
- const FeedScreen({super.key,required this.repo,this.showBottomNav=true,this.onNavTap,this.onLiveTap});
+ final FeedRepository repo; final bool showBottomNav; final bool isActive; final ValueChanged<int>? onNavTap; final VoidCallback? onLiveTap;
+ const FeedScreen({super.key,required this.repo,this.showBottomNav=true,this.isActive=true,this.onNavTap,this.onLiveTap});
  @override State<FeedScreen> createState()=>_FeedScreenState();
 }
 class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
  final PageController _pc=PageController(); final Map<int,VideoPlayerController> _ctrls={}; List<FeedVideo> _videos=[];
  FeedTab _tab=FeedTab.forYou; int _cur=0,_page=0; bool _loading=true,_more=false;
  @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);_load();}
+ @override void didUpdateWidget(covariant FeedScreen oldWidget){super.didUpdateWidget(oldWidget);if(oldWidget.isActive!=widget.isActive){if(widget.isActive){_sync();}else{for(final c in _ctrls.values){c.pause();}}}}
  @override void dispose(){WidgetsBinding.instance.removeObserver(this);for(final c in _ctrls.values){c.dispose();}_pc.dispose();super.dispose();}
- @override void didChangeAppLifecycleState(AppLifecycleState s){final c=_ctrls[_cur];if(c==null)return;if(s==AppLifecycleState.resumed){c.play();}else{c.pause();}}
+ @override void didChangeAppLifecycleState(AppLifecycleState s){final c=_ctrls[_cur];if(c==null)return;if(s==AppLifecycleState.resumed&&widget.isActive){c.play();}else{c.pause();}}
  Future<void> _load() async {
   if(mounted)setState(()=>_loading=true);for(final c in _ctrls.values){c.dispose();}_ctrls.clear();_page=0;_cur=0;
   try{_videos=await widget.repo.feed(_tab);}catch(_){_videos=[];}
