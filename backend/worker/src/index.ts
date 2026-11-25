@@ -3889,6 +3889,31 @@ export default {
         } catch { return {}; }
       };
       const videoIdFrom = (value: unknown) => typeof value === "string" && value.length <= 100 ? value.trim() : "";
+      if (url.pathname === "/api/feed" && request.method === "POST") {
+        const body = await readBody();
+        const mediaUrl = typeof body.url === "string" ? body.url.trim() : "";
+        const caption = typeof body.caption === "string" ? body.caption.trim() : "";
+        if (!mediaUrl || mediaUrl.length > 2048 || caption.length > 2000) {
+          return json({ ok: false, error: "invalid_request" }, 400, origin, env);
+        }
+        let parsedMediaUrl: URL;
+        try { parsedMediaUrl = new URL(mediaUrl); }
+        catch { return json({ ok: false, error: "invalid_media_url" }, 400, origin, env); }
+        if (!isSafeExternalHttpsUrl(mediaUrl) ||
+            !(parsedMediaUrl.hostname === "imagekit.io" || parsedMediaUrl.hostname.endsWith(".imagekit.io"))) {
+          return json({ ok: false, error: "media_url_not_allowed" }, 400, origin, env);
+        }
+        const id = crypto.randomUUID();
+        try {
+          await env.DB.prepare(
+            "INSERT INTO feed_videos (id, user_id, video_url, caption, sound, status, created_at, updated_at) VALUES (?, ?, ?, ?, '', 'published', ?, ?)"
+          ).bind(id, user.id, mediaUrl, caption, now, now).run();
+          return json({ ok: true, video: { id, url: mediaUrl, caption } }, 201, origin, env);
+        } catch (error) {
+          console.error("[feed.publish] failed", error instanceof Error ? error.message : "UnknownError");
+          return json({ ok: false, error: "feed_publish_failed" }, 500, origin, env);
+        }
+      }
       const videoRoute = url.pathname === "/api/feed" && request.method === "GET";
       if (videoRoute || (url.pathname === "/api/feed/search" && request.method === "GET")) {
         try {
