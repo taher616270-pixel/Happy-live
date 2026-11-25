@@ -45,6 +45,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   int _currentPage = 0;
   int _lastInnerIndex = 0;
   bool _preservingRoomsTab = false;
+  bool _handingOffRoomsSwipeToExplore = false;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
@@ -419,6 +420,30 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         ),
       ),
     );
+  }
+
+  bool _handleRoomsTabScrollNotification(ScrollNotification notification) {
+    if (notification is OverscrollNotification &&
+        _currentPage == 0 &&
+        _lastInnerIndex == 2 &&
+        !_handingOffRoomsSwipeToExplore &&
+        notification.metrics.axis == Axis.horizontal &&
+        notification.metrics.pixels >=
+            notification.metrics.maxScrollExtent - 1.0) {
+      _handingOffRoomsSwipeToExplore = true;
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(
+          1,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOutCubic,
+        ).whenComplete(() {
+          _handingOffRoomsSwipeToExplore = false;
+        });
+      } else {
+        _handingOffRoomsSwipeToExplore = false;
+      }
+    }
+    return false;
   }
 
   Widget _buildMyRoomsPage(int innerIndex) => Directionality(
@@ -931,6 +956,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       Expanded(
                         child: Directionality(
                           textDirection: TextDirection.ltr,
+                          child: NotificationListener<ScrollNotification>(
+                          onNotification: _handleRoomsTabScrollNotification,
                           child: PageView(
                             key: const PageStorageKey<String>('happy-live-my-rooms-inner-pages'),
                             controller: _roomsTabController,
@@ -947,9 +974,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                                 _buildMyRoomsPage(1),
                                 _buildMyRoomsPage(2),
                               ],
-                            ),
                           ),
                         ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
