@@ -209,11 +209,12 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _homeRefreshWrapper(Widget child) {
-    return RefreshIndicator(
-      color: Colors.transparent,
-      backgroundColor: Colors.transparent,
+    return RefreshIndicator.noSpinner(
       displacement: 48,
-      notificationPredicate: (notification) => notification.depth > 0,
+      notificationPredicate: (notification) =>
+          notification.metrics.axis == Axis.vertical &&
+          notification.depth > 0 &&
+          notification.depth <= 2,
       onRefresh: _refreshHomePage,
       child: Stack(
         children: [
@@ -1130,10 +1131,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         stops: [0.0, 0.3, 0.55],
       ),
     ),
-    child: _homeRefreshWrapper(
-      Column(
-        children: [
-          Padding(
+    child: Column(
+      children: [
+        Padding(
             padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
           child: SizedBox(
             width: double.infinity,
@@ -1172,8 +1172,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             ),
           ),
         ),
-          Expanded(
-            child: Directionality(
+        Expanded(
+          child: _homeRefreshWrapper(
+            Directionality(
               textDirection: TextDirection.ltr,
               child: PageView(
               controller: _pageController,
@@ -1277,12 +1278,12 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   textDirection: TextDirection.rtl,
                   child: _buildCountryPage(),
                 ),
-              ],
+                ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 }
