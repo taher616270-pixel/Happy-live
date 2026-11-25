@@ -140,10 +140,10 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
     final mediaMime = declaredMime.isNotEmpty
         ? declaredMime
         : switch (lowerExtension) {
-            'mp4' | 'm4v' => 'video/mp4',
+            'mp4' || 'm4v' => 'video/mp4',
             'mov' => 'video/quicktime',
             'webm' => 'video/webm',
-            'jpg' | 'jpeg' => 'image/jpeg',
+            'jpg' || 'jpeg' => 'image/jpeg',
             'png' => 'image/png',
             'gif' => 'image/gif',
             'webp' => 'image/webp',
