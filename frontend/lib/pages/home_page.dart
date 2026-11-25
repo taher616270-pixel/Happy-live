@@ -1267,7 +1267,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       } else if (_roomSwipeTargetIndex != null &&
                           _roomsTabController.hasClients) {
                         final p = _roomsTabController.position;
-                        final next = (p.pixels - dx)
+                        final next = (p.pixels + dx)
                             .clamp(p.minScrollExtent, p.maxScrollExtent)
                             .toDouble();
                         _roomsTabController.jumpTo(next);
