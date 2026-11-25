@@ -45,6 +45,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   int _currentPage = 0;
   int _lastInnerIndex = 0;
   bool _preservingRoomsTab = false;
+  double _recentTabSwipeDelta = 0;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
@@ -419,6 +420,34 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         ),
       ),
     );
+  }
+
+  void _finishRecentTabSwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    final delta = _recentTabSwipeDelta;
+    _recentTabSwipeDelta = 0;
+
+    // In this reversed LTR pager, a left swipe moves Rooms -> Explore,
+    // while a right swipe moves Recent -> Join inside Rooms.
+    final goToExplore = delta < -36 || (delta.abs() <= 36 && velocity < -320);
+    final goToJoin = delta > 36 || (delta.abs() <= 36 && velocity > 320);
+
+    if (goToExplore && _currentPage == 0 && _pageController.hasClients) {
+      _pageController.animateToPage(
+        1,
+        duration: const Duration(milliseconds: 360),
+        curve: Curves.easeInOutCubic,
+      );
+    } else if (goToJoin &&
+        _currentPage == 0 &&
+        _lastInnerIndex == 2 &&
+        _roomsTabController.hasClients) {
+      _roomsTabController.animateToPage(
+        1,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeInOutCubic,
+      );
+    }
   }
 
   Widget _buildMyRoomsPage(int innerIndex) => Directionality(
@@ -894,7 +923,11 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             child: PageView(
               controller: _pageController,
               reverse: true,
-              physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
+              // Recent-tab horizontal gestures are routed deliberately below:
+              // left to Explore, right to Join. Other pages keep normal paging.
+              physics: _currentPage == 0 && _lastInnerIndex == 2
+                  ? const NeverScrollableScrollPhysics()
+                  : const PageScrollPhysics(parent: ClampingScrollPhysics()),
               onPageChanged: (index) {
                 if (index != 0) {
                   if (_roomsTabController.hasClients) {
@@ -931,25 +964,37 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       Expanded(
                         child: Directionality(
                           textDirection: TextDirection.ltr,
-                          child: PageView(
-                            key: const PageStorageKey<String>('happy-live-my-rooms-inner-pages'),
-                            controller: _roomsTabController,
-                            reverse: true,
-                            // On the Recent tab, let horizontal gestures reach the outer
-                            // Rooms/Explore pager. The tab buttons still switch inner tabs.
-                            physics: _lastInnerIndex == 2
-                                ? const NeverScrollableScrollPhysics()
-                                : const PageScrollPhysics(parent: ClampingScrollPhysics()),
-                            onPageChanged: (index) {
-                              if (_currentPage == 0 && !_preservingRoomsTab) {
-                                setState(() => _lastInnerIndex = index);
-                              }
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onHorizontalDragStart: (_) {
+                              _recentTabSwipeDelta = 0;
                             },
+                            onHorizontalDragUpdate: (details) {
+                              _recentTabSwipeDelta += details.delta.dx;
+                            },
+                            onHorizontalDragEnd: _finishRecentTabSwipe,
+                            onHorizontalDragCancel: () {
+                              _recentTabSwipeDelta = 0;
+                            },
+                            child: PageView(
+                              key: const PageStorageKey<String>('happy-live-my-rooms-inner-pages'),
+                              controller: _roomsTabController,
+                              reverse: true,
+                              // The Recent tab routes horizontal drags by direction.
+                              physics: _lastInnerIndex == 2
+                                  ? const NeverScrollableScrollPhysics()
+                                  : const PageScrollPhysics(parent: ClampingScrollPhysics()),
+                              onPageChanged: (index) {
+                                if (_currentPage == 0 && !_preservingRoomsTab) {
+                                  setState(() => _lastInnerIndex = index);
+                                }
+                              },
                               children: [
                                 _buildMyRoomsPage(0),
                                 _buildMyRoomsPage(1),
                                 _buildMyRoomsPage(2),
                               ],
+                            ),
                           ),
                         ),
                       ),
