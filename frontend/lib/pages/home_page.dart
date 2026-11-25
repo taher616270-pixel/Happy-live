@@ -445,9 +445,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
     if (_recentRooms.isEmpty) return _buildMyRoomsTabContent('لا توجد غرف زرتها مؤخراً');
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(0, 5, 0, 0),
+      padding: const EdgeInsets.fromLTRB(8, 5, 8, 0),
       itemCount: _recentRooms.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 9),
+      separatorBuilder: (_, __) => const SizedBox(height: 7),
       itemBuilder: (context, index) {
         final room = _recentRooms[index];
         final name = (room['name'] ?? 'غرفة صوتية').toString();
@@ -468,9 +468,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             borderRadius: BorderRadius.circular(17),
             onTap: status == 'active' ? () => _openRecentRoom(room) : null,
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(17),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0x66D9A93C), width: 1.2),
                 boxShadow: const [BoxShadow(color: Color(0x0AD9A93C), blurRadius: 8, offset: Offset(0, 2))],
               ),
@@ -479,7 +479,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   borderRadius: BorderRadius.circular(13),
                   child: SizedBox(width: 66, height: 66,
                     child: image.startsWith('https://')
-                      ? HappyNetworkImage(image, width: 66, height: 66, fit: BoxFit.cover,
+                      ? HappyNetworkImage(image, width: 54, height: 54, fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => _recentRoomPlaceholder())
                       : _recentRoomPlaceholder()),
                 ),
