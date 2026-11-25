@@ -610,7 +610,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       child: innerIndex == 2
           ? _buildRecentRoomsContent()
           : ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
+              physics: const NeverScrollableScrollPhysics(),
               children: [
                 SizedBox(
                   height: 180,
@@ -639,7 +639,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
     if (_recentRooms.isEmpty) {
       return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics: const NeverScrollableScrollPhysics(),
         children: const [
           SizedBox(height: 90),
           Center(
@@ -817,6 +817,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             if (hasBanners)
               PageView.builder(
                 controller: _exploreBannerController,
+                physics: const NeverScrollableScrollPhysics(),
                 itemCount: _exploreBanners.length,
                 onPageChanged: (index) {
                   if (!mounted) return;
@@ -905,7 +906,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
     if (_recommendedRooms.isEmpty) {
       return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics: const NeverScrollableScrollPhysics(),
         children: const [
           SizedBox(height: 90),
           Center(
@@ -919,7 +920,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
     return ListView.separated(
         key: const PageStorageKey<String>('happy-live-recommended-rooms'),
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(0, 5, 0, 16),
         itemCount: _recommendedRooms.length,
         separatorBuilder: (_, __) => const SizedBox(height: 11),
@@ -1189,10 +1190,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               // left to Explore, right to Join. Other pages keep normal paging.
               // Keep the outer pager locked for the entire manual drag,
               // even after the finger crosses the page midpoint and onPageChanged fires.
-              physics: _lastInnerIndex == 2 &&
-                      (_currentPage == 0 || _recentTabSwipeActive)
-                  ? const NeverScrollableScrollPhysics()
-                  : const PageScrollPhysics(parent: ClampingScrollPhysics()),
+              physics: const NeverScrollableScrollPhysics(),
               onPageChanged: (index) {
                 if (index != 0) {
                   if (_roomsTabController.hasClients) {
@@ -1219,23 +1217,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     behavior: HitTestBehavior.opaque,
                     // On Recent, start the Explore drag anywhere in the full
                     // Rooms page, including its header and tab strip.
-                    onHorizontalDragStart:
-                        _currentPage == 0 && _lastInnerIndex == 2
-                            ? (_) {
-                                _recentTabSwipeDelta = 0;
-                                _recentSwipeTargetPage = null;
-                                _recentTabSwipeActive = true;
-                              }
-                            : null,
-                    onHorizontalDragUpdate: _lastInnerIndex == 2
-                        ? _updateRecentTabSwipe
-                        : null,
-                    onHorizontalDragEnd: _lastInnerIndex == 2
-                        ? _finishRecentTabSwipe
-                        : null,
-                    onHorizontalDragCancel: _lastInnerIndex == 2
-                        ? _cancelRecentTabSwipe
-                        : null,
+                    onHorizontalDragStart: null,
+                    onHorizontalDragUpdate: null,
+                    onHorizontalDragEnd: null,
+                    onHorizontalDragCancel: null,
                     child: Column(
                     children: [
                       const SizedBox(height: 24),
@@ -1256,9 +1241,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                             reverse: true,
                             // Recent-tab horizontal drags are handled by the
                             // parent GestureDetector across the whole page.
-                            physics: _lastInnerIndex == 2
-                                ? const NeverScrollableScrollPhysics()
-                                : const PageScrollPhysics(parent: ClampingScrollPhysics()),
+                            physics: const NeverScrollableScrollPhysics(),
                             onPageChanged: (index) {
                               if (_currentPage == 0 && !_preservingRoomsTab) {
                                 setState(() => _lastInnerIndex = index);
@@ -1853,6 +1836,7 @@ class LiveHouseCard extends StatelessWidget {
                             height: 27,
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
+                              physics: const NeverScrollableScrollPhysics(),
                               reverse: true,
                               itemCount: math.min(avatarUrls.length, 7),
                               separatorBuilder: (_, __) => const SizedBox(width: 5),
