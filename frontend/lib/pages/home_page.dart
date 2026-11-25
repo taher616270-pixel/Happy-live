@@ -212,8 +212,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     return RefreshIndicator.noSpinner(
       notificationPredicate: (notification) =>
           notification.metrics.axis == Axis.vertical &&
-          notification.depth > 0 &&
-          notification.depth <= 2,
+          notification.depth > 0,
       onRefresh: _refreshHomePage,
       child: Stack(
         children: [
@@ -806,73 +805,80 @@ class HappyHomeTabState extends State<HappyHomeTab> {
 
   Widget _buildExploreBanner() {
     final hasBanners = _exploreBanners.isNotEmpty;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AspectRatio(
-          aspectRatio: 3.6, // Reduced banner height while keeping its full width.
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: hasBanners
-                ? PageView.builder(
-                    controller: _exploreBannerController,
-                    itemCount: _exploreBanners.length,
-                    onPageChanged: (index) {
-                      if (!mounted) return;
-                      setState(() => _exploreBannerIndex = index);
-                      _restartExploreBannerTimer();
-                    },
-                    itemBuilder: (context, index) {
-                      final banner = _exploreBanners[index];
-                      return GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => _openExploreBanner(banner),
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            HappyNetworkImage(
-                              (banner['imageUrl'] ?? '').toString(),
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                color: Colors.white,
-                                alignment: Alignment.center,
-                                child: const Icon(Icons.broken_image_outlined, color: HappyHomeColors.muted),
-                              ),
-                            ),
-                          ],
+    return AspectRatio(
+      // The reference banner is a wide strip (about 4.1:1), not a tall card.
+      aspectRatio: 4.1,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (hasBanners)
+              PageView.builder(
+                controller: _exploreBannerController,
+                itemCount: _exploreBanners.length,
+                onPageChanged: (index) {
+                  if (!mounted) return;
+                  setState(() => _exploreBannerIndex = index);
+                  _restartExploreBannerTimer();
+                },
+                itemBuilder: (context, index) {
+                  final banner = _exploreBanners[index];
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _openExploreBanner(banner),
+                    child: HappyNetworkImage(
+                      (banner['imageUrl'] ?? '').toString(),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.white,
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.broken_image_outlined,
+                          color: HappyHomeColors.muted,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: const Color(0xFFE8E4DA)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            if (_exploreBanners.length > 1)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 6,
+                child: IgnorePointer(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(_exploreBanners.length, (index) {
+                      final selected = index == _exploreBannerIndex;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: selected ? 15 : 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? HappyHomeColors.gold
+                              : const Color(0xFFCEC8BB),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       );
-                    },
-                  )
-                : Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFFE8E4DA)),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                    }),
                   ),
-          ),
-        ),
-        if (_exploreBanners.length > 1) ...[
-          const SizedBox(height: 7),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(_exploreBanners.length, (index) {
-              final selected = index == _exploreBannerIndex;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: selected ? 15 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: selected ? HappyHomeColors.gold : const Color(0xFFCEC8BB),
-                  borderRadius: BorderRadius.circular(8),
                 ),
-              );
-            }),
-          ),
-        ],
-      ],
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -913,9 +919,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     return ListView.separated(
         key: const PageStorageKey<String>('happy-live-recommended-rooms'),
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(8, 5, 8, 0),
+        padding: const EdgeInsets.fromLTRB(0, 5, 0, 16),
         itemCount: _recommendedRooms.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 7),
+        separatorBuilder: (_, __) => const SizedBox(height: 11),
         itemBuilder: (context, index) {
           final room = _recommendedRooms[index];
           return _RecommendedRoomCard(
@@ -927,60 +933,70 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _buildExplorePage() {
-    return ListView(
-      key: const PageStorageKey<String>('happy-live-explore-scroll'),
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 16),
-      children: [
-        _buildExploreBanner(),
-        const SizedBox(height: 10),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 82,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: const Color(0xFFE8E4DA)),
-                    borderRadius: BorderRadius.circular(14),
+    // Keep the banner, shortcuts, and category strip fixed in place.
+    // Only the selected category's room feed scrolls vertically.
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(18, 8, 18, 0),
+      child: Column(
+        children: [
+          _buildExploreBanner(),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 60,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: const Color(0xFFE8E4DA)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: SizedBox(
-                height: 82,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: const Color(0xFFE8E4DA)),
-                    borderRadius: BorderRadius.circular(14),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 60,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: const Color(0xFFE8E4DA)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SizedBox(          height: 420,
-          child: SwipeChipTabs(
-            titles: const ['توصية', 'لعبة', 'مبارزة', 'البث المباشر', 'لعبة الفائز السوبر', 'الفيديو'],
-            onChanged: (index) {
-              if (index == 0) _loadRecommendedRooms(force: true);
-            },
-            pages: [
-              (_) => _buildRecommendedRoomsContent(),
-              (_) => const _ExploreTabPlaceholder('لعبة'),
-              (_) => const _ExploreTabPlaceholder('مبارزة'),
-              (_) => const _ExploreTabPlaceholder('البث المباشر'),
-              (_) => const _ExploreTabPlaceholder('لعبة الفائز السوبر'),
-              (_) => const _ExploreTabPlaceholder('الفيديو'),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+          Expanded(
+            child: SwipeChipTabs(
+              titles: const [
+                'توصية',
+                'لعبة',
+                'مبارزة',
+                'البث المباشر',
+                'لعبة الفائز السوبر',
+                'الفيديو',
+              ],
+              onChanged: (index) {
+                if (index == 0) _loadRecommendedRooms(force: true);
+              },
+              pages: [
+                (_) => _buildRecommendedRoomsContent(),
+                (_) => const _ExploreTabPlaceholder('لعبة'),
+                (_) => const _ExploreTabPlaceholder('مبارزة'),
+                (_) => const _ExploreTabPlaceholder('البث المباشر'),
+                (_) => const _ExploreTabPlaceholder('لعبة الفائز السوبر'),
+                (_) => const _ExploreTabPlaceholder('الفيديو'),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1299,7 +1315,8 @@ class _RecommendedRoomCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = (room['name'] ?? 'غرفة صوتية').toString();
     final announcement = (room['announcement'] ?? room['description'] ?? '')
-        .toString().trim();
+        .toString()
+        .trim();
     final image = (room['imageUrl'] ?? '').toString();
     final levelValue = room['experienceLevel'] ?? room['experience_level'] ?? 1;
     final level = levelValue is num
@@ -1314,15 +1331,18 @@ class _RecommendedRoomCard extends StatelessWidget {
       width: double.infinity,
       child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(17),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(17),
+          borderRadius: BorderRadius.circular(14),
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0x66D9A93C), width: 1.2),
+              border: Border.all(
+                color: const Color(0x66D9A93C),
+                width: 1.2,
+              ),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x0AD9A93C),
@@ -1331,107 +1351,125 @@ class _RecommendedRoomCard extends StatelessWidget {
                 ),
               ],
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+            child: Stack(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(13),
-                  child: SizedBox(
-                    width: 66,
-                    height: 66,
-                    child: image.startsWith('https://')
-                        ? HappyNetworkImage(
-                            image,
-                            width: 66,
-                            height: 66,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _roomFallback(),
-                          )
-                        : _roomFallback(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF1E2233),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                        ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(13),
+                      child: SizedBox(
+                        width: 74,
+                        height: 74,
+                        child: image.startsWith('https://')
+                            ? HappyNetworkImage(
+                                image,
+                                width: 74,
+                                height: 74,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _roomFallback(),
+                              )
+                            : _roomFallback(),
                       ),
-                      const SizedBox(height: 5),
-                      Text(
-                        announcement.isEmpty
-                            ? 'لا يوجد إعلان للغرفة'
-                            : announcement,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: HappyHomeColors.muted,
-                          fontSize: 11,
-                          height: 1.25,
-                        ),
-                      ),
-                      const SizedBox(height: 7),
-                      Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF3D5),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: const Color(0xFFD9A93C).withOpacity(0.65),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.workspace_premium_rounded,
-                                size: 13,
-                                color: HappyHomeColors.gold,
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Padding(
+                        // Reserve the lower-left corner for the live member
+                        // count and its animated three-bar wave indicator.
+                        padding: const EdgeInsets.only(left: 38),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF1E2233),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Lv.$level',
-                                style: const TextStyle(
-                                  color: Color(0xFF8A6420),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              announcement.isEmpty
+                                  ? 'لا يوجد إعلان للغرفة'
+                                  : announcement,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: HappyHomeColors.muted,
+                                fontSize: 11,
+                                height: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 7),
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF3D5),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: const Color(0xFFD9A93C)
+                                        .withOpacity(0.65),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.workspace_premium_rounded,
+                                      size: 13,
+                                      color: HappyHomeColors.gold,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Lv.$level',
+                                      style: const TextStyle(
+                                        color: Color(0xFF8A6420),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 7),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3D5),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: const Color(0x66D9A93C)),
+                Positioned(
+                  left: 8,
+                  bottom: 5,
+                  child: Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$membersCount',
+                          style: const TextStyle(
+                            color: Color(0xFF8A6420),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        const _RoomMemberWave(count: 3),
+                      ],
+                    ),
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const _RoomMemberWave(count: 3),
-                    const SizedBox(width: 4),
-                    Text('$membersCount',
-                      style: const TextStyle(color: Color(0xFF8A6420), fontSize: 11, fontWeight: FontWeight.w900)),
-                  ]),
                 ),
               ],
             ),
