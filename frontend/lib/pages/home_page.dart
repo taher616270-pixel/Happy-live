@@ -724,7 +724,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   Widget _buildExploreBanner() {
     final hasBanners = _exploreBanners.isNotEmpty;
     final safeIndex = hasBanners
-        ? _exploreBannerIndex.clamp(0, _exploreBanners.length - 1)
+        ? _exploreBannerIndex.clamp(0, _exploreBanners.length - 1).toInt()
         : 0;
     final banner = hasBanners ? _exploreBanners[safeIndex] : null;
     return AspectRatio(
