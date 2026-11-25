@@ -795,19 +795,20 @@ class MyPartyRoomButton extends StatelessWidget {
               ),
             ),
             Positioned(
-              right: -15,
-              top: -49,
-              bottom: -20,
+              right: 8,
+              top: 8,
+              bottom: 8,
               child: hasRoom
                   ? SizedBox(
-                      width: 105,
+                      width: 58,
+                      height: 58,
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12),
                         child: roomCoverUrl.startsWith('https://')
                             ? HappyNetworkImage(
                                 roomCoverUrl,
-                                width: 105,
-                                height: 123,
+                                width: 58,
+                                height: 58,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Container(
                                   color: const Color(0xFFFAEDC8),
