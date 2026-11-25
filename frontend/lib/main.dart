@@ -1503,6 +1503,10 @@ class _SessionHomePageState extends State<SessionHomePage> {
   @override
   void dispose() {
     GlobalGiftEvents.instance.disconnect();
+    FeedConfig.authToken = () => '';
+    FeedConfig.userId = () => '';
+    FeedConfig.myAvatar = () => '';
+    if (_feedRepository is HttpFeedRepository) _feedRepository.close();
     CannonConfig.setAuthToken('');
     super.dispose();
   }

@@ -29,6 +29,7 @@ abstract class FeedRepository {
 class HttpFeedRepository implements FeedRepository {
   final http.Client _client;
   HttpFeedRepository({http.Client? client}) : _client = client ?? http.Client();
+  void close() => _client.close();
 
   Map<String,String> get _headers => {
     'Authorization': 'Bearer ${FeedConfig.authToken()}',
