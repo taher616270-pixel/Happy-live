@@ -606,28 +606,55 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     textDirection: TextDirection.rtl,
     child: Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: innerIndex == 0
-          ? _buildMyRoomsTabContent('لا توجد غرف تتابعها حالياً')
-          : innerIndex == 1
-              ? _buildMyRoomsTabContent('لا توجد غرف للانضمام إليها حالياً')
-              : _buildRecentRoomsContent(),
+      child: innerIndex == 2
+          ? _buildRecentRoomsContent()
+          : _homeRefreshWrapper(
+              ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: 180,
+                    child: _buildMyRoomsTabContent(
+                      innerIndex == 0
+                          ? 'لا توجد غرف تتابعها حالياً'
+                          : 'لا توجد غرف للانضمام إليها حالياً',
+                    ),
+                  ),
+                ],
+              ),
+            ),
     ),
   );
 
   Widget _buildRecentRoomsContent() {
     if (_loadingRecentRooms && _recentRooms.isEmpty) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: HappyHomeColors.gold));
+      return const Center(child: _FiveBarRefreshAnimation());
     }
     if (_recentRoomsError != null && _recentRooms.isEmpty) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         Text(_recentRoomsError!, textAlign: TextAlign.center,
           style: const TextStyle(color: Color(0xFF9A98AD), fontSize: 11)),
-        TextButton(onPressed: _loadRecentRooms,
+        TextButton(onPressed: _refreshHomePage,
           child: const Text('إعادة المحاولة', style: TextStyle(color: HappyHomeColors.gold, fontSize: 11))),
       ]));
     }
-    if (_recentRooms.isEmpty) return _buildMyRoomsTabContent('لا توجد غرف زرتها مؤخراً');
-    return ListView.separated(
+    if (_recentRooms.isEmpty) {
+      return _homeRefreshWrapper(
+        ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 90),
+            Center(
+              child: Text(
+                'لا توجد غرف زرتها مؤخراً',
+                style: TextStyle(color: Color(0xFF9A98AD), fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return _homeRefreshWrapper(ListView.separated(
       key: const PageStorageKey<String>('happy-live-recent-rooms-scroll'),
       padding: const EdgeInsets.fromLTRB(8, 5, 8, 0),
       itemCount: _recentRooms.length,
@@ -718,7 +745,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           ),
         );
       },
-    );
+    ));
   }
 
   Widget _recentRoomPlaceholder() => Container(
@@ -905,7 +932,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _buildExplorePage() {
-    return ListView(
+    return _homeRefreshWrapper(ListView(
       key: const PageStorageKey<String>('happy-live-explore-scroll'),
       padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 16),
       children: [
@@ -959,14 +986,14 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           ),
         ),
       ],
-    );
+    ));
   }
 
   // The country section is a separate top-level page in the same swipe sequence.
   // Its content is intentionally limited to the currently detected country until
   // a country-specific room feed is available from the API.
   Widget _buildCountryPage() {
-    return ListView(
+    return _homeRefreshWrapper(ListView(
       key: const PageStorageKey<String>('happy-live-country-scroll'),
       padding: const EdgeInsets.fromLTRB(16, 28, 16, 16),
       children: [
@@ -1013,7 +1040,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           ),
         ),
       ],
-    );
+    ));
   }
 
   Widget _buildMyRoomsTabContent(String emptyMessage) {
