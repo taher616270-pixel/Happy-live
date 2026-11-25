@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -38,13 +39,13 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   // Use the authenticated Worker media proxy instead of the raw ImageKit URL.
   // It forwards HTTP Range requests and exposes the byte-range headers Safari needs.
   final mediaUrl = '${FeedConfig.apiBase}/api/feed/media/${Uri.encodeComponent(_videos[i].id)}';
-  final c=VideoPlayerController.networkUrl(
-   Uri.parse(mediaUrl),
-   httpHeaders: {'Authorization': 'Bearer ${FeedConfig.authToken()}'},
-  );_ctrls[i]=c;
+  final c=VideoPlayerController.networkUrl(Uri.parse(mediaUrl));_ctrls[i]=c;
   try {
    await c.initialize().timeout(const Duration(seconds: 25));
    await c.setLooping(true);
+   // Browsers block autoplay with audio. Start web feed videos muted;
+   // the first user tap unmutes and starts playback within the tap gesture.
+   if (kIsWeb) await c.setVolume(0);
   } catch (error) {
    // Publish the failed state before disposing the platform player. On web,
    // dispose() can itself wait on a stalled media element; awaiting it here
