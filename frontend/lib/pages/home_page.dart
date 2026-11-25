@@ -894,7 +894,24 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               controller: _pageController,
               reverse: true,
               physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
-              onPageChanged: (index) => setState(() => _currentPage = index),
+              onPageChanged: (index) {
+                if (index != 0 && _roomsTabController.hasClients) {
+                  final currentInnerPage = _roomsTabController.page;
+                  if (currentInnerPage != null) {
+                    _lastInnerIndex = currentInnerPage.round().clamp(0, 2);
+                  }
+                }
+                setState(() => _currentPage = index);
+                if (index == 0) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted || !_roomsTabController.hasClients) return;
+                    final currentInnerPage = _roomsTabController.page?.round();
+                    if (currentInnerPage != _lastInnerIndex) {
+                      _roomsTabController.jumpToPage(_lastInnerIndex);
+                    }
+                  });
+                }
+              },
               children: [
                 Directionality(
                   textDirection: TextDirection.rtl,
@@ -913,6 +930,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                         child: Directionality(
                           textDirection: TextDirection.ltr,
                           child: PageView(
+                            key: const PageStorageKey<String>('happy-live-my-rooms-inner-pages'),
                             controller: _roomsTabController,
                             reverse: true,
                             // On the recent-rooms tab, let the outer PageView own
