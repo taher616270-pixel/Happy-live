@@ -609,21 +609,19 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       padding: const EdgeInsets.only(top: 8),
       child: innerIndex == 2
           ? _buildRecentRoomsContent()
-          : 
-              ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  SizedBox(
-                    height: 180,
-                    child: _buildMyRoomsTabContent(
-                      innerIndex == 0
-                          ? 'لا توجد غرف تتابعها حالياً'
-                          : 'لا توجد غرف للانضمام إليها حالياً',
-                    ),
+          : ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: 180,
+                  child: _buildMyRoomsTabContent(
+                    innerIndex == 0
+                        ? 'لا توجد غرف تتابعها حالياً'
+                        : 'لا توجد غرف للانضمام إليها حالياً',
                   ),
-                ],
-              ),
-            ,
+                ),
+              ],
+            ),
     ),
   );
 
@@ -640,20 +638,18 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       ]));
     }
     if (_recentRooms.isEmpty) {
-      return 
-        ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 90),
-            Center(
-              child: Text(
-                'لا توجد غرف زرتها مؤخراً',
-                style: TextStyle(color: Color(0xFF9A98AD), fontSize: 12),
-              ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 90),
+          Center(
+            child: Text(
+              'لا توجد غرف زرتها مؤخراً',
+              style: TextStyle(color: Color(0xFF9A98AD), fontSize: 12),
             ),
-          ],
-        ),
-      ;
+          ),
+        ],
+      );
     }
     return ListView.separated(
       key: const PageStorageKey<String>('happy-live-recent-rooms-scroll'),
