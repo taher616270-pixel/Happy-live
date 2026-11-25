@@ -935,12 +935,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                             key: const PageStorageKey<String>('happy-live-my-rooms-inner-pages'),
                             controller: _roomsTabController,
                             reverse: true,
-                            // On the recent-rooms tab, let the outer PageView own
-                            // horizontal drags so a swipe from any room card
-                            // moves the complete page to Explore.
-                            physics: _lastInnerIndex == 2
-                                ? const NeverScrollableScrollPhysics()
-                                : const PageScrollPhysics(parent: ClampingScrollPhysics()),
+                            // Keep all three room tabs swipeable in both directions.
+                            physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
                             onPageChanged: (index) {
                               if (_currentPage == 0 && !_preservingRoomsTab) {
                                 setState(() => _lastInnerIndex = index);
