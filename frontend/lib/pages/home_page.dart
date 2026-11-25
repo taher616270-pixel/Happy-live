@@ -854,12 +854,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
 
   Widget _buildRecommendedRoomsContent() {
     if (_loadingRecommendedRooms && _recommendedRooms.isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: HappyHomeColors.gold,
-        ),
-      );
+      return const Center(child: _FiveBarRefreshAnimation());
     }
     if (_recommendedRoomsError != null && _recommendedRooms.isEmpty) {
       return Center(
