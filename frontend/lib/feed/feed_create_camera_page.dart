@@ -192,11 +192,12 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF6F7FB),
+        backgroundColor: Colors.black,
         body: SafeArea(
           child: Stack(
             fit: StackFit.expand,
             children: [
+              // Portrait-first camera canvas, like a short-video creator.
               if (selected)
                 _selectedIsVideo
                     ? (_video?.value.isInitialized == true
@@ -208,112 +209,202 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
                           )
                         : const Center(child: CircularProgressIndicator(color: Colors.white)))
                     : (_imageBytes != null
-                        ? Image.memory(_imageBytes!, fit: BoxFit.contain)
+                        ? Center(child: Image.memory(_imageBytes!, fit: BoxFit.contain))
                         : const SizedBox.shrink())
               else if (cameraReady)
-                Center(child: CameraPreview(_camera!))
+                Positioned.fill(child: CameraPreview(_camera!))
               else
                 const _CameraLoadingPreview(),
+
+              // Top navigation and sound entry.
               Positioned(
-                top: 4,
-                right: 8,
-                child: IconButton(
-                  tooltip: 'إغلاق',
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close_rounded, color: Color(0xFF1E2233), size: 27),
+                top: 2,
+                left: 4,
+                right: 4,
+                child: Row(
+                  children: [
+                    _CreatorIconButton(
+                      icon: Icons.close_rounded,
+                      label: 'إغلاق',
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                    const Spacer(),
+                    if (!selected)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(.42),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.music_note_rounded, color: Colors.white, size: 17),
+                            SizedBox(width: 6),
+                            Text('إضافة صوت', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                      ),
+                    const Spacer(),
+                    if (selected)
+                      _CreatorIconButton(
+                        icon: Icons.refresh_rounded,
+                        label: 'إعادة',
+                        onTap: _busy ? null : _retake,
+                      )
+                    else
+                      const SizedBox(width: 44),
+                  ],
                 ),
               ),
-              if (selected)
+
+              if (!selected) ...[
+                // Editing tools on the right, kept visually light over the camera.
                 Positioned(
-                  top: 4,
-                  left: 8,
-                  child: IconButton(
-                    tooltip: 'إعادة التصوير',
-                    onPressed: _busy ? null : _retake,
-                    icon: const Icon(Icons.refresh_rounded, color: Color(0xFF1E2233), size: 26),
+                  right: 10,
+                  top: MediaQuery.of(context).size.height * .22,
+                  child: Column(
+                    children: const [
+                      _CreatorTool(icon: Icons.flip_camera_android_rounded, label: 'قلب'),
+                      SizedBox(height: 22),
+                      _CreatorTool(icon: Icons.speed_rounded, label: 'السرعة'),
+                      SizedBox(height: 22),
+                      _CreatorTool(icon: Icons.auto_awesome_outlined, label: 'تجميل'),
+                      SizedBox(height: 22),
+                      _CreatorTool(icon: Icons.filter_vintage_outlined, label: 'فلاتر'),
+                      SizedBox(height: 22),
+                      _CreatorTool(icon: Icons.timer_outlined, label: 'المؤقت'),
+                      SizedBox(height: 22),
+                      _CreatorTool(icon: Icons.flash_on_rounded, label: 'فلاش'),
+                    ],
                   ),
                 ),
-              if (selected)
                 Positioned(
-                  bottom: 24,
-                  left: 20,
-                  right: 20,
-                  child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(_selected),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFD9A93C),
-                      foregroundColor: const Color(0xFF1E2233),
-                      minimumSize: const Size.fromHeight(50),
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.black.withOpacity(.68), Colors.black.withOpacity(.94)],
+                      ),
                     ),
-                    child: const Text('استخدام هذا الملف', style: TextStyle(fontWeight: FontWeight.w800)),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_error != null) ...[
+                          Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                          if (_cameraDenied)
+                            TextButton(
+                              onPressed: _initializeCamera,
+                              child: const Text('إعادة المحاولة', style: TextStyle(color: Colors.white)),
+                            ),
+                          const SizedBox(height: 8),
+                        ],
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _ModeButton(label: 'قصة', selected: false, onTap: null),
+                            const SizedBox(width: 18),
+                            _ModeButton(label: 'فيديو', selected: _videoMode, onTap: _busy || _recording ? null : () => setState(() => _videoMode = true)),
+                            const SizedBox(width: 18),
+                            _ModeButton(label: 'صورة', selected: !_videoMode, onTap: _busy || _recording ? null : () => setState(() => _videoMode = false)),
+                          ],
+                        ),
+                        const SizedBox(height: 23),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: _busy || _recording ? null : _chooseFromGallery,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(Icons.photo_library_outlined, color: Colors.white, size: 27),
+                                  SizedBox(height: 5),
+                                  Text('تحميل', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: _busy ? null : _capture,
+                              child: Container(
+                                width: 82,
+                                height: 82,
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 4),
+                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _recording ? const Color(0xFFFF3158) : Colors.white,
+                                  ),
+                                  child: _busy
+                                      ? const Padding(
+                                          padding: EdgeInsets.all(19),
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                        )
+                                      : null,
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: _busy || _recording ? null : () {
+                                setState(() => _error = 'يمكنك استخدام الكاميرا الأمامية من إعدادات التصوير.');
+                              },
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(Icons.cameraswitch_outlined, color: Colors.white, size: 27),
+                                  SizedBox(height: 5),
+                                  Text('قلب', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          _recording ? 'جارٍ تسجيل الفيديو • اضغط لإيقاف التسجيل' : 'اضغط للتصوير أو ارفع ملفاً من جهازك',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
-                )
-              else
+                ),
+              ] else
                 Positioned(
                   left: 18,
                   right: 18,
-                  bottom: 20,
+                  bottom: 22,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (_error != null) ...[
-                        Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF1E2233), fontSize: 12)),
-                        if (_cameraDenied) ...[
-                          const SizedBox(height: 8),
-                          TextButton(onPressed: _initializeCamera, child: const Text('إعادة المحاولة')),
-                        ],
-                        const SizedBox(height: 8),
-                      ],
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _ModeButton(label: 'فيديو', selected: _videoMode, onTap: _busy || _recording ? null : () => setState(() => _videoMode = true)),
-                          const SizedBox(width: 22),
-                          _ModeButton(label: 'صورة', selected: !_videoMode, onTap: _busy || _recording ? null : () => setState(() => _videoMode = false)),
-                        ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)),
+                        child: const Text('معاينة المنشور', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                       ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          IconButton(
-                            tooltip: 'اختيار من المعرض',
-                            onPressed: _busy || _recording ? null : _chooseFromGallery,
-                            icon: const Icon(Icons.photo_library_outlined, color: Color(0xFF1E2233), size: 29),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: () => Navigator.of(context).pop(_selected),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF3158),
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(52),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          GestureDetector(
-                            onTap: _busy ? null : _capture,
-                            child: Container(
-                              width: 78,
-                              height: 78,
-                              padding: const EdgeInsets.all(5),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: const Color(0xFFD9A93C), width: 4),
-                              ),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: _recording ? const Color(0xFFE53E4D) : (_videoMode ? const Color(0xFFD9A93C) : const Color(0xFFFFFEFA)),
-                                ),
-                                child: _busy
-                                    ? const Padding(padding: EdgeInsets.all(18), child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                                    : null,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: _videoMode ? (_recording ? 'إيقاف التسجيل' : 'بدء التسجيل') : 'التقاط صورة',
-                            onPressed: _busy ? null : _capture,
-                            icon: Icon(_videoMode ? Icons.videocam_outlined : Icons.camera_alt_outlined, color: const Color(0xFF1E2233), size: 29),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        _recording ? 'جارٍ تسجيل الفيديو — اضغط لإيقافه' : 'صوّر الآن أو اختر صورة أو فيديو من المعرض',
-                        style: const TextStyle(color: Color(0xFF6F6047), fontSize: 12, fontWeight: FontWeight.w600),
-                        textAlign: TextAlign.center,
+                          child: const Text('التالي', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                        ),
                       ),
                     ],
                   ),
@@ -324,6 +415,36 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
       ),
     );
   }
+}
+
+class _CreatorIconButton extends StatelessWidget {
+  const _CreatorIconButton({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+        tooltip: label,
+        onPressed: onTap,
+        icon: Icon(icon, color: Colors.white, size: 27),
+      );
+}
+
+class _CreatorTool extends StatelessWidget {
+  const _CreatorTool({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 25),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+        ],
+      );
 }
 
 class _CameraLoadingPreview extends StatelessWidget {
