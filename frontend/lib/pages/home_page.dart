@@ -692,7 +692,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       mainAxisSize: MainAxisSize.min,
       children: [
         AspectRatio(
-          aspectRatio: 2.7, // Match the approximate height of a LiveHouseCard.
+          aspectRatio: 3.6, // Reduced banner height while keeping its full width.
           child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: hasBanners
