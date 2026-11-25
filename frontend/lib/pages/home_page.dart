@@ -663,7 +663,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     border: Border.all(color: const Color(0x66D9A93C)),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const _RoomMemberWave(),
+                    const _RoomMemberWave(count: 3),
                     const SizedBox(width: 4),
                     Text('$membersCount',
                       style: const TextStyle(color: Color(0xFF8A6420), fontSize: 11, fontWeight: FontWeight.w900)),
