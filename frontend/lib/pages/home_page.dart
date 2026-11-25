@@ -11,7 +11,6 @@ import 'room_page.dart';
 import 'voice_rooms_page.dart';
 import 'public_profile_page.dart';
 import 'explore_banner_destination_page.dart';
-import '../tabs/swipe_chip_tabs.dart';
 
 /// Theme colors kept local so this page can be maintained independently.
 class HappyHomeColors {
@@ -35,8 +34,9 @@ class HappyHomeTab extends StatefulWidget {
 
 class HappyHomeTabState extends State<HappyHomeTab> {
   final PageController _pageController = PageController();
-  final PageController _roomsTabController = PageController();
-  final PageController _exploreBannerController = PageController();
+  static const int _roomsFirstPage = 0;
+  static const int _exploreFirstPage = 3;
+  static const int _countryPage = 9;
   Timer? _exploreBannerTimer;
   List<Map<String, dynamic>> _exploreBanners = <Map<String, dynamic>>[];
   int _exploreBannerIndex = 0;
@@ -45,15 +45,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   String _countryName = 'الدولة';
   int _currentPage = 0;
   int _lastInnerIndex = 0;
-  bool _preservingRoomsTab = false;
-  double _recentTabSwipeDelta = 0;
-  double _roomSwipeDelta = 0;
-  int? _roomSwipeTargetIndex;
-  bool _roomSwipeUsesOuterPager = false;
-  int _roomSwipeStartIndex = 0;
-  bool _roomSwipeInProgress = false;
-  int? _recentSwipeTargetPage;
-  bool _recentTabSwipeActive = false;
+  int _lastExploreIndex = 0;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
@@ -110,9 +102,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   @override
   void dispose() {
     _pageController.dispose();
-    _roomsTabController.dispose();
     _exploreBannerTimer?.cancel();
-    _exploreBannerController.dispose();
     super.dispose();
   }
 
@@ -476,19 +466,25 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   void _goToPage(int index) {
-    final target = index == 0 ? 0 : index == 3 ? 1 : index == 2 ? 2 : -1;
+    final target = index == 0
+        ? _lastInnerIndex
+        : index == 3
+            ? _exploreFirstPage + _lastExploreIndex
+            : index == 2
+                ? _countryPage
+                : -1;
     if (target < 0 || !_pageController.hasClients) return;
     _pageController.animateToPage(
       target,
-      duration: const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 320),
       curve: Curves.easeInOutCubic,
     );
   }
 
   Widget _topButton(int index, IconData icon, String label) {
-    final selected = (index == 0 && _currentPage == 0) ||
-        (index == 3 && _currentPage == 1) ||
-        (index == 2 && _currentPage == 2);
+    final selected = (index == 0 && _currentPage <= 2) ||
+        (index == 3 && _currentPage >= 3 && _currentPage <= 8) ||
+        (index == 2 && _currentPage == _countryPage);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
@@ -522,90 +518,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         ),
       ),
     );
-  }
-
-  void _updateRecentTabSwipe(DragUpdateDetails details) {
-    if (!_recentTabSwipeActive || _lastInnerIndex != 2) return;
-    final dx = details.delta.dx;
-    if (dx.abs() < 0.1) return;
-
-    _recentTabSwipeDelta += dx;
-    _recentSwipeTargetPage ??= dx > 0 ? 1 : 2;
-
-    // At either edge tab: right drags move Rooms -> Explore;
-    // left drags move Following -> Join or Recent -> Join inside Rooms.
-    if (_recentSwipeTargetPage == 1 && _pageController.hasClients) {
-      final position = _pageController.position;
-      final pageOneMax = position.minScrollExtent + position.viewportDimension;
-      final next = (position.pixels + dx)
-          .clamp(position.minScrollExtent, pageOneMax)
-          .toDouble();
-      _pageController.jumpTo(next);
-    } else if (_recentSwipeTargetPage == 2 &&
-        _roomsTabController.hasClients) {
-      final position = _roomsTabController.position;
-      final pageOneMin = position.maxScrollExtent - position.viewportDimension;
-      final next = (position.pixels + dx)
-          .clamp(pageOneMin, position.maxScrollExtent)
-          .toDouble();
-      _roomsTabController.jumpTo(next);
-    }
-  }
-
-  void _finishRecentTabSwipe(DragEndDetails details) {
-    if (!_recentTabSwipeActive || _lastInnerIndex != 2) {
-      _recentTabSwipeDelta = 0;
-      _recentSwipeTargetPage = null;
-      _recentTabSwipeActive = false;
-      return;
-    }
-    final velocity = details.primaryVelocity ?? 0;
-    final target = _recentSwipeTargetPage;
-    _recentTabSwipeDelta = 0;
-    _recentSwipeTargetPage = null;
-    _recentTabSwipeActive = false;
-    // Rebuild pager physics only after the finger is released and the
-    // destination has been decided, never while the user is holding the drag.
-    if (mounted) setState(() {});
-
-    if (target == 1 && _pageController.hasClients) {
-      final page = _pageController.page ?? 0;
-      final settleOnExplore = page >= 0.5 || velocity > 320;
-      _pageController.animateToPage(
-        settleOnExplore ? 1 : 0,
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOutCubic,
-      );
-    } else if (target == 2 && _roomsTabController.hasClients) {
-      final page = _roomsTabController.page ?? 2;
-      final settleOnJoin = page <= 1.5 || velocity < -320;
-      _roomsTabController.animateToPage(
-        settleOnJoin ? 1 : 2,
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutCubic,
-      );
-    }
-  }
-
-  void _cancelRecentTabSwipe() {
-    final target = _recentSwipeTargetPage;
-    _recentTabSwipeDelta = 0;
-    _recentSwipeTargetPage = null;
-    _recentTabSwipeActive = false;
-    if (mounted) setState(() {});
-    if (target == 1 && _pageController.hasClients) {
-      _pageController.animateToPage(
-        0,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-      );
-    } else if (target == 2 && _roomsTabController.hasClients) {
-      _roomsTabController.animateToPage(
-        2,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-      );
-    }
   }
 
   Widget _buildMyRoomsPage(int innerIndex) => Directionality(
@@ -778,7 +690,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             : 4).clamp(2, 30).toInt();
         _exploreBannerIndex = 0;
       });
-      if (_exploreBannerController.hasClients) _exploreBannerController.jumpToPage(0);
       _restartExploreBannerTimer();
     } catch (_) {
       // Keep the blank banner frame if the public settings endpoint is unavailable.
@@ -791,13 +702,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     _exploreBannerTimer = Timer.periodic(
       Duration(seconds: _exploreBannerIntervalSeconds),
       (_) {
-        if (!mounted || !_exploreBannerController.hasClients || _exploreBanners.length < 2) return;
-        final next = (_exploreBannerIndex + 1) % _exploreBanners.length;
-        _exploreBannerController.animateToPage(
-          next,
-          duration: const Duration(milliseconds: 420),
-          curve: Curves.easeInOutCubic,
-        );
+        if (!mounted || _exploreBanners.length < 2) return;
+        setState(() {
+          _exploreBannerIndex = (_exploreBannerIndex + 1) % _exploreBanners.length;
+        });
       },
     );
   }
@@ -812,43 +720,37 @@ class HappyHomeTabState extends State<HappyHomeTab> {
 
   Widget _buildExploreBanner() {
     final hasBanners = _exploreBanners.isNotEmpty;
+    final safeIndex = hasBanners
+        ? _exploreBannerIndex.clamp(0, _exploreBanners.length - 1)
+        : 0;
+    final banner = hasBanners ? _exploreBanners[safeIndex] : null;
     return AspectRatio(
-      // The reference banner is a wide strip (about 4.1:1), not a tall card.
       aspectRatio: 4.1,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (hasBanners)
-              PageView.builder(
-                controller: _exploreBannerController,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _exploreBanners.length,
-                onPageChanged: (index) {
-                  if (!mounted) return;
-                  setState(() => _exploreBannerIndex = index);
-                  _restartExploreBannerTimer();
-                },
-                itemBuilder: (context, index) {
-                  final banner = _exploreBanners[index];
-                  return GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => _openExploreBanner(banner),
-                    child: HappyNetworkImage(
-                      (banner['imageUrl'] ?? '').toString(),
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.white,
-                        alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.broken_image_outlined,
-                          color: HappyHomeColors.muted,
-                        ),
-                      ),
+            if (banner != null)
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _openExploreBanner(banner),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 380),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: HappyNetworkImage(
+                    (banner['imageUrl'] ?? '').toString(),
+                    key: ValueKey<String>((banner['imageUrl'] ?? '').toString()),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: Colors.white,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.broken_image_outlined,
+                          color: HappyHomeColors.muted),
                     ),
-                  );
-                },
+                  ),
+                ),
               )
             else
               Container(
@@ -874,9 +776,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                         width: selected ? 15 : 6,
                         height: 6,
                         decoration: BoxDecoration(
-                          color: selected
-                              ? HappyHomeColors.gold
-                              : const Color(0xFFCEC8BB),
+                          color: selected ? HappyHomeColors.gold : const Color(0xFFCEC8BB),
                           borderRadius: BorderRadius.circular(8),
                         ),
                       );
@@ -955,67 +855,118 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     return 46 + gridHeight;
   }
 
-  Widget _buildExplorePage() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 0),
-          child: Column(
+  Widget _buildExploreHeader() {
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 0),
+      child: Column(
+        children: [
+          _buildExploreBanner(),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildExploreBanner(),
-              const SizedBox(height: 10),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 82,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: const Color(0xFFE8E4DA)),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
+              Expanded(
+                child: SizedBox(
+                  height: 82,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: const Color(0xFFE8E4DA)),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: SizedBox(
-                      height: 82,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: const Color(0xFFE8E4DA)),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 82,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: const Color(0xFFE8E4DA)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
-        Expanded(
-          child: SwipeChipTabs(
-            titles: const ['توصية', 'لعبة', 'مبارزة', 'البث المباشر', 'لعبة الفائز السوبر', 'الفيديو'],
-            onChanged: (index) {
-              if (index == 0) _loadRecommendedRooms(force: true);
-            },
-            pages: [
-              (_) => _buildRecommendedRoomsContent(),
-              (_) => const _ExploreTabPlaceholder('لعبة'),
-              (_) => const _ExploreTabPlaceholder('مبارزة'),
-              (_) => const _ExploreTabPlaceholder('البث المباشر'),
-              (_) => const _ExploreTabPlaceholder('لعبة الفائز السوبر'),
-              (_) => const _ExploreTabPlaceholder('الفيديو'),
-            ],
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExploreTabs() {
+    const labels = ['توصية', 'لعبة', 'مبارزة', 'البث المباشر', 'لعبة الفائز السوبر', 'الفيديو'];
+    return SizedBox(
+      height: 46,
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: List.generate(labels.length, (index) {
+              final selected = _currentPage == _exploreFirstPage + index;
+              return Padding(
+                padding: EdgeInsetsDirectional.only(end: index == labels.length - 1 ? 0 : 8),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _goToAbsolutePage(_exploreFirstPage + index),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    height: 30,
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? const Color(0xFF1AD3BB) : const Color(0xFFF3F5F4),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Text(
+                      labels[index],
+                      style: TextStyle(
+                        color: selected ? Colors.white : const Color(0xFF858D8A),
+                        fontSize: 13,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
           ),
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildExploreTabPage(int index) {
+    switch (index) {
+      case 0:
+        return _buildRecommendedRoomsContent();
+      case 1:
+        return const _ExploreTabPlaceholder('لعبة');
+      case 2:
+        return const _ExploreTabPlaceholder('مبارزة');
+      case 3:
+        return const _ExploreTabPlaceholder('البث المباشر');
+      case 4:
+        return const _ExploreTabPlaceholder('لعبة الفائز السوبر');
+      default:
+        return const _ExploreTabPlaceholder('الفيديو');
+    }
+  }
+
+  void _goToAbsolutePage(int page) {
+    if (!_pageController.hasClients || page < 0 || page > _countryPage) return;
+    _pageController.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOutCubic,
     );
   }
 
@@ -1097,21 +1048,12 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: List.generate(labels.length, (index) {
-                final selected = _lastInnerIndex == index;
+                final selected = _currentPage == index;
                 return Padding(
-                  padding: EdgeInsetsDirectional.only(
-                    end: index == labels.length - 1 ? 0 : 8,
-                  ),
+                  padding: EdgeInsetsDirectional.only(end: index == labels.length - 1 ? 0 : 8),
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      setState(() => _lastInnerIndex = index);
-                      _roomsTabController.animateToPage(
-                        index,
-                        duration: const Duration(milliseconds: 240),
-                        curve: Curves.easeInOutCubic,
-                      );
-                    },
+                    onTap: () => _goToAbsolutePage(index),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 220),
                       curve: Curves.easeOutCubic,
@@ -1119,29 +1061,17 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       padding: const EdgeInsets.symmetric(horizontal: 15),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: selected
-                            ? const Color(0xFF1AD3BB)
-                            : const Color(0xFFF3F5F4),
+                        color: selected ? const Color(0xFF1AD3BB) : const Color(0xFFF3F5F4),
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
+                        duration: const Duration(milliseconds: 180),
                         style: TextStyle(
-                          color: selected
-                              ? Colors.white
-                              : const Color(0xFF858D8A),
+                          color: selected ? Colors.white : const Color(0xFF858D8A),
                           fontSize: 13.5,
-                          height: 1.1,
-                          fontWeight: selected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                         ),
-                        child: Text(
-                          labels[index],
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Text(labels[index]),
                       ),
                     ),
                   ),
@@ -1154,7 +1084,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
-  @override
+
   Widget build(BuildContext context) => Container(
     width: double.infinity,
     height: double.infinity,
@@ -1169,7 +1099,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     child: Column(
       children: [
         Padding(
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
           child: SizedBox(
             width: double.infinity,
             height: 40,
@@ -1209,191 +1139,54 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         ),
         Expanded(
           child: _homeRefreshWrapper(
-            Directionality(
-              textDirection: TextDirection.ltr,
-              child: PageView(
-              controller: _pageController,
-              reverse: true,
-              // Recent-tab horizontal gestures are routed deliberately below:
-              // left to Explore, right to Join. Other pages keep normal paging.
-              // Keep the outer pager locked for the entire manual drag,
-              // even after the finger crosses the page midpoint and onPageChanged fires.
-              physics: const NeverScrollableScrollPhysics(),
-              onPageChanged: (index) {
-                if (index != 0) {
-                  if (_roomsTabController.hasClients) {
-                    final page = _roomsTabController.page;
-                    if (page != null) _lastInnerIndex = page.round().clamp(0, 2);
-                  }
-                  _preservingRoomsTab = true;
-                }
-                setState(() => _currentPage = index);
-                if (index == 0) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (!mounted || !_roomsTabController.hasClients) return;
-                    _roomsTabController.jumpToPage(_lastInnerIndex);
-                    WidgetsBinding.instance.addPostFrameCallback((__) {
-                      if (mounted) _preservingRoomsTab = false;
-                    });
-                  });
-                }
-              },
+            Column(
               children: [
-                Directionality(
-                  textDirection: TextDirection.rtl,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    // On Recent, start the Explore drag anywhere in the full
-                    // Rooms page, including its header and tab strip.
-                    onHorizontalDragStart: (_) {
-                      _roomSwipeDelta = 0;
-                      _roomSwipeTargetIndex = null;
-                      _roomSwipeUsesOuterPager = false;
-                      _roomSwipeStartIndex = _lastInnerIndex;
-                      _roomSwipeInProgress = true;
-                    },
-                    onHorizontalDragUpdate: (details) {
-                      if (_currentPage != 0) return;
-                      final dx = details.delta.dx;
-                      if (dx.abs() < 0.1) return;
-                      _roomSwipeDelta += dx;
-
-                      // Pick only the adjacent destination in the finger's direction.
-                      if (_roomSwipeTargetIndex == null && !_roomSwipeUsesOuterPager) {
-                        if (dx > 0) {
-                          if (_roomSwipeStartIndex == 0) {
-                            _roomSwipeTargetIndex = 1;
-                          } else if (_roomSwipeStartIndex == 1) {
-                            _roomSwipeTargetIndex = 2;
-                          } else if (_roomSwipeStartIndex == 2) {
-                            _roomSwipeUsesOuterPager = true;
+                if (_currentPage <= 2) ...[
+                  const SizedBox(height: 24),
+                  MyPartyRoomButton(
+                    room: _myRoom,
+                    loading: _loadingMyRoom,
+                    onTap: _openMyRoom,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildMyRoomsTabs(),
+                  const SizedBox(height: 8),
+                ] else if (_currentPage >= _exploreFirstPage && _currentPage <= 8) ...[
+                  _buildExploreHeader(),
+                  _buildExploreTabs(),
+                ],
+                Expanded(
+                  child: Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: PageView(
+                      key: const PageStorageKey<String>('happy-live-unified-home-pager'),
+                      controller: _pageController,
+                      reverse: true,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentPage = index;
+                          if (index <= 2) {
+                            _lastInnerIndex = index;
+                          } else if (index >= _exploreFirstPage && index <= 8) {
+                            _lastExploreIndex = index - _exploreFirstPage;
                           }
-                        } else {
-                          if (_roomSwipeStartIndex == 2) {
-                            _roomSwipeTargetIndex = 1;
-                          } else if (_roomSwipeStartIndex == 1) {
-                            _roomSwipeTargetIndex = 0;
-                          }
+                        });
+                        if (index == _exploreFirstPage && _lastExploreIndex == 0) {
+                          _loadRecommendedRooms();
                         }
-                      }
-
-                      // Move the page continuously with the finger; clamp to one adjacent page.
-                      if (_roomSwipeUsesOuterPager && _pageController.hasClients) {
-                        final p = _pageController.position;
-                        final next = (p.pixels + dx)
-                            .clamp(
-                              p.minScrollExtent,
-                              p.minScrollExtent + p.viewportDimension,
-                            )
-                            .toDouble();
-                        _pageController.jumpTo(next);
-                      } else if (_roomSwipeTargetIndex != null &&
-                          _roomsTabController.hasClients) {
-                        final p = _roomsTabController.position;
-                        final next = (p.pixels + dx)
-                            .clamp(p.minScrollExtent, p.maxScrollExtent)
-                            .toDouble();
-                        _roomsTabController.jumpTo(next);
-                      }
-                    },
-                    onHorizontalDragEnd: (_) {
-                      final useOuter = _roomSwipeUsesOuterPager;
-                      final target = _roomSwipeTargetIndex;
-                      final start = _roomSwipeStartIndex;
-                      final distance = _roomSwipeDelta.abs();
-                      _roomSwipeDelta = 0;
-                      _roomSwipeTargetIndex = null;
-                      _roomSwipeUsesOuterPager = false;
-                      _roomSwipeInProgress = false;
-
-                      if (useOuter && _pageController.hasClients) {
-                        final p = _pageController.position;
-                        final completedFullPage = distance >= p.viewportDimension;
-                        _pageController.animateToPage(
-                          completedFullPage ? 1 : 0,
-                          duration: const Duration(milliseconds: 260),
-                          curve: Curves.easeOutCubic,
-                        );
-                      } else if (target != null && _roomsTabController.hasClients) {
-                        final p = _roomsTabController.position;
-                        final completedFullPage = distance >= p.viewportDimension;
-                        final destination = completedFullPage ? target : start;
-                        if (mounted) setState(() => _lastInnerIndex = destination);
-                        _roomsTabController.animateToPage(
-                          destination,
-                          duration: const Duration(milliseconds: 260),
-                          curve: Curves.easeOutCubic,
-                        );
-                      }
-                    },
-                    onHorizontalDragCancel: () {
-                      _roomSwipeDelta = 0;
-                      _roomSwipeTargetIndex = null;
-                      _roomSwipeUsesOuterPager = false;
-                      _roomSwipeInProgress = false;
-                      if (_roomsTabController.hasClients) {
-                        _roomsTabController.animateToPage(
-                          _roomSwipeStartIndex,
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                        );
-                      }
-                      if (_pageController.hasClients && _currentPage == 0) {
-                        _pageController.animateToPage(
-                          0,
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                        );
-                      }
-                    },
-                    child: Column(
-                    children: [
-                      const SizedBox(height: 24),
-                      MyPartyRoomButton(
-                        room: _myRoom,
-                        loading: _loadingMyRoom,
-                        onTap: _openMyRoom,
-                      ),
-                      const SizedBox(height: 14),
-                      _buildMyRoomsTabs(),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: Directionality(
-                          textDirection: TextDirection.ltr,
-                          child: PageView(
-                            key: const PageStorageKey<String>('happy-live-my-rooms-inner-pages'),
-                            controller: _roomsTabController,
-                            reverse: true,
-                            // Recent-tab horizontal drags are handled by the
-                            // parent GestureDetector across the whole page.
-                            physics: const NeverScrollableScrollPhysics(),
-                            onPageChanged: (index) {
-                              if (_currentPage == 0 && !_preservingRoomsTab && !_roomSwipeInProgress) {
-                                setState(() => _lastInnerIndex = index);
-                              }
-                            },
-                            children: [
-                              _buildMyRoomsPage(0),
-                              _buildMyRoomsPage(1),
-                              _buildMyRoomsPage(2),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                      },
+                      children: [
+                        Directionality(textDirection: TextDirection.rtl, child: _buildMyRoomsPage(0)),
+                        Directionality(textDirection: TextDirection.rtl, child: _buildMyRoomsPage(1)),
+                        Directionality(textDirection: TextDirection.rtl, child: _buildMyRoomsPage(2)),
+                        for (var i = 0; i < 6; i++)
+                          Directionality(textDirection: TextDirection.rtl, child: _buildExploreTabPage(i)),
+                        Directionality(textDirection: TextDirection.rtl, child: _buildCountryPage()),
+                      ],
                     ),
                   ),
                 ),
-                Directionality(
-                  textDirection: TextDirection.rtl,
-                  child: _buildExplorePage(),
-                ),
-                Directionality(
-                  textDirection: TextDirection.rtl,
-                  child: _buildCountryPage(),
-                ),
-                ],
-              ),
+              ],
             ),
           ),
         ),
