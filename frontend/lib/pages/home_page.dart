@@ -34,9 +34,10 @@ class HappyHomeTab extends StatefulWidget {
 
 class HappyHomeTabState extends State<HappyHomeTab> {
   final PageController _pageController = PageController();
-  static const int _roomsFirstPage = 0;
   static const int _exploreFirstPage = 3;
   static const int _countryPage = 9;
+  final ScrollController _exploreChipScroll = ScrollController();
+  final List<GlobalKey> _exploreChipKeys = List.generate(6, (_) => GlobalKey());
   Timer? _exploreBannerTimer;
   List<Map<String, dynamic>> _exploreBanners = <Map<String, dynamic>>[];
   int _exploreBannerIndex = 0;
@@ -44,6 +45,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   String _countryCode = 'ALL';
   String _countryName = 'الدولة';
   int _currentPage = 0;
+  int _headerPage = 0;
   int _lastInnerIndex = 0;
   int _lastExploreIndex = 0;
   Map<String, dynamic>? _myRoom;
@@ -102,6 +104,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   @override
   void dispose() {
     _pageController.dispose();
+    _exploreChipScroll.dispose();
     _exploreBannerTimer?.cancel();
     super.dispose();
   }
@@ -482,9 +485,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _topButton(int index, IconData icon, String label) {
-    final selected = (index == 0 && _currentPage <= 2) ||
-        (index == 3 && _currentPage >= 3 && _currentPage <= 8) ||
-        (index == 2 && _currentPage == _countryPage);
+    final selected = (index == 0 && _headerPage <= 2) ||
+        (index == 3 && _headerPage >= 3 && _headerPage <= 8) ||
+        (index == 2 && _headerPage == _countryPage);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
@@ -846,15 +849,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
-  double _exploreTabsHeight(BuildContext context) {
-    final width = MediaQuery.of(context).size.width - 16;
-    final tileWidth = (width - 10) / 2;
-    final tileHeight = tileWidth / 0.78;
-    final rows = (_recommendedRooms.length + 1) ~/ 2;
-    final gridHeight = rows == 0 ? 180.0 : rows * (tileHeight + 12) + 21;
-    return 46 + gridHeight;
-  }
-
   Widget _buildExploreHeader() {
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 0),
@@ -906,7 +900,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         textDirection: TextDirection.rtl,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
+          controller: _exploreChipScroll,
+          physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: List.generate(labels.length, (index) {
@@ -914,6 +909,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               return Padding(
                 padding: EdgeInsetsDirectional.only(end: index == labels.length - 1 ? 0 : 8),
                 child: GestureDetector(
+                  key: _exploreChipKeys[index],
                   behavior: HitTestBehavior.opaque,
                   onTap: () => _goToAbsolutePage(_exploreFirstPage + index),
                   child: AnimatedContainer(
@@ -1141,7 +1137,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           child: _homeRefreshWrapper(
             Column(
               children: [
-                if (_currentPage <= 2) ...[
+                if (_headerPage <= 2) ...[
                   const SizedBox(height: 24),
                   MyPartyRoomButton(
                     room: _myRoom,
@@ -1151,14 +1147,27 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   const SizedBox(height: 14),
                   _buildMyRoomsTabs(),
                   const SizedBox(height: 8),
-                ] else if (_currentPage >= _exploreFirstPage && _currentPage <= 8) ...[
+                ] else if (_headerPage >= _exploreFirstPage && _headerPage <= 8) ...[
                   _buildExploreHeader(),
                   _buildExploreTabs(),
                 ],
                 Expanded(
                   child: Directionality(
                     textDirection: TextDirection.ltr,
-                    child: PageView(
+                    child: NotificationListener<ScrollEndNotification>(
+                      onNotification: (notification) {
+                        if (notification.metrics.axis == Axis.horizontal &&
+                            notification.depth == 0) {
+                          final settledPage = _pageController.hasClients
+                              ? (_pageController.page?.round() ?? _currentPage)
+                              : _currentPage;
+                          if (mounted && _headerPage != settledPage) {
+                            setState(() => _headerPage = settledPage);
+                          }
+                        }
+                        return false;
+                      },
+                      child: PageView(
                       key: const PageStorageKey<String>('happy-live-unified-home-pager'),
                       controller: _pageController,
                       reverse: true,
@@ -1171,8 +1180,20 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                             _lastExploreIndex = index - _exploreFirstPage;
                           }
                         });
-                        if (index == _exploreFirstPage && _lastExploreIndex == 0) {
-                          _loadRecommendedRooms();
+                        if (index >= _exploreFirstPage && index <= 8) {
+                          final chipIndex = index - _exploreFirstPage;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted || _exploreChipKeys[chipIndex].currentContext == null) return;
+                            Scrollable.ensureVisible(
+                              _exploreChipKeys[chipIndex].currentContext!,
+                              alignment: 0.5,
+                              duration: const Duration(milliseconds: 260),
+                              curve: Curves.easeOutCubic,
+                            );
+                          });
+                        }
+                        if (index == _exploreFirstPage) {
+                          _loadRecommendedRooms(force: true);
                         }
                       },
                       children: [
@@ -1183,6 +1204,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                           Directionality(textDirection: TextDirection.rtl, child: _buildExploreTabPage(i)),
                         Directionality(textDirection: TextDirection.rtl, child: _buildCountryPage()),
                       ],
+                      ),
                     ),
                   ),
                 ),
