@@ -1253,7 +1253,7 @@ class _RecommendedRoomCard extends StatelessWidget {
     final image = (room['imageUrl'] ?? '').toString();
     final owner = (room['ownerName'] ?? 'صاحب الغرفة').toString();
     final members = (room['membersCount'] ?? 0) as num? ?? 0;
-    final support = room['supportCoins24h'] ?? 0;
+    final support = room['supportCoinsHour'] ?? 0;
     final isTop = rank == 1;
 
     return Material(
