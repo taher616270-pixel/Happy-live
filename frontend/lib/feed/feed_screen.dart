@@ -1,0 +1,61 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:video_player/video_player.dart';
+import 'feed_bottom_nav.dart';
+import 'feed_comments_sheet.dart';
+import 'feed_icons.dart';
+import 'feed_item.dart';
+import 'feed_models.dart';
+import 'feed_repository.dart';
+import 'feed_search_page.dart';
+import 'feed_share_sheet.dart';
+class FeedScreen extends StatefulWidget {
+ final FeedRepository repo; final bool showBottomNav; final ValueChanged<int>? onNavTap; final VoidCallback? onLiveTap;
+ const FeedScreen({super.key,required this.repo,this.showBottomNav=true,this.onNavTap,this.onLiveTap});
+ @override State<FeedScreen> createState()=>_FeedScreenState();
+}
+class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
+ final PageController _pc=PageController(); final Map<int,VideoPlayerController> _ctrls={}; List<FeedVideo> _videos=[];
+ FeedTab _tab=FeedTab.forYou; int _cur=0,_page=0; bool _loading=true,_more=false;
+ @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);_load();}
+ @override void dispose(){WidgetsBinding.instance.removeObserver(this);for(final c in _ctrls.values){c.dispose();}_pc.dispose();super.dispose();}
+ @override void didChangeAppLifecycleState(AppLifecycleState s){final c=_ctrls[_cur];if(c==null)return;if(s==AppLifecycleState.resumed){c.play();}else{c.pause();}}
+ Future<void> _load() async {
+  if(mounted)setState(()=>_loading=true);for(final c in _ctrls.values){c.dispose();}_ctrls.clear();_page=0;_cur=0;
+  try{_videos=await widget.repo.feed(_tab);}catch(_){_videos=[];}
+  if(!mounted)return;setState(()=>_loading=false);if(_pc.hasClients)_pc.jumpToPage(0);_sync();
+ }
+ Future<void> _ensure(int i) async {
+  if(i<0||i>=_videos.length||_ctrls.containsKey(i))return;
+  final c=VideoPlayerController.networkUrl(Uri.parse(_videos[i].url));_ctrls[i]=c;
+  try{await c.initialize();await c.setLooping(true);}catch(_){}
+  if(!mounted||_ctrls[i]!=c)return;setState((){});if(i==_cur)c.play();
+ }
+ void _sync(){
+  for(final k in _ctrls.keys.toList()){if((k-_cur).abs()>1){_ctrls.remove(k)?.dispose();}}
+  _ensure(_cur);_ensure(_cur+1);_ensure(_cur-1);
+  for(final e in _ctrls.entries){if(e.key==_cur){e.value.play();}else{e.value.pause();}}
+ }
+ Future<void> _onPage(int i) async {
+  _cur=i;_sync();if(i>=_videos.length-2&&!_more){_more=true;try{final next=await widget.repo.feed(_tab,page:_page+1);if(next.isNotEmpty&&mounted){_page++;setState(()=>_videos.addAll(next));}}catch(_){} _more=false;}
+ }
+ void _setTab(FeedTab t){if(t==_tab)return;_tab=t;_load();}
+ @override Widget build(BuildContext context){
+  final top=MediaQuery.of(context).padding.top;
+  return Directionality(textDirection:TextDirection.rtl,child:Scaffold(backgroundColor:Colors.black,body:Stack(children:[
+   Column(children:[
+    Expanded(child:_loading?const Center(child:CircularProgressIndicator(color:Colors.white54,strokeWidth:2)):_videos.isEmpty?const Center(child:Text('لا توجد فيديوهات حالياً',style:TextStyle(color:Colors.white54))):PageView.builder(controller:_pc,scrollDirection:Axis.vertical,itemCount:_videos.length,onPageChanged:_onPage,itemBuilder:(_,i){final v=_videos[i];return FeedItem(key:ValueKey(v.id),video:v,ctrl:_ctrls[i],repo:widget.repo,onComments:()=>showFeedComments(context,widget.repo,v,()=>setState((){})),onShare:()=>showFeedShare(context,widget.repo,v,()=>setState(()=>v.shares++)));})),
+    if(widget.showBottomNav)FeedBottomNav(current:0,onTap:widget.onNavTap)
+   ]),
+   Positioned(top:top+6,left:0,right:0,height:44,child:Stack(alignment:Alignment.center,children:[
+    Align(alignment:Alignment.centerLeft,child:IconButton(padding:const EdgeInsets.symmetric(horizontal:16),icon:const Icon(Icons.search_rounded,color:Colors.white,size:30),onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>FeedSearchPage(repo:widget.repo))))),
+    Row(mainAxisSize:MainAxisSize.min,children:[_TabText('المجتمع',_tab==FeedTab.community,()=>_setTab(FeedTab.community)),const SizedBox(width:20),_TabText('أتابعه',_tab==FeedTab.following,()=>_setTab(FeedTab.following)),const SizedBox(width:20),_TabText('لك',_tab==FeedTab.forYou,()=>_setTab(FeedTab.forYou))]),
+    Align(alignment:Alignment.centerRight,child:GestureDetector(onTap:widget.onLiveTap,child:const Padding(padding:EdgeInsets.symmetric(horizontal:16),child:LiveIcon())))
+   ]))
+  ])));
+ }
+}
+class _TabText extends StatelessWidget {
+ final String text;final bool selected;final VoidCallback onTap;const _TabText(this.text,this.selected,this.onTap);
+ @override Widget build(BuildContext context)=>GestureDetector(behavior:HitTestBehavior.opaque,onTap:onTap,child:Column(mainAxisSize:MainAxisSize.min,children:[Text(text,style:TextStyle(color:selected?Colors.white:const Color(0xB3FFFFFF),fontSize:16.5,fontWeight:selected?FontWeight.w700:FontWeight.w500,shadows:const[Shadow(color:Color(0x66000000),blurRadius:4)])),const SizedBox(height:4),Container(width:28,height:2.5,color:selected?Colors.white:Colors.transparent)]));
+}
