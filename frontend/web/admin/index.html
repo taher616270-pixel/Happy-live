@@ -579,7 +579,7 @@ async function uploadExploreBannerImage(file){
 }
 async function exploreBannersPage(){
   if(admin.role!=="owner"&&admin.role!=="admin"){$("content").innerHTML='<div class="section"><p class="notice">إدارة بنرات استكشف متاحة للمالك ومدير التطبيق.</p></div>';return}
-  const data=await api("/admin/explore/banners"),settings=data.settings||{},draft=(settings.banners||[]).map(x=>({...x}));
+  const data=await api("/admin/explore/banners"),settings=data.settings||{};let draft=(settings.banners||[]).map(x=>({...x}));
   let enabled=settings.enabled!==false,intervalSeconds=Number(settings.intervalSeconds||4);
   const countryOptions=[["ALL","كل الدول"],["SA","السعودية"],["YE","اليمن"],["LB","لبنان"],["AE","الإمارات"],["KW","الكويت"],["QA","قطر"],["BH","البحرين"],["OM","عُمان"],["EG","مصر"],["MA","المغرب"],["DZ","الجزائر"],["IQ","العراق"],["JO","الأردن"],["SY","سوريا"],["TR","تركيا"],["PK","باكستان"],["PS","فلسطين"],["SD","السودان"]];
   const destinationOptions=[["none","بدون وجهة"],["vip","صفحة VIP"],["event","صفحة حدث"],["rules","صفحة القوانين"],["url","رابط ويب"]];
