@@ -185,6 +185,15 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
       'useUniqueFileName': 'true',
       'folder': '/happy-live/feed',
     });
+    // Start generating the browser-safe H.264/AAC MP4 as soon as the
+    // video is uploaded, rather than making the first viewer wait for encoding.
+    if (_selectedIsVideo) {
+      request.fields['transformation'] = jsonEncode({
+        'post': [
+          {'type': 'transformation', 'value': 'f-mp4,vc-h264,ac-aac'}
+        ],
+      });
+    }
     final mediaMime = _selectedIsVideo
         ? switch (extension) {
             'mp4' || 'm4v' => 'video/mp4',
