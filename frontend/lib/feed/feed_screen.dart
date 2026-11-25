@@ -64,7 +64,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   if (!mounted || selected == null) return;
   final confirmed = await Navigator.of(context).push<XFile>(
    MaterialPageRoute<XFile>(
-    builder: (_) => FeedCreateCameraPage(initialFile: selected!),
+    builder: (_) => FeedCreateCameraPage(initialFile: selected!, accessToken: FeedConfig.authToken()),
    ),
   );
   if (confirmed != null && mounted) {
