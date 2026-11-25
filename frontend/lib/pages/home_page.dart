@@ -397,8 +397,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       height: 40,
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(13),
+        child: InkWell(          borderRadius: BorderRadius.circular(13),
           onTap: () => _goToPage(index),
           child: Container(
             padding: EdgeInsets.symmetric(horizontal: selected ? 11 : 0),
@@ -797,8 +796,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           ],
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 420,
+        SizedBox(          height: 420,
           child: SwipeChipTabs(
             titles: const ['توصية', 'لعبة', 'مبارزة', 'البث المباشر', 'لعبة الفائز السوبر', 'الفيديو'],
             onChanged: (index) {
@@ -887,7 +885,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     return Padding(
       padding: const EdgeInsetsDirectional.only(start: 18, end: 18),
       child: SizedBox(
-        height: 40,
+        height: 46,
         child: Align(
           alignment: AlignmentDirectional.centerStart,
           child: Directionality(
@@ -911,28 +909,29 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       );
                     },
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOut,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      height: 30,
+                      padding: const EdgeInsets.symmetric(horizontal: 15),
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: selected
-                            ? const Color(0x1FD9A93C)
-                            : const Color(0x0FFFFFFF),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: selected
-                              ? HappyHomeColors.gold
-                              : const Color(0x33777777),
-                          width: 1,
-                        ),
+                            ? const Color(0xFF1AD3BB)
+                            : const Color(0xFFF3F5F4),
+                        borderRadius: BorderRadius.circular(15),
                       ),
                       child: AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOut,
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
                         style: TextStyle(
-                          color: selected ? HappyHomeColors.gold : HappyHomeColors.muted,
-                          fontSize: 12,
-                          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                          color: selected
+                              ? Colors.white
+                              : const Color(0xFF858D8A),
+                          fontSize: 13.5,
+                          height: 1.1,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                         ),
                         child: Text(
                           labels[index],
@@ -1197,8 +1196,7 @@ class MyPartyRoomButton extends StatelessWidget {
                               title,
                               maxLines: 2,
                               softWrap: true,
-                              overflow: TextOverflow.fade,
-                              style: const TextStyle(
+                              overflow: TextOverflow.fade,                              style: const TextStyle(
                                 color: Color(0xFF1E2233),
                                 fontSize: 15,
                                 height: 1.15,
@@ -1597,89 +1595,3 @@ class _RoomMemberWaveState extends State<_RoomMemberWave>
     _controller.dispose();
     super.dispose();
   }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return SizedBox(
-          width: 19,
-          height: 16,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: List.generate(3, (index) {
-              final phase = (_controller.value + index / 3) % 1.0;
-              final height = 4.0 + (math.sin(phase * math.pi * 2) + 1) * 5.0;
-              return Container(
-                width: 3,
-                height: height,
-                decoration: BoxDecoration(
-                  color: HappyHomeColors.gold,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              );
-            }),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _Equalizer extends StatefulWidget {
-  const _Equalizer();
-
-  @override
-  State<_Equalizer> createState() => _EqualizerState();
-}
-
-class _EqualizerState extends State<_Equalizer>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 650),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return SizedBox(
-          width: 19,
-          height: 15,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: List.generate(4, (index) {
-              final phase = (_controller.value + index * 0.19) % 1.0;
-              final height = 4 + (math.sin(phase * math.pi) * 10);
-              return Container(
-                width: 3,
-                height: height,
-                decoration: BoxDecoration(
-                  color: kPillText,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              );
-            }),
-          ),
-        );
-      },
-    );
-  }
-}
