@@ -548,7 +548,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
   }
 
-  void _finishRecentTabSwipe(DragEndDetails details) {    if (!_recentTabSwipeActive || _lastInnerIndex != 2) {
+  void _finishRecentTabSwipe(DragEndDetails details) {
+    if (!_recentTabSwipeActive || _lastInnerIndex != 2) {
       _recentTabSwipeDelta = 0;
       _recentSwipeTargetPage = null;
       _recentTabSwipeActive = false;
@@ -920,7 +921,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       );
     }
     return ListView.separated(
-        physics: const NeverScrollableScrollPhysics(),
         key: const PageStorageKey<String>('happy-live-recommended-rooms'),
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(0, 5, 0, 16),
@@ -1097,7 +1097,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       decoration: BoxDecoration(
                         color: selected
                             ? const Color(0xFF1AD3BB)
-                            : const Color(0xFFF3F5F4),                        borderRadius: BorderRadius.circular(15),
+                            : const Color(0xFFF3F5F4),
+                        borderRadius: BorderRadius.circular(15),
                       ),
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 220),
@@ -1570,7 +1571,8 @@ class MyPartyRoomButton extends StatelessWidget {
                               title,
                               maxLines: 2,
                               softWrap: true,
-                              overflow: TextOverflow.fade,                              style: const TextStyle(
+                              overflow: TextOverflow.fade,
+                              style: const TextStyle(
                                 color: Color(0xFF1E2233),
                                 fontSize: 15,
                                 height: 1.15,
