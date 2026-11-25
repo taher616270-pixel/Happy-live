@@ -54,6 +54,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> _recommendedRooms = <Map<String, dynamic>>[];
   bool _loadingRecommendedRooms = false;
+  bool _isRefreshingHome = false;
   String? _recommendedRoomsError;
   bool _loadingRecentRooms = false;
   String? _recentRoomsError;
@@ -189,6 +190,48 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     } finally {
       if (mounted) setState(() => _loadingRecommendedRooms = false);
     }
+  }
+
+  Future<void> _refreshHomePage() async {
+    if (_isRefreshingHome) return;
+    if (mounted) setState(() => _isRefreshingHome = true);
+    try {
+      await Future.wait<void>([
+        _loadMyRoom(),
+        _loadRecentRooms(),
+        _loadRecommendedRooms(force: true),
+        _loadCountry(),
+        _loadExploreBanners(),
+      ]);
+    } finally {
+      if (mounted) setState(() => _isRefreshingHome = false);
+    }
+  }
+
+  Widget _homeRefreshWrapper(Widget child) {
+    return RefreshIndicator(
+      color: Colors.transparent,
+      backgroundColor: Colors.transparent,
+      displacement: 48,
+      onRefresh: _refreshHomePage,
+      child: Stack(
+        children: [
+          child,
+          Positioned(
+            top: 7,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: _isRefreshingHome ? 1 : 0,
+                duration: const Duration(milliseconds: 180),
+                child: const Center(child: _FiveBarRefreshAnimation()),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openRecommendedRoom(Map<String, dynamic> room) async {
@@ -826,7 +869,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             Text(_recommendedRoomsError!, textAlign: TextAlign.center,
               style: const TextStyle(color: HappyHomeColors.muted, fontSize: 11)),
             TextButton(
-              onPressed: () => _loadRecommendedRooms(force: true),
+              onPressed: _refreshHomePage,
               child: const Text('إعادة المحاولة',
                 style: TextStyle(color: HappyHomeColors.gold, fontSize: 11)),
             ),
@@ -835,10 +878,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       );
     }
     if (_recommendedRooms.isEmpty) {
-      return RefreshIndicator(
-        color: HappyHomeColors.gold,
-        onRefresh: () => _loadRecommendedRooms(force: true),
-        child: ListView(
+      return _homeRefreshWrapper(ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: const [
             SizedBox(height: 90),
@@ -846,12 +886,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               style: TextStyle(color: HappyHomeColors.muted, fontSize: 12))),
           ],
         ),
-      );
+      ));
     }
-    return RefreshIndicator(
-      color: HappyHomeColors.gold,
-      onRefresh: () => _loadRecommendedRooms(force: true),
-      child: ListView.separated(
+    return _homeRefreshWrapper(ListView.separated(
         key: const PageStorageKey<String>('happy-live-recommended-rooms'),
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(8, 5, 8, 0),
@@ -864,8 +901,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             onTap: () => _openRecommendedRoom(room),
           );
         },
-      ),
-    );
+      ));
   }
 
   Widget _buildExplorePage() {
@@ -1844,6 +1880,77 @@ class LiveHouseCard extends StatelessWidget {
     color: const Color(0xFFFAF6EA),
     child: const Icon(Icons.person, color: kNeonLight, size: 16),
   );
+}
+
+
+class _FiveBarRefreshAnimation extends StatefulWidget {
+  const _FiveBarRefreshAnimation();
+
+  @override
+  State<_FiveBarRefreshAnimation> createState() => _FiveBarRefreshAnimationState();
+}
+
+class _FiveBarRefreshAnimationState extends State<_FiveBarRefreshAnimation>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 760),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const heights = [9.0, 15.0, 21.0, 15.0, 9.0];
+    const colors = [
+      Color(0xFFD9A93C),
+      Color(0xFFE8C978),
+      Color(0xFFFFF3D6),
+      Color(0xFFE8C978),
+      Color(0xFFD9A93C),
+    ];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.94),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0x66D9A93C)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x1AD9A93C), blurRadius: 9, offset: Offset(0, 2)),
+        ],
+      ),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) => Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: List.generate(5, (index) {
+            final phase = (_controller.value * 2 * math.pi) + index * 0.9;
+            final height = heights[index] * (0.55 + 0.45 * math.sin(phase).abs());
+            return Container(
+              width: 3,
+              height: height,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              decoration: BoxDecoration(
+                color: colors[index],
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
 }
 
 class _RoomMemberWave extends StatefulWidget {
