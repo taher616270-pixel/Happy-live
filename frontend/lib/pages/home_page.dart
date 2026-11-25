@@ -1225,8 +1225,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       _roomSwipeDelta = 0;
                     },
                     onHorizontalDragUpdate: (details) {
-                      // Only Following -> Join is enabled. A rightward drag
-                      // from Following is intentionally ignored.
+                      // Only rightward swipes from Following -> Join are enabled.
                       if (_currentPage == 0 && _lastInnerIndex == 0) {
                         _roomSwipeDelta += details.delta.dx;
                       }
@@ -1234,8 +1233,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     onHorizontalDragEnd: (details) {
                       final shouldOpenJoin = _currentPage == 0 &&
                           _lastInnerIndex == 0 &&
-                          (_roomSwipeDelta <= -45 ||
-                              (details.primaryVelocity ?? 0) < -320);
+                          (_roomSwipeDelta >= 45 ||
+                              (details.primaryVelocity ?? 0) > 320);
                       _roomSwipeDelta = 0;
                       if (!shouldOpenJoin || !_roomsTabController.hasClients) return;
                       setState(() => _lastInnerIndex = 1);
