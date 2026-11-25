@@ -103,7 +103,7 @@ class SwipeChipTabsState extends State<SwipeChipTabs> {
           child: SingleChildScrollView(
             controller: _row,
             scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
+            physics: const NeverScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(children: [
               for (var i = 0; i < n; i++) ...[
@@ -125,6 +125,7 @@ class SwipeChipTabsState extends State<SwipeChipTabs> {
         Expanded(
           child: PageView.builder(
             controller: _pc,
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: n,
             itemBuilder: (context, i) => widget.keepPagesAlive
                 ? _KeepAlive(child: Builder(builder: widget.pages[i]))
