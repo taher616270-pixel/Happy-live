@@ -644,7 +644,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
     if (_recentRooms.isEmpty) {
       return ListView(
-        physics: const NeverScrollableScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         children: const [
           SizedBox(height: 90),
           Center(
@@ -657,7 +657,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       );
     }
     return ListView.separated(
-      physics: const NeverScrollableScrollPhysics(),
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       key: const PageStorageKey<String>('happy-live-recent-rooms-scroll'),
       padding: const EdgeInsets.fromLTRB(8, 5, 8, 0),
       itemCount: _recentRooms.length,
@@ -926,9 +926,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
     return GridView.builder(
       key: const PageStorageKey<String>('happy-live-recommended-rooms'),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(0, 5, 0, 16),
+      shrinkWrap: false,
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      padding: const EdgeInsets.fromLTRB(8, 5, 8, 16),
       itemCount: _recommendedRooms.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -956,48 +956,50 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _buildExplorePage() {
-    return ListView(
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
-      key: const PageStorageKey<String>('happy-live-explore-scroll'),
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 16),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildExploreBanner(),
-        const SizedBox(height: 10),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 82,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: const Color(0xFFE8E4DA)),
-                    borderRadius: BorderRadius.circular(14),
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 0),
+          child: Column(
+            children: [
+              _buildExploreBanner(),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 82,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: const Color(0xFFE8E4DA)),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: SizedBox(
-                height: 82,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: const Color(0xFFE8E4DA)),
-                    borderRadius: BorderRadius.circular(14),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SizedBox(
+                      height: 82,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: const Color(0xFFE8E4DA)),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: _exploreTabsHeight(context),
+        Expanded(
           child: SwipeChipTabs(
             titles: const ['توصية', 'لعبة', 'مبارزة', 'البث المباشر', 'لعبة الفائز السوبر', 'الفيديو'],
             onChanged: (index) {
@@ -1022,7 +1024,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   // a country-specific room feed is available from the API.
   Widget _buildCountryPage() {
     return ListView(
-      physics: const NeverScrollableScrollPhysics(),
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       key: const PageStorageKey<String>('happy-live-country-scroll'),
       padding: const EdgeInsets.fromLTRB(16, 28, 16, 16),
       children: [
