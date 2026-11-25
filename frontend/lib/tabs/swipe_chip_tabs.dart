@@ -26,9 +26,9 @@ class SwipeChipTabs extends StatefulWidget {
     this.initial = 0,
     this.onChanged,
     this.selectedColor = const Color(0xFF1AD3BB),
-    this.chipColor = const Color(0xFF1B2927),
+    this.chipColor = const Color(0xFFF3F5F4),
     this.selectedText = Colors.white,
-    this.unselectedText = const Color(0xFF9DB0AC),
+    this.unselectedText = const Color(0xFF858D8A),
     this.keepPagesAlive = true,
   }) : assert(titles.length == pages.length);
 
