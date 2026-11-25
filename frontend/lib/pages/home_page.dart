@@ -47,6 +47,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   bool _preservingRoomsTab = false;
   double _recentTabSwipeDelta = 0;
   int? _recentSwipeTargetPage;
+  bool _recentTabSwipeActive = false;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
@@ -424,7 +425,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   void _updateRecentTabSwipe(DragUpdateDetails details) {
-    if (_currentPage != 0 || _lastInnerIndex != 2) return;
+    if (!_recentTabSwipeActive || _lastInnerIndex != 2) return;
     final dx = details.delta.dx;
     if (dx.abs() < 0.1) return;
 
@@ -452,15 +453,17 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   void _finishRecentTabSwipe(DragEndDetails details) {
-    if (_currentPage != 0 || _lastInnerIndex != 2) {
+    if (!_recentTabSwipeActive || _lastInnerIndex != 2) {
       _recentTabSwipeDelta = 0;
       _recentSwipeTargetPage = null;
+      _recentTabSwipeActive = false;
       return;
     }
     final velocity = details.primaryVelocity ?? 0;
     final target = _recentSwipeTargetPage;
     _recentTabSwipeDelta = 0;
     _recentSwipeTargetPage = null;
+    _recentTabSwipeActive = false;
 
     if (target == 1 && _pageController.hasClients) {
       final page = _pageController.page ?? 0;
@@ -485,6 +488,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     final target = _recentSwipeTargetPage;
     _recentTabSwipeDelta = 0;
     _recentSwipeTargetPage = null;
+    _recentTabSwipeActive = false;
     if (target == 1 && _pageController.hasClients) {
       _pageController.animateToPage(
         0,
@@ -1021,18 +1025,19 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                                     ? (_) {
                                         _recentTabSwipeDelta = 0;
                                         _recentSwipeTargetPage = null;
+                                        _recentTabSwipeActive = true;
                                       }
                                     : null,
                             onHorizontalDragUpdate:
-                                _currentPage == 0 && _lastInnerIndex == 2
+                                _lastInnerIndex == 2
                                     ? _updateRecentTabSwipe
                                     : null,
                             onHorizontalDragEnd:
-                                _currentPage == 0 && _lastInnerIndex == 2
+                                _lastInnerIndex == 2
                                     ? _finishRecentTabSwipe
                                     : null,
                             onHorizontalDragCancel:
-                                _currentPage == 0 && _lastInnerIndex == 2
+                                _lastInnerIndex == 2
                                     ? _cancelRecentTabSwipe
                                     : null,
                             child: PageView(
