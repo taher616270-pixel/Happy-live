@@ -430,14 +430,14 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     if (dx.abs() < 0.1) return;
 
     _recentTabSwipeDelta += dx;
-    _recentSwipeTargetPage ??= dx < 0 ? 1 : 2;
+    _recentSwipeTargetPage ??= dx > 0 ? 1 : 2;
 
-    // Follow the finger: left drags move the outer Rooms/Explore pager;
-    // right drags move the inner Recent/Join pager.
+    // Reversed only on the Recent tab: right drags move Rooms -> Explore;
+    // left drags move Recent -> Join inside Rooms.
     if (_recentSwipeTargetPage == 1 && _pageController.hasClients) {
       final position = _pageController.position;
       final pageOneMax = position.minScrollExtent + position.viewportDimension;
-      final next = (position.pixels - dx)
+      final next = (position.pixels + dx)
           .clamp(position.minScrollExtent, pageOneMax)
           .toDouble();
       _pageController.jumpTo(next);
@@ -445,7 +445,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         _roomsTabController.hasClients) {
       final position = _roomsTabController.position;
       final pageOneMin = position.maxScrollExtent - position.viewportDimension;
-      final next = (position.pixels - dx)
+      final next = (position.pixels + dx)
           .clamp(pageOneMin, position.maxScrollExtent)
           .toDouble();
       _roomsTabController.jumpTo(next);
@@ -467,7 +467,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
 
     if (target == 1 && _pageController.hasClients) {
       final page = _pageController.page ?? 0;
-      final settleOnExplore = page >= 0.5 || velocity < -320;
+      final settleOnExplore = page >= 0.5 || velocity > 320;
       _pageController.animateToPage(
         settleOnExplore ? 1 : 0,
         duration: const Duration(milliseconds: 260),
@@ -475,7 +475,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       );
     } else if (target == 2 && _roomsTabController.hasClients) {
       final page = _roomsTabController.page ?? 2;
-      final settleOnJoin = page <= 1.5 || velocity > 320;
+      final settleOnJoin = page <= 1.5 || velocity < -320;
       _roomsTabController.animateToPage(
         settleOnJoin ? 1 : 2,
         duration: const Duration(milliseconds: 240),
