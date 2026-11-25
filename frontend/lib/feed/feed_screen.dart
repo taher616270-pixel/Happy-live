@@ -45,9 +45,29 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
  }
  void _setTab(FeedTab t){if(t==_tab)return;_tab=t;_load();}
  Future<void> _openCreator() async {
-  final selected = await Navigator.of(context).push<XFile>(MaterialPageRoute<XFile>(builder: (_) => const FeedCreateCameraPage()));
-  if (selected != null && mounted) {
-   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم اختيار الملف: ${selected.name}')));
+  // Open the native/browser file chooser directly inside the + tap gesture.
+  // Navigating first can consume Safari's transient user activation.
+  XFile? selected;
+  try {
+   selected = await ImagePicker().pickMedia();
+  } catch (_) {
+   if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+     const SnackBar(content: Text('تعذر فتح معرض الجهاز. حاول مرة أخرى.')),
+    );
+   }
+   return;
+  }
+  if (!mounted || selected == null) return;
+  final confirmed = await Navigator.of(context).push<XFile>(
+   MaterialPageRoute<XFile>(
+    builder: (_) => FeedCreateCameraPage(initialFile: selected!),
+   ),
+  );
+  if (confirmed != null && mounted) {
+   ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('تم اختيار الملف: ${confirmed.name}')),
+   );
   }
  }
  @override Widget build(BuildContext context){
