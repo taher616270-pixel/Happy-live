@@ -1791,7 +1791,7 @@ class LiveHouseCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       const Icon(Icons.headphones_rounded, color: kPillText, size: 14),
                       const SizedBox(width: 6),
-                      _Equalizer(),
+                      _RoomMemberWave(),
                     ],
                   ),
                 ),
