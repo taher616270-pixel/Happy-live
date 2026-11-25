@@ -529,38 +529,67 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   Widget _buildMyRoomsTabs() {
     const labels = ['متابعة', 'انضم', 'مؤخراً'];
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsetsDirectional.only(start: 18, end: 18),
       child: SizedBox(
         height: 40,
-        child: Row(
-          children: List.generate(labels.length, (index) {
-            final selected = _selectedMyRoomsTab == index;
-            return Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  setState(() => _selectedMyRoomsTab = index);
-                  _myRoomsTabController.animateToPage(
-                    index,
-                    duration: const Duration(milliseconds: 240),
-                    curve: Curves.easeInOutCubic,
-                  );
-                },
-                child: AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOut,
-                  style: TextStyle(
-                    color: selected ? HappyHomeColors.gold : HappyHomeColors.muted,
-                    fontSize: 12,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+        child: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(labels.length, (index) {
+                final selected = _selectedMyRoomsTab == index;
+                return Padding(
+                  padding: EdgeInsetsDirectional.only(
+                    end: index == labels.length - 1 ? 0 : 8,
                   ),
-                  child: Center(
-                    child: Text(labels[index], maxLines: 1, overflow: TextOverflow.ellipsis),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      setState(() => _selectedMyRoomsTab = index);
+                      _myRoomsTabController.animateToPage(
+                        index,
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeInOutCubic,
+                      );
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? const Color(0x1FD9A93C)
+                            : const Color(0x0FFFFFFF),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: selected
+                              ? HappyHomeColors.gold
+                              : const Color(0x33777777),
+                          width: 1,
+                        ),
+                      ),
+                      child: AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOut,
+                        style: TextStyle(
+                          color: selected ? HappyHomeColors.gold : HappyHomeColors.muted,
+                          fontSize: 12,
+                          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                        ),
+                        child: Text(
+                          labels[index],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            );
-          }),
+                );
+              }),
+            ),
+          ),
         ),
       ),
     );
