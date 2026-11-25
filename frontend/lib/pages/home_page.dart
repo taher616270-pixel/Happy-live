@@ -924,20 +924,26 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         ],
       );
     }
-    return ListView.separated(
-        key: const PageStorageKey<String>('happy-live-recommended-rooms'),
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(0, 5, 0, 16),
-        itemCount: _recommendedRooms.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 11),
-        itemBuilder: (context, index) {
-          final room = _recommendedRooms[index];
-          return _RecommendedRoomCard(
-            room: room,
-            onTap: () => _openRecommendedRoom(room),
-          );
-        },
-      );
+    return GridView.builder(
+      key: const PageStorageKey<String>('happy-live-recommended-rooms'),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(0, 5, 0, 16),
+      itemCount: _recommendedRooms.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.78,
+      ),
+      itemBuilder: (context, index) {
+        final room = _recommendedRooms[index];
+        return _RecommendedRoomCard(
+          room: room,
+          onTap: () => _openRecommendedRoom(room),
+        );
+      },
+    );
   }
 
   Widget _buildExplorePage() {
@@ -1370,18 +1376,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 ),
                 Directionality(
                   textDirection: TextDirection.rtl,
-                  child: _buildCountryPage(),
-                ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-class _RecommendedRoomCard extends StatelessWidget {
+                  child: _buildCouclass _RecommendedRoomCard extends StatelessWidget {
   const _RecommendedRoomCard({
     required this.room,
     required this.onTap,
@@ -1393,166 +1388,84 @@ class _RecommendedRoomCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = (room['name'] ?? 'غرفة صوتية').toString();
-    final announcement = (room['announcement'] ?? room['description'] ?? '')
-        .toString()
-        .trim();
     final image = (room['imageUrl'] ?? '').toString();
-    final levelValue = room['experienceLevel'] ?? room['experience_level'] ?? 1;
-    final level = levelValue is num
-        ? levelValue.toInt()
-        : int.tryParse(levelValue.toString()) ?? 1;
     final membersValue = room['membersCount'] ?? room['members_count'] ?? 0;
     final membersCount = membersValue is num
         ? membersValue.toInt()
         : int.tryParse(membersValue.toString()) ?? 0;
 
-    return SizedBox(
-      width: double.infinity,
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: const Color(0x66D9A93C),
-                width: 1.2,
-              ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x0AD9A93C),
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(13),
-                      child: SizedBox(
-                        width: 74,
-                        height: 74,
-                        child: image.startsWith('https://')
-                            ? HappyNetworkImage(
-                                image,
-                                width: 74,
-                                height: 74,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _roomFallback(),
-                              )
-                            : _roomFallback(),
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Padding(
-                        // Reserve the lower-left corner for the live member
-                        // count and its animated three-bar wave indicator.
-                        padding: const EdgeInsets.only(left: 38),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF1E2233),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      image.startsWith('https://')
+                          ? HappyNetworkImage(
+                              image,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _roomFallback(),
+                            )
+                          : _roomFallback(),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsetsDirectional.fromSTEB(8, 15, 8, 7),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.transparent, Color(0xCC000000)],
                             ),
-                            const SizedBox(height: 5),
-                            Text(
-                              announcement.isEmpty
-                                  ? 'لا يوجد إعلان للغرفة'
-                                  : announcement,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: HappyHomeColors.muted,
-                                fontSize: 11,
-                                height: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 7),
-                            Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 9,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFF3D5),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: const Color(0xFFD9A93C)
-                                        .withOpacity(0.65),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.workspace_premium_rounded,
-                                      size: 13,
-                                      color: HappyHomeColors.gold,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Lv.$level',
-                                      style: const TextStyle(
-                                        color: Color(0xFF8A6420),
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              const _RoomMemberWave(count: 3),
+                              const SizedBox(width: 6),
+                              Text(
+                                '$membersCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  shadows: [Shadow(color: Colors.black54, blurRadius: 3)],
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                Positioned(
-                  left: 8,
-                  bottom: 5,
-                  child: Directionality(
-                    textDirection: TextDirection.ltr,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          '$membersCount',
-                          style: const TextStyle(
-                            color: Color(0xFF8A6420),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 5),
-                        const _RoomMemberWave(count: 3),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 6),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF1E2233),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1562,6 +1475,14 @@ class _RecommendedRoomCard extends StatelessWidget {
         color: const Color(0xFFFAF6EA),
         alignment: Alignment.center,
         child: const Icon(
+          Icons.graphic_eq_rounded,
+          color: HappyHomeColors.gold,
+          size: 28,
+        ),
+      );
+}
+
+onst Icon(
           Icons.graphic_eq_rounded,
           color: HappyHomeColors.gold,
           size: 22,
