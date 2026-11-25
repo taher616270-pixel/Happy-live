@@ -911,21 +911,36 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       _buildMyRoomsTabs(),
                       const SizedBox(height: 8),
                       Expanded(
-                        child: NotificationListener<OverscrollNotification>(
+                        child: NotificationListener<ScrollNotification>(
                           onNotification: (notification) {
-                            final atLastTab = _roomsTabController.hasClients &&
-                                _roomsTabController.page != null &&
-                                _roomsTabController.page! >= 1.99;
-                            if (atLastTab &&
-                                notification.metrics.axis == Axis.horizontal &&
-                                notification.metrics.pixels >= notification.metrics.maxScrollExtent - 0.5 &&
-                                notification.overscroll > 0 &&
-                                !_exploreEdgeTransitioning) {
-                              _exploreEdgeTransitioning = true;
+                            if (notification is OverscrollNotification) {
+                              final atLastTab = _roomsTabController.hasClients &&
+                                  _roomsTabController.page != null &&
+                                  _roomsTabController.page! >= 1.99;
+                              final atRoomsPage = _pageController.hasClients &&
+                                  _pageController.page != null &&
+                                  _pageController.page! < 0.01;
+                              if (atLastTab &&
+                                  atRoomsPage &&
+                                  notification.metrics.axis == Axis.horizontal &&
+                                  notification.metrics.pixels >= notification.metrics.maxScrollExtent - 0.5 &&
+                                  notification.overscroll > 0 &&
+                                  !_exploreEdgeTransitioning) {
+                                _exploreEdgeTransitioning = true;
+                                final position = _pageController.position;
+                                final nextPixels = (position.pixels + notification.overscroll)
+                                    .clamp(position.minScrollExtent, position.maxScrollExtent);
+                                _pageController.jumpTo(nextPixels);
+                              }
+                            } else if (notification is ScrollEndNotification &&
+                                _exploreEdgeTransitioning &&
+                                _pageController.hasClients) {
+                              final currentPage = _pageController.page ?? 0;
+                              final targetPage = currentPage >= 0.25 ? 1 : 0;
                               _pageController.animateToPage(
-                                1,
-                                duration: const Duration(milliseconds: 280),
-                                curve: Curves.easeInOutCubic,
+                                targetPage,
+                                duration: const Duration(milliseconds: 180),
+                                curve: Curves.easeOutCubic,
                               ).whenComplete(() => _exploreEdgeTransitioning = false);
                             }
                             return false;
