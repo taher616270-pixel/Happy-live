@@ -212,7 +212,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     return RefreshIndicator.noSpinner(
       notificationPredicate: (notification) =>
           notification.metrics.axis == Axis.vertical &&
-          notification.depth > 0,
+          notification.depth > 0 &&
+          notification.depth <= 2,
       onRefresh: _refreshHomePage,
       child: Stack(
         children: [
@@ -933,70 +934,60 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _buildExplorePage() {
-    // Keep the banner, shortcuts, and category strip fixed in place.
-    // Only the selected category's room feed scrolls vertically.
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(18, 8, 18, 0),
-      child: Column(
-        children: [
-          _buildExploreBanner(),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 60,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFFE8E4DA)),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+    return ListView(
+      key: const PageStorageKey<String>('happy-live-explore-scroll'),
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 16),
+      children: [
+        _buildExploreBanner(),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 82,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: const Color(0xFFE8E4DA)),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SizedBox(
-                  height: 60,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFFE8E4DA)),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: SizedBox(
+                height: 82,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: const Color(0xFFE8E4DA)),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
               ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(          height: 420,
+          child: SwipeChipTabs(
+            titles: const ['توصية', 'لعبة', 'مبارزة', 'البث المباشر', 'لعبة الفائز السوبر', 'الفيديو'],
+            onChanged: (index) {
+              if (index == 0) _loadRecommendedRooms(force: true);
+            },
+            pages: [
+              (_) => _buildRecommendedRoomsContent(),
+              (_) => const _ExploreTabPlaceholder('لعبة'),
+              (_) => const _ExploreTabPlaceholder('مبارزة'),
+              (_) => const _ExploreTabPlaceholder('البث المباشر'),
+              (_) => const _ExploreTabPlaceholder('لعبة الفائز السوبر'),
+              (_) => const _ExploreTabPlaceholder('الفيديو'),
             ],
           ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: SwipeChipTabs(
-              titles: const [
-                'توصية',
-                'لعبة',
-                'مبارزة',
-                'البث المباشر',
-                'لعبة الفائز السوبر',
-                'الفيديو',
-              ],
-              onChanged: (index) {
-                if (index == 0) _loadRecommendedRooms(force: true);
-              },
-              pages: [
-                (_) => _buildRecommendedRoomsContent(),
-                (_) => const _ExploreTabPlaceholder('لعبة'),
-                (_) => const _ExploreTabPlaceholder('مبارزة'),
-                (_) => const _ExploreTabPlaceholder('البث المباشر'),
-                (_) => const _ExploreTabPlaceholder('لعبة الفائز السوبر'),
-                (_) => const _ExploreTabPlaceholder('الفيديو'),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
