@@ -3879,23 +3879,13 @@ export default {
     // Short-video feed API. All write actions are tied to the authenticated session.
     if (url.pathname.startsWith("/api/feed")) {
       if (!env.DB) return json({ ok: false, error: "database_unavailable" }, 503, origin, env);
-      const user = await authenticatedUser(request, env.DB);
-      if (!user) return json({ ok: false, error: "unauthorized" }, 401, origin, env);
-      const now = new Date().toISOString();
-      const readBody = async (): Promise<Record<string, unknown>> => {
-        try {
-          const value = await request.json();
-          return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
-        } catch { return {}; }
-      };
-      const videoIdFrom = (value: unknown) => typeof value === "string" && value.length <= 100 ? value.trim() : "";
-      // Stream published feed media through this Worker so Safari receives
-      // byte-range responses and explicit CORS headers from our own origin.
-      const mediaMatch = url.pathname.match(/^\/api\/feed\/media\/([0-9a-f-]{36})$/i);
-      if (mediaMatch && (request.method === "GET" || request.method === "HEAD")) {
+      // Published feed media is already public. Keep the byte-range stream route
+      // public too: browsers cannot attach custom Authorization headers to native video requests.
+      const publicMediaMatch = url.pathname.match(/^\/api\/feed\/media\/([0-9a-f-]{36})$/i);
+      if (publicMediaMatch && (request.method === "GET" || request.method === "HEAD")) {
         const media = await env.DB.prepare(
           "SELECT video_url FROM feed_videos WHERE id = ? AND status = 'published' LIMIT 1"
-        ).bind(mediaMatch[1]).first<{ video_url: string }>();
+        ).bind(publicMediaMatch[1]).first<{ video_url: string }>();
         if (!media?.video_url) return json({ ok: false, error: "media_not_found" }, 404, origin, env);
         let source: URL;
         try { source = new URL(media.video_url); }
@@ -3944,6 +3934,16 @@ export default {
           return json({ ok: false, error: "media_stream_failed" }, 502, origin, env);
         }
       }
+      const user = await authenticatedUser(request, env.DB);
+      if (!user) return json({ ok: false, error: "unauthorized" }, 401, origin, env);
+      const now = new Date().toISOString();
+      const readBody = async (): Promise<Record<string, unknown>> => {
+        try {
+          const value = await request.json();
+          return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+        } catch { return {}; }
+      };
+      const videoIdFrom = (value: unknown) => typeof value === "string" && value.length <= 100 ? value.trim() : "";
       if (url.pathname === "/api/feed" && request.method === "POST") {
         const body = await readBody();
         const mediaUrl = typeof body.url === "string" ? body.url.trim() : "";
