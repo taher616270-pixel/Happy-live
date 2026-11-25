@@ -15,7 +15,7 @@ class _ShareSheet extends StatelessWidget {
  @override Widget build(BuildContext context){
   final link='${FeedConfig.shareBase}/v/${video.id}';const w=Colors.white;
   Future<void> done(Future<void> Function() f) async {Navigator.pop(context);try{await f();await repo.addShare(video.id);onShared();}catch(e){_toast('تعذرت المشاركة');}}
-  final apps=< _Target>[
+  final apps = <_Target>[
    _Target('إعادة النشر',const Icon(Icons.repeat_rounded,color:w,size:30),const Color(0xFFFFC107),(l)async=>_toast('تمت إعادة النشر')),
    _Target('WhatsApp',const Icon(Icons.chat_rounded,color:w,size:30),const Color(0xFF25D366),(l)=>_open('https://wa.me/?text=${Uri.encodeComponent(l)}')),
    _Target('نسخ الرابط',const Icon(Icons.link_rounded,color:w,size:30),const Color(0xFF2F6BFF),(l)async{await Clipboard.setData(ClipboardData(text:l));_toast('تم نسخ الرابط');}),
@@ -27,7 +27,7 @@ class _ShareSheet extends StatelessWidget {
    _Target('Stories',const Icon(Icons.add_circle_outline_rounded,color:w,size:30),const Color(0xFFFA7E1E),(l)async{await Share.share(l);}),
    _Target('المزيد',const Icon(Icons.more_horiz_rounded,color:w,size:30),const Color(0xFF2F8BFF),(l)async{await Share.share(l);})
   ];
-  final actions=< (String,IconData)>[('إبلاغ',Icons.flag_rounded),('غير مهتم',Icons.heart_broken_rounded),('تنزيل',Icons.download_rounded),('إضافة إلى قصة',Icons.add_circle_outline_rounded),('الترويج',Icons.local_fire_department_rounded),('دويتو',Icons.people_alt_rounded),('الدمج',Icons.vertical_split_rounded),('إنشاء مجموعة',Icons.group_add_rounded),('مشاركة كـ GIF',Icons.gif_box_rounded)];
+  final actions = <(String, IconData)>[('إبلاغ',Icons.flag_rounded),('غير مهتم',Icons.heart_broken_rounded),('تنزيل',Icons.download_rounded),('إضافة إلى قصة',Icons.add_circle_outline_rounded),('الترويج',Icons.local_fire_department_rounded),('دويتو',Icons.people_alt_rounded),('الدمج',Icons.vertical_split_rounded),('إنشاء مجموعة',Icons.group_add_rounded),('مشاركة كـ GIF',Icons.gif_box_rounded)];
   Widget circleItem(Widget child,Color bg,String label,VoidCallback tap)=>GestureDetector(onTap:tap,child:SizedBox(width:76,child:Column(children:[Container(width:56,height:56,alignment:Alignment.center,decoration:BoxDecoration(shape:BoxShape.circle,color:bg),child:child),const SizedBox(height:6),Text(label,maxLines:2,textAlign:TextAlign.center,overflow:TextOverflow.ellipsis,style:const TextStyle(color:_ink,fontSize:12,height:1.15))])));
   return Container(padding:EdgeInsets.only(bottom:MediaQuery.of(context).padding.bottom+12),decoration:const BoxDecoration(color:Colors.white,borderRadius:BorderRadius.vertical(top:Radius.circular(14))),child:Column(mainAxisSize:MainAxisSize.min,children:[
    SizedBox(height:52,child:Stack(alignment:Alignment.center,children:[const Text('إرسال إلى',style:TextStyle(color:_ink,fontSize:16,fontWeight:FontWeight.w800)),Align(alignment:Alignment.centerLeft,child:IconButton(icon:const Icon(Icons.close_rounded,color:_ink,size:26),onPressed:()=>Navigator.pop(context))),const Align(alignment:Alignment.centerRight,child:Padding(padding:EdgeInsets.symmetric(horizontal:16),child:Icon(Icons.search_rounded,color:_ink,size:28)))])),

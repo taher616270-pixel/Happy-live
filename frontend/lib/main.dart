@@ -1489,6 +1489,9 @@ class _SessionHomePageState extends State<SessionHomePage> {
   @override
   void initState() {
     super.initState();
+    FeedConfig.authToken = () => widget.accessToken;
+    FeedConfig.userId = () => widget.userId;
+    FeedConfig.myAvatar = () => _profileAvatarUrl ?? '';
     CannonConfig.setAuthToken(widget.accessToken);
     GlobalGiftEvents.instance.connect(widget.accessToken);
     WidgetsBinding.instance.addPostFrameCallback((_) {
