@@ -44,6 +44,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   String _countryName = 'الدولة';
   int _currentPage = 0;
   int _lastInnerIndex = 0;
+  bool _preservingRoomsTab = false;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
@@ -895,20 +896,21 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               reverse: true,
               physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
               onPageChanged: (index) {
-                if (index != 0 && _roomsTabController.hasClients) {
-                  final currentInnerPage = _roomsTabController.page;
-                  if (currentInnerPage != null) {
-                    _lastInnerIndex = currentInnerPage.round().clamp(0, 2);
+                if (index != 0) {
+                  if (_roomsTabController.hasClients) {
+                    final page = _roomsTabController.page;
+                    if (page != null) _lastInnerIndex = page.round().clamp(0, 2);
                   }
+                  _preservingRoomsTab = true;
                 }
                 setState(() => _currentPage = index);
                 if (index == 0) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (!mounted || !_roomsTabController.hasClients) return;
-                    final currentInnerPage = _roomsTabController.page?.round();
-                    if (currentInnerPage != _lastInnerIndex) {
-                      _roomsTabController.jumpToPage(_lastInnerIndex);
-                    }
+                    _roomsTabController.jumpToPage(_lastInnerIndex);
+                    WidgetsBinding.instance.addPostFrameCallback((__) {
+                      if (mounted) _preservingRoomsTab = false;
+                    });
                   });
                 }
               },
@@ -939,7 +941,11 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                             physics: _lastInnerIndex == 2
                                 ? const NeverScrollableScrollPhysics()
                                 : const PageScrollPhysics(parent: ClampingScrollPhysics()),
-                            onPageChanged: (index) => setState(() => _lastInnerIndex = index),
+                            onPageChanged: (index) {
+                              if (_currentPage == 0 && !_preservingRoomsTab) {
+                                setState(() => _lastInnerIndex = index);
+                              }
+                            },
                               children: [
                                 _buildMyRoomsPage(0),
                                 _buildMyRoomsPage(1),
