@@ -433,8 +433,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     _recentTabSwipeDelta += dx;
     _recentSwipeTargetPage ??= dx > 0 ? 1 : 2;
 
-    // Reversed only on the Recent tab: right drags move Rooms -> Explore;
-    // left drags move Recent -> Join inside Rooms.
+    // At either edge tab: right drags move Rooms -> Explore;
+    // left drags move Following -> Join or Recent -> Join inside Rooms.
     if (_recentSwipeTargetPage == 1 && _pageController.hasClients) {
       final position = _pageController.position;
       final pageOneMax = position.minScrollExtent + position.viewportDimension;
@@ -504,7 +504,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       );
     } else if (target == 2 && _roomsTabController.hasClients) {
       _roomsTabController.animateToPage(
-        2,
+        _edgeSwipeStartInnerIndex,
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
       );
