@@ -990,7 +990,28 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               children: [
                 Directionality(
                   textDirection: TextDirection.rtl,
-                  child: Column(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    // On Recent, start the Explore drag anywhere in the full
+                    // Rooms page, including its header and tab strip.
+                    onHorizontalDragStart:
+                        _currentPage == 0 && _lastInnerIndex == 2
+                            ? (_) {
+                                _recentTabSwipeDelta = 0;
+                                _recentSwipeTargetPage = null;
+                                _recentTabSwipeActive = true;
+                              }
+                            : null,
+                    onHorizontalDragUpdate: _lastInnerIndex == 2
+                        ? _updateRecentTabSwipe
+                        : null,
+                    onHorizontalDragEnd: _lastInnerIndex == 2
+                        ? _finishRecentTabSwipe
+                        : null,
+                    onHorizontalDragCancel: _lastInnerIndex == 2
+                        ? _cancelRecentTabSwipe
+                        : null,
+                    child: Column(
                     children: [
                       const SizedBox(height: 24),
                       MyPartyRoomButton(
@@ -1004,51 +1025,30 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       Expanded(
                         child: Directionality(
                           textDirection: TextDirection.ltr,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onHorizontalDragStart:
-                                _currentPage == 0 && _lastInnerIndex == 2
-                                    ? (_) {
-                                        _recentTabSwipeDelta = 0;
-                                        _recentSwipeTargetPage = null;
-                                        _recentTabSwipeActive = true;
-                                      }
-                                    : null,
-                            onHorizontalDragUpdate:
-                                _lastInnerIndex == 2
-                                    ? _updateRecentTabSwipe
-                                    : null,
-                            onHorizontalDragEnd:
-                                _lastInnerIndex == 2
-                                    ? _finishRecentTabSwipe
-                                    : null,
-                            onHorizontalDragCancel:
-                                _lastInnerIndex == 2
-                                    ? _cancelRecentTabSwipe
-                                    : null,
-                            child: PageView(
-                              key: const PageStorageKey<String>('happy-live-my-rooms-inner-pages'),
-                              controller: _roomsTabController,
-                              reverse: true,
-                              // The Recent tab routes horizontal drags by direction.
-                              physics: _lastInnerIndex == 2
-                                  ? const NeverScrollableScrollPhysics()
-                                  : const PageScrollPhysics(parent: ClampingScrollPhysics()),
-                              onPageChanged: (index) {
-                                if (_currentPage == 0 && !_preservingRoomsTab) {
-                                  setState(() => _lastInnerIndex = index);
-                                }
-                              },
-                              children: [
-                                _buildMyRoomsPage(0),
-                                _buildMyRoomsPage(1),
-                                _buildMyRoomsPage(2),
-                              ],
-                            ),
+                          child: PageView(
+                            key: const PageStorageKey<String>('happy-live-my-rooms-inner-pages'),
+                            controller: _roomsTabController,
+                            reverse: true,
+                            // Recent-tab horizontal drags are handled by the
+                            // parent GestureDetector across the whole page.
+                            physics: _lastInnerIndex == 2
+                                ? const NeverScrollableScrollPhysics()
+                                : const PageScrollPhysics(parent: ClampingScrollPhysics()),
+                            onPageChanged: (index) {
+                              if (_currentPage == 0 && !_preservingRoomsTab) {
+                                setState(() => _lastInnerIndex = index);
+                              }
+                            },
+                            children: [
+                              _buildMyRoomsPage(0),
+                              _buildMyRoomsPage(1),
+                              _buildMyRoomsPage(2),
+                            ],
                           ),
                         ),
                       ),
                     ],
+                    ),
                   ),
                 ),
                 Directionality(
