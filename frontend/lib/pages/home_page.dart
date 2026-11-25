@@ -854,14 +854,13 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       child: ListView.separated(
         key: const PageStorageKey<String>('happy-live-recommended-rooms'),
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(4, 5, 4, 12),
+        padding: const EdgeInsets.fromLTRB(8, 5, 8, 0),
         itemCount: _recommendedRooms.length,
         separatorBuilder: (_, __) => const SizedBox(height: 7),
         itemBuilder: (context, index) {
           final room = _recommendedRooms[index];
           return _RecommendedRoomCard(
             room: room,
-            rank: index + 1,
             onTap: () => _openRecommendedRoom(room),
           );
         },
@@ -1230,20 +1229,11 @@ class HappyHomeTabState extends State<HappyHomeTab> {
 class _RecommendedRoomCard extends StatelessWidget {
   const _RecommendedRoomCard({
     required this.room,
-    required this.rank,
     required this.onTap,
   });
 
   final Map<String, dynamic> room;
-  final int rank;
   final VoidCallback onTap;
-
-  String _compactNumber(dynamic value) {
-    final number = value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
-    if (number >= 1000000) return '${(number / 1000000).toStringAsFixed(1)}M';
-    if (number >= 1000) return '${(number / 1000).toStringAsFixed(1)}K';
-    return number.toInt().toString();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1251,129 +1241,136 @@ class _RecommendedRoomCard extends StatelessWidget {
     final announcement = (room['announcement'] ?? room['description'] ?? '')
         .toString().trim();
     final image = (room['imageUrl'] ?? '').toString();
-    final owner = (room['ownerName'] ?? 'صاحب الغرفة').toString();
-    final members = (room['membersCount'] ?? 0) as num? ?? 0;
-    final support = room['supportCoinsHour'] ?? 0;
-    final isTop = rank == 1;
+    final levelValue = room['experienceLevel'] ?? room['experience_level'] ?? 1;
+    final level = levelValue is num
+        ? levelValue.toInt()
+        : int.tryParse(levelValue.toString()) ?? 1;
 
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(9),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isTop ? const Color(0xFFD9A93C) : const Color(0xFFE8E4DA),
-              width: isTop ? 1.6 : 1,
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(17),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0x66D9A93C), width: 1.2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0AD9A93C),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: isTop ? const Color(0x1FD9A93C) : const Color(0x08000000),
-                blurRadius: isTop ? 12 : 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 25,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isTop ? Icons.emoji_events_rounded : Icons.local_fire_department_rounded,
-                      color: isTop ? const Color(0xFFD9A93C) : const Color(0xFF9A98AD),
-                      size: 18,
-                    ),
-                    Text('$rank',
-                      style: TextStyle(
-                        color: isTop ? const Color(0xFF9A6A13) : const Color(0xFF858D8A),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                      )),
-                  ],
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(13),
+                  child: SizedBox(
+                    width: 66,
+                    height: 66,
+                    child: image.startsWith('https://')
+                        ? HappyNetworkImage(
+                            image,
+                            width: 66,
+                            height: 66,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _roomFallback(),
+                          )
+                        : _roomFallback(),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 66,
-                  height: 66,
-                  child: image.startsWith('https://')
-                      ? HappyNetworkImage(image, width: 66, height: 66,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _roomFallback())
-                      : _roomFallback(),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF1E2233),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        announcement.isEmpty
+                            ? 'لا يوجد إعلان للغرفة'
+                            : announcement,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: HappyHomeColors.muted,
+                          fontSize: 11,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF3D5),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: const Color(0xFFD9A93C).withOpacity(0.65),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.workspace_premium_rounded,
+                                size: 13,
+                                color: HappyHomeColors.gold,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Lv.$level',
+                                style: const TextStyle(
+                                  color: Color(0xFF8A6420),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF1E2233),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                      )),
-                    const SizedBox(height: 3),
-                    Text(announcement.isEmpty ? 'غرفة نشطة الآن' : announcement,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: HappyHomeColors.muted, fontSize: 10,
-                      )),
-                    const SizedBox(height: 5),
-                    Text(owner, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF858D8A), fontSize: 9,
-                      )),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 3,
-                      children: [
-                        _metric(Icons.people_alt_rounded, '${members.toInt()}'),
-                        _metric(Icons.card_giftcard_rounded, _compactNumber(support)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_left_rounded,
-                color: HappyHomeColors.gold, size: 20),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _metric(IconData icon, String value) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 12, color: HappyHomeColors.gold),
-      const SizedBox(width: 3),
-      Text(value, style: const TextStyle(
-        color: Color(0xFF8A6420), fontSize: 10, fontWeight: FontWeight.w800,
-      )),
-    ],
-  );
-
   Widget _roomFallback() => Container(
-    color: const Color(0xFFFAF6EA),
-    alignment: Alignment.center,
-    child: const Icon(Icons.graphic_eq_rounded,
-      color: HappyHomeColors.gold, size: 25),
-  );
+        color: const Color(0xFFFAF6EA),
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.graphic_eq_rounded,
+          color: HappyHomeColors.gold,
+          size: 22,
+        ),
+      );
 }
 
 class _ExploreTabPlaceholder extends StatelessWidget {
