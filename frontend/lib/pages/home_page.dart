@@ -48,6 +48,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   double _recentTabSwipeDelta = 0;
   int? _recentSwipeTargetPage;
   bool _recentTabSwipeActive = false;
+  int _edgeSwipeStartInnerIndex = 0;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
@@ -425,7 +426,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   void _updateRecentTabSwipe(DragUpdateDetails details) {
-    if (!_recentTabSwipeActive || _lastInnerIndex != 2) return;
+    if (!_recentTabSwipeActive || (_edgeSwipeStartInnerIndex != 0 && _edgeSwipeStartInnerIndex != 2)) return;
     final dx = details.delta.dx;
     if (dx.abs() < 0.1) return;
 
@@ -453,7 +454,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   void _finishRecentTabSwipe(DragEndDetails details) {
-    if (!_recentTabSwipeActive || _lastInnerIndex != 2) {
+    if (!_recentTabSwipeActive || (_edgeSwipeStartInnerIndex != 0 && _edgeSwipeStartInnerIndex != 2)) {
       _recentTabSwipeDelta = 0;
       _recentSwipeTargetPage = null;
       _recentTabSwipeActive = false;
@@ -477,10 +478,12 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         curve: Curves.easeOutCubic,
       );
     } else if (target == 2 && _roomsTabController.hasClients) {
-      final page = _roomsTabController.page ?? 2;
-      final settleOnJoin = page <= 1.5 || velocity < -320;
+      final page = _roomsTabController.page ?? _edgeSwipeStartInnerIndex.toDouble();
+      final settleOnJoin = _edgeSwipeStartInnerIndex == 2
+          ? (page <= 1.5 || velocity < -320)
+          : (page >= 0.5 || velocity < -320);
       _roomsTabController.animateToPage(
-        settleOnJoin ? 1 : 2,
+        settleOnJoin ? 1 : _edgeSwipeStartInnerIndex,
         duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutCubic,
       );
@@ -995,8 +998,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               // left to Explore, right to Join. Other pages keep normal paging.
               // Keep the outer pager locked for the entire manual drag,
               // even after the finger crosses the page midpoint and onPageChanged fires.
-              physics: _lastInnerIndex == 2 &&
-                      (_currentPage == 0 || _recentTabSwipeActive)
+              physics: (_lastInnerIndex == 2 && _currentPage == 0) ||
+                      (_lastInnerIndex == 0 && _recentTabSwipeActive)
                   ? const NeverScrollableScrollPhysics()
                   : const PageScrollPhysics(parent: ClampingScrollPhysics()),
               onPageChanged: (index) {
@@ -1026,20 +1029,21 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     // On Recent, start the Explore drag anywhere in the full
                     // Rooms page, including its header and tab strip.
                     onHorizontalDragStart:
-                        _currentPage == 0 && _lastInnerIndex == 2
+                        _currentPage == 0 && (_lastInnerIndex == 0 || _lastInnerIndex == 2)
                             ? (_) {
+                                _edgeSwipeStartInnerIndex = _lastInnerIndex;
                                 _recentTabSwipeDelta = 0;
                                 _recentSwipeTargetPage = null;
                                 _recentTabSwipeActive = true;
                               }
                             : null,
-                    onHorizontalDragUpdate: _lastInnerIndex == 2
+                    onHorizontalDragUpdate: (_lastInnerIndex == 0 || _lastInnerIndex == 2)
                         ? _updateRecentTabSwipe
                         : null,
-                    onHorizontalDragEnd: _lastInnerIndex == 2
+                    onHorizontalDragEnd: (_lastInnerIndex == 0 || _lastInnerIndex == 2)
                         ? _finishRecentTabSwipe
                         : null,
-                    onHorizontalDragCancel: _lastInnerIndex == 2
+                    onHorizontalDragCancel: (_lastInnerIndex == 0 || _lastInnerIndex == 2)
                         ? _cancelRecentTabSwipe
                         : null,
                     child: Column(
@@ -1062,7 +1066,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                             reverse: true,
                             // Recent-tab horizontal drags are handled by the
                             // parent GestureDetector across the whole page.
-                            physics: _lastInnerIndex == 2
+                            physics: (_lastInnerIndex == 0 || _lastInnerIndex == 2)
                                 ? const NeverScrollableScrollPhysics()
                                 : const PageScrollPhysics(parent: ClampingScrollPhysics()),
                             onPageChanged: (index) {
