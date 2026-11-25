@@ -34,6 +34,8 @@ class HappyHomeTab extends StatefulWidget {
 
 class HappyHomeTabState extends State<HappyHomeTab> {
   final PageController _pageController = PageController();
+  final PageController _roomsTabController = PageController();
+  bool _exploreEdgeTransitioning = false;
   final PageController _exploreBannerController = PageController();
   Timer? _exploreBannerTimer;
   List<Map<String, dynamic>> _exploreBanners = <Map<String, dynamic>>[];
@@ -94,6 +96,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   @override
   void dispose() {
     _pageController.dispose();
+    _roomsTabController.dispose();
     _exploreBannerTimer?.cancel();
     _exploreBannerController.dispose();
     super.dispose();
@@ -370,8 +373,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
 
   void _goToPage(int index) {
     if (index == 2) return; // The country label is not a page in the four-page swipe sequence.
-    final target = index == 0 ? _lastInnerIndex : index;
-    if (target < 0 || target > 3) return;
+    if (index != 0 && index != 3) return;
+    final target = index == 3 ? 1 : 0;
     _pageController.animateToPage(
       target,
       duration: const Duration(milliseconds: 280),
@@ -730,7 +733,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
                       setState(() => _lastInnerIndex = index);
-                      _pageController.animateToPage(
+                      _roomsTabController.animateToPage(
                         index,
                         duration: const Duration(milliseconds: 240),
                         curve: Curves.easeInOutCubic,
@@ -830,17 +833,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             ),
           ),
         ),
-        if (_currentPage < 3) ...[
-          const SizedBox(height: 24),
-          MyPartyRoomButton(
-            room: _myRoom,
-            loading: _loadingMyRoom,
-            onTap: _openMyRoom,
-          ),
-          const SizedBox(height: 14),
-          _buildMyRoomsTabs(),
-          const SizedBox(height: 8),
-        ],
         Expanded(
           child: Directionality(
             textDirection: TextDirection.ltr,
@@ -848,16 +840,60 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               controller: _pageController,
               reverse: true,
               physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
-              onPageChanged: (index) {
-                setState(() {
-                  _currentPage = index;
-                  if (index < 3) _lastInnerIndex = index;
-                });
-              },
+              onPageChanged: (index) => setState(() => _currentPage = index == 0 ? 0 : 3),
               children: [
-                _buildMyRoomsPage(0),
-                _buildMyRoomsPage(1),
-                _buildMyRoomsPage(2),
+                Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 24),
+                      MyPartyRoomButton(
+                        room: _myRoom,
+                        loading: _loadingMyRoom,
+                        onTap: _openMyRoom,
+                      ),
+                      const SizedBox(height: 14),
+                      _buildMyRoomsTabs(),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: NotificationListener<OverscrollNotification>(
+                          onNotification: (notification) {
+                            final atLastTab = _roomsTabController.hasClients &&
+                                _roomsTabController.page != null &&
+                                _roomsTabController.page! >= 1.99;
+                            if (atLastTab &&
+                                notification.metrics.axis == Axis.horizontal &&
+                                notification.metrics.pixels >= notification.metrics.maxScrollExtent - 0.5 &&
+                                notification.overscroll > 0 &&
+                                !_exploreEdgeTransitioning) {
+                              _exploreEdgeTransitioning = true;
+                              _pageController.animateToPage(
+                                1,
+                                duration: const Duration(milliseconds: 280),
+                                curve: Curves.easeInOutCubic,
+                              ).whenComplete(() => _exploreEdgeTransitioning = false);
+                            }
+                            return false;
+                          },
+                          child: Directionality(
+                            textDirection: TextDirection.ltr,
+                            child: PageView(
+                              controller: _roomsTabController,
+                              reverse: true,
+                              physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
+                              onPageChanged: (index) => setState(() => _lastInnerIndex = index),
+                              children: [
+                                _buildMyRoomsPage(0),
+                                _buildMyRoomsPage(1),
+                                _buildMyRoomsPage(2),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 Directionality(
                   textDirection: TextDirection.rtl,
                   child: _buildExplorePage(),
