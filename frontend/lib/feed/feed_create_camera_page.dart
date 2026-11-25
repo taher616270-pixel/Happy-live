@@ -330,17 +330,25 @@ class _CameraLoadingPreview extends StatelessWidget {
   const _CameraLoadingPreview();
 
   @override
-  Widget build(BuildContext context) => const ColoredBox(
-        color: Color(0xFF101010),
+  Widget build(BuildContext context) => const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF7EBCB), Color(0xFFFAF6EA), Color(0xFFF6F7FB)],
+          ),
+        ),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: Colors.white70),
+              CircularProgressIndicator(color: Color(0xFFD9A93C)),
               SizedBox(height: 14),
-              Text('جارٍ تشغيل الكاميرا...', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              Text(
+                'جارٍ تشغيل الكاميرا...',
+                style: TextStyle(color: Color(0xFF1E2233), fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ],
-          ),
           ),
         ),
       );
@@ -355,19 +363,26 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => TextButton(
         onPressed: onTap,
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
           decoration: BoxDecoration(
             color: selected ? const Color(0xFFEAD09A) : const Color(0xFFFFFEFA),
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: selected ? const Color(0xFFD9A93C) : const Color(0xFFE8D8B5)),
+            border: Border.all(
+              color: selected ? const Color(0xFFD9A93C) : const Color(0xFFE8D8B5),
+            ),
           ),
           child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? const Color(0xFF1E2233) : const Color(0xFF8B899A),
-            fontSize: 15,
-            fontWeight: selected ? FontWeight.w900 : FontWeight.w500,
+            label,
+            style: TextStyle(
+              color: selected ? const Color(0xFF1E2233) : const Color(0xFF8B899A),
+              fontSize: 15,
+              fontWeight: selected ? FontWeight.w900 : FontWeight.w500,
+            ),
           ),
         ),
       );
