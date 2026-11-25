@@ -52,6 +52,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> _recommendedRooms = <Map<String, dynamic>>[];
+  bool _loadingRecommendedRooms = false;
+  String? _recommendedRoomsError;
   bool _loadingRecentRooms = false;
   String? _recentRoomsError;
   bool _myRoomLookupInFlight = false;
@@ -94,6 +97,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     _loadCountry();
     _loadMyRoom();
     _loadRecentRooms();
+    _loadRecommendedRooms();
     _loadExploreBanners();
   }
 
@@ -152,6 +156,53 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     } finally {
       if (mounted) setState(() => _loadingRecentRooms = false);
     }
+  }
+
+  Future<void> _loadRecommendedRooms({bool force = false}) async {
+    if (_loadingRecommendedRooms || widget.accessToken.isEmpty) return;
+    if (!force && _recommendedRooms.isNotEmpty) return;
+    if (mounted) setState(() {
+      _loadingRecommendedRooms = true;
+      _recommendedRoomsError = null;
+    });
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiBase/rooms/recommended'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+      ).timeout(const Duration(seconds: 12));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data is Map &&
+          data['ok'] == true && data['rooms'] is List) {
+        final rooms = (data['rooms'] as List).whereType<Map>()
+            .map((room) => Map<String, dynamic>.from(room)).toList();
+        if (mounted) setState(() {
+          _recommendedRooms = rooms;
+          _recommendedRoomsError = null;
+        });
+      } else {
+        if (mounted) setState(() =>
+            _recommendedRoomsError = 'تعذر تحميل الغرف الموصى بها');
+      }
+    } catch (_) {
+      if (mounted) setState(() =>
+          _recommendedRoomsError = 'تحقق من اتصال الإنترنت ثم حاول التحديث');
+    } finally {
+      if (mounted) setState(() => _loadingRecommendedRooms = false);
+    }
+  }
+
+  Future<void> _openRecommendedRoom(Map<String, dynamic> room) async {
+    if ((room['status'] ?? 'active').toString() != 'active') return;
+    await Navigator.of(context).push(PageRouteBuilder<void>(
+      opaque: false,
+      barrierColor: Colors.transparent,
+      pageBuilder: (_, __, ___) =>
+          RoomPage(room: room, accessToken: widget.accessToken),
+      transitionsBuilder: (_, animation, __, child) =>
+          FadeTransition(opacity: animation, child: child),
+      transitionDuration: const Duration(milliseconds: 180),
+    ));
+    if (mounted) _loadRecommendedRooms(force: true);
   }
 
   Future<void> _openRecentRoom(Map<String, dynamic> room) async {
@@ -758,6 +809,66 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
+  Widget _buildRecommendedRoomsContent() {
+    if (_loadingRecommendedRooms && _recommendedRooms.isEmpty) {
+      return const Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: HappyHomeColors.gold,
+        ),
+      );
+    }
+    if (_recommendedRoomsError != null && _recommendedRooms.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_recommendedRoomsError!, textAlign: TextAlign.center,
+              style: const TextStyle(color: HappyHomeColors.muted, fontSize: 11)),
+            TextButton(
+              onPressed: () => _loadRecommendedRooms(force: true),
+              child: const Text('إعادة المحاولة',
+                style: TextStyle(color: HappyHomeColors.gold, fontSize: 11)),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_recommendedRooms.isEmpty) {
+      return RefreshIndicator(
+        color: HappyHomeColors.gold,
+        onRefresh: () => _loadRecommendedRooms(force: true),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 90),
+            Center(child: Text('لا توجد غرف نشطة حالياً',
+              style: TextStyle(color: HappyHomeColors.muted, fontSize: 12))),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      color: HappyHomeColors.gold,
+      onRefresh: () => _loadRecommendedRooms(force: true),
+      child: ListView.separated(
+        key: const PageStorageKey<String>('happy-live-recommended-rooms'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(4, 5, 4, 12),
+        itemCount: _recommendedRooms.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 7),
+        itemBuilder: (context, index) {
+          final room = _recommendedRooms[index];
+          return _RecommendedRoomCard(
+            room: room,
+            rank: index + 1,
+            onTap: () => _openRecommendedRoom(room),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildExplorePage() {
     return ListView(
       key: const PageStorageKey<String>('happy-live-explore-scroll'),
@@ -800,10 +911,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           child: SwipeChipTabs(
             titles: const ['توصية', 'لعبة', 'مبارزة', 'البث المباشر', 'لعبة الفائز السوبر', 'الفيديو'],
             onChanged: (index) {
-              // يمكن ربط تحميل بيانات كل تبويب هنا لاحقاً.
+              if (index == 0) _loadRecommendedRooms(force: true);
             },
             pages: [
-              (_) => const _ExploreTabPlaceholder('توصية'),
+              (_) => _buildRecommendedRoomsContent(),
               (_) => const _ExploreTabPlaceholder('لعبة'),
               (_) => const _ExploreTabPlaceholder('مبارزة'),
               (_) => const _ExploreTabPlaceholder('البث المباشر'),
@@ -1116,6 +1227,155 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     ),
   );
 }
+class _RecommendedRoomCard extends StatelessWidget {
+  const _RecommendedRoomCard({
+    required this.room,
+    required this.rank,
+    required this.onTap,
+  });
+
+  final Map<String, dynamic> room;
+  final int rank;
+  final VoidCallback onTap;
+
+  String _compactNumber(dynamic value) {
+    final number = value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
+    if (number >= 1000000) return '${(number / 1000000).toStringAsFixed(1)}M';
+    if (number >= 1000) return '${(number / 1000).toStringAsFixed(1)}K';
+    return number.toInt().toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = (room['name'] ?? 'غرفة صوتية').toString();
+    final announcement = (room['announcement'] ?? room['description'] ?? '')
+        .toString().trim();
+    final image = (room['imageUrl'] ?? '').toString();
+    final owner = (room['ownerName'] ?? 'صاحب الغرفة').toString();
+    final members = (room['membersCount'] ?? 0) as num? ?? 0;
+    final support = room['supportCoins24h'] ?? 0;
+    final isTop = rank == 1;
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isTop ? const Color(0xFFD9A93C) : const Color(0xFFE8E4DA),
+              width: isTop ? 1.6 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isTop ? const Color(0x1FD9A93C) : const Color(0x08000000),
+                blurRadius: isTop ? 12 : 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 25,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isTop ? Icons.emoji_events_rounded : Icons.local_fire_department_rounded,
+                      color: isTop ? const Color(0xFFD9A93C) : const Color(0xFF9A98AD),
+                      size: 18,
+                    ),
+                    Text('$rank',
+                      style: TextStyle(
+                        color: isTop ? const Color(0xFF9A6A13) : const Color(0xFF858D8A),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      )),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 66,
+                  height: 66,
+                  child: image.startsWith('https://')
+                      ? HappyNetworkImage(image, width: 66, height: 66,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _roomFallback())
+                      : _roomFallback(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF1E2233),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      )),
+                    const SizedBox(height: 3),
+                    Text(announcement.isEmpty ? 'غرفة نشطة الآن' : announcement,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: HappyHomeColors.muted, fontSize: 10,
+                      )),
+                    const SizedBox(height: 5),
+                    Text(owner, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF858D8A), fontSize: 9,
+                      )),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 3,
+                      children: [
+                        _metric(Icons.people_alt_rounded, '${members.toInt()}'),
+                        _metric(Icons.card_giftcard_rounded, _compactNumber(support)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_left_rounded,
+                color: HappyHomeColors.gold, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _metric(IconData icon, String value) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 12, color: HappyHomeColors.gold),
+      const SizedBox(width: 3),
+      Text(value, style: const TextStyle(
+        color: Color(0xFF8A6420), fontSize: 10, fontWeight: FontWeight.w800,
+      )),
+    ],
+  );
+
+  Widget _roomFallback() => Container(
+    color: const Color(0xFFFAF6EA),
+    alignment: Alignment.center,
+    child: const Icon(Icons.graphic_eq_rounded,
+      color: HappyHomeColors.gold, size: 25),
+  );
+}
+
 class _ExploreTabPlaceholder extends StatelessWidget {
   final String title;
   const _ExploreTabPlaceholder(this.title);
