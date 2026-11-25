@@ -81,10 +81,17 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
         throw Exception('حجم الملف يتجاوز الحد المسموح (100 ميجابايت).');
       }
       if (isVideo) {
+        // Preview decoding is optional: iPhone videos may be HEVC/MOV and are
+        // converted to browser-safe H.264 after upload by ImageKit.
         video = VideoPlayerController.networkUrl(Uri.parse(file.path));
-        await video.initialize();
-        await video.setLooping(true);
-        await video.pause();
+        try {
+          await video.initialize().timeout(const Duration(seconds: 12));
+          await video.setLooping(true);
+          await video.pause();
+        } catch (_) {
+          video.dispose();
+          video = null;
+        }
       }
       if (!mounted) { await video?.dispose(); return; }
       await _video?.dispose();
@@ -200,7 +207,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
     request.files.add(http.MultipartFile.fromBytes(
       'file',
       bytes,
-      filename: fileName,
+      filename: uploadFileName,
       contentType: MediaType.parse(mediaMime),
     ));
     final streamed = await request.send().timeout(const Duration(minutes: 3));
@@ -294,7 +301,18 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
                                       ],
                                     ),
                                   )
-                                : const CircularProgressIndicator(color: Colors.white))
+                                : const Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.video_file_outlined, color: Colors.white70, size: 54),
+                                      SizedBox(height: 10),
+                                      Text(
+                                        'سيتم تجهيز الفيديو للتشغيل عند النشر',
+                                        style: TextStyle(color: Colors.white70),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ))
                             : (_mediaBytes != null
                                 ? Image.memory(_mediaBytes!, fit: BoxFit.contain)
                                 : const SizedBox.shrink()),
