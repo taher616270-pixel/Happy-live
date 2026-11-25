@@ -35,7 +35,13 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   // Photo posts are rendered directly by FeedItem; never initialize a video
   // decoder for an image URL (which leaves the feed spinner running forever).
   if (_videos[i].isImage) return;
-  final c=VideoPlayerController.networkUrl(Uri.parse(_videos[i].url));_ctrls[i]=c;
+  // Use the authenticated Worker media proxy instead of the raw ImageKit URL.
+  // It forwards HTTP Range requests and exposes the byte-range headers Safari needs.
+  final mediaUrl = '${FeedConfig.apiBase}/api/feed/media/${Uri.encodeComponent(_videos[i].id)}';
+  final c=VideoPlayerController.networkUrl(
+   Uri.parse(mediaUrl),
+   httpHeaders: {'Authorization': 'Bearer ${FeedConfig.authToken()}'},
+  );_ctrls[i]=c;
   try {
    await c.initialize().timeout(const Duration(seconds: 25));
    await c.setLooping(true);
