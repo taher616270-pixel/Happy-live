@@ -1403,6 +1403,14 @@ class _RecommendedRoomCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = (room['name'] ?? 'غرفة صوتية').toString();
+    final country = (room['countryName'] ??
+            room['country_name'] ??
+            room['country'] ??
+            room['countryLabel'] ??
+            room['country_label'] ??
+            '')
+        .toString()
+        .trim();
     final image = (room['imageUrl'] ?? '').toString();
     final membersValue = room['membersCount'] ?? room['members_count'] ?? 0;
     final membersCount = membersValue is num
@@ -1469,15 +1477,39 @@ class _RecommendedRoomCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Text(
-              name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF1E2233),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+            Directionality(
+              textDirection: TextDirection.rtl,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF1E2233),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  if (country.isNotEmpty) ...[
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        country,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: HappyHomeColors.muted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
