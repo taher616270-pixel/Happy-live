@@ -60,7 +60,12 @@ class FeedFriend {
 
 String fmtCount(int n) {
   String trim(double v) =>
-      v.toStringAsFixed(1).replaceFirst(RegExp(r'\\.0$'), '');
+      v.toStringAsFixed(1).replaceFirst(RegExp(r'\.0, '');
+  if (n < 10000) return '$n';
+  if (n < 1000000) return '${trim(n / 1000)} ألف';
+  return '${trim(n / 1000000)} مليون';
+}
+), '');
   if (n < 10000) return '$n';
   if (n < 1000000) return '${trim(n / 1000)} ألف';
   return '${trim(n / 1000000)} مليون';
