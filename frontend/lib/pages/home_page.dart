@@ -423,6 +423,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   void _finishRecentTabSwipe(DragEndDetails details) {
+    if (_currentPage != 0 || _lastInnerIndex != 2) {
+      _recentTabSwipeDelta = 0;
+      return;
+    }
     final velocity = details.primaryVelocity ?? 0;
     final delta = _recentTabSwipeDelta;
     _recentTabSwipeDelta = 0;
@@ -966,16 +970,22 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                           textDirection: TextDirection.ltr,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onHorizontalDragStart: (_) {
-                              _recentTabSwipeDelta = 0;
-                            },
-                            onHorizontalDragUpdate: (details) {
-                              _recentTabSwipeDelta += details.delta.dx;
-                            },
-                            onHorizontalDragEnd: _finishRecentTabSwipe,
-                            onHorizontalDragCancel: () {
-                              _recentTabSwipeDelta = 0;
-                            },
+                            onHorizontalDragStart:
+                                _currentPage == 0 && _lastInnerIndex == 2
+                                    ? (_) => _recentTabSwipeDelta = 0
+                                    : null,
+                            onHorizontalDragUpdate:
+                                _currentPage == 0 && _lastInnerIndex == 2
+                                    ? (details) => _recentTabSwipeDelta += details.delta.dx
+                                    : null,
+                            onHorizontalDragEnd:
+                                _currentPage == 0 && _lastInnerIndex == 2
+                                    ? _finishRecentTabSwipe
+                                    : null,
+                            onHorizontalDragCancel:
+                                _currentPage == 0 && _lastInnerIndex == 2
+                                    ? () => _recentTabSwipeDelta = 0
+                                    : null,
                             child: PageView(
                               key: const PageStorageKey<String>('happy-live-my-rooms-inner-pages'),
                               controller: _roomsTabController,
