@@ -447,6 +447,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         final status = (room['status'] ?? 'active').toString();
         final level = (room['experienceLevel'] ?? 1) is num
             ? (room['experienceLevel'] as num).toInt() : 1;
+        final membersCount = (room['membersCount'] ?? room['members_count'] ?? 0) is num
+            ? ((room['membersCount'] ?? room['members_count'] ?? 0) as num).toInt()
+            : int.tryParse((room['membersCount'] ?? room['members_count'] ?? '0').toString()) ?? 0;
         return SizedBox(
           width: double.infinity,
           child: Material(
@@ -502,8 +505,20 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   ],
                 )),
                 const SizedBox(width: 7),
-                Icon(status == 'active' ? Icons.arrow_forward_ios_rounded : Icons.lock_outline_rounded,
-                  size: 14, color: HappyHomeColors.gold),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3D5),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0x66D9A93C)),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.people_alt_rounded, size: 15, color: HappyHomeColors.gold),
+                    const SizedBox(width: 4),
+                    Text('$membersCount',
+                      style: const TextStyle(color: Color(0xFF8A6420), fontSize: 11, fontWeight: FontWeight.w900)),
+                  ]),
+                ),
               ]),
             ),
           ),
