@@ -34,7 +34,6 @@ class HappyHomeTab extends StatefulWidget {
 
 class HappyHomeTabState extends State<HappyHomeTab> {
   final PageController _pageController = PageController();
-  final PageController _myRoomsTabController = PageController();
   final PageController _exploreBannerController = PageController();
   Timer? _exploreBannerTimer;
   List<Map<String, dynamic>> _exploreBanners = <Map<String, dynamic>>[];
@@ -43,9 +42,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   String _countryCode = 'ALL';
   String _countryName = 'الدولة';
   int _currentPage = 0;
-  int _selectedMyRoomsTab = 0;
-  bool _handingOffTabSwipe = false;
-  double _recentTabEdgeDrag = 0;
+  int _lastInnerIndex = 0;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
@@ -97,7 +94,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   @override
   void dispose() {
     _pageController.dispose();
-    _myRoomsTabController.dispose();
     _exploreBannerTimer?.cancel();
     _exploreBannerController.dispose();
     super.dispose();
@@ -373,16 +369,17 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   void _goToPage(int index) {
-    if (index < 0 || index > 2) return;
+    final target = index == 0 ? _lastInnerIndex : index;
+    if (target < 0 || target > 3) return;
     _pageController.animateToPage(
-      index,
+      target,
       duration: const Duration(milliseconds: 280),
       curve: Curves.easeInOutCubic,
     );
   }
 
   Widget _topButton(int index, IconData icon, String label) {
-    final selected = _currentPage == index;
+    final selected = index == 0 ? _currentPage < 3 : _currentPage == index;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
@@ -419,64 +416,30 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
-  Widget _buildOriginalHomeContent() => Padding(
-    padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
-    child: Column(
-      children: [
-        const SizedBox(height: 24),
-        MyPartyRoomButton(
-          room: _myRoom,
-          loading: _loadingMyRoom,
-          onTap: _openMyRoom,
-        ),
-        const SizedBox(height: 14),
-        _buildMyRoomsTabs(),
-        const SizedBox(height: 8),
-        Expanded(
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              // اجمع السحب الزائد عند حافة «مؤخراً»، ولا تنتقل أثناء حركة الإصبع.
-              // هذا يمنع القفز المفاجئ عند السحب البطيء أو اللمسات القصيرة.
-              if (notification is ScrollStartNotification &&
-                  notification.metrics.axis == Axis.horizontal) {
-                _recentTabEdgeDrag = 0;
-              } else if (notification is OverscrollNotification &&
-                  notification.metrics.axis == Axis.horizontal &&
-                  _selectedMyRoomsTab == 2 &&
-                  notification.overscroll > 0) {
-                _recentTabEdgeDrag += notification.overscroll;
-              } else if (notification is ScrollEndNotification &&
-                  _selectedMyRoomsTab == 2 &&
-                  _recentTabEdgeDrag >= 55 &&
-                  !_handingOffTabSwipe) {
-                _handingOffTabSwipe = true;
-                _recentTabEdgeDrag = 0;
-                _pageController.animateToPage(
-                  1,
-                  duration: const Duration(milliseconds: 320),
-                  curve: Curves.easeOutCubic,
-                ).whenComplete(() {
-                  _handingOffTabSwipe = false;
-                });
-              } else if (notification is ScrollEndNotification) {
-                _recentTabEdgeDrag = 0;
-              }
-              return false;
-            },
-            child: PageView(
-              controller: _myRoomsTabController,
-              scrollDirection: Axis.horizontal,
-              physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
-              onPageChanged: (index) => setState(() => _selectedMyRoomsTab = index),
-              children: [
-                _buildMyRoomsTabContent('لا توجد غرف تتابعها حالياً'),
-                _buildMyRoomsTabContent('لا توجد غرف للانضمام إليها حالياً'),
-                _buildRecentRoomsContent(),
-              ],
-            ),
+  Widget _buildMyRoomsPage(int innerIndex) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+      child: Column(
+        children: [
+          const SizedBox(height: 24),
+          MyPartyRoomButton(
+            room: _myRoom,
+            loading: _loadingMyRoom,
+            onTap: _openMyRoom,
           ),
-        ),
-      ],
+          const SizedBox(height: 14),
+          _buildMyRoomsTabs(),
+          const SizedBox(height: 8),
+          Expanded(
+            child: innerIndex == 0
+                ? _buildMyRoomsTabContent('لا توجد غرف تتابعها حالياً')
+                : innerIndex == 1
+                    ? _buildMyRoomsTabContent('لا توجد غرف للانضمام إليها حالياً')
+                    : _buildRecentRoomsContent(),
+          ),
+        ],
+      ),
     ),
   );
 
@@ -503,6 +466,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
     if (_recentRooms.isEmpty) return _buildMyRoomsTabContent('لا توجد غرف زرتها مؤخراً');
     return ListView.separated(
+      key: const PageStorageKey<String>('happy-live-recent-rooms-scroll'),
       padding: const EdgeInsets.fromLTRB(8, 5, 8, 0),
       itemCount: _recentRooms.length,
       separatorBuilder: (_, __) => const SizedBox(height: 7),
@@ -740,6 +704,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
 
   Widget _buildExplorePage() {
     return ListView(
+      key: const PageStorageKey<String>('happy-live-explore-scroll'),
       padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 16),
       children: [
         _buildExploreBanner(),
@@ -770,7 +735,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: List.generate(labels.length, (index) {
-                final selected = _selectedMyRoomsTab == index;
+                final selected = _lastInnerIndex == index;
                 return Padding(
                   padding: EdgeInsetsDirectional.only(
                     end: index == labels.length - 1 ? 0 : 8,
@@ -778,8 +743,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
-                      setState(() => _selectedMyRoomsTab = index);
-                      _myRoomsTabController.animateToPage(
+                      setState(() => _lastInnerIndex = index);
+                      _pageController.animateToPage(
                         index,
                         duration: const Duration(milliseconds: 240),
                         curve: Curves.easeInOutCubic,
@@ -839,87 +804,71 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       ),
     ),
     child: Column(
-    children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
-        child: SizedBox(
-          width: double.infinity,
-          height: 40,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _topButton(0, Icons.meeting_room_outlined, 'غرفتي'),
-                    const SizedBox(width: 5),
-                    _topButton(1, Icons.explore_outlined, 'استكشف'),
-                    const SizedBox(width: 5),
-                    _topButton(2, Icons.public_rounded, _countryName),
-                  ],
-                ),
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Material(
-                  color: Colors.white,
-                  shape: const CircleBorder(),
-                  child: IconButton(
-                    tooltip: 'البحث عن شخص بواسطة ID',
-                    onPressed: _searchUserById,
-                    icon: const Icon(Icons.search_rounded, color: HappyHomeColors.gold, size: 21),
-                    visualDensity: VisualDensity.compact,
-                    constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
+          child: SizedBox(
+            width: double.infinity,
+            height: 40,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _topButton(0, Icons.meeting_room_outlined, 'غرفتي'),
+                      const SizedBox(width: 5),
+                      _topButton(3, Icons.explore_outlined, 'استكشف'),
+                      const SizedBox(width: 5),
+                      _topButton(2, Icons.public_rounded, _countryName),
+                    ],
                   ),
                 ),
-              ),
-            ],
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Material(
+                    color: Colors.white,
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      tooltip: 'البحث عن شخص بواسطة ID',
+                      onPressed: _searchUserById,
+                      icon: const Icon(Icons.search_rounded, color: HappyHomeColors.gold, size: 21),
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-      Expanded(
-        child: Directionality(
-          // حركة الصفحات أفقياً: سحب لليسار يفتح الصفحة الموجودة على اليمين،
-          // وسحب لليمين يفتح الصفحة الموجودة على اليسار.
-          textDirection: TextDirection.ltr,
-          child: PageView(
-            controller: _pageController,
-            physics: const PageScrollPhysics(),
-            reverse: true,
-            onPageChanged: (index) {
-              setState(() => _currentPage = index);
-              // عند الرجوع إلى صفحة الغرف من أي صفحة أخرى، ابدأ دائماً من «متابعة».
-              if (index == 0 && _selectedMyRoomsTab != 0) {
-                setState(() => _selectedMyRoomsTab = 0);
-                if (_myRoomsTabController.hasClients) {
-                  _myRoomsTabController.jumpToPage(0);
-                }
-              }
-            },
-            children: [
-              Directionality(
-                textDirection: TextDirection.rtl,
-                child: _buildOriginalHomeContent(),
-              ),
-              Directionality(
-                textDirection: TextDirection.rtl,
-                child: _buildExplorePage(),
-              ),
-              const Directionality(
-                textDirection: TextDirection.rtl,
-                child: SizedBox.expand(),
-              ),
-              const Directionality(
-                textDirection: TextDirection.rtl,
-                child: SizedBox.expand(),
-              ),
-            ],
+        Expanded(
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: PageView(
+              controller: _pageController,
+              physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPage = index;
+                  if (index < 3) _lastInnerIndex = index;
+                });
+              },
+              children: [
+                _buildMyRoomsPage(0),
+                _buildMyRoomsPage(1),
+                _buildMyRoomsPage(2),
+                Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: _buildExplorePage(),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    ],
+      ],
     ),
   );
 }
