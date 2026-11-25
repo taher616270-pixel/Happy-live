@@ -4611,16 +4611,21 @@ export default {
       }
     }
 
-    // Public recommendation feed: active rooms ranked by real recent gift support,
-    // then current audience and live presence recency. Private/closed rooms are excluded.
+    // The three recommendation positions share one fixed hourly cycle.
+    // During the current hour, positions stay unchanged and are based only on
+    // successful gift support from the immediately preceding completed hour.
     if (url.pathname === "/api/v1/rooms/recommended" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
       try {
         const user = await authenticatedUser(request, env.DB);
         if (!user) return json({ error: "authentication_required" }, 401, origin, env);
         const now = new Date();
+        const currentHourStartMs = Math.floor(now.getTime() / 3600000) * 3600000;
+        const supportWindowStart = new Date(currentHourStartMs - 3600000).toISOString();
+        const supportWindowEnd = new Date(currentHourStartMs).toISOString();
+        const cycleStart = new Date(currentHourStartMs).toISOString();
+        const cycleEnd = new Date(currentHourStartMs + 3600000).toISOString();
         const presenceCutoff = new Date(now.getTime() - 45000).toISOString();
-        const supportCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
         const rows = await env.DB!.prepare(
           "SELECT r.id, r.room_code, r.name, r.description, " +
           "COALESCE(ra.announcement, r.description) AS announcement, " +
@@ -4631,29 +4636,30 @@ export default {
           "(SELECT COUNT(DISTINCT v.user_id) FROM room_chat_visits v " +
           " WHERE v.room_id=r.id AND v.exited_at IS NULL AND v.last_seen_at>=?) AS members_count, " +
           "(SELECT COALESCE(SUM(g.coin_cost), 0) FROM gift_transactions g " +
-          " WHERE g.room_id=r.id AND g.status='succeeded' AND g.created_at>=?) AS support_coins_24h, " +
-          "(SELECT COUNT(*) FROM gift_transactions g " +
-          " WHERE g.room_id=r.id AND g.status='succeeded' AND g.created_at>=?) AS gifts_count_24h, " +
-          "(SELECT MAX(v.last_seen_at) FROM room_chat_visits v " +
-          " WHERE v.room_id=r.id AND v.exited_at IS NULL AND v.last_seen_at>=?) AS last_active_at " +
+          " WHERE g.room_id=r.id AND g.status='succeeded' AND g.created_at>=? AND g.created_at<?) AS support_coins_hour " +
           "FROM rooms r " +
           "LEFT JOIN room_announcements ra ON ra.room_id=r.id " +
           "LEFT JOIN room_levels rl ON rl.room_id=r.id " +
           "LEFT JOIN room_experience rx ON rx.room_id=r.id " +
           "LEFT JOIN profiles owner ON owner.user_id=r.owner_user_id " +
           "WHERE r.status='active' AND r.visibility='public' " +
-          "ORDER BY support_coins_24h DESC, members_count DESC, gifts_count_24h DESC, last_active_at DESC, r.created_at DESC " +
+          "ORDER BY support_coins_hour DESC, r.created_at ASC " +
           "LIMIT 60"
-        ).bind(presenceCutoff, supportCutoff, supportCutoff, presenceCutoff).all<{
+        ).bind(presenceCutoff, supportWindowStart, supportWindowEnd).all<{
           id: string; room_code: string; name: string; description: string;
           announcement: string | null; image_url: string | null; visibility: string;
           status: string; created_at: string; level: number; total_exp: number;
           owner_name: string; owner_avatar: string; members_count: number;
-          support_coins_24h: number; gifts_count_24h: number; last_active_at: string | null;
+          support_coins_hour: number;
         }>();
         return json({
           ok: true,
-          rankingWindow: "24h",
+          rankingWindow: "previous_completed_hour",
+          rankingCycleStart: cycleStart,
+          rankingCycleEnd: cycleEnd,
+          supportWindowStart,
+          supportWindowEnd,
+          secondsUntilNextRanking: Math.max(0, Math.ceil((currentHourStartMs + 3600000 - now.getTime()) / 1000)),
           rooms: (rows.results ?? []).map((room, index) => ({
             id: room.id, roomCode: room.room_code, name: room.name,
             description: room.description, announcement: room.announcement,
@@ -4663,9 +4669,7 @@ export default {
             level: room.level,
             experienceLevel: roomExperienceProgress(Number(room.total_exp ?? 0)).level,
             membersCount: Number(room.members_count ?? 0),
-            supportCoins24h: Number(room.support_coins_24h ?? 0),
-            giftsCount24h: Number(room.gifts_count_24h ?? 0),
-            lastActiveAt: room.last_active_at,
+            supportCoinsHour: Number(room.support_coins_hour ?? 0),
             rank: index + 1,
           })),
         }, 200, origin, env);
