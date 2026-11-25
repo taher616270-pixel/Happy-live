@@ -4611,6 +4611,70 @@ export default {
       }
     }
 
+    // Public recommendation feed: active rooms ranked by real recent gift support,
+    // then current audience and live presence recency. Private/closed rooms are excluded.
+    if (url.pathname === "/api/v1/rooms/recommended" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const user = await authenticatedUser(request, env.DB);
+        if (!user) return json({ error: "authentication_required" }, 401, origin, env);
+        const now = new Date();
+        const presenceCutoff = new Date(now.getTime() - 45000).toISOString();
+        const supportCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+        const rows = await env.DB!.prepare(
+          "SELECT r.id, r.room_code, r.name, r.description, " +
+          "COALESCE(ra.announcement, r.description) AS announcement, " +
+          "r.image_url, r.visibility, r.status, r.created_at, " +
+          "COALESCE(rl.level, 1) AS level, COALESCE(rx.total_exp, 0) AS total_exp, " +
+          "COALESCE(owner.display_name, 'صاحب الغرفة') AS owner_name, " +
+          "COALESCE(owner.avatar_key, '') AS owner_avatar, " +
+          "(SELECT COUNT(DISTINCT v.user_id) FROM room_chat_visits v " +
+          " WHERE v.room_id=r.id AND v.exited_at IS NULL AND v.last_seen_at>=?) AS members_count, " +
+          "(SELECT COALESCE(SUM(g.coin_cost), 0) FROM gift_transactions g " +
+          " WHERE g.room_id=r.id AND g.status='succeeded' AND g.created_at>=?) AS support_coins_24h, " +
+          "(SELECT COUNT(*) FROM gift_transactions g " +
+          " WHERE g.room_id=r.id AND g.status='succeeded' AND g.created_at>=?) AS gifts_count_24h, " +
+          "(SELECT MAX(v.last_seen_at) FROM room_chat_visits v " +
+          " WHERE v.room_id=r.id AND v.exited_at IS NULL AND v.last_seen_at>=?) AS last_active_at " +
+          "FROM rooms r " +
+          "LEFT JOIN room_announcements ra ON ra.room_id=r.id " +
+          "LEFT JOIN room_levels rl ON rl.room_id=r.id " +
+          "LEFT JOIN room_experience rx ON rx.room_id=r.id " +
+          "LEFT JOIN profiles owner ON owner.user_id=r.owner_user_id " +
+          "WHERE r.status='active' AND r.visibility='public' " +
+          "ORDER BY support_coins_24h DESC, members_count DESC, gifts_count_24h DESC, last_active_at DESC, r.created_at DESC " +
+          "LIMIT 60"
+        ).bind(presenceCutoff, supportCutoff, supportCutoff, presenceCutoff).all<{
+          id: string; room_code: string; name: string; description: string;
+          announcement: string | null; image_url: string | null; visibility: string;
+          status: string; created_at: string; level: number; total_exp: number;
+          owner_name: string; owner_avatar: string; members_count: number;
+          support_coins_24h: number; gifts_count_24h: number; last_active_at: string | null;
+        }>();
+        return json({
+          ok: true,
+          rankingWindow: "24h",
+          rooms: (rows.results ?? []).map((room, index) => ({
+            id: room.id, roomCode: room.room_code, name: room.name,
+            description: room.description, announcement: room.announcement,
+            imageUrl: room.image_url, visibility: room.visibility,
+            status: room.status, ownerName: room.owner_name,
+            ownerAvatarUrl: room.owner_avatar,
+            level: room.level,
+            experienceLevel: roomExperienceProgress(Number(room.total_exp ?? 0)).level,
+            membersCount: Number(room.members_count ?? 0),
+            supportCoins24h: Number(room.support_coins_24h ?? 0),
+            giftsCount24h: Number(room.gifts_count_24h ?? 0),
+            lastActiveAt: room.last_active_at,
+            rank: index + 1,
+          })),
+        }, 200, origin, env);
+      } catch (error) {
+        console.error("[rooms.recommended] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "recommended_rooms_lookup_failed" }, 500, origin, env);
+      }
+    }
+
     // Return rooms the signed-in user has entered before, newest visit first.
     if (url.pathname === "/api/v1/rooms/recent" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
