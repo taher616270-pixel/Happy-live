@@ -11,6 +11,7 @@ import 'room_page.dart';
 import 'voice_rooms_page.dart';
 import 'public_profile_page.dart';
 import 'explore_banner_destination_page.dart';
+import '../tabs/swipe_chip_tabs.dart';
 
 /// Theme colors kept local so this page can be maintained independently.
 class HappyHomeColors {
@@ -795,6 +796,24 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 420,
+          child: SwipeChipTabs(
+            titles: const ['توصية', 'لعبة', 'مبارزة', 'البث المباشر', 'لعبة الفائز السوبر', 'الفيديو'],
+            onChanged: (index) {
+              // يمكن ربط تحميل بيانات كل تبويب هنا لاحقاً.
+            },
+            pages: [
+              (_) => const _ExploreTabPlaceholder('توصية'),
+              (_) => const _ExploreTabPlaceholder('لعبة'),
+              (_) => const _ExploreTabPlaceholder('مبارزة'),
+              (_) => const _ExploreTabPlaceholder('البث المباشر'),
+              (_) => const _ExploreTabPlaceholder('لعبة الفائز السوبر'),
+              (_) => const _ExploreTabPlaceholder('الفيديو'),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -1098,6 +1117,25 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     ),
   );
 }
+class _ExploreTabPlaceholder extends StatelessWidget {
+  final String title;
+  const _ExploreTabPlaceholder(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Color(0xFF9A98AD),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
 class MyPartyRoomButton extends StatelessWidget {
   final VoidCallback? onTap;
   final Map<String, dynamic>? room;
