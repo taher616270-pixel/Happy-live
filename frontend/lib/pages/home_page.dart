@@ -35,7 +35,6 @@ class HappyHomeTab extends StatefulWidget {
 class HappyHomeTabState extends State<HappyHomeTab> {
   final PageController _pageController = PageController();
   final PageController _roomsTabController = PageController();
-  bool _exploreEdgeTransitioning = false;
   final PageController _exploreBannerController = PageController();
   Timer? _exploreBannerTimer;
   List<Map<String, dynamic>> _exploreBanners = <Map<String, dynamic>>[];
@@ -911,46 +910,18 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       _buildMyRoomsTabs(),
                       const SizedBox(height: 8),
                       Expanded(
-                        child: NotificationListener<ScrollNotification>(
-                          onNotification: (notification) {
-                            if (notification is OverscrollNotification) {
-                              final atLastTab = _roomsTabController.hasClients &&
-                                  _roomsTabController.page != null &&
-                                  _roomsTabController.page! >= 1.99;
-                              final atRoomsPage = _pageController.hasClients &&
-                                  _pageController.page != null &&
-                                  _pageController.page! < 0.01;
-                              if (atLastTab &&
-                                  atRoomsPage &&
-                                  notification.metrics.axis == Axis.horizontal &&
-                                  notification.overscroll > 0 &&
-                                  !_exploreEdgeTransitioning) {
-                                _exploreEdgeTransitioning = true;
-                                final position = _pageController.position;
-                                final nextPixels = (position.pixels + notification.overscroll)
-                                    .clamp(position.minScrollExtent, position.maxScrollExtent);
-                                _pageController.jumpTo(nextPixels);
-                              }
-                            } else if (notification is ScrollEndNotification &&
-                                _exploreEdgeTransitioning &&
-                                _pageController.hasClients) {
-                              final currentPage = _pageController.page ?? 0;
-                              final targetPage = currentPage >= 0.25 ? 1 : 0;
-                              _pageController.animateToPage(
-                                targetPage,
-                                duration: const Duration(milliseconds: 180),
-                                curve: Curves.easeOutCubic,
-                              ).whenComplete(() => _exploreEdgeTransitioning = false);
-                            }
-                            return false;
-                          },
-                          child: Directionality(
-                            textDirection: TextDirection.ltr,
-                            child: PageView(
-                              controller: _roomsTabController,
-                              reverse: true,
-                              physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
-                              onPageChanged: (index) => setState(() => _lastInnerIndex = index),
+                        child: Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: PageView(
+                            controller: _roomsTabController,
+                            reverse: true,
+                            // On the recent-rooms tab, let the outer PageView own
+                            // horizontal drags so a swipe from any room card
+                            // moves the complete page to Explore.
+                            physics: _lastInnerIndex == 2
+                                ? const NeverScrollableScrollPhysics()
+                                : const PageScrollPhysics(parent: ClampingScrollPhysics()),
+                            onPageChanged: (index) => setState(() => _lastInnerIndex = index),
                               children: [
                                 _buildMyRoomsPage(0),
                                 _buildMyRoomsPage(1),
