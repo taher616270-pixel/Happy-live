@@ -67,8 +67,8 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
       if (devices.isEmpty) {
         throw CameraException('NoCamera', 'No camera device is available');
       }
-      final device = devices.where((c) => c.lensDirection == CameraLensDirection.back).firstOrNull ??
-          devices.first;
+      final backCameras = devices.where((c) => c.lensDirection == CameraLensDirection.back);
+      final device = backCameras.isNotEmpty ? backCameras.first : devices.first;
       final controller = CameraController(
         device,
         ResolutionPreset.high,
