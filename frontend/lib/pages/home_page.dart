@@ -652,6 +652,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       );
     }
     return ListView.separated(
+      physics: const NeverScrollableScrollPhysics(),
       key: const PageStorageKey<String>('happy-live-recent-rooms-scroll'),
       padding: const EdgeInsets.fromLTRB(8, 5, 8, 0),
       itemCount: _recentRooms.length,
@@ -919,6 +920,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       );
     }
     return ListView.separated(
+        physics: const NeverScrollableScrollPhysics(),
         key: const PageStorageKey<String>('happy-live-recommended-rooms'),
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(0, 5, 0, 16),
@@ -936,6 +938,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
 
   Widget _buildExplorePage() {
     return ListView(
+      physics: const NeverScrollableScrollPhysics(),
       key: const PageStorageKey<String>('happy-live-explore-scroll'),
       padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 16),
       children: [
@@ -997,6 +1000,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   // a country-specific room feed is available from the API.
   Widget _buildCountryPage() {
     return ListView(
+      physics: const NeverScrollableScrollPhysics(),
       key: const PageStorageKey<String>('happy-live-country-scroll'),
       padding: const EdgeInsets.fromLTRB(16, 28, 16, 16),
       children: [
