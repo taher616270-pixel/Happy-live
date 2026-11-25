@@ -434,7 +434,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       if (_pageController.hasClients) {
         _pageController.animateToPage(
           1,
-          duration: const Duration(milliseconds: 280),
+          duration: const Duration(milliseconds: 520),
           curve: Curves.easeInOutCubic,
         ).whenComplete(() {
           _handingOffRoomsSwipeToExplore = false;
