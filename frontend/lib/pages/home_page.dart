@@ -48,6 +48,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   bool _preservingRoomsTab = false;
   double _recentTabSwipeDelta = 0;
   double _roomSwipeDelta = 0;
+  int? _roomSwipeTargetIndex;
+  bool _roomSwipeUsesOuterPager = false;
+  int _roomSwipeStartIndex = 0;
   int? _recentSwipeTargetPage;
   bool _recentTabSwipeActive = false;
   Map<String, dynamic>? _myRoom;
@@ -1223,53 +1226,100 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     // Rooms page, including its header and tab strip.
                     onHorizontalDragStart: (_) {
                       _roomSwipeDelta = 0;
+                      _roomSwipeTargetIndex = null;
+                      _roomSwipeUsesOuterPager = false;
+                      _roomSwipeStartIndex = _lastInnerIndex;
                     },
                     onHorizontalDragUpdate: (details) {
-                      // Following -> Join: swipe right.
-                      // Join -> Recent: swipe right; Join -> Following: swipe left.
-                      if (_currentPage == 0 &&
-                          (_lastInnerIndex == 0 ||
-                              _lastInnerIndex == 1 ||
-                              _lastInnerIndex == 2)) {
-                        _roomSwipeDelta += details.delta.dx;
+                      if (_currentPage != 0) return;
+                      final dx = details.delta.dx;
+                      if (dx.abs() < 0.1) return;
+                      _roomSwipeDelta += dx;
+
+                      // Pick only the adjacent destination in the finger's direction.
+                      if (_roomSwipeTargetIndex == null && !_roomSwipeUsesOuterPager) {
+                        if (dx > 0) {
+                          if (_roomSwipeStartIndex == 0) {
+                            _roomSwipeTargetIndex = 1;
+                          } else if (_roomSwipeStartIndex == 1) {
+                            _roomSwipeTargetIndex = 2;
+                          } else if (_roomSwipeStartIndex == 2) {
+                            _roomSwipeUsesOuterPager = true;
+                          }
+                        } else {
+                          if (_roomSwipeStartIndex == 2) {
+                            _roomSwipeTargetIndex = 1;
+                          } else if (_roomSwipeStartIndex == 1) {
+                            _roomSwipeTargetIndex = 0;
+                          }
+                        }
+                      }
+
+                      // Move the page continuously with the finger; clamp to one adjacent page.
+                      if (_roomSwipeUsesOuterPager && _pageController.hasClients) {
+                        final p = _pageController.position;
+                        final next = (p.pixels + dx)
+                            .clamp(p.minScrollExtent, p.minScrollExtent + p.viewportDimension)
+                            .toDouble();
+                        _pageController.jumpTo(next);
+                      } else if (_roomSwipeTargetIndex != null &&
+                          _roomsTabController.hasClients) {
+                        final p = _roomsTabController.position;
+                        final next = (p.pixels + dx)
+                            .clamp(p.minScrollExtent, p.maxScrollExtent)
+                            .toDouble();
+                        _roomsTabController.jumpTo(next);
                       }
                     },
-                    onHorizontalDragEnd: (details) {
-                      final velocity = details.primaryVelocity ?? 0;
-                      final swipeRight = _roomSwipeDelta >= 45 || velocity > 320;
-                      final swipeLeft = _roomSwipeDelta <= -45 || velocity < -320;
-                      int? targetIndex;
-                      if (_currentPage == 0 && _lastInnerIndex == 0 && swipeRight) {
-                        targetIndex = 1;
-                      } else if (_currentPage == 0 && _lastInnerIndex == 1) {
-                        if (swipeRight) {
-                          targetIndex = 2;
-                        } else if (swipeLeft) {
-                          targetIndex = 0;
-                        }
-                      } else if (_currentPage == 0 && _lastInnerIndex == 2 && swipeRight) {
-                        // At the last Rooms sub-tab, continue right to Explore.
-                        _roomSwipeDelta = 0;
-                        if (_pageController.hasClients) {
-                          _pageController.animateToPage(
-                            1,
-                            duration: const Duration(milliseconds: 260),
-                            curve: Curves.easeOutCubic,
-                          );
-                        }
-                        return;
-                      }
+                    onHorizontalDragEnd: (_) {
+                      final useOuter = _roomSwipeUsesOuterPager;
+                      final target = _roomSwipeTargetIndex;
+                      final start = _roomSwipeStartIndex;
+                      final distance = _roomSwipeDelta.abs();
                       _roomSwipeDelta = 0;
-                      if (targetIndex == null || !_roomsTabController.hasClients) return;
-                      setState(() => _lastInnerIndex = targetIndex!);
-                      _roomsTabController.animateToPage(
-                        targetIndex,
-                        duration: const Duration(milliseconds: 260),
-                        curve: Curves.easeOutCubic,
-                      );
+                      _roomSwipeTargetIndex = null;
+                      _roomSwipeUsesOuterPager = false;
+
+                      if (useOuter && _pageController.hasClients) {
+                        final p = _pageController.position;
+                        final completedFullPage = distance >= p.viewportDimension;
+                        _pageController.animateToPage(
+                          completedFullPage ? 1 : 0,
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.easeOutCubic,
+                        );
+                      } else if (target != null && _roomsTabController.hasClients) {
+                        final p = _roomsTabController.position;
+                        final completedFullPage = distance >= p.viewportDimension;
+                        final destination = completedFullPage ? target : start;
+                        if (completedFullPage) {
+                          setState(() => _lastInnerIndex = destination);
+                        }
+                        _roomsTabController.animateToPage(
+                          destination,
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.easeOutCubic,
+                        );
+                      }
                     },
                     onHorizontalDragCancel: () {
                       _roomSwipeDelta = 0;
+                      _roomSwipeTargetIndex = null;
+                      _roomSwipeUsesOuterPager = false;
+                      if (_roomsTabController.hasClients) {
+                        _roomsTabController.animateToPage(
+                          _roomSwipeStartIndex,
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                        );
+                      }
+                      if (_pageController.hasClients && _currentPage == 0) {
+                        _pageController.animateToPage(
+                          0,
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                        );
+                      }
                     },
                     child: Column(
                     children: [
