@@ -420,12 +420,27 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   Widget _buildMyRoomsPage(int innerIndex) => Directionality(
     textDirection: TextDirection.rtl,
     child: Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: innerIndex == 0
-          ? _buildMyRoomsTabContent('لا توجد غرف تتابعها حالياً')
-          : innerIndex == 1
-              ? _buildMyRoomsTabContent('لا توجد غرف للانضمام إليها حالياً')
-              : _buildRecentRoomsContent(),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+      child: Column(
+        children: [
+          const SizedBox(height: 24),
+          MyPartyRoomButton(
+            room: _myRoom,
+            loading: _loadingMyRoom,
+            onTap: _openMyRoom,
+          ),
+          const SizedBox(height: 14),
+          _buildMyRoomsTabs(),
+          const SizedBox(height: 8),
+          Expanded(
+            child: innerIndex == 0
+                ? _buildMyRoomsTabContent('لا توجد غرف تتابعها حالياً')
+                : innerIndex == 1
+                    ? _buildMyRoomsTabContent('لا توجد غرف للانضمام إليها حالياً')
+                    : _buildRecentRoomsContent(),
+          ),
+        ],
+      ),
     ),
   );
 
@@ -830,17 +845,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             ),
           ),
         ),
-        if (_currentPage < 3) ...[
-          const SizedBox(height: 24),
-          MyPartyRoomButton(
-            room: _myRoom,
-            loading: _loadingMyRoom,
-            onTap: _openMyRoom,
-          ),
-          const SizedBox(height: 14),
-          _buildMyRoomsTabs(),
-          const SizedBox(height: 8),
-        ],
         Expanded(
           child: Directionality(
             textDirection: TextDirection.ltr,
