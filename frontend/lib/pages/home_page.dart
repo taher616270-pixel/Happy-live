@@ -1855,3 +1855,33 @@ class _RoomMemberWaveState extends State<_RoomMemberWave>
     _controller.dispose();
     super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 16,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: List<Widget>.generate(5, (index) {
+              final phase = (_controller.value * 2 * math.pi) + (index * 0.85);
+              final barHeight = 4.0 + (math.sin(phase).abs() * 10.0);
+              return Container(
+                width: 2,
+                height: barHeight,
+                margin: const EdgeInsets.symmetric(horizontal: 1),
+                decoration: BoxDecoration(
+                  color: kNeonLight,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              );
+            }),
+          );
+        },
+      ),
+    );
+  }
+}
