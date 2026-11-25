@@ -422,6 +422,15 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     ),
   );
 
+  Widget _buildRoomWaveBar(double height) => Container(
+    width: 3,
+    height: height,
+    decoration: BoxDecoration(
+      color: HappyHomeColors.gold,
+      borderRadius: BorderRadius.circular(3),
+    ),
+  );
+
   Widget _buildRecentRoomsContent() {
     if (_loadingRecentRooms && _recentRooms.isEmpty) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: HappyHomeColors.gold));
@@ -513,7 +522,19 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     border: Border.all(color: const Color(0x66D9A93C)),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.people_alt_rounded, size: 15, color: HappyHomeColors.gold),
+                    SizedBox(
+                      width: 19,
+                      height: 16,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          _buildRoomWaveBar(5),
+                          _buildRoomWaveBar(11),
+                          _buildRoomWaveBar(7),
+                        ],
+                      ),
+                    ),
                     const SizedBox(width: 4),
                     Text('$membersCount',
                       style: const TextStyle(color: Color(0xFF8A6420), fontSize: 11, fontWeight: FontWeight.w900)),
