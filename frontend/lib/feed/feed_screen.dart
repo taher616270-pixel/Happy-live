@@ -67,9 +67,11 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
     builder: (_) => FeedCreateCameraPage(initialFile: selected!, accessToken: FeedConfig.authToken()),
    ),
   );
-  if (confirmed != null && mounted) {
+  if (confirmed == true && mounted) {
+   await _load();
+   if (!mounted) return;
    ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('تم اختيار الملف: ${confirmed.name}')),
+    const SnackBar(content: Text('تم نشر المنشور بنجاح')),
    );
   }
  }
