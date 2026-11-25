@@ -40,11 +40,17 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
    await c.initialize().timeout(const Duration(seconds: 25));
    await c.setLooping(true);
   } catch (error) {
+   // Publish the failed state before disposing the platform player. On web,
+   // dispose() can itself wait on a stalled media element; awaiting it here
+   // used to leave the feed spinner visible forever and hide the real error.
    if (_ctrls[i] == c) {
     _ctrls.remove(i);
-    await c.dispose();
-    if (mounted) setState(() => _videoErrors[i] = error.toString());
+    if (mounted) {
+     setState(() => _videoErrors[i] = 'تعذر تحميل الفيديو. تحقق من صيغة الملف أو اتصال الشبكة.');
+    }
    }
+   // Cleanup must never block the UI/error state.
+   c.dispose().catchError((_) {});
    return;
   }
   if(!mounted||_ctrls[i]!=c)return;setState((){});if(i==_cur&&widget.isActive){c.play();}else{c.pause();}
