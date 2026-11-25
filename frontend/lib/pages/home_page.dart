@@ -923,7 +923,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     ),
   );
 }
-}
 class MyPartyRoomButton extends StatelessWidget {
   final VoidCallback? onTap;
   final Map<String, dynamic>? room;
