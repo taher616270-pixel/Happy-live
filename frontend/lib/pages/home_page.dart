@@ -588,6 +588,23 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     child: const Icon(Icons.graphic_eq_rounded, color: HappyHomeColors.gold, size: 22),
   );
 
+  Widget _buildExplorePage() {
+    return ListView(
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 16),
+      children: [
+        Container(
+          width: double.infinity,
+          height: 86,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE8E4DA), width: 1),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMyRoomsTabContent(String emptyMessage) {
     return Center(
       child: Text(
@@ -743,6 +760,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               Directionality(
                 textDirection: TextDirection.rtl,
                 child: _buildOriginalHomeContent(),
+              ),
+              Directionality(
+                textDirection: TextDirection.rtl,
+                child: _buildExplorePage(),
               ),
               const Directionality(
                 textDirection: TextDirection.rtl,
