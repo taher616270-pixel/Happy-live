@@ -36,6 +36,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   String _countryName = 'الدولة';
   int _currentPage = 0;
   int _selectedMyRoomsTab = 0;
+  bool _handingOffTabSwipe = false;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
@@ -406,16 +407,34 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         _buildMyRoomsTabs(),
         const SizedBox(height: 8),
         Expanded(
-          child: PageView(
-            controller: _myRoomsTabController,
-            scrollDirection: Axis.horizontal,
-            physics: const PageScrollPhysics(),
-            onPageChanged: (index) => setState(() => _selectedMyRoomsTab = index),
-            children: [
-              _buildMyRoomsTabContent('لا توجد غرف تتابعها حالياً'),
-              _buildMyRoomsTabContent('لا توجد غرف للانضمام إليها حالياً'),
-              _buildRecentRoomsContent(),
-            ],
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              // عند نهاية تبويب «مؤخراً»، مرّر السحب الزائد إلى صفحة التطبيق الرئيسية التالية.
+              if (notification is OverscrollNotification &&
+                  notification.metrics.axis == Axis.horizontal &&
+                  _selectedMyRoomsTab == 2 &&
+                  notification.overscroll > 0 &&
+                  !_handingOffTabSwipe) {
+                _handingOffTabSwipe = true;
+                _pageController.animateToPage(
+                  1,
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeInOutCubic,
+                ).whenComplete(() => _handingOffTabSwipe = false);
+              }
+              return false;
+            },
+            child: PageView(
+              controller: _myRoomsTabController,
+              scrollDirection: Axis.horizontal,
+              physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
+              onPageChanged: (index) => setState(() => _selectedMyRoomsTab = index),
+              children: [
+                _buildMyRoomsTabContent('لا توجد غرف تتابعها حالياً'),
+                _buildMyRoomsTabContent('لا توجد غرف للانضمام إليها حالياً'),
+                _buildRecentRoomsContent(),
+              ],
+            ),
           ),
         ),
       ],
