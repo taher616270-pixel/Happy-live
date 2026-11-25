@@ -30,12 +30,12 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   if(i<0||i>=_videos.length||_ctrls.containsKey(i))return;
   final c=VideoPlayerController.networkUrl(Uri.parse(_videos[i].url));_ctrls[i]=c;
   try{await c.initialize();await c.setLooping(true);}catch(_){}
-  if(!mounted||_ctrls[i]!=c)return;setState((){});if(i==_cur)c.play();
+  if(!mounted||_ctrls[i]!=c)return;setState((){});if(i==_cur&&widget.isActive){c.play();}else{c.pause();}
  }
  void _sync(){
   for(final k in _ctrls.keys.toList()){if((k-_cur).abs()>1){_ctrls.remove(k)?.dispose();}}
   _ensure(_cur);_ensure(_cur+1);_ensure(_cur-1);
-  for(final e in _ctrls.entries){if(e.key==_cur){e.value.play();}else{e.value.pause();}}
+  for(final e in _ctrls.entries){if(e.key==_cur&&widget.isActive){e.value.play();}else{e.value.pause();}}
  }
  Future<void> _onPage(int i) async {
   _cur=i;_sync();if(i>=_videos.length-2&&!_more){_more=true;try{final next=await widget.repo.feed(_tab,page:_page+1);if(next.isNotEmpty&&mounted){_page++;setState(()=>_videos.addAll(next));}}catch(_){} _more=false;}

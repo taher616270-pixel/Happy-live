@@ -1481,6 +1481,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
   String _profileCountry = '';
   String? _profileAvatarUrl;
   int _walletBalance = 0;
+  late final FeedRepository _feedRepository = HttpFeedRepository();
   bool _isRefreshingProfile = false;
   String get _name => _profileName;
   String get _initial => _name.characters.first.toUpperCase();
@@ -1636,7 +1637,7 @@ class _SessionHomePageState extends State<SessionHomePage> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       FeedScreen(
-        repo: HttpFeedRepository(),
+        repo: _feedRepository,
         showBottomNav: false,
         isActive: _currentIndex == 0,
         onLiveTap: () => _soon('البث المباشر'),
