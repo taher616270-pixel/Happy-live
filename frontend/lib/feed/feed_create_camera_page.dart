@@ -65,9 +65,16 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
     try {
       final mime = (file.mimeType ?? '').toLowerCase();
       final path = file.path.toLowerCase();
+      final fileName = file.name.toLowerCase();
+      // Safari/iOS may return a blob: path without the original extension.
+      // Always inspect XFile.name as well as MIME type and path, otherwise
+      // selected MOV/MP4 videos can be mistaken for still images.
+      const videoExtensions = [
+        '.mp4', '.mov', '.m4v', '.webm', '.mpeg', '.mpg', '.3gp', '.ogv', '.ogg'
+      ];
       final isVideo = mime.startsWith('video/') ||
-          path.endsWith('.mp4') || path.endsWith('.mov') ||
-          path.endsWith('.webm') || path.endsWith('.m4v');
+          videoExtensions.any(fileName.endsWith) ||
+          videoExtensions.any(path.endsWith);
       final bytes = await file.readAsBytes();
       if (bytes.isEmpty) throw Exception('الملف فارغ.');
       if (bytes.length > 100 * 1024 * 1024) {
@@ -123,32 +130,73 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
       throw Exception((auth['message'] ?? auth['error'] ?? 'تعذر تجهيز خدمة رفع الملفات.').toString());
     }
 
-    final extension = file.name.contains('.') ? file.name.split('.').last : (_selectedIsVideo ? 'mp4' : 'jpg');
-    final fileName = 'happy-live-feed-${DateTime.now().millisecondsSinceEpoch}.$extension';
+    String extensionOf(String value) {
+      final clean = value.split('?').first;
+      final dot = clean.lastIndexOf('.');
+      return dot < 0 ? '' : clean.substring(dot + 1).toLowerCase();
+    }
+    final nameExtension = extensionOf(file.name);
+    final pathExtension = extensionOf(file.path);
+    final declaredMime = (file.mimeType ?? '').toLowerCase();
+    final mimeExtension = switch (declaredMime) {
+      'video/mp4' => 'mp4',
+      'video/quicktime' => 'mov',
+      'video/x-m4v' => 'm4v',
+      'video/webm' => 'webm',
+      'video/3gpp' => '3gp',
+      'image/jpeg' => 'jpg',
+      'image/png' => 'png',
+      'image/webp' => 'webp',
+      'image/gif' => 'gif',
+      _ => '',
+    };
+    const videoExtensions = {'mp4', 'mov', 'm4v', 'webm', 'mpeg', 'mpg', '3gp', 'ogv', 'ogg'};
+    const imageExtensions = {'jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'bmp'};
+    final extension = _selectedIsVideo
+        ? (videoExtensions.contains(mimeExtension)
+            ? mimeExtension
+            : videoExtensions.contains(nameExtension)
+                ? nameExtension
+                : videoExtensions.contains(pathExtension)
+                    ? pathExtension
+                    : 'mp4')
+        : (imageExtensions.contains(mimeExtension)
+            ? mimeExtension
+            : imageExtensions.contains(nameExtension)
+                ? nameExtension
+                : imageExtensions.contains(pathExtension)
+                    ? pathExtension
+                    : 'jpg');
+    final uploadFileName = 'happy-live-feed-${DateTime.now().millisecondsSinceEpoch}.$extension';
     final request = http.MultipartRequest('POST', Uri.parse('https://upload.imagekit.io/api/v1/files/upload'));
     request.fields.addAll({
       'publicKey': auth['publicKey'].toString(),
       'token': auth['token'].toString(),
       'expire': auth['expire'].toString(),
       'signature': auth['signature'].toString(),
-      'fileName': fileName,
+      'fileName': uploadFileName,
       'useUniqueFileName': 'true',
       'folder': '/happy-live/feed',
     });
-    final declaredMime = (file.mimeType ?? '').toLowerCase();
-    final lowerExtension = extension.toLowerCase();
-    final mediaMime = declaredMime.isNotEmpty
-        ? declaredMime
-        : switch (lowerExtension) {
+    final mediaMime = _selectedIsVideo
+        ? switch (extension) {
             'mp4' || 'm4v' => 'video/mp4',
             'mov' => 'video/quicktime',
             'webm' => 'video/webm',
-            'jpg' || 'jpeg' => 'image/jpeg',
-            'png' => 'image/png',
-            'gif' => 'image/gif',
-            'webp' => 'image/webp',
-            _ => _selectedIsVideo ? 'video/mp4' : 'application/octet-stream',
-          };
+            '3gp' => 'video/3gpp',
+            'mpeg' || 'mpg' => 'video/mpeg',
+            'ogv' || 'ogg' => 'video/ogg',
+            _ => 'video/mp4',
+          }
+        : (declaredMime.startsWith('image/')
+            ? declaredMime
+            : switch (extension) {
+                'jpg' || 'jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'gif' => 'image/gif',
+                'webp' => 'image/webp',
+                _ => 'application/octet-stream',
+              });
     request.files.add(http.MultipartFile.fromBytes(
       'file',
       bytes,
@@ -162,6 +210,12 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
     if (response.statusCode < 200 || response.statusCode >= 300 ||
         mediaUrl is! String || mediaUrl.isEmpty) {
       throw Exception((uploaded['message'] ?? uploaded['error'] ?? 'فشل رفع الملف إلى التخزين.').toString());
+    }
+    if (_selectedIsVideo) {
+      final uploadedPath = Uri.tryParse(mediaUrl)?.path.toLowerCase() ?? mediaUrl.toLowerCase();
+      if (!videoExtensions.any(uploadedPath.endsWith)) {
+        throw Exception('تعذر تأكيد رفع الفيديو كفيديو. أعد اختيار ملف MP4 أو MOV.');
+      }
     }
     return mediaUrl;
   }
