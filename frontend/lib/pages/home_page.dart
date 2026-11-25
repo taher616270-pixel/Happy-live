@@ -464,6 +464,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     _recentTabSwipeDelta = 0;
     _recentSwipeTargetPage = null;
     _recentTabSwipeActive = false;
+    // Rebuild pager physics only after the finger is released and the
+    // destination has been decided, never while the user is holding the drag.
+    if (mounted) setState(() {});
 
     if (target == 1 && _pageController.hasClients) {
       final page = _pageController.page ?? 0;
@@ -489,6 +492,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     _recentTabSwipeDelta = 0;
     _recentSwipeTargetPage = null;
     _recentTabSwipeActive = false;
+    if (mounted) setState(() {});
     if (target == 1 && _pageController.hasClients) {
       _pageController.animateToPage(
         0,
@@ -958,7 +962,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               reverse: true,
               // Recent-tab horizontal gestures are routed deliberately below:
               // left to Explore, right to Join. Other pages keep normal paging.
-              physics: _currentPage == 0 && _lastInnerIndex == 2
+              // Keep the outer pager locked for the entire manual drag,
+              // even after the finger crosses the page midpoint and onPageChanged fires.
+              physics: _lastInnerIndex == 2 &&
+                      (_currentPage == 0 || _recentTabSwipeActive)
                   ? const NeverScrollableScrollPhysics()
                   : const PageScrollPhysics(parent: ClampingScrollPhysics()),
               onPageChanged: (index) {
