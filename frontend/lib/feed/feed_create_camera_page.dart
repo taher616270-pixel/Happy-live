@@ -6,7 +6,9 @@ import 'package:video_player/video_player.dart';
 
 /// Select a photo or video from the device gallery. No camera access is used.
 class FeedCreateCameraPage extends StatefulWidget {
-  const FeedCreateCameraPage({super.key});
+  const FeedCreateCameraPage({super.key, required this.initialFile});
+
+  final XFile initialFile;
 
   @override
   State<FeedCreateCameraPage> createState() => _FeedCreateCameraPageState();
@@ -24,7 +26,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
   @override
   void initState() {
     super.initState();
-    _chooseFromGallery();
+    _loadFile(initialFile);
   }
 
   @override
@@ -35,18 +37,26 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
 
   Future<void> _chooseFromGallery() async {
     if (_busy) return;
+    try {
+      // This method is called directly by a user tapping the gallery button.
+      final file = await _picker.pickMedia();
+      if (!mounted || file == null) return;
+      await _loadFile(file);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'تعذر فتح المعرض. حاول مرة أخرى.');
+      }
+    }
+  }
+
+  Future<void> _loadFile(XFile file) async {
+    if (!mounted) return;
     setState(() {
       _busy = true;
       _error = null;
     });
+    VideoPlayerController? video;
     try {
-      final file = await _picker.pickMedia();
-      if (!mounted) return;
-      if (file == null) {
-        if (_selected == null) Navigator.of(context).pop();
-        return;
-      }
-
       final mime = (file.mimeType ?? '').toLowerCase();
       final path = file.path.toLowerCase();
       final isVideo = mime.startsWith('video/') ||
@@ -55,10 +65,9 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
           path.endsWith('.webm') ||
           path.endsWith('.m4v');
 
-      VideoPlayerController? video;
       Uint8List? imageBytes;
       if (isVideo) {
-        // On web, image_picker returns a browser-readable blob URL.
+        // image_picker exposes a browser-readable blob URL on web.
         video = VideoPlayerController.networkUrl(Uri.parse(file.path));
         await video.initialize();
         await video.setLooping(true);
@@ -68,7 +77,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
       }
 
       if (!mounted) {
-        video?.dispose();
+        await video?.dispose();
         return;
       }
       await _video?.dispose();
@@ -78,7 +87,9 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
         _imageBytes = imageBytes;
         _video = video;
       });
-    } catch (error) {
+      video = null; // Ownership transferred to the State.
+    } catch (_) {
+      await video?.dispose();
       if (mounted) {
         setState(() => _error = 'تعذر فتح الملف أو معاينته. اختر صورة أو فيديو آخر.');
       }
