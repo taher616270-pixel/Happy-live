@@ -3940,7 +3940,10 @@ export default {
             const value = upstream.headers.get(name);
             if (value) headers.set(name, value);
           }
-          if (!headers.has("content-type")) headers.set("content-type", "video/mp4");
+          const mediaContentType = headers.get("content-type") ?? "";
+          if (!mediaContentType.toLowerCase().startsWith("video/")) {
+            headers.set("content-type", "video/mp4");
+          }
           headers.set("x-content-type-options", "nosniff");
           if (origin && isAllowedOrigin(origin, env)) {
             headers.set("access-control-allow-origin", origin);
