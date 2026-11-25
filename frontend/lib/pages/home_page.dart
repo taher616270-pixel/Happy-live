@@ -621,7 +621,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         _exploreBanners = banners;
         _exploreBannerIntervalSeconds = (data['intervalSeconds'] is num
             ? (data['intervalSeconds'] as num).toInt()
-            : 4).clamp(2, 30);
+            : 4).clamp(2, 30).toInt();
         _exploreBannerIndex = 0;
       });
       if (_exploreBannerController.hasClients) _exploreBannerController.jumpToPage(0);
@@ -697,8 +697,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     },
                   )
                 : Container(
-                    color: Colors.white,
                     decoration: BoxDecoration(
+                      color: Colors.white,
                       border: Border.all(color: const Color(0xFFE8E4DA)),
                       borderRadius: BorderRadius.circular(14),
                     ),
