@@ -47,6 +47,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   int _lastInnerIndex = 0;
   bool _preservingRoomsTab = false;
   double _recentTabSwipeDelta = 0;
+  double _roomSwipeDelta = 0;
   int? _recentSwipeTargetPage;
   bool _recentTabSwipeActive = false;
   Map<String, dynamic>? _myRoom;
@@ -547,8 +548,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
   }
 
-  void _finishRecentTabSwipe(DragEndDetails details) {
-    if (!_recentTabSwipeActive || _lastInnerIndex != 2) {
+  void _finishRecentTabSwipe(DragEndDetails details) {    if (!_recentTabSwipeActive || _lastInnerIndex != 2) {
       _recentTabSwipeDelta = 0;
       _recentSwipeTargetPage = null;
       _recentTabSwipeActive = false;
@@ -1097,8 +1097,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       decoration: BoxDecoration(
                         color: selected
                             ? const Color(0xFF1AD3BB)
-                            : const Color(0xFFF3F5F4),
-                        borderRadius: BorderRadius.circular(15),
+                            : const Color(0xFFF3F5F4),                        borderRadius: BorderRadius.circular(15),
                       ),
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 220),
@@ -1221,10 +1220,33 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     behavior: HitTestBehavior.opaque,
                     // On Recent, start the Explore drag anywhere in the full
                     // Rooms page, including its header and tab strip.
-                    onHorizontalDragStart: null,
-                    onHorizontalDragUpdate: null,
-                    onHorizontalDragEnd: null,
-                    onHorizontalDragCancel: null,
+                    onHorizontalDragStart: (_) {
+                      _roomSwipeDelta = 0;
+                    },
+                    onHorizontalDragUpdate: (details) {
+                      // Only Following -> Join is enabled. A rightward drag
+                      // from Following is intentionally ignored.
+                      if (_currentPage == 0 && _lastInnerIndex == 0) {
+                        _roomSwipeDelta += details.delta.dx;
+                      }
+                    },
+                    onHorizontalDragEnd: (details) {
+                      final shouldOpenJoin = _currentPage == 0 &&
+                          _lastInnerIndex == 0 &&
+                          (_roomSwipeDelta <= -45 ||
+                              (details.primaryVelocity ?? 0) < -320);
+                      _roomSwipeDelta = 0;
+                      if (!shouldOpenJoin || !_roomsTabController.hasClients) return;
+                      setState(() => _lastInnerIndex = 1);
+                      _roomsTabController.animateToPage(
+                        1,
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeOutCubic,
+                      );
+                    },
+                    onHorizontalDragCancel: () {
+                      _roomSwipeDelta = 0;
+                    },
                     child: Column(
                     children: [
                       const SizedBox(height: 24),
@@ -1647,7 +1669,6 @@ class MyPartyRoomButton extends StatelessWidget {
     );
   }
 }
-
 class ExperimentalFeatureButton extends StatelessWidget {
   const ExperimentalFeatureButton({super.key, required this.onTap});
 
