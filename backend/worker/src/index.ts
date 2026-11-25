@@ -410,7 +410,7 @@ function json(data: unknown, status = 200, origin?: string, env?: Env): Response
     headers.set("access-control-allow-origin", origin);
     headers.set("vary", "Origin");
     headers.set("access-control-allow-credentials", "true");
-    headers.set("access-control-allow-headers", "Content-Type, Authorization");
+    headers.set("access-control-allow-headers", "Content-Type, Authorization, Range, If-Range");
     headers.set("access-control-allow-methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
   }
 
@@ -433,7 +433,7 @@ export default {
         headers.set("access-control-allow-origin", origin);
         headers.set("vary", "Origin");
         headers.set("access-control-allow-credentials", "true");
-        headers.set("access-control-allow-headers", "Content-Type, Authorization");
+        headers.set("access-control-allow-headers", "Content-Type, Authorization, Range, If-Range");
         headers.set("access-control-allow-methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
       }
       return new Response(null, { status: 204, headers });
@@ -3889,6 +3889,61 @@ export default {
         } catch { return {}; }
       };
       const videoIdFrom = (value: unknown) => typeof value === "string" && value.length <= 100 ? value.trim() : "";
+      // Stream published feed media through this Worker so Safari receives
+      // byte-range responses and explicit CORS headers from our own origin.
+      const mediaMatch = url.pathname.match(/^\\/api\\/feed\\/media\\/([0-9a-f-]{36})$/i);
+      if (mediaMatch && (request.method === "GET" || request.method === "HEAD")) {
+        const media = await env.DB.prepare(
+          "SELECT video_url FROM feed_videos WHERE id = ? AND status = 'published' LIMIT 1"
+        ).bind(mediaMatch[1]).first<{ video_url: string }>();
+        if (!media?.video_url) return json({ ok: false, error: "media_not_found" }, 404, origin, env);
+        let source: URL;
+        try { source = new URL(media.video_url); }
+        catch { return json({ ok: false, error: "invalid_media_url" }, 502, origin, env); }
+        if (source.protocol !== "https:" ||
+            !(source.hostname === "imagekit.io" || source.hostname.endsWith(".imagekit.io"))) {
+          return json({ ok: false, error: "media_host_not_allowed" }, 502, origin, env);
+        }
+        try {
+          const upstreamHeaders = new Headers();
+          const range = request.headers.get("Range");
+          const ifRange = request.headers.get("If-Range");
+          if (range) upstreamHeaders.set("Range", range);
+          if (ifRange) upstreamHeaders.set("If-Range", ifRange);
+          const upstream = await fetch(source.toString(), {
+            method: request.method,
+            headers: upstreamHeaders,
+            redirect: "follow"
+          });
+          if (!upstream.ok && upstream.status !== 206) {
+            return json({ ok: false, error: "media_source_unavailable", upstream_status: upstream.status }, 502, origin, env);
+          }
+          const headers = new Headers();
+          for (const name of [
+            "content-type", "content-length", "content-range", "accept-ranges",
+            "etag", "last-modified", "cache-control"
+          ]) {
+            const value = upstream.headers.get(name);
+            if (value) headers.set(name, value);
+          }
+          if (!headers.has("content-type")) headers.set("content-type", "video/mp4");
+          if (!headers.has("accept-ranges")) headers.set("accept-ranges", "bytes");
+          headers.set("x-content-type-options", "nosniff");
+          if (origin && isAllowedOrigin(origin, env)) {
+            headers.set("access-control-allow-origin", origin);
+            headers.set("vary", "Origin");
+            headers.set("access-control-allow-credentials", "true");
+            headers.set("access-control-expose-headers", "Accept-Ranges, Content-Length, Content-Range, Content-Type, ETag, Last-Modified");
+          }
+          return new Response(request.method === "HEAD" ? null : upstream.body, {
+            status: upstream.status,
+            headers
+          });
+        } catch (error) {
+          console.error("[feed.media] proxy failed", error instanceof Error ? error.message : "UnknownError");
+          return json({ ok: false, error: "media_stream_failed" }, 502, origin, env);
+        }
+      }
       if (url.pathname === "/api/feed" && request.method === "POST") {
         const body = await readBody();
         const mediaUrl = typeof body.url === "string" ? body.url.trim() : "";
