@@ -369,6 +369,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   void _goToPage(int index) {
+    if (index == 2) return; // The country label is not a page in the four-page swipe sequence.
     final target = index == 0 ? _lastInnerIndex : index;
     if (target < 0 || target > 3) return;
     _pageController.animateToPage(
@@ -379,7 +380,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _topButton(int index, IconData icon, String label) {
-    final selected = index == 0 ? _currentPage < 3 : _currentPage == index;
+    final selected = index == 0 ? _currentPage < 3 : index == 3 && _currentPage == 3;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
