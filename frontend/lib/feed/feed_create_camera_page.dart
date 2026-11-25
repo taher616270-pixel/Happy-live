@@ -58,6 +58,31 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
     }
   }
 
+  String _sniffVideoExtension(Uint8List bytes) {
+    // Some iOS/Safari pickers report a generic or incorrect MIME type.
+    // Inspect container signatures as a final reliable video check.
+    if (bytes.length >= 12 &&
+        String.fromCharCodes(bytes.sublist(4, 8)) == 'ftyp') {
+      final brand = String.fromCharCodes(bytes.sublist(8, 12)).toLowerCase();
+      return brand.startsWith('qt') ? 'mov' : 'mp4';
+    }
+    if (bytes.length >= 4 &&
+        bytes[0] == 0x1A && bytes[1] == 0x45 &&
+        bytes[2] == 0xDF && bytes[3] == 0xA3) {
+      return 'webm';
+    }
+    if (bytes.length >= 4 &&
+        bytes[0] == 0x4F && bytes[1] == 0x67 &&
+        bytes[2] == 0x67 && bytes[3] == 0x53) {
+      return 'ogg';
+    }
+    if (bytes.length >= 4 && bytes[0] == 0 && bytes[1] == 0 &&
+        bytes[2] == 1 && (bytes[3] == 0xB3 || bytes[3] == 0xBA)) {
+      return 'mpeg';
+    }
+    return '';
+  }
+
   Future<void> _loadFile(XFile file) async {
     if (!mounted) return;
     setState(() { _busy = true; _error = null; });
@@ -72,10 +97,12 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
       const videoExtensions = [
         '.mp4', '.mov', '.m4v', '.webm', '.mpeg', '.mpg', '.3gp', '.ogv', '.ogg'
       ];
+      final bytes = await file.readAsBytes();
+      final sniffedExtension = _sniffVideoExtension(bytes);
       final isVideo = mime.startsWith('video/') ||
+          sniffedExtension.isNotEmpty ||
           videoExtensions.any(fileName.endsWith) ||
           videoExtensions.any(path.endsWith);
-      final bytes = await file.readAsBytes();
       if (bytes.isEmpty) throw Exception('الملف فارغ.');
       if (bytes.length > 100 * 1024 * 1024) {
         throw Exception('حجم الملف يتجاوز الحد المسموح (100 ميجابايت).');
@@ -145,6 +172,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
     final nameExtension = extensionOf(file.name);
     final pathExtension = extensionOf(file.path);
     final declaredMime = (file.mimeType ?? '').toLowerCase();
+    final sniffedExtension = _sniffVideoExtension(bytes);
     final mimeExtension = switch (declaredMime) {
       'video/mp4' => 'mp4',
       'video/quicktime' => 'mov',
@@ -162,11 +190,13 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
     final extension = _selectedIsVideo
         ? (videoExtensions.contains(mimeExtension)
             ? mimeExtension
-            : videoExtensions.contains(nameExtension)
-                ? nameExtension
-                : videoExtensions.contains(pathExtension)
-                    ? pathExtension
-                    : 'mp4')
+            : videoExtensions.contains(sniffedExtension)
+                ? sniffedExtension
+                : videoExtensions.contains(nameExtension)
+                    ? nameExtension
+                    : videoExtensions.contains(pathExtension)
+                        ? pathExtension
+                        : 'mp4')
         : (imageExtensions.contains(mimeExtension)
             ? mimeExtension
             : imageExtensions.contains(nameExtension)
