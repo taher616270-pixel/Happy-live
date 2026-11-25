@@ -24,7 +24,23 @@ class _FeedItemState extends State<FeedItem> with TickerProviderStateMixin {
   final now=DateTime.now();
   if(_lastTap!=null&&now.difference(_lastTap!)<const Duration(milliseconds:280)){
    _single?.cancel();_lastTap=null;final b=_Burst(_burstId++,d.localPosition,(math.Random().nextDouble()-.5)*.5);setState(()=>_bursts.add(b));if(!v.liked)_toggleLike();
-  }else{_lastTap=now;_single=Timer(const Duration(milliseconds:280),(){_lastTap=null;final c=widget.ctrl;if(c==null||!mounted)return;setState((){if(c.value.isPlaying){c.pause();_paused=true;}else{c.play();_paused=false;}});});}
+  }else{
+   _lastTap=now;
+   final c=widget.ctrl;
+   if(c!=null&&!c.value.isPlaying){
+    // Call play synchronously from the tap event; delaying it in a Timer
+    // loses Safari's transient user activation and Safari rejects playback.
+    if(kIsWeb)c.setVolume(1);
+    c.play();
+    if(mounted)setState(()=>_paused=false);
+   }else{
+    _single=Timer(const Duration(milliseconds:280),(){
+     _lastTap=null;
+     if(c==null||!mounted)return;
+     if(c.value.isPlaying){c.pause();setState(()=>_paused=true);}
+    });
+   }
+  }
  }
  @override Widget build(BuildContext context){
   final c=widget.ctrl;final ready=c!=null&&c.value.isInitialized;final landscape=ready&&c.value.aspectRatio>1.05;
