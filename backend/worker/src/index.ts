@@ -3896,14 +3896,18 @@ export default {
         }
         // Force a browser-safe H.264/AAC MP4 rendition. iPhone uploads may be
         // HEVC/MOV, which some browsers cannot decode from the original file.
-        if (/\.(mp4|mov|m4v)$/i.test(source.pathname)) {
-          const current = source.searchParams.get("tr") ?? "";
-          const transforms = current.split(",").map(value => value.trim()).filter(Boolean);
-          for (const required of ["f-mp4", "vc-h264", "ac-aac", "ov-redirect_false"]) {
-            if (!transforms.includes(required)) transforms.push(required);
-          }
-          source.searchParams.set("tr", transforms.join(","));
+        // ImageKit requires an .mp4 or .mov URL suffix to treat the asset
+        // as video. For other supported input containers, append its documented
+        // ik-video.mp4 hint while retaining the original asset path.
+        if (!/\.(mp4|mov)$/i.test(source.pathname)) {
+          source.pathname = source.pathname.replace(/\/+$/, "") + "/ik-video.mp4";
         }
+        const current = source.searchParams.get("tr") ?? "";
+        const transforms = current.split(",").map(value => value.trim()).filter(Boolean);
+        for (const required of ["f-mp4", "vc-h264", "ac-aac", "ov-redirect_false"]) {
+          if (!transforms.includes(required)) transforms.push(required);
+        }
+        source.searchParams.set("tr", transforms.join(","));
         try {
           const upstreamHeaders = new Headers();
           const range = request.headers.get("Range");
