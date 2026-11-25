@@ -729,6 +729,31 @@ export default {
       }
     }
 
+    // Public Explore carousel configuration. Only active banners matching the requested country are returned.
+    if (url.pathname === "/api/v1/explore/banners" && request.method === "GET") {
+      if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
+      try {
+        const row = await env.DB.prepare(
+          "SELECT setting_value FROM platform_settings WHERE setting_key = 'explore_banners' LIMIT 1"
+        ).first<{ setting_value: string }>();
+        let saved: Record<string, unknown> = {};
+        try { saved = row?.setting_value ? JSON.parse(row.setting_value) as Record<string, unknown> : {}; } catch { saved = {}; }
+        const intervalSeconds = Number.isInteger(saved.intervalSeconds) ? Math.max(2, Math.min(30, Number(saved.intervalSeconds))) : 4;
+        const countryCode = (url.searchParams.get("country") ?? "ALL").trim().toUpperCase();
+        const allBanners = Array.isArray(saved.banners) ? saved.banners : [];
+        const banners = allBanners.filter((item): item is Record<string, unknown> =>
+          !!item && typeof item === "object" && item.isActive === true &&
+          typeof item.imageUrl === "string" && /^https:\/\//i.test(item.imageUrl) &&
+          (String(item.countryCode ?? "ALL").toUpperCase() === "ALL" ||
+           countryCode === "ALL" || String(item.countryCode ?? "").toUpperCase() === countryCode)
+        );
+        return json({ ok: true, enabled: saved.enabled === true, intervalSeconds, banners: saved.enabled === true ? banners : [] }, 200, origin, env);
+      } catch (error) {
+        console.error("[explore.banners.public] failed", error instanceof Error ? error.message : "UnknownError");
+        return json({ error: "explore_banners_unavailable" }, 500, origin, env);
+      }
+    }
+
     // Public PK presentation settings; all mutations remain owner-only in the admin route.
     if (url.pathname === "/api/v1/pk/settings" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
@@ -756,6 +781,7 @@ export default {
       url.pathname === "/api/v1/admin/pk/settings" ||
       url.pathname === "/api/v1/admin/gifts/settings" ||
       url.pathname === "/api/v1/admin/gifts/banner-settings" ||
+      url.pathname === "/api/v1/admin/explore/banners" ||
       url.pathname === "/api/v1/admin/gifts/catalog" ||
       url.pathname === "/api/v1/admin/gifts/custom-requests" ||
       /^\/api\/v1\/admin\/gifts\/custom-requests\/[0-9a-f-]{36}$/i.test(url.pathname) ||
@@ -778,6 +804,58 @@ export default {
       try {
         const actor = await authenticatedAdmin(request, env.DB);
         if (!actor) return json({ error: "authentication_required" }, 401, origin, env);
+        if (url.pathname === "/api/v1/admin/explore/banners" && (request.method === "GET" || request.method === "PATCH")) {
+          if (actor.role !== "owner" && actor.role !== "admin") return json({ error: "permission_denied" }, 403, origin, env);
+          const defaults = { enabled: true, intervalSeconds: 4, banners: [] as Record<string, unknown>[] };
+          const readSettings = async () => {
+            const row = await env.DB!.prepare(
+              "SELECT setting_value FROM platform_settings WHERE setting_key = 'explore_banners' LIMIT 1"
+            ).first<{ setting_value: string }>();
+            let saved: Record<string, unknown> = {};
+            try { saved = row?.setting_value ? JSON.parse(row.setting_value) as Record<string, unknown> : {}; } catch { saved = {}; }
+            return { ...defaults, ...saved, banners: Array.isArray(saved.banners) ? saved.banners : [] };
+          };
+          if (request.method === "GET") return json({ ok: true, settings: await readSettings() }, 200, origin, env);
+          if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
+          let body: Record<string, unknown>;
+          try { body = await request.json() as Record<string, unknown>; }
+          catch { return json({ error: "invalid_json" }, 400, origin, env); }
+          const enabled = body.enabled === true;
+          const intervalSeconds = Number(body.intervalSeconds ?? 4);
+          const rawBanners = body.banners;
+          if (typeof body.enabled !== "boolean" || !Number.isInteger(intervalSeconds) || intervalSeconds < 2 || intervalSeconds > 30 ||
+              !Array.isArray(rawBanners) || rawBanners.length > 20) {
+            return json({ error: "invalid_explore_banner_settings", message: "تحقق من التفعيل ومدة العرض وعدد البنرات (بحد أقصى 20)." }, 400, origin, env);
+          }
+          const banners: Record<string, unknown>[] = [];
+          for (const raw of rawBanners) {
+            if (!raw || typeof raw !== "object") return json({ error: "invalid_explore_banner" }, 400, origin, env);
+            const item = raw as Record<string, unknown>;
+            const id = typeof item.id === "string" ? item.id.trim().slice(0, 80) : "";
+            const title = typeof item.title === "string" ? item.title.trim() : "";
+            const imageUrl = typeof item.imageUrl === "string" ? item.imageUrl.trim() : "";
+            const countryCode = typeof item.countryCode === "string" ? item.countryCode.trim().toUpperCase() : "ALL";
+            const destinationType = typeof item.destinationType === "string" ? item.destinationType : "none";
+            const destinationUrl = typeof item.destinationUrl === "string" ? item.destinationUrl.trim() : "";
+            const destinationTitle = typeof item.destinationTitle === "string" ? item.destinationTitle.trim() : "";
+            const description = typeof item.description === "string" ? item.description.trim() : "";
+            const isActive = item.isActive === true;
+            if (!id || !title || title.length > 80 || !/^https:\/\//i.test(imageUrl) || imageUrl.length > 2048 ||
+                !/^(ALL|[A-Z]{2})$/.test(countryCode) ||
+                !["vip", "event", "rules", "url", "none"].includes(destinationType) ||
+                (destinationUrl && (destinationUrl.length > 2048 || !/^https:\/\//i.test(destinationUrl))) ||
+                destinationTitle.length > 80 || description.length > 1500) {
+              return json({ error: "invalid_explore_banner", message: "أحد البنرات يحتوي بيانات غير صحيحة. تحقق من الصورة والدولة والوجهة." }, 400, origin, env);
+            }
+            banners.push({ id, title, imageUrl, countryCode, destinationType, destinationUrl, destinationTitle, description, isActive });
+          }
+          const settings = { enabled, intervalSeconds, banners, updatedAt: new Date().toISOString() };
+          await env.DB!.prepare(
+            "INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('explore_banners', ?, ?) " +
+            "ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at"
+          ).bind(JSON.stringify(settings), settings.updatedAt).run();
+          return json({ ok: true, settings }, 200, origin, env);
+        }
         if (url.pathname === "/api/v1/admin/pk/settings" && (request.method === "GET" || request.method === "PATCH")) {
           if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
           const defaults = {
