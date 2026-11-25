@@ -105,15 +105,25 @@ class HappyHomeTabState extends State<HappyHomeTab> {
 
   Future<void> _loadCountry() async {
     try {
-      final response = await http.get(Uri.https('ipwho.is', '')).timeout(const Duration(seconds: 7));
+      final response = await http
+          .get(Uri.https('ipwho.is', ''))
+          .timeout(const Duration(seconds: 7));
       final data = jsonDecode(response.body);
-      if (response.statusCode == 200 && data is Map && data['success'] != false) {
+      if (response.statusCode == 200 &&
+          data is Map &&
+          data['success'] != false) {
         final country = (data['country'] ?? '').toString().trim();
-        final countryCode = (data['country_code'] ?? '').toString().trim().toUpperCase();
+        final countryCode =
+            (data['country_code'] ?? '').toString().trim().toUpperCase();
         if (mounted && country.isNotEmpty) {
           setState(() {
             _countryName = country;
-            if (RegExp(r'^[A-Z]{2}
+            if (RegExp(r'^[A-Z]{2}$').hasMatch(countryCode)) {
+              _countryCode = countryCode;
+            }
+          });
+          await _loadExploreBanners();
+        }
       }
     } catch (_) {}
   }
