@@ -37,6 +37,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   int _currentPage = 0;
   int _selectedMyRoomsTab = 0;
   bool _handingOffTabSwipe = false;
+  double _recentTabEdgeDrag = 0;
   Map<String, dynamic>? _myRoom;
   bool _loadingMyRoom = true;
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
@@ -409,18 +410,31 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         Expanded(
           child: NotificationListener<ScrollNotification>(
             onNotification: (notification) {
-              // عند نهاية تبويب «مؤخراً»، مرّر السحب الزائد إلى صفحة التطبيق الرئيسية التالية.
-              if (notification is OverscrollNotification &&
+              // اجمع السحب الزائد عند حافة «مؤخراً»، ولا تنتقل أثناء حركة الإصبع.
+              // هذا يمنع القفز المفاجئ عند السحب البطيء أو اللمسات القصيرة.
+              if (notification is ScrollStartNotification &&
+                  notification.metrics.axis == Axis.horizontal) {
+                _recentTabEdgeDrag = 0;
+              } else if (notification is OverscrollNotification &&
                   notification.metrics.axis == Axis.horizontal &&
                   _selectedMyRoomsTab == 2 &&
-                  notification.overscroll > 0 &&
+                  notification.overscroll > 0) {
+                _recentTabEdgeDrag += notification.overscroll;
+              } else if (notification is ScrollEndNotification &&
+                  _selectedMyRoomsTab == 2 &&
+                  _recentTabEdgeDrag >= 55 &&
                   !_handingOffTabSwipe) {
                 _handingOffTabSwipe = true;
+                _recentTabEdgeDrag = 0;
                 _pageController.animateToPage(
                   1,
-                  duration: const Duration(milliseconds: 280),
-                  curve: Curves.easeInOutCubic,
-                ).whenComplete(() => _handingOffTabSwipe = false);
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeOutCubic,
+                ).whenComplete(() {
+                  _handingOffTabSwipe = false;
+                });
+              } else if (notification is ScrollEndNotification) {
+                _recentTabEdgeDrag = 0;
               }
               return false;
             },
@@ -715,7 +729,16 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             controller: _pageController,
             physics: const PageScrollPhysics(),
             reverse: true,
-            onPageChanged: (index) => setState(() => _currentPage = index),
+            onPageChanged: (index) {
+              setState(() => _currentPage = index);
+              // عند الرجوع إلى صفحة الغرف من أي صفحة أخرى، ابدأ دائماً من «متابعة».
+              if (index == 0 && _selectedMyRoomsTab != 0) {
+                setState(() => _selectedMyRoomsTab = 0);
+                if (_myRoomsTabController.hasClients) {
+                  _myRoomsTabController.jumpToPage(0);
+                }
+              }
+            },
             children: [
               Directionality(
                 textDirection: TextDirection.rtl,
