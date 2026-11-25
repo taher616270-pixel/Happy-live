@@ -1,14 +1,22 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
-/// Select a photo or video from the device gallery. No camera access is used.
+/// Gallery-only composer for photos and videos in the short-video feed.
 class FeedCreateCameraPage extends StatefulWidget {
-  const FeedCreateCameraPage({super.key, required this.initialFile});
+  const FeedCreateCameraPage({
+    super.key,
+    required this.initialFile,
+    required this.accessToken,
+  });
 
   final XFile initialFile;
+  final String accessToken;
 
   @override
   State<FeedCreateCameraPage> createState() => _FeedCreateCameraPageState();
@@ -16,12 +24,15 @@ class FeedCreateCameraPage extends StatefulWidget {
 
 class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
   final ImagePicker _picker = ImagePicker();
+  final TextEditingController _caption = TextEditingController();
   XFile? _selected;
-  Uint8List? _imageBytes;
+  Uint8List? _mediaBytes;
   VideoPlayerController? _video;
   bool _selectedIsVideo = false;
   bool _busy = false;
   String? _error;
+
+  static const _api = 'https://happy-live-api.taher616270.workers.dev';
 
   @override
   void initState() {
@@ -31,6 +42,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
 
   @override
   void dispose() {
+    _caption.dispose();
     _video?.dispose();
     super.dispose();
   }
@@ -38,61 +50,142 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
   Future<void> _chooseFromGallery() async {
     if (_busy) return;
     try {
-      // This method is called directly by a user tapping the gallery button.
       final file = await _picker.pickMedia();
       if (!mounted || file == null) return;
       await _loadFile(file);
     } catch (_) {
-      if (mounted) {
-        setState(() => _error = 'تعذر فتح المعرض. حاول مرة أخرى.');
-      }
+      if (mounted) setState(() => _error = 'تعذر فتح المعرض. حاول مرة أخرى.');
     }
   }
 
   Future<void> _loadFile(XFile file) async {
     if (!mounted) return;
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
+    setState(() { _busy = true; _error = null; });
     VideoPlayerController? video;
     try {
       final mime = (file.mimeType ?? '').toLowerCase();
       final path = file.path.toLowerCase();
       final isVideo = mime.startsWith('video/') ||
-          path.endsWith('.mp4') ||
-          path.endsWith('.mov') ||
-          path.endsWith('.webm') ||
-          path.endsWith('.m4v');
-
-      Uint8List? imageBytes;
+          path.endsWith('.mp4') || path.endsWith('.mov') ||
+          path.endsWith('.webm') || path.endsWith('.m4v');
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) throw Exception('الملف فارغ.');
+      if (bytes.length > 100 * 1024 * 1024) {
+        throw Exception('حجم الملف يتجاوز الحد المسموح (100 ميجابايت).');
+      }
       if (isVideo) {
-        // image_picker exposes a browser-readable blob URL on web.
         video = VideoPlayerController.networkUrl(Uri.parse(file.path));
         await video.initialize();
         await video.setLooping(true);
         await video.pause();
-      } else {
-        imageBytes = await file.readAsBytes();
       }
-
-      if (!mounted) {
-        await video?.dispose();
-        return;
-      }
+      if (!mounted) { await video?.dispose(); return; }
       await _video?.dispose();
       setState(() {
         _selected = file;
         _selectedIsVideo = isVideo;
-        _imageBytes = imageBytes;
+        _mediaBytes = bytes;
         _video = video;
       });
-      video = null; // Ownership transferred to the State.
-    } catch (_) {
+      video = null;
+    } catch (error) {
       await video?.dispose();
       if (mounted) {
-        setState(() => _error = 'تعذر فتح الملف أو معاينته. اختر صورة أو فيديو آخر.');
+        setState(() => _error = error.toString().replaceFirst('Exception: ', 'تعذر تجهيز الملف: '));
       }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Map<String, dynamic> _decode(http.Response response) {
+    try {
+      final value = jsonDecode(response.body);
+      return value is Map<String, dynamic> ? value : <String, dynamic>{};
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+  }
+
+  MediaType _contentType(String? mime, String extension) {
+    final parts = (mime ?? '').split('/');
+    if (parts.length == 2 && parts.every((part) => part.isNotEmpty)) {
+      return MediaType(parts[0], parts[1]);
+    }
+    const types = <String, List<String>>{
+      'mp4': ['video', 'mp4'], 'mov': ['video', 'quicktime'],
+      'webm': ['video', 'webm'], 'm4v': ['video', 'x-m4v'],
+      'jpg': ['image', 'jpeg'], 'jpeg': ['image', 'jpeg'],
+      'png': ['image', 'png'], 'webp': ['image', 'webp'], 'gif': ['image', 'gif'],
+    };
+    final pair = types[extension.toLowerCase()] ?? const ['application', 'octet-stream'];
+    return MediaType(pair[0], pair[1]);
+  }
+
+  Future<String> _uploadMedia() async {
+    final file = _selected;
+    final bytes = _mediaBytes;
+    if (file == null || bytes == null) throw Exception('اختر صورة أو فيديو أولاً.');
+    if (widget.accessToken.isEmpty) throw Exception('انتهت جلسة الدخول. سجّل الدخول ثم حاول مجدداً.');
+
+    final authResponse = await http.get(
+      Uri.parse('$_api/api/v1/imagekit/auth'),
+      headers: {'Authorization': 'Bearer ${widget.accessToken}', 'Accept': 'application/json'},
+    ).timeout(const Duration(seconds: 20));
+    final auth = _decode(authResponse);
+    if (authResponse.statusCode != 200 || auth['token'] == null ||
+        auth['signature'] == null || auth['expire'] == null || auth['publicKey'] == null) {
+      throw Exception((auth['message'] ?? auth['error'] ?? 'تعذر تجهيز خدمة رفع الملفات.').toString());
+    }
+
+    final extension = file.name.contains('.') ? file.name.split('.').last : (_selectedIsVideo ? 'mp4' : 'jpg');
+    final fileName = 'happy-live-feed-${DateTime.now().millisecondsSinceEpoch}.$extension';
+    final request = http.MultipartRequest('POST', Uri.parse('https://upload.imagekit.io/api/v1/files/upload'));
+    request.fields.addAll({
+      'publicKey': auth['publicKey'].toString(),
+      'token': auth['token'].toString(),
+      'expire': auth['expire'].toString(),
+      'signature': auth['signature'].toString(),
+      'fileName': fileName,
+      'useUniqueFileName': 'true',
+      'folder': '/happy-live/feed',
+    });
+    request.files.add(http.MultipartFile.fromBytes(
+      'file', bytes, filename: fileName,
+      contentType: _contentType(file.mimeType, extension),
+    ));
+    final streamed = await request.send().timeout(const Duration(minutes: 3));
+    final response = await http.Response.fromStream(streamed);
+    final uploaded = _decode(response);
+    final mediaUrl = uploaded['url'];
+    if (response.statusCode < 200 || response.statusCode >= 300 ||
+        mediaUrl is! String || mediaUrl.isEmpty) {
+      throw Exception((uploaded['message'] ?? uploaded['error'] ?? 'فشل رفع الملف إلى التخزين.').toString());
+    }
+    return mediaUrl;
+  }
+
+  Future<void> _publish() async {
+    if (_busy || _selected == null || _mediaBytes == null) return;
+    setState(() { _busy = true; _error = null; });
+    try {
+      final mediaUrl = await _uploadMedia();
+      final response = await http.post(
+        Uri.parse('$_api/api/feed'),
+        headers: {
+          'Authorization': 'Bearer ${widget.accessToken}',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'url': mediaUrl, 'caption': _caption.text.trim()}),
+      ).timeout(const Duration(seconds: 30));
+      final result = _decode(response);
+      if (response.statusCode != 201 || result['ok'] != true) {
+        throw Exception((result['message'] ?? result['error'] ?? 'تعذر نشر المنشور.').toString());
+      }
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -108,7 +201,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
         appBar: AppBar(
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
-          title: const Text('اختيار منشور'),
+          title: const Text('إنشاء منشور'),
           actions: [
             if (selected)
               IconButton(
@@ -133,7 +226,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
                                       children: [
                                         VideoPlayer(_video!),
                                         IconButton.filled(
-                                          onPressed: () {
+                                          onPressed: _busy ? null : () {
                                             final controller = _video!;
                                             setState(() {
                                               controller.value.isPlaying
@@ -141,39 +234,60 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
                                                   : controller.play();
                                             });
                                           },
-                                          icon: Icon(
-                                            _video!.value.isPlaying
-                                                ? Icons.pause
-                                                : Icons.play_arrow,
-                                          ),
+                                          icon: Icon(_video!.value.isPlaying ? Icons.pause : Icons.play_arrow),
                                         ),
                                       ],
                                     ),
                                   )
                                 : const CircularProgressIndicator(color: Colors.white))
-                            : (_imageBytes != null
-                                ? Image.memory(_imageBytes!, fit: BoxFit.contain)
+                            : (_mediaBytes != null
+                                ? Image.memory(_mediaBytes!, fit: BoxFit.contain)
                                 : const SizedBox.shrink()),
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
+                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
+                      child: TextField(
+                        controller: _caption,
+                        maxLength: 2000,
+                        maxLines: 2,
+                        minLines: 1,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'اكتب وصفاً لمنشورك...',
+                          hintStyle: const TextStyle(color: Colors.white54),
+                          counterStyle: const TextStyle(color: Colors.white38),
+                          filled: true,
+                          fillColor: const Color(0xFF202020),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+                        child: Text(_error!, textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.redAccent)),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 16),
                       child: SizedBox(
                         width: double.infinity,
                         child: FilledButton(
-                          onPressed: () => Navigator.of(context).pop(_selected),
+                          onPressed: _busy ? null : _publish,
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFFFF3158),
                             foregroundColor: Colors.white,
                             minimumSize: const Size.fromHeight(52),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text(
-                            'التالي',
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                          ),
+                          child: _busy
+                              ? const SizedBox(width: 20, height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Text('نشر', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                         ),
                       ),
                     ),
@@ -185,32 +299,24 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.photo_library_outlined,
-                            color: Colors.white, size: 58),
+                        const Icon(Icons.photo_library_outlined, color: Colors.white, size: 58),
                         const SizedBox(height: 16),
-                        const Text(
-                          'اختر صورة أو فيديو من معرض جهازك',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white, fontSize: 16),
-                        ),
+                        const Text('اختر صورة أو فيديو من معرض جهازك',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white, fontSize: 16)),
                         if (_error != null) ...[
                           const SizedBox(height: 12),
-                          Text(_error!,
-                              textAlign: TextAlign.center,
+                          Text(_error!, textAlign: TextAlign.center,
                               style: const TextStyle(color: Colors.redAccent)),
                         ],
                         const SizedBox(height: 22),
                         FilledButton.icon(
                           onPressed: _busy ? null : _chooseFromGallery,
                           icon: _busy
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
-                                )
+                              ? const SizedBox(width: 18, height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                               : const Icon(Icons.folder_open),
-                          label: Text(_busy ? 'جارٍ فتح المعرض...' : 'فتح المعرض'),
+                          label: Text(_busy ? 'جارٍ تجهيز الملف...' : 'فتح المعرض'),
                         ),
                       ],
                     ),
