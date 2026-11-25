@@ -947,11 +947,11 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   double _exploreTabsHeight(BuildContext context) {
-    final width = MediaQuery.of(context).size.width - 32;
+    final width = MediaQuery.of(context).size.width - 16;
     final tileWidth = (width - 10) / 2;
     final tileHeight = tileWidth / 0.78;
     final rows = (_recommendedRooms.length + 1) ~/ 2;
-    final gridHeight = rows == 0 ? 180.0 : rows * (tileHeight + 12) + 16;
+    final gridHeight = rows == 0 ? 180.0 : rows * (tileHeight + 12) + 21;
     return 46 + gridHeight;
   }
 
