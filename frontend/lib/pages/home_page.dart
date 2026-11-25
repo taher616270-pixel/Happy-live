@@ -528,15 +528,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   Widget _buildMyRoomsTabs() {
     const labels = ['متابعة', 'انضم', 'مؤخراً'];
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        height: 48,
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: const Color(0xFFD9A93C).withOpacity(0.55)),
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: SizedBox(
+        height: 40,
         child: Row(
           children: List.generate(labels.length, (index) {
             final selected = _selectedMyRoomsTab == index;
@@ -551,21 +545,16 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                     curve: Curves.easeInOutCubic,
                   );
                 },
-                child: AnimatedContainer(
+                child: AnimatedDefaultTextStyle(
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOut,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: selected ? const Color(0xFFD9A93C) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(24),
+                  style: TextStyle(
+                    color: selected ? HappyHomeColors.gold : HappyHomeColors.muted,
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                   ),
-                  child: Text(
-                    labels[index],
-                    style: TextStyle(
-                      color: selected ? Colors.white : const Color(0xFF8C806B),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  child: Center(
+                    child: Text(labels[index], maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                 ),
               ),
