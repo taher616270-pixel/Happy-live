@@ -393,6 +393,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _buildOriginalHomeContent() => ListView(
+    physics: const NeverScrollableScrollPhysics(),
     padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
     children: [
       const SizedBox(height: 24),
@@ -625,6 +626,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           textDirection: TextDirection.ltr,
           child: PageView(
             controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(),
             reverse: true,
             onPageChanged: (index) => setState(() => _currentPage = index),
             children: [
