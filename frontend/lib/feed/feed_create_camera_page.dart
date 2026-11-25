@@ -142,7 +142,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
                   left: 20,
                   right: 20,
                   child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () => Navigator.of(context).pop(_selected),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFFF0A62B),
                       foregroundColor: Colors.black,
