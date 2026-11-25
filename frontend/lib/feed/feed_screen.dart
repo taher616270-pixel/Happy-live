@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
+import 'package:image_picker/image_picker.dart';
 import 'feed_bottom_nav.dart';
 import 'feed_comments_sheet.dart';
 import 'feed_icons.dart';
@@ -44,7 +45,10 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
  }
  void _setTab(FeedTab t){if(t==_tab)return;_tab=t;_load();}
  Future<void> _openCreator() async {
-  await Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => const FeedCreateCameraPage()));
+  final selected = await Navigator.of(context).push<XFile>(MaterialPageRoute<XFile>(builder: (_) => const FeedCreateCameraPage()));
+  if (selected != null && mounted) {
+   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم اختيار الملف: ${selected.name}')));
+  }
  }
  @override Widget build(BuildContext context){
   final top=MediaQuery.of(context).padding.top;
