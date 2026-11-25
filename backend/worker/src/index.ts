@@ -3917,7 +3917,7 @@ export default {
           let upstream: Response | null = null;
           // ImageKit video renditions are generated asynchronously. Wait briefly
           // for the H.264 MP4 rendition instead of serving a still/unsupported original.
-          for (let attempt = 0; attempt < 7; attempt++) {
+          for (let attempt = 0; attempt < 8; attempt++) {
             upstream = await fetch(source.toString(), {
               method: request.method,
               headers: upstreamHeaders,
@@ -3927,7 +3927,7 @@ export default {
               upstream.headers.get("is-intermediate-response") === "true";
             if (!preparing) break;
             await upstream.body?.cancel();
-            if (attempt < 6) await new Promise(resolve => setTimeout(resolve, 2000));
+            if (attempt < 7) await new Promise(resolve => setTimeout(resolve, 2000));
           }
           if (!upstream || upstream.status === 202 ||
               upstream.headers.get("is-intermediate-response") === "true") {
