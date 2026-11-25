@@ -3899,7 +3899,7 @@ export default {
         if (/\.(mp4|mov|m4v)$/i.test(source.pathname)) {
           const current = source.searchParams.get("tr") ?? "";
           const transforms = current.split(",").map(value => value.trim()).filter(Boolean);
-          for (const required of ["f-mp4", "vc-h264", "ac-aac"]) {
+          for (const required of ["f-mp4", "vc-h264", "ac-aac", "ov-redirect_false"]) {
             if (!transforms.includes(required)) transforms.push(required);
           }
           source.searchParams.set("tr", transforms.join(","));
