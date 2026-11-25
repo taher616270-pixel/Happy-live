@@ -3896,7 +3896,7 @@ export default {
         }
         // Force a browser-safe H.264/AAC MP4 rendition. iPhone uploads may be
         // HEVC/MOV, which some browsers cannot decode from the original file.
-        if (/\\.(mp4|mov)$/i.test(source.pathname)) {
+        if (/\\.(mp4|mov)$/i.test(source.pathname))
           const current = source.searchParams.get("tr") ?? "";
           const transforms = current.split(",").map(value => value.trim()).filter(Boolean);
           for (const required of ["f-mp4", "vc-h264", "ac-aac", "ov-redirect_false"]) {
