@@ -850,7 +850,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             textDirection: TextDirection.ltr,
             child: PageView(
               controller: _pageController,
-              reverse: true,
               physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
               onPageChanged: (index) {
                 setState(() {
