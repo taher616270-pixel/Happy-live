@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
@@ -134,8 +135,25 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
       'useUniqueFileName': 'true',
       'folder': '/happy-live/feed',
     });
+    final declaredMime = (file.mimeType ?? '').toLowerCase();
+    final lowerExtension = extension.toLowerCase();
+    final mediaMime = declaredMime.isNotEmpty
+        ? declaredMime
+        : switch (lowerExtension) {
+            'mp4' | 'm4v' => 'video/mp4',
+            'mov' => 'video/quicktime',
+            'webm' => 'video/webm',
+            'jpg' | 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            _ => _selectedIsVideo ? 'video/mp4' : 'application/octet-stream',
+          };
     request.files.add(http.MultipartFile.fromBytes(
-      'file', bytes, filename: fileName,
+      'file',
+      bytes,
+      filename: fileName,
+      contentType: MediaType.parse(mediaMime),
     ));
     final streamed = await request.send().timeout(const Duration(minutes: 3));
     final response = await http.Response.fromStream(streamed);
