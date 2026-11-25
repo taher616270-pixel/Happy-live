@@ -1258,14 +1258,14 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       // Move the page continuously with the finger; clamp to one adjacent page.
                       if (_roomSwipeUsesOuterPager && _pageController.hasClients) {
                         final p = _pageController.position;
-                        final next = (p.pixels + dx)
-                            .clamp(p.minScrollExtent, p.minScrollExtent + p.viewportDimension)
+                        final next = (p.pixels - dx)
+                            .clamp(p.minScrollExtent, p.maxScrollExtent)
                             .toDouble();
                         _pageController.jumpTo(next);
                       } else if (_roomSwipeTargetIndex != null &&
                           _roomsTabController.hasClients) {
                         final p = _roomsTabController.position;
-                        final next = (p.pixels + dx)
+                        final next = (p.pixels - dx)
                             .clamp(p.minScrollExtent, p.maxScrollExtent)
                             .toDouble();
                         _roomsTabController.jumpTo(next);
