@@ -30,7 +30,10 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   if(!mounted)return;setState(()=>_loading=false);if(_pc.hasClients)_pc.jumpToPage(0);_sync();
  }
  Future<void> _ensure(int i) async {
-  if(i<0||i>=_videos.length||_ctrls.containsKey(i))return;
+  if (i < 0 || i >= _videos.length || _ctrls.containsKey(i)) return;
+  // Photo posts are rendered directly by FeedItem; never initialize a video
+  // decoder for an image URL (which leaves the feed spinner running forever).
+  if (_videos[i].isImage) return;
   final c=VideoPlayerController.networkUrl(Uri.parse(_videos[i].url));_ctrls[i]=c;
   try{await c.initialize();await c.setLooping(true);}catch(_){}
   if(!mounted||_ctrls[i]!=c)return;setState((){});if(i==_cur&&widget.isActive){c.play();}else{c.pause();}
