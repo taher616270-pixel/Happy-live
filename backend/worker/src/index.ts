@@ -3894,17 +3894,41 @@ export default {
             !(source.hostname === "imagekit.io" || source.hostname.endsWith(".imagekit.io"))) {
           return json({ ok: false, error: "media_host_not_allowed" }, 502, origin, env);
         }
+        // Force a browser-safe H.264/AAC MP4 rendition. iPhone uploads may be
+        // HEVC/MOV, which some browsers cannot decode from the original file.
+        if (/\\.(mp4|mov)$/i.test(source.pathname)) {
+          const current = source.searchParams.get("tr") ?? "";
+          const transforms = current.split(",").map(value => value.trim()).filter(Boolean);
+          for (const required of ["f-mp4", "vc-h264", "ac-aac", "ov-redirect_false"]) {
+            if (!transforms.includes(required)) transforms.push(required);
+          }
+          source.searchParams.set("tr", transforms.join(","));
+        }
         try {
           const upstreamHeaders = new Headers();
           const range = request.headers.get("Range");
           const ifRange = request.headers.get("If-Range");
           if (range) upstreamHeaders.set("Range", range);
           if (ifRange) upstreamHeaders.set("If-Range", ifRange);
-          const upstream = await fetch(source.toString(), {
-            method: request.method,
-            headers: upstreamHeaders,
-            redirect: "follow"
-          });
+          let upstream: Response | null = null;
+          // ImageKit video renditions are generated asynchronously. Wait briefly
+          // for the H.264 MP4 rendition instead of serving a still/unsupported original.
+          for (let attempt = 0; attempt < 7; attempt++) {
+            upstream = await fetch(source.toString(), {
+              method: request.method,
+              headers: upstreamHeaders,
+              redirect: "follow"
+            });
+            const preparing = upstream.status === 202 ||
+              upstream.headers.get("is-intermediate-response") === "true";
+            if (!preparing) break;
+            await upstream.body?.cancel();
+            if (attempt < 6) await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+          if (!upstream || upstream.status === 202 ||
+              upstream.headers.get("is-intermediate-response") === "true") {
+            return json({ ok: false, error: "media_processing" }, 503, origin, env);
+          }
           if (!upstream.ok && upstream.status !== 206) {
             return json({ ok: false, error: "media_source_unavailable", upstream_status: upstream.status }, 502, origin, env);
           }
@@ -3917,7 +3941,6 @@ export default {
             if (value) headers.set(name, value);
           }
           if (!headers.has("content-type")) headers.set("content-type", "video/mp4");
-          if (!headers.has("accept-ranges")) headers.set("accept-ranges", "bytes");
           headers.set("x-content-type-options", "nosniff");
           if (origin && isAllowedOrigin(origin, env)) {
             headers.set("access-control-allow-origin", origin);
