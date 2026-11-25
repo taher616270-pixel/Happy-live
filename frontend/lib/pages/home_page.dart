@@ -436,7 +436,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
     if (_recentRooms.isEmpty) return _buildMyRoomsTabContent('لا توجد غرف زرتها مؤخراً');
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(12, 5, 12, 0),
+      padding: const EdgeInsets.fromLTRB(0, 5, 0, 0),
       itemCount: _recentRooms.length,
       separatorBuilder: (_, __) => const SizedBox(height: 9),
       itemBuilder: (context, index) {
@@ -447,7 +447,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         final status = (room['status'] ?? 'active').toString();
         final level = (room['experienceLevel'] ?? 1) is num
             ? (room['experienceLevel'] as num).toInt() : 1;
-        return Material(
+        return SizedBox(
+          width: double.infinity,
+          child: Material(
           color: Colors.white,
           borderRadius: BorderRadius.circular(17),
           child: InkWell(
@@ -504,6 +506,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   size: 14, color: HappyHomeColors.gold),
               ]),
             ),
+          ),
           ),
         );
       },
