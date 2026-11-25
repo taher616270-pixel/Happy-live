@@ -25,6 +25,8 @@ import 'widgets/global_gift_banner.dart';
 import 'cannon/cannon_config.dart';
 import 'cannon/cannon_top_banner.dart';
 import 'pages/room_page.dart';
+import 'feed/feed_screen.dart';
+import 'feed/feed_repository.dart';
 
 Future<void> _openGlobalCannonRoom(BuildContext context, String targetRoomId) async {
   final id = targetRoomId.trim();
@@ -1631,7 +1633,11 @@ class _SessionHomePageState extends State<SessionHomePage> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      _HappyCreateTab(onSoon: _soon, accessToken: widget.accessToken, onGameClosed: _refreshWalletBalance),
+      FeedScreen(
+        repo: HttpFeedRepository(),
+        showBottomNav: false,
+        onLiveTap: () => _soon('البث المباشر'),
+      ),
       HappyHomeTab(
         name: _name,
         accessToken: widget.accessToken,
@@ -2437,187 +2443,6 @@ class _HappyPlaceholderTab extends StatelessWidget {
       ),
     );
   }
-}
-
-class _HappyCreateTab extends StatelessWidget {
-  const _HappyCreateTab({required this.onSoon, required this.accessToken, required this.onGameClosed});
-  final ValueChanged<String> onSoon;
-  final String accessToken;
-  final Future<void> Function() onGameClosed;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    height: double.infinity,
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Color(0xFFF7EBCB),
-          Color(0xFFFAF6EA),
-          Color(0xFFF6F7FB),
-        ],
-        stops: [0.0, 0.48, 1.0],
-      ),
-    ),
-    child: ListView(
-    padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
-    children: [
-      Container(
-        padding: const EdgeInsets.fromLTRB(18, 20, 18, 19),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [Color(0xFFFFF8E8), Color(0xFFFFFFFF)],
-          ),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFEAD9AD)),
-          boxShadow: const [
-            BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 6)),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 43,
-                  height: 43,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF0C9),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFFD9A93C), size: 23),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'مساحتك للإبداع',
-                    style: TextStyle(color: Color(0xFF9A762D), fontSize: 12, fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 15),
-            const Text(
-              'إنشاء',
-              style: TextStyle(color: Color(0xFF1E2233), fontSize: 27, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'شارك لحظاتك مع مجتمع Happy Live',
-              style: TextStyle(color: Color(0xFF77778A), fontSize: 13, height: 1.5),
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 23),
-      const Padding(
-        padding: EdgeInsets.only(right: 3, bottom: 12),
-        child: Text(
-          'الألعاب',
-          style: TextStyle(color: Color(0xFF1E2233), fontSize: 16, fontWeight: FontWeight.w900),
-        ),
-      ),
-      if (kIsWeb) DynamicGamesList(onGameClosed: onGameClosed),
-      const SizedBox(height: 23),
-      const Padding(
-        padding: EdgeInsets.only(right: 3, bottom: 12),
-        child: Text(
-          'ابدأ بمشاركة جديدة',
-          style: TextStyle(color: Color(0xFF1E2233), fontSize: 16, fontWeight: FontWeight.w900),
-        ),
-      ),
-      _HappyCreateAction(
-        icon: Icons.post_add_rounded,
-        title: 'منشور جديد',
-        subtitle: 'شارك فكرة أو صورة مع المجتمع',
-        onTap: () => onSoon('إنشاء المنشورات'),
-      ),
-      const SizedBox(height: 12),
-      _HappyCreateAction(
-        icon: Icons.auto_awesome_motion_rounded,
-        title: 'قصة جديدة',
-        subtitle: 'شارك لحظة قصيرة مع أصدقائك',
-        onTap: () => onSoon('القصص'),
-      ),
-      const SizedBox(height: 12),
-      _HappyCreateAction(
-        icon: Icons.mic_rounded,
-        title: 'بدء بث مباشر',
-        subtitle: 'تواصل صوتياً مع الآخرين',
-        onTap: () => onSoon('البث المباشر'),
-      ),
-    ],
-    ),
-  );
-}
-
-class _HappyCreateAction extends StatelessWidget {
-  const _HappyCreateAction({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.transparent,
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE9E5D9)),
-          boxShadow: const [
-            BoxShadow(color: Color(0x0D000000), blurRadius: 12, offset: Offset(0, 4)),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 49,
-              height: 49,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [Color(0xFFFFF2D3), Color(0xFFFFF9EC)],
-                ),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: const Color(0xFFF0DFB5)),
-              ),
-              child: Icon(icon, color: const Color(0xFFD1A13A), size: 24),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(color: Color(0xFF1E2233), fontWeight: FontWeight.w900, fontSize: 14)),
-                  const SizedBox(height: 5),
-                  Text(subtitle, style: const TextStyle(color: Color(0xFF8B899A), fontSize: 11, height: 1.4)),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_left_rounded, color: Color(0xFFC5A45D), size: 23),
-          ],
-        ),
-      ),
-    ),
-  );
 }
 
 class _BrandHeader extends StatelessWidget {
