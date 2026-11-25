@@ -26,7 +26,7 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage> {
   @override
   void initState() {
     super.initState();
-    _loadFile(initialFile);
+    _loadFile(widget.initialFile);
   }
 
   @override
