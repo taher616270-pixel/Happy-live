@@ -1261,7 +1261,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       if (_roomSwipeUsesOuterPager && _pageController.hasClients) {
                         final p = _pageController.position;
                         final next = (p.pixels + dx)
-                            .clamp(p.minScrollExtent, p.maxScrollExtent)
+                            .clamp(
+                              p.minScrollExtent,
+                              p.minScrollExtent + p.viewportDimension,
+                            )
                             .toDouble();
                         _pageController.jumpTo(next);
                       } else if (_roomSwipeTargetIndex != null &&
