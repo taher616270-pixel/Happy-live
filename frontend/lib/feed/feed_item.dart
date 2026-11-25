@@ -15,7 +15,7 @@ class FeedItem extends StatefulWidget {
 class _FeedItemState extends State<FeedItem> with TickerProviderStateMixin {
  late final AnimationController _likePop=AnimationController(vsync:this,duration:const Duration(milliseconds:450));
  late final AnimationController _savePop=AnimationController(vsync:this,duration:const Duration(milliseconds:450));
- final List<_Burst> _bursts=[];int _burstId=0;DateTime? _lastTap;Timer? _single;bool _paused=false,_expanded=false;
+ final List<_Burst> _bursts=[];int _burstId=0;DateTime? _lastTap;Timer? _single;bool _paused=false,_expanded=false,_muted=kIsWeb;
  FeedVideo get v=>widget.video;
  @override void dispose(){_single?.cancel();_likePop.dispose();_savePop.dispose();super.dispose();}
  void _toggleLike(){setState((){v.liked=!v.liked;v.likes+=v.liked?1:-1;});if(v.liked)_likePop.forward(from:0);widget.repo.setLike(v.id,v.liked).catchError((_){});}
@@ -28,10 +28,14 @@ class _FeedItemState extends State<FeedItem> with TickerProviderStateMixin {
   }else{
    _lastTap=now;
    final c=widget.ctrl;
-   if(c!=null&&!c.value.isPlaying){
+   if(c!=null&&kIsWeb&&_muted&&c.value.isPlaying){
+    // First tap on an autoplaying web video turns its sound on.
+    _muted=false;
+    c.setVolume(1);
+   }else if(c!=null&&!c.value.isPlaying){
     // Call play synchronously from the tap event; delaying it in a Timer
     // loses Safari's transient user activation and Safari rejects playback.
-    if(kIsWeb)c.setVolume(1);
+    if(kIsWeb){_muted=false;c.setVolume(1);}
     c.play();
     if(mounted)setState(()=>_paused=false);
    }else{
