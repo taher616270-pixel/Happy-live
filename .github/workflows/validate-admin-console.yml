@@ -57,6 +57,7 @@ jobs:
         working-directory: frontend
         run: flutter build web --release
 
+      - name: Verify built admin console
         working-directory: frontend
         run: |
           test -f build/web/admin/index.html
