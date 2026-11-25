@@ -4291,6 +4291,7 @@ export default {
           "SELECT r.id, r.room_code, r.name, r.description, COALESCE(ra.announcement, r.description) AS announcement, " +
           "r.image_url, r.visibility, r.status, COALESCE(rl.level, 1) AS level, " +
           "COALESCE(rx.total_exp, 0) AS total_exp, " +
+          "(SELECT COUNT(DISTINCT active.user_id) FROM room_chat_visits active WHERE active.room_id = r.id AND active.exited_at IS NULL AND active.last_seen_at >= ?) AS members_count, " +
           "(SELECT MAX(v.entered_at) FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = ?) AS last_visited_at " +
           "FROM rooms r " +
           "LEFT JOIN room_announcements ra ON ra.room_id = r.id " +
@@ -4298,16 +4299,17 @@ export default {
           "LEFT JOIN room_experience rx ON rx.room_id = r.id " +
           "WHERE EXISTS (SELECT 1 FROM room_chat_visits v WHERE v.room_id = r.id AND v.user_id = ?) " +
           "ORDER BY last_visited_at DESC LIMIT 30"
-        ).bind(user.id, user.id).all<{
+        ).bind(new Date(Date.now() - 45000).toISOString(), user.id, user.id).all<{
           id: string; room_code: string; name: string; description: string; announcement: string | null;
           image_url: string | null; visibility: string; status: string; level: number;
-          total_exp: number; last_visited_at: string | null;
+          total_exp: number; members_count: number; last_visited_at: string | null;
         }>();
         return json({ ok: true, rooms: (rows.results ?? []).map((room) => ({
           id: room.id, roomCode: room.room_code, name: room.name,
           description: room.description, announcement: room.announcement, imageUrl: room.image_url,
           level: room.level, experienceLevel: roomExperienceProgress(Number(room.total_exp ?? 0)).level,
           isPrivate: room.visibility === "private", status: room.status,
+          membersCount: Number(room.members_count ?? 0),
           lastVisitedAt: room.last_visited_at
         })) }, 200, origin, env);
       } catch (error) {
