@@ -926,10 +926,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
     return GridView.builder(
       key: const PageStorageKey<String>('happy-live-recommended-rooms'),
-      shrinkWrap: false,
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(0, 5, 0, 16),
       itemCount: _recommendedRooms.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -946,6 +944,15 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         );
       },
     );
+  }
+
+  double _exploreTabsHeight(BuildContext context) {
+    final width = MediaQuery.of(context).size.width - 32;
+    final tileWidth = (width - 10) / 2;
+    final tileHeight = tileWidth / 0.78;
+    final rows = (_recommendedRooms.length + 1) ~/ 2;
+    final gridHeight = rows == 0 ? 180.0 : rows * (tileHeight + 12) + 16;
+    return 46 + gridHeight;
   }
 
   Widget _buildExplorePage() {
@@ -989,7 +996,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           ],
         ),
         const SizedBox(height: 12),
-        SizedBox(          height: 420,
+        SizedBox(
+          height: _exploreTabsHeight(context),
           child: SwipeChipTabs(
             titles: const ['توصية', 'لعبة', 'مبارزة', 'البث المباشر', 'لعبة الفائز السوبر', 'الفيديو'],
             onChanged: (index) {
