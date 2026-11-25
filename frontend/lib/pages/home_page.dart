@@ -572,7 +572,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       child: SizedBox(
         height: 40,
         child: Align(
-          alignment: AlignmentDirectional.centerEnd,
+          alignment: AlignmentDirectional.centerStart,
           child: Directionality(
             textDirection: TextDirection.rtl,
             child: Row(
