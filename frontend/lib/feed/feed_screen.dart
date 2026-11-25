@@ -9,6 +9,8 @@ import 'feed_models.dart';
 import 'feed_repository.dart';
 import 'feed_search_page.dart';
 import 'feed_share_sheet.dart';
+import 'feed_create_camera_page.dart';
+
 class FeedScreen extends StatefulWidget {
  final FeedRepository repo; final bool showBottomNav; final bool isActive; final ValueChanged<int>? onNavTap; final VoidCallback? onLiveTap;
  const FeedScreen({super.key,required this.repo,this.showBottomNav=true,this.isActive=true,this.onNavTap,this.onLiveTap});
@@ -41,6 +43,9 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   _cur=i;_sync();if(i>=_videos.length-2&&!_more){_more=true;try{final next=await widget.repo.feed(_tab,page:_page+1);if(next.isNotEmpty&&mounted){_page++;setState(()=>_videos.addAll(next));}}catch(_){} _more=false;}
  }
  void _setTab(FeedTab t){if(t==_tab)return;_tab=t;_load();}
+ Future<void> _openCreator() async {
+  await Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => const FeedCreateCameraPage()));
+ }
  @override Widget build(BuildContext context){
   final top=MediaQuery.of(context).padding.top;
   return Directionality(textDirection:TextDirection.rtl,child:Scaffold(backgroundColor:Colors.black,body:Stack(children:[
@@ -50,11 +55,27 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
    ]),
    Positioned(top:top+6,left:0,right:0,height:44,child:Stack(alignment:Alignment.center,children:[
     Align(alignment:Alignment.centerLeft,child:IconButton(padding:const EdgeInsets.symmetric(horizontal:16),icon:const Icon(Icons.search_rounded,color:Colors.white,size:30),onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>FeedSearchPage(repo:widget.repo))))),
-    Row(mainAxisSize:MainAxisSize.min,children:[_TabText('المجتمع',_tab==FeedTab.community,()=>_setTab(FeedTab.community)),const SizedBox(width:20),_TabText('أتابعه',_tab==FeedTab.following,()=>_setTab(FeedTab.following)),const SizedBox(width:20),_TabText('لك',_tab==FeedTab.forYou,()=>_setTab(FeedTab.forYou))]),
+    Row(mainAxisSize:MainAxisSize.min,children:[_CreateButton(onTap:_openCreator),const SizedBox(width:20),_TabText('أتابعه',_tab==FeedTab.following,()=>_setTab(FeedTab.following)),const SizedBox(width:20),_TabText('لك',_tab==FeedTab.forYou,()=>_setTab(FeedTab.forYou))]),
     Align(alignment:Alignment.centerRight,child:GestureDetector(onTap:widget.onLiveTap,child:const Padding(padding:EdgeInsets.symmetric(horizontal:16),child:LiveIcon())))
    ]))
   ])));
  }
+}
+class _CreateButton extends StatelessWidget {
+ final VoidCallback onTap;
+ const _CreateButton({required this.onTap});
+ @override Widget build(BuildContext context)=>Material(
+  color:Colors.transparent,
+  child:InkWell(
+   onTap:onTap,
+   borderRadius:BorderRadius.circular(10),
+   child:Container(
+    width:34,height:34,
+    decoration:BoxDecoration(color:Colors.white.withOpacity(.16),borderRadius:BorderRadius.circular(10),border:Border.all(color:Colors.white.withOpacity(.8),width:1.2)),
+    child:const Icon(Icons.add_rounded,color:Colors.white,size:27),
+   ),
+  ),
+ );
 }
 class _TabText extends StatelessWidget {
  final String text;final bool selected;final VoidCallback onTap;const _TabText(this.text,this.selected,this.onTap);
