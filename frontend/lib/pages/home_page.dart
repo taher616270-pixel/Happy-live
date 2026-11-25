@@ -926,8 +926,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
     return GridView.builder(
       key: const PageStorageKey<String>('happy-live-recommended-rooms'),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: false,
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       padding: const EdgeInsets.fromLTRB(0, 5, 0, 16),
       itemCount: _recommendedRooms.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -948,7 +950,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
 
   Widget _buildExplorePage() {
     return ListView(
-      physics: const NeverScrollableScrollPhysics(),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       key: const PageStorageKey<String>('happy-live-explore-scroll'),
       padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 16),
       children: [
