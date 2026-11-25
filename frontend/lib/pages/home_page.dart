@@ -923,7 +923,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                               if (atLastTab &&
                                   atRoomsPage &&
                                   notification.metrics.axis == Axis.horizontal &&
-                                  notification.metrics.pixels >= notification.metrics.maxScrollExtent - 0.5 &&
                                   notification.overscroll > 0 &&
                                   !_exploreEdgeTransitioning) {
                                 _exploreEdgeTransitioning = true;
