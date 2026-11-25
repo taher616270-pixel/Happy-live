@@ -99,9 +99,10 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
       if (_videoMode) {
         if (_recording) {
           final file = await camera.stopVideoRecording();
-          setState(() => _recording = false);
+          if (mounted) setState(() => _recording = false);
           await _showPreview(file, isVideo: true);
         } else {
+          await camera.prepareForVideoRecording();
           await camera.startVideoRecording();
           if (mounted) setState(() => _recording = true);
         }
@@ -111,7 +112,9 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
       }
     } catch (error) {
       if (mounted) {
-        setState(() => _error = 'تعذر التصوير. تحقق من أذونات الكاميرا ثم حاول مرة أخرى.');
+        setState(() => _error = _videoMode
+            ? 'تعذر تسجيل الفيديو: ${error.toString()}'
+            : 'تعذر التقاط الصورة: ${error.toString()}');
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -350,7 +353,9 @@ class _FeedCreateCameraPageState extends State<FeedCreateCameraPage>
                                           padding: EdgeInsets.all(19),
                                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                                         )
-                                      : null,
+                                      : _recording
+                                          ? const Icon(Icons.stop_rounded, color: Colors.white, size: 34)
+                                          : null,
                                 ),
                               ),
                             ),
