@@ -3876,6 +3876,148 @@ export default {
     }
 
 
+    // Short-video feed API. All write actions are tied to the authenticated session.
+    if (url.pathname.startsWith("/api/feed")) {
+      if (!env.DB) return json({ ok: false, error: "database_unavailable" }, 503, origin, env);
+      const user = await authenticatedUser(request, env.DB);
+      if (!user) return json({ ok: false, error: "unauthorized" }, 401, origin, env);
+      const now = new Date().toISOString();
+      const readBody = async (): Promise<Record<string, unknown>> => {
+        try {
+          const value = await request.json();
+          return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+        } catch { return {}; }
+      };
+      const videoIdFrom = (value: unknown) => typeof value === "string" && value.length <= 100 ? value.trim() : "";
+      const videoRoute = url.pathname === "/api/feed" && request.method === "GET";
+      if (videoRoute || (url.pathname === "/api/feed/search" && request.method === "GET")) {
+        try {
+          const page = Math.max(0, Math.min(500, Number(url.searchParams.get("page") ?? "0") || 0));
+          const tab = url.searchParams.get("tab") ?? "forYou";
+          const query = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
+          const params: unknown[] = [user.id, user.id];
+          let where = "v.status = 'published'";
+          if (url.pathname.endsWith("/search")) {
+            if (!query) return json({ ok: true, videos: [] }, 200, origin, env);
+            where += " AND (v.caption LIKE ? OR p.display_name LIKE ?)";
+            params.push("%" + query + "%", "%" + query + "%");
+          } else if (tab === "following") {
+            where += " AND EXISTS (SELECT 1 FROM user_follows uf WHERE uf.follower_id = ? AND uf.following_id = v.user_id)";
+            params.push(user.id);
+          }
+          const limit = url.pathname.endsWith("/search") ? 40 : 12;
+          const offset = url.pathname.endsWith("/search") ? 0 : page * limit;
+          const rows = await env.DB.prepare(
+            "SELECT v.id, v.video_url, v.caption, v.sound, v.template, v.repost_label, v.user_id, " +
+            "COALESCE(NULLIF(p.display_name, ''), 'عضو Happy Live') AS author_name, COALESCE(p.avatar_key, '') AS author_avatar, " +
+            "(SELECT COUNT(*) FROM feed_video_likes l WHERE l.video_id = v.id) AS likes, " +
+            "(SELECT COUNT(*) FROM feed_video_comments c WHERE c.video_id = v.id) AS comments, " +
+            "(SELECT COUNT(*) FROM feed_video_saves s WHERE s.video_id = v.id) AS saves, " +
+            "(SELECT COUNT(*) FROM feed_video_shares sh WHERE sh.video_id = v.id) AS shares, " +
+            "EXISTS(SELECT 1 FROM feed_video_likes l WHERE l.video_id = v.id AND l.user_id = ?) AS liked, " +
+            "EXISTS(SELECT 1 FROM feed_video_saves s WHERE s.video_id = v.id AND s.user_id = ?) AS saved, " +
+            "EXISTS(SELECT 1 FROM user_follows uf WHERE uf.follower_id = ? AND uf.following_id = v.user_id) AS following " +
+            "FROM feed_videos v INNER JOIN profiles p ON p.user_id = v.user_id " +
+            "WHERE " + where + " ORDER BY v.created_at DESC LIMIT ? OFFSET ?"
+          ).bind(...params.slice(0, 0), user.id, user.id, user.id, ...params.slice(2), limit, offset).all<{
+            id:string;video_url:string;caption:string;sound:string;template:string|null;repost_label:string|null;
+            author_name:string;author_avatar:string;likes:number;comments:number;saves:number;shares:number;
+            liked:number; saved:number; following:number;
+          }>();
+          return json({ ok: true, videos: (rows.results ?? []).map(v => ({
+            id:v.id,url:v.video_url,caption:v.caption,sound:v.sound,template:v.template,repostLabel:v.repost_label,
+            authorName:v.author_name,authorAvatar:v.author_avatar,likes:v.likes,comments:v.comments,saves:v.saves,shares:v.shares,
+            liked:Boolean(v.liked),saved:Boolean(v.saved),following:Boolean(v.following)
+          })) }, 200, origin, env);
+        } catch (error) {
+          console.error("[feed.list] failed", error instanceof Error ? error.message : "UnknownError");
+          return json({ ok:false,error:"feed_unavailable" },500,origin,env);
+        }
+      }
+      if (url.pathname === "/api/feed/like" && request.method === "POST") {
+        const body = await readBody(); const id = videoIdFrom(body.video_id);
+        if (!id || typeof body.liked !== "boolean") return json({ok:false,error:"invalid_request"},400,origin,env);
+        const exists = await env.DB.prepare("SELECT id FROM feed_videos WHERE id = ? AND status = 'published'").bind(id).first();
+        if (!exists) return json({ok:false,error:"video_not_found"},404,origin,env);
+        if (body.liked) await env.DB.prepare("INSERT OR IGNORE INTO feed_video_likes(video_id,user_id,created_at) VALUES(?,?,?)").bind(id,user.id,now).run();
+        else await env.DB.prepare("DELETE FROM feed_video_likes WHERE video_id = ? AND user_id = ?").bind(id,user.id).run();
+        return json({ok:true},200,origin,env);
+      }
+      if (url.pathname === "/api/feed/save" && request.method === "POST") {
+        const body = await readBody(); const id = videoIdFrom(body.video_id);
+        if (!id || typeof body.saved !== "boolean") return json({ok:false,error:"invalid_request"},400,origin,env);
+        const exists = await env.DB.prepare("SELECT id FROM feed_videos WHERE id = ? AND status = 'published'").bind(id).first();
+        if (!exists) return json({ok:false,error:"video_not_found"},404,origin,env);
+        if (body.saved) await env.DB.prepare("INSERT OR IGNORE INTO feed_video_saves(video_id,user_id,created_at) VALUES(?,?,?)").bind(id,user.id,now).run();
+        else await env.DB.prepare("DELETE FROM feed_video_saves WHERE video_id = ? AND user_id = ?").bind(id,user.id).run();
+        return json({ok:true},200,origin,env);
+      }
+      if (url.pathname === "/api/feed/follow" && request.method === "POST") {
+        const body = await readBody(); const id = videoIdFrom(body.video_id);
+        const owner = id ? await env.DB.prepare("SELECT user_id FROM feed_videos WHERE id = ? AND status = 'published'").bind(id).first<{user_id:string}>() : null;
+        if (!owner) return json({ok:false,error:"video_not_found"},404,origin,env);
+        if (owner.user_id === user.id) return json({ok:false,error:"cannot_follow_self"},400,origin,env);
+        await env.DB.prepare("INSERT OR IGNORE INTO user_follows(follower_id,following_id,created_at) VALUES(?,?,?)").bind(user.id,owner.user_id,now).run();
+        return json({ok:true},200,origin,env);
+      }
+      if (url.pathname === "/api/feed/share" && request.method === "POST") {
+        const body = await readBody(); const id = videoIdFrom(body.video_id);
+        const exists = id ? await env.DB.prepare("SELECT id FROM feed_videos WHERE id = ? AND status = 'published'").bind(id).first() : null;
+        if (!exists) return json({ok:false,error:"video_not_found"},404,origin,env);
+        await env.DB.prepare("INSERT INTO feed_video_shares(id,video_id,user_id,created_at) VALUES(?,?,?,?)").bind(crypto.randomUUID(),id,user.id,now).run();
+        return json({ok:true},200,origin,env);
+      }
+      if (url.pathname === "/api/feed/comments" && request.method === "GET") {
+        const id = videoIdFrom(url.searchParams.get("video_id"));
+        if (!id) return json({ok:false,error:"invalid_request"},400,origin,env);
+        const rows = await env.DB.prepare(
+          "SELECT c.id,c.content,c.created_at,COALESCE(NULLIF(p.display_name,''),'عضو Happy Live') AS author,COALESCE(p.avatar_key,'') AS avatar,"+
+          "(SELECT COUNT(*) FROM feed_comment_likes l WHERE l.comment_id=c.id) AS likes,"+
+          "EXISTS(SELECT 1 FROM feed_comment_likes l WHERE l.comment_id=c.id AND l.user_id=?) AS liked "+
+          "FROM feed_video_comments c INNER JOIN profiles p ON p.user_id=c.user_id "+
+          "WHERE c.video_id=? ORDER BY c.created_at DESC LIMIT 100"
+        ).bind(user.id,id).all<{id:string;content:string;created_at:string;author:string;avatar:string;likes:number;liked:number}>();
+        return json({ok:true,comments:(rows.results??[]).map(c=>({id:c.id,text:c.content,user:c.author,avatar:c.avatar,time:c.created_at,likes:c.likes,liked:Boolean(c.liked)}))},200,origin,env);
+      }
+      if (url.pathname === "/api/feed/comments" && request.method === "POST") {
+        const body=await readBody();const id=videoIdFrom(body.video_id);const content=typeof body.text==="string"?body.text.trim():"";
+        if(!id||!content||content.length>500)return json({ok:false,error:"invalid_comment"},400,origin,env);
+        const exists=await env.DB.prepare("SELECT id FROM feed_videos WHERE id=? AND status='published'").bind(id).first();
+        if(!exists)return json({ok:false,error:"video_not_found"},404,origin,env);
+        const commentId=crypto.randomUUID();
+        await env.DB.prepare("INSERT INTO feed_video_comments(id,video_id,user_id,content,created_at) VALUES(?,?,?,?,?)").bind(commentId,id,user.id,content,now).run();
+        const profile=await env.DB.prepare("SELECT display_name,avatar_key FROM profiles WHERE user_id=?").bind(user.id).first<{display_name:string;avatar_key:string|null}>();
+        return json({ok:true,comment:{id:commentId,text:content,user:profile?.display_name||"عضو Happy Live",avatar:profile?.avatar_key||"",time:now}},201,origin,env);
+      }
+      if (url.pathname === "/api/feed/comment-like" && request.method === "POST") {
+        const body=await readBody();const id=videoIdFrom(body.comment_id);
+        if(!id||typeof body.liked!=="boolean")return json({ok:false,error:"invalid_request"},400,origin,env);
+        const exists=await env.DB.prepare("SELECT id FROM feed_video_comments WHERE id=?").bind(id).first();
+        if(!exists)return json({ok:false,error:"comment_not_found"},404,origin,env);
+        if(body.liked)await env.DB.prepare("INSERT OR IGNORE INTO feed_comment_likes(comment_id,user_id,created_at) VALUES(?,?,?)").bind(id,user.id,now).run();
+        else await env.DB.prepare("DELETE FROM feed_comment_likes WHERE comment_id=? AND user_id=?").bind(id,user.id).run();
+        return json({ok:true},200,origin,env);
+      }
+      if (url.pathname === "/api/feed/friends" && request.method === "GET") {
+        const rows=await env.DB.prepare(
+          "SELECT u.id,COALESCE(NULLIF(p.display_name,''),'عضو Happy Live') AS name,COALESCE(p.avatar_key,'') AS avatar "+
+          "FROM user_follows f INNER JOIN users u ON u.id=f.following_id INNER JOIN profiles p ON p.user_id=u.id "+
+          "WHERE f.follower_id=? AND u.status='active' ORDER BY f.created_at DESC LIMIT 100"
+        ).bind(user.id).all<{id:string;name:string;avatar:string}>();
+        return json({ok:true,friends:(rows.results??[]).map(x=>({...x,streak:0}))},200,origin,env);
+      }
+      if (url.pathname === "/api/feed/send" && request.method === "POST") {
+        const body=await readBody();const id=videoIdFrom(body.video_id);const friend=typeof body.friend_id==="string"?body.friend_id.trim():"";
+        const video=id?await env.DB.prepare("SELECT id FROM feed_videos WHERE id=? AND status='published'").bind(id).first():null;
+        const recipient=friend?await env.DB.prepare("SELECT id FROM users WHERE id=? AND status='active'").bind(friend).first():null;
+        if(!video||!recipient)return json({ok:false,error:"video_or_recipient_not_found"},404,origin,env);
+        if(friend===user.id)return json({ok:false,error:"cannot_send_to_self"},400,origin,env);
+        await env.DB.prepare("INSERT INTO feed_video_sends(id,video_id,sender_id,recipient_id,created_at) VALUES(?,?,?,?,?)").bind(crypto.randomUUID(),id,user.id,friend,now).run();
+        return json({ok:true},201,origin,env);
+      }
+      return json({ok:false,error:"feed_route_not_found"},404,origin,env);
+    }
+
     // Social posts: authenticated feed, likes, comments, and follows.
     if (url.pathname === "/api/v1/posts" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_unavailable" }, 503, origin, env);
