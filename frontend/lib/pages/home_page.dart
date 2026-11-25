@@ -1367,7 +1367,7 @@ class _RecommendedRoomCard extends StatelessWidget {
                     border: Border.all(color: const Color(0x66D9A93C)),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const _RoomMemberWave(),
+                    const _RoomMemberWave(count: 3),
                     const SizedBox(width: 4),
                     Text('$membersCount',
                       style: const TextStyle(color: Color(0xFF8A6420), fontSize: 11, fontWeight: FontWeight.w900)),
@@ -1847,7 +1847,9 @@ class LiveHouseCard extends StatelessWidget {
 }
 
 class _RoomMemberWave extends StatefulWidget {
-  const _RoomMemberWave();
+  const _RoomMemberWave({this.count = 5});
+
+  final int count;
 
   @override
   State<_RoomMemberWave> createState() => _RoomMemberWaveState();
@@ -1882,7 +1884,7 @@ class _RoomMemberWaveState extends State<_RoomMemberWave>
           return Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
-            children: List<Widget>.generate(5, (index) {
+            children: List<Widget>.generate(widget.count, (index) {
               final phase = (_controller.value * 2 * math.pi) + (index * 0.85);
               final barHeight = 4.0 + (math.sin(phase).abs() * 10.0);
               return Container(
