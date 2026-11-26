@@ -50,6 +50,28 @@ test("Happy Food Wheel exposes authenticated player and idempotent wallet callba
   assert.ok(callback.includes("user_wallets SET balance=balance+?"));
 });
 
+test("Happy Food Wheel wallet adjustments are idempotent, app-scoped, and balance-safe", () => {
+  assert.ok(callback.includes('"hfw:" + appId + ":" + orderId'));
+  assert.ok(callback.includes('"happy-food-wheel:" + appId + ":" + gameId'));
+  assert.match(callback, /prior\.user_id !== user\.id/);
+  assert.match(callback, /prior\.round_id !== roundId/);
+  assert.match(callback, /prior\.delta !== delta/);
+  assert.match(callback, /INSERT OR IGNORE INTO platform_game_callback_orders/);
+  assert.match(callback, /balance\+\?>=0/);
+  assert.match(callback, /insufficient_balance/);
+  assert.match(callback, /idempotency_conflict/);
+  assert.match(callback, /UPDATE platform_game_callback_orders SET applied=1/);
+});
+
+test("legacy UTD order history is archived and copied without dropping financial rows", async () => {
+  const migration = await readFile(new URL("migrations/0059_platform_game_callback_orders.sql", root), "utf8");
+  assert.match(migration, /RENAME TO legacy_game_callback_orders_archive/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS platform_game_callback_orders/);
+  assert.match(migration, /INSERT OR IGNORE INTO platform_game_callback_orders/);
+  assert.match(migration, /FROM legacy_game_callback_orders_archive/);
+  assert.doesNotMatch(migration, /DROP TABLE/i);
+});
+
 test("owner-only credential management returns the raw token only on creation", () => {
   assert.match(worker, /actor\.role !== "owner"/);
   assert.match(worker, /const apiToken = "hfw_live_"/);
