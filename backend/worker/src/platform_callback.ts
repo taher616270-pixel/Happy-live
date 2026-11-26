@@ -244,7 +244,13 @@ async function handleHappyFoodWheelHandshake(
 ): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname !== "/v1/platform/handshake") return null;
-  if (request.method === "GET") return reply({ ok: true, service: "happy-live-api", integration: "happy-food-wheel", endpoint: "/v1/platform/handshake" }, 200);
+  if (request.method === "GET" || request.method === "HEAD") {
+    const health = reply({ ok: true, service: "happy-live-api", integration: "happy-food-wheel", endpoint: "/v1/platform/handshake" }, 200);
+    // HEAD is a bodyless health probe; preserve the same status and headers as GET.
+    return request.method === "HEAD"
+      ? new Response(null, { status: health.status, statusText: health.statusText, headers: health.headers })
+      : health;
+  }
   if (request.method !== "POST") return reply({ error: "method_not_allowed" }, 405);
   if (!db) return reply({ error: "database_unavailable" }, 503);
 
