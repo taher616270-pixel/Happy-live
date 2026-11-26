@@ -42,6 +42,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   final List<GlobalKey> _exploreChipKeys = List.generate(6, (_) => GlobalKey());
   Timer? _exploreBannerTimer;
   List<Map<String, dynamic>> _exploreBanners = <Map<String, dynamic>>[];
+  final ValueNotifier<List<Map<String, dynamic>>> _exploreBannersNotifier = ValueNotifier(<Map<String, dynamic>>[]);
   int _exploreBannerIndex = 0;
   final ValueNotifier<int> _exploreBannerIndexNotifier = ValueNotifier<int>(0);
   int _exploreBannerIntervalSeconds = 4;
@@ -54,6 +55,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   bool _loadingMyRoom = true;
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> _recommendedRooms = <Map<String, dynamic>>[];
+  final ValueNotifier<List<Map<String, dynamic>>> _recommendedRoomsNotifier = ValueNotifier(<Map<String, dynamic>>[]);
   bool _loadingRecommendedRooms = false;
   bool _exploreRefreshInFlight = false;
   String? _recommendedRoomsError;
@@ -108,6 +110,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     _pageController.dispose();
     _exploreChipScroll.dispose();
     _exploreBannerIndexNotifier.dispose();
+    _exploreBannersNotifier.dispose();
+    _recommendedRoomsNotifier.dispose();
     _exploreBannerTimer?.cancel();
     super.dispose();
   }
@@ -189,6 +193,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     setState(() {
       if (rooms != null) {
         _recommendedRooms = rooms;
+        _recommendedRoomsNotifier.value = rooms;
         _recommendedRoomsError = null;
       } else if (_recommendedRooms.isEmpty) {
         _recommendedRoomsError = 'تعذر تحميل الغرف الموصى بها';
@@ -225,6 +230,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       _exploreBanners = banners;
       _exploreBannerIndex = found >= 0 ? found : 0;
     });
+    _exploreBannersNotifier.value = banners;
     _exploreBannerIndexNotifier.value = _exploreBannerIndex;
     _restartExploreBannerTimer();
   }
@@ -245,19 +251,19 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           (_exploreBanners[_exploreBannerIndex.clamp(0, _exploreBanners.length - 1)]['imageUrl'] ?? '').toString();
       final found = banners?.indexWhere((item) => (item['imageUrl'] ?? '').toString() == oldUrl);
       // Replace both feeds in one commit; retain cached content on endpoint errors.
-      setState(() {
-        if (banners != null) {
-          _exploreBanners = banners;
-          _exploreBannerIndex = found != null && found >= 0 ? found : 0;
-        }
-        if (rooms != null) {
-          _recommendedRooms = rooms;
-          _recommendedRoomsError = null;
-        }
-      });
+      // Update only the two Explore slivers that listen to these notifiers.
+      // The outer home page and the scrollable itself are not rebuilt.
       if (banners != null) {
+        _exploreBanners = banners;
+        _exploreBannerIndex = found != null && found >= 0 ? found : 0;
+        _exploreBannersNotifier.value = banners;
         _exploreBannerIndexNotifier.value = _exploreBannerIndex;
         _restartExploreBannerTimer();
+      }
+      if (rooms != null) {
+        _recommendedRooms = rooms;
+        _recommendedRoomsError = null;
+        _recommendedRoomsNotifier.value = rooms;
       }
     } finally {
       _exploreRefreshInFlight = false;
@@ -821,75 +827,76 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   List<Widget> _buildRecommendedRoomsSlivers() {
-    if (_loadingRecommendedRooms && _recommendedRooms.isEmpty) {
-      return const [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(child: _FiveBarRefreshAnimation()),
-        ),
-      ];
-    }
-    if (_recommendedRoomsError != null && _recommendedRooms.isEmpty) {
-      return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(_recommendedRoomsError!, textAlign: TextAlign.center,
-                  style: const TextStyle(color: HappyHomeColors.muted, fontSize: 11)),
-                TextButton(
-                  onPressed: _loadRecentRooms,
-                  child: const Text('إعادة المحاولة',
-                    style: TextStyle(color: HappyHomeColors.gold, fontSize: 11)),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ];
-    }
-    if (_recommendedRooms.isEmpty) {
-      return const [
-        SliverToBoxAdapter(child: SizedBox(height: 90)),
-        SliverToBoxAdapter(
-          child: Center(
-            child: Text(
-              'لا توجد غرف نشطة حالياً',
-              style: TextStyle(color: HappyHomeColors.muted, fontSize: 12),
-            ),
-          ),
-        ),
-      ];
-    }
     return [
-      SliverPadding(
-        padding: const EdgeInsets.fromLTRB(8, 5, 8, 16),
-        sliver: SliverGrid(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final room = _recommendedRooms[index];
-              return _RecommendedRoomCard(
-                room: room,
-                onTap: () => _openRecommendedRoom(room),
-              );
-            },
-            childCount: _recommendedRooms.length,
-          ),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 12,
-            childAspectRatio: 0.78,
-          ),
-        ),
+      ValueListenableBuilder<List<Map<String, dynamic>>>(
+        valueListenable: _recommendedRoomsNotifier,
+        builder: (context, rooms, _) {
+          if (_loadingRecommendedRooms && rooms.isEmpty) {
+            return const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: _FiveBarRefreshAnimation()),
+            );
+          }
+          if (_recommendedRoomsError != null && rooms.isEmpty) {
+            return SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_recommendedRoomsError!, textAlign: TextAlign.center,
+                      style: const TextStyle(color: HappyHomeColors.muted, fontSize: 11)),
+                    TextButton(
+                      onPressed: _loadRecommendedRooms,
+                      child: const Text('إعادة المحاولة',
+                        style: TextStyle(color: HappyHomeColors.gold, fontSize: 11)),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          if (rooms.isEmpty) {
+            return const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(top: 90),
+                child: Center(
+                  child: Text('لا توجد غرف نشطة حالياً',
+                    style: TextStyle(color: HappyHomeColors.muted, fontSize: 12)),
+                ),
+              ),
+            );
+          }
+          return SliverPadding(
+            padding: const EdgeInsets.fromLTRB(8, 5, 8, 16),
+            sliver: SliverGrid(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final room = rooms[index];
+                  return _RecommendedRoomCard(
+                    room: room,
+                    onTap: () => _openRecommendedRoom(room),
+                  );
+                },
+                childCount: rooms.length,
+              ),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.78,
+              ),
+            ),
+          );
+        },
       ),
     ];
   }
 
   Widget _buildExploreHeader() {
-    return Padding(
+    return ValueListenableBuilder<List<Map<String, dynamic>>>(
+      valueListenable: _exploreBannersNotifier,
+      builder: (context, banners, _) => Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 0),
       child: Column(
         children: [
@@ -905,6 +912,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           ),
           const SizedBox(height: 4),
         ],
+      ),
       ),
     );
   }
