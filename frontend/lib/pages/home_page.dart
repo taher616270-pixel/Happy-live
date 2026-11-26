@@ -38,8 +38,12 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   final PageController _pageController = PageController();
   static const int _exploreFirstPage = 3;
   static const int _countryPage = 9;
-  final ScrollController _exploreChipScroll = ScrollController();
-  final List<GlobalKey> _exploreChipKeys = List.generate(6, (_) => GlobalKey());
+  // One controller + one key set PER explore page: with swiping enabled two
+  // explore pages are alive at once, so shared GlobalKeys would collide.
+  final List<ScrollController> _exploreChipScrolls =
+      List.generate(6, (_) => ScrollController());
+  final List<List<GlobalKey>> _exploreChipKeys =
+      List.generate(6, (_) => List.generate(6, (_) => GlobalKey()));
   Timer? _exploreBannerTimer;
   List<Map<String, dynamic>> _exploreBanners = <Map<String, dynamic>>[];
   final ValueNotifier<List<Map<String, dynamic>>> _exploreBannersNotifier = ValueNotifier(<Map<String, dynamic>>[]);
@@ -108,7 +112,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   @override
   void dispose() {
     _pageController.dispose();
-    _exploreChipScroll.dispose();
+    for (final c in _exploreChipScrolls) {
+      c.dispose();
+    }
     _exploreBannerIndexNotifier.dispose();
     _exploreBannersNotifier.dispose();
     _recommendedRoomsNotifier.dispose();
@@ -268,6 +274,33 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     } finally {
       _exploreRefreshInFlight = false;
     }
+  }
+
+  Future<void> refreshMyRoomsPage() async {
+    if (!mounted) return;
+    await Future.wait<dynamic>([_loadRecentRooms(), _loadMyRoom()]);
+  }
+
+  /// Same pull-to-refresh for every home page. It is the FIRST sliver of the
+  /// page's scroll view and fully transparent, so the whole page (banner,
+  /// cards, chips, list) moves down as one piece with the indicator in the gap.
+  Widget _buildRefreshSliver(Future<void> Function() onRefresh) {
+    return CupertinoSliverRefreshControl(
+      onRefresh: onRefresh,
+      refreshTriggerPullDistance: 60,
+      refreshIndicatorExtent: 60,
+      builder: (context, mode, pulledExtent, triggerDistance, indicatorExtent) {
+        final visible = mode == RefreshIndicatorMode.drag ||
+            mode == RefreshIndicatorMode.armed ||
+            mode == RefreshIndicatorMode.refresh;
+        final scale = (pulledExtent / 60.0).clamp(0.55, 1.12).toDouble();
+        return Center(
+          child: visible
+              ? Transform.scale(scale: scale, child: const _FiveBarRefreshAnimation())
+              : const SizedBox.shrink(),
+        );
+      },
+    );
   }
 
   Widget _homeRefreshWrapper(Widget child) => child;
@@ -561,61 +594,73 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
-  Widget _buildMyRoomsPage(int innerIndex) => Directionality(
-    textDirection: TextDirection.rtl,
-    child: Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: innerIndex == 2
-          ? _buildRecentRoomsContent()
-          : ListView(
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                SizedBox(
-                  height: 180,
-                  child: _buildMyRoomsTabContent(
-                    innerIndex == 0
-                        ? 'لا توجد غرف تتابعها حالياً'
-                        : 'لا توجد غرف للانضمام إليها حالياً',
-                  ),
-                ),
-              ],
-            ),
-    ),
-  );
-
-  Widget _buildRecentRoomsContent() {
-    if (_loadingRecentRooms && _recentRooms.isEmpty) {
-      return const Center(child: _FiveBarRefreshAnimation());
-    }
-    if (_recentRoomsError != null && _recentRooms.isEmpty) {
-      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(_recentRoomsError!, textAlign: TextAlign.center,
-          style: const TextStyle(color: Color(0xFF9A98AD), fontSize: 11)),
-        TextButton(onPressed: refreshExplorePage,
-          child: const Text('إعادة المحاولة', style: TextStyle(color: HappyHomeColors.gold, fontSize: 11))),
-      ]));
-    }
-    if (_recentRooms.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        children: const [
-          SizedBox(height: 90),
-          Center(
-            child: Text(
-              'لا توجد غرف زرتها مؤخراً',
-              style: TextStyle(color: Color(0xFF9A98AD), fontSize: 12),
+  List<Widget> _buildMyRoomsTabSlivers(int tabIndex) {
+    if (tabIndex != 2) {
+      return [
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 180,
+            child: _buildMyRoomsTabContent(
+              tabIndex == 0
+                  ? 'لا توجد غرف تتابعها حالياً'
+                  : 'لا توجد غرف للانضمام إليها حالياً',
             ),
           ),
-        ],
-      );
+        ),
+      ];
     }
-    return ListView.separated(
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      key: const PageStorageKey<String>('happy-live-recent-rooms-scroll'),
-      padding: const EdgeInsets.fromLTRB(8, 5, 8, 0),
-      itemCount: _recentRooms.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 7),
-      itemBuilder: (context, index) {
+    if (_loadingRecentRooms && _recentRooms.isEmpty) {
+      return const [
+        SliverToBoxAdapter(
+          child: SizedBox(height: 160, child: Center(child: _FiveBarRefreshAnimation())),
+        ),
+      ];
+    }
+    if (_recentRoomsError != null && _recentRooms.isEmpty) {
+      return [
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 160,
+            child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(_recentRoomsError!, textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFF9A98AD), fontSize: 11)),
+              TextButton(onPressed: _loadRecentRooms,
+                child: const Text('إعادة المحاولة', style: TextStyle(color: HappyHomeColors.gold, fontSize: 11))),
+            ])),
+          ),
+        ),
+      ];
+    }
+    if (_recentRooms.isEmpty) {
+      return const [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.only(top: 90),
+            child: Center(
+              child: Text('لا توجد غرف زرتها مؤخراً',
+                style: TextStyle(color: Color(0xFF9A98AD), fontSize: 12)),
+            ),
+          ),
+        ),
+      ];
+    }
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(8, 5, 8, 16),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => Padding(
+              padding: EdgeInsets.only(bottom: index == _recentRooms.length - 1 ? 0 : 7),
+              child: _buildRecentRoomCard(context, index),
+            ),
+            childCount: _recentRooms.length,
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildRecentRoomCard(BuildContext context, int index) {
         final room = _recentRooms[index];
         final name = (room['name'] ?? 'غرفة صوتية').toString();
         final announcement = (room['announcement'] ?? room['description'] ?? '').toString().trim();
@@ -700,8 +745,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           ),
           ),
         );
-      },
-    );
   }
 
   Widget _recentRoomPlaceholder() => Container(
@@ -896,27 +939,27 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
       valueListenable: _exploreBannersNotifier,
       builder: (context, banners, _) => Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 0),
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 4, 8, 0),
       child: Column(
         children: [
           _buildExploreBanner(),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: SizedBox(height: 82, child: _buildSmallExploreBanner(1))),
+              Expanded(child: SizedBox(height: 72, child: _buildSmallExploreBanner(1))),
               const SizedBox(width: 8),
-              Expanded(child: SizedBox(height: 82, child: _buildSmallExploreBanner(2))),
+              Expanded(child: SizedBox(height: 72, child: _buildSmallExploreBanner(2))),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 0),
         ],
       ),
       ),
     );
   }
 
-  Widget _buildExploreTabs() {
+  Widget _buildExploreTabs(int pageIndex) {
     const labels = ['توصية', 'لعبة', 'مبارزة', 'البث المباشر', 'لعبة الفائز السوبر', 'الفيديو'];
     return SizedBox(
       height: 46,
@@ -924,7 +967,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         textDirection: TextDirection.rtl,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          controller: _exploreChipScroll,
+          controller: _exploreChipScrolls[pageIndex],
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
@@ -933,7 +976,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               return Padding(
                 padding: EdgeInsetsDirectional.only(end: index == labels.length - 1 ? 0 : 8),
                 child: GestureDetector(
-                  key: _exploreChipKeys[index],
+                  key: _exploreChipKeys[pageIndex][index],
                   behavior: HitTestBehavior.opaque,
                   onTap: () => _goToAbsolutePage(_exploreFirstPage + index),
                   child: AnimatedContainer(
@@ -994,17 +1037,27 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   // explore banner/actions/tabs moving as one full page instead of swapping
   // a separate header above a shortened PageView viewport.
   Widget _buildMyRoomsHomePage(int tabIndex) {
-    return Column(
-      children: [
-        const SizedBox(height: 24),        MyPartyRoomButton(
-          room: _myRoom,
-          loading: _loadingMyRoom,
-          onTap: _openMyRoom,
+    return CustomScrollView(
+      key: PageStorageKey<String>('happy-live-myrooms-scroll-$tabIndex'),
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        _buildRefreshSliver(refreshMyRoomsPage),
+        SliverToBoxAdapter(
+          child: Column(
+            children: [
+              const SizedBox(height: 24),
+              MyPartyRoomButton(
+                room: _myRoom,
+                loading: _loadingMyRoom,
+                onTap: _openMyRoom,
+              ),
+              const SizedBox(height: 14),
+              _buildMyRoomsTabs(),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
-        const SizedBox(height: 14),
-        _buildMyRoomsTabs(),
-        const SizedBox(height: 8),
-        Expanded(child: _buildMyRoomsPage(tabIndex)),
+        ..._buildMyRoomsTabSlivers(tabIndex),
       ],
     );
   }
@@ -1027,51 +1080,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       key: PageStorageKey<String>('happy-live-explore-scroll-$tabIndex'),
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       slivers: [
-        CupertinoSliverRefreshControl(
-          onRefresh: refreshExplorePage,
-          // The refresh control is the first sliver in the same scroll view.
-          // It grows out from above the banner; it is never painted over content.
-          refreshTriggerPullDistance: 60,
-          refreshIndicatorExtent: 60,
-          builder: (context, mode, pulledExtent, triggerDistance, indicatorExtent) {
-            final visible = mode == RefreshIndicatorMode.drag ||
-                mode == RefreshIndicatorMode.armed ||
-                mode == RefreshIndicatorMode.refresh;
-            final scale = (pulledExtent / 60.0).clamp(0.55, 1.12).toDouble();
-            return SizedBox.expand(
-              child: DecoratedBox(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFFF7EBCB), Color(0xFFFAF6EA), Color(0xFFF6F7FB)],
-                    stops: [0.0, 0.3, 0.55],
-                  ),
-                ),
-                child: Center(
-                  child: visible
-                      ? Transform.scale(
-                          scale: scale,
-                          child: const _FiveBarRefreshAnimation(),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ),
-            );
-          },
-        ),
-        SliverAppBar(
-          primary: false,
-          toolbarHeight: 0,
-          collapsedHeight: 0,
-          expandedHeight: 204,
-          pinned: false,
-          floating: false,
-          automaticallyImplyLeading: false,
-          backgroundColor: Colors.transparent,
-          flexibleSpace: FlexibleSpaceBar(background: _buildExploreHeader()),
-        ),
-        SliverToBoxAdapter(child: _buildExploreTabs()),
+        _buildRefreshSliver(refreshExplorePage),
+        SliverToBoxAdapter(child: _buildExploreHeader()),
+        SliverToBoxAdapter(child: _buildExploreTabs(tabIndex)),
         ..._buildExploreTabSlivers(tabIndex),
       ],
       ),
@@ -1262,9 +1273,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 key: const PageStorageKey<String>('happy-live-unified-home-pager'),
                 controller: _pageController,
                 reverse: true,
-                // Disable horizontal swiping across all home sections.
-                // Vertical scrolling inside each page remains unchanged.
-                physics: const NeverScrollableScrollPhysics(),
+                // Swipe between ALL home sections (follow / join / recent /
+                // explore tabs / country) as one continuous sequence.
+                physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
                 onPageChanged: (index) {
                   setState(() {
                     _currentPage = index;
@@ -1277,9 +1288,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   if (index >= _exploreFirstPage && index <= 8) {
                     final chipIndex = index - _exploreFirstPage;
                     WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (!mounted || _exploreChipKeys[chipIndex].currentContext == null) return;
+                      if (!mounted || _exploreChipKeys[chipIndex][chipIndex].currentContext == null) return;
                       Scrollable.ensureVisible(
-                        _exploreChipKeys[chipIndex].currentContext!,
+                        _exploreChipKeys[chipIndex][chipIndex].currentContext!,
                         alignment: 0.5,
                         duration: const Duration(milliseconds: 260),
                         curve: Curves.easeOutCubic,
@@ -1292,21 +1303,27 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 },
                 children: [
                   for (var i = 0; i < 3; i++)
-                    Directionality(
-                      textDirection: TextDirection.rtl,
-                      child: _buildMyRoomsHomePage(i),
+                    _KeepAlivePage(
+                      child: Directionality(
+                        textDirection: TextDirection.rtl,
+                        child: _buildMyRoomsHomePage(i),
+                      ),
                     ),
                   for (var i = 0; i < 6; i++)
-                    Directionality(
-                      textDirection: TextDirection.rtl,
-                      child: _buildExploreHomePage(i),
+                    _KeepAlivePage(
+                      child: Directionality(
+                        textDirection: TextDirection.rtl,
+                        child: _buildExploreHomePage(i),
+                      ),
                     ),
-                  Directionality(
-                    textDirection: TextDirection.rtl,
-                    child: Column(
-                      children: [
-                        Expanded(child: _buildCountryPage()),
-                      ],
+                  _KeepAlivePage(
+                    child: Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: Column(
+                        children: [
+                          Expanded(child: _buildCountryPage()),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -2066,5 +2083,26 @@ class _RoomMemberWaveState extends State<_RoomMemberWave>
         },
       ),
     );
+  }
+}
+
+/// Keeps each home page (and its scroll position) alive while swiping.
+class _KeepAlivePage extends StatefulWidget {
+  const _KeepAlivePage({required this.child});
+  final Widget child;
+
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
