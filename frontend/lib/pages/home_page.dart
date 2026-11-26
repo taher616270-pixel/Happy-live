@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/gestures.dart' show Drag;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:flutter/services.dart';
@@ -43,9 +42,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   static const int _countryPage = 9;
   final ScrollController _exploreChipScroll = ScrollController();
   final List<GlobalKey> _exploreChipKeys = List.generate(6, (_) => GlobalKey());
-  // Horizontal pager of the 6 explore tabs ONLY (content below the chips).
-  final PageController _exploreInnerController = PageController();
-  Drag? _exploreHeaderDrag;
+  // Slides the 6 explore tab CONTENTS left/right (banner/cards/chips stay put).
+  final _SlideController _exploreSlide = _SlideController();
   Timer? _exploreBannerTimer;
   List<Map<String, dynamic>> _exploreBanners = <Map<String, dynamic>>[];
   final ValueNotifier<List<Map<String, dynamic>>> _exploreBannersNotifier = ValueNotifier(<Map<String, dynamic>>[]);
@@ -116,7 +114,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     _pageController.dispose();
     _innerController.dispose();
     _exploreChipScroll.dispose();
-    _exploreInnerController.dispose();
     _exploreBannerIndexNotifier.dispose();
     _exploreBannersNotifier.dispose();
     _recommendedRoomsNotifier.dispose();
@@ -866,73 +863,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
-  List<Widget> _buildRecommendedRoomsSlivers() {
-    return [
-      ValueListenableBuilder<List<Map<String, dynamic>>>(
-        valueListenable: _recommendedRoomsNotifier,
-        builder: (context, rooms, _) {
-          if (_loadingRecommendedRooms && rooms.isEmpty) {
-            return const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: _FiveBarRefreshAnimation()),
-            );
-          }
-          if (_recommendedRoomsError != null && rooms.isEmpty) {
-            return SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(_recommendedRoomsError!, textAlign: TextAlign.center,
-                      style: const TextStyle(color: HappyHomeColors.muted, fontSize: 11)),
-                    TextButton(
-                      onPressed: _loadRecommendedRooms,
-                      child: const Text('إعادة المحاولة',
-                        style: TextStyle(color: HappyHomeColors.gold, fontSize: 11)),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-          if (rooms.isEmpty) {
-            return const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.only(top: 90),
-                child: Center(
-                  child: Text('لا توجد غرف نشطة حالياً',
-                    style: TextStyle(color: HappyHomeColors.muted, fontSize: 12)),
-                ),
-              ),
-            );
-          }
-          return SliverPadding(
-            padding: const EdgeInsets.fromLTRB(8, 5, 8, 16),
-            sliver: SliverGrid(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final room = rooms[index];
-                  return _RecommendedRoomCard(
-                    room: room,
-                    onTap: () => _openRecommendedRoom(room),
-                  );
-                },
-                childCount: rooms.length,
-              ),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.78,
-              ),
-            ),
-          );
-        },
-      ),
-    ];
-  }
-
   Widget _buildExploreHeader() {
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
       valueListenable: _exploreBannersNotifier,
@@ -1005,35 +935,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
-  List<Widget> _buildExploreTabSlivers(int index) {
-    if (index == 0) return _buildRecommendedRoomsSlivers();
-    final title = switch (index) {
-      1 => 'لعبة',
-      2 => 'مبارزة',
-      3 => 'البث المباشر',
-      4 => 'لعبة الفائز السوبر',
-      _ => 'الفيديو',
-    };
-    return [
-      SliverFillRemaining(
-        hasScrollBody: false,
-        child: Center(
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: Color(0xFF9A98AD),
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
-    ];
-  }
-
-  // Each swipe page owns its complete header and content. This keeps the
-  // explore banner/actions/tabs moving as one full page instead of swapping
-  // a separate header above a shortened PageView viewport.
   // ONE outer page. Party-room button + tab chips stay fixed; only the tab
   // content slides horizontally. At the last tab (recent) the swipe is handed
   // to the outer pager, which moves the whole page to Explore (and back).
@@ -1081,9 +982,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _buildExploreHomePage() {
-    // Pull-to-refresh is unchanged: the refresh control is the first sliver of
-    // the page, so banner + cards + chips + content move down together.
-    // Only the tab CONTENT (below the chips) is a horizontal pager.
+    // ONE vertical scroll view (same as the original page): the refresh control
+    // is the first sliver, so a downward pull moves banner + cards + chips +
+    // content together and the indicator appears above the banner.
+    // Only horizontal swipes are custom: they slide the tab content alone.
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -1093,74 +995,131 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           stops: [0.0, 0.3, 0.55],
         ),
       ),
-      child: NestedScrollView(
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          _buildRefreshSliver(refreshExplorePage),
-          // A horizontal drag on the banner/cards/chips also switches the tab
-          // content (not the whole page).
-          SliverToBoxAdapter(
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onHorizontalDragStart: (d) {
-                if (_exploreInnerController.hasClients) {
-                  _exploreHeaderDrag = _exploreInnerController.position
-                      .drag(d, () => _exploreHeaderDrag = null);
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final minH = (c.maxHeight - 110).clamp(240.0, 900.0).toDouble();
+          return _ExploreScroller(
+            controller: _exploreSlide,
+            parent: _pageController,
+            count: 6,
+            onIndexChanged: (i) {
+              setState(() {
+                _lastExploreIndex = i;
+                if (_currentPage >= _exploreFirstPage && _currentPage <= 8) {
+                  _currentPage = _exploreFirstPage + i;
                 }
-              },
-              onHorizontalDragUpdate: (d) => _exploreHeaderDrag?.update(d),
-              onHorizontalDragEnd: (d) {
-                _exploreHeaderDrag?.end(d);
-                _exploreHeaderDrag = null;
-              },
-              onHorizontalDragCancel: () {
-                _exploreHeaderDrag?.cancel();
-                _exploreHeaderDrag = null;
-              },
-              child: Column(
-                children: [
-                  _buildExploreHeader(),
-                  _buildExploreTabs(),
-                ],
-              ),
-            ),
+              });
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted || _exploreChipKeys[i].currentContext == null) return;
+                Scrollable.ensureVisible(
+                  _exploreChipKeys[i].currentContext!,
+                  alignment: 0.5,
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                );
+              });
+              if (i == 0) _loadRecommendedRooms(force: true);
+            },
+            refreshSliver: _buildRefreshSliver(refreshExplorePage),
+            header: _buildExploreHeader(),
+            chips: _buildExploreTabs(),
+            tabBuilder: (i) => _buildExploreTabBox(i, minH),
+          );
+        },
+      ),
+    );
+  }
+
+  // Box (non-sliver) content of one explore tab, so it can slide horizontally.
+  Widget _buildExploreTabBox(int index, double minH) {
+    if (index == 0) return _buildRecommendedRoomsBox(minH);
+    final title = switch (index) {
+      1 => 'لعبة',
+      2 => 'مبارزة',
+      3 => 'البث المباشر',
+      4 => 'لعبة الفائز السوبر',
+      _ => 'الفيديو',
+    };
+    return SizedBox(
+      height: minH,
+      child: Center(
+        child: Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFF9A98AD),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
-        ],
-        body: _EdgeHandoffPager(
-          parent: _pageController,
-          controller: _exploreInnerController,
-          onPageChanged: (i) {
-            setState(() {
-              _lastExploreIndex = i;
-              if (_currentPage >= _exploreFirstPage && _currentPage <= 8) {
-                _currentPage = _exploreFirstPage + i;
-              }
-            });
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted || _exploreChipKeys[i].currentContext == null) return;
-              Scrollable.ensureVisible(
-                _exploreChipKeys[i].currentContext!,
-                alignment: 0.5,
-                duration: const Duration(milliseconds: 260),
-                curve: Curves.easeOutCubic,
-              );
-            });
-            if (i == 0) _loadRecommendedRooms(force: true);
-          },
-          children: [
-            for (var i = 0; i < 6; i++)
-              _KeepAlivePage(child: _buildExploreTabPage(i)),
-          ],
         ),
       ),
     );
   }
 
-  Widget _buildExploreTabPage(int tabIndex) {
-    return CustomScrollView(
-      key: PageStorageKey<String>('happy-live-explore-scroll-$tabIndex'),
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      slivers: _buildExploreTabSlivers(tabIndex),
+  Widget _buildRecommendedRoomsBox(double minH) {
+    return ValueListenableBuilder<List<Map<String, dynamic>>>(
+      valueListenable: _recommendedRoomsNotifier,
+      builder: (context, rooms, _) {
+        if (_loadingRecommendedRooms && rooms.isEmpty) {
+          return SizedBox(
+            height: minH,
+            child: const Center(child: _FiveBarRefreshAnimation()),
+          );
+        }
+        if (_recommendedRoomsError != null && rooms.isEmpty) {
+          return SizedBox(
+            height: minH,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_recommendedRoomsError!, textAlign: TextAlign.center,
+                    style: const TextStyle(color: HappyHomeColors.muted, fontSize: 11)),
+                  TextButton(
+                    onPressed: _loadRecommendedRooms,
+                    child: const Text('إعادة المحاولة',
+                      style: TextStyle(color: HappyHomeColors.gold, fontSize: 11)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        if (rooms.isEmpty) {
+          return SizedBox(
+            height: minH,
+            child: const Padding(
+              padding: EdgeInsets.only(top: 90),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Text('لا توجد غرف نشطة حالياً',
+                  style: TextStyle(color: HappyHomeColors.muted, fontSize: 12)),
+              ),
+            ),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(8, 5, 8, 16),
+          child: GridView.builder(
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.78,
+            ),
+            itemCount: rooms.length,
+            itemBuilder: (context, index) {
+              final room = rooms[index];
+              return _RecommendedRoomCard(
+                room: room,
+                onTap: () => _openRecommendedRoom(room),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -1196,12 +1155,11 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     // explore tab
     final tab = page - _exploreFirstPage;
     final outerOnExplore = (_pageController.page ?? 0).round() == 1;
-    if (_exploreInnerController.hasClients) {
+    if (_exploreSlide.attached) {
       if (outerOnExplore) {
-        _exploreInnerController.animateToPage(tab,
-            duration: duration, curve: Curves.easeInOutCubic);
+        _exploreSlide.animateTo(tab);
       } else {
-        _exploreInnerController.jumpToPage(tab);
+        _exploreSlide.jumpTo(tab);
       }
     }
     setState(() {
@@ -2294,6 +2252,233 @@ class _EdgeHandoffPagerState extends State<_EdgeHandoffPager> {
         onPageChanged: widget.onPageChanged,
         physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
         children: widget.children,
+      ),
+    );
+  }
+}
+
+/// Handle used by the page to move the explore tab content programmatically.
+class _SlideController {
+  _ExploreScrollerState? _state;
+  bool get attached => _state != null;
+  int get index => _state?._index ?? 0;
+  void animateTo(int i) => _state?._animateTo(i);
+  void jumpTo(int i) => _state?._jumpTo(i);
+}
+
+/// One vertical scroll view (refresh + header + chips + tab content).
+/// Horizontal drags slide ONLY the tab content; at the first/last tab the drag
+/// is handed to [parent] so the whole page moves (explore <-> recent / country).
+class _ExploreScroller extends StatefulWidget {
+  const _ExploreScroller({
+    required this.controller,
+    required this.parent,
+    required this.count,
+    required this.onIndexChanged,
+    required this.refreshSliver,
+    required this.header,
+    required this.chips,
+    required this.tabBuilder,
+  });
+
+  final _SlideController controller;
+  final PageController parent;
+  final int count;
+  final ValueChanged<int> onIndexChanged;
+  final Widget refreshSliver;
+  final Widget header;
+  final Widget chips;
+  final Widget Function(int index) tabBuilder;
+
+  @override
+  State<_ExploreScroller> createState() => _ExploreScrollerState();
+}
+
+class _ExploreScrollerState extends State<_ExploreScroller>
+    with SingleTickerProviderStateMixin {
+  final ValueNotifier<double> _page = ValueNotifier<double>(0);
+  late final AnimationController _anim;
+  int _index = 0;
+  double _width = 1;
+  bool _handing = false;
+  double _handDir = 0;
+  double _handBase = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller._state = this;
+    _anim = AnimationController.unbounded(vsync: this)
+      ..addListener(() => _setPage(_anim.value));
+  }
+
+  @override
+  void dispose() {
+    if (widget.controller._state == this) widget.controller._state = null;
+    _anim.dispose();
+    _page.dispose();
+    super.dispose();
+  }
+
+  void _setPage(double v) {
+    _page.value = v;
+    final r = v.round().clamp(0, widget.count - 1).toInt();
+    if (r != _index) {
+      _index = r;
+      widget.onIndexChanged(r);
+    }
+  }
+
+  void _animateTo(int i) {
+    final t = i.clamp(0, widget.count - 1).toDouble();
+    _anim.value = _page.value;
+    _anim.animateTo(t,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeInOutCubic);
+  }
+
+  void _jumpTo(int i) {
+    _anim.stop();
+    _setPage(i.clamp(0, widget.count - 1).toDouble());
+  }
+
+  // ---- drag: finger moving RIGHT = next tab (RTL layout) ----
+  void _onStart(DragStartDetails d) {
+    _anim.stop();
+    _handing = false;
+  }
+
+  void _handToParent(double px) {
+    final p = widget.parent;
+    if (!p.hasClients) return;
+    final pos = p.position;
+    if (!_handing) {
+      _handBase = (pos.pixels / pos.viewportDimension).roundToDouble();
+    }
+    pos.jumpTo((pos.pixels + px).clamp(pos.minScrollExtent, pos.maxScrollExtent));
+    _handing = true;
+    _handDir = px;
+  }
+
+  void _onUpdate(DragUpdateDetails d) {
+    final p = widget.parent;
+    if (_handing && p.hasClients) {
+      final pos = p.position;
+      final base = _handBase * pos.viewportDimension;
+      final newPx = pos.pixels + d.delta.dx;
+      if ((pos.pixels - base) * (newPx - base) <= 0) {
+        pos.jumpTo(base); // user came back: release to the tab content
+        _handing = false;
+      } else {
+        pos.jumpTo(newPx.clamp(pos.minScrollExtent, pos.maxScrollExtent));
+        _handDir = d.delta.dx;
+      }
+      return;
+    }
+    final maxP = (widget.count - 1).toDouble();
+    final next = _page.value + d.delta.dx / _width;
+    if (next > maxP || next < 0) {
+      final over = (next > maxP ? next - maxP : next) * _width;
+      _setPage(next.clamp(0.0, maxP).toDouble());
+      _handToParent(over);
+      return;
+    }
+    _setPage(next);
+  }
+
+  void _onEnd(DragEndDetails d) {
+    final vel = d.primaryVelocity ?? 0;
+    if (_handing) {
+      _handing = false;
+      _settleParent(vel);
+      return;
+    }
+    final page = _page.value;
+    final base = page.floor();
+    final frac = page - base;
+    int target;
+    if (vel.abs() > 600) {
+      target = vel > 0 ? base + 1 : (frac > 0.0001 ? base : base - 1);
+    } else {
+      target = page.round();
+    }
+    _animateTo(target);
+  }
+
+  void _onCancel() {
+    if (_handing) {
+      _handing = false;
+      _settleParent(0);
+      return;
+    }
+    _animateTo(_page.value.round());
+  }
+
+  void _settleParent(double velocity) {
+    final p = widget.parent;
+    if (!p.hasClients) return;
+    final pos = p.position;
+    final page = pos.pixels / pos.viewportDimension;
+    final base = page.floor();
+    final frac = page - base;
+    final last = (pos.maxScrollExtent / pos.viewportDimension).round();
+    final fast = velocity.abs() > 500;
+
+    int target;
+    if (_handDir > 0) {
+      target = (fast || frac > 0.2) ? base + 1 : base;
+    } else {
+      final prev = frac > 0.0001 ? base : base - 1;
+      final stay = frac > 0.0001 ? base + 1 : base;
+      target = (fast || frac < 0.8) ? prev : stay;
+    }
+    p.animateToPage(
+      target.clamp(0, last),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Widget _buildSlider() {
+    return LayoutBuilder(
+      builder: (context, c) {
+        _width = c.maxWidth <= 0 ? 1 : c.maxWidth;
+        return ValueListenableBuilder<double>(
+          valueListenable: _page,
+          builder: (context, page, _) {
+            final w = _width;
+            Widget place(int i) => Transform.translate(
+                  offset: Offset((page - i) * w, 0),
+                  child: widget.tabBuilder(i),
+                );
+            final lo = page.floor().clamp(0, widget.count - 1).toInt();
+            final hi = (lo + 1).clamp(0, widget.count - 1).toInt();
+            if (hi == lo || (page - lo) < 0.0005) {
+              return ClipRect(child: place(page.round().clamp(0, widget.count - 1).toInt()));
+            }
+            return ClipRect(child: Stack(children: [place(lo), place(hi)]));
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragStart: _onStart,
+      onHorizontalDragUpdate: _onUpdate,
+      onHorizontalDragEnd: _onEnd,
+      onHorizontalDragCancel: _onCancel,
+      child: CustomScrollView(
+        key: const PageStorageKey<String>('happy-live-explore-scroll'),
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        slivers: [
+          widget.refreshSliver,
+          SliverToBoxAdapter(child: widget.header),
+          SliverToBoxAdapter(child: widget.chips),
+          SliverToBoxAdapter(child: _buildSlider()),
+        ],
       ),
     );
   }
