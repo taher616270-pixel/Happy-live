@@ -977,12 +977,20 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _buildExploreHomePage(int tabIndex) {
-    return Column(
-      children: [
-        _buildExploreHeader(),
-        _buildExploreTabs(),
-        Expanded(child: _buildExploreTabPage(tabIndex)),
+    return NestedScrollView(
+      key: PageStorageKey<String>('happy-live-explore-scroll-$tabIndex'),
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        SliverToBoxAdapter(child: _buildExploreHeader()),
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _ExploreTabsHeaderDelegate(
+            height: 46,
+            child: _buildExploreTabs(),
+          ),
+        ),
       ],
+      body: _buildExploreTabPage(tabIndex),
     );
   }
 
@@ -1361,21 +1369,58 @@ class _RecommendedRoomCard extends StatelessWidget {
       );
 }
 
+class _ExploreTabsHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _ExploreTabsHeaderDelegate({
+    required this.height,
+    required this.child,
+  });
+
+  final double height;
+  final Widget child;
+
+  @override
+  double get minExtent => height;
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Material(
+      color: const Color(0xFFFAF6EA),
+      child: child,
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _ExploreTabsHeaderDelegate oldDelegate) =>
+      oldDelegate.height != height || oldDelegate.child != child;
+}
+
 class _ExploreTabPlaceholder extends StatelessWidget {
   final String title;
   const _ExploreTabPlaceholder(this.title);
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Color(0xFF9A98AD),
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
+    return CustomScrollView(
+      key: PageStorageKey<String>('happy-live-explore-placeholder-$title'),
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Color(0xFF9A98AD),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
