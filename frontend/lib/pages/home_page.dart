@@ -497,8 +497,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               },
               child: searching
                 ? const SizedBox(width: 18, height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('بحث'),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))                : const Text('بحث'),
             ),
           ],
         ),
@@ -897,7 +896,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
       valueListenable: _exploreBannersNotifier,
       builder: (context, banners, _) => Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 0),
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 0, 8, 0),
       child: Column(
         children: [
           _buildExploreBanner(),
@@ -997,8 +996,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   Widget _buildMyRoomsHomePage(int tabIndex) {
     return Column(
       children: [
-        const SizedBox(height: 24),
-        MyPartyRoomButton(
+        const SizedBox(height: 24),        MyPartyRoomButton(
           room: _myRoom,
           loading: _loadingMyRoom,
           onTap: _openMyRoom,
@@ -1022,24 +1020,34 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       slivers: [
         CupertinoSliverRefreshControl(
           onRefresh: refreshExplorePage,
-          refreshTriggerPullDistance: 82,
-          refreshIndicatorExtent: 48,
+          // The refresh control is the first sliver in the same scroll view.
+          // It grows out from above the banner; it is never painted over content.
+          refreshTriggerPullDistance: 60,
+          refreshIndicatorExtent: 60,
           builder: (context, mode, pulledExtent, triggerDistance, indicatorExtent) {
             final visible = mode == RefreshIndicatorMode.drag ||
                 mode == RefreshIndicatorMode.armed ||
                 mode == RefreshIndicatorMode.refresh;
-            return Container(
-              color: Colors.white,
-              alignment: Alignment.center,
-              child: visible
-                  ? const SizedBox(
-                      width: 17, height: 17,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 1.8,
-                        valueColor: AlwaysStoppedAnimation<Color>(HappyHomeColors.gold),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
+            final scale = (pulledExtent / 60.0).clamp(0.55, 1.12).toDouble();
+            return SizedBox.expand(
+              child: ColoredBox(
+                color: const Color(0xFFFAF6EA),
+                child: Center(
+                  child: visible
+                      ? Transform.scale(
+                          scale: scale,
+                          child: const SizedBox(
+                            width: 19,
+                            height: 19,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.8,
+                              valueColor: AlwaysStoppedAnimation<Color>(HappyHomeColors.gold),
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
             );
           },
         ),
@@ -1497,8 +1505,7 @@ class _ExploreTabPlaceholder extends StatelessWidget {
   }
 }
 
-class MyPartyRoomButton extends StatelessWidget {
-  final VoidCallback? onTap;
+class MyPartyRoomButton extends StatelessWidget {  final VoidCallback? onTap;
   final Map<String, dynamic>? room;
   final bool loading;
   const MyPartyRoomButton({super.key, this.onTap, this.room, this.loading = false});
