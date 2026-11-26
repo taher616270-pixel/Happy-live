@@ -36,7 +36,7 @@ test("callback echoes App ID, API version, UID when supplied, and one-time chall
   const handshakeEnd = callback.indexOf("\nasync function happyFoodWheelCredential", handshakeStart);
   assert.ok(handshakeStart >= 0 && handshakeEnd > handshakeStart, "Happy Food Wheel handshake handler must remain present");
   const handshake = callback.slice(handshakeStart, handshakeEnd);
-  assert.doesNotMatch(handshake, /user_wallets|wallet_transactions|game_wallet_ledger/);
+  assert.doesNotMatch(handshake, /bindHappyFoodWheelAppId|user_wallets|wallet_transactions|game_wallet_ledger/);
 });
 
 test("Happy Food Wheel exposes authenticated player and idempotent wallet callbacks", () => {
