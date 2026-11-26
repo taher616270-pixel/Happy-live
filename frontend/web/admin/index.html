@@ -867,8 +867,8 @@ async function happyFoodWheelIntegrationPage(){
     '<div class="section"><div class="section-head"><div><h2>١. التحقق من حساب اللاعب</h2><p class="muted">تستخدم المنصة UID لحساب Happy Live النشط، مع مفتاح التطبيق نفسه للمصادقة. لا توجد رموز UTD مؤقتة.</p></div><span class="badge good">مفتاح موحّد</span></div>'+
       '<div class="notice">أصدر مفتاح الخادم في القسم التالي، ثم استخدم المفتاح نفسه في فحص المشروع وإعداد API Token داخل منصة Happy Food Wheel. أدخل UID حقيقياً لحساب نشط في المنصة.</div>'+
     '</div>'+
-    '<div class="section"><div class="section-head"><div><h2>٢. مفتاح الربط الدائم للخادم</h2><p class="muted">يُستخدم لاحقاً للاتصال بين خادم المنصة وخادم Happy Live، وليس في خانة Token الاختبار.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'مُعدّ':'غير مُعدّ')+'</span></div>'+
-      '<div class="notice">لا تضع هذا المفتاح في المتصفح أو داخل تطبيق Flutter. يُحفظ في إعدادات الخادم الآمن للمنصة فقط.</div>'+
+    '<div class="section"><div class="section-head"><div><h2>٢. مفتاح الربط الدائم للخادم</h2><p class="muted">يُستخدم لمصادقة فحص المشروع وجميع طلبات API بين الخادمين.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'مُعدّ':'غير مُعدّ')+'</span></div>'+
+      '<div class="notice">لا تضع هذا المفتاح في المتصفح أو داخل تطبيق Flutter. احفظه في إعدادات الخادم الآمن للمنصة، واستخدم القيمة نفسها أثناء فحص المشروع.</div>'+
       '<div id="hfwRuntimeTokenResult"></div>'+
       '<div class="form-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" id="hfwGenerateRuntime" type="button" style="width:auto">'+(configured?'إصدار مفتاح خادم جديد':'إصدار مفتاح الخادم')+'</button>'+(configured?'<button class="action danger" id="hfwRevokeRuntime" type="button">إلغاء المفتاح الحالي</button>':'')+'</div>'+
       (configured?'<p class="muted" style="margin-top:12px">بادئة المفتاح المحفوظ: '+esc(data.tokenPrefix||"")+'… · آخر إصدار: '+esc(data.createdAt||"")+'</p>':'')+
@@ -888,7 +888,7 @@ async function happyFoodWheelIntegrationPage(){
     try{
       const result=await api("/admin/integrations/happy-food-wheel",{method:"POST",body:JSON.stringify({})});
       if(!result.apiToken)throw Error("لم يرجع الخادم مفتاح الربط.");
-      $("hfwRuntimeTokenResult").innerHTML='<div class="game-key-result"><strong>مفتاح الخادم — يظهر مرة واحدة فقط</strong><textarea id="hfwRuntimeToken" rows="4" readonly dir="ltr"></textarea><p class="muted">انسخه مباشرة إلى إعدادات الخادم الآمن في المنصة. لا تستخدمه في خانة Token الاختبار.</p><button class="action" id="hfwCopyRuntimeToken" type="button">نسخ مفتاح الخادم</button></div>';
+      $("hfwRuntimeTokenResult").innerHTML='<div class="game-key-result"><strong>مفتاح الخادم — يظهر مرة واحدة فقط</strong><textarea id="hfwRuntimeToken" rows="4" readonly dir="ltr"></textarea><p class="muted">انسخه إلى إعدادات API Token في المنصة، واستخدم القيمة نفسها في فحص المشروع.</p><button class="action" id="hfwCopyRuntimeToken" type="button">نسخ مفتاح الخادم</button></div>';
       $("hfwRuntimeToken").value=result.apiToken;
       $("hfwCopyRuntimeToken").onclick=()=>copyField("hfwRuntimeToken","hfwRuntimeStatus");
       $("hfwRuntimeStatus").textContent="تم الإصدار. احتفظ به في الخادم الآمن فقط.";
