@@ -101,7 +101,9 @@ async function handleHappyFoodWheelHandshake(
       if (!player || !saved?.setting_value || !constantTimeEqual(await sha256(suppliedToken), saved.setting_value)) {
         return reply({ error: "test_player_or_application_authentication_failed" }, 401);
       }
-      if (!(await bindHappyFoodWheelAppId(db, appId))) return reply({ error: "app_id_mismatch" }, 403);
+      // Validate the UID without binding the app ID yet. The project platform
+      // persists the app only after this callback succeeds; the later runtime
+      // handshake (without UID) performs the permanent one-app binding.
       return reply({ ok: true, appId, apiVersion: "v1", uid, challenge }, 200);
     }
 
