@@ -206,7 +206,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
   }
 
-_handleHomeScrollNotification(ScrollNotification notification) {
+bool _handleHomeScrollNotification(ScrollNotification notification) {
     if (notification.metrics.axis != Axis.vertical) return false;
     final isExplore = _currentPage >= _exploreFirstPage && _currentPage <= 8;
 
