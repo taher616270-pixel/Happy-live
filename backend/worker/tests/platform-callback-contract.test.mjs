@@ -29,6 +29,10 @@ test("callback echoes App ID, API version, UID when supplied, and one-time chall
   assert.match(callback, /platform !== "Happy Food Wheel"/);
   assert.match(callback, /apiVersion !== "v1"/);
   assert.match(callback, /body\.uid === undefined/);
+  assert.match(callback, /test_player_or_application_authentication_failed/);
+  assert.match(callback, /happy_food_wheel_token_hash/);
+  assert.doesNotMatch(callback, /validUtdPlayerToken|utd_test_session|handleUtdCallback/);
+  assert.doesNotMatch(worker, /UTD_APP_KEY|admin\/utd\/test-session/);
   assert.match(callback, /return reply\(\{ ok: true, appId, apiVersion: "v1", uid, challenge \}, 200\)/);
   assert.match(callback, /return reply\(\{ ok: true, appId, apiVersion: "v1", challenge \}, 200\)/);
   const handshakeStart = callback.indexOf("async function handleHappyFoodWheelHandshake(");
