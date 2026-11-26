@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -41,6 +43,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   Timer? _exploreBannerTimer;
   List<Map<String, dynamic>> _exploreBanners = <Map<String, dynamic>>[];
   int _exploreBannerIndex = 0;
+  final ValueNotifier<int> _exploreBannerIndexNotifier = ValueNotifier<int>(0);
   int _exploreBannerIntervalSeconds = 4;
   String _countryCode = 'ALL';
   String _countryName = 'الدولة';
@@ -106,6 +109,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   void dispose() {
     _pageController.dispose();
     _exploreChipScroll.dispose();
+    _exploreBannerIndexNotifier.dispose();
     _exploreBannerTimer?.cancel();
     super.dispose();
   }
@@ -158,6 +162,23 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
   }
 
+  Future<List<Map<String, dynamic>>?> _fetchRecommendedRooms() async {
+    if (widget.accessToken.isEmpty) return null;
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiBase/rooms/recommended'),
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+      ).timeout(const Duration(seconds: 12));
+      final data = jsonDecode(response.body);
+      if (response.statusCode != 200 || data is! Map ||
+          data['ok'] != true || data['rooms'] is! List) return null;
+      return (data['rooms'] as List).whereType<Map>()
+          .map((room) => Map<String, dynamic>.from(room)).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _loadRecommendedRooms({bool force = false}) async {
     if ((_loadingRecommendedRooms && !force) || widget.accessToken.isEmpty) return;
     if (!force && _recommendedRooms.isNotEmpty) return;
@@ -165,56 +186,87 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       _loadingRecommendedRooms = true;
       _recommendedRoomsError = null;
     });
+    final rooms = await _fetchRecommendedRooms();
+    if (!mounted) return;
+    setState(() {
+      if (rooms != null) {
+        _recommendedRooms = rooms;
+        _recommendedRoomsError = null;
+      } else if (_recommendedRooms.isEmpty) {
+        _recommendedRoomsError = 'تعذر تحميل الغرف الموصى بها';
+      }
+      _loadingRecommendedRooms = false;
+    });
+  }
+
+  Future<List<Map<String, dynamic>>?> _fetchExploreBanners() async {
     try {
       final response = await http.get(
-        Uri.parse('$_apiBase/rooms/recommended'),
-        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
-      ).timeout(const Duration(seconds: 12));
+        Uri.parse('$_apiBase/explore/banners?country=${Uri.encodeQueryComponent(_countryCode)}'),
+      ).timeout(const Duration(seconds: 10));
       final data = jsonDecode(response.body);
-      if (response.statusCode == 200 && data is Map &&
-          data['ok'] == true && data['rooms'] is List) {
-        final rooms = (data['rooms'] as List).whereType<Map>()
-            .map((room) => Map<String, dynamic>.from(room)).toList();
-        if (mounted) setState(() {
-          _recommendedRooms = rooms;
-          _recommendedRoomsError = null;
-        });
-      } else {
-        if (mounted) setState(() =>
-            _recommendedRoomsError = 'تعذر تحميل الغرف الموصى بها');
-      }
+      if (response.statusCode != 200 || data is! Map || data['ok'] != true) return null;
+      return data['banners'] is List
+          ? (data['banners'] as List).whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .where((item) => (item['imageUrl'] ?? '').toString().startsWith('https://'))
+              .toList()
+          : <Map<String, dynamic>>[];
     } catch (_) {
-      if (mounted) setState(() =>
-          _recommendedRoomsError = 'تحقق من اتصال الإنترنت ثم حاول التحديث');
-    } finally {
-      if (mounted) setState(() => _loadingRecommendedRooms = false);
+      return null;
     }
+  }
+
+  Future<void> _loadExploreBanners() async {
+    final banners = await _fetchExploreBanners();
+    if (!mounted || banners == null) return;
+    final oldUrl = _exploreBanners.isEmpty ? '' :
+        (_exploreBanners[_exploreBannerIndex.clamp(0, _exploreBanners.length - 1)]['imageUrl'] ?? '').toString();
+    final found = banners.indexWhere((item) => (item['imageUrl'] ?? '').toString() == oldUrl);
+    setState(() {
+      _exploreBanners = banners;
+      _exploreBannerIndex = found >= 0 ? found : 0;
+    });
+    _exploreBannerIndexNotifier.value = _exploreBannerIndex;
+    _restartExploreBannerTimer();
   }
 
   Future<void> refreshExplorePage() async {
     if (!mounted || _currentPage < _exploreFirstPage || _currentPage > 8 ||
         _exploreRefreshInFlight) return;
     _exploreRefreshInFlight = true;
-    if (mounted) setState(() => _isRefreshingHome = true);
     try {
-      // Refresh only the data displayed by Explore. Do not reload the other
-      // home sections, country detection, or the user's private room.
-      await Future.wait<void>([
-        _loadRecommendedRooms(force: true),
-        _loadExploreBanners(),
+      final results = await Future.wait<dynamic>([
+        _fetchExploreBanners(),
+        _fetchRecommendedRooms(),
       ]);
+      if (!mounted) return;
+      final banners = results[0] as List<Map<String, dynamic>>?;
+      final rooms = results[1] as List<Map<String, dynamic>>?;
+      final oldUrl = _exploreBanners.isEmpty ? '' :
+          (_exploreBanners[_exploreBannerIndex.clamp(0, _exploreBanners.length - 1)]['imageUrl'] ?? '').toString();
+      final found = banners?.indexWhere((item) => (item['imageUrl'] ?? '').toString() == oldUrl);
+      // Replace both feeds in one commit; retain cached content on endpoint errors.
+      setState(() {
+        if (banners != null) {
+          _exploreBanners = banners;
+          _exploreBannerIndex = found != null && found >= 0 ? found : 0;
+        }
+        if (rooms != null) {
+          _recommendedRooms = rooms;
+          _recommendedRoomsError = null;
+        }
+      });
+      if (banners != null) {
+        _exploreBannerIndexNotifier.value = _exploreBannerIndex;
+        _restartExploreBannerTimer();
+      }
     } finally {
       _exploreRefreshInFlight = false;
-      if (mounted) {
-        setState(() {
-          _isRefreshingHome = false;
-          _homePullDistance = 0;
-        });
-      }
     }
   }
 
-bool _handleHomeScrollNotification(ScrollNotification notification) {
+  bool _handleHomeScrollNotification(ScrollNotification notification) {
     if (notification.metrics.axis != Axis.vertical) return false;
     final isExplore = _currentPage >= _exploreFirstPage && _currentPage <= 8;
 
@@ -747,9 +799,8 @@ bool _handleHomeScrollNotification(ScrollNotification notification) {
       Duration(seconds: _exploreBannerIntervalSeconds),
       (_) {
         if (!mounted || _exploreBanners.length < 2) return;
-        setState(() {
-          _exploreBannerIndex = (_exploreBannerIndex + 1) % _exploreBanners.length;
-        });
+        _exploreBannerIndex = (_exploreBannerIndex + 1) % _exploreBanners.length;
+        _exploreBannerIndexNotifier.value = _exploreBannerIndex;
       },
     );
   }
@@ -763,72 +814,94 @@ bool _handleHomeScrollNotification(ScrollNotification notification) {
   }
 
   Widget _buildExploreBanner() {
-    final hasBanners = _exploreBanners.isNotEmpty;
-    final safeIndex = hasBanners
-        ? _exploreBannerIndex.clamp(0, _exploreBanners.length - 1).toInt()
-        : 0;
-    final banner = hasBanners ? _exploreBanners[safeIndex] : null;
-    return AspectRatio(
-      aspectRatio: 4.1,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (banner != null)
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => _openExploreBanner(banner),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 380),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  child: HappyNetworkImage(
-                    (banner['imageUrl'] ?? '').toString(),
-                    key: ValueKey<String>((banner['imageUrl'] ?? '').toString()),
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: Colors.white,
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.broken_image_outlined,
-                          color: HappyHomeColors.muted),
+    return ValueListenableBuilder<int>(
+      valueListenable: _exploreBannerIndexNotifier,
+      builder: (context, bannerIndex, _) {
+        final hasBanners = _exploreBanners.isNotEmpty;
+        final safeIndex = hasBanners ? bannerIndex.clamp(0, _exploreBanners.length - 1).toInt() : 0;
+        final banner = hasBanners ? _exploreBanners[safeIndex] : null;
+        return AspectRatio(
+          aspectRatio: 4.1,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (banner != null)
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _openExploreBanner(banner),
+                    child: CachedNetworkImage(
+                      imageUrl: (banner['imageUrl'] ?? '').toString(),
+                      fit: BoxFit.cover,
+                      fadeInDuration: Duration.zero,
+                      fadeOutDuration: Duration.zero,
+                      placeholder: (_, __) => _exploreBannerFallback(),
+                      errorWidget: (_, __, ___) => _exploreBannerFallback(),
+                    ),
+                  )
+                else
+                  _exploreBannerFallback(),
+                if (_exploreBanners.length > 1)
+                  Positioned(
+                    left: 0, right: 0, bottom: 6,
+                    child: IgnorePointer(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(_exploreBanners.length, (index) {
+                          final selected = index == safeIndex;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            width: selected ? 15 : 6, height: 6,
+                            decoration: BoxDecoration(
+                              color: selected ? HappyHomeColors.gold : const Color(0xFFCEC8BB),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          );
+                        }),
+                      ),
                     ),
                   ),
-                ),
-              )
-            else
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: const Color(0xFFE8E4DA)),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            if (_exploreBanners.length > 1)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 6,
-                child: IgnorePointer(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(_exploreBanners.length, (index) {
-                      final selected = index == _exploreBannerIndex;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        width: selected ? 15 : 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: selected ? HappyHomeColors.gold : const Color(0xFFCEC8BB),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-              ),
-          ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _exploreBannerFallback() => Container(
+    decoration: BoxDecoration(
+      color: const Color(0xFFFAF6EA),
+      border: Border.all(color: const Color(0xFFE8E4DA)),
+      borderRadius: BorderRadius.circular(14),
+    ),
+  );
+
+  Widget _buildSmallExploreBanner(int index) {
+    if (index >= _exploreBanners.length) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE8E4DA)),
+          borderRadius: BorderRadius.circular(14),
+        ),
+      );
+    }
+    final banner = _exploreBanners[index];
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _openExploreBanner(banner),
+        child: CachedNetworkImage(
+          imageUrl: (banner['imageUrl'] ?? '').toString(),
+          fit: BoxFit.cover,
+          fadeInDuration: Duration.zero,
+          fadeOutDuration: Duration.zero,
+          placeholder: (_, __) => _exploreBannerFallback(),
+          errorWidget: (_, __, ___) => _exploreBannerFallback(),
         ),
       ),
     );
@@ -912,31 +985,9 @@ bool _handleHomeScrollNotification(ScrollNotification notification) {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: SizedBox(
-                  height: 82,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFFE8E4DA)),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-              ),
+              Expanded(child: SizedBox(height: 82, child: _buildSmallExploreBanner(1))),
               const SizedBox(width: 8),
-              Expanded(
-                child: SizedBox(
-                  height: 82,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: const Color(0xFFE8E4DA)),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-              ),
+              Expanded(child: SizedBox(height: 82, child: _buildSmallExploreBanner(2))),
             ],
           ),
           const SizedBox(height: 4),
@@ -1045,10 +1096,43 @@ bool _handleHomeScrollNotification(ScrollNotification notification) {
     // downward drag begun over any tab content moves the banner, action
     // cards, tabs and content together and reaches the page refresh at top.
     return CustomScrollView(
-      key: PageStorageKey<String>('happy-live-explore-scroll-$tabIndex'),
+      key: const PageStorageKey<String>('happy-live-explore-scroll'),
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       slivers: [
-        SliverToBoxAdapter(child: _buildExploreHeader()),
+        CupertinoSliverRefreshControl(
+          onRefresh: refreshExplorePage,
+          refreshTriggerPullDistance: 82,
+          refreshIndicatorExtent: 48,
+          builder: (context, mode, pulledExtent, triggerDistance, indicatorExtent) {
+            final visible = mode == RefreshIndicatorMode.drag ||
+                mode == RefreshIndicatorMode.armed ||
+                mode == RefreshIndicatorMode.refresh;
+            return Container(
+              color: Colors.white,
+              alignment: Alignment.center,
+              child: visible
+                  ? const SizedBox(
+                      width: 17, height: 17,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.8,
+                        valueColor: AlwaysStoppedAnimation<Color>(HappyHomeColors.gold),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            );
+          },
+        ),
+        SliverAppBar(
+          primary: false,
+          toolbarHeight: 0,
+          collapsedHeight: 0,
+          expandedHeight: 204,
+          pinned: false,
+          floating: false,
+          automaticallyImplyLeading: false,
+          backgroundColor: HappyHomeColors.background,
+          flexibleSpace: FlexibleSpaceBar(background: _buildExploreHeader()),
+        ),
         SliverToBoxAdapter(child: _buildExploreTabs()),
         ..._buildExploreTabSlivers(tabIndex),
       ],
@@ -1338,10 +1422,13 @@ class _RecommendedRoomCard extends StatelessWidget {
                     fit: StackFit.expand,
                     children: [
                       image.startsWith('https://')
-                          ? HappyNetworkImage(
-                              image,
+                          ? CachedNetworkImage(
+                              imageUrl: image,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _roomFallback(),
+                              fadeInDuration: Duration.zero,
+                              fadeOutDuration: Duration.zero,
+                              placeholder: (_, __) => _roomFallback(),
+                              errorWidget: (_, __, ___) => _roomFallback(),
                             )
                           : _roomFallback(),
                       Positioned(
