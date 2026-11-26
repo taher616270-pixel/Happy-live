@@ -979,6 +979,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   Widget _buildExploreHomePage(int tabIndex) {
     return NestedScrollView(
       key: PageStorageKey<String>('happy-live-explore-scroll-$tabIndex'),
+      // Coordinate downward drags from every inner tab with the outer
+      // explore header, so the banner, action cards, tabs and tab content
+      // reveal together before the pull-to-refresh indicator is shown.
+      floatHeaderSlivers: true,
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       headerSliverBuilder: (context, innerBoxIsScrolled) => [
         SliverToBoxAdapter(child: _buildExploreHeader()),
