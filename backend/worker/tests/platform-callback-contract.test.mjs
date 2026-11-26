@@ -1,5 +1,6 @@
   assert.match(callback, /test_player_or_application_authentication_failed/);
   assert.match(callback, /happy_food_wheel_token_hash/);
+  assert.match(callback, /bindHappyFoodWheelAppId\\(db, appId\\)/);
   assert.doesNotMatch(callback, /validUtdPlayerToken|utd_test_session|handleUtdCallback/);
   assert.doesNotMatch(worker, /UTD_APP_KEY|admin\\/utd\\/test-session/);
 import test from "node:test";
