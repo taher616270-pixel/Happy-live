@@ -61,7 +61,7 @@ td,th{padding:14px 13px;text-align:right;border-bottom:1px solid #30263c;font-si
 
 </style></head><body>
 <div id="loginView" class="login-wrap"><form id="setupForm" class="login hidden"><div class="logo">H</div><h1>إنشاء كلمة مرور المدير</h1><p class="muted">إعداد أول مرة لحساب المالك المستقل</p><label class="field">رمز التهيئة لمرة واحدة<input id="setupToken" type="password" autocomplete="off" required></label><label class="field">كلمة المرور الجديدة<input id="setupPassword" type="password" autocomplete="new-password" minlength="12" required></label><label class="field">تأكيد كلمة المرور<input id="setupConfirmation" type="password" autocomplete="new-password" minlength="12" required></label><button class="primary" id="setupBtn">إنشاء كلمة المرور</button><div id="setupError" class="error"></div><p class="muted" style="font-size:12px">استخدم 12 حرفًا على الأقل. لا تشارك كلمة المرور مع أي شخص.</p></form><form id="loginForm" class="login"><div class="logo">H</div><h1>لوحة إدارة Happy Live</h1><p class="muted">دخول المالك المستقل</p><label class="field">اسم المستخدم<input id="username" type="text" autocomplete="username" required></label><label class="field">كلمة المرور<input id="password" type="password" autocomplete="current-password" required></label><button class="primary" id="loginBtn">تسجيل الدخول</button><div id="loginError" class="error"></div><p class="muted" style="font-size:12px">حساب الإدارة مستقل عن حسابات مستخدمي التطبيق.</p></form></div>
-<div id="appView" class="app hidden"><aside class="side" id="adminDrawer"><div class="brand"><div class="logo">H</div><div><b>HAPPY LIVE</b><small>مركز الإدارة</small></div></div><nav class="nav"><button class="active" data-page="overview">◈　لوحة التحكم</button><button data-page="regions">◎　المناطق والدول</button><button data-page="agencies">♧　الوكالات</button><button data-page="users">♙　المستخدمين</button><button data-page="banners">▧　البنرات والسبلاش</button><button data-page="explore-banners">▱　بنرات استكشف</button><button data-page="vip">✦　لـVIP</button><button data-page="cp">✧　لـCP</button><button data-page="events">▦　الأحداث</button><button data-page="levels">▥　المستويات</button><button data-page="rooms">◉　الغرف واللايف</button><button data-page="posts">▤　المنشورات</button><button data-page="gifts">♢　الهدايا</button><button data-page="pk">⚔　تحكم PK</button><button data-page="mic-style">🎙　شكل المايك</button><button data-page="cannon">▣　مدفع الغرفة</button><button data-page="emojis">☺　الرموز التعبيرية</button><button data-page="room-bom">◈　روم بوم</button><button data-page="room-target">◎　تارجت الغرفة</button><button data-page="lucky-box">▣　صندوق الحظ</button><button data-page="host-level">♛　مستوى المضيف</button><button data-page="withdrawals">⇧　السحب</button><button data-page="store">▣　المتجر</button><button data-page="badges">✪　الشارات</button><button data-page="medals">♕　الأوسمة</button><button data-page="invite-code">⌁　رمز الدعوة</button><button data-page="support">◌　الدعم</button><button data-page="families">♧　العائلات</button><button data-page="games">♟　الألعاب</button><button data-page="utd-test-session">♧　رمز اختبار UTD</button><button data-page="recharge">＋　الشحن</button><button data-page="wallets">◉　الكوينز والمحافظ</button><button data-page="rewards">✧　المكافآت</button><button data-page="reports">⚑　التقارير</button><button data-page="chat-groups">▤　الدردشة والجروبات</button><button data-page="moderation">⛨　الإشراف والحظر</button><button data-page="notifications">♧　الإشعارات</button><button data-page="moderators">♙　المستخدمين والأذونات</button><button data-page="agora">⚙　الإعدادات</button><button data-page="other">⋯　أخرى</button></nav><div class="side-foot"><button id="logoutBtn" class="logout">تسجيل الخروج</button></div></aside><div id="drawerOverlay" class="drawer-overlay" aria-hidden="true"></div><main class="main"><header class="top"><button id="menuToggle" class="menu-toggle" type="button" aria-label="فتح القائمة" aria-expanded="false" aria-controls="adminDrawer"><span aria-hidden="true">☰</span></button><div class="top-title"><h1 id="pageTitle">نظرة عامة</h1><small id="adminIdentity" class="muted"></small></div><span class="badge good">اتصال آمن</span></header><div id="content"><div class="loading">جارٍ التحميل…</div></div></main></div>
+<div id="appView" class="app hidden"><aside class="side" id="adminDrawer"><div class="brand"><div class="logo">H</div><div><b>HAPPY LIVE</b><small>مركز الإدارة</small></div></div><nav class="nav"><button class="active" data-page="overview">◈　لوحة التحكم</button><button data-page="regions">◎　المناطق والدول</button><button data-page="agencies">♧　الوكالات</button><button data-page="users">♙　المستخدمين</button><button data-page="banners">▧　البنرات والسبلاش</button><button data-page="explore-banners">▱　بنرات استكشف</button><button data-page="vip">✦　لـVIP</button><button data-page="cp">✧　لـCP</button><button data-page="events">▦　الأحداث</button><button data-page="levels">▥　المستويات</button><button data-page="rooms">◉　الغرف واللايف</button><button data-page="posts">▤　المنشورات</button><button data-page="gifts">♢　الهدايا</button><button data-page="pk">⚔　تحكم PK</button><button data-page="mic-style">🎙　شكل المايك</button><button data-page="cannon">▣　مدفع الغرفة</button><button data-page="emojis">☺　الرموز التعبيرية</button><button data-page="room-bom">◈　روم بوم</button><button data-page="room-target">◎　تارجت الغرفة</button><button data-page="lucky-box">▣　صندوق الحظ</button><button data-page="host-level">♛　مستوى المضيف</button><button data-page="withdrawals">⇧　السحب</button><button data-page="store">▣　المتجر</button><button data-page="badges">✪　الشارات</button><button data-page="medals">♕　الأوسمة</button><button data-page="invite-code">⌁　رمز الدعوة</button><button data-page="support">◌　الدعم</button><button data-page="families">♧　العائلات</button><button data-page="games">♟　الألعاب</button><button data-page="recharge">＋　الشحن</button><button data-page="wallets">◉　الكوينز والمحافظ</button><button data-page="rewards">✧　المكافآت</button><button data-page="reports">⚑　التقارير</button><button data-page="chat-groups">▤　الدردشة والجروبات</button><button data-page="moderation">⛨　الإشراف والحظر</button><button data-page="notifications">♧　الإشعارات</button><button data-page="moderators">♙　المستخدمين والأذونات</button><button data-page="agora">⚙　الإعدادات</button><button data-page="other">⋯　أخرى</button></nav><div class="side-foot"><button id="logoutBtn" class="logout">تسجيل الخروج</button></div></aside><div id="drawerOverlay" class="drawer-overlay" aria-hidden="true"></div><main class="main"><header class="top"><button id="menuToggle" class="menu-toggle" type="button" aria-label="فتح القائمة" aria-expanded="false" aria-controls="adminDrawer"><span aria-hidden="true">☰</span></button><div class="top-title"><h1 id="pageTitle">نظرة عامة</h1><small id="adminIdentity" class="muted"></small></div><span class="badge good">اتصال آمن</span></header><div id="content"><div class="loading">جارٍ التحميل…</div></div></main></div>
 <script>
 const API="https://happy-live-api.taher616270.workers.dev/api/v1";let token=sessionStorage.getItem("happy_live_admin_token")||"",admin=null,page="overview";
 const $=id=>document.getElementById(id);function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -294,7 +294,6 @@ async function render(){
     else if(page==="mic-style")await micStyleAdminPage();
     else if(page==="cannon")await cannonAdminPage();
     else if(page==="games")await gamesPage();
-    else if(page==="utd-test-session")await utdTestSessionPage();
     else if(page==="rooms")rooms((await api("/admin/rooms")).rooms||[]);
     else if(page==="reports")await roomReportsPage();
     else if(page==="moderators")await moderatorsPage();
@@ -868,7 +867,7 @@ async function happyFoodWheelIntegrationPage(){
     '<div class="section"><div class="section-head"><div><h2>١. رمز حساب الاختبار</h2><p class="muted">رمز مؤقت مرتبط بحساب Happy Live المحدد، للتحقق من UID عند تسجيل المشروع فقط.</p></div><span class="badge">10 دقائق</span></div>'+
       '<div class="form-grid"><label>UID حساب الاختبار<input id="hfwTestUid" inputmode="numeric" value="93013793" autocomplete="off"></label><label>نطاق الرمز<input value="UTD callbacks only" readonly dir="ltr"></label></div>'+
       '<div class="notice">هذا الرمز لا يغيّر الرصيد ولا يمنح صلاحية API دائمة. إصداره مرة أخرى يبطل الرمز السابق فوراً.</div>'+
-      '<div class="form-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" id="hfwIssueTest" type="button" style="width:auto">إصدار رمز اختبار مؤقت</button><span id="hfwTestStatus" class="muted" role="status"></span></div>'+
+      '<div class="form-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" id="hfwIssueTest" type="button" style="width:auto">إصدار رمز اختبار مؤقت</button><span id="hfwRuntimeStatus" class="muted" role="status"></span></div>'+
       '<div id="hfwTestResult"></div>'+
     '</div>'+
     '<div class="section"><div class="section-head"><div><h2>٢. مفتاح الربط الدائم للخادم</h2><p class="muted">يُستخدم لاحقاً للاتصال بين خادم المنصة وخادم Happy Live، وليس في خانة Token الاختبار.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'مُعدّ':'غير مُعدّ')+'</span></div>'+
@@ -880,28 +879,12 @@ async function happyFoodWheelIntegrationPage(){
     '</div>'+
     '<div class="section"><h2>٣. ترتيب الإعداد في منصة Happy Food Wheel</h2><ol class="muted" style="line-height:2"><li>افتح إنشاء مشروع جديد في بوابة المنصة.</li><li>في Callback Base URL الصق العنوان الأساسي فقط من القسم الأول.</li><li>أدخل UID نفسه، ثم أصدر رمز الاختبار المؤقت والصقه في خانة Token الاختبار.</li><li>نفّذ فحص المشروع فوراً قبل انتهاء صلاحية الرمز.</li></ol><p class="muted">لا ترسل أي Token في المحادثات أو الصور. إذا ظهر خطأ، شارك رسالة الخطأ فقط.</p></div>');
   async function copyField(id,statusId){
-    const input=$(id),status=$(statusId||"hfwTestStatus");
+    const input=$(id),status=$(statusId||"hfwRuntimeStatus");
     if(!input||!input.value){if(status)status.textContent="لا توجد قيمة لنسخها بعد.";return}
     try{await navigator.clipboard.writeText(input.value);if(status)status.textContent="تم النسخ."}
     catch(e){input.focus();input.select();document.execCommand("copy");if(status)status.textContent="تم تحديد النص؛ انسخه من المتصفح."}
   }
-  document.querySelectorAll("[data-hfw-copy]").forEach(button=>button.onclick=()=>copyField(button.dataset.hfwCopy,"hfwTestStatus"));
-  $("hfwIssueTest").onclick=async()=>{
-    const button=$("hfwIssueTest"),uid=$("hfwTestUid").value.trim();
-    $("hfwTestResult").innerHTML="";$("hfwTestStatus").textContent="";
-    if(!/^\d{5,20}$/.test(uid)){$("hfwTestStatus").textContent="أدخل UID رقمياً صحيحاً من 5 إلى 20 رقماً.";return}
-    button.disabled=true;button.textContent="جارٍ إصدار الرمز…";
-    try{
-      const result=await api("/admin/utd/test-session",{method:"POST",body:JSON.stringify({uid})});
-      if(!result.test_token||!result.expires_at)throw Error("لم يرجع الخادم رمز الاختبار ووقت الانتهاء.");
-      $("hfwTestResult").innerHTML='<div class="game-key-result"><strong>تم إصدار رمز الاختبار — انسخه إلى خانة Token الاختبار في المنصة</strong><label class="field" style="margin:12px 0 6px">Token الاختبار<textarea id="hfwTempToken" rows="4" readonly dir="ltr"></textarea></label><p class="muted">UID: '+esc(uid)+' · النطاق: '+esc(result.scope||"UTD callbacks only")+' · ينتهي: <b id="hfwTempExpiry"></b></p><button class="action" id="hfwCopyTempToken" type="button">نسخ Token الاختبار</button></div>';
-      $("hfwTempToken").value=result.test_token;
-      const expiry=new Date(result.expires_at);$("hfwTempExpiry").textContent=Number.isNaN(expiry.getTime())?result.expires_at:expiry.toLocaleString("ar-SA");
-      $("hfwCopyTempToken").onclick=()=>copyField("hfwTempToken","hfwTestStatus");
-      $("hfwTestStatus").textContent="الرمز جاهز. استخدمه فوراً في المنصة ولا تشاركه.";
-    }catch(error){$("hfwTestStatus").textContent=error.message}
-    finally{button.disabled=false;button.textContent="إصدار رمز اختبار مؤقت"}
-  };
+  document.querySelectorAll("[data-hfw-copy]").forEach(button=>button.onclick=()=>copyField(button.dataset.hfwCopy,"hfwRuntimeStatus"));
   $("hfwGenerateRuntime").onclick=async()=>{
     if(configured&&!confirm("سيؤدي إصدار مفتاح جديد إلى إبطال مفتاح الخادم السابق فوراً. هل تريد المتابعة؟"))return;
     const button=$("hfwGenerateRuntime");button.disabled=true;$("hfwRuntimeStatus").textContent="";
@@ -1221,45 +1204,6 @@ async function gamesPage(){
   });
 }
 
-async function utdTestSessionPage(){
-  if(admin.role!=="owner"){
-    $("content").innerHTML='<div class="section"><h2>إصدار رمز اختبار UTD</h2><p class="notice">هذه العملية متاحة لحساب مالك التطبيق فقط.</p></div>';
-    return;
-  }
-  $("content").innerHTML=
-    '<div class="section"><div class="section-head"><div><h2>إصدار رمز اختبار UTD</h2><p class="muted">أنشئ رمز جلسة مؤقتًا مرتبطًا بحساب Happy Live محدد لاختبار callbacks فقط.</p></div><span class="badge">صلاحية 10 دقائق</span></div>'+
-    '<div class="form-grid"><label>معرّف اللاعب UID<input id="utdTestUid" inputmode="numeric" value="93013793" autocomplete="off"></label>'+
-    '<label>نطاق الرمز<input value="UTD callbacks only" readonly></label></div>'+
-    '<div class="notice" style="margin-top:14px">الرمز مؤقت ومخصص لاختبارات UTD فقط، ولا يغيّر رصيد اللاعب. إصدار رمز جديد يبطل الرمز السابق.</div>'+
-    '<div class="form-actions" style="margin-top:16px"><button class="primary" id="utdIssueToken" type="button">إصدار رمز اختبار</button><span id="utdIssueStatus" class="muted" role="status"></span></div>'+
-    '<div id="utdTokenResult"></div></div>';
-  $("utdIssueToken").onclick=async()=>{
-    const button=$("utdIssueToken"),uid=$("utdTestUid").value.trim();
-    $("utdTokenResult").innerHTML="";$("utdIssueStatus").textContent="";
-    if(!/^\d{5,20}$/.test(uid)){$("utdIssueStatus").textContent="أدخل UID رقميًا صحيحًا.";return}
-    button.disabled=true;button.textContent="جارٍ إصدار الرمز…";
-    try{
-      const result=await api("/admin/utd/test-session",{method:"POST",body:JSON.stringify({uid})});
-      if(!result.test_token||!result.expires_at)throw Error("استجابة الخادم لا تحتوي على رمز الاختبار أو وقت الانتهاء.");
-      $("utdTokenResult").innerHTML=
-        '<div class="game-key-result"><strong>تم إصدار رمز الاختبار بنجاح</strong>'+
-        '<label class="field" style="margin:12px 0 6px">Token الاختبار<textarea id="utdIssuedToken" rows="4" readonly></textarea></label>'+
-        '<p class="muted">ينتهي في: <b id="utdExpiresAt"></b></p>'+
-        '<p class="muted">النطاق: '+esc(result.scope||"UTD callbacks only")+' · UID: '+esc(uid)+'</p>'+
-        '<button class="action" id="utdCopyToken" type="button">نسخ Token الاختبار</button></div>';
-      $("utdIssuedToken").value=result.test_token;
-      const expiry=new Date(result.expires_at);
-      $("utdExpiresAt").textContent=Number.isNaN(expiry.getTime())?result.expires_at:expiry.toLocaleString("ar");
-      $("utdCopyToken").onclick=async()=>{
-        const field=$("utdIssuedToken");
-        try{await navigator.clipboard.writeText(field.value);$("utdCopyToken").textContent="تم النسخ"}
-        catch(_){field.focus();field.select();$("utdCopyToken").textContent="حدّد الرمز وانسخه"}
-      };
-      $("utdIssueStatus").textContent="احتفظ بالرمز في إعدادات منصة UTD فقط.";
-    }catch(error){$("utdIssueStatus").textContent=error.message}
-    finally{button.disabled=false;button.textContent="إصدار رمز اختبار"}
-  };
-}
 
 function audit(a){$("content").innerHTML='<div class="section"><div class="section-head"><h2>آخر الإجراءات ('+a.length+')</h2></div><div class="table-wrap"><table><thead><tr><th>الإجراء</th><th>المدير</th><th>النوع</th><th>المعرف</th><th>التاريخ</th></tr></thead><tbody>'+(a.length?a.map(x=>'<tr><td>'+esc(x.action)+'</td><td>'+esc(x.actor_name||x.actor_email||"—")+'</td><td>'+esc(x.target_type)+'</td><td>'+esc(x.target_id)+'</td><td>'+esc(new Date(x.created_at).toLocaleString("ar"))+'</td></tr>').join(""):'<tr><td colspan="5" class="empty">لا توجد إجراءات</td></tr>')+'</tbody></table></div></div>'}
 startup();
