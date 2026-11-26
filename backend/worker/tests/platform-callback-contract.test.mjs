@@ -36,7 +36,11 @@ test("callback echoes App ID, API version, UID when supplied, and one-time chall
   const handshakeEnd = callback.indexOf("\nasync function happyFoodWheelCredential", handshakeStart);
   assert.ok(handshakeStart >= 0 && handshakeEnd > handshakeStart, "Happy Food Wheel handshake handler must remain present");
   const handshake = callback.slice(handshakeStart, handshakeEnd);
-  assert.ok(!handshake.includes("if (!(await bindHappyFoodWheelAppId(db, appId)))"), "UID profile validation must not bind the app ID");
+  const uidBranchStart = handshake.indexOf("if (uid) {");
+  const uidBranchEnd = handshake.indexOf("// Runtime integration handshake", uidBranchStart);
+  const uidBranch = handshake.slice(uidBranchStart, uidBranchEnd);
+  assert.ok(uidBranchStart >= 0 && uidBranchEnd > uidBranchStart);
+  assert.ok(!uidBranch.includes("bindHappyFoodWheelAppId"), "UID profile validation must not bind the app ID");
   assert.doesNotMatch(handshake, /user_wallets|wallet_transactions|game_wallet_ledger/);
 });
 
