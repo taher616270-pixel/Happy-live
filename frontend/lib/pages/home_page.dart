@@ -792,60 +792,72 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
-  Widget _buildRecommendedRoomsContent() {
+  List<Widget> _buildRecommendedRoomsSlivers() {
     if (_loadingRecommendedRooms && _recommendedRooms.isEmpty) {
-      return const Center(child: _FiveBarRefreshAnimation());
+      return const [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(child: _FiveBarRefreshAnimation()),
+        ),
+      ];
     }
     if (_recommendedRoomsError != null && _recommendedRooms.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_recommendedRoomsError!, textAlign: TextAlign.center,
-              style: const TextStyle(color: HappyHomeColors.muted, fontSize: 11)),
-            TextButton(
-              onPressed: _refreshHomePage,
-              child: const Text('إعادة المحاولة',
-                style: TextStyle(color: HappyHomeColors.gold, fontSize: 11)),
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_recommendedRoomsError!, textAlign: TextAlign.center,
+                  style: const TextStyle(color: HappyHomeColors.muted, fontSize: 11)),
+                TextButton(
+                  onPressed: _refreshHomePage,
+                  child: const Text('إعادة المحاولة',
+                    style: TextStyle(color: HappyHomeColors.gold, fontSize: 11)),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      );
+      ];
     }
     if (_recommendedRooms.isEmpty) {
-      return ListView(
-        physics: const NeverScrollableScrollPhysics(),
-        children: const [
-          SizedBox(height: 90),
-          Center(
+      return const [
+        SliverToBoxAdapter(child: SizedBox(height: 90)),
+        SliverToBoxAdapter(
+          child: Center(
             child: Text(
               'لا توجد غرف نشطة حالياً',
               style: TextStyle(color: HappyHomeColors.muted, fontSize: 12),
             ),
           ),
-        ],
-      );
+        ),
+      ];
     }
-    return GridView.builder(
-      key: const PageStorageKey<String>('happy-live-recommended-rooms'),
-      shrinkWrap: false,
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      padding: const EdgeInsets.fromLTRB(8, 5, 8, 16),
-      itemCount: _recommendedRooms.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.78,
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(8, 5, 8, 16),
+        sliver: SliverGrid(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final room = _recommendedRooms[index];
+              return _RecommendedRoomCard(
+                room: room,
+                onTap: () => _openRecommendedRoom(room),
+              );
+            },
+            childCount: _recommendedRooms.length,
+          ),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.78,
+          ),
+        ),
       ),
-      itemBuilder: (context, index) {
-        final room = _recommendedRooms[index];
-        return _RecommendedRoomCard(
-          room: room,
-          onTap: () => _openRecommendedRoom(room),
-        );
-      },
-    );
+    ];
   }
 
   Widget _buildExploreHeader() {
@@ -939,21 +951,30 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
-  Widget _buildExploreTabPage(int index) {
-    switch (index) {
-      case 0:
-        return _buildRecommendedRoomsContent();
-      case 1:
-        return const _ExploreTabPlaceholder('لعبة');
-      case 2:
-        return const _ExploreTabPlaceholder('مبارزة');
-      case 3:
-        return const _ExploreTabPlaceholder('البث المباشر');
-      case 4:
-        return const _ExploreTabPlaceholder('لعبة الفائز السوبر');
-      default:
-        return const _ExploreTabPlaceholder('الفيديو');
-    }
+  List<Widget> _buildExploreTabSlivers(int index) {
+    if (index == 0) return _buildRecommendedRoomsSlivers();
+    final title = switch (index) {
+      1 => 'لعبة',
+      2 => 'مبارزة',
+      3 => 'البث المباشر',
+      4 => 'لعبة الفائز السوبر',
+      _ => 'الفيديو',
+    };
+    return [
+      SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF9A98AD),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    ];
   }
 
   // Each swipe page owns its complete header and content. This keeps the
@@ -977,24 +998,18 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _buildExploreHomePage(int tabIndex) {
-    return NestedScrollView(
+    // A single scroll position owns the entire Explore page. Tab content is
+    // rendered as slivers (never as a nested ListView/GridView), so a
+    // downward drag begun over any tab content moves the banner, action
+    // cards, tabs and content together and reaches the page refresh at top.
+    return CustomScrollView(
       key: PageStorageKey<String>('happy-live-explore-scroll-$tabIndex'),
-      // Coordinate downward drags from every inner tab with the outer
-      // explore header, so the banner, action cards, tabs and tab content
-      // reveal together before the pull-to-refresh indicator is shown.
-      floatHeaderSlivers: true,
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      headerSliverBuilder: (context, innerBoxIsScrolled) => [
+      slivers: [
         SliverToBoxAdapter(child: _buildExploreHeader()),
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _ExploreTabsHeaderDelegate(
-            height: 46,
-            child: _buildExploreTabs(),
-          ),
-        ),
+        SliverToBoxAdapter(child: _buildExploreTabs()),
+        ..._buildExploreTabSlivers(tabIndex),
       ],
-      body: _buildExploreTabPage(tabIndex),
     );
   }
 
