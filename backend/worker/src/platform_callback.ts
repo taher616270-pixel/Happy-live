@@ -17,7 +17,7 @@ function field(body: Record<string,unknown>, key: string): string {
   return value === undefined || value === null ? "" : String(value);
 }
 function validAmount(value: string): number | null {
-  if (!/^(0|[1-9]\\d*)$/.test(value)) return null;
+  if (!/^(0|[1-9]\d*)$/.test(value)) return null;
   const amount=Number(value);
   return Number.isSafeInteger(amount) && amount <= 2_000_000_000 ? amount : null;
 }
