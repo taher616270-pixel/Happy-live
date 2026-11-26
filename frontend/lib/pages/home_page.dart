@@ -45,7 +45,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   String _countryCode = 'ALL';
   String _countryName = 'الدولة';
   int _currentPage = 0;
-  int _headerPage = 0;
   int _lastInnerIndex = 0;
   int _lastExploreIndex = 0;
   Map<String, dynamic>? _myRoom;
@@ -485,9 +484,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Widget _topButton(int index, IconData icon, String label) {
-    final selected = (index == 0 && _headerPage <= 2) ||
-        (index == 3 && _headerPage >= 3 && _headerPage <= 8) ||
-        (index == 2 && _headerPage == _countryPage);
+    final selected = (index == 0 && _currentPage <= 2) ||
+        (index == 3 && _currentPage >= 3 && _currentPage <= 8) ||
+        (index == 2 && _currentPage == _countryPage);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
@@ -957,6 +956,36 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
   }
 
+  // Each swipe page owns its complete header and content. This keeps the
+  // explore banner/actions/tabs moving as one full page instead of swapping
+  // a separate header above a shortened PageView viewport.
+  Widget _buildMyRoomsHomePage(int tabIndex) {
+    return Column(
+      children: [
+        const SizedBox(height: 24),
+        MyPartyRoomButton(
+          room: _myRoom,
+          loading: _loadingMyRoom,
+          onTap: _openMyRoom,
+        ),
+        const SizedBox(height: 14),
+        _buildMyRoomsTabs(),
+        const SizedBox(height: 8),
+        Expanded(child: _buildMyRoomsPage(tabIndex)),
+      ],
+    );
+  }
+
+  Widget _buildExploreHomePage(int tabIndex) {
+    return Column(
+      children: [
+        _buildExploreHeader(),
+        _buildExploreTabs(),
+        Expanded(child: _buildExploreTabPage(tabIndex)),
+      ],
+    );
+  }
+
   void _goToAbsolutePage(int page) {
     if (!_pageController.hasClients || page < 0 || page > _countryPage) return;
     _pageController.animateToPage(
@@ -1135,83 +1164,61 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         ),
         Expanded(
           child: _homeRefreshWrapper(
-            Column(
-              children: [
-                if (_headerPage <= 2) ...[
-                  const SizedBox(height: 24),
-                  MyPartyRoomButton(
-                    room: _myRoom,
-                    loading: _loadingMyRoom,
-                    onTap: _openMyRoom,
-                  ),
-                  const SizedBox(height: 14),
-                  _buildMyRoomsTabs(),
-                  const SizedBox(height: 8),
-                ] else if (_headerPage >= _exploreFirstPage && _headerPage <= 8) ...[
-                  _buildExploreHeader(),
-                  _buildExploreTabs(),
-                ],
-                Expanded(
-                  child: Directionality(
-                    textDirection: TextDirection.ltr,
-                    child: NotificationListener<ScrollEndNotification>(
-                      onNotification: (notification) {
-                        if (notification.metrics.axis == Axis.horizontal &&
-                            notification.depth == 0) {
-                          final settledPage = _pageController.hasClients
-                              ? (_pageController.page?.round() ?? _currentPage)
-                              : _currentPage;
-                          if (mounted && _headerPage != settledPage) {
-                            setState(() => _headerPage = settledPage);
-                          }
-                        }
-                        return false;
-                      },
-                      child: PageView(
-                      key: const PageStorageKey<String>('happy-live-unified-home-pager'),
-                      controller: _pageController,
-                      reverse: true,
-                      onPageChanged: (index) {
-                        setState(() {
-                          _currentPage = index;
-                          if (index <= 2) {
-                            _lastInnerIndex = index;
-                          } else if (index >= _exploreFirstPage && index <= 8) {
-                            _lastExploreIndex = index - _exploreFirstPage;
-                          }
-                        });
-                        if (index >= _exploreFirstPage && index <= 8) {
-                          final chipIndex = index - _exploreFirstPage;
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (!mounted || _exploreChipKeys[chipIndex].currentContext == null) return;
-                            Scrollable.ensureVisible(
-                              _exploreChipKeys[chipIndex].currentContext!,
-                              alignment: 0.5,
-                              duration: const Duration(milliseconds: 260),
-                              curve: Curves.easeOutCubic,
-                            );
-                          });
-                        }
-                        if (index == _exploreFirstPage) {
-                          _loadRecommendedRooms(force: true);
-                        }
-                      },
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: PageView(
+                key: const PageStorageKey<String>('happy-live-unified-home-pager'),
+                controller: _pageController,
+                reverse: true,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentPage = index;
+                    if (index <= 2) {
+                      _lastInnerIndex = index;
+                    } else if (index >= _exploreFirstPage && index <= 8) {
+                      _lastExploreIndex = index - _exploreFirstPage;
+                    }
+                  });
+                  if (index >= _exploreFirstPage && index <= 8) {
+                    final chipIndex = index - _exploreFirstPage;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted || _exploreChipKeys[chipIndex].currentContext == null) return;
+                      Scrollable.ensureVisible(
+                        _exploreChipKeys[chipIndex].currentContext!,
+                        alignment: 0.5,
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeOutCubic,
+                      );
+                    });
+                  }
+                  if (index == _exploreFirstPage) {
+                    _loadRecommendedRooms(force: true);
+                  }
+                },
+                children: [
+                  for (var i = 0; i < 3; i++)
+                    Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: _buildMyRoomsHomePage(i),
+                    ),
+                  for (var i = 0; i < 6; i++)
+                    Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: _buildExploreHomePage(i),
+                    ),
+                  Directionality(
+                    textDirection: TextDirection.rtl,
+                    child: Column(
                       children: [
-                        Directionality(textDirection: TextDirection.rtl, child: _buildMyRoomsPage(0)),
-                        Directionality(textDirection: TextDirection.rtl, child: _buildMyRoomsPage(1)),
-                        Directionality(textDirection: TextDirection.rtl, child: _buildMyRoomsPage(2)),
-                        for (var i = 0; i < 6; i++)
-                          Directionality(textDirection: TextDirection.rtl, child: _buildExploreTabPage(i)),
-                        Directionality(textDirection: TextDirection.rtl, child: _buildCountryPage()),
+                        Expanded(child: _buildCountryPage()),
                       ],
-                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
+        )
       ],
     ),
   );
