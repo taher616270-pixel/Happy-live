@@ -244,7 +244,7 @@ async function handleHappyFoodWheelHandshake(
 ): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname !== "/v1/platform/handshake") return null;
-  if (request.method === "GET") return reply({ success: true, message: "handshake endpoint ready" }, 200);
+  if (request.method === "GET") return reply({ ok: true, service: "happy-live-api", integration: "happy-food-wheel", endpoint: "/v1/platform/handshake" }, 200);
   if (request.method !== "POST") return reply({ error: "method_not_allowed" }, 405);
   if (!db) return reply({ error: "database_unavailable" }, 503);
 
