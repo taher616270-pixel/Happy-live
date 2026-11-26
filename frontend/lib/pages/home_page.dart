@@ -1036,14 +1036,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   child: visible
                       ? Transform.scale(
                           scale: scale,
-                          child: const SizedBox(
-                            width: 19,
-                            height: 19,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.8,
-                              valueColor: AlwaysStoppedAnimation<Color>(HappyHomeColors.gold),
-                            ),
-                          ),
+                          child: const _FiveBarRefreshAnimation(),
                         )
                       : const SizedBox.shrink(),
                 ),
@@ -1970,11 +1963,12 @@ class _FiveBarRefreshAnimationState extends State<_FiveBarRefreshAnimation>
   @override
   Widget build(BuildContext context) {
     const heights = [9.0, 15.0, 21.0, 15.0, 9.0];
+    // Alternate gold and cream across the five moving bars.
     const colors = [
       Color(0xFFD9A93C),
-      Color(0xFFE8C978),
       Color(0xFFFFF3D6),
-      Color(0xFFE8C978),
+      Color(0xFFD9A93C),
+      Color(0xFFFFF3D6),
       Color(0xFFD9A93C),
     ];
     return AnimatedBuilder(
