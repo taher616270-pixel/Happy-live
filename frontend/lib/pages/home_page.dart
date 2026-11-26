@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart' show Drag;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:happy_live/widgets/happy_network_image.dart';
 import 'package:flutter/services.dart';
@@ -40,12 +41,11 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   final PageController _innerController = PageController();
   static const int _exploreFirstPage = 3;
   static const int _countryPage = 9;
-  // One controller + one key set PER explore page: with swiping enabled two
-  // explore pages are alive at once, so shared GlobalKeys would collide.
-  final List<ScrollController> _exploreChipScrolls =
-      List.generate(6, (_) => ScrollController());
-  final List<List<GlobalKey>> _exploreChipKeys =
-      List.generate(6, (_) => List.generate(6, (_) => GlobalKey()));
+  final ScrollController _exploreChipScroll = ScrollController();
+  final List<GlobalKey> _exploreChipKeys = List.generate(6, (_) => GlobalKey());
+  // Horizontal pager of the 6 explore tabs ONLY (content below the chips).
+  final PageController _exploreInnerController = PageController();
+  Drag? _exploreHeaderDrag;
   Timer? _exploreBannerTimer;
   List<Map<String, dynamic>> _exploreBanners = <Map<String, dynamic>>[];
   final ValueNotifier<List<Map<String, dynamic>>> _exploreBannersNotifier = ValueNotifier(<Map<String, dynamic>>[]);
@@ -115,9 +115,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   void dispose() {
     _pageController.dispose();
     _innerController.dispose();
-    for (final c in _exploreChipScrolls) {
-      c.dispose();
-    }
+    _exploreChipScroll.dispose();
+    _exploreInnerController.dispose();
     _exploreBannerIndexNotifier.dispose();
     _exploreBannersNotifier.dispose();
     _recommendedRoomsNotifier.dispose();
@@ -958,7 +957,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
-  Widget _buildExploreTabs(int pageIndex) {
+  Widget _buildExploreTabs() {
     const labels = ['توصية', 'لعبة', 'مبارزة', 'البث المباشر', 'لعبة الفائز السوبر', 'الفيديو'];
     return SizedBox(
       height: 46,
@@ -966,7 +965,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
         textDirection: TextDirection.rtl,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          controller: _exploreChipScrolls[pageIndex],
+          controller: _exploreChipScroll,
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
@@ -975,7 +974,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
               return Padding(
                 padding: EdgeInsetsDirectional.only(end: index == labels.length - 1 ? 0 : 8),
                 child: GestureDetector(
-                  key: _exploreChipKeys[pageIndex][index],
+                  key: _exploreChipKeys[index],
                   behavior: HitTestBehavior.opaque,
                   onTap: () => _goToAbsolutePage(_exploreFirstPage + index),
                   child: AnimatedContainer(
@@ -1081,11 +1080,10 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
-  Widget _buildExploreHomePage(int tabIndex) {
-    // A single scroll position owns the entire Explore page. Tab content is
-    // rendered as slivers (never as a nested ListView/GridView), so a
-    // downward drag begun over any tab content moves the banner, action
-    // cards, tabs and content together and reaches the page refresh at top.
+  Widget _buildExploreHomePage() {
+    // Pull-to-refresh is unchanged: the refresh control is the first sliver of
+    // the page, so banner + cards + chips + content move down together.
+    // Only the tab CONTENT (below the chips) is a horizontal pager.
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -1095,16 +1093,74 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           stops: [0.0, 0.3, 0.55],
         ),
       ),
-      child: CustomScrollView(
+      child: NestedScrollView(
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          _buildRefreshSliver(refreshExplorePage),
+          // A horizontal drag on the banner/cards/chips also switches the tab
+          // content (not the whole page).
+          SliverToBoxAdapter(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onHorizontalDragStart: (d) {
+                if (_exploreInnerController.hasClients) {
+                  _exploreHeaderDrag = _exploreInnerController.position
+                      .drag(d, () => _exploreHeaderDrag = null);
+                }
+              },
+              onHorizontalDragUpdate: (d) => _exploreHeaderDrag?.update(d),
+              onHorizontalDragEnd: (d) {
+                _exploreHeaderDrag?.end(d);
+                _exploreHeaderDrag = null;
+              },
+              onHorizontalDragCancel: () {
+                _exploreHeaderDrag?.cancel();
+                _exploreHeaderDrag = null;
+              },
+              child: Column(
+                children: [
+                  _buildExploreHeader(),
+                  _buildExploreTabs(),
+                ],
+              ),
+            ),
+          ),
+        ],
+        body: _EdgeHandoffPager(
+          parent: _pageController,
+          controller: _exploreInnerController,
+          onPageChanged: (i) {
+            setState(() {
+              _lastExploreIndex = i;
+              if (_currentPage >= _exploreFirstPage && _currentPage <= 8) {
+                _currentPage = _exploreFirstPage + i;
+              }
+            });
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted || _exploreChipKeys[i].currentContext == null) return;
+              Scrollable.ensureVisible(
+                _exploreChipKeys[i].currentContext!,
+                alignment: 0.5,
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+              );
+            });
+            if (i == 0) _loadRecommendedRooms(force: true);
+          },
+          children: [
+            for (var i = 0; i < 6; i++)
+              _KeepAlivePage(child: _buildExploreTabPage(i)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExploreTabPage(int tabIndex) {
+    return CustomScrollView(
       key: PageStorageKey<String>('happy-live-explore-scroll-$tabIndex'),
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      slivers: [
-        _buildRefreshSliver(refreshExplorePage),
-        SliverToBoxAdapter(child: _buildExploreHeader()),
-        SliverToBoxAdapter(child: _buildExploreTabs(tabIndex)),
-        ..._buildExploreTabSlivers(tabIndex),
-      ],
-      ),
+      slivers: _buildExploreTabSlivers(tabIndex),
     );
   }
 
@@ -1132,9 +1188,30 @@ class HappyHomeTabState extends State<HappyHomeTab> {
       }
       return;
     }
-    final outer = page == _countryPage ? 7 : page - 2;
-    _pageController.animateToPage(outer,
-        duration: duration, curve: Curves.easeInOutCubic);
+    if (page == _countryPage) {
+      _pageController.animateToPage(2,
+          duration: duration, curve: Curves.easeInOutCubic);
+      return;
+    }
+    // explore tab
+    final tab = page - _exploreFirstPage;
+    final outerOnExplore = (_pageController.page ?? 0).round() == 1;
+    if (_exploreInnerController.hasClients) {
+      if (outerOnExplore) {
+        _exploreInnerController.animateToPage(tab,
+            duration: duration, curve: Curves.easeInOutCubic);
+      } else {
+        _exploreInnerController.jumpToPage(tab);
+      }
+    }
+    setState(() {
+      _lastExploreIndex = tab;
+      if (outerOnExplore) _currentPage = page;
+    });
+    if (!outerOnExplore) {
+      _pageController.animateToPage(1,
+          duration: duration, curve: Curves.easeInOutCubic);
+    }
   }
 
   // The country section is a separate top-level page in the same swipe sequence.
@@ -1319,29 +1396,22 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   // Map the outer page to the virtual flat index.
                   final index = outer == 0
                       ? _lastInnerIndex
-                      : outer == 7
+                      : outer == 2
                           ? _countryPage
-                          : outer + 2;
-                  setState(() {
-                    _currentPage = index;
-                    if (index >= _exploreFirstPage && index <= 8) {
-                      _lastExploreIndex = index - _exploreFirstPage;
-                    }
-                  });
-                  if (index >= _exploreFirstPage && index <= 8) {
-                    final chipIndex = index - _exploreFirstPage;
+                          : _exploreFirstPage + _lastExploreIndex;
+                  setState(() => _currentPage = index);
+                  if (outer == 1) {
+                    final chipIndex = _lastExploreIndex;
                     WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (!mounted || _exploreChipKeys[chipIndex][chipIndex].currentContext == null) return;
+                      if (!mounted || _exploreChipKeys[chipIndex].currentContext == null) return;
                       Scrollable.ensureVisible(
-                        _exploreChipKeys[chipIndex][chipIndex].currentContext!,
+                        _exploreChipKeys[chipIndex].currentContext!,
                         alignment: 0.5,
                         duration: const Duration(milliseconds: 260),
                         curve: Curves.easeOutCubic,
                       );
                     });
-                  }
-                  if (index == _exploreFirstPage) {
-                    _loadRecommendedRooms(force: true);
+                    if (_lastExploreIndex == 0) _loadRecommendedRooms(force: true);
                   }
                 },
                 children: [
@@ -1351,13 +1421,12 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                       child: _buildMyRoomsHomePage(),
                     ),
                   ),
-                  for (var i = 0; i < 6; i++)
-                    _KeepAlivePage(
-                      child: Directionality(
-                        textDirection: TextDirection.rtl,
-                        child: _buildExploreHomePage(i),
-                      ),
+                  _KeepAlivePage(
+                    child: Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: _buildExploreHomePage(),
                     ),
+                  ),
                   _KeepAlivePage(
                     child: Directionality(
                       textDirection: TextDirection.rtl,
