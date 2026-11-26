@@ -1017,7 +1017,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     // downward drag begun over any tab content moves the banner, action
     // cards, tabs and content together and reaches the page refresh at top.
     return CustomScrollView(
-      key: const PageStorageKey<String>('happy-live-explore-scroll'),
+      key: PageStorageKey<String>('happy-live-explore-scroll-$tabIndex'),
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       slivers: [
         CupertinoSliverRefreshControl(
