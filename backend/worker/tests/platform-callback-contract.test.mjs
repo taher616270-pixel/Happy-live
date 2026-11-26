@@ -17,7 +17,7 @@ test("callback authenticates the app-issued token by hash and binds it to the sa
   assert.ok(callback.includes("Bearer\\s+(\\S{24,4096})"));
   assert.match(callback, /crypto\.subtle\.digest\("SHA-256"/);
   assert.match(callback, /happy_food_wheel_token_hash/);
-  assert.match(callback, /constantTimeEqual\(appId, savedAppId\.setting_value\)/);
+  assert.match(callback, /constantTimeEqual\(appId, existing\.setting_value\)/);
   assert.match(worker, /happy_food_wheel_token_hash/);
 });
 
@@ -25,7 +25,7 @@ test("callback echoes App ID, API version, UID when supplied, and one-time chall
   assert.match(callback, /platform !== "Happy Food Wheel"/);
   assert.match(callback, /apiVersion !== "v1"/);
   assert.match(callback, /body\.uid === undefined/);
-  assert.match(callback, /test_player_not_found_or_inactive/);
+  assert.match(callback, /test_player_authentication_failed/);\n  assert.match(callback, /validUtdPlayerToken\(db, player\.id, suppliedToken\)/);
   assert.match(callback, /return reply\(\{ ok: true, appId, apiVersion: "v1", uid, challenge \}, 200\)/);
   assert.match(callback, /return reply\(\{ ok: true, appId, apiVersion: "v1", challenge \}, 200\)/);
   const handshakeStart = callback.indexOf("async function handleHappyFoodWheelHandshake(");
