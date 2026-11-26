@@ -53,9 +53,9 @@ test("owner-only credential management returns the raw token only on creation", 
   assert.match(worker, /setting_key, setting_value, updated_at/);
   assert.match(worker, /apiToken,/);
   assert.match(admin, /happy-food-wheel/);
-  assert.doesNotMatch(admin, /utd-test-session|hfwIssueTest|رمز اختبار UTD/);
+  assert.doesNotMatch(admin, /utd-test-session|hfwIssueTest|UTD/i);
   assert.match(admin, /يظهر مرة واحدة فقط/);
-  assert.match(admin, /لا توجد رموز UTD مؤقتة/);
+  assert.match(admin, /مفتاح موحّد/);
 });
 
 
