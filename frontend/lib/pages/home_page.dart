@@ -36,6 +36,8 @@ class HappyHomeTab extends StatefulWidget {
 
 class HappyHomeTabState extends State<HappyHomeTab> {
   final PageController _pageController = PageController();
+  // Horizontal pager of the 3 'my rooms' tabs ONLY (follow / join / recent).
+  final PageController _innerController = PageController();
   static const int _exploreFirstPage = 3;
   static const int _countryPage = 9;
   // One controller + one key set PER explore page: with swiping enabled two
@@ -112,6 +114,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   @override
   void dispose() {
     _pageController.dispose();
+    _innerController.dispose();
     for (final c in _exploreChipScrolls) {
       c.dispose();
     }
@@ -547,12 +550,8 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             : index == 2
                 ? _countryPage
                 : -1;
-    if (target < 0 || !_pageController.hasClients) return;
-    _pageController.animateToPage(
-      target,
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeInOutCubic,
-    );
+    if (target < 0) return;
+    _goToAbsolutePage(target);
   }
 
   Widget _topButton(int index, IconData icon, String label) {
@@ -1036,27 +1035,47 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   // Each swipe page owns its complete header and content. This keeps the
   // explore banner/actions/tabs moving as one full page instead of swapping
   // a separate header above a shortened PageView viewport.
-  Widget _buildMyRoomsHomePage(int tabIndex) {
+  // ONE outer page. Party-room button + tab chips stay fixed; only the tab
+  // content slides horizontally. At the last tab (recent) the swipe is handed
+  // to the outer pager, which moves the whole page to Explore (and back).
+  Widget _buildMyRoomsHomePage() {
+    return Column(
+      children: [
+        const SizedBox(height: 24),
+        MyPartyRoomButton(
+          room: _myRoom,
+          loading: _loadingMyRoom,
+          onTap: _openMyRoom,
+        ),
+        const SizedBox(height: 14),
+        _buildMyRoomsTabs(),
+        const SizedBox(height: 8),
+        Expanded(
+          child: _EdgeHandoffPager(
+            parent: _pageController,
+            controller: _innerController,
+            onPageChanged: (i) {
+              setState(() {
+                _lastInnerIndex = i;
+                if (_currentPage <= 2) _currentPage = i;
+              });
+            },
+            children: [
+              for (var i = 0; i < 3; i++)
+                _KeepAlivePage(child: _buildMyRoomsTabPage(i)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMyRoomsTabPage(int tabIndex) {
     return CustomScrollView(
       key: PageStorageKey<String>('happy-live-myrooms-scroll-$tabIndex'),
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       slivers: [
         _buildRefreshSliver(refreshMyRoomsPage),
-        SliverToBoxAdapter(
-          child: Column(
-            children: [
-              const SizedBox(height: 24),
-              MyPartyRoomButton(
-                room: _myRoom,
-                loading: _loadingMyRoom,
-                onTap: _openMyRoom,
-              ),
-              const SizedBox(height: 14),
-              _buildMyRoomsTabs(),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
         ..._buildMyRoomsTabSlivers(tabIndex),
       ],
     );
@@ -1089,13 +1108,33 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     );
   }
 
+  // [page] is the virtual flat index: 0-2 my-rooms tabs, 3-8 explore tabs, 9 country.
   void _goToAbsolutePage(int page) {
-    if (!_pageController.hasClients || page < 0 || page > _countryPage) return;
-    _pageController.animateToPage(
-      page,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOutCubic,
-    );
+    if (page < 0 || page > _countryPage || !_pageController.hasClients) return;
+    const duration = Duration(milliseconds: 300);
+    if (page <= 2) {
+      final outerOnMine = (_pageController.page ?? 0).round() == 0;
+      if (_innerController.hasClients) {
+        if (outerOnMine) {
+          _innerController.animateToPage(page,
+              duration: duration, curve: Curves.easeInOutCubic);
+        } else {
+          _innerController.jumpToPage(page);
+        }
+      }
+      setState(() {
+        _lastInnerIndex = page;
+        if (outerOnMine) _currentPage = page;
+      });
+      if (!outerOnMine) {
+        _pageController.animateToPage(0,
+            duration: duration, curve: Curves.easeInOutCubic);
+      }
+      return;
+    }
+    final outer = page == _countryPage ? 7 : page - 2;
+    _pageController.animateToPage(outer,
+        duration: duration, curve: Curves.easeInOutCubic);
   }
 
   // The country section is a separate top-level page in the same swipe sequence.
@@ -1276,12 +1315,16 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 // Swipe between ALL home sections (follow / join / recent /
                 // explore tabs / country) as one continuous sequence.
                 physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
-                onPageChanged: (index) {
+                onPageChanged: (outer) {
+                  // Map the outer page to the virtual flat index.
+                  final index = outer == 0
+                      ? _lastInnerIndex
+                      : outer == 7
+                          ? _countryPage
+                          : outer + 2;
                   setState(() {
                     _currentPage = index;
-                    if (index <= 2) {
-                      _lastInnerIndex = index;
-                    } else if (index >= _exploreFirstPage && index <= 8) {
+                    if (index >= _exploreFirstPage && index <= 8) {
                       _lastExploreIndex = index - _exploreFirstPage;
                     }
                   });
@@ -1302,13 +1345,12 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                   }
                 },
                 children: [
-                  for (var i = 0; i < 3; i++)
-                    _KeepAlivePage(
-                      child: Directionality(
-                        textDirection: TextDirection.rtl,
-                        child: _buildMyRoomsHomePage(i),
-                      ),
+                  _KeepAlivePage(
+                    child: Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: _buildMyRoomsHomePage(),
                     ),
+                  ),
                   for (var i = 0; i < 6; i++)
                     _KeepAlivePage(
                       child: Directionality(
@@ -2104,5 +2146,86 @@ class _KeepAlivePageState extends State<_KeepAlivePage>
   Widget build(BuildContext context) {
     super.build(context);
     return widget.child;
+  }
+}
+
+/// Horizontal pager for the my-rooms tabs. Inside it the tabs slide alone;
+/// when the user keeps dragging past the first/last tab, the drag is handed
+/// to [parent] so the WHOLE page moves (recent -> explore, and back).
+class _EdgeHandoffPager extends StatefulWidget {
+  const _EdgeHandoffPager({
+    required this.parent,
+    required this.controller,
+    required this.children,
+    this.onPageChanged,
+  });
+
+  final PageController parent;
+  final PageController controller;
+  final List<Widget> children;
+  final ValueChanged<int>? onPageChanged;
+
+  @override
+  State<_EdgeHandoffPager> createState() => _EdgeHandoffPagerState();
+}
+
+class _EdgeHandoffPagerState extends State<_EdgeHandoffPager> {
+  bool _handing = false;
+  double _dir = 0;
+
+  bool _onNote(ScrollNotification n) {
+    if (n.depth != 0 || n.metrics.axis != Axis.horizontal) return false;
+    final p = widget.parent;
+    if (!p.hasClients) return false;
+
+    if (n is OverscrollNotification && n.dragDetails != null) {
+      final pos = p.position;
+      pos.jumpTo((pos.pixels + n.overscroll)
+          .clamp(pos.minScrollExtent, pos.maxScrollExtent));
+      _handing = true;
+      _dir = n.overscroll;
+      return true;
+    }
+    if (n is ScrollEndNotification && _handing) {
+      _handing = false;
+      _settle(n.dragDetails?.primaryVelocity ?? 0);
+    }
+    return false;
+  }
+
+  void _settle(double velocity) {
+    final pos = widget.parent.position;
+    final page = pos.pixels / pos.viewportDimension;
+    final base = page.floor();
+    final frac = page - base;
+    final last = (pos.maxScrollExtent / pos.viewportDimension).round();
+    final fast = velocity.abs() > 500;
+
+    int target;
+    if (_dir > 0) {
+      target = (fast || frac > 0.2) ? base + 1 : base;
+    } else {
+      final prev = frac > 0.0001 ? base : base - 1;
+      final stay = frac > 0.0001 ? base + 1 : base;
+      target = (fast || frac < 0.8) ? prev : stay;
+    }
+    widget.parent.animateToPage(
+      target.clamp(0, last),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onNote,
+      child: PageView(
+        controller: widget.controller,
+        onPageChanged: widget.onPageChanged,
+        physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
+        children: widget.children,
+      ),
+    );
   }
 }
