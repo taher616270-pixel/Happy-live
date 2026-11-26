@@ -216,15 +216,18 @@ async function handleHappyFoodWheelWalletCallback(
       db.prepare("DELETE FROM platform_game_callback_orders WHERE order_id=? AND claim_id=? AND applied=0").bind(scopedOrderId,claimId)
     ]);
     const applied = await db.prepare(
-      "SELECT user_id,game_id,round_id,delta,applied FROM platform_game_callback_orders WHERE order_id=? LIMIT 1"
-    ).bind(scopedOrderId).first<{user_id:string;game_id:string;round_id:string;delta:number;applied:number}>();
-    if (!applied || applied.user_id !== user.id || applied.game_id !== scopedGameId || applied.round_id !== roundId || applied.delta !== delta || applied.applied !== 1) {
+      "SELECT user_id,game_id,round_id,delta,claim_id,applied FROM platform_game_callback_orders WHERE order_id=? LIMIT 1"
+    ).bind(scopedOrderId).first<{user_id:string;game_id:string;round_id:string;delta:number;claim_id:string;applied:number}>();
+    if (applied && (applied.user_id !== user.id || applied.game_id !== scopedGameId || applied.round_id !== roundId || applied.delta !== delta)) {
+      return reply({error:"idempotency_conflict"},409);
+    }
+    if (!applied || applied.applied !== 1) {
       const latest = await db.prepare("SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1").bind(user.id).first<{balance:number}>();
       if (delta < 0 && Number(latest?.balance || 0) < amount) return reply({error:"insufficient_balance"},409);
       return reply({error:"wallet_settlement_failed"},409);
     }
     const current = await db.prepare("SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1").bind(user.id).first<{balance:number}>();
-    return reply({ok:true,appId,uid,balance:Number(current?.balance)||0,replayed:false},200);
+    return reply({ok:true,appId,uid,balance:Number(current?.balance)||0,replayed:applied.claim_id !== claimId},200);
   } catch (error) {
     console.error("[happy-food-wheel.callback] failed",error instanceof Error?error.message:"unknown");
     return reply({error:"wallet_callback_failed"},500);
