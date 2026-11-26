@@ -845,50 +845,84 @@ async function agoraPage(){
 }
 async function happyFoodWheelIntegrationPage(){
   if(admin.role!=="owner"){
-    $("content").insertAdjacentHTML("beforeend",'<div class="section"><h2>ربط خارجي — Happy Food Wheel</h2><p class="notice">إعداد مفاتيح الربط متاح لحساب مالك التطبيق فقط.</p></div>');
+    $("content").insertAdjacentHTML("beforeend",'<div class="section"><h2>ربط Happy Food Wheel</h2><p class="notice">إعداد مفاتيح الربط متاح لحساب مالك التطبيق فقط.</p></div>');
     return;
   }
   const data=await api("/admin/integrations/happy-food-wheel");
   const configured=data.tokenConfigured===true||data.configured===true;
-  const callback=(data.callbackBaseUrl||"").replace(/\/$/,"")+"/v1/platform/handshake";
-  $("content").insertAdjacentHTML("beforeend",
-    '<div class="section"><div class="section-head"><div><h2>ربط خارجي — Happy Food Wheel</h2><p class="muted">انسخ بيانات Happy Live والصقها في نموذج الربط داخل منصة Happy Food Wheel.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'Token محفوظ':'بانتظار إصدار Token')+'</span></div>'+
-    '<div class="form-grid">'+
-      '<label>روابط التطبيق<input id="hfwAppLink" value="https://happy-live.pages.dev" readonly></label>'+
-      '<label>عنوان الـ Callback الأساسي<input id="hfwCallback" value="'+esc(callback)+'" readonly></label>'+
-      '<label class="form-wide">Token الاختبار<input id="hfwTestToken" value="" placeholder="أصدر Token الاختبار من هنا أولاً" readonly></label>'+
+  const callbackBase=(data.callbackBaseUrl||"https://happy-live-api.taher616270.workers.dev").replace(/\/$/,"");
+  const callbackEndpoint=callbackBase+"/v1/platform/handshake";
+  $("content").innerHTML=
+    '<div class="section"><div class="section-head"><div><h2>ربط Happy Live مع Happy Food Wheel</h2><p class="muted">إعداد موحّد خطوة بخطوة. استخدم بيانات هذا القسم في بوابة صاحب التطبيق على منصة Happy Food Wheel.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'مفتاح الخادم محفوظ':'مفتاح الخادم غير مُصدر')+'</span></div>'+
+    '<div class="notice"><b>مهم — عنوان Callback الأساسي</b><p class="muted" style="margin:6px 0 0">انسخ عنوان الخادم الأساسي فقط. المنصة تضيف المسار <code>/v1/platform/handshake</code> تلقائياً؛ لا تلصق المسار داخل خانة Callback Base URL.</p></div>'+
+    '<div class="form-grid" style="margin-top:16px">'+
+      '<label>رابط تطبيق Happy Live<input id="hfwAppLink" value="https://happy-live.pages.dev" readonly dir="ltr"></label>'+
+      '<label>Callback Base URL — انسخ هذا فقط<input id="hfwCallbackBase" value="'+esc(callbackBase)+'" readonly dir="ltr"></label>'+
+      '<label class="form-wide">مسار المصافحة الذي ستستخدمه المنصة<input id="hfwCallbackEndpoint" value="'+esc(callbackEndpoint)+'" readonly dir="ltr"></label>'+
     '</div>'+
-    '<div class="notice" style="margin-top:14px">أصدر Token الاختبار هنا أولاً، ثم انسخه إلى منصة Happy Food Wheel مع رابط التطبيق وعنوان Callback. لا تحتاج إلى App ID مسبقًا؛ سيرتبط App ID تلقائيًا عند أول اتصال موثّق من المنصة. إصدار Token جديد يبطل السابق فورًا.</div>'+
-    (configured?'<p class="muted" style="margin-top:12px">بادئة Token الحالي: '+esc(data.tokenPrefix||"")+'… · آخر إصدار: '+esc(data.createdAt||"")+'</p>':'')+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px"><button class="primary" id="hfwGenerate">'+(configured?'إصدار Token اختبار جديد':'إصدار Token الاختبار')+'</button><button class="action" type="button" data-hfw-copy="hfwAppLink">نسخ رابط التطبيق</button><button class="action" type="button" data-hfw-copy="hfwCallback">نسخ Callback</button><button class="action" type="button" id="hfwCopyToken">نسخ Token الاختبار</button></div>'+
-    '<p class="muted" style="margin-top:12px">احتفظ بالـ Token داخل إعدادات المنصة فقط، ولا تشاركه في المحادثات أو تضعه داخل كود التطبيق.</p>'+
-    '<div id="hfwTokenNotice" class="muted" style="margin-top:10px"></div>'+
-    (configured?'<button class="action danger" id="hfwRevoke" style="margin-top:12px">إلغاء Token الحالي</button>':'')
-  );
-  async function copyField(id){
-    const input=$(id);
-    if(!input||!input.value){$("hfwTokenNotice").textContent="لا توجد قيمة لنسخها بعد.";return}
-    try{await navigator.clipboard.writeText(input.value);$("hfwTokenNotice").textContent="تم النسخ."}
-    catch(e){input.focus();input.select();document.execCommand("copy");$("hfwTokenNotice").textContent="تم تحديد النص؛ انسخه من المتصفح."}
+    '<div class="form-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
+      '<button class="action" type="button" data-hfw-copy="hfwAppLink">نسخ رابط التطبيق</button>'+
+      '<button class="action" type="button" data-hfw-copy="hfwCallbackBase">نسخ Callback Base URL</button>'+
+      '<button class="action" type="button" data-hfw-copy="hfwCallbackEndpoint">نسخ مسار المصافحة للتوثيق</button>'+
+    '</div></div>'+
+    '<div class="section"><div class="section-head"><div><h2>١. رمز حساب الاختبار</h2><p class="muted">رمز مؤقت مرتبط بحساب Happy Live المحدد، للتحقق من UID عند تسجيل المشروع فقط.</p></div><span class="badge">10 دقائق</span></div>'+
+      '<div class="form-grid"><label>UID حساب الاختبار<input id="hfwTestUid" inputmode="numeric" value="93013793" autocomplete="off"></label><label>نطاق الرمز<input value="UTD callbacks only" readonly dir="ltr"></label></div>'+
+      '<div class="notice">هذا الرمز لا يغيّر الرصيد ولا يمنح صلاحية API دائمة. إصداره مرة أخرى يبطل الرمز السابق فوراً.</div>'+
+      '<div class="form-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" id="hfwIssueTest" type="button" style="width:auto">إصدار رمز اختبار مؤقت</button><span id="hfwTestStatus" class="muted" role="status"></span></div>'+
+      '<div id="hfwTestResult"></div>'+
+    '</div>'+
+    '<div class="section"><div class="section-head"><div><h2>٢. مفتاح الربط الدائم للخادم</h2><p class="muted">يُستخدم لاحقاً للاتصال بين خادم المنصة وخادم Happy Live، وليس في خانة Token الاختبار.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'مُعدّ':'غير مُعدّ')+'</span></div>'+
+      '<div class="notice">لا تضع هذا المفتاح في المتصفح أو داخل تطبيق Flutter. يُحفظ في إعدادات الخادم الآمن للمنصة فقط.</div>'+
+      '<div id="hfwRuntimeTokenResult"></div>'+
+      '<div class="form-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" id="hfwGenerateRuntime" type="button" style="width:auto">'+(configured?'إصدار مفتاح خادم جديد':'إصدار مفتاح الخادم')+'</button>'+(configured?'<button class="action danger" id="hfwRevokeRuntime" type="button">إلغاء المفتاح الحالي</button>':'')+'</div>'+
+      (configured?'<p class="muted" style="margin-top:12px">بادئة المفتاح المحفوظ: '+esc(data.tokenPrefix||"")+'… · آخر إصدار: '+esc(data.createdAt||"")+'</p>':'')+
+      '<p id="hfwRuntimeStatus" class="muted" role="status" style="margin-top:10px"></p>'+
+    '</div>'+
+    '<div class="section"><h2>٣. ترتيب الإعداد في منصة Happy Food Wheel</h2><ol class="muted" style="line-height:2"><li>افتح إنشاء مشروع جديد في بوابة المنصة.</li><li>في Callback Base URL الصق العنوان الأساسي فقط من القسم الأول.</li><li>أدخل UID نفسه، ثم أصدر رمز الاختبار المؤقت والصقه في خانة Token الاختبار.</li><li>نفّذ فحص المشروع فوراً قبل انتهاء صلاحية الرمز.</li></ol><p class="muted">لا ترسل أي Token في المحادثات أو الصور. إذا ظهر خطأ، شارك رسالة الخطأ فقط.</p></div>';
+  async function copyField(id,statusId){
+    const input=$(id),status=$(statusId||"hfwTestStatus");
+    if(!input||!input.value){if(status)status.textContent="لا توجد قيمة لنسخها بعد.";return}
+    try{await navigator.clipboard.writeText(input.value);if(status)status.textContent="تم النسخ."}
+    catch(e){input.focus();input.select();document.execCommand("copy");if(status)status.textContent="تم تحديد النص؛ انسخه من المتصفح."}
   }
-  document.querySelectorAll("[data-hfw-copy]").forEach(button=>button.onclick=()=>copyField(button.dataset.hfwCopy));
-  $("hfwCopyToken").onclick=()=>copyField("hfwTestToken");
-  $("hfwGenerate").onclick=async()=>{
-    if(configured&&!confirm("سيتم إبطال Token السابق فورًا. هل تريد إصدار Token اختبار جديد؟"))return;
-    const button=$("hfwGenerate");button.disabled=true;
+  document.querySelectorAll("[data-hfw-copy]").forEach(button=>button.onclick=()=>copyField(button.dataset.hfwCopy,"hfwTestStatus"));
+  $("hfwIssueTest").onclick=async()=>{
+    const button=$("hfwIssueTest"),uid=$("hfwTestUid").value.trim();
+    $("hfwTestResult").innerHTML="";$("hfwTestStatus").textContent="";
+    if(!/^\d{5,20}$/.test(uid)){$("hfwTestStatus").textContent="أدخل UID رقمياً صحيحاً من 5 إلى 20 رقماً.";return}
+    button.disabled=true;button.textContent="جارٍ إصدار الرمز…";
+    try{
+      const result=await api("/admin/utd/test-session",{method:"POST",body:JSON.stringify({uid})});
+      if(!result.test_token||!result.expires_at)throw Error("لم يرجع الخادم رمز الاختبار ووقت الانتهاء.");
+      $("hfwTestResult").innerHTML='<div class="game-key-result"><strong>تم إصدار رمز الاختبار — انسخه إلى خانة Token الاختبار في المنصة</strong><label class="field" style="margin:12px 0 6px">Token الاختبار<textarea id="hfwTempToken" rows="4" readonly dir="ltr"></textarea></label><p class="muted">UID: '+esc(uid)+' · النطاق: '+esc(result.scope||"UTD callbacks only")+' · ينتهي: <b id="hfwTempExpiry"></b></p><button class="action" id="hfwCopyTempToken" type="button">نسخ Token الاختبار</button></div>';
+      $("hfwTempToken").value=result.test_token;
+      const expiry=new Date(result.expires_at);$("hfwTempExpiry").textContent=Number.isNaN(expiry.getTime())?result.expires_at:expiry.toLocaleString("ar-SA");
+      $("hfwCopyTempToken").onclick=()=>copyField("hfwTempToken","hfwTestStatus");
+      $("hfwTestStatus").textContent="الرمز جاهز. استخدمه فوراً في المنصة ولا تشاركه.";
+    }catch(error){$("hfwTestStatus").textContent=error.message}
+    finally{button.disabled=false;button.textContent="إصدار رمز اختبار مؤقت"}
+  };
+  $("hfwGenerateRuntime").onclick=async()=>{
+    if(configured&&!confirm("سيؤدي إصدار مفتاح جديد إلى إبطال مفتاح الخادم السابق فوراً. هل تريد المتابعة؟"))return;
+    const button=$("hfwGenerateRuntime");button.disabled=true;$("hfwRuntimeStatus").textContent="";
     try{
       const result=await api("/admin/integrations/happy-food-wheel",{method:"POST",body:JSON.stringify({})});
-      $("hfwTestToken").value=result.apiToken||"";
-      $("hfwTokenNotice").textContent="تم إصدار Token الاختبار. انسخه الآن؛ لن يظهر مرة أخرى بعد مغادرة هذه الصفحة.";
-      button.textContent="تم إصدار Token — انسخه الآن";button.disabled=false;
-    }catch(error){$("hfwTokenNotice").textContent=error.message;button.disabled=false}
+      if(!result.apiToken)throw Error("لم يرجع الخادم مفتاح الربط.");
+      $("hfwRuntimeTokenResult").innerHTML='<div class="game-key-result"><strong>مفتاح الخادم — يظهر مرة واحدة فقط</strong><textarea id="hfwRuntimeToken" rows="4" readonly dir="ltr"></textarea><p class="muted">انسخه مباشرة إلى إعدادات الخادم الآمن في المنصة. لا تستخدمه في خانة Token الاختبار.</p><button class="action" id="hfwCopyRuntimeToken" type="button">نسخ مفتاح الخادم</button></div>';
+      $("hfwRuntimeToken").value=result.apiToken;
+      $("hfwCopyRuntimeToken").onclick=()=>copyField("hfwRuntimeToken","hfwRuntimeStatus");
+      $("hfwRuntimeStatus").textContent="تم الإصدار. احتفظ به في الخادم الآمن فقط.";
+      button.textContent="تم إصدار المفتاح — انسخه الآن";
+    }catch(error){$("hfwRuntimeStatus").textContent=error.message;button.disabled=false}
   };
-  $("hfwRevoke")?.addEventListener("click",async()=>{
-    if(!confirm("سيتم إلغاء Token الربط الحالي. هل تريد المتابعة؟"))return;
+  $("hfwRevokeRuntime")?.addEventListener("click",async()=>{
+    if(!confirm("سيتم إلغاء مفتاح الربط الدائم الحالي. هل تريد المتابعة؟"))return;
+    const button=$("hfwRevokeRuntime");button.disabled=true;
     try{await api("/admin/integrations/happy-food-wheel",{method:"DELETE"});await agoraPage()}
-    catch(error){alert(error.message)}
+    catch(error){$("hfwRuntimeStatus").textContent=error.message;button.disabled=false}
   });
 }
+
 function statsPage(s){
   const x=s.summary||{},d=s.daily||{},rows=a=>a&&a.length?a.map(v=>'<tr><td>'+esc(v.day)+'</td><td>'+Number(v.total||0).toLocaleString("en-US")+'</td></tr>').join(""):'<tr><td colspan="2" class="empty">لا توجد بيانات خلال الفترة</td></tr>';
   $("content").innerHTML='<div class="cards">'+metric("إجمالي المستخدمين",x.users?.total)+metric("الحسابات النشطة",x.users?.active)+metric("الحسابات المحظورة",x.users?.suspended)+metric("الغرف النشطة",x.rooms?.active)+metric("المنشورات المنشورة",x.publishedPosts)+metric("رسائل الغرف آخر 7 أيام",x.roomMessagesLast7Days)+'</div>'+
