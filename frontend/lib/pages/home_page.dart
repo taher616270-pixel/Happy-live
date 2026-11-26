@@ -705,33 +705,6 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     child: const Icon(Icons.graphic_eq_rounded, color: HappyHomeColors.gold, size: 22),
   );
 
-  Future<void> _loadExploreBanners() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_apiBase/explore/banners?country=${Uri.encodeQueryComponent(_countryCode)}'),
-      ).timeout(const Duration(seconds: 10));
-      final data = jsonDecode(response.body);
-      if (response.statusCode != 200 || data is! Map || data['ok'] != true) return;
-      final banners = data['banners'] is List
-          ? (data['banners'] as List).whereType<Map>()
-              .map((item) => Map<String, dynamic>.from(item))
-              .where((item) => (item['imageUrl'] ?? '').toString().startsWith('https://'))
-              .toList()
-          : <Map<String, dynamic>>[];
-      if (!mounted) return;
-      setState(() {
-        _exploreBanners = banners;
-        _exploreBannerIntervalSeconds = (data['intervalSeconds'] is num
-            ? (data['intervalSeconds'] as num).toInt()
-            : 4).clamp(2, 30).toInt();
-        _exploreBannerIndex = 0;
-      });
-      _restartExploreBannerTimer();
-    } catch (_) {
-      // Keep the blank banner frame if the public settings endpoint is unavailable.
-    }
-  }
-
   void _restartExploreBannerTimer() {
     _exploreBannerTimer?.cancel();
     if (!mounted || _exploreBanners.length < 2) return;
