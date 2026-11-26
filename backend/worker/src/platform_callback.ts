@@ -89,8 +89,8 @@ async function handleHappyFoodWheelHandshake(
   try {
     if (uid) {
       // Project-profile validation: authenticate the supplied test token
-      // against this exact active Happy Live account. Do not bind the app ID
-      // or grant runtime API access from a temporary test token.
+      // against this active Happy Live account. The same permanent app token
+      // binds the platform App ID and is reused for runtime API requests.
       const player = await db.prepare(
         "SELECT u.id FROM users u LEFT JOIN profiles p ON p.user_id=u.id " +
         "WHERE (p.happy_id=? OR u.id=?) AND u.status='active' LIMIT 1"
