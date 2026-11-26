@@ -55,9 +55,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   List<Map<String, dynamic>> _recentRooms = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> _recommendedRooms = <Map<String, dynamic>>[];
   bool _loadingRecommendedRooms = false;
-  bool _isRefreshingHome = false;
   bool _exploreRefreshInFlight = false;
-  double _homePullDistance = 0;
   String? _recommendedRoomsError;
   bool _loadingRecentRooms = false;
   String? _recentRoomsError;
@@ -266,65 +264,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
   }
 
-  bool _handleHomeScrollNotification(ScrollNotification notification) {
-    if (notification.metrics.axis != Axis.vertical) return false;
-    final isExplore = _currentPage >= _exploreFirstPage && _currentPage <= 8;
-
-    if (isExplore &&
-        notification is OverscrollNotification &&
-        notification.dragDetails != null &&
-        notification.overscroll < 0 &&
-        !_isRefreshingHome) {
-      final next = (_homePullDistance - notification.overscroll)
-          .clamp(0.0, 72.0)
-          .toDouble();
-      if ((next - _homePullDistance).abs() > 0.5 && mounted) {
-        setState(() => _homePullDistance = next);
-      }
-    } else if (notification is ScrollEndNotification &&
-        !_isRefreshingHome &&
-        _homePullDistance != 0) {
-      if (mounted) setState(() => _homePullDistance = 0);
-    }
-    return false;
-  }
-
-  Widget _homeRefreshWrapper(Widget child) {
-    return RefreshIndicator.noSpinner(
-      notificationPredicate: (notification) =>
-          notification.metrics.axis == Axis.vertical &&
-          _currentPage >= _exploreFirstPage && _currentPage <= 8 &&
-          notification.depth > 0 && notification.depth <= 2,
-      onRefresh: refreshExplorePage,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: _handleHomeScrollNotification,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            child,
-            Positioned(
-              // Tuck the bars behind the fixed navigation, then reveal them
-              // below it as the Explore page is pulled down.
-              top: _isRefreshingHome ? 12 : -20 + (_homePullDistance * 0.52),
-              left: 0,
-              right: 0,
-              child: IgnorePointer(
-                child: AnimatedOpacity(
-                  opacity: (_currentPage >= _exploreFirstPage &&
-                          _currentPage <= 8 &&
-                          (_homePullDistance > 0 || _isRefreshingHome))
-                      ? 1
-                      : 0,
-                  duration: const Duration(milliseconds: 100),
-                  child: const Center(child: _FiveBarRefreshAnimation()),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _homeRefreshWrapper(Widget child) => child;
 
   Future<void> _openRecommendedRoom(Map<String, dynamic> room) async {
     if ((room['status'] ?? 'active').toString() != 'active') return;
