@@ -60,5 +60,6 @@ test("owner-only credential management returns the raw token only on creation", 
 
 test("Happy Food Wheel callback exposes a JSON deployment health response", () => {
   assert.match(callback, /ok: true, service: "happy-live-api", integration: "happy-food-wheel", endpoint:/);
-  assert.match(callback, /request.method === "GET"/);
+  assert.match(callback, /request.method === "GET" \|\| request.method === "HEAD"/);
+  assert.match(callback, /request.method === "HEAD"[\s\S]*?new Response\(null/);
 });
