@@ -53,6 +53,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   List<Map<String, dynamic>> _recommendedRooms = <Map<String, dynamic>>[];
   bool _loadingRecommendedRooms = false;
   bool _isRefreshingHome = false;
+  bool _exploreRefreshInFlight = false;
   double _homePullDistance = 0;
   String? _recommendedRoomsError;
   bool _loadingRecentRooms = false;
@@ -158,7 +159,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
   }
 
   Future<void> _loadRecommendedRooms({bool force = false}) async {
-    if (_loadingRecommendedRooms || widget.accessToken.isEmpty) return;
+    if ((_loadingRecommendedRooms && !force) || widget.accessToken.isEmpty) return;
     if (!force && _recommendedRooms.isNotEmpty) return;
     if (mounted) setState(() {
       _loadingRecommendedRooms = true;
@@ -190,19 +191,26 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     }
   }
 
-  Future<void> _refreshHomePage() async {
-    if (_isRefreshingHome) return;
+  Future<void> refreshExplorePage() async {
+    if (!mounted || _currentPage < _exploreFirstPage || _currentPage > 8 ||
+        _exploreRefreshInFlight) return;
+    _exploreRefreshInFlight = true;
     if (mounted) setState(() => _isRefreshingHome = true);
     try {
+      // Refresh only the data displayed by Explore. Do not reload the other
+      // home sections, country detection, or the user's private room.
       await Future.wait<void>([
-        _loadMyRoom(),
-        _loadRecentRooms(),
         _loadRecommendedRooms(force: true),
-        _loadCountry(),
         _loadExploreBanners(),
       ]);
     } finally {
-      if (mounted) setState(() => _isRefreshingHome = false);
+      _exploreRefreshInFlight = false;
+      if (mounted) {
+        setState(() {
+          _isRefreshingHome = false;
+          _homePullDistance = 0;
+        });
+      }
     }
   }
 
@@ -233,9 +241,9 @@ bool _handleHomeScrollNotification(ScrollNotification notification) {
     return RefreshIndicator.noSpinner(
       notificationPredicate: (notification) =>
           notification.metrics.axis == Axis.vertical &&
-          notification.depth > 0 &&
-          notification.depth <= 2,
-      onRefresh: _refreshHomePage,
+          _currentPage >= _exploreFirstPage && _currentPage <= 8 &&
+          notification.depth > 0 && notification.depth <= 2,
+      onRefresh: refreshExplorePage,
       child: NotificationListener<ScrollNotification>(
         onNotification: _handleHomeScrollNotification,
         child: Stack(
@@ -586,7 +594,7 @@ bool _handleHomeScrollNotification(ScrollNotification notification) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         Text(_recentRoomsError!, textAlign: TextAlign.center,
           style: const TextStyle(color: Color(0xFF9A98AD), fontSize: 11)),
-        TextButton(onPressed: _refreshHomePage,
+        TextButton(onPressed: refreshExplorePage,
           child: const Text('إعادة المحاولة', style: TextStyle(color: HappyHomeColors.gold, fontSize: 11))),
       ]));
     }
