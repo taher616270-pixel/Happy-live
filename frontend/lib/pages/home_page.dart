@@ -854,7 +854,7 @@ bool _handleHomeScrollNotification(ScrollNotification notification) {
                 Text(_recommendedRoomsError!, textAlign: TextAlign.center,
                   style: const TextStyle(color: HappyHomeColors.muted, fontSize: 11)),
                 TextButton(
-                  onPressed: _refreshHomePage,
+                  onPressed: _loadRecentRooms,
                   child: const Text('إعادة المحاولة',
                     style: TextStyle(color: HappyHomeColors.gold, fontSize: 11)),
                 ),
