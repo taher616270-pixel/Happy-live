@@ -1178,11 +1178,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 key: const PageStorageKey<String>('happy-live-unified-home-pager'),
                 controller: _pageController,
                 reverse: true,
-                // Explore uses vertical nested scrolling; horizontal page
-                // swipes are disabled there so its chips switch categories.
-                physics: (_currentPage >= _exploreFirstPage && _currentPage <= 8)
-                    ? const NeverScrollableScrollPhysics()
-                    : const PageScrollPhysics(),
+                // Disable horizontal swiping across all home sections.
+                // Vertical scrolling inside each page remains unchanged.
+                physics: const NeverScrollableScrollPhysics(),
                 onPageChanged: (index) {
                   setState(() {
                     _currentPage = index;
