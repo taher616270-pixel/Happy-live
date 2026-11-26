@@ -53,7 +53,8 @@ test("owner-only credential management returns the raw token only on creation", 
   assert.match(worker, /setting_key, setting_value, updated_at/);
   assert.match(worker, /apiToken,/);
   assert.match(admin, /happy-food-wheel/);
-  assert.match(admin, /لن يظهر مرة أخرى بعد مغادرة هذه الصفحة/);
+  assert.match(admin, /يظهر مرة واحدة فقط/);
+  assert.match(admin, /لا تستخدمه في خانة Token الاختبار/);
 });
 
 
