@@ -27,6 +27,22 @@ function validAmount(value: string): number | null {
  * verification and runtime callbacks. UID is checked against an active account;
  * temporary test sessions are not accepted or created.
  */
+async function bindHappyFoodWheelAppId(db: D1Database, appId: string): Promise<boolean> {
+  const existing = await db.prepare(
+    "SELECT setting_value FROM platform_settings WHERE setting_key='happy_food_wheel_app_id' LIMIT 1"
+  ).first<{ setting_value: string }>();
+  if (existing?.setting_value) return constantTimeEqual(appId, existing.setting_value);
+  const now = new Date().toISOString();
+  await db.prepare(
+    "INSERT INTO platform_settings (setting_key,setting_value,updated_at) " +
+    "VALUES ('happy_food_wheel_app_id',?,?) ON CONFLICT(setting_key) DO NOTHING"
+  ).bind(appId, now).run();
+  const bound = await db.prepare(
+    "SELECT setting_value FROM platform_settings WHERE setting_key='happy_food_wheel_app_id' LIMIT 1"
+  ).first<{ setting_value: string }>();
+  return Boolean(bound?.setting_value && constantTimeEqual(appId, bound.setting_value));
+}
+
 async function handleHappyFoodWheelHandshake(
   request: Request, db: D1Database | undefined, reply: JsonReply
 ): Promise<Response | null> {
@@ -85,6 +101,7 @@ async function handleHappyFoodWheelHandshake(
       if (!player || !saved?.setting_value || !constantTimeEqual(await sha256(suppliedToken), saved.setting_value)) {
         return reply({ error: "test_player_or_application_authentication_failed" }, 401);
       }
+      if (!(await bindHappyFoodWheelAppId(db, appId))) return reply({ error: "app_id_mismatch" }, 403);
       return reply({ ok: true, appId, apiVersion: "v1", uid, challenge }, 200);
     }
 
@@ -98,24 +115,7 @@ async function handleHappyFoodWheelHandshake(
       return reply({ error: "invalid_application_token" }, 401);
     }
 
-    const existing = await db.prepare(
-      "SELECT setting_value FROM platform_settings WHERE setting_key='happy_food_wheel_app_id' LIMIT 1"
-    ).first<{ setting_value: string }>();
-    if (existing?.setting_value) {
-      if (!constantTimeEqual(appId, existing.setting_value)) return reply({ error: "app_id_mismatch" }, 403);
-    } else {
-      const now = new Date().toISOString();
-      await db.prepare(
-        "INSERT INTO platform_settings (setting_key,setting_value,updated_at) " +
-        "VALUES ('happy_food_wheel_app_id',?,?) ON CONFLICT(setting_key) DO NOTHING"
-      ).bind(appId, now).run();
-      const bound = await db.prepare(
-        "SELECT setting_value FROM platform_settings WHERE setting_key='happy_food_wheel_app_id' LIMIT 1"
-      ).first<{ setting_value: string }>();
-      if (!bound?.setting_value || !constantTimeEqual(appId, bound.setting_value)) {
-        return reply({ error: "app_id_mismatch" }, 403);
-      }
-    }
+    if (!(await bindHappyFoodWheelAppId(db, appId))) return reply({ error: "app_id_mismatch" }, 403);
     return reply({ ok: true, appId, apiVersion: "v1", challenge }, 200);
   } catch {
     return reply({ error: "callback_validation_unavailable" }, 503);
