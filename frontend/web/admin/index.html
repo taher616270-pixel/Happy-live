@@ -852,7 +852,7 @@ async function happyFoodWheelIntegrationPage(){
   const configured=data.tokenConfigured===true||data.configured===true;
   const callbackBase=(data.callbackBaseUrl||"https://happy-live-api.taher616270.workers.dev").replace(/\/$/,"");
   const callbackEndpoint=callbackBase+"/v1/platform/handshake";
-  $("content").innerHTML=
+  $("content").insertAdjacentHTML("beforeend",
     '<div class="section"><div class="section-head"><div><h2>ربط Happy Live مع Happy Food Wheel</h2><p class="muted">إعداد موحّد خطوة بخطوة. استخدم بيانات هذا القسم في بوابة صاحب التطبيق على منصة Happy Food Wheel.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'مفتاح الخادم محفوظ':'مفتاح الخادم غير مُصدر')+'</span></div>'+
     '<div class="notice"><b>مهم — عنوان Callback الأساسي</b><p class="muted" style="margin:6px 0 0">انسخ عنوان الخادم الأساسي فقط. المنصة تضيف المسار <code>/v1/platform/handshake</code> تلقائياً؛ لا تلصق المسار داخل خانة Callback Base URL.</p></div>'+
     '<div class="form-grid" style="margin-top:16px">'+
@@ -878,7 +878,7 @@ async function happyFoodWheelIntegrationPage(){
       (configured?'<p class="muted" style="margin-top:12px">بادئة المفتاح المحفوظ: '+esc(data.tokenPrefix||"")+'… · آخر إصدار: '+esc(data.createdAt||"")+'</p>':'')+
       '<p id="hfwRuntimeStatus" class="muted" role="status" style="margin-top:10px"></p>'+
     '</div>'+
-    '<div class="section"><h2>٣. ترتيب الإعداد في منصة Happy Food Wheel</h2><ol class="muted" style="line-height:2"><li>افتح إنشاء مشروع جديد في بوابة المنصة.</li><li>في Callback Base URL الصق العنوان الأساسي فقط من القسم الأول.</li><li>أدخل UID نفسه، ثم أصدر رمز الاختبار المؤقت والصقه في خانة Token الاختبار.</li><li>نفّذ فحص المشروع فوراً قبل انتهاء صلاحية الرمز.</li></ol><p class="muted">لا ترسل أي Token في المحادثات أو الصور. إذا ظهر خطأ، شارك رسالة الخطأ فقط.</p></div>';
+    '<div class="section"><h2>٣. ترتيب الإعداد في منصة Happy Food Wheel</h2><ol class="muted" style="line-height:2"><li>افتح إنشاء مشروع جديد في بوابة المنصة.</li><li>في Callback Base URL الصق العنوان الأساسي فقط من القسم الأول.</li><li>أدخل UID نفسه، ثم أصدر رمز الاختبار المؤقت والصقه في خانة Token الاختبار.</li><li>نفّذ فحص المشروع فوراً قبل انتهاء صلاحية الرمز.</li></ol><p class="muted">لا ترسل أي Token في المحادثات أو الصور. إذا ظهر خطأ، شارك رسالة الخطأ فقط.</p></div>);
   async function copyField(id,statusId){
     const input=$(id),status=$(statusId||"hfwTestStatus");
     if(!input||!input.value){if(status)status.textContent="لا توجد قيمة لنسخها بعد.";return}
