@@ -17,6 +17,7 @@ import 'explore_banner_destination_page.dart';
 /// Theme colors kept local so this page can be maintained independently.
 class HappyHomeColors {
   static const background = Color(0xFFF6F7FB);
+  static const exploreBackground = Color(0xFF09080D);
   static const surface = Colors.white;
   static const gold = Color(0xFFD9A93C);
   static const purple = Color(0xFFD9A93C);
@@ -1014,7 +1015,9 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     // rendered as slivers (never as a nested ListView/GridView), so a
     // downward drag begun over any tab content moves the banner, action
     // cards, tabs and content together and reaches the page refresh at top.
-    return CustomScrollView(
+    return ColoredBox(
+      color: HappyHomeColors.exploreBackground,
+      child: CustomScrollView(
       key: PageStorageKey<String>('happy-live-explore-scroll-$tabIndex'),
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       slivers: [
@@ -1031,7 +1034,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             final scale = (pulledExtent / 60.0).clamp(0.55, 1.12).toDouble();
             return SizedBox.expand(
               child: ColoredBox(
-                color: HappyHomeColors.background,
+                color: HappyHomeColors.exploreBackground,
                 child: Center(
                   child: visible
                       ? Transform.scale(
@@ -1052,12 +1055,13 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           pinned: false,
           floating: false,
           automaticallyImplyLeading: false,
-          backgroundColor: HappyHomeColors.background,
+          backgroundColor: HappyHomeColors.exploreBackground,
           flexibleSpace: FlexibleSpaceBar(background: _buildExploreHeader()),
         ),
         SliverToBoxAdapter(child: _buildExploreTabs()),
         ..._buildExploreTabSlivers(tabIndex),
       ],
+      ),
     );
   }
 
