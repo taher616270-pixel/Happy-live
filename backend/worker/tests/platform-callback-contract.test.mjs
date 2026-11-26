@@ -50,6 +50,7 @@ test("Happy Food Wheel exposes authenticated player and idempotent wallet callba
   assert.match(callback, /happyFoodWheelCredential/);
   assert.match(callback, /invalid_application_credential/);
   assert.match(callback, /idempotency_conflict/);
+  assert.match(callback, /replayed:applied\.claim_id !== claimId/);
   assert.match(callback, /insufficient_balance/);
   assert.ok(callback.includes('"happy-food-wheel:" + appId + ":" + gameId'));
   assert.ok(callback.includes("user_wallets SET balance=balance+?"));
