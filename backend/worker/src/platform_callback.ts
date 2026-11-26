@@ -25,7 +25,7 @@ function validAmount(value: string): number | null {
 /**
  * Happy Food Wheel uses one app-scoped server credential for both project
  * verification and runtime callbacks. UID is checked against an active account;
- * temporary UTD test sessions are not accepted or created.
+ * temporary test sessions are not accepted or created.
  */
 async function handleHappyFoodWheelHandshake(
   request: Request, db: D1Database | undefined, reply: JsonReply
@@ -230,7 +230,7 @@ async function handleHappyFoodWheelWalletCallback(
 }
 
 export async function handlePlatformCallbackRequest(
-  request: Request, db: D1Database | undefined, _appKey: string | undefined, reply: JsonReply
+  request: Request, db: D1Database | undefined, reply: JsonReply
 ): Promise<Response | null> {
   const foodWheelWallet=await handleHappyFoodWheelWalletCallback(request,db,reply);
   if (foodWheelWallet) return foodWheelWallet;
