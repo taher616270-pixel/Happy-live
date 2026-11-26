@@ -896,7 +896,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
       valueListenable: _exploreBannersNotifier,
       builder: (context, banners, _) => Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 0, 8, 0),
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 0),
       child: Column(
         children: [
           _buildExploreBanner(),
@@ -1031,7 +1031,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
             final scale = (pulledExtent / 60.0).clamp(0.55, 1.12).toDouble();
             return SizedBox.expand(
               child: ColoredBox(
-                color: const Color(0xFFFAF6EA),
+                color: HappyHomeColors.background,
                 child: Center(
                   child: visible
                       ? Transform.scale(
