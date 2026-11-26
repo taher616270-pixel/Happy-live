@@ -17,7 +17,6 @@ import 'explore_banner_destination_page.dart';
 /// Theme colors kept local so this page can be maintained independently.
 class HappyHomeColors {
   static const background = Color(0xFFF6F7FB);
-  static const exploreBackground = Color(0xFF09080D);
   static const surface = Colors.white;
   static const gold = Color(0xFFD9A93C);
   static const purple = Color(0xFFD9A93C);
@@ -1015,8 +1014,15 @@ class HappyHomeTabState extends State<HappyHomeTab> {
     // rendered as slivers (never as a nested ListView/GridView), so a
     // downward drag begun over any tab content moves the banner, action
     // cards, tabs and content together and reaches the page refresh at top.
-    return ColoredBox(
-      color: HappyHomeColors.exploreBackground,
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFF7EBCB), Color(0xFFFAF6EA), Color(0xFFF6F7FB)],
+          stops: [0.0, 0.3, 0.55],
+        ),
+      ),
       child: CustomScrollView(
       key: PageStorageKey<String>('happy-live-explore-scroll-$tabIndex'),
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
@@ -1033,8 +1039,15 @@ class HappyHomeTabState extends State<HappyHomeTab> {
                 mode == RefreshIndicatorMode.refresh;
             final scale = (pulledExtent / 60.0).clamp(0.55, 1.12).toDouble();
             return SizedBox.expand(
-              child: ColoredBox(
-                color: HappyHomeColors.exploreBackground,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFFF7EBCB), Color(0xFFFAF6EA), Color(0xFFF6F7FB)],
+                    stops: [0.0, 0.3, 0.55],
+                  ),
+                ),
                 child: Center(
                   child: visible
                       ? Transform.scale(
@@ -1055,7 +1068,7 @@ class HappyHomeTabState extends State<HappyHomeTab> {
           pinned: false,
           floating: false,
           automaticallyImplyLeading: false,
-          backgroundColor: HappyHomeColors.exploreBackground,
+          backgroundColor: Colors.transparent,
           flexibleSpace: FlexibleSpaceBar(background: _buildExploreHeader()),
         ),
         SliverToBoxAdapter(child: _buildExploreTabs()),
