@@ -282,7 +282,7 @@ class RoundState {
 // الخادم هو اللي يختار النتيجة ويخصم ويضيف الرصيد. التطبيق يعرض فقط.
 abstract class FoodWheelApi {
   Future<RoundState> fetchState(); // GET  /api/v1/games/wheel/state
-  Future<RoundState> placeBet(int roundId, int slot, int amount); // POST /bet
+  Future<RoundState> placeBet(int roundId, int slot, int amount, String idempotencyKey); // POST /bet
   Future<List<WinRecord>> fetchTopWins(); // أقوى الفائزين اليوم
   Future<List<MyRoundRecord>> fetchMyHistory(); // سجل جولاتي
 }
@@ -338,6 +338,22 @@ class FoodWheelGame extends StatefulWidget {
   State<FoodWheelGame> createState() => _FoodWheelGameState();
 }
 
+enum _PendingBetStatus { queued, sending, accepted }
+
+class _PendingWheelBet {
+  final String idempotencyKey;
+  final int roundId, slot, amount;
+  _PendingBetStatus status;
+
+  _PendingWheelBet({
+    required this.idempotencyKey,
+    required this.roundId,
+    required this.slot,
+    required this.amount,
+    this.status = _PendingBetStatus.queued,
+  });
+}
+
 class _FoodWheelGameState extends State<FoodWheelGame> {
   final _rnd = math.Random();
   Timer? _poll, _msgTimer, _panelTimer;
@@ -347,11 +363,14 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   String? _lit, _err, _msg;
   bool _spinning = false, _busy = false, _panel = false;
   bool _fetching = false; // يمنع تراكم طلبات الحالة لو الخادم بطيء
-  int _optimisticRoundId = -1;
-  final List<int> _optimisticBaseMine = List.filled(8, 0);
-  final List<int> _optimisticBasePools = List.filled(8, 0);
-  final List<int> _optimisticBetDelta = List.filled(8, 0);
-  int _optimisticReserved = 0;
+  bool _betQueueRunning = false;
+  int _confirmedRoundId = -1;
+  final List<int> _confirmedMine = List.filled(8, 0);
+  final List<int> _confirmedPools = List.filled(8, 0);
+  final List<_PendingWheelBet> _pendingBets = [];
+  int get _pendingReserved => _pendingBets
+      .where((bet) => bet.status != _PendingBetStatus.accepted)
+      .fold(0, (sum, bet) => sum + bet.amount);
   String _mode = 'n'; // n = عادي، a = متقدم
   bool _auto = false, _sound = true, _showBets = true;
   List<int> _prevBets = List.filled(8, 0); // رهانات الجولة السابقة (للتكرار)
@@ -393,43 +412,72 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   }
 
   void _startOptimisticRound(RoundState s) {
-    _optimisticRoundId = s.roundId;
+    _confirmedRoundId = s.roundId;
     for (var i = 0; i < 8; i++) {
-      _optimisticBaseMine[i] = s.myBets[i];
-      _optimisticBasePools[i] = s.pools[i];
-      _optimisticBetDelta[i] = 0;
+      _confirmedMine[i] = s.myBets[i];
+      _confirmedPools[i] = s.pools[i];
     }
-    _optimisticReserved = 0;
+    // الطلبات المقبولة في جولة انتهت لم تعد تحتاج طبقة عرض محلية.
+    _pendingBets.removeWhere((bet) =>
+        bet.roundId != s.roundId && bet.status == _PendingBetStatus.accepted);
   }
 
   void _reconcileOptimisticBets(RoundState s) {
-    if (_optimisticRoundId != s.roundId) {
+    if (_confirmedRoundId != s.roundId) {
       _startOptimisticRound(s);
       return;
     }
-    for (var i = 0; i < 8; i++) {
-      final delta = _optimisticBetDelta[i];
-      if (delta == 0) {
-        _optimisticBaseMine[i] = s.myBets[i];
-        _optimisticBasePools[i] = s.pools[i];
-      } else if (s.myBets[i] >= _optimisticBaseMine[i] + delta) {
-        _optimisticBetDelta[i] = 0;
-        _optimisticReserved = math.max(0, _optimisticReserved - delta).toInt();
-        _optimisticBaseMine[i] = s.myBets[i];
-        _optimisticBasePools[i] = s.pools[i];
+
+    for (var slot = 0; slot < 8; slot++) {
+      final accepted = _pendingBets
+          .where((bet) =>
+              bet.roundId == s.roundId &&
+              bet.slot == slot &&
+              bet.status == _PendingBetStatus.accepted)
+          .toList();
+      final acceptedTotal =
+          accepted.fold<int>(0, (sum, bet) => sum + bet.amount);
+
+      if (acceptedTotal == 0) {
+        _confirmedMine[slot] =
+            math.max(_confirmedMine[slot], s.myBets[slot]).toInt();
+        _confirmedPools[slot] =
+            math.max(_confirmedPools[slot], s.pools[slot]).toInt();
+        continue;
+      }
+
+      // لا نزيل الرهانات المقبولة حتى يتضمن مجموع الخادم كامل قيمتها.
+      final expectedMine = _confirmedMine[slot] + acceptedTotal;
+      if (s.myBets[slot] >= expectedMine) {
+        _confirmedMine[slot] =
+            math.max(s.myBets[slot], expectedMine).toInt();
+        _confirmedPools[slot] = math.max(
+          s.pools[slot],
+          _confirmedPools[slot] + acceptedTotal,
+        ).toInt();
+        _pendingBets.removeWhere((bet) =>
+            bet.roundId == s.roundId &&
+            bet.slot == slot &&
+            bet.status == _PendingBetStatus.accepted);
       }
     }
   }
 
   RoundState _withOptimisticBets(RoundState s) {
-    if (_optimisticRoundId != s.roundId) return s;
+    if (_confirmedRoundId != s.roundId) return s;
+    final pendingBySlot = List<int>.generate(
+      8,
+      (slot) => _pendingBets
+          .where((bet) => bet.roundId == s.roundId && bet.slot == slot)
+          .fold<int>(0, (sum, bet) => sum + bet.amount),
+    );
     final mine = List<int>.generate(
       8,
-      (i) => math.max(s.myBets[i], _optimisticBaseMine[i] + _optimisticBetDelta[i]).toInt(),
+      (i) => math.max(s.myBets[i], _confirmedMine[i] + pendingBySlot[i]).toInt(),
     );
     final pools = List<int>.generate(
       8,
-      (i) => math.max(s.pools[i], _optimisticBasePools[i] + _optimisticBetDelta[i]).toInt(),
+      (i) => math.max(s.pools[i], _confirmedPools[i] + pendingBySlot[i]).toInt(),
     );
     return RoundState(
       roundId: s.roundId,
@@ -551,6 +599,16 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     if (parts.isNotEmpty) _say(parts.join('  •  '));
   }
 
+  String _newBetIdempotencyKey(int roundId) {
+    final rawUserId = _s?.player?.id ?? 'player';
+    final safeUserId = rawUserId
+        .replaceAll(RegExp(r'[^A-Za-z0-9._:-]'), '_')
+        .substring(0, math.min(24, rawUserId.length));
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final random = _rnd.nextInt(1 << 32).toRadixString(16).padLeft(8, '0');
+    return 'fw-$safeUserId-$roundId-$stamp-$random';
+  }
+
   void _bet(int i) {
     final s = _s;
     if (s == null || s.phase != RoundPhase.betting) {
@@ -562,41 +620,95 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       _say('حسابك غير مفعّل للعب');
       return;
     }
-    if (_bal - _optimisticReserved < _chip) {
-      _say('رصيدك لا يكفي');
-      return;
-    }
-
-    final amount = _chip;
-    final roundId = s.roundId;
-    if (_optimisticRoundId != roundId) _startOptimisticRound(s);
-
-    // اعرض الرهان محليًا في نفس إطار الواجهة، ثم أرسل الطلب دون تعطيل الضغطات التالية.
-    setState(() {
-      _optimisticBetDelta[i] += amount;
-      _optimisticReserved += amount;
-    });
-    unawaited(_submitBet(roundId, i, amount));
+    _enqueueBet(s.roundId, i, _chip);
   }
 
-  Future<void> _submitBet(int roundId, int slot, int amount) async {
+  bool _enqueueBet(int roundId, int slot, int amount) {
+    if (_bal - _pendingReserved < amount) {
+      _say('رصيدك لا يكفي');
+      return false;
+    }
+    if (_confirmedRoundId != roundId && _s != null && _s!.roundId == roundId) {
+      _startOptimisticRound(_s!);
+    }
+    final bet = _PendingWheelBet(
+      idempotencyKey: _newBetIdempotencyKey(roundId),
+      roundId: roundId,
+      slot: slot,
+      amount: amount,
+    );
+    setState(() => _pendingBets.add(bet));
+    unawaited(_drainBetQueue());
+    return true;
+  }
+
+  bool _isDefinitiveBetRejection(Object error) {
+    if (error is! WheelApiException) return false;
+    if (error.code == 'bet_processing') return false;
+    if (error.status != null && error.status! >= 400 && error.status! < 500) {
+      return true;
+    }
+    return const {
+      'round_closed',
+      'insufficient_balance',
+      'invalid_bet_data',
+      'idempotency_key_reused',
+      'game_not_active',
+      'authentication_required',
+      'permission_denied',
+    }.contains(error.code);
+  }
+
+  Future<void> _drainBetQueue() async {
+    if (_betQueueRunning) return;
+    _betQueueRunning = true;
     try {
-      await widget.api.placeBet(roundId, slot, amount);
-      if (!mounted) return;
-      // لا نستبدل الحالة بردّ قديم قد يصل بعد طلب أحدث؛ polling يجلب الحالة المعتمدة.
-      await _refresh();
-    } catch (e) {
-      if (!mounted) return;
-      if (_optimisticRoundId == roundId && _s?.roundId == roundId) {
-        setState(() {
-          final rollback = math.min(amount, _optimisticBetDelta[slot]).toInt();
-          _optimisticBetDelta[slot] -= rollback;
-          _optimisticReserved =
-              math.max(0, _optimisticReserved - rollback).toInt();
-        });
+      while (mounted) {
+        final index = _pendingBets.indexWhere(
+          (bet) => bet.status == _PendingBetStatus.queued,
+        );
+        if (index < 0) break;
+
+        final bet = _pendingBets[index];
+        setState(() => bet.status = _PendingBetStatus.sending);
+        try {
+          final confirmed = await widget.api.placeBet(
+            bet.roundId,
+            bet.slot,
+            bet.amount,
+            bet.idempotencyKey,
+          );
+          if (!mounted) return;
+          setState(() {
+            bet.status = _PendingBetStatus.accepted;
+            // الخادم يعيد الرصيد بعد الخصم؛ تحديثه هنا يمنع حجز المبلغ مرتين.
+            _bal = confirmed.balance;
+            if (_s?.roundId == confirmed.roundId) {
+              _s = confirmed;
+            }
+            _reconcileOptimisticBets(confirmed);
+            if (_s?.roundId != bet.roundId) {
+              _pendingBets.remove(bet);
+            }
+          });
+        } catch (error) {
+          if (!mounted) return;
+          if (_isDefinitiveBetRejection(error)) {
+            setState(() => _pendingBets.remove(bet));
+            _say(wheelErrorText(error));
+          } else {
+            // فشل الشبكة أو رد غير مكتمل لا يعني رفض الرهان؛ أعد نفس المفتاح.
+            setState(() => bet.status = _PendingBetStatus.queued);
+            await Future.delayed(const Duration(milliseconds: 450));
+          }
+        }
       }
-      _say(wheelErrorText(e));
-      await _refresh();
+    } finally {
+      _betQueueRunning = false;
+      if (mounted &&
+          _pendingBets.any((bet) => bet.status == _PendingBetStatus.queued)) {
+        unawaited(_drainBetQueue());
+      }
     }
   }
 
@@ -916,13 +1028,15 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                   fontWeight: FontWeight.bold)),
         ])),
         const Spacer(),
+        _modeToggle(),
+        const SizedBox(width: 4),
         _trophyBtn(),
         const SizedBox(width: 4),
         _ib(const Icon(Icons.history, color: Colors.white, size: 24), _openLog),
         const SizedBox(width: 2),
         _ib(const Icon(Icons.settings, color: Colors.white, size: 24), _openSettings),
         const SizedBox(width: 4),
-        _modeToggle(),
+        _ib(const Icon(Icons.more_horiz, color: Colors.white, size: 24), _openMore),
       ]);
 
   Widget _wheel(RoundState s) {
@@ -1427,29 +1541,14 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       return _say('انتظر الجولة القادمة');
     }
     if (!_prevBets.any((b) => b > 0)) return _say('ما فيه رهان سابق');
-    if (s.myBets.any((b) => b > 0)) return _say('رهانك موجود في هذه الجولة');
-    if (_busy) return;
-    _busy = true;
-    try {
-      var cur = s;
-      for (var i = 0; i < 8; i++) {
-        final a = _prevBets[i];
-        if (a <= 0) continue;
-        if (_bal < a) {
-          _say('رصيدك لا يكفي');
-          break;
-        }
-        cur = await widget.api.placeBet(cur.roundId, i, a);
-        if (!mounted) return;
-        setState(() {
-          _s = cur;
-          _bal = cur.balance;
-        });
-      }
-    } catch (e) {
-      _say(wheelErrorText(e));
-    } finally {
-      _busy = false;
+    if (s.myBets.any((b) => b > 0) ||
+        _pendingBets.any((bet) => bet.roundId == s.roundId)) {
+      return _say('رهانك موجود في هذه الجولة');
+    }
+    for (var i = 0; i < 8; i++) {
+      final amount = _prevBets[i];
+      if (amount <= 0) continue;
+      if (!_enqueueBet(s.roundId, i, amount)) break;
     }
   }
 
@@ -1513,6 +1612,43 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       _chip = _chipSet.first;
     });
     _say(m == 'a' ? 'وضع متقدم: رهانات أكبر' : 'الوضع العادي');
+  }
+
+  void _openMore() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF4A3DF0),
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            ListTile(
+              leading: const Icon(Icons.replay, color: Colors.white),
+              title: const Text('تكرار الرهان السابق',
+                  style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _repeatBets();
+              },
+            ),
+            SwitchListTile(
+              value: _showBets,
+              secondary: const Icon(Icons.visibility, color: Colors.white),
+              title: const Text('عرض رهانات اللاعبين',
+                  style: TextStyle(color: Colors.white)),
+              onChanged: (value) => setState(() => _showBets = value),
+            ),
+            SwitchListTile(
+              value: _sound,
+              secondary: const Icon(Icons.volume_up, color: Colors.white),
+              title: const Text('تشغيل الصوت',
+                  style: TextStyle(color: Colors.white)),
+              onChanged: (value) => setState(() => _sound = value),
+            ),
+          ]),
+        ),
+      ),
+    );
   }
 
   void _openSettings() {
