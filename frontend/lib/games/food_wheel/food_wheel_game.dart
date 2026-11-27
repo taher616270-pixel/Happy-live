@@ -370,7 +370,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   final List<int> _confirmedPools = List.filled(8, 0);
   final List<_PendingWheelBet> _pendingBets = [];
   int get _pendingReserved => _pendingBets
-      .where((bet) => bet.status != _PendingBetStatus.accepted)
+      .where((bet) =>
+          bet.status != _PendingBetStatus.accepted && !bet.observedInState)
       .fold(0, (sum, bet) => sum + bet.amount);
   String _mode = 'n'; // n = عادي، a = متقدم
   bool _auto = false, _sound = true, _showBets = true;
