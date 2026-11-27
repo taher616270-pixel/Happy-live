@@ -2,12 +2,6 @@ name: Deploy Happy Live game registry Worker
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - "backend/worker/**"
-      - ".github/workflows/deploy-game-registry-worker.yml"
 
 concurrency:
   group: happy-live-game-registry-worker-production
