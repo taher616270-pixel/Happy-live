@@ -521,9 +521,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   int _serverNowMs() => DateTime.now().millisecondsSinceEpoch + _serverClockOffsetMs;
 
-  int _safeSlotValue(List<int> values, int slot) =>
-      slot >= 0 && slot < values.length ? values[slot] : 0;
-
   int _bettingDeadline(RoundState s) =>
       s.bettingEndsAt ?? (s.roundEndAt != null ? s.roundEndAt! - 8000 : _serverNowMs());
 
