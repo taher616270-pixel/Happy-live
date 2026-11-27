@@ -607,9 +607,12 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   void _rememberServerTotals(RoundState s) {
-    // Totals are immutable from the instant betting locks, including during spin.
-    if (_lockedBetRounds.contains(s.roundId) || _finalServerTotalsRounds.contains(s.roundId)) return;
-    if (s.phase == RoundPhase.result) _finalServerTotalsRounds.add(s.roundId);
+    // Keep accepting authoritative server totals through the final lock snapshot.
+    // The local input lock can happen a fraction before the server's result poll.
+    if (_finalServerTotalsRounds.contains(s.roundId)) return;
+    final serverLocked =
+        s.phase == RoundPhase.result || _serverNowMs() >= _bettingDeadline(s);
+    if (serverLocked) _finalServerTotalsRounds.add(s.roundId);
     final totals = _serverTotalsByRound.putIfAbsent(s.roundId, () => <String, int>{});
     for (var i = 0; i < kSlotKeys.length; i++) {
       final key = kSlotKeys[i];
@@ -670,7 +673,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       return true;
     }
 
-    final totalsFrozen = a.roundId == b.roundId && _lockedBetRounds.contains(a.roundId);
+    final totalsFrozen = a.roundId == b.roundId && _finalServerTotalsRounds.contains(a.roundId);
     if (a.roundId != b.roundId ||
         a.phase != b.phase ||
         a.balance != b.balance ||
