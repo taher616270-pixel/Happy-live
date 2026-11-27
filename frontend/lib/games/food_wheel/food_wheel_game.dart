@@ -433,7 +433,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   Map<String, int> _prevBets = <String, int>{}; // رهانات الجولة السابقة حسب اسم الطعام
   int _todayWin = 0;
   final List<_LogEntry> _log = [];
-  List<int> get _chipSet => kChips;
+  List<int> get _chipSet {
+    final base = _mode == 'a' ? kChipsAdv : kChips;
+    return base.contains(_chip) ? base : [...base, _chip];
+  }
 
   @override
   void initState() {
@@ -2444,10 +2447,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         child: AlertDialog(
           backgroundColor: const Color(0xFF4A3DF0),
           content: const Text(
-            '1. وقت الرهان 20 ثانية، ثم دوران 5 ثوانٍ، ثم نافذة النتيجة 5 ثوانٍ.\\n'
-            '2. يمكنك الرهان على 6 أكلات كحد أقصى، وأي مبلغ حتى رصيدك.\\n'
-            '3. المضاعفات: دجاج x45، ذرة x5، طماطم x5، ماعز x15، فلفل x5، سمك x25، جزر x5، روبيان x10.\\n'
-            '4. بيتزا 3%: تفوز كل رهانات الخضروات. سلطة 3%: تفوز كل رهانات اللحوم.\\n'
+            '1. وقت الرهان 20 ثانية، ثم دوران 5 ثوانٍ، ثم نافذة النتيجة 5 ثوانٍ.\n'
+            '2. يمكنك الرهان على 6 أكلات كحد أقصى، وأي مبلغ حتى رصيدك.\n'
+            '3. المضاعفات: دجاج x45، ذرة x5، طماطم x5، ماعز x15، فلفل x5، سمك x25، جزر x5، روبيان x10.\n'
+            '4. بيتزا 3%: تفوز كل رهانات الخضروات. سلطة 3%: تفوز كل رهانات اللحوم.\n'
             '5. أوزان النتائج العادية المنشورة (تقريبية): دجاج 2.03%، ذرة 18.27%، طماطم 18.27%، ماعز 6.09%، فلفل 18.27%، سمك 3.65%، جزر 18.27%، روبيان 9.14%.',
             style: TextStyle(color: Colors.white, height: 1.8, fontSize: 13),
           ),
