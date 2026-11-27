@@ -81,6 +81,15 @@ const kSlots = [
   WheelSlot('🌽', 5, true),
 ];
 const kSlotKeys = <String>['chicken', 'tomato', 'goat', 'chili', 'fish', 'carrot', 'shrimp', 'corn'];
+
+int getSpinDelay(double remaining) {
+  if (remaining > 4) return 220;
+  if (remaining > 3) return 150;
+  if (remaining > 2) return 90;
+  if (remaining > 1) return 55;
+  return 55;
+}
+
 const kChips = [10, 500, 6000, 30000, 100000];
 
 const kChipsAdv = [100000, 500000, 1000000, 5000000, 10000000]; // وضع متقدم
@@ -407,7 +416,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   int _spinTargetSlot = 0, _spinFinalizedRoundId = -1;
   bool _spinTargetKnown = false;
   double? _spinLandingStartAngle, _spinLandingStartProgress;
-  int? _spinLandingSteps;
+  double? _spinLandingArc;
   Future<void> _betSendChain = Future<void>.value();
   late final AnimationController _spinController;
   double _spinAngle = 0;
@@ -481,6 +490,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
               _myBetsByRound.remove(current.roundId);
               _frozenBetsByRound.remove(current.roundId);
               _lockedBetRounds.remove(current.roundId);
+              _serverTotalsByRound.remove(current.roundId);
               _finalServerTotalsRounds.remove(current.roundId);
             }
             if (clearMessage) _msg = null;
@@ -612,10 +622,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   void _startOptimisticRound(RoundState s) {
     if (!_myBetsByRound.containsKey(s.roundId)) {
-      _myBetsByRound[s.roundId] = <String, int>{
-        for (var i = 0; i < kSlotKeys.length; i++)
-          if (_safeSlotValue(s.myBets, i) > 0) kSlotKeys[i]: _safeSlotValue(s.myBets, i),
-      };
+      _myBetsByRound[s.roundId] = <String, int>{};
     }
     _confirmedRoundId = s.roundId;
     _rememberServerTotals(s);
@@ -752,11 +759,12 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       }
       if (!mounted) return;
       if (_spinning && _s != null && _s!.roundId != s.roundId) return;
-      _reconcileOptimisticBets(s);
-      if (s.phase == RoundPhase.result || _serverNowMs() >= _bettingDeadline(s)) _freezeMyBets(s.roundId);
-      _rememberServerTotals(s);
       final previous = _s;
       final newRound = previous != null && previous.roundId != s.roundId;
+      if (newRound && previous != null) _freezeMyBets(previous.roundId);
+      _rememberServerTotals(s);
+      if (s.phase == RoundPhase.result || _serverNowMs() >= _bettingDeadline(s)) _freezeMyBets(s.roundId);
+      _reconcileOptimisticBets(s);
       final displayChanged =
           previous == null || _err != null || !_sameDisplayState(previous, s);
       if (displayChanged || newRound) {
@@ -787,13 +795,20 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             _spinTargetKnown = false;
             _spinLandingStartAngle = null;
             _spinLandingStartProgress = null;
-            _spinLandingSteps = null;
+            _spinLandingArc = null;
             _spinRun = null;
             _lit = null;
             _msg = null;
             _panel = false;
           }
         });
+        if (newRound && previous != null) {
+          _myBetsByRound.remove(previous.roundId);
+          _frozenBetsByRound.remove(previous.roundId);
+          _lockedBetRounds.remove(previous.roundId);
+          _serverTotalsByRound.remove(previous.roundId);
+          _finalServerTotalsRounds.remove(previous.roundId);
+        }
       }
       if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
         _animatedRound = s.roundId;
@@ -810,32 +825,44 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   static const double _spinStep = math.pi / 4;
   static const double _spinBaseAngle = 3 * math.pi * 2;
 
-  // The first four seconds are target-independent. The winner is consulted
-  // only in the final second, so receiving it early can never snap the wheel.
+  double _spinAngleForElapsed(double elapsedMs) {
+    var remainingMs = elapsedMs.clamp(0.0, _spinDurationMs.toDouble());
+    var angle = _spinBaseAngle; // modulo one turn this is chicken (slot 0).
+    for (var second = 0; second < 5 && remainingMs > 0; second++) {
+      final segmentMs = math.min(1000.0, remainingMs);
+      angle += (segmentMs / getSpinDelay(5.0 - second)) * _spinStep;
+      remainingMs -= segmentMs;
+    }
+    return angle;
+  }
+
+  double _landingArcToWinner(double startAngle, int target, double remainingMs) {
+    const fullTurn = math.pi * 2;
+    final targetAngle = target * _spinStep;
+    var arc = (targetAngle - (startAngle % fullTurn)) % fullTurn;
+    if (arc < 0) arc += fullTurn;
+    final minimumArc = (remainingMs / 55.0) * _spinStep;
+    if (arc < minimumArc) arc += ((minimumArc - arc) / fullTurn).ceil() * fullTurn;
+    return arc;
+  }
+
   double _spinAngleAtProgress(double progress) {
     if (!_spinHasResult) return _spinAngle;
     final p = progress.clamp(0.0, 1.0);
-    if (p <= 0.8) {
-      // First 4 seconds: gradual acceleration, a short fastest section,
-      // maintain maximum speed; no deceleration at the end.
-      return _spinBaseAngle * const _SpinAccelerationCurve().transform(p / 0.8);
+    if (p <= 0.8) return _spinAngleForElapsed(p * _spinDurationMs);
+    if (_spinLandingStartAngle != null &&
+        _spinLandingStartProgress != null &&
+        _spinLandingArc != null) {
+      final u = ((p - _spinLandingStartProgress!) /
+              (1 - _spinLandingStartProgress!))
+          .clamp(0.0, 1.0);
+      return _spinLandingStartAngle! + _spinLandingArc! * u;
     }
-    if (_spinLandingStartAngle != null && _spinLandingStartProgress != null && _spinLandingSteps != null) {
-      final u = ((p - _spinLandingStartProgress!) / (1 - _spinLandingStartProgress!)).clamp(0.0, 1.0);
-      return _spinLandingStartAngle! + _spinLandingSteps! * _spinStep * u;
-    }
-    if (!_spinTargetKnown) {
-      final elapsedFinalMs = ((p - 0.8) * _spinDurationMs).clamp(0.0, 1000.0);
-      final fallbackSteps = (elapsedFinalMs / 55).floor();
-      return _spinBaseAngle + fallbackSteps * _spinStep;
-    }
-    final clockwiseSteps = _spinTargetSlot % kSlots.length;
-    // Keep the final second fast: choose at least 18 clockwise steps,
-    // adding whole revolutions as needed to align exactly with the winner.
-    final steps = 18 + ((clockwiseSteps - 18) % kSlots.length + kSlots.length) % kSlots.length;
-    final landingArc = steps * _spinStep;
+    if (!_spinTargetKnown) return _spinAngleForElapsed(p * _spinDurationMs);
+    final startAngle = _spinAngleForElapsed(4000);
+    final arc = _landingArcToWinner(startAngle, _spinTargetSlot, 1000);
     final u = ((p - 0.8) / 0.2).clamp(0.0, 1.0);
-    return _spinBaseAngle + landingArc * u; // constant-speed landing; no ease-out
+    return startAngle + arc * u;
   }
 
   void _startProvisionalSpin(RoundState s) {
@@ -847,7 +874,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     _spinTargetKnown = false;
     _spinLandingStartAngle = null;
     _spinLandingStartProgress = null;
-    _spinLandingSteps = null;
+    _spinLandingArc = null;
     _spinHasResult = true;
     final elapsedMs = (_serverNowMs() - _resultStartAt(s))
         .clamp(0, _spinDurationMs)
@@ -866,19 +893,16 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     if (_spinStartedRoundId != s.roundId) _startProvisionalSpin(s);
     final target = (s.resultSlot ?? 0).clamp(0, kSlots.length - 1).toInt();
 
-    // Store the server result, but _spinAngleAtProgress deliberately ignores
-    // it until progress reaches 80% (the final one-second landing window).
+    // A result received before the last second is held for landing.
+    // A late result anchors at the exact current angle without a snap.
     if (!_spinTargetKnown && _spinController.value > 0.8 && _spinController.value < 1) {
       final progress = _spinController.value;
-      final currentAngle = _spinAngleAtProgress(progress);
-      final currentIndex = (currentAngle / _spinStep).round() % kSlots.length;
-      final requiredModulo = (target - currentIndex + kSlots.length) % kSlots.length;
-      final remainingMs = (1 - progress) * _spinDurationMs;
-      final minimumSteps = math.max(1, (remainingMs / 55).ceil()).toInt();
-      final landingSteps = minimumSteps + ((requiredModulo - minimumSteps) % kSlots.length + kSlots.length) % kSlots.length;
+      final currentAngle = _spinAngleForElapsed(progress * _spinDurationMs);
       _spinLandingStartAngle = currentAngle;
       _spinLandingStartProgress = progress;
-      _spinLandingSteps = landingSteps;
+      _spinLandingArc = _landingArcToWinner(
+        currentAngle, target, (1 - progress) * _spinDurationMs,
+      );
     }
     _spinTargetSlot = target;
     _spinTargetKnown = true;
@@ -957,7 +981,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   void _onFoodPointerDown(int i) {
     final current = _s;
-    if (current == null || !_bettingOpen(current)) {
+    if (current == null || current.roundId <= 0 || _lockedBetRounds.contains(current.roundId) || !_bettingOpen(current)) {
       if (mounted) _showRoundClosedToast();
       return;
     }
@@ -972,7 +996,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     try {
       if (!mounted) return;
       final current = _s;
-      if (current == null || !_bettingOpen(current)) {
+      if (current == null || current.roundId <= 0 || _lockedBetRounds.contains(current.roundId) || !_bettingOpen(current)) {
         _showRoundClosedToast();
         return;
       }
@@ -1007,7 +1031,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   bool _enqueueBet(int roundId, int slot, int amount) {
     final current = _s;
-    if (current == null || current.roundId != roundId || !_bettingOpen(current)) {
+    if (current == null || roundId <= 0 || slot < 0 || slot >= kSlotKeys.length || current.roundId != roundId || _lockedBetRounds.contains(roundId) || !_bettingOpen(current)) {
       _showRoundClosedToast();
       return false;
     }
