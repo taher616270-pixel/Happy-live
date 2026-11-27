@@ -666,6 +666,39 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     );
   }
 
+  bool _sameDisplayState(RoundState a, RoundState b) {
+    bool sameInts(List<int> x, List<int> y) {
+      if (x.length != y.length) return false;
+      for (var i = 0; i < x.length; i++) {
+        if (x[i] != y[i]) return false;
+      }
+      return true;
+    }
+
+    if (a.roundId != b.roundId ||
+        a.phase != b.phase ||
+        a.balance != b.balance ||
+        a.resultSlot != b.resultSlot ||
+        a.special != b.special ||
+        a.players != b.players ||
+        !sameInts(a.pools, b.pools) ||
+        !sameInts(a.myBets, b.myBets) ||
+        a.topWinners.length != b.topWinners.length ||
+        a.recentBets.length != b.recentBets.length) return false;
+
+    for (var i = 0; i < a.topWinners.length; i++) {
+      final x = a.topWinners[i], y = b.topWinners[i];
+      if (x.name != y.name || x.avatarUrl != y.avatarUrl ||
+          x.amount != y.amount || x.isMe != y.isMe) return false;
+    }
+    for (var i = 0; i < a.recentBets.length; i++) {
+      final x = a.recentBets[i], y = b.recentBets[i];
+      if (x.name != y.name || x.avatarUrl != y.avatarUrl ||
+          x.slot != y.slot || x.amount != y.amount || x.isMe != y.isMe) return false;
+    }
+    return true;
+  }
+
   Future<void> _refresh() async {
     if (_fetching) return;
     _fetching = true;
@@ -679,31 +712,35 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       }
       if (!mounted) return;
       if (_spinning && _s != null && _s!.roundId != s.roundId) return;
-      final newRound = _s != null && _s!.roundId != s.roundId;
-      setState(() {
-        _reconcileOptimisticBets(s);
-        _s = s;
-        _timeLeft = _monotonicPhaseSecond(s);
-        _popupTimeLeft = _monotonicPopupSecond(s);
-        _err = null;
-        if (!_spinning && _pendingBets.isEmpty) {
-          _bal = s.balance;
-        }
-        if (newRound) {
-          _win = {};
-          _spinController.stop();
-          _spinController.value = 0;
-          _spinAngle = 0;
-          _spinHasResult = false;
-          _spinStartedRoundId = -1;
-          _spinFinalizedRoundId = -1;
-          _spinTargetKnown = false;
-          _spinRun = null;
-          _lit = null;
-          _msg = null;
-          _panel = false;
-              }
-      });
+      final previous = _s;
+      final newRound = previous != null && previous.roundId != s.roundId;
+      final displayChanged = previous == null || !_sameDisplayState(previous, s);
+      _reconcileOptimisticBets(s);
+      if (displayChanged || newRound) {
+        setState(() {
+          _s = s;
+          _timeLeft = _monotonicPhaseSecond(s);
+          _popupTimeLeft = _monotonicPopupSecond(s);
+          _err = null;
+          if (!_spinning && _pendingBets.isEmpty) {
+            _bal = s.balance;
+          }
+          if (newRound) {
+            _win = {};
+            _spinController.stop();
+            _spinController.value = 0;
+            _spinAngle = 0;
+            _spinHasResult = false;
+            _spinStartedRoundId = -1;
+            _spinFinalizedRoundId = -1;
+            _spinTargetKnown = false;
+            _spinRun = null;
+            _lit = null;
+            _msg = null;
+            _panel = false;
+          }
+        });
+      }
       if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
         _animatedRound = s.roundId;
         _spin(s);
