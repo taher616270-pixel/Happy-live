@@ -442,23 +442,6 @@ export default {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") ?? undefined;
 
-    // Small operational health endpoint: it reveals no player data and only ensures
-    // that the server-owned global round alarm is armed.
-    if (url.pathname === "/_ops/food-wheel/ensure" && request.method === "GET") {
-      if (!env.FOOD_WHEEL_ROUNDS) return json({ error: "food_wheel_scheduler_unavailable" }, 503);
-      try {
-        const hub = env.FOOD_WHEEL_ROUNDS.get(env.FOOD_WHEEL_ROUNDS.idFromName("food-wheel-global"));
-        const response = await hub.fetch("https://food-wheel.internal/ensure", { method: "POST" });
-        return new Response(await response.text(), {
-          status: response.status,
-          headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
-        });
-      } catch (error) {
-        console.error("[food-wheel.ops] ensure failed", error instanceof Error ? error.message : "UnknownError");
-        return json({ error: "food_wheel_scheduler_unavailable" }, 503);
-      }
-    }
-
     const registeredGameOrigin = Boolean(origin && env.DB && await isRegisteredGameOrigin(env.DB, origin));
     if (origin && !isAllowedOrigin(origin, env) && !registeredGameOrigin) {
       return json({ error: "origin_not_allowed" }, 403);
