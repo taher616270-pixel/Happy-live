@@ -77,7 +77,7 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.ok(ui.includes("return 80"));
   assert.ok(ui.includes("return 80"));
   assert.ok(ui.includes("double _spinAngleForElapsed(double elapsedMs)"));
-  assert.ok(ui.includes("getSpinDelay(5.0 - second)"));
+  assert.ok(ui.includes("integral * 5 * _spinStep"));
   assert.ok(ui.includes("double _landingArcToWinner"));
   assert.ok(ui.includes("_spinLandingArc = _landingArcToWinner"));
   assert.ok(ui.includes("final endAngle = _spinAngleAtProgress(1)"));
