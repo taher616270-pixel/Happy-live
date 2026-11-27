@@ -359,12 +359,17 @@ class _PendingWheelBet {
   });
 }
 
-class _FoodWheelGameState extends State<FoodWheelGame> {
+class _FoodWheelGameState extends State<FoodWheelGame>
+    with SingleTickerProviderStateMixin {
   int _betSequence = 0;
   Timer? _poll, _msgTimer, _panelTimer, _foodTapTimer;
+  late final AnimationController _spinController;
+  Animation<double>? _spinAnimation;
+  double _spinAngle = 0;
+  bool _spinHasResult = false;
   int _foodTapDebug = -1;
   RoundState? _s;
-  int _bal = 0, _chip = 10, _hit = -1, _animatedRound = -1, _timeLeft = 20, _popupTimeLeft = 5;
+  int _bal = 0, _chip = 10, _animatedRound = -1, _timeLeft = 20, _popupTimeLeft = 5;
   Set<int> _win = {};
   String? _lit, _err, _msg;
   bool _spinning = false, _panel = false;
@@ -387,6 +392,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   @override
   void initState() {
     super.initState();
+    _spinController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 5000),
+    );
     _refresh();
     _poll = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
@@ -411,6 +420,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     _msgTimer?.cancel();
     _panelTimer?.cancel();
     _foodTapTimer?.cancel();
+    _spinController.dispose();
     super.dispose();
   }
 
@@ -581,7 +591,11 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         }
         if (newRound) {
           _win = {};
-          _hit = -1;
+          _spinController.stop();
+          _spinController.value = 0;
+          _spinAnimation = null;
+          _spinAngle = 0;
+          _spinHasResult = false;
           _lit = null;
           _msg = null;
           _panel = false;
@@ -605,24 +619,37 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     final resultStartedAt = s.resultChosenAt ??
         s.bettingEndsAt ??
         DateTime.now().millisecondsSinceEpoch;
-    final stopAt = resultStartedAt + 5000;
-    var step = 0;
-    while (mounted) {
-      final remaining = stopAt - DateTime.now().millisecondsSinceEpoch;
-      if (remaining <= 0) break;
-      final elapsed = (DateTime.now().millisecondsSinceEpoch - resultStartedAt)
-          .clamp(0, 5000);
-      final progress = elapsed / 5000;
-      setState(() => _hit = step++ % kSlots.length);
-      final delayMs = (65 + 300 * progress * progress * progress).round();
-      await Future.delayed(Duration(milliseconds: math.min(delayMs, remaining).toInt()));
+    const spinDurationMs = 5000;
+    final elapsedMs = (DateTime.now().millisecondsSinceEpoch - resultStartedAt)
+        .clamp(0, spinDurationMs);
+    final progress = elapsedMs / spinDurationMs;
+
+    // Slot zero (chicken) is the fixed starting pointer. The animation itself
+    // travels three complete turns and finishes exactly on the server slot.
+    const startAngle = 0.0;
+    final targetAngle = target * (math.pi / 4);
+    final endAngle = startAngle + (3 * math.pi * 2) + targetAngle;
+    _spinController.stop();
+    _spinController.duration = const Duration(milliseconds: spinDurationMs);
+    _spinController.value = 0;
+    _spinAnimation = Tween<double>(begin: startAngle, end: endAngle).animate(
+      CurvedAnimation(parent: _spinController, curve: const _TopTopSpinCurve()),
+    );
+    _spinAngle = startAngle;
+    _spinHasResult = true;
+    _panelTimer?.cancel();
+
+    if (progress < 1) {
+      await _spinController.forward(from: progress);
+    } else {
+      _spinController.value = 1;
     }
     if (!mounted) return;
+
+    // Preserve the exact animation endpoint; do not snap to a discrete index.
+    _spinAngle = endAngle;
     _spinning = false;
-    _panelTimer?.cancel();
     setState(() {
-      // The server-selected result is the final highlighted food; never choose locally.
-      _hit = target;
       if (_pendingBets.isEmpty) {
         _bal = s.balance;
       }
@@ -1176,10 +1203,14 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   Widget _wheel(RoundState s) {
     return LayoutBuilder(builder: (context, c) {
       final w = c.maxWidth, d = w * 0.27, ds = w * 0.22; // d = المركز، ds = الدوائر
-      return SizedBox(
-        width: w,
-        height: w,
-        child: Stack(children: [
+      return AnimatedBuilder(
+        animation: _spinController,
+        builder: (context, _) {
+          final spinAngle = _spinAnimation?.value ?? _spinAngle;
+          return SizedBox(
+            width: w,
+            height: w,
+            child: Stack(children: [
           Positioned.fill(child: CustomPaint(painter: _SpokesPainter(d))),
           for (var i = 0; i < 8; i++)
             Positioned(
@@ -1187,7 +1218,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
               top: w / 2 - w * 0.37 * math.cos(i * math.pi / 4) - ds / 2,
               width: ds,
               height: ds,
-              child: _slot(i, s, ds),
+              child: _slot(i, s, ds, spinAngle),
             ),
           Center(
             child: Container(
@@ -1254,7 +1285,9 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
               ),
             ),
           ),
-        ]),
+            ]),
+          );
+        },
       );
     });
   }
@@ -1273,10 +1306,20 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     return math.max(serverBet, confirmedBet + pendingBet).toInt();
   }
 
-  Widget _slot(int i, RoundState s, double d) {
+  double _highlightForSlot(double angle, int slot) {
+    if (!_spinHasResult) return 0;
+    const step = math.pi / 4;
+    final raw = (angle - slot * step) % (math.pi * 2);
+    final delta = raw > math.pi ? raw - (math.pi * 2) : raw;
+    final linear = (1 - delta.abs() / step).clamp(0.0, 1.0);
+    return linear * linear * (3 - 2 * linear);
+  }
+
+  Widget _slot(int i, RoundState s, double d, double spinAngle) {
     final slot = kSlots[i];
     final myBet = _displayMyBet(s, i);
-    final hit = _hit == i, win = _win.contains(i), mine = myBet > 0;
+    final highlight = _highlightForSlot(spinAngle, i);
+    final hit = highlight > 0.001, win = _win.contains(i), mine = myBet > 0;
     final mx = s.pools.reduce((a, b) => a > b ? a : b);
     const frac = 0.45; // Fixed fill: never changes with bets or totals.
     const dark = Color(0xFF5A3A00);
@@ -1290,7 +1333,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         Container(
           width: d,
           height: d,
-          transform: Matrix4.identity()..scale(hit || win ? 1.12 : 1.0),
+          transform: Matrix4.identity()
+            ..scale(win ? 1.12 : 1.0 + 0.12 * highlight),
           transformAlignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
@@ -1302,16 +1346,23 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                     ? const Color(0xFF087A2B)
                     : const Color(0xFF8A4B2A),
                 width: 4),
-            boxShadow: hit || win
+            boxShadow: win
                 ? [
-                    BoxShadow(
-                        color: win
-                            ? const Color(0xFF3DFF7A)
-                            : const Color(0xFFFFD400),
+                    const BoxShadow(
+                        color: Color(0xFF3DFF7A),
                         blurRadius: 22,
                         spreadRadius: 4)
                   ]
-                : null,
+                : highlight > 0
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFFFFD400)
+                              .withOpacity(highlight),
+                          blurRadius: 22 * highlight,
+                          spreadRadius: 4 * highlight,
+                        )
+                      ]
+                    : null,
           ),
           child: ClipOval(
             child: Stack(children: [
@@ -2694,3 +2745,41 @@ class _TopWinsRules extends StatelessWidget {
     );
   }
 }
+/// Slow start, smooth acceleration through 3s, fastest from 3-4s,
+/// then a gentle one-second deceleration to the exact target.
+class _TopTopSpinCurve extends Curve {
+  const _TopTopSpinCurve();
+
+  static const double _slowPart = 0.6;
+  static const double _fastPart = 0.2;
+  static const double _initialSpeed = 0.05;
+  static const double _maxSpeed = 3.0;
+  static const double _firstArea =
+      _slowPart * (_initialSpeed + (_maxSpeed - _initialSpeed) * 0.5);
+  static const double _middleArea = _fastPart * _maxSpeed;
+  static const double _totalArea = _firstArea + _middleArea + _fastPart * _maxSpeed * 0.5;
+
+  @override
+  double transformInternal(double t) {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    double area;
+    if (t <= _slowPart) {
+      final u = t / _slowPart;
+      area = _slowPart *
+          (_initialSpeed * u +
+              (_maxSpeed - _initialSpeed) * (u * u * u - 0.5 * u * u * u * u));
+    } else if (t <= _slowPart + _fastPart) {
+      area = _firstArea + _maxSpeed * (t - _slowPart);
+    } else {
+      final u = (t - _slowPart - _fastPart) / _fastPart;
+      area = _firstArea +
+          _middleArea +
+          _maxSpeed *
+              _fastPart *
+              (u - u * u * u + 0.5 * u * u * u * u);
+    }
+    return (area / _totalArea).clamp(0.0, 1.0);
+  }
+}
+
