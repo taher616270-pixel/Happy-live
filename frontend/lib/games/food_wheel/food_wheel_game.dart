@@ -348,6 +348,12 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   bool _spinning = false, _busy = false, _panel = false;
   double _centerTurns = 0;
   bool _fetching = false; // يمنع تراكم طلبات الحالة لو الخادم بطيء
+  int _optimisticRoundId = -1;
+  final List<int> _optimisticBaseMine = List.filled(8, 0);
+  final List<int> _optimisticBasePools = List.filled(8, 0);
+  final List<int> _optimisticBetDelta = List.filled(8, 0);
+  int _optimisticReserved = 0;
+  int _betRequestSequence = 0;
   String _mode = 'n'; // n = عادي، a = متقدم
   bool _auto = false, _sound = true, _showBets = true;
   List<int> _prevBets = List.filled(8, 0); // رهانات الجولة السابقة (للتكرار)
@@ -388,6 +394,71 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     });
   }
 
+  void _startOptimisticRound(RoundState s) {
+    _optimisticRoundId = s.roundId;
+    for (var i = 0; i < 8; i++) {
+      _optimisticBaseMine[i] = s.myBets[i];
+      _optimisticBasePools[i] = s.pools[i];
+      _optimisticBetDelta[i] = 0;
+    }
+    _optimisticReserved = 0;
+  }
+
+  void _reconcileOptimisticBets(RoundState s) {
+    if (_optimisticRoundId != s.roundId) {
+      _startOptimisticRound(s);
+      return;
+    }
+    for (var i = 0; i < 8; i++) {
+      final delta = _optimisticBetDelta[i];
+      if (delta == 0) {
+        _optimisticBaseMine[i] = s.myBets[i];
+        _optimisticBasePools[i] = s.pools[i];
+      } else if (s.myBets[i] >= _optimisticBaseMine[i] + delta) {
+        _optimisticBetDelta[i] = 0;
+        _optimisticReserved = math.max(0, _optimisticReserved - delta);
+        _optimisticBaseMine[i] = s.myBets[i];
+        _optimisticBasePools[i] = s.pools[i];
+      }
+    }
+  }
+
+  RoundState _withOptimisticBets(RoundState s) {
+    if (_optimisticRoundId != s.roundId) return s;
+    final mine = List<int>.generate(
+      8,
+      (i) => math.max(s.myBets[i], _optimisticBaseMine[i] + _optimisticBetDelta[i]),
+    );
+    final pools = List<int>.generate(
+      8,
+      (i) => math.max(s.pools[i], _optimisticBasePools[i] + _optimisticBetDelta[i]),
+    );
+    return RoundState(
+      roundId: s.roundId,
+      secondsLeft: s.secondsLeft,
+      roundEndAt: s.roundEndAt,
+      bettingEndsAt: s.bettingEndsAt,
+      phase: s.phase,
+      pools: pools,
+      myBets: mine,
+      balance: s.balance,
+      myPayout: s.myPayout,
+      resultSlot: s.resultSlot,
+      special: s.special,
+      history: s.history,
+      chestIndex: s.chestIndex,
+      chestTotal: s.chestTotal,
+      chestThresholds: s.chestThresholds,
+      chestRewards: s.chestRewards,
+      chestReward: s.chestReward,
+      topWinners: s.topWinners,
+      recentBets: s.recentBets,
+      players: s.players,
+      roundUuid: s.roundUuid,
+      player: s.player,
+    );
+  }
+
   Future<void> _refresh() async {
     if (_fetching) return;
     _fetching = true;
@@ -397,6 +468,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       if (_spinning && _s != null && _s!.roundId != s.roundId) return;
       final newRound = _s != null && _s!.roundId != s.roundId;
       setState(() {
+        _reconcileOptimisticBets(s);
         _s = s;
         _timeLeft = s.roundEndAt == null
             ? s.secondsLeft.clamp(0, 20)
@@ -482,45 +554,60 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     if (parts.isNotEmpty) _say(parts.join('  •  '));
   }
 
-  Future<void> _bet(int i) async {
+  void _bet(int i) {
     final s = _s;
     if (s == null || s.phase != RoundPhase.betting) {
-      return _say('انتظر الجولة القادمة');
+      _say('انتظر الجولة القادمة');
+      return;
     }
     final pl = s.player;
     if (pl != null && pl.status.isNotEmpty && pl.status != 'active') {
-      return _say('حسابك غير مفعّل للعب');
+      _say('حسابك غير مفعّل للعب');
+      return;
     }
-    if (_bal < _chip) return _say('رصيدك لا يكفي');
-    if (_busy) return;
-    _busy = true;
+    if (_bal - _optimisticReserved < _chip) {
+      _say('رصيدك لا يكفي');
+      return;
+    }
+
+    final amount = _chip;
+    final roundId = s.roundId;
+    if (_optimisticRoundId != roundId) _startOptimisticRound(s);
+
+    // اعرض الرهان محليًا في نفس إطار الواجهة، ثم أرسل الطلب دون تعطيل الضغطات التالية.
+    setState(() {
+      _optimisticBetDelta[i] += amount;
+      _optimisticReserved += amount;
+    });
+    final requestId = ++_betRequestSequence;
+    unawaited(_submitBet(requestId, roundId, i, amount));
+  }
+
+  Future<void> _submitBet(
+      int requestId, int roundId, int slot, int amount) async {
     try {
-      final n = await widget.api.placeBet(s.roundId, i, _chip);
-      if (mounted) {
-        setState(() {
-          _s = n;
-          _bal = n.balance;
-          _timeLeft = n.roundEndAt == null
-              ? n.secondsLeft.clamp(0, 20)
-              : ((n.roundEndAt! - DateTime.now().millisecondsSinceEpoch) / 1000)
-                  .ceil()
-                  .clamp(0, 20);
-        });
-        if (n.phase == RoundPhase.result && n.roundId != _animatedRound) {
-          _animatedRound = n.roundId;
-          await _spin(n);
-        }
-      }
+      await widget.api.placeBet(roundId, slot, amount);
+      if (!mounted) return;
+      // لا نستبدل الحالة بردّ قديم قد يصل بعد طلب أحدث؛ polling يجلب الحالة المعتمدة.
+      await _refresh();
     } catch (e) {
+      if (!mounted) return;
+      if (_optimisticRoundId == roundId && _s?.roundId == roundId) {
+        setState(() {
+          _optimisticBetDelta[slot] =
+              math.max(0, _optimisticBetDelta[slot] - amount);
+          _optimisticReserved = math.max(0, _optimisticReserved - amount);
+        });
+      }
       _say(wheelErrorText(e));
-    } finally {
-      _busy = false;
+      await _refresh();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final s = _s;
+    final wheelState = s == null ? null : _withOptimisticBets(s);
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Material(
@@ -556,7 +643,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                             height: 40,
                             child: Row(children: [_playerBadge(s.player)]),
                           ),
-                          _wheel(s),
+                          _wheel(wheelState!),
                         ]),
                       ),
                       _platform(s),
@@ -821,7 +908,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   Widget _topBar(RoundState s) => Row(children: [
         _ib(const Icon(Icons.close, color: Colors.white, size: 28),
             () => Navigator.of(context).maybePop()),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         _pill(Column(mainAxisSize: MainAxisSize.min, children: [
           const Text('جولة',
               style: TextStyle(color: Colors.white70, fontSize: 9, height: 1.1)),
@@ -833,6 +920,13 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                   fontWeight: FontWeight.bold)),
         ])),
         const Spacer(),
+        _trophyBtn(),
+        const SizedBox(width: 4),
+        _ib(const Icon(Icons.history, color: Colors.white, size: 24), _openLog),
+        const SizedBox(width: 2),
+        _ib(const Icon(Icons.settings, color: Colors.white, size: 24), _openSettings),
+        const SizedBox(width: 4),
+        _modeToggle(),
       ]);
 
   Widget _wheel(RoundState s) {
@@ -872,20 +966,32 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                       border: Border.all(color: const Color(0xFFB36B0F), width: 2),
                     ),
                     child: Text(
-                        s.phase == RoundPhase.betting ? '${_timeLeft}s' : '🎡',
+                        '${_timeLeft}s',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        softWrap: false,
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: d * 0.26,
                             fontWeight: FontWeight.w900)),
                   ),
                   SizedBox(height: d * 0.04),
-                  AnimatedRotation(
-                    turns: _centerTurns,
-                    duration: const Duration(milliseconds: 4200),
-                    curve: Curves.easeOutCubic,
-                    child: Text(
-                      s.phase == RoundPhase.betting ? 'النتيجة قادمة' : '🍽️',
-                      style: TextStyle(color: Colors.white, fontSize: d * 0.20),
+                  SizedBox(
+                    width: d * 0.9,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: const Text(
+                        'النتيجة قادمة',
+                        maxLines: 1,
+                        softWrap: false,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          height: 1.0,
+                        ),
+                      ),
                     ),
                   ),
                 ],
