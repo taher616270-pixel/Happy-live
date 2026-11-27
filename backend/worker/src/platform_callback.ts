@@ -234,10 +234,92 @@ async function handleHappyFoodWheelWalletCallback(
   }
 }
 
+
+/**
+ * Verify a Happy Live browser game session for the trusted external game platform.
+ * The platform receives only the public player ID and parent session ID; it never
+ * receives the user's internal database ID or the raw app login credential.
+ */
+async function handleHappyFoodWheelGameSessionCallback(
+  request: Request, db: D1Database | undefined, reply: JsonReply
+): Promise<Response | null> {
+  if (new URL(request.url).pathname !== "/v1/platform/game-session/verify") return null;
+  if (request.method !== "POST") return reply({error:"method_not_allowed"},405);
+  if (!db) return reply({error:"database_unavailable"},503);
+  let body: Record<string,unknown>;
+  try {
+    const parsed = await request.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return reply({error:"invalid_payload"},400);
+    body = parsed as Record<string,unknown>;
+  } catch { return reply({error:"invalid_payload"},400); }
+
+  const appId = typeof body.appId === "string" ? body.appId : "";
+  if (!(await happyFoodWheelCredential(db,request,appId))) return reply({error:"invalid_application_credential"},401);
+  const sessionToken = field(body,"sessionToken");
+  const sessionId = field(body,"sessionId");
+  const gameId = field(body,"gameId");
+  const gameOrigin = field(body,"gameOrigin");
+  const parentOrigin = field(body,"parentOrigin");
+  if ((!sessionToken && !sessionId) || (sessionToken && sessionId) ||
+      (sessionToken && sessionToken.length > 512) ||
+      (sessionId && !/^[0-9a-f-]{36}$/i.test(sessionId)) ||
+      !/^[0-9a-f-]{36}$/i.test(gameId) ||
+      parentOrigin !== "https://happy-live.pages.dev") {
+    return reply({error:"invalid_game_session_payload"},400);
+  }
+  let expectedGameOrigin = "";
+  try {
+    const parsed = new URL(gameOrigin);
+    if (parsed.protocol !== "https:" || parsed.origin !== gameOrigin || parsed.username || parsed.password) {
+      return reply({error:"invalid_game_origin"},400);
+    }
+    expectedGameOrigin = parsed.origin;
+  } catch { return reply({error:"invalid_game_origin"},400); }
+
+  try {
+    const now = new Date().toISOString();
+    const identity = sessionToken ? "s.token_hash=?" : "s.id=?";
+    const identityValue = sessionToken ? await sha256(sessionToken) : sessionId;
+    const row = await db.prepare(
+      "SELECT s.id AS sessionId,s.game_id AS gameId,s.game_origin AS gameOrigin,s.expires_at AS expiresAt," +
+      "u.status AS userStatus,p.happy_id AS uid,p.display_name AS displayName,p.avatar_key AS avatarUrl," +
+      "COALESCE(w.balance,0) AS balance,g.game_url AS gameUrl " +
+      "FROM game_sessions s " +
+      "JOIN game_session_app_bindings binding ON binding.game_session_id=s.id " +
+      "JOIN user_sessions app ON app.id=binding.app_session_id AND app.user_id=s.user_id AND app.revoked_at IS NULL AND app.expires_at>? " +
+      "JOIN game_registry g ON g.id=s.game_id AND g.enabled=1 " +
+      "JOIN game_registry_lifecycle lifecycle ON lifecycle.game_id=g.id AND lifecycle.status='active' " +
+      "JOIN users u ON u.id=s.user_id " +
+      "LEFT JOIN profiles p ON p.user_id=u.id " +
+      "LEFT JOIN user_wallets w ON w.user_id=u.id " +
+      "WHERE " + identity + " AND s.game_id=? AND s.game_origin=? AND s.revoked_at IS NULL AND s.expires_at>? LIMIT 1"
+    ).bind(now,identityValue,gameId,expectedGameOrigin,now).first<{
+      sessionId:string;gameId:string;gameOrigin:string;expiresAt:string;userStatus:string;
+      uid:string|null;displayName:string|null;avatarUrl:string|null;balance:number;gameUrl:string;
+    }>();
+    if (!row || row.userStatus !== "active" || !row.uid) return reply({error:"game_session_expired_or_invalid"},401);
+    let registeredOrigin = "";
+    try { registeredOrigin = new URL(row.gameUrl).origin; } catch { return reply({error:"game_origin_mismatch"},403); }
+    if (registeredOrigin !== expectedGameOrigin || row.gameOrigin !== expectedGameOrigin) {
+      return reply({error:"game_origin_mismatch"},403);
+    }
+    const balance = Number(row.balance);
+    if (!Number.isSafeInteger(balance) || balance < 0) return reply({error:"wallet_unavailable"},503);
+    return reply({
+      ok:true,appId,sessionId:row.sessionId,gameId:row.gameId,uid:row.uid,
+      displayName:row.displayName?.trim() || "مستخدم",avatarUrl:row.avatarUrl || "",
+      balance,expiresAt:row.expiresAt,parentOrigin
+    },200);
+  } catch (error) {
+    console.error("[happy-food-wheel.game-session] verification failed",error instanceof Error?error.message:"unknown");
+    return reply({error:"game_session_verification_unavailable"},503);
+  }
+}
+
 export async function handlePlatformCallbackRequest(
   request: Request, db: D1Database | undefined, reply: JsonReply
 ): Promise<Response | null> {
-  const foodWheelWallet=await handleHappyFoodWheelWalletCallback(request,db,reply);
+  const gameSession=await handleHappyFoodWheelGameSessionCallback(request,db,reply);\n  if (gameSession) return gameSession;\n  const foodWheelWallet=await handleHappyFoodWheelWalletCallback(request,db,reply);
   if (foodWheelWallet) return foodWheelWallet;
   return handleHappyFoodWheelHandshake(request,db,reply);
 }
