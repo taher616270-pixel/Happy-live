@@ -15,8 +15,9 @@ interface FoodWheelRound {
 }
 
 const MULTIPLIERS = [45, 5, 15, 5, 25, 5, 10, 5] as const;
-const BETTING_MS = 15_000;
-const ROUND_MS = 20_000;
+const BETTING_MS = 20_000;
+// 20s betting + 5s server-result spin + 5s result popup.
+const ROUND_MS = 30_000;
 const MAX_CATCH_UP_ROUNDS = 100;
 
 function chooseResultSlot(): number {
