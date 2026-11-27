@@ -82,6 +82,21 @@ const kSlots = [
 ];
 const kSlotKeys = <String>['chicken', 'tomato', 'goat', 'chili', 'fish', 'carrot', 'shrimp', 'corn'];
 
+Map<String, int> _foodTotalsFromJson(Map<String, dynamic> json) {
+  final named = json['total_bets_by_food'];
+  if (named is Map) {
+    return named.map((key, value) => MapEntry('$key', (value as num).toInt()));
+  }
+  final rawPools = json['pools'];
+  if (rawPools is! List) return const <String, int>{};
+  final totals = <String, int>{};
+  for (var i = 0; i < kSlotKeys.length && i < rawPools.length; i++) {
+    final value = rawPools[i];
+    if (value is num) totals[kSlotKeys[i]] = value.toInt();
+  }
+  return totals;
+}
+
 int getSpinDelay(double remaining) {
   if (remaining > 4) return 220;
   if (remaining > 3) return 150;
@@ -271,9 +286,7 @@ class RoundState {
         myBets: (j['my_bets'] as List).map((e) => (e as num).toInt()).toList(),
         balance: (j['balance'] as num).toInt(),
         myPayout: (j['my_payout'] as num?)?.toInt() ?? 0,
-        totalBetsByFood: j['total_bets_by_food'] is Map
-            ? (j['total_bets_by_food'] as Map).map((key, value) => MapEntry('$key', (value as num).toInt()))
-            : const <String, int>{},
+        totalBetsByFood: _foodTotalsFromJson(j),
         resultSlot: (j['result_slot'] as num?)?.toInt(),
         special: j['special'] as String?,
         history: ((j['history'] as List?) ?? []).map((e) => '$e').toList(),
