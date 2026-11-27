@@ -365,7 +365,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   String? _lit, _err, _msg;
   bool _spinning = false, _panel = false;
   bool _fetching = false; // يمنع تراكم طلبات الحالة لو الخادم بطيء
-  bool _betQueueRunning = false;
   int _confirmedRoundId = -1;
   final List<int> _confirmedMine = List.filled(8, 0);
   final List<int> _confirmedPools = List.filled(8, 0);
@@ -664,7 +663,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       amount: amount,
     );
     setState(() => _pendingBets.add(bet));
-    unawaited(_drainBetQueue());
+    unawaited(_sendBet(bet));
     return true;
   }
 
@@ -688,56 +687,49 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     }.contains(error.code);
   }
 
-  Future<void> _drainBetQueue() async {
-    if (_betQueueRunning) return;
-    _betQueueRunning = true;
+  // Each tap is sent independently: one slow request can never block later taps.
+  Future<void> _sendBet(_PendingWheelBet bet) async {
+    if (!mounted || !_pendingBets.contains(bet) ||
+        bet.status != _PendingBetStatus.queued) return;
+    setState(() => bet.status = _PendingBetStatus.sending);
     try {
-      while (mounted) {
-        final index = _pendingBets.indexWhere(
-          (bet) => bet.status == _PendingBetStatus.queued,
-        );
-        if (index < 0) break;
-
-        final bet = _pendingBets[index];
-        setState(() => bet.status = _PendingBetStatus.sending);
-        try {
-          final confirmed = await widget.api.placeBet(
-            bet.roundId,
-            bet.slot,
-            bet.amount,
-            bet.idempotencyKey,
-          );
-          if (!mounted) return;
-          setState(() {
-            bet.status = _PendingBetStatus.accepted;
-            // الخادم يعيد الرصيد بعد الخصم؛ تحديثه هنا يمنع حجز المبلغ مرتين.
-            _bal = confirmed.balance;
-            if (_s?.roundId == confirmed.roundId) {
-              _s = confirmed;
-            }
-            _reconcileOptimisticBets(confirmed);
-            if (_s?.roundId != bet.roundId ||
-                bet.observedInState) {
-              _pendingBets.remove(bet);
-            }
-          });
-        } catch (error) {
-          if (!mounted) return;
-          if (_isDefinitiveBetRejection(error)) {
-            setState(() => _pendingBets.remove(bet));
-            _say(wheelErrorText(error));
-          } else {
-            // فشل الشبكة أو رد غير مكتمل لا يعني رفض الرهان؛ أعد نفس المفتاح.
-            setState(() => bet.status = _PendingBetStatus.queued);
-            await Future.delayed(const Duration(milliseconds: 450));
-          }
+      final confirmed = await widget.api.placeBet(
+        bet.roundId,
+        bet.slot,
+        bet.amount,
+        bet.idempotencyKey,
+      );
+      if (!mounted) return;
+      setState(() {
+        bet.status = _PendingBetStatus.accepted;
+        // Concurrent responses may arrive out of order; never restore an older,
+        // higher balance over a newer lower balance.
+        _bal = math.min(_bal, confirmed.balance).toInt();
+        if (_s?.roundId == confirmed.roundId) {
+          _s = confirmed;
         }
-      }
-    } finally {
-      _betQueueRunning = false;
-      if (mounted &&
-          _pendingBets.any((bet) => bet.status == _PendingBetStatus.queued)) {
-        unawaited(_drainBetQueue());
+        _reconcileOptimisticBets(confirmed);
+        if (_s?.roundId != bet.roundId || bet.observedInState) {
+          _pendingBets.remove(bet);
+        }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      if (_isDefinitiveBetRejection(error)) {
+        setState(() {
+          _pendingBets.remove(bet);
+          // Roll back only this rejected tap; all other optimistic taps remain.
+          _bal = math.max(_bal, (_s?.balance ?? _bal)).toInt();
+        });
+        _say(wheelErrorText(error));
+        unawaited(_refresh());
+      } else {
+        // Keep the optimistic amount visible and retry this same request/key
+        // independently. It cannot hold up any subsequent click.
+        setState(() => bet.status = _PendingBetStatus.queued);
+        Timer(const Duration(seconds: 1), () {
+          if (mounted) unawaited(_sendBet(bet));
+        });
       }
     }
   }
@@ -1150,6 +1142,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     final frac = mx == 0 ? 0.45 : 0.45 + 0.35 * (s.pools[i] / mx);
     const dark = Color(0xFF5A3A00);
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => _bet(i),
       child: Stack(clipBehavior: Clip.none, children: [
         AnimatedContainer(
@@ -1312,7 +1305,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         const SizedBox(width: 8),
         Expanded(child: _plPill('سجلي', '')),
         const SizedBox(width: 8),
-        Expanded(child: _plPill('العملات المتبقية', '${_fmt(_bal)} 🪙')),
+        Expanded(child: _plPill('العملات المتبقية', '${_fmt(math.max(0, _bal - _pendingReserved))} 🪙')),
       ]);
 
   Widget _plPill(String label, String value) => Container(
