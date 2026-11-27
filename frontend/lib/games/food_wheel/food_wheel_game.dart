@@ -343,7 +343,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   List<int> _prevBets = List.filled(8, 0); // رهانات الجولة السابقة (للتكرار)
   int _todayWin = 0;
   final List<_LogEntry> _log = [];
-  List<int> get _chipSet => _mode == 'a' ? kChipsAdv : kChips;
+  List<int> get _chipSet => kChips;
 
   @override
   void initState() {
@@ -854,7 +854,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.white70, fontSize: 10)),
-        TextButton(onPressed: _refresh, child: const Text('إعادة المحاولة')),
+        TextButton(onPressed: null, child: const Text('إعادة المحاولة')),
       ]);
 
   Widget _pill(Widget child) => Container(
