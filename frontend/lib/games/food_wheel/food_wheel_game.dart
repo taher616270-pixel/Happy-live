@@ -80,6 +80,7 @@ const kSlots = [
   WheelSlot('🦐', 10, false),
   WheelSlot('🌽', 5, true),
 ];
+const kSlotKeys = <String>['chicken', 'tomato', 'goat', 'chili', 'fish', 'carrot', 'shrimp', 'corn'];
 const kChips = [10, 500, 6000, 30000, 100000];
 
 const kChipsAdv = [100000, 500000, 1000000, 5000000, 10000000]; // وضع متقدم
@@ -420,7 +421,11 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   int _lockedMineRoundId = -1;
   final List<int> _confirmedMine = List.filled(8, 0);
   final List<int> _roundLockedMine = List.filled(8, 0);
-  final Map<int, List<int>> _myBetsByRound = {};
+  final Map<int, Map<String, int>> _myBetsByRound = {};
+  final Map<int, Map<String, int>> _frozenBetsByRound = {};
+  final Set<int> _lockedBetRounds = {};
+  final Map<int, List<int>> _serverTotalsByRound = {};
+  final Set<int> _finalServerTotalsRounds = {};
   final List<int> _confirmedPools = List.filled(8, 0);
   final List<_PendingWheelBet> _pendingBets = [];
   int get _pendingReserved => _pendingBets
@@ -457,6 +462,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         final popupNext = _monotonicPopupSecond(current);
         // Begin the five-second visual spin at the exact local deadline,
         // even while the result request is still travelling to the server.
+        if (_isResultPhase(current)) _freezeMyBets(current.roundId);
         if (_isResultPhase(current) && _spinStartedRoundId != current.roundId) {
           _startProvisionalSpin(current);
         }
@@ -466,7 +472,14 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           setState(() {
             _timeLeft = next;
             _popupTimeLeft = popupNext;
-            if (popupExpired) _panel = false;
+            if (popupExpired) {
+              _panel = false;
+              _myBetsByRound.remove(current.roundId);
+              _frozenBetsByRound.remove(current.roundId);
+              _lockedBetRounds.remove(current.roundId);
+              _serverTotalsByRound.remove(current.roundId);
+              _finalServerTotalsRounds.remove(current.roundId);
+            }
             if (clearMessage) _msg = null;
             if (clearToast) _roundClosedToast = null;
           });
@@ -557,15 +570,45 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     return _popupDisplaySecond;
   }
 
-  List<int> _myBetsForRound(int roundId) => _myBetsByRound.putIfAbsent(roundId, () => List<int>.filled(8, 0));
-  int _myBetTotalForRound(int roundId) => _myBetsForRound(roundId).fold<int>(0, (sum, amount) => sum + amount);
+  Map<String, int> _myBetsForRound(int roundId) => _myBetsByRound.putIfAbsent(roundId, () => <String, int>{});
+  Map<String, int> _displayBetsForRound(int roundId) => _frozenBetsByRound[roundId] ?? _myBetsForRound(roundId);
+  int _foodBetForSlot(int roundId, int slot) => slot >= 0 && slot < kSlotKeys.length ? (_displayBetsForRound(roundId)[kSlotKeys[slot]] ?? 0) : 0;
+  int _myBetTotalForRound(int roundId) => _displayBetsForRound(roundId).values.fold<int>(0, (sum, amount) => sum + amount);
+
+  void _freezeMyBets(int roundId) {
+    if (_lockedBetRounds.contains(roundId)) return;
+    _frozenBetsByRound[roundId] = Map<String, int>.from(_myBetsForRound(roundId));
+    _lockedBetRounds.add(roundId);
+  }
+
+  List<int> _serverTotalsForRound(int roundId) {
+    final totals = _serverTotalsByRound[roundId] ?? const <int>[];
+    return List<int>.generate(kSlotKeys.length, (i) => i < totals.length ? totals[i] : 0);
+  }
+
+  void _rememberServerTotals(RoundState s) {
+    if (s.phase == RoundPhase.result) {
+      if (_finalServerTotalsRounds.contains(s.roundId)) return;
+      _finalServerTotalsRounds.add(s.roundId);
+    } else if (_lockedBetRounds.contains(s.roundId)) {
+      return;
+    }
+    final totals = _serverTotalsByRound.putIfAbsent(s.roundId, () => List<int>.filled(kSlotKeys.length, 0));
+    for (var i = 0; i < kSlotKeys.length && i < s.pools.length; i++) {
+      totals[i] = math.max(totals[i], s.pools[i]).toInt();
+    }
+  }
 
   void _startOptimisticRound(RoundState s) {
     if (!_myBetsByRound.containsKey(s.roundId)) {
-      _myBetsByRound[s.roundId] = List<int>.generate(8, (i) => _safeSlotValue(s.myBets, i));
+      _myBetsByRound[s.roundId] = <String, int>{
+        for (var i = 0; i < kSlotKeys.length; i++)
+          if (_safeSlotValue(s.myBets, i) > 0) kSlotKeys[i]: _safeSlotValue(s.myBets, i),
+      };
     }
     _confirmedRoundId = s.roundId;
     _lockedMineRoundId = s.roundId;
+    _rememberServerTotals(s);
     for (var i = 0; i < 8; i++) {
       _confirmedMine[i] = _safeSlotValue(s.myBets, i);
       _roundLockedMine[i] = _safeSlotValue(_myBetsForRound(s.roundId), i);
@@ -642,23 +685,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   RoundState _withOptimisticBets(RoundState s) {
     // Always merge local pending bets for the displayed round. This prevents
     // a freshly saved bet from disappearing when the confirmed baseline is unset.
-    final pendingBySlot = List<int>.generate(
-      8,
-      (slot) => _pendingBets
-          .where((bet) =>
-              bet.roundId == s.roundId &&
-              bet.slot == slot &&
-              !bet.observedInState)
-          .fold<int>(0, (sum, bet) => sum + bet.amount),
-    );
-    final mine = List<int>.generate(
-      8,
-      (i) => _safeSlotValue(_myBetsForRound(s.roundId), i),
-    );
-    final pools = List<int>.generate(
-      8,
-      (i) => math.max(_safeSlotValue(s.pools, i), _confirmedPools[i] + pendingBySlot[i]).toInt(),
-    );
+    final mine = List<int>.generate(kSlotKeys.length, (i) => _foodBetForSlot(s.roundId, i));
+    final pools = _serverTotalsForRound(s.roundId);
     return RoundState(
       roundId: s.roundId,
       secondsLeft: s.secondsLeft,
@@ -744,6 +772,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       }
       if (!mounted) return;
       if (_spinning && _s != null && _s!.roundId != s.roundId) return;
+      if (s.phase == RoundPhase.result || _serverNowMs() >= _bettingDeadline(s)) _freezeMyBets(s.roundId);
+      _rememberServerTotals(s);
       final previous = _s;
       final newRound = previous != null && previous.roundId != s.roundId;
       final displayChanged =
@@ -787,7 +817,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   static const int _spinDurationMs = 5000;
   static const double _spinStep = math.pi / 4;
-  static const double _spinBaseAngle = 3 * math.pi * 2 + 7 * _spinStep;
+  static const double _spinBaseAngle = 3 * math.pi * 2;
 
   // The first four seconds are target-independent. The winner is consulted
   // only in the final second, so receiving it early can never snap the wheel.
@@ -799,11 +829,15 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       // maintain maximum speed; no deceleration at the end.
       return _spinBaseAngle * const _SpinAccelerationCurve().transform(p / 0.8);
     }
-    if (!_spinTargetKnown) return _spinBaseAngle;
-    final clockwiseSteps = (_spinTargetSlot - 7 + 8) % 8;
+    if (!_spinTargetKnown) {
+      final elapsedFinalMs = ((p - 0.8) * _spinDurationMs).clamp(0.0, 1000.0);
+      final fallbackSteps = (elapsedFinalMs / 55).floor();
+      return _spinBaseAngle + fallbackSteps * _spinStep;
+    }
+    final clockwiseSteps = _spinTargetSlot % kSlots.length;
     // Keep the final second fast: choose at least 18 clockwise steps,
     // adding whole revolutions as needed to align exactly with the winner.
-    final steps = 18 + ((clockwiseSteps - 18) % 8 + 8) % 8;
+    final steps = 18 + ((clockwiseSteps - 18) % kSlots.length + kSlots.length) % kSlots.length;
     final landingArc = steps * _spinStep;
     final u = ((p - 0.8) / 0.2).clamp(0.0, 1.0);
     return _spinBaseAngle + landingArc * u; // constant-speed landing; no ease-out
@@ -830,6 +864,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   Future<void> _spin(RoundState s) async {
+    _freezeMyBets(s.roundId);
     if (_spinStartedRoundId != s.roundId) _startProvisionalSpin(s);
     final target = (s.resultSlot ?? 0).clamp(0, kSlots.length - 1).toInt();
 
@@ -846,8 +881,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     }
     if (!mounted || _spinFinalizedRoundId == s.roundId) return;
 
-    final clockwiseSteps = (target - 7 + 8) % 8;
-    final steps = 18 + ((clockwiseSteps - 18) % 8 + 8) % 8;
+    final clockwiseSteps = target % kSlots.length;
+    final steps = 18 + ((clockwiseSteps - 18) % kSlots.length + kSlots.length) % kSlots.length;
     final endAngle = _spinBaseAngle + steps * _spinStep;
     _spinController.stop();
     _spinController.value = 1;
@@ -883,7 +918,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         if (_log.length > 30) _log.removeLast();
       }
     });
-    Future<void>.delayed(const Duration(seconds: 5), () { _myBetsByRound.remove(s.roundId); });
     final parts = <String>[];
     if (s.myPayout > 0) {
       parts.add('ربحت ${_fmt(s.myPayout)} 🎉');
@@ -953,7 +987,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         amount: amount,
       );
       setState(() {
-        _myBetsForRound(current.roundId)[i] += amount;
+        final bets = _myBetsForRound(current.roundId);
+        bets[kSlotKeys[i]] = (bets[kSlotKeys[i]] ?? 0) + amount;
         _roundLockedMine[i] += amount;
         _pendingBets.add(bet);
       });
@@ -984,7 +1019,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       amount: amount,
     );
     setState(() {
-      _myBetsForRound(roundId)[slot] += amount;
+      final bets = _myBetsForRound(roundId);
+      bets[kSlotKeys[slot]] = (bets[kSlotKeys[slot]] ?? 0) + amount;
       _roundLockedMine[slot] += amount;
       _pendingBets.add(bet);
     });
@@ -1057,6 +1093,12 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       if (_isDefinitiveBetRejection(error)) {
         setState(() {
           _pendingBets.remove(bet);
+          final roundBets = _myBetsByRound[bet.roundId];
+          if (roundBets != null && bet.slot >= 0 && bet.slot < kSlotKeys.length) {
+            final key = kSlotKeys[bet.slot];
+            final remaining = math.max(0, (roundBets[key] ?? 0) - bet.amount).toInt();
+            if (remaining == 0) roundBets.remove(key); else roundBets[key] = remaining;
+          }
           if (_lockedMineRoundId == bet.roundId) {
             _roundLockedMine[bet.slot] = math.max(0, _roundLockedMine[bet.slot] - bet.amount).toInt();
           }
@@ -1531,29 +1573,14 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   int _displayMyBet(RoundState s, int slot) {
-    final serverBet = _safeSlotValue(_myBetsForRound(s.roundId), slot);
-    final lockedBet = _lockedMineRoundId == s.roundId
-        ? _safeSlotValue(_roundLockedMine, slot)
-        : 0;
-    final confirmedBet = _confirmedRoundId == s.roundId
-        ? _safeSlotValue(_confirmedMine, slot)
-        : 0;
-    final pendingBet = _pendingBets
-        .where((bet) =>
-            bet.roundId == s.roundId &&
-            bet.slot == slot &&
-            !bet.observedInState)
-        .fold<int>(0, (sum, bet) => sum + bet.amount);
-    return math.max(math.max(serverBet, confirmedBet + pendingBet), lockedBet).toInt();
+    return _foodBetForSlot(s.roundId, slot);
   }
 
   double _highlightForSlot(double angle, int slot) {
     if (!_spinHasResult) return 0;
     const step = math.pi / 4;
-    final raw = (angle - slot * step) % (math.pi * 2);
-    final delta = raw > math.pi ? raw - (math.pi * 2) : raw;
-    final linear = (1 - delta.abs() / step).clamp(0.0, 1.0);
-    return linear * linear * (3 - 2 * linear);
+    final activeSlot = (angle / step).round() % kSlots.length;
+    return activeSlot == slot ? 1.0 : 0.0;
   }
 
   Widget _slot(int i, RoundState s, double d, double spinAngle) {
