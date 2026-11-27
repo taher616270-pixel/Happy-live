@@ -960,9 +960,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         // Keep the local pending bet visible; retry with the same idempotency key.
         // No timeout diagnostic is shown; a late accepted response remains idempotent.
         setState(() => bet.status = _PendingBetStatus.queued);
-        Timer(const Duration(seconds: 1), () {
-          if (mounted) _queueBetSend(bet);
-        });
+        await Future<void>.delayed(const Duration(seconds: 1));
+        if (mounted) await _sendBet(bet);
         return;
       }
       _say(wheelErrorText(error));
@@ -977,9 +976,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       } else {
         // Keep the optimistic amount and retry with the same idempotency key.
         setState(() => bet.status = _PendingBetStatus.queued);
-        Timer(const Duration(seconds: 1), () {
-          if (mounted) _queueBetSend(bet);
-        });
+        await Future<void>.delayed(const Duration(seconds: 1));
+        if (mounted) await _sendBet(bet);
       }
     }
   }
