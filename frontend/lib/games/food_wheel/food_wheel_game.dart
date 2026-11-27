@@ -397,7 +397,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   bool _spinTargetKnown = false;
   double? _spinLandingStartAngle, _spinLandingStartProgress;
   double? _spinLandingArc;
-  Future<void> _betSendChain = Future<void>.value();
   late final AnimationController _spinController;
   double _spinAngle = 0;
   bool _spinHasResult = false;
@@ -1022,10 +1021,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     }.contains(error.code);
   }
 
-  // UI updates immediately; background writes preserve tap order.
+  // UI updates immediately; independent idempotent requests are sent
+  // concurrently so one slow network response cannot hold later taps behind it.
   void _queueBetSend(_PendingWheelBet bet) {
-    _betSendChain = _betSendChain.then((_) => _sendBet(bet));
-    unawaited(_betSendChain);
+    unawaited(_sendBet(bet));
   }
 
   Future<void> _sendBet(_PendingWheelBet bet, {Future<RoundState>? request}) async {
