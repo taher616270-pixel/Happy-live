@@ -989,6 +989,11 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       _showRoundClosedToast();
       return false;
     }
+    final currentFoodCount = _myBetsForRound(roundId).entries.where((entry) => entry.value > 0).length;
+    if ((_myBetsForRound(roundId)[kSlotKeys[slot]] ?? 0) == 0 && currentFoodCount >= 6) {
+      _say('مسموح تراهن على 6 أكلات فقط');
+      return false;
+    }
     final availableBalance = _s?.balance ?? _bal;
     if (availableBalance - _pendingReserved < amount) {
       _say('رصيدك لا يكفي');
@@ -1618,7 +1623,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     final myBet = _displayMyBet(s, i);
     final highlight = _highlightForSlot(spinAngle, i);
     final isSpinPosition = highlight >= 0.5;
-    final mx = s.pools.reduce((a, b) => a > b ? a : b);
     const dark = Color(0xFF5A3A00);
     return Material(
       type: MaterialType.transparency,
