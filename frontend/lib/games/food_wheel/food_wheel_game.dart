@@ -468,7 +468,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           setState(() {
             _timeLeft = next;
             _popupTimeLeft = popupNext;
-            if (popupExpired) {
+            if (popupExpired && _panel) {
               _panel = false;
               _myBetsByRound.remove(current.roundId);
               _frozenBetsByRound.remove(current.roundId);
@@ -583,12 +583,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   void _rememberServerTotals(RoundState s) {
-    if (s.phase == RoundPhase.result) {
-      if (_finalServerTotalsRounds.contains(s.roundId)) return;
-      _finalServerTotalsRounds.add(s.roundId);
-    } else if (_lockedBetRounds.contains(s.roundId)) {
-      return;
-    }
+    // Totals are immutable from the instant betting locks, including during spin.
+    if (_lockedBetRounds.contains(s.roundId) || _finalServerTotalsRounds.contains(s.roundId)) return;
+    if (s.phase == RoundPhase.result) _finalServerTotalsRounds.add(s.roundId);
     final totals = _serverTotalsByRound.putIfAbsent(s.roundId, () => <String, int>{});
     if (s.totalBetsByFood.isNotEmpty) {
       for (final key in kSlotKeys) {
@@ -785,13 +782,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             _panel = false;
           }
         });
-        if (newRound && previous != null) {
-          _myBetsByRound.remove(previous.roundId);
-          _frozenBetsByRound.remove(previous.roundId);
-          _lockedBetRounds.remove(previous.roundId);
-          _serverTotalsByRound.remove(previous.roundId);
-          _finalServerTotalsRounds.remove(previous.roundId);
-        }
       }
       if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
         _animatedRound = s.roundId;
