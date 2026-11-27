@@ -542,7 +542,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                           _topBar(s),
                           SizedBox(
                             height: 40,
-                            child: Row(children: [_playerBadge(s.player), const Spacer(), _trophyBtn()]),
+                            child: Row(children: [_playerBadge(s.player)]),
                           ),
                           _wheel(s),
                         ]),
@@ -870,7 +870,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   Widget _topBar(RoundState s) => Row(children: [
         _ib(const Icon(Icons.close, color: Colors.white, size: 28),
             () => Navigator.of(context).maybePop()),
-        const SizedBox(width: 2),
+        const SizedBox(width: 8),
         _pill(Column(mainAxisSize: MainAxisSize.min, children: [
           const Text('جولة',
               style: TextStyle(color: Colors.white70, fontSize: 9, height: 1.1)),
@@ -881,11 +881,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                   height: 1.1,
                   fontWeight: FontWeight.bold)),
         ])),
-        const SizedBox(width: 6),
-        Expanded(child: Center(child: FittedBox(child: _modeToggle()))),
-        _ib(const Icon(Icons.settings_outlined, color: Colors.white), _openSettings),
-        _ib(const Icon(Icons.help_outline, color: Colors.white), _showRules),
-        _ib(const Icon(Icons.event_note_outlined, color: Colors.white), _openLog),
+        const Spacer(),
       ]);
 
   Widget _wheel(RoundState s) {
@@ -1116,29 +1112,9 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   Widget _pills(RoundState s) => Row(children: [
         Expanded(child: _plPill('فائز اليوم', '${_fmt(_todayWin)} ⭐')),
         const SizedBox(width: 8),
-        Expanded(
-            child: GestureDetector(onTap: _openLog, child: _plPill('سجلي', ''))),
+        Expanded(child: _plPill('سجلي', '')),
         const SizedBox(width: 8),
         Expanded(child: _plPill('العملات المتبقية', '${_fmt(_bal)} 🪙')),
-        const SizedBox(width: 8),
-        GestureDetector(
-          onTap: _showRules,
-          child: Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFFFD9A0),
-              border: Border.all(color: const Color(0xFFB3261E), width: 2),
-            ),
-            child: const Text('!',
-                style: TextStyle(
-                    color: Color(0xFFB3261E),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16)),
-          ),
-        ),
       ]);
 
   Widget _plPill(String label, String value) => Container(
@@ -1307,31 +1283,13 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   // ---- المنصة: وضع الرهان التلقائي + رقائق الرهان ----
   Widget _platformBody(RoundState s) => Column(children: [
-        Row(children: [
-          const Expanded(
-            child: Text('وضع الرهان التلقائي (متابعة الجولة السابقة)',
-                style: TextStyle(
-                    color: Color(0xFF4A2A10),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13)),
-          ),
-          Switch(
-            value: _auto,
-            activeColor: const Color(0xFF2BBF4E),
-            onChanged: (v) => setState(() => _auto = v),
-          ),
-        ]),
         const SizedBox(height: 6),
         _chipTiles(s),
       ]);
 
-  Widget _chipTiles(RoundState s) {
-    final can = s.phase == RoundPhase.betting && _prevBets.any((b) => b > 0);
-    return Row(children: [
-      for (var i = 0; i < _chipSet.length; i++) Expanded(child: _chipTile(i)),
-      Expanded(child: _repeatTile(can)),
-    ]);
-  }
+  Widget _chipTiles(RoundState s) => Row(children: [
+        for (var i = 0; i < _chipSet.length; i++) Expanded(child: _chipTile(i)),
+      ]);
 
   Widget _chipTile(int i) {
     final v = _chipSet[i], sel = _chip == v;
