@@ -55,7 +55,7 @@ class _EmbeddedGamePageState extends State<_EmbeddedGamePage> {
       frame.setAttribute('referrerpolicy', 'origin');
       frame.onLoad.listen((_) async {
         // The short-lived token is delivered only to this exact registered origin.
-        // It is never added to the URL, fragment, referrer, or browser history.
+        // Only the registered game origin is sent as Referer; the token never is.
         for (var attempt = 0; attempt < 40; attempt++) {
           await Future<void>.delayed(const Duration(milliseconds: 300));
           frame.contentWindow?.postMessage({
