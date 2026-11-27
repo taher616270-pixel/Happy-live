@@ -358,7 +358,8 @@ class _PendingWheelBet {
 
 class _FoodWheelGameState extends State<FoodWheelGame> {
   final _rnd = math.Random();
-  Timer? _poll, _msgTimer, _panelTimer;
+  Timer? _poll, _msgTimer, _panelTimer, _foodTapTimer;
+  int _foodTapDebug = -1;
   RoundState? _s;
   int _bal = 0, _chip = 10, _hit = -1, _animatedRound = -1, _timeLeft = 20;
   Set<int> _win = {};
@@ -402,6 +403,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     _poll?.cancel();
     _msgTimer?.cancel();
     _panelTimer?.cancel();
+    _foodTapTimer?.cancel();
     super.dispose();
   }
 
@@ -631,6 +633,16 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     final stamp = DateTime.now().microsecondsSinceEpoch;
     final random = _rnd.nextInt(1 << 32).toRadixString(16).padLeft(8, '0');
     return 'fw-$safeUserId-$roundId-$stamp-$random';
+  }
+
+  void _onFoodPointerDown(int i) {
+    // Visible proof that the food's own hit target received this pointer.
+    _foodTapTimer?.cancel();
+    if (mounted) setState(() => _foodTapDebug = i);
+    _foodTapTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) setState(() => _foodTapDebug = -1);
+    });
+    _bet(i);
   }
 
   void _bet(int i) {
@@ -1139,12 +1151,13 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     final mx = s.pools.reduce((a, b) => a > b ? a : b);
     final frac = mx == 0 ? 0.45 : 0.45 + 0.35 * (s.pools[i] / mx);
     const dark = Color(0xFF5A3A00);
-    return InkWell(
-      onTap: () => _bet(i),
-      customBorder: const CircleBorder(),
-      splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
-      child: Stack(clipBehavior: Clip.none, children: [
+    return Material(
+      type: MaterialType.transparency,
+      child: Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: (_) => _onFoodPointerDown(i),
+        child: SizedBox.expand(
+          child: Stack(clipBehavior: Clip.none, children: [
         AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           width: d,
@@ -1153,8 +1166,14 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           transformAlignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: const Color(0xFFFFF3C4),
-            border: Border.all(color: const Color(0xFF8A4B2A), width: 4),
+            color: _foodTapDebug == i
+                ? const Color(0xFF39FF68)
+                : const Color(0xFFFFF3C4),
+            border: Border.all(
+                color: _foodTapDebug == i
+                    ? const Color(0xFF087A2B)
+                    : const Color(0xFF8A4B2A),
+                width: 4),
             boxShadow: hit || win
                 ? [
                     BoxShadow(
@@ -1170,9 +1189,11 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
             child: Stack(children: [
               Positioned.fill(
                   child: ColoredBox(
-                      color: win
-                          ? const Color(0xFFBFFFB8)
-                          : const Color(0xFFFFF3C4))),
+                      color: _foodTapDebug == i
+                          ? const Color(0xFF39FF68)
+                          : win
+                              ? const Color(0xFFBFFFB8)
+                              : const Color(0xFFFFF3C4))),
               Align(
                 alignment: Alignment.bottomCenter,
                 child: FractionallySizedBox(
@@ -1240,7 +1261,9 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
               ),
             ),
           ),
-      ]),
+          ]),
+        ),
+      ),
     );
   }
 
