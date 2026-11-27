@@ -93,6 +93,7 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /_queueBetSend\(bet\)/);
   assert.match(ui, /behavior: HitTestBehavior\.opaque,\s*onPointerDown: \(_\) => _onFoodPointerDown\(i\)/);
   assert.match(ui, /_fmt\(math\.max\(0, _bal - _pendingReserved\)\)/);
+  assert.match(ui, /bet\.status != _PendingBetStatus\.accepted/);
   assert.match(ui, /\x27رهانك في هذه الجولة:/);
   assert.match(ui, /\x27الفائز في هذه الجولة:/);
   assert.match(ui, /الفائز الأكبر لهذه الجولة/);
