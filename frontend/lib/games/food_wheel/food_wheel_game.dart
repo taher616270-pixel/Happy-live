@@ -2968,6 +2968,5 @@ class _TopWinsRules extends StatelessWidget {
     );
   }
 }
-/// Slow start, smooth acceleration through 3s, fastest from 3-4s,
-/// then a gentle one-second deceleration to the exact target.
+/// Spin accelerates in stages and holds maximum speed through the final second.
 
