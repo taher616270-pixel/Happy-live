@@ -284,10 +284,10 @@ export async function handleGamesApiRequest(
 
       const readGlobalState = async () => {
         const round = await db.prepare(
-          "SELECT id, round_no AS roundNo, status, started_at AS startedAt, betting_ends_at AS bettingEndsAt, ends_at AS endsAt, result_slot AS resultSlot, result_chosen_at AS resultChosenAt FROM food_wheel_rounds WHERE status IN ('betting', 'result') ORDER BY round_no DESC LIMIT 1"
+          "SELECT id, round_no AS roundNo, status, started_at AS startedAt, betting_ends_at AS bettingEndsAt, ends_at AS endsAt, result_slot AS resultSlot, result_special AS resultSpecial, result_chosen_at AS resultChosenAt FROM food_wheel_rounds WHERE status IN ('betting', 'result') ORDER BY round_no DESC LIMIT 1"
         ).first<{
           id: string; roundNo: number; status: string; startedAt: string;
-          bettingEndsAt: string; endsAt: string; resultSlot: number | null; resultChosenAt: string | null;
+          bettingEndsAt: string; endsAt: string; resultSlot: number | null; resultSpecial: "pizza" | "salad" | null; resultChosenAt: string | null;
         }>();
         if (!round) throw new Error("food_wheel_round_missing");
 
@@ -346,8 +346,8 @@ export async function handleGamesApiRequest(
         // Explicit food-name keys prevent clients from mixing positional
         // totals with the player's separate local bet map.
         const slotKeys = [
-          "chicken", "tomato", "goat", "chili",
-          "fish", "carrot", "shrimp", "corn"
+          "chicken", "corn", "tomato", "goat",
+          "chili", "fish", "carrot", "shrimp"
         ] as const;
         const totalBetsByFood: Record<string, number> = {};
         for (let slot = 0; slot < slotKeys.length; slot++) {
@@ -371,7 +371,7 @@ export async function handleGamesApiRequest(
           balance: wallet?.balance ?? 0,
           my_payout: Number(payoutRow?.amount) || 0,
           result_slot: round.resultSlot,
-          special: null,
+          special: round.resultSpecial,
           history: [],
           top_winners: topWinners,
           recent_bets: recentBets,
@@ -395,7 +395,7 @@ export async function handleGamesApiRequest(
 
       if (isFoodWheelTopWins) {
         const rows = await db.prepare(
-          "SELECT COALESCE(p.display_name, '') AS name, p.avatar_key AS avatar, p.country_flag AS flag, SUM(fb.payout) AS amount, CASE WHEN r.result_slot = 0 THEN '🐔' WHEN r.result_slot = 1 THEN '🍅' WHEN r.result_slot = 2 THEN '🐐' WHEN r.result_slot = 3 THEN '🌶️' WHEN r.result_slot = 4 THEN '🐟' WHEN r.result_slot = 5 THEN '🥕' WHEN r.result_slot = 6 THEN '🦐' ELSE '🌽' END AS food, CASE WHEN fb.user_id = ? THEN 1 ELSE 0 END AS isMe FROM food_wheel_bets fb INNER JOIN food_wheel_rounds r ON r.id = fb.round_id LEFT JOIN profiles p ON p.user_id = fb.user_id WHERE fb.status = 'settled' AND fb.payout > 0 AND r.settled_at >= strftime('%Y-%m-%dT00:00:00Z', 'now') GROUP BY fb.user_id, p.display_name, p.avatar_key, p.country_flag, r.result_slot ORDER BY amount DESC LIMIT 20"
+          "SELECT COALESCE(p.display_name, '') AS name, p.avatar_key AS avatar, p.country_flag AS flag, SUM(fb.payout) AS amount, CASE WHEN r.result_special = 'pizza' THEN '🍕' WHEN r.result_special = 'salad' THEN '🥗' WHEN r.result_slot = 0 THEN '🐔' WHEN r.result_slot = 1 THEN '🌽' WHEN r.result_slot = 2 THEN '🍅' WHEN r.result_slot = 3 THEN '🐐' WHEN r.result_slot = 4 THEN '🌶️' WHEN r.result_slot = 5 THEN '🐟' WHEN r.result_slot = 6 THEN '🥕' ELSE '🦐' END AS food, CASE WHEN fb.user_id = ? THEN 1 ELSE 0 END AS isMe FROM food_wheel_bets fb INNER JOIN food_wheel_rounds r ON r.id = fb.round_id LEFT JOIN profiles p ON p.user_id = fb.user_id WHERE fb.status = 'settled' AND fb.payout > 0 AND r.settled_at >= strftime('%Y-%m-%dT00:00:00Z', 'now') GROUP BY fb.user_id, p.display_name, p.avatar_key, p.country_flag, r.result_slot ORDER BY amount DESC LIMIT 20"
         ).bind(user.id).all();
         return reply({
           ok: true,
@@ -428,10 +428,9 @@ export async function handleGamesApiRequest(
       const slot = body?.slot;
       const amount = body?.amount;
       const idempotencyKey = typeof body?.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
-      const chips = [10, 500, 6000, 30000, 100000, 500000, 1000000, 5000000, 10000000];
       if (!body || typeof roundId !== "number" || !Number.isSafeInteger(roundId) ||
           typeof slot !== "number" || !Number.isSafeInteger(slot) || slot < 0 || slot > 7 ||
-          typeof amount !== "number" || !Number.isSafeInteger(amount) || !chips.includes(amount) ||
+          typeof amount !== "number" || !Number.isSafeInteger(amount) || amount <= 0 ||
           !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) {
         return reply({ error: "invalid_bet_data" }, 400, origin, env);
       }
@@ -481,6 +480,16 @@ export async function handleGamesApiRequest(
         }, 409, origin, env);
       }
 
+      const existingFoods = await db.prepare(
+        "SELECT COUNT(DISTINCT slot) AS count FROM food_wheel_bets WHERE round_id = ? AND user_id = ? AND status IN ('accepted', 'settled')"
+      ).bind(globalRound.id, user.id).first<{ count: number }>();
+      const sameFood = await db.prepare(
+        "SELECT 1 AS found FROM food_wheel_bets WHERE round_id = ? AND user_id = ? AND slot = ? AND status IN ('accepted', 'settled') LIMIT 1"
+      ).bind(globalRound.id, user.id, slot).first<{ found: number }>();
+      if (!sameFood && Number(existingFoods?.count ?? 0) >= 6) {
+        return reply({ error: "max_foods_per_round", rejected: true }, 409, origin, env);
+      }
+
       const financialKey = "food-wheel-global-" + globalRound.roundNo;
       await db.prepare(
         "INSERT OR IGNORE INTO game_rounds (id, game_id, user_id, idempotency_key, status, total_stake, total_payout, created_at) VALUES (?, ?, ?, ?, 'open', 0, 0, ?)"
@@ -528,8 +537,8 @@ export async function handleGamesApiRequest(
           "INSERT OR IGNORE INTO game_bets (id, round_id, game_id, user_id, idempotency_key, stake, selection_json, payout, status, created_at) SELECT ?, ?, ?, ?, ?, ?, ?, 0, 'processing', ? WHERE EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'open') AND EXISTS (SELECT 1 FROM food_wheel_rounds WHERE id = ? AND round_no = ? AND status = 'betting' AND betting_ends_at > ?)"
         ).bind(betId, financialRound.id, foodWheelGameId, user.id, idempotencyKey, amount, selectionJson, now, financialRound.id, globalRound.id, roundId, now),
         db.prepare(
-          "INSERT INTO food_wheel_bets (id, round_id, game_round_id, game_bet_id, user_id, slot, stake, payout, status, created_at) SELECT ?, ?, ?, ?, ?, ?, ?, 0, 'processing', ? FROM game_bets b WHERE b.id = ? AND b.status = 'processing' AND EXISTS (SELECT 1 FROM food_wheel_rounds WHERE id = ? AND status = 'betting' AND betting_ends_at > ?)"
-        ).bind(wheelBetId, globalRound.id, financialRound.id, betId, user.id, slot, amount, now, betId, globalRound.id, now),
+          "INSERT INTO food_wheel_bets (id, round_id, game_round_id, game_bet_id, user_id, slot, stake, payout, status, created_at) SELECT ?, ?, ?, ?, ?, ?, ?, 0, 'processing', ? FROM game_bets b WHERE b.id = ? AND b.status = 'processing' AND EXISTS (SELECT 1 FROM food_wheel_rounds WHERE id = ? AND status = 'betting' AND betting_ends_at > ?) AND (EXISTS (SELECT 1 FROM food_wheel_bets WHERE round_id = ? AND user_id = ? AND slot = ? AND status IN ('accepted', 'settled')) OR (SELECT COUNT(DISTINCT slot) FROM food_wheel_bets WHERE round_id = ? AND user_id = ? AND status IN ('accepted', 'settled')) < 6)"
+        ).bind(wheelBetId, globalRound.id, financialRound.id, betId, user.id, slot, amount, now, betId, globalRound.id, now, globalRound.id, user.id, slot, globalRound.id, user.id),
         db.prepare(
           "UPDATE user_wallets SET balance = balance - ?, updated_at = ? WHERE user_id = ? AND balance >= ? AND EXISTS (SELECT 1 FROM food_wheel_bets WHERE id = ? AND status = 'processing') AND EXISTS (SELECT 1 FROM food_wheel_rounds WHERE id = ? AND status = 'betting' AND betting_ends_at > ?)"
         ).bind(amount, now, user.id, amount, wheelBetId, globalRound.id, now),
@@ -564,6 +573,15 @@ export async function handleGamesApiRequest(
             rejected: true,
             reason: "betting_window_closed"
           }, 409, origin, env);
+        }
+        const latestFoods = await db.prepare(
+          "SELECT COUNT(DISTINCT slot) AS count FROM food_wheel_bets WHERE round_id = ? AND user_id = ? AND status IN ('accepted', 'settled')"
+        ).bind(globalRound.id, user.id).first<{ count: number }>();
+        const latestSameFood = await db.prepare(
+          "SELECT 1 AS found FROM food_wheel_bets WHERE round_id = ? AND user_id = ? AND slot = ? AND status IN ('accepted', 'settled') LIMIT 1"
+        ).bind(globalRound.id, user.id, slot).first<{ found: number }>();
+        if (!latestSameFood && Number(latestFoods?.count ?? 0) >= 6) {
+          return reply({ error: "max_foods_per_round", rejected: true }, 409, origin, env);
         }
         if ((wallet?.balance ?? 0) < amount) {
           return reply({
