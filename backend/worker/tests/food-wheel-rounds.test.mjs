@@ -93,7 +93,7 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.ok(ui.includes("final Map<int, Map<String, int>> _myBetsByRound"));
   assert.ok(ui.includes("final Map<int, Map<String, int>> _frozenBetsByRound"));
   assert.ok(ui.includes("void _freezeMyBets(int roundId)"));
-  assert.ok(ui.includes("_displayBetsForRound(int roundId) => _frozenBetsByRound[roundId]"));
+  assert.match(ui, /_displayBetsForRound\(int roundId\) =>\s*_frozenBetsByRound\[roundId\]/);
   assert.ok(ui.includes("bets[kSlotKeys[i]] = (bets[kSlotKeys[i]] ?? 0) + amount"));
   assert.ok(ui.includes("_myBetTotalForRound(s.roundId)"));
   assert.ok(ui.includes("_prevBets[kSlotKeys[i]] ?? 0"));
