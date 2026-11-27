@@ -424,8 +424,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   bool _serverClockSynced = false;
   String? _clockDisplayKey, _popupDisplayKey;
   int _clockDisplaySecond = 20, _popupDisplaySecond = 4;
-  int _phaseRefreshRequestedRound = -1;
-  int _popupRefreshRequestedRound = -1;
   int _confirmedRoundId = -1;
   int _lockedMineRoundId = -1;
   final List<int> _confirmedMine = List.filled(8, 0);
@@ -449,7 +447,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       vsync: this,
       duration: const Duration(milliseconds: 5000),
     );
-    _lastRefreshAt = DateTime.now().millisecondsSinceEpoch;
+    _lastRefreshAt = 0;
     _refresh();
     // One lifecycle clock drives countdown, transient messages, and the
     // single throttled state poll. The spin itself uses the controller ticker.
@@ -458,7 +456,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       if (!mounted) return;
       final now = DateTime.now().millisecondsSinceEpoch;
       final current = _s;
-      var phaseExpired = false;
       var popupExpired = false;
       final clearMessage = _msg != null && now >= _msgExpiresAtMs;
       final clearToast = _roundClosedToast != null && now >= _toastExpiresAtMs;
@@ -470,12 +467,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         if (_isResultPhase(current) && _spinStartedRoundId != current.roundId) {
           _startProvisionalSpin(current);
         }
-        phaseExpired = !_bettingOpen(current) &&
-            _serverNowMs() >= _bettingDeadline(current) &&
-            _phaseRefreshRequestedRound != current.roundId;
-        popupExpired = current.phase == RoundPhase.result &&
-            popupNext <= 1 &&
-            _popupRefreshRequestedRound != current.roundId;
+        popupExpired = current.phase == RoundPhase.result && popupNext <= 1;
         if (next != _timeLeft || popupNext != _popupTimeLeft ||
             (popupExpired && _panel) || clearMessage || clearToast) {
           setState(() {
@@ -492,12 +484,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           if (clearToast) _roundClosedToast = null;
         });
       }
-      if (phaseExpired && !_fetching) _phaseRefreshRequestedRound = current!.roundId;
-      if (popupExpired && !_fetching) _popupRefreshRequestedRound = current!.roundId;
-      if (phaseExpired || popupExpired || now - _lastRefreshAt >= 1000) {
-        _lastRefreshAt = now;
-        _refresh();
-      }
+      if (now - _lastRefreshAt >= 1000) _refresh();
     });
   }
 
@@ -747,6 +734,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   Future<void> _refresh() async {
     if (_fetching) return;
+    final pollStartedAt = DateTime.now().millisecondsSinceEpoch;
+    if (_s != null && pollStartedAt - _lastRefreshAt < 1000) return;
+    _lastRefreshAt = pollStartedAt;
     _fetching = true;
     try {
       final requestStartedAt = DateTime.now().millisecondsSinceEpoch;
