@@ -25,7 +25,7 @@ test("Durable Object alarms advance betting, result, settlement, and the next ro
   assert.match(hub, /const BETTING_MS = 20_000/);
   assert.match(hub, /const ROUND_MS = 30_000/);
   assert.match(hub, /const chosenAt = round\.bettingEndsAt/);
-  assert.match(hub, /Date\.parse\(round\.bettingEndsAt\) \+ 8_000/);
+  assert.match(hub, /Date\.parse\(round\.bettingEndsAt\) \+ 10_000/);
   assert.match(hub, /async alarm\(\): Promise<void>/);
   assert.match(hub, /this\.ctx\.storage\.setAlarm/);
   assert.match(hub, /private async chooseAndPublishResult/);
