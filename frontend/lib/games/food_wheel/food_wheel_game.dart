@@ -19,7 +19,8 @@ String wheelErrorText(Object e) {
     case 'insufficient_balance':
       return 'رصيدك لا يكفي';
     case 'round_closed':
-      return 'انتهى وقت الرهان';
+    case 'round_changed':
+      return 'انتهى وقت الرهان، انتظر الجولة القادمة';
     case 'round_changed':
       return 'بدأت جولة جديدة، حاول مرة ثانية';
     case 'duplicate_bet':

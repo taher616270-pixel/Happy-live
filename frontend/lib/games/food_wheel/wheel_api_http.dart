@@ -4,10 +4,9 @@ import 'package:http/http.dart' as http;
 
 import 'food_wheel_game.dart';
 
-/// Read-only connection for the first integration stage.
-/// No wallet mutation endpoint is called from this client.
+/// Authenticated Happy Live session client for server-authoritative Food Wheel rounds.
 class WheelApiConfig {
-  static const gameId = 'ed1490b4-c868-46bc-be7e-1448d5bdf498';
+  static const gameId = '4bcb9b74-3c87-4d9e-9f26-2b61c9a5f841';
   static const base = 'https://happy-live-api.taher616270.workers.dev/api/v1';
 }
 
@@ -67,6 +66,35 @@ class HttpFoodWheelApi implements FoodWheelApi {
     );
   }
 
+  Future<dynamic> _post(String path, Map<String, dynamic> body) async {
+    if (accessToken.isEmpty) throw const WheelApiException('session_missing');
+    http.Response response;
+    try {
+      response = await _client.post(
+        _uri(path),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 10));
+    } on Exception {
+      throw const WheelApiException('network');
+    }
+    dynamic data;
+    try {
+      data = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
+    } catch (_) {
+      throw const WheelApiException('bad_response');
+    }
+    if (response.statusCode >= 200 && response.statusCode < 300) return data;
+    final code = data is Map ? (data['error'] ?? data['code'] ?? '').toString() : '';
+    if (response.statusCode == 401) throw WheelApiException('session_expired', status: response.statusCode);
+    if (response.statusCode == 403) throw WheelApiException('forbidden', status: response.statusCode);
+    throw WheelApiException(code.isEmpty ? 'server_error' : code, status: response.statusCode);
+  }
+
   Map<String, dynamic> _map(dynamic value) {
     if (value is Map) return Map<String, dynamic>.from(value);
     throw const WheelApiException('bad_response');
@@ -92,10 +120,21 @@ class HttpFoodWheelApi implements FoodWheelApi {
     }
   }
 
-  /// Stage 1 is strictly read-only. Never send a bet or wallet mutation request.
+  /// The server validates, debits, draws the result and settles atomically.
   @override
   Future<RoundState> placeBet(int roundId, int slot, int amount) async {
-    throw const WheelApiException('settlement_disabled');
+    final key = 'fw-$roundId-$slot-${DateTime.now().microsecondsSinceEpoch}';
+    final data = _map(await _post('/game/food-wheel/bet', {
+      'roundId': roundId,
+      'slot': slot,
+      'amount': amount,
+      'idempotencyKey': key,
+    }));
+    try {
+      return RoundState.fromJson(data);
+    } catch (_) {
+      throw const WheelApiException('bet_ok_state_failed');
+    }
   }
 
   @override

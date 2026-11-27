@@ -97,6 +97,11 @@ export async function handleGamesApiRequest(
   authenticateAdmin: (request: Request, db: D1Database) => Promise<{ id: string; username: string; role: string } | null>
 ): Promise<Response | null> {
   const path = new URL(request.url).pathname;
+  const foodWheelGameId = "4bcb9b74-3c87-4d9e-9f26-2b61c9a5f841";
+  const isFoodWheelState = path === "/api/v1/game/food-wheel/state" && request.method === "GET";
+  const isFoodWheelBet = path === "/api/v1/game/food-wheel/bet" && request.method === "POST";
+  const isFoodWheelHistory = path === "/api/v1/game/food-wheel/history" && request.method === "GET";
+  const isFoodWheelTopWins = path === "/api/v1/game/food-wheel/top-wins" && request.method === "GET";
   const isAuth = path === "/api/v1/game/auth" && request.method === "POST";
   const isSession = path === "/api/v1/game/session" && request.method === "GET";
   const isRefresh = path === "/api/v1/game/session/refresh" && request.method === "POST";
@@ -112,7 +117,7 @@ export async function handleGamesApiRequest(
   const adminEconomyMatch = path.match(/^\/api\/v1\/admin\/games\/([0-9a-f-]{36})\/economy$/i);
   const adminKeyMatch = path.match(/^\/api\/v1\/admin\/games\/([0-9a-f-]{36})\/server-key$/i);
   const adminRoundsMatch = path.match(/^\/api\/v1\/admin\/games\/([0-9a-f-]{36})\/rounds$/i);
-  if (!isAuth && !isSession && !isRefresh && !isRevoke && !isProfile && !isWallet &&
+  if (!isFoodWheelState && !isFoodWheelBet && !isFoodWheelHistory && !isFoodWheelTopWins && !isAuth && !isSession && !isRefresh && !isRevoke && !isProfile && !isWallet &&
       !isCreateRound && !isListRounds && !(placeBetMatch && request.method === "POST") &&
       !(getRoundMatch && request.method === "GET") &&
       !(serverSettleMatch && request.method === "POST") && !(serverCancelMatch && request.method === "POST") &&
@@ -265,6 +270,133 @@ export async function handleGamesApiRequest(
       if (settled?.status !== "settled") return reply({ error: "game_round_settlement_conflict" }, 409, origin, env);
       const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(round.userId).first<{ balance: number }>();
       return reply({ ok: true, roundId, status: "settled", totalPayout: settled.totalPayout, balance: wallet?.balance ?? 0 }, 200, origin, env);
+    }
+
+    if (isFoodWheelState || isFoodWheelBet || isFoodWheelHistory || isFoodWheelTopWins) {
+      const user = await authenticateUser(request, db);
+      if (!user) return reply({ error: "authentication_required" }, 401, origin, env);
+      const activeGame = await db.prepare(
+        "SELECT g.id FROM game_registry g INNER JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE g.id = ? AND g.enabled = 1 AND l.status = 'active' LIMIT 1"
+      ).bind(foodWheelGameId).first<{ id: string }>();
+      if (!activeGame) return reply({ error: "game_not_active" }, 403, origin, env);
+
+      if (isFoodWheelHistory) {
+        const rows = await db.prepare(
+          "SELECT CAST(strftime('%s', r.created_at) AS INTEGER) AS round_id, b.stake AS bet, b.payout, json_extract(r.result_json, '$.result_slot') AS result_slot FROM game_rounds r INNER JOIN game_bets b ON b.round_id = r.id WHERE r.game_id = ? AND r.user_id = ? AND r.status = 'settled' AND b.status = 'settled' ORDER BY r.created_at DESC LIMIT 20"
+        ).bind(foodWheelGameId, user.id).all();
+        return reply({ ok: true, rounds: rows.results ?? [] }, 200, origin, env);
+      }
+
+      if (isFoodWheelTopWins) {
+        const rows = await db.prepare(
+          "SELECT COALESCE(p.display_name, '') AS name, COALESCE(p.avatar_key, '') AS avatar, b.payout AS amount, CASE WHEN json_extract(r.result_json, '$.result_slot') = 0 THEN '🐔' WHEN json_extract(r.result_json, '$.result_slot') = 1 THEN '🍅' WHEN json_extract(r.result_json, '$.result_slot') = 2 THEN '🐐' WHEN json_extract(r.result_json, '$.result_slot') = 3 THEN '🌶️' WHEN json_extract(r.result_json, '$.result_slot') = 4 THEN '🐟' WHEN json_extract(r.result_json, '$.result_slot') = 5 THEN '🥕' WHEN json_extract(r.result_json, '$.result_slot') = 6 THEN '🦐' ELSE '🌽' END AS food, CASE WHEN b.user_id = ? THEN 1 ELSE 0 END AS is_me FROM game_bets b INNER JOIN game_rounds r ON r.id = b.round_id LEFT JOIN profiles p ON p.user_id = b.user_id WHERE b.game_id = ? AND b.status = 'settled' AND b.payout > 0 AND r.created_at >= strftime('%Y-%m-%dT00:00:00Z', 'now') ORDER BY b.payout DESC LIMIT 20"
+        ).bind(user.id, foodWheelGameId).all();
+        return reply({ ok: true, wins: rows.results ?? [] }, 200, origin, env);
+      }
+
+      if (isFoodWheelState) {
+        let round = await db.prepare(
+          "SELECT id, created_at AS createdAt FROM game_rounds WHERE game_id = ? AND user_id = ? AND status = 'open' ORDER BY created_at DESC LIMIT 1"
+        ).bind(foodWheelGameId, user.id).first<{ id: string; createdAt: string }>();
+        if (round && Date.now() - Date.parse(round.createdAt) >= 20000) {
+          const expiredAt = new Date().toISOString();
+          await db.prepare("UPDATE game_rounds SET status = 'cancelled', result_json = ?, settled_at = ? WHERE id = ? AND status = 'open'")
+            .bind(JSON.stringify({ expired: true }), expiredAt, round.id).run();
+          round = null;
+        }
+        if (!round) {
+          const now = new Date().toISOString();
+          const idempotencyKey = "food-wheel-state-" + crypto.randomUUID();
+          const roundId = crypto.randomUUID();
+          await db.prepare(
+            "INSERT INTO game_rounds (id, game_id, user_id, idempotency_key, status, total_stake, total_payout, created_at) VALUES (?, ?, ?, ?, 'open', 0, 0, ?)"
+          ).bind(roundId, foodWheelGameId, user.id, idempotencyKey, now).run();
+          round = { id: roundId, createdAt: now };
+        }
+        const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>();
+        const profile = await db.prepare("SELECT display_name AS name, avatar_key AS avatar, country_flag AS flag FROM profiles WHERE user_id = ? LIMIT 1").bind(user.id).first<{ name: string | null; avatar: string | null; flag: string | null }>();
+        return reply({
+          round_id: Math.floor(Date.parse(round.createdAt) / 1000),
+          round_uuid: round.id,
+          seconds_left: 20,
+          phase: "betting",
+          pools: [0, 0, 0, 0, 0, 0, 0, 0],
+          my_bets: [0, 0, 0, 0, 0, 0, 0, 0],
+          balance: wallet?.balance ?? 0,
+          my_payout: 0,
+          history: [],
+          players: 1,
+          player: { id: user.happy_id ?? user.id, name: profile?.name ?? user.display_name ?? "", status: "active", avatar: profile?.avatar ?? null, flag: profile?.flag ?? null }
+        }, 200, origin, env);
+      }
+
+      const body = await readBody(request, 2048);
+      const roundId = body?.roundId;
+      const slot = body?.slot;
+      const amount = body?.amount;
+      const idempotencyKey = typeof body?.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+      const chips = [10, 500, 6000, 30000, 100000, 500000, 1000000, 5000000, 10000000];
+      const multipliers = [45, 5, 15, 5, 25, 5, 10, 5];
+      if (!body || typeof roundId !== "number" || !Number.isSafeInteger(roundId) ||
+          typeof slot !== "number" || !Number.isSafeInteger(slot) || slot < 0 || slot > 7 ||
+          typeof amount !== "number" || !Number.isSafeInteger(amount) || !chips.includes(amount) ||
+          !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) {
+        return reply({ error: "invalid_bet_data" }, 400, origin, env);
+      }
+      const round = await db.prepare(
+        "SELECT id, status, created_at AS createdAt FROM game_rounds WHERE game_id = ? AND user_id = ? AND CAST(strftime('%s', created_at) AS INTEGER) = ? ORDER BY created_at DESC LIMIT 1"
+      ).bind(foodWheelGameId, user.id, roundId).first<{ id: string; status: string; createdAt: string }>();
+      if (!round) return reply({ error: "round_changed" }, 409, origin, env);
+      const prior = await db.prepare(
+        "SELECT id, stake, payout, status FROM game_bets WHERE round_id = ? AND idempotency_key = ? LIMIT 1"
+      ).bind(round.id, idempotencyKey).first<{ id: string; stake: number; payout: number; status: string }>();
+      if (prior?.status === "settled") {
+        const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>();
+        const settledRound = await db.prepare("SELECT result_json AS result FROM game_rounds WHERE id = ? LIMIT 1").bind(round.id).first<{ result: string | null }>();
+        const result = settledRound?.result ? JSON.parse(settledRound.result) as { result_slot?: number } : {};
+        const bets = Array(8).fill(0) as number[];
+        bets[slot] = prior.stake;
+        return reply({ round_id: roundId, round_uuid: round.id, seconds_left: 0, phase: "result", pools: Array(8).fill(0), my_bets: bets, balance: wallet?.balance ?? 0, my_payout: prior.payout, result_slot: result.result_slot ?? null, special: null }, 200, origin, env);
+      }
+      if (round.status !== "open" || Date.now() - Date.parse(round.createdAt) >= 20000) {
+        if (round.status === "open") {
+          await db.prepare("UPDATE game_rounds SET status = 'cancelled', result_json = ?, settled_at = ? WHERE id = ? AND status = 'open'")
+            .bind(JSON.stringify({ expired: true }), new Date().toISOString(), round.id).run();
+        }
+        return reply({ error: "round_closed" }, 409, origin, env);
+      }
+      const existingBet = await db.prepare("SELECT id FROM game_bets WHERE round_id = ? AND idempotency_key = ? LIMIT 1").bind(round.id, idempotencyKey).first<{ id: string }>();
+      if (existingBet) return reply({ error: "bet_processing" }, 409, origin, env);
+
+      // Server-side weighted draw: inverse multipliers keep the expected return bounded.
+      const weights = multipliers.map((value) => 1 / value);
+      const totalWeight = weights.reduce((sum, value) => sum + value, 0);
+      const random = crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296 * totalWeight;
+      let cursor = 0, resultSlot = 0;
+      for (let i = 0; i < weights.length; i++) { cursor += weights[i]; if (random < cursor) { resultSlot = i; break; } }
+      const payout = resultSlot === slot ? amount * multipliers[slot] : 0;
+      const betId = crypto.randomUUID(), now = new Date().toISOString();
+      await db.batch([
+        db.prepare("INSERT OR IGNORE INTO game_bets (id, round_id, game_id, user_id, idempotency_key, stake, selection_json, payout, status, created_at) SELECT ?, ?, ?, ?, ?, ?, ?, 0, 'processing', ? WHERE EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'open')").bind(betId, round.id, foodWheelGameId, user.id, idempotencyKey, amount, JSON.stringify({ slot }), now, round.id),
+        db.prepare("UPDATE user_wallets SET balance = balance - ?, updated_at = ? WHERE user_id = ? AND balance >= ? AND changes() = 1").bind(amount, now, user.id, amount),
+        db.prepare("UPDATE game_bets SET status = 'accepted' WHERE id = ? AND status = 'processing' AND changes() = 1").bind(betId),
+        db.prepare("UPDATE game_rounds SET status = 'settling', total_stake = ?, total_payout = ?, result_json = ?, settled_at = ?, settlement_id = ? WHERE id = ? AND status = 'open' AND EXISTS (SELECT 1 FROM game_bets WHERE id = ? AND status = 'accepted')").bind(amount, payout, JSON.stringify({ result_slot: resultSlot }), now, crypto.randomUUID(), round.id, betId),
+        db.prepare("UPDATE game_bets SET status = 'settled', payout = ?, settled_at = ? WHERE id = ? AND status = 'accepted' AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling')").bind(payout, now, betId, round.id),
+        db.prepare("UPDATE user_wallets SET balance = balance + ?, updated_at = ? WHERE user_id = ? AND ? > 0 AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling')").bind(payout, now, user.id, payout, round.id),
+        db.prepare("INSERT INTO game_wallet_ledger (id, game_id, round_id, bet_id, user_id, entry_type, amount, balance_after, idempotency_key, created_at) SELECT ?, ?, ?, ?, ?, 'bet_debit', ?, w.balance - ?, ?, ? FROM user_wallets w JOIN game_bets b ON b.id = ? WHERE w.user_id = ? AND b.status = 'settled' AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling')").bind(crypto.randomUUID(), foodWheelGameId, round.id, betId, user.id, -amount, payout, "food-wheel-debit:" + betId, now, betId, user.id, round.id),
+        db.prepare("INSERT INTO game_wallet_ledger (id, game_id, round_id, bet_id, user_id, entry_type, amount, balance_after, idempotency_key, created_at) SELECT ?, ?, ?, ?, ?, 'payout_credit', ?, w.balance, ?, ? FROM user_wallets w JOIN game_bets b ON b.id = ? WHERE w.user_id = ? AND b.status = 'settled' AND ? > 0 AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling')").bind(crypto.randomUUID(), foodWheelGameId, round.id, betId, user.id, payout, "food-wheel-payout:" + betId, now, betId, user.id, payout, round.id),
+        db.prepare("UPDATE game_rounds SET status = 'settled' WHERE id = ? AND status = 'settling'").bind(round.id),
+        db.prepare("DELETE FROM game_bets WHERE id = ? AND status = 'processing'").bind(betId)
+      ]);
+      const accepted = await db.prepare("SELECT id, stake, payout, status FROM game_bets WHERE round_id = ? AND idempotency_key = ? LIMIT 1").bind(round.id, idempotencyKey).first<{ id: string; stake: number; payout: number; status: string }>();
+      if (!accepted || accepted.status !== "settled") {
+        const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>();
+        return reply({ error: (wallet?.balance ?? 0) < amount ? "insufficient_balance" : "round_closed" }, 409, origin, env);
+      }
+      const wallet = await db.prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1").bind(user.id).first<{ balance: number }>();
+      const bets = Array(8).fill(0) as number[];
+      bets[slot] = amount;
+      return reply({ round_id: roundId, round_uuid: round.id, seconds_left: 0, phase: "result", pools: Array(8).fill(0), my_bets: bets, balance: wallet?.balance ?? 0, my_payout: payout, result_slot: resultSlot, special: null }, 200, origin, env);
     }
 
     if (isAuth) {
