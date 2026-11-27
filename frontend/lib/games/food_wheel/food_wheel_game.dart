@@ -358,7 +358,7 @@ class _PendingWheelBet {
 }
 
 class _FoodWheelGameState extends State<FoodWheelGame> {
-  final _rnd = math.Random();
+  int _betSequence = 0;
   Timer? _poll, _msgTimer, _panelTimer, _foodTapTimer, _foodFeedbackTimer, _foodDiagnosticTimer;
   int _foodTapDebug = -1, _foodFeedbackSlot = -1;
   String? _foodFeedback;
@@ -433,11 +433,14 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     });
   }
 
+  int _safeSlotValue(List<int> values, int slot) =>
+      slot >= 0 && slot < values.length ? values[slot] : 0;
+
   void _startOptimisticRound(RoundState s) {
     _confirmedRoundId = s.roundId;
     for (var i = 0; i < 8; i++) {
-      _confirmedMine[i] = s.myBets[i];
-      _confirmedPools[i] = s.pools[i];
+      _confirmedMine[i] = _safeSlotValue(s.myBets, i);
+      _confirmedPools[i] = _safeSlotValue(s.pools, i);
     }
     // الطلبات المقبولة في جولة انتهت لم تعد تحتاج طبقة عرض محلية.
     _pendingBets.removeWhere((bet) =>
@@ -452,7 +455,9 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
     for (var slot = 0; slot < 8; slot++) {
       final previousMine = _confirmedMine[slot];
-      var newlyObserved = math.max(0, s.myBets[slot] - previousMine).toInt();
+      final serverMine = _safeSlotValue(s.myBets, slot);
+      final serverPool = _safeSlotValue(s.pools, slot);
+      var newlyObserved = math.max(0, serverMine - previousMine).toInt();
       var matchedAmount = 0;
 
       // A poll can see a committed bet before its POST response arrives.
@@ -468,10 +473,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         matchedAmount += bet.amount;
       }
 
-      if (s.myBets[slot] > previousMine) {
-        _confirmedMine[slot] = s.myBets[slot];
+      if (serverMine > previousMine) {
+        _confirmedMine[slot] = serverMine;
         _confirmedPools[slot] = math.max(
-          s.pools[slot],
+          serverPool,
           _confirmedPools[slot] + matchedAmount,
         ).toInt();
       } else if (matchedAmount > 0) {
@@ -486,7 +491,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           !bet.observedInState);
       if (!hasUnobservedPending) {
         _confirmedPools[slot] =
-            math.max(_confirmedPools[slot], s.pools[slot]).toInt();
+            math.max(_confirmedPools[slot], serverPool).toInt();
       }
 
       // The server state itself has acknowledged these accepted amounts.
@@ -512,11 +517,11 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     );
     final mine = List<int>.generate(
       8,
-      (i) => math.max(s.myBets[i], _confirmedMine[i] + pendingBySlot[i]).toInt(),
+      (i) => math.max(_safeSlotValue(s.myBets, i), _confirmedMine[i] + pendingBySlot[i]).toInt(),
     );
     final pools = List<int>.generate(
       8,
-      (i) => math.max(s.pools[i], _confirmedPools[i] + pendingBySlot[i]).toInt(),
+      (i) => math.max(_safeSlotValue(s.pools, i), _confirmedPools[i] + pendingBySlot[i]).toInt(),
     );
     return RoundState(
       roundId: s.roundId,
@@ -650,8 +655,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         ? sanitizedUserId
         : sanitizedUserId.substring(0, 24);
     final stamp = DateTime.now().microsecondsSinceEpoch;
-    final random = _rnd.nextInt(1 << 32).toRadixString(16).padLeft(8, '0');
-    return 'fw-$safeUserId-$roundId-$stamp-$random';
+    // Avoid Random.nextInt(1 << 32): on web integer shifts can collapse the
+    // bound to zero, causing RangeError before the optimistic bet is saved.
+    final sequence = ++_betSequence;
+    return 'fw-$safeUserId-$roundId-$stamp-$sequence';
   }
 
   void _onFoodPointerDown(int i) {
@@ -709,16 +716,17 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         slot: i,
         amount: amount,
       );
-      final serverRequest = widget.api.placeBet(
-        bet.roundId, bet.slot, bet.amount, bet.idempotencyKey,
-      );
       _showFoodFeedback(i, 'STEP4 saving');
       setState(() => _pendingBets.add(bet));
       // The UI reads s.myBets from _withOptimisticBets; pending is merged now.
       _showFoodFeedback(i, 'STEP5 saved, bet=$amount');
-      unawaited(_sendBet(bet, request: serverRequest));
-    } catch (error) {
-      if (mounted) _showFoodFeedback(i, 'EXCEPTION: $error');
+      // The pending bet is already in the exact list consumed by the UI.
+      // _sendBet starts the POST only after this synchronous local save.
+      unawaited(_sendBet(bet));
+    } catch (error, stackTrace) {
+      if (mounted) {
+        _showFoodFeedback(i, 'EXCEPTION: $error\\n$stackTrace');
+      }
     }
   }
 
@@ -790,7 +798,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           _pendingBets.remove(bet);
         }
       });
-    } catch (error) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
       if (error is TimeoutException) {
         _showFoodFeedback(bet.slot, 'TIMEOUT');
@@ -804,7 +812,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       final detail = error is WheelApiException
           ? 'EXCEPTION: ${error.status == null ? '' : 'HTTP ${error.status} '}${error.code}'
               '${error.body == null || error.body!.isEmpty ? '' : ' | ${error.body}'}'
-          : 'EXCEPTION: $error';
+          : 'EXCEPTION: $error\\n$stackTrace';
       _showFoodFeedback(bet.slot, detail);
       if (_isDefinitiveBetRejection(error)) {
         setState(() => _pendingBets.remove(bet));
