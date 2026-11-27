@@ -840,68 +840,6 @@ async function agoraPage(){
       await agoraPage();
     }
   };
-  await happyFoodWheelIntegrationPage();
-}
-async function happyFoodWheelIntegrationPage(){
-  if(admin.role!=="owner"){
-    $("content").insertAdjacentHTML("beforeend",'<div class="section"><h2>ربط Happy Food Wheel</h2><p class="notice">إعداد مفاتيح الربط متاح لحساب مالك التطبيق فقط.</p></div>');
-    return;
-  }
-  const data=await api("/admin/integrations/happy-food-wheel");
-  const configured=data.tokenConfigured===true||data.configured===true;
-  const callbackBase=(data.callbackBaseUrl||"https://happy-live-api.taher616270.workers.dev").replace(/\/$/,"");
-  const callbackEndpoint=callbackBase+"/v1/platform/handshake";
-  $("content").insertAdjacentHTML("beforeend",
-    '<div class="section"><div class="section-head"><div><h2>ربط Happy Live مع Happy Food Wheel</h2><p class="muted">إعداد موحّد خطوة بخطوة. استخدم بيانات هذا القسم في بوابة صاحب التطبيق على منصة Happy Food Wheel.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'مفتاح الخادم محفوظ':'مفتاح الخادم غير مُصدر')+'</span></div>'+
-    '<div class="notice"><b>مهم — عنوان Callback الأساسي</b><p class="muted" style="margin:6px 0 0">انسخ عنوان الخادم الأساسي فقط. المنصة تضيف المسار <code>/v1/platform/handshake</code> تلقائياً؛ لا تلصق المسار داخل خانة Callback Base URL.</p></div>'+
-    '<div class="form-grid" style="margin-top:16px">'+
-      '<label>رابط تطبيق Happy Live<input id="hfwAppLink" value="https://happy-live.pages.dev" readonly dir="ltr"></label>'+
-      '<label>Callback Base URL — انسخ هذا فقط<input id="hfwCallbackBase" value="'+esc(callbackBase)+'" readonly dir="ltr"></label>'+
-      '<label class="form-wide">مسار المصافحة الذي ستستخدمه المنصة<input id="hfwCallbackEndpoint" value="'+esc(callbackEndpoint)+'" readonly dir="ltr"></label>'+
-    '</div>'+
-    '<div class="form-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
-      '<button class="action" type="button" data-hfw-copy="hfwAppLink">نسخ رابط التطبيق</button>'+
-      '<button class="action" type="button" data-hfw-copy="hfwCallbackBase">نسخ Callback Base URL</button>'+
-      '<button class="action" type="button" data-hfw-copy="hfwCallbackEndpoint">نسخ مسار المصافحة للتوثيق</button>'+
-    '</div></div>'+
-    '<div class="section"><div class="section-head"><div><h2>١. التحقق من حساب اللاعب</h2><p class="muted">تستخدم المنصة UID لحساب Happy Live النشط، مع مفتاح التطبيق نفسه للمصادقة. لا تُستخدم رموز مؤقتة منفصلة.</p></div><span class="badge good">مفتاح موحّد</span></div>'+
-      '<div class="notice">أصدر مفتاح الخادم في القسم التالي، ثم استخدم القيمة نفسها في حقل API Token عند إنشاء المشروع داخل Happy Food Wheel. بعد نجاح الفحص، تحفظ المنصة المفتاح تلقائياً للاتصالات اللاحقة. أدخل UID عاماً لحساب Happy Live نشط.</div>'+
-    '</div>'+
-    '<div class="section"><div class="section-head"><div><h2>٢. مفتاح الربط الدائم للخادم</h2><p class="muted">يُستخدم لمصادقة فحص المشروع وجميع طلبات API بين الخادمين.</p></div><span class="badge '+(configured?'good':'bad')+'">'+(configured?'مُعدّ':'غير مُعدّ')+'</span></div>'+
-      '<div class="notice">لا تضع هذا المفتاح في المتصفح أو داخل تطبيق Flutter. احفظه في إعدادات الخادم الآمن للمنصة، واستخدم القيمة نفسها أثناء فحص المشروع.</div>'+
-      '<div id="hfwRuntimeTokenResult"></div>'+
-      '<div class="form-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" id="hfwGenerateRuntime" type="button" style="width:auto">'+(configured?'إصدار مفتاح خادم جديد':'إصدار مفتاح الخادم')+'</button>'+(configured?'<button class="action danger" id="hfwRevokeRuntime" type="button">إلغاء المفتاح الحالي</button>':'')+'</div>'+
-      (configured?'<p class="muted" style="margin-top:12px">بادئة المفتاح المحفوظ: '+esc(data.tokenPrefix||"")+'… · آخر إصدار: '+esc(data.createdAt||"")+'</p>':'')+
-      '<p id="hfwRuntimeStatus" class="muted" role="status" style="margin-top:10px"></p>'+
-    '</div>'+
-    '<div class="section"><h2>٣. ترتيب الإعداد في منصة Happy Food Wheel</h2><ol class="muted" style="line-height:2"><li>افتح إنشاء مشروع جديد في بوابة المنصة.</li><li>في Callback Base URL الصق العنوان الأساسي فقط من القسم الأول.</li><li>أدخل UID نفسه، ثم أصدر رمز الاختبار المؤقت والصقه في خانة Token الاختبار.</li><li>نفّذ فحص المشروع فوراً قبل انتهاء صلاحية الرمز.</li></ol><p class="muted">لا ترسل أي Token في المحادثات أو الصور. إذا ظهر خطأ، شارك رسالة الخطأ فقط.</p></div>');
-  async function copyField(id,statusId){
-    const input=$(id),status=$(statusId||"hfwRuntimeStatus");
-    if(!input||!input.value){if(status)status.textContent="لا توجد قيمة لنسخها بعد.";return}
-    try{await navigator.clipboard.writeText(input.value);if(status)status.textContent="تم النسخ."}
-    catch(e){input.focus();input.select();document.execCommand("copy");if(status)status.textContent="تم تحديد النص؛ انسخه من المتصفح."}
-  }
-  document.querySelectorAll("[data-hfw-copy]").forEach(button=>button.onclick=()=>copyField(button.dataset.hfwCopy,"hfwRuntimeStatus"));
-  $("hfwGenerateRuntime").onclick=async()=>{
-    if(configured&&!confirm("سيؤدي إصدار مفتاح جديد إلى إبطال مفتاح الخادم السابق فوراً. هل تريد المتابعة؟"))return;
-    const button=$("hfwGenerateRuntime");button.disabled=true;$("hfwRuntimeStatus").textContent="";
-    try{
-      const result=await api("/admin/integrations/happy-food-wheel",{method:"POST",body:JSON.stringify({})});
-      if(!result.apiToken)throw Error("لم يرجع الخادم مفتاح الربط.");
-      $("hfwRuntimeTokenResult").innerHTML='<div class="game-key-result"><strong>مفتاح الخادم — يظهر مرة واحدة فقط</strong><textarea id="hfwRuntimeToken" rows="4" readonly dir="ltr"></textarea><p class="muted">انسخه إلى إعدادات API Token في المنصة، واستخدم القيمة نفسها في فحص المشروع.</p><button class="action" id="hfwCopyRuntimeToken" type="button">نسخ مفتاح الخادم</button></div>';
-      $("hfwRuntimeToken").value=result.apiToken;
-      $("hfwCopyRuntimeToken").onclick=()=>copyField("hfwRuntimeToken","hfwRuntimeStatus");
-      $("hfwRuntimeStatus").textContent="تم الإصدار. احتفظ به في الخادم الآمن فقط.";
-      button.textContent="تم إصدار المفتاح — انسخه الآن";
-    }catch(error){$("hfwRuntimeStatus").textContent=error.message;button.disabled=false}
-  };
-  $("hfwRevokeRuntime")?.addEventListener("click",async()=>{
-    if(!confirm("سيتم إلغاء مفتاح الربط الدائم الحالي. هل تريد المتابعة؟"))return;
-    const button=$("hfwRevokeRuntime");button.disabled=true;
-    try{await api("/admin/integrations/happy-food-wheel",{method:"DELETE"});await agoraPage()}
-    catch(error){$("hfwRuntimeStatus").textContent=error.message;button.disabled=false}
-  });
-}
 
 function statsPage(s){
   const x=s.summary||{},d=s.daily||{},rows=a=>a&&a.length?a.map(v=>'<tr><td>'+esc(v.day)+'</td><td>'+Number(v.total||0).toLocaleString("en-US")+'</td></tr>').join(""):'<tr><td colspan="2" class="empty">لا توجد بيانات خلال الفترة</td></tr>';
