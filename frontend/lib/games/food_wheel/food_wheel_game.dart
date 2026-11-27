@@ -314,11 +314,3914 @@ class _LogEntry {
   const _LogEntry(this.round, this.bet, this.payout, this.result);
 }
 
-String _fmt(int n) => n >= 1000000
-    ? '${(n / 1000000).toStringAsFixed(2)}M'
-    : n >= 1000
-        ? '${(n / 1000).toStringAsFixed(1)}K'
-        : '$n';
+String _fmt(int n) {
+  if (n >= 1000000) {
+    final value = (n / 1000000).toStringAsFixed(3);
+    return '${value.replaceFirst(RegExp(r'0+
+
+// ---------- شاشة اللعبة ----------
+class FoodWheelGame extends StatefulWidget {
+  final FoodWheelApi api;
+  const FoodWheelGame({super.key, required this.api});
+
+  @override
+  State<FoodWheelGame> createState() => _FoodWheelGameState();
+}
+
+class _FoodWheelGameState extends State<FoodWheelGame> {
+  final _rnd = math.Random();
+  Timer? _poll, _msgTimer, _panelTimer;
+  RoundState? _s;
+  int _bal = 0, _chip = 10, _hit = -1, _animatedRound = -1, _timeLeft = 20;
+  Set<int> _win = {};
+  String? _lit, _err, _msg;
+  bool _spinning = false, _busy = false, _panel = false;
+  bool _fetching = false; // يمنع تراكم طلبات الحالة لو الخادم بطيء
+  String _mode = 'n'; // n = عادي، a = متقدم
+  bool _auto = false, _sound = true, _showBets = true;
+  List<int> _prevBets = List.filled(8, 0); // رهانات الجولة السابقة (للتكرار)
+  int _todayWin = 0;
+  final List<_LogEntry> _log = [];
+  List<int> get _chipSet => kChips;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+    _poll = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final endAt = _s?.roundEndAt;
+      final next = endAt == null
+          ? (_timeLeft > 0 ? _timeLeft - 1 : 0)
+          : ((endAt - DateTime.now().millisecondsSinceEpoch) / 1000)
+              .ceil()
+              .clamp(0, 20);
+      if (next != _timeLeft) setState(() => _timeLeft = next);
+      _refresh();
+    });
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    _msgTimer?.cancel();
+    _panelTimer?.cancel();
+    super.dispose();
+  }
+
+  void _say(String m) {
+    _msgTimer?.cancel();
+    setState(() => _msg = m);
+    _msgTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _msg = null);
+    });
+  }
+
+  Future<void> _refresh() async {
+    if (_fetching) return;
+    _fetching = true;
+    try {
+      final s = await widget.api.fetchState();
+      if (!mounted) return;
+      if (_spinning && _s != null && _s!.roundId != s.roundId) return;
+      final newRound = _s != null && _s!.roundId != s.roundId;
+      setState(() {
+        _s = s;
+        _timeLeft = s.roundEndAt == null
+            ? s.secondsLeft.clamp(0, 20)
+            : ((s.roundEndAt! - DateTime.now().millisecondsSinceEpoch) / 1000)
+                .ceil()
+                .clamp(0, 20);
+        _err = null;
+        if (!_spinning) _bal = s.balance;
+        if (newRound) {
+          _win = {};
+          _hit = -1;
+          _lit = null;
+          _msg = null;
+          _panel = false;
+          _panelTimer?.cancel();
+        }
+      });
+      if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
+        _animatedRound = s.roundId;
+        _spin(s);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _err = wheelErrorText(e));
+    } finally {
+      _fetching = false;
+    }
+  }
+
+  Future<void> _spin(RoundState s) async {
+    _spinning = true;
+    final target = s.resultSlot ?? 0;
+    setState(() {
+      _panel = true;
+      _centerTurns += 4 + (target / 8);
+    });
+    _panelTimer?.cancel();
+    _panelTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _panel = false);
+    });
+    final steps = 4 * 8 + target + 1;
+    for (var k = 0; k < steps; k++) {
+      if (!mounted) return;
+      setState(() => _hit = k % 8);
+      final progress = steps <= 1 ? 1.0 : k / (steps - 1);
+      final mean = 4200.0 / steps;
+      final delayMs = (mean * (0.5 + 1.5 * progress * progress)).round();
+      await Future.delayed(Duration(milliseconds: delayMs));
+    }
+    if (!mounted) return;
+    _spinning = false;
+    setState(() {
+      _hit = -1;
+      _bal = s.balance;
+      _lit = s.special;
+      _win = s.special == null
+          ? {target}
+          : {
+              for (var i = 0; i < 8; i++)
+                if (kSlots[i].veg == (s.special == 'salad')) i
+            };
+    });
+    final resEmoji = s.special == 'salad'
+        ? '🥗'
+        : s.special == 'pizza'
+            ? '🍕'
+            : kSlots[target].emoji;
+    final mineBets = s.myBets.fold(0, (a, b) => a + b);
+    setState(() {
+      _todayWin += s.myPayout;
+      if (mineBets > 0) {
+        _prevBets = List.of(s.myBets);
+        _log.insert(0, _LogEntry(s.roundId, mineBets, s.myPayout, resEmoji));
+        if (_log.length > 30) _log.removeLast();
+      }
+    });
+    final parts = <String>[];
+    if (s.myPayout > 0) {
+      parts.add('ربحت ${_fmt(s.myPayout)} 🎉');
+    } else if (s.myBets.any((b) => b > 0)) {
+      parts.add('حظ أوفر في الجولة القادمة');
+    }
+    if (s.chestReward > 0) parts.add('🎁 صندوق: +${_fmt(s.chestReward)} 🪙');
+    if (parts.isNotEmpty) _say(parts.join('  •  '));
+  }
+
+  Future<void> _bet(int i) async {
+    final s = _s;
+    if (s == null || s.phase != RoundPhase.betting) {
+      return _say('انتظر الجولة القادمة');
+    }
+    final pl = s.player;
+    if (pl != null && pl.status.isNotEmpty && pl.status != 'active') {
+      return _say('حسابك غير مفعّل للعب');
+    }
+    if (_bal < _chip) return _say('رصيدك لا يكفي');
+    if (_busy) return;
+    _busy = true;
+    try {
+      final n = await widget.api.placeBet(s.roundId, i, _chip);
+      if (mounted) {
+        setState(() {
+          _s = n;
+          _bal = n.balance;
+          _timeLeft = n.roundEndAt == null
+              ? n.secondsLeft.clamp(0, 20)
+              : ((n.roundEndAt! - DateTime.now().millisecondsSinceEpoch) / 1000)
+                  .ceil()
+                  .clamp(0, 20);
+        });
+        if (n.phase == RoundPhase.result && n.roundId != _animatedRound) {
+          _animatedRound = n.roundId;
+          await _spin(n);
+        }
+      }
+    } catch (e) {
+      _say(wheelErrorText(e));
+    } finally {
+      _busy = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = _s;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF2F7DEE),
+                Color(0xFF6CC4FF),
+                Color(0xFFBFE6FF)
+              ],
+              stops: [0, 0.45, 1],
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: s == null
+                ? Center(
+                    child: _err != null
+                        ? _errorBox()
+                        : const CircularProgressIndicator(color: Colors.white))
+                : Stack(children: [
+                  SingleChildScrollView(
+                    child: Column(children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                        child: Column(children: [
+                          _topBar(s),
+                          SizedBox(
+                            height: 40,
+                            child: Row(children: [_playerBadge(s.player)]),
+                          ),
+                          _wheel(s),
+                        ]),
+                      ),
+                      _platform(s),
+                      _redFloor(s),
+                    ]),
+                  ),
+                  _resultOverlay(s),
+                ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // نافذة النتيجة: تنزلق من تحت بعد كل جولة
+  Widget _resultOverlay(RoundState s) => Stack(children: [
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: _panel ? 0.42 : 0,
+              duration: const Duration(milliseconds: 450),
+              child: const ColoredBox(color: Colors.black),
+            ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: FractionallySizedBox(
+            heightFactor: 0.6,
+            widthFactor: 1,
+            child: IgnorePointer(
+              ignoring: !_panel,
+              child: AnimatedSlide(
+                offset: _panel ? Offset.zero : const Offset(0, 1.05),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOutCubic,
+                child: _resultPanel(s),
+              ),
+            ),
+          ),
+        ),
+      ]);
+
+  Widget _resultPanel(RoundState s) {
+    final food = s.special == 'salad'
+        ? '🥗'
+        : s.special == 'pizza'
+            ? '🍕'
+            : kSlots[s.resultSlot ?? 0].emoji;
+    final mine = s.myBets.fold(0, (a, b) => a + b);
+    const t = TextStyle(
+        color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, height: 1.8);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF3F7BFF), Color(0xFF5B2FE6)],
+        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SingleChildScrollView(
+        child: Stack(children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF173C91),
+                  border: Border.all(color: const Color(0xFFFFD45A), width: 2),
+                ),
+                child: Text('${_timeLeft.clamp(1, 5)}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900)),
+              ),
+            ),
+          ),
+          Column(children: [
+            SizedBox(
+              height: 62,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CustomPaint(
+                      size: const Size(20, 54), painter: _CutleryPainter(true)),
+                  const SizedBox(width: 14),
+                  Text(food, style: const TextStyle(fontSize: 48)),
+                  const SizedBox(width: 14),
+                  CustomPaint(
+                      size: const Size(20, 54), painter: _CutleryPainter(false)),
+                ],
+              ),
+            ),
+            Container(
+              height: 6,
+              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0x00FFD400),
+                    Color(0xFFFFD400),
+                    Color(0xFFFFD400),
+                    Color(0x00FFD400)
+                  ],
+                  stops: [0, 0.15, 0.85, 1],
+                ),
+              ),
+            ),
+            Row(children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(child: Text('نتيجة الجولة ${s.roundId}', style: t)),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      Expanded(child: Text('رهانك: $mine', textAlign: TextAlign.center, style: t)),
+                      Expanded(child: Text('فوزك: ${s.myPayout}', textAlign: TextAlign.center, style: t)),
+                    ]),
+                  ],
+                ),
+              ),
+              Text(s.myPayout > 0 ? '🥳' : '😿',
+                  style: const TextStyle(fontSize: 44)),
+            ]),
+            const SizedBox(height: 4),
+            const Text('الفائز الاكبر لهذه الجولة',
+                style: TextStyle(
+                    color: Color(0xFFFFD400),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15)),
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (final i in [1, 0, 2])
+                  Expanded(
+                    child: i < s.topWinners.length
+                        ? _podium(i, s.topWinners[i])
+                        : const SizedBox.shrink(),
+                  ),
+              ],
+            ),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _podium(int i, WheelWinner w) {
+    const ring = [Color(0xFFFFD400), Color(0xFFD7DBE6), Color(0xFFE78B3C)];
+    const badge = [Color(0xFFE6A100), Color(0xFF8A93A8), Color(0xFFC4661A)];
+    const crown = [Color(0xFFFFFFFF), Color(0xFFBBBBBB), Color(0xFFFFB070)];
+    const ribbon = [
+      [Color(0xFFFFD45A), Color(0xFFF0A020)],
+      [Color(0xFFF4F6FB), Color(0xFFC9CFDC)],
+      [Color(0xFFFFB06A), Color(0xFFE0762A)],
+    ];
+    final size = i == 0 ? 74.0 : 60.0;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      ColorFiltered(
+        colorFilter: ColorFilter.mode(crown[i], BlendMode.modulate),
+        child: Transform.rotate(
+            angle: -0.2, child: const Text('👑', style: TextStyle(fontSize: 26))),
+      ),
+      Stack(clipBehavior: Clip.none, children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF7A5CFF),
+            border: Border.all(color: ring[i], width: 4),
+          ),
+          child: ClipOval(
+            child: SizedBox.expand(
+              child: (w.avatarUrl ?? '').isNotEmpty
+                  ? Image.network(w.avatarUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink())
+                  : const SizedBox.shrink(),
+            ),
+          ),
+        ),
+        Positioned(
+          right: -6,
+          bottom: -4,
+          child: Container(
+            width: 22,
+            height: 22,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: badge[i],
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: Text('${i + 1}',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ]),
+      const SizedBox(height: 6),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: ribbon[i]),
+          borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(6), bottom: Radius.circular(14)),
+        ),
+        child: Text(w.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: Color(0xFF4A2A00),
+                fontWeight: FontWeight.w800,
+                fontSize: 12)),
+      ),
+      const SizedBox(height: 3),
+      Text('${w.amount} 🪙',
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+    ]);
+  }
+
+  Widget _errorBox() => Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('تعذر الاتصال بالخادم',
+            style: TextStyle(color: Colors.white)),
+        Text('$_err',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white70, fontSize: 10)),
+        TextButton(onPressed: null, child: const Text('إعادة المحاولة')),
+      ]);
+
+  Widget _pill(Widget child) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0x7314087A),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0x59FFFFFF)),
+        ),
+        child: child,
+      );
+
+  Widget _topBar(RoundState s) => Row(children: [
+        _ib(const Icon(Icons.close, color: Colors.white, size: 28),
+            () => Navigator.of(context).maybePop()),
+        const SizedBox(width: 8),
+        _pill(Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('جولة',
+              style: TextStyle(color: Colors.white70, fontSize: 9, height: 1.1)),
+          Text('${s.roundId}',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  height: 1.1,
+                  fontWeight: FontWeight.bold)),
+        ])),
+        const Spacer(),
+      ]);
+
+  Widget _wheel(RoundState s) {
+    return LayoutBuilder(builder: (context, c) {
+      final w = c.maxWidth, d = w * 0.27, ds = w * 0.22; // d = المركز، ds = الدوائر
+      return SizedBox(
+        width: w,
+        height: w,
+        child: Stack(children: [
+          Positioned.fill(child: CustomPaint(painter: _SpokesPainter(d))),
+          for (var i = 0; i < 8; i++)
+            Positioned(
+              left: w / 2 + w * 0.37 * math.sin(i * math.pi / 4) - ds / 2,
+              top: w / 2 - w * 0.37 * math.cos(i * math.pi / 4) - ds / 2,
+              width: ds,
+              height: ds,
+              child: _slot(i, s, ds),
+            ),
+          Center(
+            child: Container(
+              width: d,
+              height: d,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF8A4B2A),
+                border: Border.all(color: const Color(0xFF5A2F16), width: 4),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: d * 0.12, vertical: d * 0.03),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE08F1E),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFB36B0F), width: 2),
+                    ),
+                    child: Text(
+                        s.phase == RoundPhase.betting ? '${_timeLeft}s' : '🎡',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: d * 0.26,
+                            fontWeight: FontWeight.w900)),
+                  ),
+                  SizedBox(height: d * 0.04),
+                  AnimatedRotation(
+                    turns: _centerTurns,
+                    duration: const Duration(milliseconds: 4200),
+                    curve: Curves.easeOutCubic,
+                    child: Text(
+                      s.phase == RoundPhase.betting ? 'النتيجة قادمة' : '🍽️',
+                      style: TextStyle(color: Colors.white, fontSize: d * 0.20),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ]),
+      );
+    });
+  }
+
+  Widget _slot(int i, RoundState s, double d) {
+    final slot = kSlots[i];
+    final hit = _hit == i, win = _win.contains(i), mine = s.myBets[i] > 0;
+    final mx = s.pools.reduce((a, b) => a > b ? a : b);
+    final frac = mx == 0 ? 0.45 : 0.45 + 0.35 * (s.pools[i] / mx);
+    const dark = Color(0xFF5A3A00);
+    return GestureDetector(
+      onTap: () => _bet(i),
+      child: Stack(clipBehavior: Clip.none, children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: d,
+          height: d,
+          transform: Matrix4.identity()..scale(hit || win ? 1.12 : 1.0),
+          transformAlignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFFFFF3C4),
+            border: Border.all(color: const Color(0xFF8A4B2A), width: 4),
+            boxShadow: hit || win
+                ? [
+                    BoxShadow(
+                        color: win
+                            ? const Color(0xFF3DFF7A)
+                            : const Color(0xFFFFD400),
+                        blurRadius: 22,
+                        spreadRadius: 4)
+                  ]
+                : null,
+          ),
+          child: ClipOval(
+            child: Stack(children: [
+              Positioned.fill(
+                  child: ColoredBox(
+                      color: win
+                          ? const Color(0xFFBFFFB8)
+                          : const Color(0xFFFFF3C4))),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: FractionallySizedBox(
+                  heightFactor: frac,
+                  widthFactor: 1,
+                  child: ColoredBox(
+                      color: win
+                          ? const Color(0xFF4DE06A)
+                          : const Color(0xFFFFD84D)),
+                ),
+              ),
+              Align(
+                alignment: const Alignment(0, -0.42),
+                child: Text('${slot.mult} اضعاف',
+                    style: TextStyle(color: dark, fontSize: d * 0.14)),
+              ),
+              Align(
+                alignment: const Alignment(0, 0.38),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(_fmt(s.pools[i]),
+                      style: TextStyle(
+                          color: dark,
+                          fontSize: d * 0.17,
+                          fontWeight: FontWeight.bold)),
+                  SizedBox(width: d * 0.04),
+                  Text('🪙', style: TextStyle(fontSize: d * 0.14)),
+                ]),
+              ),
+              if (mine)
+                Align(
+                  alignment: const Alignment(0, 0.74),
+                  child: Text(_fmt(s.myBets[i]),
+                      style: TextStyle(
+                          color: const Color(0xFF1458D4), // كومة عملات زرقاء
+                          fontSize: d * 0.17,
+                          fontWeight: FontWeight.w800)),
+                ),
+            ]),
+          ),
+        ),
+        Positioned(
+          top: -d * 0.22,
+          left: 0,
+          right: 0,
+          child: Center(
+              child: Text(slot.emoji, style: TextStyle(fontSize: d * 0.38))),
+        ),
+        if (mx > 0 && s.pools[i] == mx)
+          Positioned(
+            top: -d * 0.1,
+            right: -d * 0.12,
+            child: Transform.rotate(
+              angle: -0.14,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                decoration: BoxDecoration(
+                    color: const Color(0xFFE5251B),
+                    borderRadius: BorderRadius.circular(5)),
+                child: Text('Hot',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: d * 0.15,
+                        fontWeight: FontWeight.w900)),
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
+
+  Widget _special(String key, String label) {
+    final on = _lit == key;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Text(key == 'salad' ? '🥗' : '🍕',
+          style: TextStyle(
+              fontSize: 46,
+              shadows: on
+                  ? const [Shadow(color: Color(0xFFFFD400), blurRadius: 18)]
+                  : null)),
+      Transform.translate(
+        offset: const Offset(0, -6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          decoration: BoxDecoration(
+            color: on ? const Color(0xFFFFD400) : const Color(0xFFFFF5DE),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF6B3A1E), width: 2),
+          ),
+          child: Text(label,
+              style: const TextStyle(
+                  color: Color(0xFF4A2A10),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14)),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _platform(RoundState s) => Stack(clipBehavior: Clip.none, children: [
+        Column(children: [
+          CustomPaint(
+              painter: _PlatTopPainter(),
+              child: const SizedBox(height: 30, width: double.infinity)),
+          CustomPaint(
+            painter: _PlatFacePainter(),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(10, 34, 10, 16),
+              child: _platformBody(s),
+            ),
+          ),
+        ]),
+        Positioned(
+          top: -46,
+          left: 8,
+          right: 8,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _special('salad', 'السلطة'),
+              _special('pizza', 'البيتزا'),
+            ],
+          ),
+        ),
+      ]);
+
+  Widget _pills(RoundState s) => Row(children: [
+        Expanded(child: _plPill('فائز اليوم', '${_fmt(_todayWin)} ⭐')),
+        const SizedBox(width: 8),
+        Expanded(child: _plPill('سجلي', '')),
+        const SizedBox(width: 8),
+        Expanded(child: _plPill('العملات المتبقية', '${_fmt(_bal)} 🪙')),
+      ]);
+
+  Widget _plPill(String label, String value) => Container(
+        constraints: const BoxConstraints(minHeight: 56),
+        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF5DE),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: const Color(0xFF6B3A1E), width: 2),
+        ),
+        child: value.isEmpty
+            ? Text(label,
+                style: const TextStyle(
+                    color: Color(0xFF4A2A10),
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold))
+            : Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Color(0xFF4A2A10), fontSize: 11)),
+                Text(value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Color(0xFF4A2A10),
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold)),
+              ]),
+      );
+
+  Widget _redFloor(RoundState s) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 34, 12, 20),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFFC4755), Color(0xFFC91E31)],
+            stops: [0, 0.45],
+          ),
+        ),
+        child: Stack(clipBehavior: Clip.none, children: [
+          Positioned(
+            top: -30,
+            left: 24,
+            right: 24,
+            child: Container(
+              height: 14,
+              decoration: const BoxDecoration(
+                color: Color(0xFF870816),
+                borderRadius:
+                    BorderRadius.vertical(bottom: Radius.circular(14)),
+              ),
+            ),
+          ),
+          Column(children: [
+            SizedBox(
+              height: 13, // كان 30: رفعت الصناديق 17 بكسل
+              child: Center(
+                child: Text(_msg ?? '',
+                    style: const TextStyle(
+                        color: Color(0xFFFFE36A),
+                        fontSize: 13,
+                        height: 1.0,
+                        fontWeight: FontWeight.w800)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _pills(s),
+            const SizedBox(height: 14),
+            _chestBar(s),
+            _history(s),
+            if (_showBets) _betFeed(s),
+            if (_err != null) _errorBox(),
+          ]),
+        ]),
+      );
+
+  Widget _chestBar(RoundState s) {
+    final n = s.chestThresholds.length;
+    var fill = 1.0;
+    if (s.chestIndex < n) {
+      final prev = s.chestIndex == 0 ? 0 : s.chestThresholds[s.chestIndex - 1];
+      final next = s.chestThresholds[s.chestIndex];
+      final frac = ((s.chestTotal - prev) / (next - prev)).clamp(0.0, 1.0);
+      fill = (s.chestIndex + frac) / n;
+    }
+    return Column(children: [
+      SizedBox(
+        height: 56,
+        child: Stack(alignment: Alignment.center, children: [
+          Container(
+              height: 16,
+              decoration: BoxDecoration(
+                  color: const Color(0xFF8A0A1E),
+                  borderRadius: BorderRadius.circular(8))),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FractionallySizedBox(
+              widthFactor: fill,
+              child: Container(
+                  height: 16,
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFFFB400),
+                      borderRadius: BorderRadius.circular(8))),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [for (var i = 0; i < n; i++) _chest(i, s)],
+          ),
+        ]),
+      ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          for (var i = 0; i < n; i++)
+            SizedBox(
+              width: 56,
+              child: Text(_mil(s.chestThresholds[i]),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800)),
+            ),
+        ],
+      ),
+      const SizedBox(height: 10),
+    ]);
+  }
+
+  Widget _chest(int i, RoundState s) {
+    final done = i < s.chestIndex, cur = i == s.chestIndex;
+    return SizedBox(
+      width: 56,
+      child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+        Opacity(
+          opacity: done || cur ? 1 : 0.7,
+          child: Text('🧰',
+              style: TextStyle(
+                  fontSize: 40,
+                  shadows: cur
+                      ? const [Shadow(color: Color(0xFFFFD400), blurRadius: 14)]
+                      : null)),
+        ),
+        if (done)
+          Positioned(
+            top: 0,
+            right: 2,
+            child: Container(
+              width: 18,
+              height: 18,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                  shape: BoxShape.circle, color: Color(0xFF2FBF5A)),
+              child: const Icon(Icons.check, size: 12, color: Colors.white),
+            ),
+          ),
+      ]),
+    );
+  }
+
+  // ---- المنصة: وضع الرهان التلقائي + رقائق الرهان ----
+  Widget _platformBody(RoundState s) => Column(children: [
+        const SizedBox(height: 6),
+        _chipTiles(s),
+      ]);
+
+  Widget _chipTiles(RoundState s) => Row(children: [
+        for (var i = 0; i < _chipSet.length; i++) Expanded(child: _chipTile(i)),
+      ]);
+
+  Widget _chipTile(int i) {
+    final v = _chipSet[i], sel = _chip == v;
+    return GestureDetector(
+      onTap: () => setState(() => _chip = v),
+      child: Container(
+        height: 78,
+        margin: const EdgeInsets.symmetric(horizontal: 2.5),
+        decoration: BoxDecoration(
+          color: sel ? const Color(0xFF7A4A1E) : const Color(0xFFFBE6C2),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+              color: sel ? const Color(0xFF1EF04B) : const Color(0xFFD9B77A),
+              width: sel ? 3 : 1),
+        ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          _coinStack(i + 1),
+          const SizedBox(height: 4),
+          _valuePill(v >= 1000000 ? _mil(v) : '$v'),
+        ]),
+      ),
+    );
+  }
+
+  Widget _valuePill(String t) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF5DE),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF4A2A10), width: 1.5),
+        ),
+        child: Text(t,
+            style: const TextStyle(
+                color: Color(0xFF4A2A10),
+                fontWeight: FontWeight.w800,
+                fontSize: 11)),
+      );
+
+  Widget _coinStack(int n) {
+    const rows = {
+      1: [1],
+      2: [2],
+      3: [2, 1],
+      4: [2, 2],
+      5: [3, 2],
+    };
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      for (final r in rows[n]!)
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          for (var k = 0; k < r; k++)
+            const Text('🪙', style: TextStyle(fontSize: 17)),
+        ]),
+    ]);
+  }
+
+  /// "وضع رهان": يكرر رهانات الجولة السابقة مرة وحدة
+  Widget _repeatTile(bool on) => GestureDetector(
+        onTap: on ? _repeatBets : () => _say('ما فيه رهان سابق أو الجولة منتهية'),
+        child: Opacity(
+          opacity: on ? 1 : 0.55,
+          child: Container(
+            height: 78,
+            margin: const EdgeInsets.symmetric(horizontal: 2.5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1E3C8),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFD9B77A)),
+            ),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.replay, size: 30, color: Color(0xFF9A6A3A)),
+              const SizedBox(height: 4),
+              _valuePill('وضع رهان'),
+            ]),
+          ),
+        ),
+      );
+
+  Future<void> _repeatBets() async {
+    final s = _s;
+    if (s == null || s.phase != RoundPhase.betting) {
+      return _say('انتظر الجولة القادمة');
+    }
+    if (!_prevBets.any((b) => b > 0)) return _say('ما فيه رهان سابق');
+    if (s.myBets.any((b) => b > 0)) return _say('رهانك موجود في هذه الجولة');
+    if (_busy) return;
+    _busy = true;
+    try {
+      var cur = s;
+      for (var i = 0; i < 8; i++) {
+        final a = _prevBets[i];
+        if (a <= 0) continue;
+        if (_bal < a) {
+          _say('رصيدك لا يكفي');
+          break;
+        }
+        cur = await widget.api.placeBet(cur.roundId, i, a);
+        if (!mounted) return;
+        setState(() {
+          _s = cur;
+          _bal = cur.balance;
+        });
+      }
+    } catch (e) {
+      _say(wheelErrorText(e));
+    } finally {
+      _busy = false;
+    }
+  }
+
+  // ---- الشريط العلوي ----
+  Widget _ib(Widget icon, VoidCallback onTap) => IconButton(
+        onPressed: onTap,
+        icon: icon,
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      );
+
+  Widget _trophyBtn() => GestureDetector(
+        onTap: _openTopWins,
+        child: Container(
+          width: 38,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF9AD8FF),
+            border: Border.all(color: const Color(0xFFF2C24B), width: 2),
+          ),
+          child: const Text('🏆', style: TextStyle(fontSize: 20)),
+        ),
+      );
+
+  Widget _modeToggle() {
+    Widget seg(String m, String label) => GestureDetector(
+          onTap: () => _setMode(m),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+            decoration: BoxDecoration(
+              color: _mode == m ? const Color(0xFF7A22FF) : const Color(0x8014087A),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Text(label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold)),
+          ),
+        );
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xB3FFFFFF), width: 2),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        seg('n', 'عادي'),
+        seg('a', 'متقدم'),
+      ]),
+    );
+  }
+
+  void _setMode(String m) {
+    if (m == _mode) return;
+    setState(() {
+      _mode = m;
+      _chip = _chipSet.first;
+    });
+    _say(m == 'a' ? 'وضع متقدم: رهانات أكبر' : 'الوضع العادي');
+  }
+
+  void _openSettings() {
+    showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setD) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            backgroundColor: const Color(0xFF4A3DF0),
+            title: const Text('إعدادات', style: TextStyle(color: Colors.white)),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              SwitchListTile(
+                value: _sound,
+                onChanged: (v) {
+                  setState(() => _sound = v);
+                  setD(() {});
+                },
+                title: const Text('تشغيل الصوت',
+                    style: TextStyle(color: Colors.white)),
+              ),
+              SwitchListTile(
+                value: _showBets,
+                onChanged: (v) {
+                  setState(() => _showBets = v);
+                  setD(() {});
+                },
+                title: const Text('عرض قائمة وضع الرهان في الغرفة',
+                    style: TextStyle(color: Colors.white)),
+              ),
+            ]),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('حسنًا')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// سجلي: من الخادم، وإذا تعذر أو كان فاضي نعرض جولات هذه الجلسة
+  Future<List<MyRoundRecord>> _loadLog() async {
+    try {
+      final server = await widget.api.fetchMyHistory();
+      if (server.isNotEmpty) return server;
+    } catch (_) {}
+    return [
+      for (final e in _log)
+        MyRoundRecord(
+            round: e.round, bet: e.bet, payout: e.payout, result: e.result),
+    ];
+  }
+
+  void _openLog() {
+    showDialog(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF4A3DF0),
+          title: const Text('سجلي', style: TextStyle(color: Colors.white)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: FutureBuilder<List<MyRoundRecord>>(
+              future: _loadLog(),
+              builder: (context, snap) {
+                if (snap.connectionState != ConnectionState.done) {
+                  return const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(
+                        child: CircularProgressIndicator(color: Colors.white)),
+                  );
+                }
+                final list = snap.data ?? const <MyRoundRecord>[];
+                if (list.isEmpty) {
+                  return const Text('ما فيه جولات بعد',
+                      style: TextStyle(color: Colors.white70));
+                }
+                return ListView(shrinkWrap: true, children: [
+                  for (final e in list)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                          'جولة ${e.round}  ${e.result}   رهانك ${_fmt(e.bet)}   ربحك ${_fmt(e.payout)}',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 13)),
+                    ),
+                ]);
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إغلاق')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// صورة اللاعب الحالي (من الخادم) مع علم الدولة
+  Widget _playerBadge(WheelPlayer? p) {
+    if (p == null) return const SizedBox(width: 38, height: 38);
+    final initial =
+        p.name.isEmpty ? '?' : String.fromCharCode(p.name.runes.first);
+    final letter = Text(initial,
+        style: const TextStyle(
+            color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800));
+    final flag = _flagEmoji(p.flag);
+    return Stack(clipBehavior: Clip.none, children: [
+      Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF7A5CFF),
+          border: Border.all(color: const Color(0xFFF2C24B), width: 2),
+        ),
+        child: ClipOval(
+          child: SizedBox.expand(
+            child: (p.avatarUrl ?? '').isNotEmpty
+                ? Image.network(p.avatarUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Center(child: letter))
+                : Center(child: letter),
+          ),
+        ),
+      ),
+      if (flag != null)
+        Positioned(
+            right: -6,
+            bottom: -4,
+            child: Text(flag, style: const TextStyle(fontSize: 14))),
+    ]);
+  }
+
+  /// "SA" → 🇸🇦 ، وإذا وصل إيموجي جاهز نستخدمه كما هو
+  String? _flagEmoji(String? f) {
+    if (f == null || f.isEmpty) return null;
+    final up = f.toUpperCase();
+    final isCode = up.length == 2 &&
+        up.codeUnits.every((c) => c >= 0x41 && c <= 0x5A);
+    if (!isCode) return f;
+    return String.fromCharCodes(up.codeUnits.map((c) => 0x1F1E6 + c - 0x41));
+  }
+
+  // ---- شريط النتائج: دوائر بيضاء، وآخر نتيجة عليها NEW ----
+  Widget _history(RoundState s) => Container(
+        width: double.infinity,
+        height: 80,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+            color: const Color(0xFFE6515C),
+            borderRadius: BorderRadius.circular(14)),
+        child: Row(children: [
+          const Text('النتيجة:',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (var i = 0; i < s.history.length; i++)
+                  _histBadge(s.history[i], i == 0),
+              ],
+            ),
+          ),
+        ]),
+      );
+
+  Widget _histBadge(String e, bool isNew) => Padding(
+        padding: const EdgeInsets.only(left: 8, bottom: 6),
+        child: Stack(clipBehavior: Clip.none, children: [
+          Container(
+            width: 54,
+            height: 54,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFFFFD9DC), width: 2),
+            ),
+            child: Text(e, style: const TextStyle(fontSize: 28)),
+          ),
+          if (isNew)
+            Positioned(
+              bottom: -3,
+              left: 6,
+              right: 6,
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(vertical: 1),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFD400),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                child: const Text('NEW',
+                    style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900)),
+              ),
+            ),
+        ]),
+      );
+
+  // ---- رهانات كل اللاعبين مباشرة (نفس الطاولة للكل) ----
+  Widget _betFeed(RoundState s) => Container(
+        margin: const EdgeInsets.only(top: 10),
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+            color: const Color(0x33000000),
+            borderRadius: BorderRadius.circular(14)),
+        child: Row(children: [
+          Text('👥 ${s.players}',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: s.recentBets.isEmpty
+                ? const Text('رهانات اللاعبين تظهر هنا مباشرة',
+                    style: TextStyle(color: Colors.white60, fontSize: 12))
+                : ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [for (final b in s.recentBets) _betChip(b)],
+                  ),
+          ),
+        ]),
+      );
+
+  Widget _betChip(BetEvent b) => Container(
+        margin: const EdgeInsets.only(left: 6, top: 7, bottom: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0x33FFFFFF),
+          borderRadius: BorderRadius.circular(12),
+          border: b.isMe
+              ? Border.all(color: const Color(0xFFFFD400), width: 1.5)
+              : null,
+        ),
+        child: Text(
+            '${b.name} ${(b.slot < 0 || b.slot > 7) ? '?' : kSlots[b.slot].emoji} ${_fmt(b.amount)}',
+            style: const TextStyle(color: Colors.white, fontSize: 12)),
+      );
+
+  void _openTopWins() {
+    showDialog(
+      context: context,
+      builder: (_) => _TopWinsDialog(api: widget.api),
+    );
+  }
+
+  void _showRules() {
+    showDialog(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF4A3DF0),
+          content: const Text(
+            '1. اختر قيمة الرهان ثم اضغط على الوجبة.\n'
+            '2. مدة الجولة 30 ثانية ثم تظهر النتيجة.\n'
+            '3. الربح = رهانك × عدد الأضعاف.\n'
+            '4. يمكنك الرهان على أكثر من وجبة.\n'
+            '5. السلطة تربح كل الخضروات، والبيتزا تربح كل اللحوم.',
+            style: TextStyle(color: Colors.white, height: 1.8, fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('حسنًا')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------- التلال + الهيكل الخشبي A + ألواح الأعواد + حلقة المركز ----------
+class _SpokesPainter extends CustomPainter {
+  final double d; // قطر الدائرة
+  _SpokesPainter(this.d);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final c = size.center(Offset.zero);
+
+    // التلال
+    canvas.drawOval(Rect.fromLTWH(-w * 0.35, h * 0.80, w * 1.0, h * 0.5),
+        Paint()..color = const Color(0xFF7CCF63));
+    canvas.drawOval(Rect.fromLTWH(w * 0.25, h * 0.84, w * 1.2, h * 0.5),
+        Paint()..color = const Color(0xFF9BD465));
+
+    // الهيكل الخشبي على شكل حرف A (بفتحة قوس وعارضة)
+    final sw = w * 0.70, u = sw / 100, uy = u * 1.3; // أكبر وأطول (uy = مقياس الارتفاع)
+    final ox = c.dx - sw / 2, oy = h + 4 - 64 * uy; // الأرجل تنزل 4 بكسل داخل المنصة
+    Offset p(double x, double y) => Offset(ox + x * u, oy + y * uy);
+    final frame = Path()..fillType = PathFillType.evenOdd;
+    frame.addPolygon([p(37, 0), p(63, 0), p(100, 64), p(0, 64)], true);
+    frame.moveTo(p(35, 27).dx, p(35, 27).dy);
+    frame.lineTo(p(35, 19).dx, p(35, 19).dy);
+    frame.quadraticBezierTo(
+        p(35, 12.5).dx, p(35, 12.5).dy, p(50, 12.5).dx, p(50, 12.5).dy);
+    frame.quadraticBezierTo(
+        p(65, 12.5).dx, p(65, 12.5).dy, p(65, 19).dx, p(65, 19).dy);
+    frame.lineTo(p(65, 27).dx, p(65, 27).dy);
+    frame.close();
+    frame.addPolygon([p(31, 41.7), p(69, 41.7), p(77, 64), p(23, 64)], true);
+    canvas.drawPath(frame, Paint()..color = const Color(0xFFDD964A));
+    canvas.save();
+    canvas.clipPath(frame);
+    final grain = Paint()
+      ..color = const Color(0xFFC8823A)
+      ..strokeWidth = u * 0.4;
+    for (double x = 0; x < 100; x += 3) {
+      canvas.drawLine(p(x, 0), p(x, 64), grain);
+    }
+    canvas.restore();
+    canvas.drawPath(
+        frame,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = u * 0.9
+          ..strokeJoin = StrokeJoin.round
+          ..color = const Color(0xFF6B3A1E));
+    // بقع الظل على العارضة
+    for (final sx in [25.0, 75.0]) {
+      canvas.save();
+      canvas.translate(p(sx, 35).dx, p(sx, 35).dy);
+      canvas.rotate(sx < 50 ? 0.25 : -0.25);
+      canvas.drawOval(
+          Rect.fromCenter(center: Offset.zero, width: u * 5.2, height: uy * 14),
+          Paint()..color = const Color(0x526B3A1E));
+      canvas.restore();
+    }
+    // ألواح القاعدة الكريمية
+    for (final fx in [-1.5, 76.5]) {
+      final rr = RRect.fromRectAndRadius(
+          Rect.fromLTWH(p(fx, 62).dx, p(fx, 62).dy, 25 * u, 2.6 * uy),
+          Radius.circular(u * 0.8));
+      canvas.drawRRect(rr, Paint()..color = const Color(0xFFEFDAA9));
+      canvas.drawRRect(
+          rr,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = u * 0.4
+            ..color = const Color(0xFF6B3A1E));
+    }
+
+    // ألواح الأعواد (خشب أحمر مع مسمار)
+    final plank = Paint()..color = const Color(0xFFA9553B);
+    final edge = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = const Color(0xFF7B3524);
+    final peg = Paint()..color = const Color(0xFFFFF5DE);
+    for (var i = 0; i < 8; i++) {
+      final a = i * math.pi / 4;
+      final pc = Offset(c.dx + w * 0.19 * math.sin(a), c.dy - w * 0.19 * math.cos(a));
+      canvas.save();
+      canvas.translate(pc.dx, pc.dy);
+      canvas.rotate(a);
+      final rr = RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset.zero, width: w * 0.038, height: w * 0.14),
+          const Radius.circular(3));
+      canvas.drawRRect(rr, plank);
+      canvas.drawRRect(rr, edge);
+      canvas.drawCircle(Offset.zero, 3.5, peg);
+      canvas.restore();
+    }
+
+    // حلقة المركز مع اللمبات
+    canvas.drawCircle(
+        c,
+        d * 0.56,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = d * 0.1
+          ..color = const Color(0xFFC08A55));
+    for (var k = 0; k < 14; k++) {
+      final a = k * 2 * math.pi / 14;
+      canvas.drawCircle(
+          Offset(c.dx + d * 0.56 * math.sin(a), c.dy - d * 0.56 * math.cos(a)),
+          d * 0.03,
+          peg);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SpokesPainter old) => old.d != d;
+}
+
+// ---------- المنصة الخشبية: السطح العلوي ----------
+class _PlatTopPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final path = Path()
+      ..addPolygon(
+          [Offset(w * 0.06, 0), Offset(w * 0.94, 0), Offset(w, h), Offset(0, h)],
+          true);
+    canvas.drawPath(
+        path,
+        Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFECC26F), Color(0xFFE0A456)],
+          ).createShader(Offset.zero & size));
+    canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..strokeJoin = StrokeJoin.round
+          ..color = const Color(0xFF6B3A1E));
+  }
+
+  @override
+  bool shouldRepaint(_PlatTopPainter old) => false;
+}
+
+// ---------- المنصة الخشبية: الوجه الأمامي بخطوط مائلة ----------
+class _PlatFacePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = RRect.fromRectAndCorners(Offset.zero & size,
+        bottomLeft: const Radius.circular(24),
+        bottomRight: const Radius.circular(24));
+    canvas.drawRRect(r, Paint()..color = const Color(0xFFD89046));
+    canvas.save();
+    canvas.clipRRect(r);
+    final hatch = Paint()
+      ..color = const Color(0xFFCC8440)
+      ..strokeWidth = 2;
+    for (double x = -size.height; x < size.width; x += 11) {
+      canvas.drawLine(
+          Offset(x, size.height), Offset(x + size.height * 0.47, 0), hatch);
+    }
+    canvas.restore();
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, 3),
+        Paint()..color = const Color(0xFFEFC98A));
+    canvas.drawRRect(
+        r.deflate(1.5),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..color = const Color(0xFF6B3A1E));
+  }
+
+  @override
+  bool shouldRepaint(_PlatFacePainter old) => false;
+}
+
+// ---------- الشوكة والسكين ----------
+class _CutleryPainter extends CustomPainter {
+  final bool fork;
+  _CutleryPainter(this.fork);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 19, size.height / 64);
+    final fill = Paint()..color = const Color(0xFFE9EDF6);
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = const Color(0xFF8D96AD);
+    void rr(double x, double y, double w, double h, double r) {
+      final b = RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, y, w, h), Radius.circular(r));
+      canvas.drawRRect(b, fill);
+      canvas.drawRRect(b, line);
+    }
+
+    if (fork) {
+      rr(3, 2, 3, 20, 1.5);
+      rr(8, 2, 3, 20, 1.5);
+      rr(13, 2, 3, 20, 1.5);
+      rr(3, 18, 13, 8, 3);
+      rr(7, 24, 5, 38, 2.5);
+    } else {
+      final blade = Path()
+        ..moveTo(5, 2)
+        ..cubicTo(13, 4, 15, 16, 12, 34)
+        ..lineTo(5, 34)
+        ..close();
+      canvas.drawPath(blade, fill);
+      canvas.drawPath(blade, line);
+      rr(5, 32, 7, 30, 3);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CutleryPainter old) => false;
+}
+
+// ======================================================================
+// نافذة جدول أقوى الفائزين
+// ======================================================================
+class _TopWinsDialog extends StatefulWidget {
+  final FoodWheelApi api;
+  const _TopWinsDialog({required this.api});
+
+  @override
+  State<_TopWinsDialog> createState() => _TopWinsDialogState();
+}
+
+class _TopWinsDialogState extends State<_TopWinsDialog> {
+  late Future<List<WinRecord>> _f;
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _f = widget.api.fetchTopWins();
+    _t = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    super.dispose();
+  }
+
+  /// الوقت المتبقي لتصفير الجدول (منتصف الليل بتوقيت UTC+3)
+  String _left() {
+    final now = DateTime.now().toUtc().add(const Duration(hours: 3));
+    final next = DateTime.utc(now.year, now.month, now.day + 1);
+    final d = next.difference(now);
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.inHours)}:${two(d.inMinutes % 60)}:${two(d.inSeconds % 60)}';
+  }
+
+  Widget _avatar(WinRecord r, double size, Color ring) {
+    final initial =
+        r.name.isEmpty ? '?' : String.fromCharCode(r.name.runes.first);
+    final letter = Text(r.isMe ? '⭐' : initial,
+        style: const TextStyle(
+            color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800));
+    return Stack(clipBehavior: Clip.none, children: [
+      Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF6B7CFF),
+          border: Border.all(color: ring, width: size > 60 ? 5 : 2),
+        ),
+        child: ClipOval(
+          child: SizedBox.expand(
+            child: (r.avatarUrl ?? '').isNotEmpty
+                ? Image.network(r.avatarUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Center(child: letter))
+                : Center(child: letter),
+          ),
+        ),
+      ),
+      if (r.flag != null)
+        Positioned(
+            right: -8,
+            bottom: -4,
+            child: Text(r.flag!, style: const TextStyle(fontSize: 20))),
+    ]);
+  }
+
+  Widget _pill(WinRecord r) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+            color: const Color(0xFF6B7CFF),
+            borderRadius: BorderRadius.circular(26)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text('${r.amount}',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800)),
+          const SizedBox(width: 6),
+          Text(r.food, style: const TextStyle(fontSize: 22)),
+        ]),
+      );
+
+  Widget _topCard(WinRecord r) => Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('👑', style: TextStyle(fontSize: 30)),
+        _avatar(r, 88, const Color(0xFFF2C24B)),
+        const SizedBox(height: 6),
+        Text(r.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        _pill(r),
+      ]);
+
+  Widget _row(int rank, WinRecord r) => Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+            color: const Color(0xD927458A),
+            borderRadius: BorderRadius.circular(16)),
+        child: Row(children: [
+          SizedBox(
+            width: 26,
+            child: Text('$rank',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(width: 8),
+          _avatar(r, 46, Colors.white),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(r.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold)),
+          ),
+          _pill(r),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(14),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.82),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF4A86EE), Color(0xFF5A2FE6)],
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: const Color(0xFFCFE0FF), width: 3),
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (_) => const _TopWinsRules(),
+                    ),
+                    icon: const Icon(Icons.help_outline, color: Colors.white),
+                  ),
+                  Row(children: [
+                    const Icon(Icons.timer_outlined, color: Colors.white),
+                    const SizedBox(width: 6),
+                    Text(_left(),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700)),
+                  ]),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ],
+              ),
+              Flexible(
+                child: FutureBuilder<List<WinRecord>>(
+                  future: _f,
+                  builder: (context, snap) {
+                    if (snap.connectionState != ConnectionState.done) {
+                      return const Padding(
+                        padding: EdgeInsets.all(40),
+                        child: CircularProgressIndicator(color: Colors.white),
+                      );
+                    }
+                    final list = snap.data ?? [];
+                    if (snap.hasError || list.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.all(40),
+                        child: Text('لا توجد بيانات بعد',
+                            style: TextStyle(color: Colors.white70)),
+                      );
+                    }
+                    return SingleChildScrollView(
+                      child: Column(children: [
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(8, 4, 8, 14),
+                          decoration: BoxDecoration(
+                              color: const Color(0xFF27458A),
+                              borderRadius: BorderRadius.circular(22)),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (var i = 0; i < 2 && i < list.length; i++)
+                                Expanded(child: _topCard(list[i])),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        for (var i = 2; i < list.length; i++) _row(i + 1, list[i]),
+                      ]),
+                    );
+                  },
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ======================================================================
+// نافذة شرح جدول أقوى الفائزين (علامة الاستفهام): القواعد + جدول المكافآت
+// ======================================================================
+class _TopWinsRules extends StatelessWidget {
+  const _TopWinsRules();
+
+  // [المركز، مبلغ المكافأة، معها إطار؟]  (أرقام المكافآت من تصميمك، عدّلها حسب لعبتك)
+  static const _rewards = [
+    ['1', '3000000', '1'],
+    ['2', '1500000', '1'],
+    ['3', '750000', '1'],
+    ['4 - 10', '375000', '0'],
+    ['11 - 20', '150000', '0'],
+    ['21 - 50', '75000', '0'],
+    ['51 - 100', '37500', '0'],
+  ];
+
+  static const _t = TextStyle(color: Colors.white, fontSize: 14, height: 1.8);
+
+  Widget _cell(String text, {bool head = false}) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        child: Center(
+          child: Text(text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: head ? FontWeight.w600 : FontWeight.normal)),
+        ),
+      );
+
+  Widget _badge(String emoji) => Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 12),
+        child: Row(children: [
+          Text(emoji, style: const TextStyle(fontSize: 40)),
+          const SizedBox(width: 10),
+          const Text('(صالح لمدة يوم واحد)',
+              style: TextStyle(color: Colors.white, fontSize: 13)),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(14),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF2E87F6), Color(0xFF6A2FF0)],
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: const Color(0xFFCFE0FF), width: 3),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close,
+                          color: Colors.white, size: 28),
+                    ),
+                  ),
+                  const Text(
+                      '1. يتم ترتيب لوحة الصدارة بناءً على أعلى مبلغ فوز حققه اللاعب في مباراة واحدة خلال يوم واحد.',
+                      style: _t),
+                  const SizedBox(height: 10),
+                  const Text(
+                      '2. يتم احتساب الإحصاءات اليومية من الساعة 00:00:00 حتى 23:59:59 حسب توقيت UTC+3.',
+                      style: _t),
+                  const SizedBox(height: 10),
+                  const Text(
+                      '3. عند وضع أول رهان بمبلغ 50,000 رمز في جولة واحدة خلال اليوم، ستحصل على المكافأة المقابلة.',
+                      style: _t),
+                  _badge('🎖️'),
+                  const Text(
+                      '4. عند الحصول على مكافأة 100,000 عملة ذهبية لأول مرة في جولة واحدة خلال اليوم، ستحصل على المكافأة المقابلة.',
+                      style: _t),
+                  _badge('🏅'),
+                  const Text('5. مكافأة لوحة الصدارة للاعبين هي كما يلي:',
+                      style: _t),
+                  const SizedBox(height: 8),
+                  Table(
+                    border: TableBorder.all(color: Colors.white, width: 1),
+                    columnWidths: const {
+                      0: FractionColumnWidth(0.28),
+                      1: FlexColumnWidth(),
+                    },
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    children: [
+                      TableRow(
+                        decoration:
+                            const BoxDecoration(color: Color(0x1FFFFFFF)),
+                        children: [_cell('المركز', head: true), _cell('المكافأة', head: true)],
+                      ),
+                      for (final r in _rewards)
+                        TableRow(children: [
+                          _cell(r[0]),
+                          _cell(r[2] == '1'
+                              ? '🪙 ${r[1]}  +  🏵️ ×1 اليوم'
+                              : '🪙 ${r[1]}'),
+                        ]),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Center(
+                    child: Text(
+                        'Happy Live تحتفظ بالحق في التفسير النهائي لهذه الفعالية.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+), '').replaceFirst(RegExp(r'\\.
+
+// ---------- شاشة اللعبة ----------
+class FoodWheelGame extends StatefulWidget {
+  final FoodWheelApi api;
+  const FoodWheelGame({super.key, required this.api});
+
+  @override
+  State<FoodWheelGame> createState() => _FoodWheelGameState();
+}
+
+class _FoodWheelGameState extends State<FoodWheelGame> {
+  final _rnd = math.Random();
+  Timer? _poll, _msgTimer, _panelTimer;
+  RoundState? _s;
+  int _bal = 0, _chip = 10, _hit = -1, _animatedRound = -1, _timeLeft = 20;
+  Set<int> _win = {};
+  String? _lit, _err, _msg;
+  bool _spinning = false, _busy = false, _panel = false;
+  bool _fetching = false; // يمنع تراكم طلبات الحالة لو الخادم بطيء
+  String _mode = 'n'; // n = عادي، a = متقدم
+  bool _auto = false, _sound = true, _showBets = true;
+  List<int> _prevBets = List.filled(8, 0); // رهانات الجولة السابقة (للتكرار)
+  int _todayWin = 0;
+  final List<_LogEntry> _log = [];
+  List<int> get _chipSet => kChips;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+    _poll = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final endAt = _s?.roundEndAt;
+      final next = endAt == null
+          ? (_timeLeft > 0 ? _timeLeft - 1 : 0)
+          : ((endAt - DateTime.now().millisecondsSinceEpoch) / 1000)
+              .ceil()
+              .clamp(0, 20);
+      if (next != _timeLeft) setState(() => _timeLeft = next);
+      _refresh();
+    });
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    _msgTimer?.cancel();
+    _panelTimer?.cancel();
+    super.dispose();
+  }
+
+  void _say(String m) {
+    _msgTimer?.cancel();
+    setState(() => _msg = m);
+    _msgTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _msg = null);
+    });
+  }
+
+  Future<void> _refresh() async {
+    if (_fetching) return;
+    _fetching = true;
+    try {
+      final s = await widget.api.fetchState();
+      if (!mounted) return;
+      if (_spinning && _s != null && _s!.roundId != s.roundId) return;
+      final newRound = _s != null && _s!.roundId != s.roundId;
+      setState(() {
+        _s = s;
+        _timeLeft = s.roundEndAt == null
+            ? s.secondsLeft.clamp(0, 20)
+            : ((s.roundEndAt! - DateTime.now().millisecondsSinceEpoch) / 1000)
+                .ceil()
+                .clamp(0, 20);
+        _err = null;
+        if (!_spinning) _bal = s.balance;
+        if (newRound) {
+          _win = {};
+          _hit = -1;
+          _lit = null;
+          _msg = null;
+          _panel = false;
+          _panelTimer?.cancel();
+        }
+      });
+      if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
+        _animatedRound = s.roundId;
+        _spin(s);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _err = wheelErrorText(e));
+    } finally {
+      _fetching = false;
+    }
+  }
+
+  Future<void> _spin(RoundState s) async {
+    _spinning = true;
+    final target = s.resultSlot ?? 0;
+    setState(() {
+      _panel = true;
+      _centerTurns += 4 + (target / 8);
+    });
+    _panelTimer?.cancel();
+    _panelTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _panel = false);
+    });
+    final steps = 4 * 8 + target + 1;
+    for (var k = 0; k < steps; k++) {
+      if (!mounted) return;
+      setState(() => _hit = k % 8);
+      final progress = steps <= 1 ? 1.0 : k / (steps - 1);
+      final mean = 4200.0 / steps;
+      final delayMs = (mean * (0.5 + 1.5 * progress * progress)).round();
+      await Future.delayed(Duration(milliseconds: delayMs));
+    }
+    if (!mounted) return;
+    _spinning = false;
+    setState(() {
+      _hit = -1;
+      _bal = s.balance;
+      _lit = s.special;
+      _win = s.special == null
+          ? {target}
+          : {
+              for (var i = 0; i < 8; i++)
+                if (kSlots[i].veg == (s.special == 'salad')) i
+            };
+    });
+    final resEmoji = s.special == 'salad'
+        ? '🥗'
+        : s.special == 'pizza'
+            ? '🍕'
+            : kSlots[target].emoji;
+    final mineBets = s.myBets.fold(0, (a, b) => a + b);
+    setState(() {
+      _todayWin += s.myPayout;
+      if (mineBets > 0) {
+        _prevBets = List.of(s.myBets);
+        _log.insert(0, _LogEntry(s.roundId, mineBets, s.myPayout, resEmoji));
+        if (_log.length > 30) _log.removeLast();
+      }
+    });
+    final parts = <String>[];
+    if (s.myPayout > 0) {
+      parts.add('ربحت ${_fmt(s.myPayout)} 🎉');
+    } else if (s.myBets.any((b) => b > 0)) {
+      parts.add('حظ أوفر في الجولة القادمة');
+    }
+    if (s.chestReward > 0) parts.add('🎁 صندوق: +${_fmt(s.chestReward)} 🪙');
+    if (parts.isNotEmpty) _say(parts.join('  •  '));
+  }
+
+  Future<void> _bet(int i) async {
+    final s = _s;
+    if (s == null || s.phase != RoundPhase.betting) {
+      return _say('انتظر الجولة القادمة');
+    }
+    final pl = s.player;
+    if (pl != null && pl.status.isNotEmpty && pl.status != 'active') {
+      return _say('حسابك غير مفعّل للعب');
+    }
+    if (_bal < _chip) return _say('رصيدك لا يكفي');
+    if (_busy) return;
+    _busy = true;
+    try {
+      final n = await widget.api.placeBet(s.roundId, i, _chip);
+      if (mounted) {
+        setState(() {
+          _s = n;
+          _bal = n.balance;
+          _timeLeft = n.roundEndAt == null
+              ? n.secondsLeft.clamp(0, 20)
+              : ((n.roundEndAt! - DateTime.now().millisecondsSinceEpoch) / 1000)
+                  .ceil()
+                  .clamp(0, 20);
+        });
+        if (n.phase == RoundPhase.result && n.roundId != _animatedRound) {
+          _animatedRound = n.roundId;
+          await _spin(n);
+        }
+      }
+    } catch (e) {
+      _say(wheelErrorText(e));
+    } finally {
+      _busy = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = _s;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF2F7DEE),
+                Color(0xFF6CC4FF),
+                Color(0xFFBFE6FF)
+              ],
+              stops: [0, 0.45, 1],
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: s == null
+                ? Center(
+                    child: _err != null
+                        ? _errorBox()
+                        : const CircularProgressIndicator(color: Colors.white))
+                : Stack(children: [
+                  SingleChildScrollView(
+                    child: Column(children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                        child: Column(children: [
+                          _topBar(s),
+                          SizedBox(
+                            height: 40,
+                            child: Row(children: [_playerBadge(s.player)]),
+                          ),
+                          _wheel(s),
+                        ]),
+                      ),
+                      _platform(s),
+                      _redFloor(s),
+                    ]),
+                  ),
+                  _resultOverlay(s),
+                ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // نافذة النتيجة: تنزلق من تحت بعد كل جولة
+  Widget _resultOverlay(RoundState s) => Stack(children: [
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: _panel ? 0.42 : 0,
+              duration: const Duration(milliseconds: 450),
+              child: const ColoredBox(color: Colors.black),
+            ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: FractionallySizedBox(
+            heightFactor: 0.6,
+            widthFactor: 1,
+            child: IgnorePointer(
+              ignoring: !_panel,
+              child: AnimatedSlide(
+                offset: _panel ? Offset.zero : const Offset(0, 1.05),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOutCubic,
+                child: _resultPanel(s),
+              ),
+            ),
+          ),
+        ),
+      ]);
+
+  Widget _resultPanel(RoundState s) {
+    final food = s.special == 'salad'
+        ? '🥗'
+        : s.special == 'pizza'
+            ? '🍕'
+            : kSlots[s.resultSlot ?? 0].emoji;
+    final mine = s.myBets.fold(0, (a, b) => a + b);
+    const t = TextStyle(
+        color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, height: 1.8);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF3F7BFF), Color(0xFF5B2FE6)],
+        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SingleChildScrollView(
+        child: Stack(children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF173C91),
+                  border: Border.all(color: const Color(0xFFFFD45A), width: 2),
+                ),
+                child: Text('${_timeLeft.clamp(1, 5)}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900)),
+              ),
+            ),
+          ),
+          Column(children: [
+            SizedBox(
+              height: 62,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CustomPaint(
+                      size: const Size(20, 54), painter: _CutleryPainter(true)),
+                  const SizedBox(width: 14),
+                  Text(food, style: const TextStyle(fontSize: 48)),
+                  const SizedBox(width: 14),
+                  CustomPaint(
+                      size: const Size(20, 54), painter: _CutleryPainter(false)),
+                ],
+              ),
+            ),
+            Container(
+              height: 6,
+              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0x00FFD400),
+                    Color(0xFFFFD400),
+                    Color(0xFFFFD400),
+                    Color(0x00FFD400)
+                  ],
+                  stops: [0, 0.15, 0.85, 1],
+                ),
+              ),
+            ),
+            Row(children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(child: Text('نتيجة الجولة ${s.roundId}', style: t)),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      Expanded(child: Text('رهانك: ${_fmt(mine)}', textAlign: TextAlign.center, style: t)),
+                      Expanded(child: Text('فوزك: ${_fmt(s.myPayout)}', textAlign: TextAlign.center, style: t)),
+                    ]),
+                  ],
+                ),
+              ),
+              Text(s.myPayout > 0 ? '🥳' : '😿',
+                  style: const TextStyle(fontSize: 44)),
+            ]),
+            const SizedBox(height: 4),
+            const Text('الفائز الاكبر لهذه الجولة',
+                style: TextStyle(
+                    color: Color(0xFFFFD400),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15)),
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (final i in [1, 0, 2])
+                  Expanded(
+                    child: i < s.topWinners.length
+                        ? _podium(i, s.topWinners[i])
+                        : const SizedBox.shrink(),
+                  ),
+              ],
+            ),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _podium(int i, WheelWinner w) {
+    const ring = [Color(0xFFFFD400), Color(0xFFD7DBE6), Color(0xFFE78B3C)];
+    const badge = [Color(0xFFE6A100), Color(0xFF8A93A8), Color(0xFFC4661A)];
+    const crown = [Color(0xFFFFFFFF), Color(0xFFBBBBBB), Color(0xFFFFB070)];
+    const ribbon = [
+      [Color(0xFFFFD45A), Color(0xFFF0A020)],
+      [Color(0xFFF4F6FB), Color(0xFFC9CFDC)],
+      [Color(0xFFFFB06A), Color(0xFFE0762A)],
+    ];
+    final size = i == 0 ? 74.0 : 60.0;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      ColorFiltered(
+        colorFilter: ColorFilter.mode(crown[i], BlendMode.modulate),
+        child: Transform.rotate(
+            angle: -0.2, child: const Text('👑', style: TextStyle(fontSize: 26))),
+      ),
+      Stack(clipBehavior: Clip.none, children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF7A5CFF),
+            border: Border.all(color: ring[i], width: 4),
+          ),
+          child: ClipOval(
+            child: SizedBox.expand(
+              child: (w.avatarUrl ?? '').isNotEmpty
+                  ? Image.network(w.avatarUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink())
+                  : const SizedBox.shrink(),
+            ),
+          ),
+        ),
+        Positioned(
+          right: -6,
+          bottom: -4,
+          child: Container(
+            width: 22,
+            height: 22,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: badge[i],
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: Text('${i + 1}',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ]),
+      const SizedBox(height: 6),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: ribbon[i]),
+          borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(6), bottom: Radius.circular(14)),
+        ),
+        child: Text(w.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: Color(0xFF4A2A00),
+                fontWeight: FontWeight.w800,
+                fontSize: 12)),
+      ),
+      const SizedBox(height: 3),
+      Text('${w.amount} 🪙',
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+    ]);
+  }
+
+  Widget _errorBox() => Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('تعذر الاتصال بالخادم',
+            style: TextStyle(color: Colors.white)),
+        Text('$_err',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white70, fontSize: 10)),
+        TextButton(onPressed: null, child: const Text('إعادة المحاولة')),
+      ]);
+
+  Widget _pill(Widget child) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0x7314087A),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0x59FFFFFF)),
+        ),
+        child: child,
+      );
+
+  Widget _topBar(RoundState s) => Row(children: [
+        _ib(const Icon(Icons.close, color: Colors.white, size: 28),
+            () => Navigator.of(context).maybePop()),
+        const SizedBox(width: 8),
+        _pill(Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('جولة',
+              style: TextStyle(color: Colors.white70, fontSize: 9, height: 1.1)),
+          Text('${s.roundId}',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  height: 1.1,
+                  fontWeight: FontWeight.bold)),
+        ])),
+        const Spacer(),
+      ]);
+
+  Widget _wheel(RoundState s) {
+    return LayoutBuilder(builder: (context, c) {
+      final w = c.maxWidth, d = w * 0.27, ds = w * 0.22; // d = المركز، ds = الدوائر
+      return SizedBox(
+        width: w,
+        height: w,
+        child: Stack(children: [
+          Positioned.fill(child: CustomPaint(painter: _SpokesPainter(d))),
+          for (var i = 0; i < 8; i++)
+            Positioned(
+              left: w / 2 + w * 0.37 * math.sin(i * math.pi / 4) - ds / 2,
+              top: w / 2 - w * 0.37 * math.cos(i * math.pi / 4) - ds / 2,
+              width: ds,
+              height: ds,
+              child: _slot(i, s, ds),
+            ),
+          Center(
+            child: Container(
+              width: d,
+              height: d,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF8A4B2A),
+                border: Border.all(color: const Color(0xFF5A2F16), width: 4),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: d * 0.12, vertical: d * 0.03),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE08F1E),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFB36B0F), width: 2),
+                    ),
+                    child: Text(
+                        s.phase == RoundPhase.betting ? '${_timeLeft}s' : '🎡',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: d * 0.26,
+                            fontWeight: FontWeight.w900)),
+                  ),
+                  SizedBox(height: d * 0.04),
+                  AnimatedRotation(
+                    turns: _centerTurns,
+                    duration: const Duration(milliseconds: 4200),
+                    curve: Curves.easeOutCubic,
+                    child: Text(
+                      s.phase == RoundPhase.betting ? 'النتيجة قادمة' : '🍽️',
+                      style: TextStyle(color: Colors.white, fontSize: d * 0.20),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ]),
+      );
+    });
+  }
+
+  Widget _slot(int i, RoundState s, double d) {
+    final slot = kSlots[i];
+    final hit = _hit == i, win = _win.contains(i), mine = s.myBets[i] > 0;
+    final mx = s.pools.reduce((a, b) => a > b ? a : b);
+    final frac = mx == 0 ? 0.45 : 0.45 + 0.35 * (s.pools[i] / mx);
+    const dark = Color(0xFF5A3A00);
+    return GestureDetector(
+      onTap: () => _bet(i),
+      child: Stack(clipBehavior: Clip.none, children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: d,
+          height: d,
+          transform: Matrix4.identity()..scale(hit || win ? 1.12 : 1.0),
+          transformAlignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFFFFF3C4),
+            border: Border.all(color: const Color(0xFF8A4B2A), width: 4),
+            boxShadow: hit || win
+                ? [
+                    BoxShadow(
+                        color: win
+                            ? const Color(0xFF3DFF7A)
+                            : const Color(0xFFFFD400),
+                        blurRadius: 22,
+                        spreadRadius: 4)
+                  ]
+                : null,
+          ),
+          child: ClipOval(
+            child: Stack(children: [
+              Positioned.fill(
+                  child: ColoredBox(
+                      color: win
+                          ? const Color(0xFFBFFFB8)
+                          : const Color(0xFFFFF3C4))),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: FractionallySizedBox(
+                  heightFactor: frac,
+                  widthFactor: 1,
+                  child: ColoredBox(
+                      color: win
+                          ? const Color(0xFF4DE06A)
+                          : const Color(0xFFFFD84D)),
+                ),
+              ),
+              Align(
+                alignment: const Alignment(0, -0.42),
+                child: Text('${slot.mult} اضعاف',
+                    style: TextStyle(color: dark, fontSize: d * 0.14)),
+              ),
+              Align(
+                alignment: const Alignment(0, 0.18),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(_fmt(s.pools[i]),
+                      style: TextStyle(
+                          color: dark,
+                          fontSize: d * 0.17,
+                          fontWeight: FontWeight.bold)),
+                  SizedBox(width: d * 0.04),
+                  Text('🪙', style: TextStyle(fontSize: d * 0.14)),
+                ]),
+              ),
+              if (mine)
+                Align(
+                  alignment: const Alignment(0, 0.74),
+                  child: Text(_fmt(s.myBets[i]),
+                      style: TextStyle(
+                          color: const Color(0xFF1458D4), // كومة عملات زرقاء
+                          fontSize: d * 0.17,
+                          fontWeight: FontWeight.w800)),
+                ),
+            ]),
+          ),
+        ),
+        Positioned(
+          top: -d * 0.22,
+          left: 0,
+          right: 0,
+          child: Center(
+              child: Text(slot.emoji, style: TextStyle(fontSize: d * 0.38))),
+        ),
+        if (mx > 0 && s.pools[i] == mx)
+          Positioned(
+            top: -d * 0.1,
+            right: -d * 0.12,
+            child: Transform.rotate(
+              angle: -0.14,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                decoration: BoxDecoration(
+                    color: const Color(0xFFE5251B),
+                    borderRadius: BorderRadius.circular(5)),
+                child: Text('Hot',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: d * 0.15,
+                        fontWeight: FontWeight.w900)),
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
+
+  Widget _special(String key, String label) {
+    final on = _lit == key;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Text(key == 'salad' ? '🥗' : '🍕',
+          style: TextStyle(
+              fontSize: 46,
+              shadows: on
+                  ? const [Shadow(color: Color(0xFFFFD400), blurRadius: 18)]
+                  : null)),
+      Transform.translate(
+        offset: const Offset(0, -6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          decoration: BoxDecoration(
+            color: on ? const Color(0xFFFFD400) : const Color(0xFFFFF5DE),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF6B3A1E), width: 2),
+          ),
+          child: Text(label,
+              style: const TextStyle(
+                  color: Color(0xFF4A2A10),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14)),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _platform(RoundState s) => Stack(clipBehavior: Clip.none, children: [
+        Column(children: [
+          CustomPaint(
+              painter: _PlatTopPainter(),
+              child: const SizedBox(height: 30, width: double.infinity)),
+          CustomPaint(
+            painter: _PlatFacePainter(),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(10, 34, 10, 16),
+              child: _platformBody(s),
+            ),
+          ),
+        ]),
+        Positioned(
+          top: -46,
+          left: 8,
+          right: 8,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _special('salad', 'السلطة'),
+              _special('pizza', 'البيتزا'),
+            ],
+          ),
+        ),
+      ]);
+
+  Widget _pills(RoundState s) => Row(children: [
+        Expanded(child: _plPill('فائز اليوم', '${_fmt(_todayWin)} ⭐')),
+        const SizedBox(width: 8),
+        Expanded(child: _plPill('سجلي', '')),
+        const SizedBox(width: 8),
+        Expanded(child: _plPill('العملات المتبقية', '${_fmt(_bal)} 🪙')),
+      ]);
+
+  Widget _plPill(String label, String value) => Container(
+        constraints: const BoxConstraints(minHeight: 56),
+        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF5DE),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: const Color(0xFF6B3A1E), width: 2),
+        ),
+        child: value.isEmpty
+            ? Text(label,
+                style: const TextStyle(
+                    color: Color(0xFF4A2A10),
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold))
+            : Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Color(0xFF4A2A10), fontSize: 11)),
+                Text(value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Color(0xFF4A2A10),
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold)),
+              ]),
+      );
+
+  Widget _redFloor(RoundState s) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 34, 12, 20),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFFC4755), Color(0xFFC91E31)],
+            stops: [0, 0.45],
+          ),
+        ),
+        child: Stack(clipBehavior: Clip.none, children: [
+          Positioned(
+            top: -30,
+            left: 24,
+            right: 24,
+            child: Container(
+              height: 14,
+              decoration: const BoxDecoration(
+                color: Color(0xFF870816),
+                borderRadius:
+                    BorderRadius.vertical(bottom: Radius.circular(14)),
+              ),
+            ),
+          ),
+          Column(children: [
+            SizedBox(
+              height: 13, // كان 30: رفعت الصناديق 17 بكسل
+              child: Center(
+                child: Text(_msg ?? '',
+                    style: const TextStyle(
+                        color: Color(0xFFFFE36A),
+                        fontSize: 13,
+                        height: 1.0,
+                        fontWeight: FontWeight.w800)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _pills(s),
+            const SizedBox(height: 14),
+            _chestBar(s),
+            _history(s),
+            if (_showBets) _betFeed(s),
+            if (_err != null) _errorBox(),
+          ]),
+        ]),
+      );
+
+  Widget _chestBar(RoundState s) {
+    final n = s.chestThresholds.length;
+    var fill = 1.0;
+    if (s.chestIndex < n) {
+      final prev = s.chestIndex == 0 ? 0 : s.chestThresholds[s.chestIndex - 1];
+      final next = s.chestThresholds[s.chestIndex];
+      final frac = ((s.chestTotal - prev) / (next - prev)).clamp(0.0, 1.0);
+      fill = (s.chestIndex + frac) / n;
+    }
+    return Column(children: [
+      SizedBox(
+        height: 56,
+        child: Stack(alignment: Alignment.center, children: [
+          Container(
+              height: 16,
+              decoration: BoxDecoration(
+                  color: const Color(0xFF8A0A1E),
+                  borderRadius: BorderRadius.circular(8))),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FractionallySizedBox(
+              widthFactor: fill,
+              child: Container(
+                  height: 16,
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFFFB400),
+                      borderRadius: BorderRadius.circular(8))),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [for (var i = 0; i < n; i++) _chest(i, s)],
+          ),
+        ]),
+      ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          for (var i = 0; i < n; i++)
+            SizedBox(
+              width: 56,
+              child: Text(_mil(s.chestThresholds[i]),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800)),
+            ),
+        ],
+      ),
+      const SizedBox(height: 10),
+    ]);
+  }
+
+  Widget _chest(int i, RoundState s) {
+    final done = i < s.chestIndex, cur = i == s.chestIndex;
+    return SizedBox(
+      width: 56,
+      child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+        Opacity(
+          opacity: done || cur ? 1 : 0.7,
+          child: Text('🧰',
+              style: TextStyle(
+                  fontSize: 40,
+                  shadows: cur
+                      ? const [Shadow(color: Color(0xFFFFD400), blurRadius: 14)]
+                      : null)),
+        ),
+        if (done)
+          Positioned(
+            top: 0,
+            right: 2,
+            child: Container(
+              width: 18,
+              height: 18,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                  shape: BoxShape.circle, color: Color(0xFF2FBF5A)),
+              child: const Icon(Icons.check, size: 12, color: Colors.white),
+            ),
+          ),
+      ]),
+    );
+  }
+
+  // ---- المنصة: وضع الرهان التلقائي + رقائق الرهان ----
+  Widget _platformBody(RoundState s) => Column(children: [
+        const SizedBox(height: 6),
+        _chipTiles(s),
+      ]);
+
+  Widget _chipTiles(RoundState s) => Row(children: [
+        for (var i = 0; i < _chipSet.length; i++) Expanded(child: _chipTile(i)),
+      ]);
+
+  Widget _chipTile(int i) {
+    final v = _chipSet[i], sel = _chip == v;
+    return GestureDetector(
+      onTap: () => setState(() => _chip = v),
+      child: Container(
+        height: 78,
+        margin: const EdgeInsets.symmetric(horizontal: 2.5),
+        decoration: BoxDecoration(
+          color: sel ? const Color(0xFF7A4A1E) : const Color(0xFFFBE6C2),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+              color: sel ? const Color(0xFF1EF04B) : const Color(0xFFD9B77A),
+              width: sel ? 3 : 1),
+        ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          _coinStack(i + 1),
+          const SizedBox(height: 4),
+          _valuePill(v >= 1000000 ? _mil(v) : '$v'),
+        ]),
+      ),
+    );
+  }
+
+  Widget _valuePill(String t) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF5DE),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF4A2A10), width: 1.5),
+        ),
+        child: Text(t,
+            style: const TextStyle(
+                color: Color(0xFF4A2A10),
+                fontWeight: FontWeight.w800,
+                fontSize: 11)),
+      );
+
+  Widget _coinStack(int n) {
+    const rows = {
+      1: [1],
+      2: [2],
+      3: [2, 1],
+      4: [2, 2],
+      5: [3, 2],
+    };
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      for (final r in rows[n]!)
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          for (var k = 0; k < r; k++)
+            const Text('🪙', style: TextStyle(fontSize: 17)),
+        ]),
+    ]);
+  }
+
+  /// "وضع رهان": يكرر رهانات الجولة السابقة مرة وحدة
+  Widget _repeatTile(bool on) => GestureDetector(
+        onTap: on ? _repeatBets : () => _say('ما فيه رهان سابق أو الجولة منتهية'),
+        child: Opacity(
+          opacity: on ? 1 : 0.55,
+          child: Container(
+            height: 78,
+            margin: const EdgeInsets.symmetric(horizontal: 2.5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1E3C8),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFD9B77A)),
+            ),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.replay, size: 30, color: Color(0xFF9A6A3A)),
+              const SizedBox(height: 4),
+              _valuePill('وضع رهان'),
+            ]),
+          ),
+        ),
+      );
+
+  Future<void> _repeatBets() async {
+    final s = _s;
+    if (s == null || s.phase != RoundPhase.betting) {
+      return _say('انتظر الجولة القادمة');
+    }
+    if (!_prevBets.any((b) => b > 0)) return _say('ما فيه رهان سابق');
+    if (s.myBets.any((b) => b > 0)) return _say('رهانك موجود في هذه الجولة');
+    if (_busy) return;
+    _busy = true;
+    try {
+      var cur = s;
+      for (var i = 0; i < 8; i++) {
+        final a = _prevBets[i];
+        if (a <= 0) continue;
+        if (_bal < a) {
+          _say('رصيدك لا يكفي');
+          break;
+        }
+        cur = await widget.api.placeBet(cur.roundId, i, a);
+        if (!mounted) return;
+        setState(() {
+          _s = cur;
+          _bal = cur.balance;
+        });
+      }
+    } catch (e) {
+      _say(wheelErrorText(e));
+    } finally {
+      _busy = false;
+    }
+  }
+
+  // ---- الشريط العلوي ----
+  Widget _ib(Widget icon, VoidCallback onTap) => IconButton(
+        onPressed: onTap,
+        icon: icon,
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      );
+
+  Widget _trophyBtn() => GestureDetector(
+        onTap: _openTopWins,
+        child: Container(
+          width: 38,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF9AD8FF),
+            border: Border.all(color: const Color(0xFFF2C24B), width: 2),
+          ),
+          child: const Text('🏆', style: TextStyle(fontSize: 20)),
+        ),
+      );
+
+  Widget _modeToggle() {
+    Widget seg(String m, String label) => GestureDetector(
+          onTap: () => _setMode(m),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+            decoration: BoxDecoration(
+              color: _mode == m ? const Color(0xFF7A22FF) : const Color(0x8014087A),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Text(label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold)),
+          ),
+        );
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xB3FFFFFF), width: 2),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        seg('n', 'عادي'),
+        seg('a', 'متقدم'),
+      ]),
+    );
+  }
+
+  void _setMode(String m) {
+    if (m == _mode) return;
+    setState(() {
+      _mode = m;
+      _chip = _chipSet.first;
+    });
+    _say(m == 'a' ? 'وضع متقدم: رهانات أكبر' : 'الوضع العادي');
+  }
+
+  void _openSettings() {
+    showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setD) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            backgroundColor: const Color(0xFF4A3DF0),
+            title: const Text('إعدادات', style: TextStyle(color: Colors.white)),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              SwitchListTile(
+                value: _sound,
+                onChanged: (v) {
+                  setState(() => _sound = v);
+                  setD(() {});
+                },
+                title: const Text('تشغيل الصوت',
+                    style: TextStyle(color: Colors.white)),
+              ),
+              SwitchListTile(
+                value: _showBets,
+                onChanged: (v) {
+                  setState(() => _showBets = v);
+                  setD(() {});
+                },
+                title: const Text('عرض قائمة وضع الرهان في الغرفة',
+                    style: TextStyle(color: Colors.white)),
+              ),
+            ]),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('حسنًا')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// سجلي: من الخادم، وإذا تعذر أو كان فاضي نعرض جولات هذه الجلسة
+  Future<List<MyRoundRecord>> _loadLog() async {
+    try {
+      final server = await widget.api.fetchMyHistory();
+      if (server.isNotEmpty) return server;
+    } catch (_) {}
+    return [
+      for (final e in _log)
+        MyRoundRecord(
+            round: e.round, bet: e.bet, payout: e.payout, result: e.result),
+    ];
+  }
+
+  void _openLog() {
+    showDialog(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF4A3DF0),
+          title: const Text('سجلي', style: TextStyle(color: Colors.white)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: FutureBuilder<List<MyRoundRecord>>(
+              future: _loadLog(),
+              builder: (context, snap) {
+                if (snap.connectionState != ConnectionState.done) {
+                  return const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(
+                        child: CircularProgressIndicator(color: Colors.white)),
+                  );
+                }
+                final list = snap.data ?? const <MyRoundRecord>[];
+                if (list.isEmpty) {
+                  return const Text('ما فيه جولات بعد',
+                      style: TextStyle(color: Colors.white70));
+                }
+                return ListView(shrinkWrap: true, children: [
+                  for (final e in list)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                          'جولة ${e.round}  ${e.result}   رهانك ${_fmt(e.bet)}   ربحك ${_fmt(e.payout)}',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 13)),
+                    ),
+                ]);
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إغلاق')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// صورة اللاعب الحالي (من الخادم) مع علم الدولة
+  Widget _playerBadge(WheelPlayer? p) {
+    if (p == null) return const SizedBox(width: 38, height: 38);
+    final initial =
+        p.name.isEmpty ? '?' : String.fromCharCode(p.name.runes.first);
+    final letter = Text(initial,
+        style: const TextStyle(
+            color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800));
+    final flag = _flagEmoji(p.flag);
+    return Stack(clipBehavior: Clip.none, children: [
+      Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF7A5CFF),
+          border: Border.all(color: const Color(0xFFF2C24B), width: 2),
+        ),
+        child: ClipOval(
+          child: SizedBox.expand(
+            child: (p.avatarUrl ?? '').isNotEmpty
+                ? Image.network(p.avatarUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Center(child: letter))
+                : Center(child: letter),
+          ),
+        ),
+      ),
+      if (flag != null)
+        Positioned(
+            right: -6,
+            bottom: -4,
+            child: Text(flag, style: const TextStyle(fontSize: 14))),
+    ]);
+  }
+
+  /// "SA" → 🇸🇦 ، وإذا وصل إيموجي جاهز نستخدمه كما هو
+  String? _flagEmoji(String? f) {
+    if (f == null || f.isEmpty) return null;
+    final up = f.toUpperCase();
+    final isCode = up.length == 2 &&
+        up.codeUnits.every((c) => c >= 0x41 && c <= 0x5A);
+    if (!isCode) return f;
+    return String.fromCharCodes(up.codeUnits.map((c) => 0x1F1E6 + c - 0x41));
+  }
+
+  // ---- شريط النتائج: دوائر بيضاء، وآخر نتيجة عليها NEW ----
+  Widget _history(RoundState s) => Container(
+        width: double.infinity,
+        height: 80,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+            color: const Color(0xFFE6515C),
+            borderRadius: BorderRadius.circular(14)),
+        child: Row(children: [
+          const Text('النتيجة:',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (var i = 0; i < s.history.length; i++)
+                  _histBadge(s.history[i], i == 0),
+              ],
+            ),
+          ),
+        ]),
+      );
+
+  Widget _histBadge(String e, bool isNew) => Padding(
+        padding: const EdgeInsets.only(left: 8, bottom: 6),
+        child: Stack(clipBehavior: Clip.none, children: [
+          Container(
+            width: 54,
+            height: 54,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFFFFD9DC), width: 2),
+            ),
+            child: Text(e, style: const TextStyle(fontSize: 28)),
+          ),
+          if (isNew)
+            Positioned(
+              bottom: -3,
+              left: 6,
+              right: 6,
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(vertical: 1),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFD400),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1),
+                ),
+                child: const Text('NEW',
+                    style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900)),
+              ),
+            ),
+        ]),
+      );
+
+  // ---- رهانات كل اللاعبين مباشرة (نفس الطاولة للكل) ----
+  Widget _betFeed(RoundState s) => Container(
+        margin: const EdgeInsets.only(top: 10),
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+            color: const Color(0x33000000),
+            borderRadius: BorderRadius.circular(14)),
+        child: Row(children: [
+          Text('👥 ${s.players}',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: s.recentBets.isEmpty
+                ? const Text('رهانات اللاعبين تظهر هنا مباشرة',
+                    style: TextStyle(color: Colors.white60, fontSize: 12))
+                : ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [for (final b in s.recentBets) _betChip(b)],
+                  ),
+          ),
+        ]),
+      );
+
+  Widget _betChip(BetEvent b) => Container(
+        margin: const EdgeInsets.only(left: 6, top: 7, bottom: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0x33FFFFFF),
+          borderRadius: BorderRadius.circular(12),
+          border: b.isMe
+              ? Border.all(color: const Color(0xFFFFD400), width: 1.5)
+              : null,
+        ),
+        child: Text(
+            '${b.name} ${(b.slot < 0 || b.slot > 7) ? '?' : kSlots[b.slot].emoji} ${_fmt(b.amount)}',
+            style: const TextStyle(color: Colors.white, fontSize: 12)),
+      );
+
+  void _openTopWins() {
+    showDialog(
+      context: context,
+      builder: (_) => _TopWinsDialog(api: widget.api),
+    );
+  }
+
+  void _showRules() {
+    showDialog(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF4A3DF0),
+          content: const Text(
+            '1. اختر قيمة الرهان ثم اضغط على الوجبة.\n'
+            '2. مدة الجولة 30 ثانية ثم تظهر النتيجة.\n'
+            '3. الربح = رهانك × عدد الأضعاف.\n'
+            '4. يمكنك الرهان على أكثر من وجبة.\n'
+            '5. السلطة تربح كل الخضروات، والبيتزا تربح كل اللحوم.',
+            style: TextStyle(color: Colors.white, height: 1.8, fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('حسنًا')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------- التلال + الهيكل الخشبي A + ألواح الأعواد + حلقة المركز ----------
+class _SpokesPainter extends CustomPainter {
+  final double d; // قطر الدائرة
+  _SpokesPainter(this.d);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final c = size.center(Offset.zero);
+
+    // التلال
+    canvas.drawOval(Rect.fromLTWH(-w * 0.35, h * 0.80, w * 1.0, h * 0.5),
+        Paint()..color = const Color(0xFF7CCF63));
+    canvas.drawOval(Rect.fromLTWH(w * 0.25, h * 0.84, w * 1.2, h * 0.5),
+        Paint()..color = const Color(0xFF9BD465));
+
+    // الهيكل الخشبي على شكل حرف A (بفتحة قوس وعارضة)
+    final sw = w * 0.70, u = sw / 100, uy = u * 1.3; // أكبر وأطول (uy = مقياس الارتفاع)
+    final ox = c.dx - sw / 2, oy = h + 4 - 64 * uy; // الأرجل تنزل 4 بكسل داخل المنصة
+    Offset p(double x, double y) => Offset(ox + x * u, oy + y * uy);
+    final frame = Path()..fillType = PathFillType.evenOdd;
+    frame.addPolygon([p(37, 0), p(63, 0), p(100, 64), p(0, 64)], true);
+    frame.moveTo(p(35, 27).dx, p(35, 27).dy);
+    frame.lineTo(p(35, 19).dx, p(35, 19).dy);
+    frame.quadraticBezierTo(
+        p(35, 12.5).dx, p(35, 12.5).dy, p(50, 12.5).dx, p(50, 12.5).dy);
+    frame.quadraticBezierTo(
+        p(65, 12.5).dx, p(65, 12.5).dy, p(65, 19).dx, p(65, 19).dy);
+    frame.lineTo(p(65, 27).dx, p(65, 27).dy);
+    frame.close();
+    frame.addPolygon([p(31, 41.7), p(69, 41.7), p(77, 64), p(23, 64)], true);
+    canvas.drawPath(frame, Paint()..color = const Color(0xFFDD964A));
+    canvas.save();
+    canvas.clipPath(frame);
+    final grain = Paint()
+      ..color = const Color(0xFFC8823A)
+      ..strokeWidth = u * 0.4;
+    for (double x = 0; x < 100; x += 3) {
+      canvas.drawLine(p(x, 0), p(x, 64), grain);
+    }
+    canvas.restore();
+    canvas.drawPath(
+        frame,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = u * 0.9
+          ..strokeJoin = StrokeJoin.round
+          ..color = const Color(0xFF6B3A1E));
+    // بقع الظل على العارضة
+    for (final sx in [25.0, 75.0]) {
+      canvas.save();
+      canvas.translate(p(sx, 35).dx, p(sx, 35).dy);
+      canvas.rotate(sx < 50 ? 0.25 : -0.25);
+      canvas.drawOval(
+          Rect.fromCenter(center: Offset.zero, width: u * 5.2, height: uy * 14),
+          Paint()..color = const Color(0x526B3A1E));
+      canvas.restore();
+    }
+    // ألواح القاعدة الكريمية
+    for (final fx in [-1.5, 76.5]) {
+      final rr = RRect.fromRectAndRadius(
+          Rect.fromLTWH(p(fx, 62).dx, p(fx, 62).dy, 25 * u, 2.6 * uy),
+          Radius.circular(u * 0.8));
+      canvas.drawRRect(rr, Paint()..color = const Color(0xFFEFDAA9));
+      canvas.drawRRect(
+          rr,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = u * 0.4
+            ..color = const Color(0xFF6B3A1E));
+    }
+
+    // ألواح الأعواد (خشب أحمر مع مسمار)
+    final plank = Paint()..color = const Color(0xFFA9553B);
+    final edge = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = const Color(0xFF7B3524);
+    final peg = Paint()..color = const Color(0xFFFFF5DE);
+    for (var i = 0; i < 8; i++) {
+      final a = i * math.pi / 4;
+      final pc = Offset(c.dx + w * 0.19 * math.sin(a), c.dy - w * 0.19 * math.cos(a));
+      canvas.save();
+      canvas.translate(pc.dx, pc.dy);
+      canvas.rotate(a);
+      final rr = RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset.zero, width: w * 0.038, height: w * 0.14),
+          const Radius.circular(3));
+      canvas.drawRRect(rr, plank);
+      canvas.drawRRect(rr, edge);
+      canvas.drawCircle(Offset.zero, 3.5, peg);
+      canvas.restore();
+    }
+
+    // حلقة المركز مع اللمبات
+    canvas.drawCircle(
+        c,
+        d * 0.56,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = d * 0.1
+          ..color = const Color(0xFFC08A55));
+    for (var k = 0; k < 14; k++) {
+      final a = k * 2 * math.pi / 14;
+      canvas.drawCircle(
+          Offset(c.dx + d * 0.56 * math.sin(a), c.dy - d * 0.56 * math.cos(a)),
+          d * 0.03,
+          peg);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SpokesPainter old) => old.d != d;
+}
+
+// ---------- المنصة الخشبية: السطح العلوي ----------
+class _PlatTopPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final path = Path()
+      ..addPolygon(
+          [Offset(w * 0.06, 0), Offset(w * 0.94, 0), Offset(w, h), Offset(0, h)],
+          true);
+    canvas.drawPath(
+        path,
+        Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFECC26F), Color(0xFFE0A456)],
+          ).createShader(Offset.zero & size));
+    canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..strokeJoin = StrokeJoin.round
+          ..color = const Color(0xFF6B3A1E));
+  }
+
+  @override
+  bool shouldRepaint(_PlatTopPainter old) => false;
+}
+
+// ---------- المنصة الخشبية: الوجه الأمامي بخطوط مائلة ----------
+class _PlatFacePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = RRect.fromRectAndCorners(Offset.zero & size,
+        bottomLeft: const Radius.circular(24),
+        bottomRight: const Radius.circular(24));
+    canvas.drawRRect(r, Paint()..color = const Color(0xFFD89046));
+    canvas.save();
+    canvas.clipRRect(r);
+    final hatch = Paint()
+      ..color = const Color(0xFFCC8440)
+      ..strokeWidth = 2;
+    for (double x = -size.height; x < size.width; x += 11) {
+      canvas.drawLine(
+          Offset(x, size.height), Offset(x + size.height * 0.47, 0), hatch);
+    }
+    canvas.restore();
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, 3),
+        Paint()..color = const Color(0xFFEFC98A));
+    canvas.drawRRect(
+        r.deflate(1.5),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..color = const Color(0xFF6B3A1E));
+  }
+
+  @override
+  bool shouldRepaint(_PlatFacePainter old) => false;
+}
+
+// ---------- الشوكة والسكين ----------
+class _CutleryPainter extends CustomPainter {
+  final bool fork;
+  _CutleryPainter(this.fork);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 19, size.height / 64);
+    final fill = Paint()..color = const Color(0xFFE9EDF6);
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = const Color(0xFF8D96AD);
+    void rr(double x, double y, double w, double h, double r) {
+      final b = RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, y, w, h), Radius.circular(r));
+      canvas.drawRRect(b, fill);
+      canvas.drawRRect(b, line);
+    }
+
+    if (fork) {
+      rr(3, 2, 3, 20, 1.5);
+      rr(8, 2, 3, 20, 1.5);
+      rr(13, 2, 3, 20, 1.5);
+      rr(3, 18, 13, 8, 3);
+      rr(7, 24, 5, 38, 2.5);
+    } else {
+      final blade = Path()
+        ..moveTo(5, 2)
+        ..cubicTo(13, 4, 15, 16, 12, 34)
+        ..lineTo(5, 34)
+        ..close();
+      canvas.drawPath(blade, fill);
+      canvas.drawPath(blade, line);
+      rr(5, 32, 7, 30, 3);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CutleryPainter old) => false;
+}
+
+// ======================================================================
+// نافذة جدول أقوى الفائزين
+// ======================================================================
+class _TopWinsDialog extends StatefulWidget {
+  final FoodWheelApi api;
+  const _TopWinsDialog({required this.api});
+
+  @override
+  State<_TopWinsDialog> createState() => _TopWinsDialogState();
+}
+
+class _TopWinsDialogState extends State<_TopWinsDialog> {
+  late Future<List<WinRecord>> _f;
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _f = widget.api.fetchTopWins();
+    _t = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    super.dispose();
+  }
+
+  /// الوقت المتبقي لتصفير الجدول (منتصف الليل بتوقيت UTC+3)
+  String _left() {
+    final now = DateTime.now().toUtc().add(const Duration(hours: 3));
+    final next = DateTime.utc(now.year, now.month, now.day + 1);
+    final d = next.difference(now);
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.inHours)}:${two(d.inMinutes % 60)}:${two(d.inSeconds % 60)}';
+  }
+
+  Widget _avatar(WinRecord r, double size, Color ring) {
+    final initial =
+        r.name.isEmpty ? '?' : String.fromCharCode(r.name.runes.first);
+    final letter = Text(r.isMe ? '⭐' : initial,
+        style: const TextStyle(
+            color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800));
+    return Stack(clipBehavior: Clip.none, children: [
+      Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF6B7CFF),
+          border: Border.all(color: ring, width: size > 60 ? 5 : 2),
+        ),
+        child: ClipOval(
+          child: SizedBox.expand(
+            child: (r.avatarUrl ?? '').isNotEmpty
+                ? Image.network(r.avatarUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Center(child: letter))
+                : Center(child: letter),
+          ),
+        ),
+      ),
+      if (r.flag != null)
+        Positioned(
+            right: -8,
+            bottom: -4,
+            child: Text(r.flag!, style: const TextStyle(fontSize: 20))),
+    ]);
+  }
+
+  Widget _pill(WinRecord r) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+            color: const Color(0xFF6B7CFF),
+            borderRadius: BorderRadius.circular(26)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text('${r.amount}',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800)),
+          const SizedBox(width: 6),
+          Text(r.food, style: const TextStyle(fontSize: 22)),
+        ]),
+      );
+
+  Widget _topCard(WinRecord r) => Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('👑', style: TextStyle(fontSize: 30)),
+        _avatar(r, 88, const Color(0xFFF2C24B)),
+        const SizedBox(height: 6),
+        Text(r.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        _pill(r),
+      ]);
+
+  Widget _row(int rank, WinRecord r) => Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+            color: const Color(0xD927458A),
+            borderRadius: BorderRadius.circular(16)),
+        child: Row(children: [
+          SizedBox(
+            width: 26,
+            child: Text('$rank',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(width: 8),
+          _avatar(r, 46, Colors.white),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(r.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold)),
+          ),
+          _pill(r),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(14),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.82),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF4A86EE), Color(0xFF5A2FE6)],
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: const Color(0xFFCFE0FF), width: 3),
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (_) => const _TopWinsRules(),
+                    ),
+                    icon: const Icon(Icons.help_outline, color: Colors.white),
+                  ),
+                  Row(children: [
+                    const Icon(Icons.timer_outlined, color: Colors.white),
+                    const SizedBox(width: 6),
+                    Text(_left(),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700)),
+                  ]),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ],
+              ),
+              Flexible(
+                child: FutureBuilder<List<WinRecord>>(
+                  future: _f,
+                  builder: (context, snap) {
+                    if (snap.connectionState != ConnectionState.done) {
+                      return const Padding(
+                        padding: EdgeInsets.all(40),
+                        child: CircularProgressIndicator(color: Colors.white),
+                      );
+                    }
+                    final list = snap.data ?? [];
+                    if (snap.hasError || list.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.all(40),
+                        child: Text('لا توجد بيانات بعد',
+                            style: TextStyle(color: Colors.white70)),
+                      );
+                    }
+                    return SingleChildScrollView(
+                      child: Column(children: [
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(8, 4, 8, 14),
+                          decoration: BoxDecoration(
+                              color: const Color(0xFF27458A),
+                              borderRadius: BorderRadius.circular(22)),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (var i = 0; i < 2 && i < list.length; i++)
+                                Expanded(child: _topCard(list[i])),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        for (var i = 2; i < list.length; i++) _row(i + 1, list[i]),
+                      ]),
+                    );
+                  },
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ======================================================================
+// نافذة شرح جدول أقوى الفائزين (علامة الاستفهام): القواعد + جدول المكافآت
+// ======================================================================
+class _TopWinsRules extends StatelessWidget {
+  const _TopWinsRules();
+
+  // [المركز، مبلغ المكافأة، معها إطار؟]  (أرقام المكافآت من تصميمك، عدّلها حسب لعبتك)
+  static const _rewards = [
+    ['1', '3000000', '1'],
+    ['2', '1500000', '1'],
+    ['3', '750000', '1'],
+    ['4 - 10', '375000', '0'],
+    ['11 - 20', '150000', '0'],
+    ['21 - 50', '75000', '0'],
+    ['51 - 100', '37500', '0'],
+  ];
+
+  static const _t = TextStyle(color: Colors.white, fontSize: 14, height: 1.8);
+
+  Widget _cell(String text, {bool head = false}) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        child: Center(
+          child: Text(text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: head ? FontWeight.w600 : FontWeight.normal)),
+        ),
+      );
+
+  Widget _badge(String emoji) => Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 12),
+        child: Row(children: [
+          Text(emoji, style: const TextStyle(fontSize: 40)),
+          const SizedBox(width: 10),
+          const Text('(صالح لمدة يوم واحد)',
+              style: TextStyle(color: Colors.white, fontSize: 13)),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(14),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF2E87F6), Color(0xFF6A2FF0)],
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: const Color(0xFFCFE0FF), width: 3),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close,
+                          color: Colors.white, size: 28),
+                    ),
+                  ),
+                  const Text(
+                      '1. يتم ترتيب لوحة الصدارة بناءً على أعلى مبلغ فوز حققه اللاعب في مباراة واحدة خلال يوم واحد.',
+                      style: _t),
+                  const SizedBox(height: 10),
+                  const Text(
+                      '2. يتم احتساب الإحصاءات اليومية من الساعة 00:00:00 حتى 23:59:59 حسب توقيت UTC+3.',
+                      style: _t),
+                  const SizedBox(height: 10),
+                  const Text(
+                      '3. عند وضع أول رهان بمبلغ 50,000 رمز في جولة واحدة خلال اليوم، ستحصل على المكافأة المقابلة.',
+                      style: _t),
+                  _badge('🎖️'),
+                  const Text(
+                      '4. عند الحصول على مكافأة 100,000 عملة ذهبية لأول مرة في جولة واحدة خلال اليوم، ستحصل على المكافأة المقابلة.',
+                      style: _t),
+                  _badge('🏅'),
+                  const Text('5. مكافأة لوحة الصدارة للاعبين هي كما يلي:',
+                      style: _t),
+                  const SizedBox(height: 8),
+                  Table(
+                    border: TableBorder.all(color: Colors.white, width: 1),
+                    columnWidths: const {
+                      0: FractionColumnWidth(0.28),
+                      1: FlexColumnWidth(),
+                    },
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    children: [
+                      TableRow(
+                        decoration:
+                            const BoxDecoration(color: Color(0x1FFFFFFF)),
+                        children: [_cell('المركز', head: true), _cell('المكافأة', head: true)],
+                      ),
+                      for (final r in _rewards)
+                        TableRow(children: [
+                          _cell(r[0]),
+                          _cell(r[2] == '1'
+                              ? '🪙 ${r[1]}  +  🏵️ ×1 اليوم'
+                              : '🪙 ${r[1]}'),
+                        ]),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Center(
+                    child: Text(
+                        'Happy Live تحتفظ بالحق في التفسير النهائي لهذه الفعالية.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+), '')}M';
+  }
+  if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+  return '$n';
+}
 
 // ---------- شاشة اللعبة ----------
 class FoodWheelGame extends StatefulWidget {
