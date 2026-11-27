@@ -73,6 +73,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
     this.onPkOpen,
     this.onUpgradeRoom,
     this.onOpenGifts,
+    this.onOpenGames,
     this.onRoomSettingsChanged,
     this.onRoomCoverChanged,
     required this.chatController,
@@ -158,6 +159,7 @@ class VoiceRoomDesignPreview extends StatelessWidget {
   final VoidCallback? onPkOpen;
   final Future<void> Function(String roomId, int level)? onUpgradeRoom;
   final VoidCallback? onOpenGifts;
+  final VoidCallback? onOpenGames;
   final VoidCallback? onRoomSettingsChanged;
   final ValueChanged<String>? onRoomCoverChanged;
   final TextEditingController chatController;
@@ -3076,7 +3078,7 @@ Widget _roomActionButton({
             ),
             const Spacer(),
             InkWell(
-              onTap: () => _openGamesSheet(context),
+              onTap: onOpenGames,
               borderRadius: BorderRadius.circular(24),
               child: const Padding(
                 padding: EdgeInsets.all(3),
