@@ -69,7 +69,20 @@ test("Happy Food Wheel wallet adjustments are idempotent, app-scoped, and balanc
   assert.match(callback, /UPDATE platform_game_callback_orders SET applied=1/);
 });
 
-test("legacy UTD order history is archived and copied without dropping financial rows", async () => {
+
+test("Happy Food Wheel can verify an active Happy Live game session without exposing internal user IDs", () => {
+  assert.ok(callback.includes('"/v1/platform/game-session/verify"'));
+  assert.match(callback, /happyFoodWheelCredential\(db,request,appId\)/);
+  assert.match(callback, /game_session_app_bindings/);
+  assert.match(callback, /app\.revoked_at IS NULL AND app\.expires_at>\?/);
+  assert.match(callback, /s\.revoked_at IS NULL AND s\.expires_at>\?/);
+  assert.match(callback, /lifecycle\.status='active'/);
+  assert.match(callback, /parentOrigin !== "https:\/\/happy-live\.pages\.dev"/);
+  assert.match(callback, /game_origin AS gameOrigin/);
+  assert.match(callback, /uid:row\.uid/);
+  assert.doesNotMatch(callback, /userId:row\.user_id|internalUserId/);
+});
+\ntest("legacy UTD order history is archived and copied without dropping financial rows", async () => {
   const migration = await readFile(new URL("migrations/0059_platform_game_callback_orders.sql", root), "utf8");
   assert.match(migration, /RENAME TO legacy_game_callback_orders_archive/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS platform_game_callback_orders/);
