@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// خطأ موحّد قادم من طبقة الاتصال بالخادم
 class WheelApiException implements Exception {
@@ -795,6 +796,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       if (mounted) _showRoundClosedToast();
       return;
     }
+    unawaited(HapticFeedback.selectionClick());
+    if (_sound) unawaited(SystemSound.play(SystemSoundType.click));
     unawaited(_bet(i));
   }
 
