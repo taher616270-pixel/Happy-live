@@ -130,7 +130,7 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.ok(ui.includes("heightFactor: 0.45"));
   assert.match(ui, /AnimatedBuilder\(\s*animation: _spinController/);
   assert.ok(ui.includes("_highlightForSlot(spinAngle, i)"));
-  assert.ok(ui.includes("popupEndAt = s.roundEndAt ?? (_resultStartAt(s) + 8000)"));
+  assert.ok(ui.includes("popupEndAt = s.roundEndAt ?? (_resultStartAt(s) + 10000)"));
 });
 
 test("Food Wheel spin paints only the lower half red with a thick red border", () => {
