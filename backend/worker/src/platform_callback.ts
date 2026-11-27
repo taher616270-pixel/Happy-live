@@ -286,13 +286,13 @@ async function handleHappyFoodWheelGameSessionCallback(
       "COALESCE(w.balance,0) AS balance,g.game_url AS gameUrl " +
       "FROM game_sessions s " +
       "JOIN game_session_app_bindings binding ON binding.game_session_id=s.id " +
-      "JOIN user_sessions app ON app.id=binding.app_session_id AND app.user_id=s.user_id AND app.revoked_at IS NULL AND app.expires_at>? " +
+      "JOIN user_sessions app ON app.id=binding.app_session_id AND app.user_id=s.user_id AND app.revoked_at IS NULL AND julianday(app.expires_at)>julianday(?) " +
       "JOIN game_registry g ON g.id=s.game_id AND g.enabled=1 " +
       "JOIN game_registry_lifecycle lifecycle ON lifecycle.game_id=g.id AND lifecycle.status='active' " +
       "JOIN users u ON u.id=s.user_id " +
       "LEFT JOIN profiles p ON p.user_id=u.id " +
       "LEFT JOIN user_wallets w ON w.user_id=u.id " +
-      "WHERE " + identity + " AND s.game_id=? AND s.game_origin=? AND s.revoked_at IS NULL AND s.expires_at>? LIMIT 1"
+      "WHERE " + identity + " AND s.game_id=? AND s.game_origin=? AND s.revoked_at IS NULL AND julianday(s.expires_at)>julianday(?) LIMIT 1"
     ).bind(now,identityValue,gameId,expectedGameOrigin,now).first<{
       sessionId:string;gameId:string;gameOrigin:string;expiresAt:string;userStatus:string;
       uid:string|null;displayName:string|null;avatarUrl:string|null;balance:number;gameUrl:string;
