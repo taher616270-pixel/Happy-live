@@ -499,7 +499,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   }
 
   RoundState _withOptimisticBets(RoundState s) {
-    if (_confirmedRoundId != s.roundId) return s;
+    // Always merge local pending bets for the displayed round. This prevents
+    // a freshly saved bet from disappearing when the confirmed baseline is unset.
     final pendingBySlot = List<int>.generate(
       8,
       (slot) => _pendingBets
@@ -667,38 +668,54 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     });
   }
 
-  void _bet(int i) {
-    // This is deliberately shown before any state read or early return.
-    _showFoodFeedback(
-      i,
-      'BET CALLED, chip=$_chip, bal=${_s?.balance ?? _bal}',
-    );
+  Future<void> _bet(int i) async {
+    // Keep the existing visible entry marker, then expose every subsequent stage.
+    _showFoodFeedback(i, 'BET CALLED, chip=$_chip, bal=${_s?.balance ?? _bal}');
     _foodDiagnosticTimer?.cancel();
-    _foodDiagnosticTimer = Timer(const Duration(milliseconds: 450), () {
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 450));
       if (!mounted) return;
-      final s = _s;
-      if (s == null) {
+      _showFoodFeedback(i, 'STEP1');
+      final current = _s;
+      if (current == null) {
         _showFoodFeedback(i, 'return: no state');
         return;
       }
-      if (s.phase != RoundPhase.betting) {
+      if (current.phase != RoundPhase.betting) {
         _showFoodFeedback(i, 'return: round closed');
         return;
       }
-      if (_chip <= 0) {
+      final amount = _chip;
+      if (amount <= 0) {
         _showFoodFeedback(i, 'return: no chip');
         return;
       }
-      final pl = s.player;
-      if (pl != null && pl.status.isNotEmpty && pl.status != 'active') {
-        _showFoodFeedback(i, 'return: not active (${pl.status})');
+      final player = current.player;
+      if (player != null && player.status.isNotEmpty && player.status != 'active') {
+        _showFoodFeedback(i, 'return: not active (${player.status})');
         return;
       }
-      if (!_enqueueBet(s.roundId, i, _chip)) {
-        // _enqueueBet reports the precise local balance rejection itself.
+      if (current.balance - _pendingReserved < amount) {
+        _showFoodFeedback(i, 'return: low bal');
         return;
       }
-    });
+
+      // Establish the baseline and add the pending amount before any network await.
+      if (_confirmedRoundId != current.roundId) _startOptimisticRound(current);
+      final bet = _PendingWheelBet(
+        idempotencyKey: _newBetIdempotencyKey(current.roundId),
+        roundId: current.roundId,
+        slot: i,
+        amount: amount,
+      );
+      setState(() => _pendingBets.add(bet));
+      _showFoodFeedback(i, 'STEP4 saving');
+      // The UI reads s.myBets from _withOptimisticBets; pending is merged there.
+      _showFoodFeedback(i, 'STEP5 saved, bet=$amount');
+      unawaited(_sendBet(bet));
+    } catch (error) {
+      if (mounted) _showFoodFeedback(i, 'EXCEPTION: $error');
+    }
   }
 
   bool _enqueueBet(int roundId, int slot, int amount) {
@@ -748,13 +765,15 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         bet.status != _PendingBetStatus.queued) return;
     setState(() => bet.status = _PendingBetStatus.sending);
     try {
+      _showFoodFeedback(bet.slot, 'STEP2 calling server');
       final confirmed = await widget.api.placeBet(
         bet.roundId,
         bet.slot,
         bet.amount,
         bet.idempotencyKey,
-      );
+      ).timeout(const Duration(seconds: 3));
       if (!mounted) return;
+      _showFoodFeedback(bet.slot, 'STEP3 server done, status=accepted');
       setState(() {
         bet.status = _PendingBetStatus.accepted;
         // Concurrent responses may arrive out of order; never restore an older,
@@ -770,10 +789,19 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       });
     } catch (error) {
       if (!mounted) return;
+      if (error is TimeoutException) {
+        _showFoodFeedback(bet.slot, 'TIMEOUT');
+        // Keep the local pending bet visible; retry with the same idempotency key.
+        setState(() => bet.status = _PendingBetStatus.queued);
+        Timer(const Duration(seconds: 1), () {
+          if (mounted) unawaited(_sendBet(bet));
+        });
+        return;
+      }
       final detail = error is WheelApiException
-          ? 'server error${error.status == null ? '' : ' HTTP ${error.status}'}: ${error.code}'
+          ? 'EXCEPTION: ${error.status == null ? '' : 'HTTP ${error.status} '}${error.code}'
               '${error.body == null || error.body!.isEmpty ? '' : ' | ${error.body}'}'
-          : 'server error: $error';
+          : 'EXCEPTION: $error';
       _showFoodFeedback(bet.slot, detail);
       if (_isDefinitiveBetRejection(error)) {
         setState(() => _pendingBets.remove(bet));
