@@ -12,25 +12,32 @@ interface FoodWheelRound {
   bettingEndsAt: string;
   endsAt: string;
   resultSlot: number | null;
+  resultSpecial: "pizza" | "salad" | null;
 }
 
-const MULTIPLIERS = [45, 5, 15, 5, 25, 5, 10, 5] as const;
+const MULTIPLIERS = [45, 5, 5, 15, 5, 25, 5, 10] as const;
+const RARE_PIZZA_WEIGHT = 3;
+const RARE_SALAD_WEIGHT = 3;
 const BETTING_MS = 20_000;
 // 20s betting + 5s server-result spin + popup countdown 4,3,2,1.
 // The next round starts exactly when the popup reaches 1s.
 const ROUND_MS = 28_000;
 const MAX_CATCH_UP_ROUNDS = 100;
 
-function chooseResultSlot(): number {
+function chooseResult(): { resultSlot: number | null; resultSpecial: "pizza" | "salad" | null } {
+  // Published odds: Pizza 3%, Salad 3%, normal foods 94%.
+  // Normal-food odds are distributed in proportion to inverse multipliers.
+  const roll = crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296 * 100;
+  if (roll < RARE_PIZZA_WEIGHT) return { resultSlot: null, resultSpecial: "pizza" };
+  if (roll < RARE_PIZZA_WEIGHT + RARE_SALAD_WEIGHT) return { resultSlot: null, resultSpecial: "salad" };
   const weights = MULTIPLIERS.map((value) => 1 / value);
   const total = weights.reduce((sum, value) => sum + value, 0);
-  const random = crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296 * total;
-  let cursor = 0;
+  let cursor = (roll - 6) / 94 * total;
   for (let index = 0; index < weights.length; index++) {
-    cursor += weights[index];
-    if (random < cursor) return index;
+    cursor -= weights[index];
+    if (cursor < 0) return { resultSlot: index, resultSpecial: null };
   }
-  return weights.length - 1;
+  return { resultSlot: weights.length - 1, resultSpecial: null };
 }
 
 export class FoodWheelRoundsHub extends DurableObject<FoodWheelEnv> {
@@ -49,7 +56,7 @@ export class FoodWheelRoundsHub extends DurableObject<FoodWheelEnv> {
   private async currentRound(): Promise<FoodWheelRound | null> {
     const db = this.requireDb();
     return db.prepare(
-      "SELECT id, round_no AS roundNo, status, started_at AS startedAt, betting_ends_at AS bettingEndsAt, ends_at AS endsAt, result_slot AS resultSlot FROM food_wheel_rounds WHERE status IN ('betting', 'result') ORDER BY round_no DESC LIMIT 1"
+      "SELECT id, round_no AS roundNo, status, started_at AS startedAt, betting_ends_at AS bettingEndsAt, ends_at AS endsAt, result_slot AS resultSlot, result_special AS resultSpecial FROM food_wheel_rounds WHERE status IN ('betting', 'result') ORDER BY round_no DESC LIMIT 1"
     ).first<FoodWheelRound>();
   }
 
@@ -93,7 +100,7 @@ export class FoodWheelRoundsHub extends DurableObject<FoodWheelEnv> {
 
   private async chooseAndPublishResult(round: FoodWheelRound): Promise<void> {
     const db = this.requireDb();
-    const resultSlot = chooseResultSlot();
+    const { resultSlot, resultSpecial } = chooseResult();
     const now = new Date();
     // Anchor the result phase to the exact betting deadline so a delayed
     // alarm cannot steal seconds from the five-second result countdown.
@@ -103,19 +110,19 @@ export class FoodWheelRoundsHub extends DurableObject<FoodWheelEnv> {
     // retried or races an ensure request, the first persisted result always wins.
     await db.batch([
       db.prepare(
-        "UPDATE food_wheel_rounds SET status = 'result', result_slot = ?, result_chosen_at = ?, ends_at = ? WHERE id = ? AND status = 'betting'"
-      ).bind(resultSlot, chosenAt, resultEndsAt, round.id),
+        "UPDATE food_wheel_rounds SET status = 'result', result_slot = ?, result_special = ?, result_chosen_at = ?, ends_at = ? WHERE id = ? AND status = 'betting'"
+      ).bind(resultSlot, resultSpecial, chosenAt, resultEndsAt, round.id),
       db.prepare(
-        "UPDATE food_wheel_bets SET payout = CASE slot WHEN 0 THEN stake * 45 WHEN 1 THEN stake * 5 WHEN 2 THEN stake * 15 WHEN 3 THEN stake * 5 WHEN 4 THEN stake * 25 WHEN 5 THEN stake * 5 WHEN 6 THEN stake * 10 ELSE stake * 5 END WHERE round_id = ? AND status = 'accepted' AND slot = (SELECT result_slot FROM food_wheel_rounds WHERE id = ? AND status = 'result')"
-      ).bind(round.id, round.id),
+        "UPDATE food_wheel_bets SET payout = CASE WHEN (SELECT result_special FROM food_wheel_rounds WHERE id = ? AND status = 'result') = 'pizza' AND slot IN (1,2,4,6) THEN stake * 5 WHEN (SELECT result_special FROM food_wheel_rounds WHERE id = ? AND status = 'result') = 'salad' AND slot = 0 THEN stake * 45 WHEN (SELECT result_special FROM food_wheel_rounds WHERE id = ? AND status = 'result') = 'salad' AND slot = 3 THEN stake * 15 WHEN (SELECT result_special FROM food_wheel_rounds WHERE id = ? AND status = 'result') = 'salad' AND slot = 5 THEN stake * 25 WHEN (SELECT result_special FROM food_wheel_rounds WHERE id = ? AND status = 'result') = 'salad' AND slot = 7 THEN stake * 10 WHEN (SELECT result_special FROM food_wheel_rounds WHERE id = ? AND status = 'result') IS NULL AND slot = (SELECT result_slot FROM food_wheel_rounds WHERE id = ? AND status = 'result') THEN CASE slot WHEN 0 THEN stake * 45 WHEN 1 THEN stake * 5 WHEN 2 THEN stake * 5 WHEN 3 THEN stake * 15 WHEN 4 THEN stake * 5 WHEN 5 THEN stake * 25 WHEN 6 THEN stake * 5 ELSE stake * 10 END ELSE 0 END WHERE round_id = ? AND status = 'accepted'"
+      ).bind(round.id, round.id, round.id, round.id, round.id, round.id, round.id, round.id, round.id),
       db.prepare(
         "UPDATE game_bets SET payout = COALESCE((SELECT fb.payout FROM food_wheel_bets fb WHERE fb.game_bet_id = game_bets.id), 0) WHERE status = 'accepted' AND id IN (SELECT game_bet_id FROM food_wheel_bets WHERE round_id = ? AND status = 'accepted')"
       ).bind(round.id)
     ]);
     const persisted = await db.prepare(
-      "SELECT result_slot AS resultSlot FROM food_wheel_rounds WHERE id = ? AND status = 'result' LIMIT 1"
+      "SELECT result_slot AS resultSlot, result_special AS resultSpecial FROM food_wheel_rounds WHERE id = ? AND status = 'result' LIMIT 1"
     ).bind(round.id).first<{ resultSlot: number | null }>();
-    if (persisted?.resultSlot == null) throw new Error("food_wheel_result_not_persisted");
+    if (!persisted || (persisted.resultSlot == null && !persisted.resultSpecial)) throw new Error("food_wheel_result_not_persisted");
   }
 
   private async settleRound(round: FoodWheelRound): Promise<void> {
@@ -170,7 +177,7 @@ export class FoodWheelRoundsHub extends DurableObject<FoodWheelEnv> {
     const financialRounds = await db.prepare(
       "SELECT DISTINCT game_round_id AS gameRoundId FROM food_wheel_bets WHERE round_id = ?"
     ).bind(round.id).all<{ gameRoundId: string }>();
-    const resultJson = JSON.stringify({ result_slot: round.resultSlot, global_round_id: round.id });
+    const resultJson = JSON.stringify({ result_slot: round.resultSlot, result_special: round.resultSpecial, global_round_id: round.id });
     for (const item of financialRounds.results ?? []) {
       await db.prepare(
         "UPDATE game_rounds SET status = 'settled', total_payout = (SELECT COALESCE(SUM(payout), 0) FROM game_bets WHERE round_id = ? AND status = 'settled'), result_json = ?, settled_at = ? WHERE id = ? AND status = 'open'"
