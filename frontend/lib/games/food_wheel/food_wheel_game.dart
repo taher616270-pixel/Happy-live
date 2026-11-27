@@ -536,7 +536,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   int _popupSecondsLeft(RoundState s) {
     if (s.phase == RoundPhase.betting) return 4;
-    final popupEndAt = s.roundEndAt ?? (_resultStartAt(s) + 8000);
+    final popupEndAt = s.roundEndAt ?? (_resultStartAt(s) + 10000);
     return (((popupEndAt - _serverNowMs()) / 1000).ceil())
         .clamp(1, 5)
         .toInt();
