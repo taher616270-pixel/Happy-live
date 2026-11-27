@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 class WheelApiException implements Exception {
   final String code;
   final int? status;
-  const WheelApiException(this.code, {this.status});
+  final String? body;
+  const WheelApiException(this.code, {this.status, this.body});
 
   @override
   String toString() => wheelErrorText(this);
@@ -358,8 +359,9 @@ class _PendingWheelBet {
 
 class _FoodWheelGameState extends State<FoodWheelGame> {
   final _rnd = math.Random();
-  Timer? _poll, _msgTimer, _panelTimer, _foodTapTimer;
-  int _foodTapDebug = -1;
+  Timer? _poll, _msgTimer, _panelTimer, _foodTapTimer, _foodFeedbackTimer;
+  int _foodTapDebug = -1, _foodFeedbackSlot = -1;
+  String? _foodFeedback;
   RoundState? _s;
   int _bal = 0, _chip = 10, _hit = -1, _animatedRound = -1, _timeLeft = 20;
   Set<int> _win = {};
@@ -404,6 +406,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     _msgTimer?.cancel();
     _panelTimer?.cancel();
     _foodTapTimer?.cancel();
+    _foodFeedbackTimer?.cancel();
     super.dispose();
   }
 
@@ -412,6 +415,20 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     setState(() => _msg = m);
     _msgTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) setState(() => _msg = null);
+    });
+  }
+
+  void _showFoodFeedback(int slot, String message) {
+    _foodFeedbackTimer?.cancel();
+    setState(() {
+      _foodFeedbackSlot = slot;
+      _foodFeedback = message;
+    });
+    _foodFeedbackTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() {
+        _foodFeedbackSlot = -1;
+        _foodFeedback = null;
+      });
     });
   }
 
@@ -648,20 +665,22 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   void _bet(int i) {
     final s = _s;
     if (s == null || s.phase != RoundPhase.betting) {
-      _say('انتظر الجولة القادمة');
+      _showFoodFeedback(i, 'round closed');
       return;
     }
     final pl = s.player;
     if (pl != null && pl.status.isNotEmpty && pl.status != 'active') {
-      _say('حسابك غير مفعّل للعب');
+      _showFoodFeedback(i, 'account not activated: ${pl.status}');
       return;
     }
     _enqueueBet(s.roundId, i, _chip);
   }
 
   bool _enqueueBet(int roundId, int slot, int amount) {
-    if (_bal - _pendingReserved < amount) {
-      _say('رصيدك لا يكفي');
+    final availableBalance = _s?.balance ?? _bal;
+    if (availableBalance - _pendingReserved < amount) {
+      _showFoodFeedback(slot,
+          'insufficient balance (${availableBalance - _pendingReserved} available)');
       return false;
     }
     if (_confirmedRoundId != roundId && _s != null && _s!.roundId == roundId) {
@@ -731,12 +750,21 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           _pendingBets.remove(bet);
           // Removing this pending entry restores only this tap in the displayed balance.
         });
-        _say(wheelErrorText(error));
+        final detail = error is WheelApiException
+            ? 'server rejected${error.status == null ? '' : ' HTTP ${error.status}'}: ${error.code}'
+                '${error.body == null || error.body!.isEmpty ? '' : ' | ${error.body}'}'
+            : 'server rejected: $error';
+        _showFoodFeedback(bet.slot, detail);
         unawaited(_refresh());
       } else {
         // Keep the optimistic amount visible and retry this same request/key
         // independently. It cannot hold up any subsequent click.
         setState(() => bet.status = _PendingBetStatus.queued);
+        final detail = error is WheelApiException
+            ? 'server pending${error.status == null ? '' : ' HTTP ${error.status}'}: ${error.code}'
+                '${error.body == null || error.body!.isEmpty ? '' : ' | ${error.body}'}'
+            : 'server pending: $error';
+        _showFoodFeedback(bet.slot, detail);
         Timer(const Duration(seconds: 1), () {
           if (mounted) unawaited(_sendBet(bet));
         });
@@ -1158,6 +1186,30 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         onPointerDown: (_) => _onFoodPointerDown(i),
         child: SizedBox.expand(
           child: Stack(clipBehavior: Clip.none, children: [
+        if (_foodFeedbackSlot == i && _foodFeedback != null)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xF01B2638),
+                  borderRadius: BorderRadius.circular(d / 2),
+                  border: Border.all(color: const Color(0xFFFFD34E), width: 2),
+                ),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(5),
+                    child: Text(
+                      _foodFeedback!,
+                      textAlign: TextAlign.center,
+                      maxLines: 5,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, height: 1.15),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           width: d,
