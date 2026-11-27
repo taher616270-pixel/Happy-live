@@ -883,7 +883,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       _panel = true;
       _popupRoundState = s;
       _popupRoundId = s.roundId;
-      _roundCleanupAtMs[s.roundId] = DateTime.now().millisecondsSinceEpoch + 5000;
+      _roundCleanupAtMs[s.roundId] = s.roundEndAt ?? (DateTime.now().millisecondsSinceEpoch + 5000);
       _popupTimeLeft = 5;
       _popupTimeLeftNotifier.value = 5;
     });
