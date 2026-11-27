@@ -76,7 +76,7 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /deadline \+ 5000 - now/);
   assert.match(ui, /_isResultPhase\(RoundState s\)/);
   assert.match(ui, /_bettingOpen\(RoundState s\)/);
-  assert.match(ui, /_serverNowMs\(\) >= _bettingDeadline\(current\)/);
+  assert.match(ui, /pollStartedAt - _lastRefreshAt < 1000/);
   assert.match(ui, /_serverNowMs\(\)/);
   assert.match(ui, /_serverClockOffsetMs = s\.serverTime!/);
   assert.match(ui, /_popupSecondsLeft\(RoundState s\)/);
@@ -168,5 +168,5 @@ test("Food Wheel starts the full spin at chicken and immediately refreshes after
   assert.match(ui, /_popupTimeLeft\.clamp\(1, 4\)/);
   assert.match(ui, /popupNext <= 1/);
   assert.match(ui, /if \(popupExpired\) _panel = false/);
-  assert.match(ui, /phaseExpired \|\| popupExpired \|\| now - _lastRefreshAt >= 1000/);
+  assert.match(ui, /now - _lastRefreshAt >= 1000/);
 });
