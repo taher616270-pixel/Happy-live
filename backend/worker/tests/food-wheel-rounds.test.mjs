@@ -64,7 +64,7 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /void _queueBetSend\(_PendingWheelBet bet\)/);
   assert.doesNotMatch(ui, /Future\.delayed\(const Duration\(milliseconds: 450\)\)/);
   assert.match(ui, /int _resultStartAt\(RoundState s\)/);
-  assert.match(ui, /final resultStartedAt = _resultStartAt\(s\)/);
+  assert.match(ui, /final elapsedMs = \(_serverNowMs\(\) - _resultStartAt\(s\)\)/);
   assert.match(ui, /deadline \+ 5000 - now/);
   assert.match(ui, /_isResultPhase\(RoundState s\)/);
   assert.match(ui, /_bettingOpen\(RoundState s\)/);
@@ -74,13 +74,13 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /_popupSecondsLeft\(RoundState s\)/);
   assert.match(ui, /duration: const Duration\(milliseconds: 5000\)/);
   assert.match(ui, /class _TopTopSpinCurve extends Curve/);
-  assert.match(ui, /_spinController\.value = progress/);
+  assert.match(ui, /_spinController\.value = elapsedMs / spinDurationMs/);
   assert.match(ui, /void _startProvisionalSpin\(RoundState s\)/);
   assert.match(ui, /_isResultPhase\(current\) && _spinStartedRoundId != current\.roundId/);
   assert.match(ui, /final beginAngle = denominator > 0\.0001/);
   assert.match(ui, /await _spinController\.forward\(\)/);
   assert.match(ui, /3 \* math\.pi \* 2/);
-  assert.match(ui, /Tween<double>\(begin: startAngle, end: endAngle\)/);
+  assert.match(ui, /Tween<double>\(begin: 0, end: endAngle\)/);
   assert.match(ui, /AnimatedBuilder\(\s*animation: _spinController/);
   assert.match(ui, /_highlightForSlot\(spinAngle, i\)/);
   assert.doesNotMatch(ui, /currentIndex\+\+|step\+\+ % kSlots\.length|_hit = target/);
@@ -140,7 +140,7 @@ test("Food Wheel spin paints only the lower half red with a thick red border", (
 });
 
 test("Food Wheel starts the full spin at chicken and immediately refreshes after popup expiry", () => {
-  assert.match(ui, /_spinController\.value = progress/);
+  assert.match(ui, /_spinController\.value = elapsedMs / spinDurationMs/);
   assert.match(ui, /await _spinController\.forward\(\)/);
   assert.match(ui, /return 0;/);
   assert.match(ui, /popupEndAt = s\.roundEndAt \?\? \(_resultStartAt\(s\) \+ 8000\)/);
