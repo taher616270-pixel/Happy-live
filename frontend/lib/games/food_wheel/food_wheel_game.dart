@@ -209,6 +209,7 @@ class RoundState {
   final int? roundEndAt, bettingEndsAt, resultChosenAt, serverTime;
   final RoundPhase phase;
   final List<int> pools, myBets;
+  final Map<String, int> totalBetsByFood;
   final int? resultSlot; // رقم الوجبة الفائزة، أو null لو كانت سلطة/بيتزا
   final String? special; // 'salad' | 'pizza' | null
   final List<String> history;
@@ -232,6 +233,7 @@ class RoundState {
     required this.myBets,
     required this.balance,
     this.myPayout = 0,
+    this.totalBetsByFood = const <String, int>{},
     this.resultSlot,
     this.special,
     this.history = const [],
@@ -260,6 +262,9 @@ class RoundState {
         myBets: (j['my_bets'] as List).map((e) => (e as num).toInt()).toList(),
         balance: (j['balance'] as num).toInt(),
         myPayout: (j['my_payout'] as num?)?.toInt() ?? 0,
+        totalBetsByFood: j['total_bets_by_food'] is Map
+            ? (j['total_bets_by_food'] as Map).map((key, value) => MapEntry('$key', (value as num).toInt()))
+            : const <String, int>{},
         resultSlot: (j['result_slot'] as num?)?.toInt(),
         special: j['special'] as String?,
         history: ((j['history'] as List?) ?? []).map((e) => '$e').toList(),
@@ -595,9 +600,16 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       return;
     }
     final totals = _serverTotalsByRound.putIfAbsent(s.roundId, () => <String, int>{});
-    for (var i = 0; i < kSlotKeys.length && i < s.pools.length; i++) {
-      final key = kSlotKeys[i];
-      totals[key] = math.max(totals[key] ?? 0, s.pools[i]).toInt();
+    if (s.totalBetsByFood.isNotEmpty) {
+      for (final key in kSlotKeys) {
+        final value = s.totalBetsByFood[key];
+        if (value != null) totals[key] = math.max(totals[key] ?? 0, value).toInt();
+      }
+    } else {
+      for (var i = 0; i < kSlotKeys.length && i < s.pools.length; i++) {
+        final key = kSlotKeys[i];
+        totals[key] = math.max(totals[key] ?? 0, s.pools[i]).toInt();
+      }
     }
   }
 
@@ -701,6 +713,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       myBets: mine,
       balance: s.balance,
       myPayout: s.myPayout,
+      totalBetsByFood: s.totalBetsByFood,
       resultSlot: s.resultSlot,
       special: s.special,
       history: s.history,
@@ -741,10 +754,14 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         a.player?.avatarUrl != b.player?.avatarUrl ||
         a.player?.flag != b.player?.flag ||
         !sameInts(a.pools, b.pools) ||
+        a.totalBetsByFood.length != b.totalBetsByFood.length ||
         !sameInts(a.myBets, b.myBets) ||
         a.topWinners.length != b.topWinners.length ||
         a.recentBets.length != b.recentBets.length) return false;
 
+    for (final key in a.totalBetsByFood.keys) {
+      if (a.totalBetsByFood[key] != b.totalBetsByFood[key]) return false;
+    }
     for (var i = 0; i < a.topWinners.length; i++) {
       final x = a.topWinners[i], y = b.topWinners[i];
       if (x.name != y.name || x.avatarUrl != y.avatarUrl ||
