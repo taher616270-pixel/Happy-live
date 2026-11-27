@@ -52,7 +52,7 @@ class _EmbeddedGamePageState extends State<_EmbeddedGamePage> {
         ..style.height = '100%'
         ..style.display = 'block';
       frame.setAttribute('allow', 'autoplay; fullscreen');
-      frame.setAttribute('referrerpolicy', 'no-referrer');
+      frame.setAttribute('referrerpolicy', 'origin');
       frame.onLoad.listen((_) async {
         // The short-lived token is delivered only to this exact registered origin.
         // It is never added to the URL, fragment, referrer, or browser history.
