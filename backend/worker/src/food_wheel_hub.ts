@@ -93,13 +93,17 @@ export class FoodWheelRoundsHub extends DurableObject<FoodWheelEnv> {
   private async chooseAndPublishResult(round: FoodWheelRound): Promise<void> {
     const db = this.requireDb();
     const resultSlot = chooseResultSlot();
-    const now = new Date().toISOString();
+    const now = new Date();
+    const chosenAt = now.toISOString();
+    // Start the two result sub-phases from the actual server result timestamp:
+    // 5s spin + 5s popup, even if the Durable Object alarm wakes slightly late.
+    const resultEndsAt = new Date(now.getTime() + 10_000).toISOString();
     // The chosen slot and all winning payouts commit together. If an alarm is
     // retried or races an ensure request, the first persisted result always wins.
     await db.batch([
       db.prepare(
-        "UPDATE food_wheel_rounds SET status = 'result', result_slot = ?, result_chosen_at = ? WHERE id = ? AND status = 'betting'"
-      ).bind(resultSlot, now, round.id),
+        "UPDATE food_wheel_rounds SET status = 'result', result_slot = ?, result_chosen_at = ?, ends_at = ? WHERE id = ? AND status = 'betting'"
+      ).bind(resultSlot, chosenAt, resultEndsAt, round.id),
       db.prepare(
         "UPDATE food_wheel_bets SET payout = CASE slot WHEN 0 THEN stake * 45 WHEN 1 THEN stake * 5 WHEN 2 THEN stake * 15 WHEN 3 THEN stake * 5 WHEN 4 THEN stake * 25 WHEN 5 THEN stake * 5 WHEN 6 THEN stake * 10 ELSE stake * 5 END WHERE round_id = ? AND status = 'accepted' AND slot = (SELECT result_slot FROM food_wheel_rounds WHERE id = ? AND status = 'result')"
       ).bind(round.id, round.id),
