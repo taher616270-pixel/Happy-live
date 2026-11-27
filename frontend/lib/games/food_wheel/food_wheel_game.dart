@@ -1058,7 +1058,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                   fontWeight: FontWeight.bold)),
         ])),
         const Spacer(),
-        _modeToggle(),
+        _ib(const Icon(Icons.more_horiz, color: Colors.white, size: 24), _openMore),
         const SizedBox(width: 4),
         _trophyBtn(),
         const SizedBox(width: 4),
@@ -1066,7 +1066,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         const SizedBox(width: 2),
         _ib(const Icon(Icons.settings, color: Colors.white, size: 24), _openSettings),
         const SizedBox(width: 4),
-        _ib(const Icon(Icons.more_horiz, color: Colors.white, size: 24), _openMore),
+        _modeToggle(),
       ]);
 
   Widget _wheel(RoundState s) {
