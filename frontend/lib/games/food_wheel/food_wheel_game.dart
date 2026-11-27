@@ -626,7 +626,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   String _newBetIdempotencyKey(int roundId) {
     final rawUserId = _s?.player?.id ?? 'player';
     final sanitizedUserId =
-        rawUserId.replaceAll(RegExp(r'[^A-Za-z0-9._:-]'), '_');
+        rawUserId.replaceAll(RegExp(r'[^A-Za-z0-9.:-]'), '-');
     final safeUserId = sanitizedUserId.length <= 24
         ? sanitizedUserId
         : sanitizedUserId.substring(0, 24);
