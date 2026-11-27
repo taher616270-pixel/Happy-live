@@ -1948,10 +1948,45 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         for (var i = 0; i < _chipSet.length; i++) Expanded(child: _chipTile(i)),
       ]);
 
+  Future<void> _showCustomChipDialog() async {
+    final controller = TextEditingController(text: _chip.toString());
+    final value = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('مبلغ الرهان'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: const InputDecoration(hintText: 'أدخل أي مبلغ'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+          TextButton(
+            onPressed: () {
+              final amount = int.tryParse(controller.text);
+              Navigator.pop(context, amount);
+            },
+            child: const Text('تأكيد'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (!mounted || value == null) return;
+    if (value <= 0 || value > _bal - _pendingReserved) {
+      _say('رصيدك ما يكفي');
+      return;
+    }
+    setState(() => _chip = value);
+  }
+
   Widget _chipTile(int i) {
     final v = _chipSet[i], sel = _chip == v;
     return GestureDetector(
       onTap: () => setState(() => _chip = v),
+      onLongPress: _showCustomChipDialog,
       child: Container(
         height: 78,
         margin: const EdgeInsets.symmetric(horizontal: 2.5),
@@ -2409,11 +2444,11 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         child: AlertDialog(
           backgroundColor: const Color(0xFF4A3DF0),
           content: const Text(
-            '1. اختر قيمة الرهان ثم اضغط على الوجبة.\n'
-            '2. مدة الجولة 30 ثانية ثم تظهر النتيجة.\n'
-            '3. الربح = رهانك × عدد الأضعاف.\n'
-            '4. يمكنك الرهان على أكثر من وجبة.\n'
-            '5. السلطة تربح كل الخضروات، والبيتزا تربح كل اللحوم.',
+            '1. وقت الرهان 20 ثانية، ثم دوران 5 ثوانٍ، ثم نافذة النتيجة 5 ثوانٍ.\\n'
+            '2. يمكنك الرهان على 6 أكلات كحد أقصى، وأي مبلغ حتى رصيدك.\\n'
+            '3. المضاعفات: دجاج x45، ذرة x5، طماطم x5، ماعز x15، فلفل x5، سمك x25، جزر x5، روبيان x10.\\n'
+            '4. بيتزا 3%: تفوز كل رهانات الخضروات. سلطة 3%: تفوز كل رهانات اللحوم.\\n'
+            '5. أوزان النتائج العادية المنشورة (تقريبية): دجاج 2.03%، ذرة 18.27%، طماطم 18.27%، ماعز 6.09%، فلفل 18.27%، سمك 3.65%، جزر 18.27%، روبيان 9.14%.',
             style: TextStyle(color: Colors.white, height: 1.8, fontSize: 13),
           ),
           actions: [
