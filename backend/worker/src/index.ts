@@ -1,6 +1,5 @@
 import { RtcTokenBuilder } from "agora-token";
 import { handleGamesApiRequest, isRegisteredGameOrigin } from "./games_api";
-import { handlePlatformCallbackRequest } from "./platform_callback";
 import { addCannonEnergy, handleCannonRequest } from "./cannon_api";
 import { addRoomContribution, handleRoomContrib } from "./room_contrib";
 import { handleRoomTools } from "./room_tools";
@@ -470,13 +469,6 @@ export default {
       }
     }
 
-    const platformCallbackResponse = await handlePlatformCallbackRequest(
-      request,
-      env.DB,
-      (data, status = 200) => json(data, status, undefined, env)
-    );
-    if (platformCallbackResponse) return platformCallbackResponse;
-
     const gamesApiResponse = await handleGamesApiRequest(request, env, origin, authenticatedUser, json, authenticatedAdmin);
     if (gamesApiResponse) return gamesApiResponse;
 
@@ -759,7 +751,6 @@ export default {
       url.pathname === "/api/v1/admin/audit" ||
       url.pathname === "/api/v1/admin/agora/status" ||
       url.pathname === "/api/v1/admin/agora/voice" ||
-      url.pathname === "/api/v1/admin/integrations/happy-food-wheel" ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/status$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/kick$/i.test(url.pathname) ||
       /^\/api\/v1\/admin\/users\/[0-9a-f-]{36}\/role$/i.test(url.pathname) ||
@@ -928,66 +919,6 @@ export default {
             "INSERT INTO admin_audit_logs (id, actor_user_id, action, target_type, target_id, details_json, created_at) VALUES (?, NULL, 'pk.settings.update', 'platform', 'pk_battle_settings', ?, ?)"
           ).bind(crypto.randomUUID(), JSON.stringify({ adminId: actor.id, adminUsername: actor.username }), now).run();
           return json({ ok: true, settings }, 200, origin, env);
-        }
-        if (url.pathname === "/api/v1/admin/integrations/happy-food-wheel") {
-          if (actor.role !== "owner") return json({ error: "owner_permission_required" }, 403, origin, env);
-          if (request.method === "GET") {
-            const rows = await env.DB!.prepare(
-              "SELECT setting_key, setting_value FROM platform_settings WHERE setting_key IN ('happy_food_wheel_app_id', 'happy_food_wheel_token_hash', 'happy_food_wheel_token_prefix', 'happy_food_wheel_created_at')"
-            ).all<{ setting_key: string; setting_value: string }>();
-            const settings = new Map((rows.results ?? []).map((row) => [row.setting_key, row.setting_value]));
-            const appId = settings.get("happy_food_wheel_app_id") ?? "";
-            const tokenPrefix = settings.get("happy_food_wheel_token_prefix") ?? "";
-            const createdAt = settings.get("happy_food_wheel_created_at") ?? "";
-            const tokenConfigured = settings.has("happy_food_wheel_token_hash");
-            return json({
-              ok: true,
-              configured: tokenConfigured,
-              tokenConfigured,
-              appIdBound: Boolean(appId),
-              appId,
-              tokenPrefix,
-              createdAt,
-              apiBaseUrl: "https://happy-live-api.taher616270.workers.dev",
-              callbackBaseUrl: "https://happy-live-api.taher616270.workers.dev"
-            }, 200, origin, env);
-          }
-          if (request.method === "POST") {
-            let body: Record<string, unknown>;
-            try { body = await request.json() as Record<string, unknown>; }
-            catch { return json({ error: "invalid_json" }, 400, origin, env); }
-            // Issue the credential before the external platform has assigned its App ID.
-            // The first authenticated handshake will bind the App ID to this token.
-            const apiToken = "hfw_live_" + crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
-            const tokenHash = await sha256(apiToken);
-            const tokenPrefix = apiToken.slice(0, 17);
-            const now = new Date().toISOString();
-            await env.DB!.batch([
-              env.DB!.prepare("DELETE FROM platform_settings WHERE setting_key = 'happy_food_wheel_app_id'"),
-              env.DB!.prepare("INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('happy_food_wheel_token_hash', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at").bind(tokenHash, now),
-              env.DB!.prepare("INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('happy_food_wheel_token_prefix', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at").bind(tokenPrefix, now),
-              env.DB!.prepare("INSERT INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('happy_food_wheel_created_at', ?, ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at").bind(now, now)
-            ]);
-            return json({
-              ok: true,
-              appId: "",
-              apiToken,
-              tokenPrefix,
-              createdAt: now,
-              apiBaseUrl: "https://happy-live-api.taher616270.workers.dev",
-              callbackBaseUrl: "https://happy-live-api.taher616270.workers.dev"
-            }, 201, origin, env);
-          }
-          if (request.method === "DELETE") {
-            await env.DB!.batch([
-              env.DB!.prepare("DELETE FROM platform_settings WHERE setting_key = 'happy_food_wheel_app_id'"),
-              env.DB!.prepare("DELETE FROM platform_settings WHERE setting_key = 'happy_food_wheel_token_hash'"),
-              env.DB!.prepare("DELETE FROM platform_settings WHERE setting_key = 'happy_food_wheel_token_prefix'"),
-              env.DB!.prepare("DELETE FROM platform_settings WHERE setting_key = 'happy_food_wheel_created_at'")
-            ]);
-            return json({ ok: true }, 200, origin, env);
-          }
-          return json({ error: "method_not_allowed" }, 405, origin, env);
         }
         if (url.pathname === "/api/v1/admin/gifts/settings" && (request.method === "GET" || request.method === "PATCH")) {
           if (actor.role !== "owner" && actor.role !== "admin") return json({ error: "permission_denied" }, 403, origin, env);
