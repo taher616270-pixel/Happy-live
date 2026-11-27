@@ -470,25 +470,30 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     return deadline == null ? s.secondsLeft > 0 : _serverNowMs() < deadline;
   }
 
+  // The betting deadline is the single phase boundary for every client.
+  // Never anchor the five-second result timer to result_chosen_at: older or
+  // delayed server writes can timestamp that field late and silently skip seconds.
+  int _resultStartAt(RoundState s) =>
+      s.bettingEndsAt ?? s.resultChosenAt ?? (s.roundEndAt != null ? s.roundEndAt! - 10000 : _serverNowMs());
+
   int _phaseSecondsLeft(RoundState s) {
     final now = _serverNowMs();
-    if (s.phase == RoundPhase.betting) {
-      final endAt = s.bettingEndsAt ?? s.roundEndAt;
-      if (endAt == null) return s.secondsLeft.clamp(0, 20).toInt();
-      if (now < endAt) {
-        return ((endAt - now) / 1000).ceil().clamp(1, 20).toInt();
-      }
-      return ((endAt + 5000 - now) / 1000).ceil().clamp(0, 5).toInt();
+    final bettingEndAt = s.bettingEndsAt ?? s.roundEndAt;
+    if (bettingEndAt == null) {
+      return s.phase == RoundPhase.betting
+          ? s.secondsLeft.clamp(0, 20).toInt()
+          : s.secondsLeft.clamp(0, 5).toInt();
     }
-    final resultAt = s.resultChosenAt ?? s.bettingEndsAt;
-    if (resultAt == null) return s.secondsLeft.clamp(0, 5).toInt();
-    return ((resultAt + 5000 - now) / 1000).ceil().clamp(0, 5).toInt();
+    if (s.phase == RoundPhase.betting && now < bettingEndAt) {
+      return ((bettingEndAt - now) / 1000).ceil().clamp(1, 20).toInt();
+    }
+    // At the exact 20 -> 0 boundary, begin a full five-second result phase.
+    return ((_resultStartAt(s) + 5000 - now) / 1000).ceil().clamp(0, 5).toInt();
   }
 
   int _popupSecondsLeft(RoundState s) {
     if (s.phase == RoundPhase.betting) return 5;
-    final resultAt = s.resultChosenAt ?? s.bettingEndsAt;
-    if (resultAt == null) return 5;
+    final resultAt = _resultStartAt(s);
     final popupEndsAt = s.roundEndAt ?? (resultAt + 10000);
     return ((popupEndsAt - _serverNowMs()) / 1000)
         .ceil()
@@ -671,9 +676,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   Future<void> _spin(RoundState s) async {
     _spinning = true;
     final target = (s.resultSlot ?? 0).clamp(0, kSlots.length - 1).toInt();
-    final resultStartedAt = s.resultChosenAt ??
-        s.bettingEndsAt ??
-        DateTime.now().millisecondsSinceEpoch;
+    // Use the same betting-deadline anchor as the visible countdown.
+    // A late poll must not make the wheel or timer skip the first seconds.
+    final resultStartedAt = _resultStartAt(s);
     const spinDurationMs = 5000;
     const startAngle = 0.0;
     final targetAngle = target * (math.pi / 4);
