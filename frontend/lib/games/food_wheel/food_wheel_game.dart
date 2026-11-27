@@ -411,6 +411,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   int _lastRefreshAt = 0;
   RoundState? _popupRoundState;
   int? _popupRoundId;
+  final ValueNotifier<int> _timeLeftNotifier = ValueNotifier<int>(20);
+  final ValueNotifier<int> _popupTimeLeftNotifier = ValueNotifier<int>(4);
+  final ValueNotifier<RoundState?> _wheelStateNotifier = ValueNotifier<RoundState?>(null);
   final Map<int, int> _roundCleanupAtMs = <int, int>{};
   int _serverClockOffsetMs = 0;
   bool _serverClockSynced = false;
@@ -462,29 +465,16 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         if (_isResultPhase(current) && _spinStartedRoundId != current.roundId) {
           _startProvisionalSpin(current);
         }
-        if (next != _timeLeft || popupNext != _popupTimeLeft ||
-            popupExpired || clearMessage || clearToast) {
-          setState(() {
-            _timeLeft = next;
-            _popupTimeLeft = popupNext;
-            if (popupExpired && popupId != null) {
-              _panel = false;
-              _popupRoundState = null;
-              _popupRoundId = null;
-              _roundCleanupAtMs.remove(popupId);
-              _myBetsByRound.remove(popupId);
-              _frozenBetsByRound.remove(popupId);
-              _lockedBetRounds.remove(popupId);
-              _serverTotalsByRound.remove(popupId);
-              _finalServerTotalsRounds.remove(popupId);
-              _pendingBets.removeWhere((bet) =>
-                  bet.roundId == popupId && bet.status == _PendingBetStatus.accepted);
-            }
-            if (clearMessage) _msg = null;
-            if (clearToast) _roundClosedToast = null;
-          });
+        if (next != _timeLeft) {
+          _timeLeft = next;
+          _timeLeftNotifier.value = next;
         }
-      } else if (popupExpired || clearMessage || clearToast) {
+        if (popupNext != _popupTimeLeft) {
+          _popupTimeLeft = popupNext;
+          _popupTimeLeftNotifier.value = popupNext;
+        }
+      }
+      if (popupExpired || clearMessage || clearToast) {
         setState(() {
           if (popupExpired && popupId != null) {
             _panel = false;
@@ -496,6 +486,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             _lockedBetRounds.remove(popupId);
             _serverTotalsByRound.remove(popupId);
             _finalServerTotalsRounds.remove(popupId);
+            _pendingBets.removeWhere((bet) =>
+                bet.roundId == popupId && bet.status == _PendingBetStatus.accepted);
           }
           if (clearMessage) _msg = null;
           if (clearToast) _roundClosedToast = null;
@@ -509,6 +501,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   void dispose() {
     _clockTimer?.cancel();
     _spinController.dispose();
+    _timeLeftNotifier.dispose();
+    _popupTimeLeftNotifier.dispose();
+    _wheelStateNotifier.dispose();
     super.dispose();
   }
 
@@ -658,50 +653,21 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   bool _sameDisplayState(RoundState a, RoundState b) {
-    bool sameInts(List<int> x, List<int> y) {
-      if (x.length != y.length) return false;
-      for (var i = 0; i < x.length; i++) {
-        if (x[i] != y[i]) return false;
-      }
-      return true;
-    }
-
-    final totalsFrozen = a.roundId == b.roundId && _finalServerTotalsRounds.contains(a.roundId);
-    if (a.roundId != b.roundId ||
-        a.phase != b.phase ||
-        a.balance != b.balance ||
-        a.myPayout != b.myPayout ||
-        a.resultSlot != b.resultSlot ||
-        a.special != b.special ||
-        a.players != b.players ||
-        a.chestIndex != b.chestIndex ||
-        a.chestTotal != b.chestTotal ||
-        a.chestReward != b.chestReward ||
-        a.player?.id != b.player?.id ||
-        a.player?.status != b.player?.status ||
-        a.player?.avatarUrl != b.player?.avatarUrl ||
-        a.player?.flag != b.player?.flag ||
-        (!totalsFrozen && (!sameInts(a.pools, b.pools) ||
-            a.totalBetsByFood.length != b.totalBetsByFood.length)) ||
-        a.topWinners.length != b.topWinners.length ||
-        a.recentBets.length != b.recentBets.length) return false;
-
-    if (!totalsFrozen) {
-      for (final key in a.totalBetsByFood.keys) {
-        if (a.totalBetsByFood[key] != b.totalBetsByFood[key]) return false;
-      }
-    }
-    for (var i = 0; i < a.topWinners.length; i++) {
-      final x = a.topWinners[i], y = b.topWinners[i];
-      if (x.name != y.name || x.avatarUrl != y.avatarUrl ||
-          x.amount != y.amount || x.isMe != y.isMe) return false;
-    }
-    for (var i = 0; i < a.recentBets.length; i++) {
-      final x = a.recentBets[i], y = b.recentBets[i];
-      if (x.name != y.name || x.avatarUrl != y.avatarUrl ||
-          x.slot != y.slot || x.amount != y.amount || x.isMe != y.isMe) return false;
-    }
-    return true;
+    // Totals, countdowns, recent bets and winner lists are refreshed in
+    // their own wheel/timer paths; they must not rebuild the entire screen.
+    return a.roundId == b.roundId &&
+        a.phase == b.phase &&
+        a.balance == b.balance &&
+        a.myPayout == b.myPayout &&
+        a.resultSlot == b.resultSlot &&
+        a.special == b.special &&
+        a.chestIndex == b.chestIndex &&
+        a.chestTotal == b.chestTotal &&
+        a.chestReward == b.chestReward &&
+        a.player?.id == b.player?.id &&
+        a.player?.status == b.player?.status &&
+        a.player?.avatarUrl == b.player?.avatarUrl &&
+        a.player?.flag == b.player?.flag;
   }
 
   Future<void> _refresh() async {
@@ -721,9 +687,15 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       if (!mounted) return;
       if (_spinning && _s != null && _s!.roundId != s.roundId) return;
       final previous = _s;
+      final previousTotals = previous == null ? const <int>[] : _serverTotalsForRound(previous.roundId);
       final newRound = previous != null && previous.roundId != s.roundId;
       if (newRound && previous != null) _freezeMyBets(previous.roundId);
       _rememberServerTotals(s);
+      final nextTotals = _serverTotalsForRound(s.roundId);
+      final wheelTotalsChanged = previous == null || newRound ||
+          previousTotals.length != nextTotals.length ||
+          List<int>.generate(nextTotals.length, (i) => nextTotals[i] == previousTotals[i] ? 0 : 1).any((v) => v != 0);
+      if (wheelTotalsChanged) _wheelStateNotifier.value = _withOptimisticBets(s);
       if (s.phase == RoundPhase.result || _serverNowMs() >= _bettingDeadline(s)) _freezeMyBets(s.roundId);
       final displayChanged =
           previous == null || _err != null || !_sameDisplayState(previous, s);
@@ -731,8 +703,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         setState(() {
           _s = s;
           _timeLeft = _monotonicPhaseSecond(s);
+          _timeLeftNotifier.value = _timeLeft;
           if (_popupRoundId == null) {
             _popupTimeLeft = _monotonicPopupSecond(s);
+            _popupTimeLeftNotifier.value = _popupTimeLeft;
           }
           _err = null;
           if (!_spinning && _pendingBets.isEmpty) {
@@ -759,6 +733,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             if (_popupRoundId == null) _panel = false;
           }
         });
+      } else {
+        // Keep the latest small server lists without triggering a full rebuild.
+        _s = s;
       }
       if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
         _animatedRound = s.roundId;
@@ -892,6 +869,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       _popupRoundId = s.roundId;
       _roundCleanupAtMs[s.roundId] = DateTime.now().millisecondsSinceEpoch + 5000;
       _popupTimeLeft = 4;
+      _popupTimeLeftNotifier.value = 4;
     });
     final resEmoji = s.special == 'salad'
         ? '🥗'
@@ -979,6 +957,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         final bets = _myBetsForRound(current.roundId);
         bets[kSlotKeys[i]] = (bets[kSlotKeys[i]] ?? 0) + amount;
         _pendingBets.add(bet);
+        _wheelStateNotifier.value = _withOptimisticBets(current);
       });
       _queueBetSend(bet);
     } catch (error) {
@@ -1008,6 +987,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       final bets = _myBetsForRound(roundId);
       bets[kSlotKeys[slot]] = (bets[kSlotKeys[slot]] ?? 0) + amount;
       _pendingBets.add(bet);
+      _wheelStateNotifier.value = _withOptimisticBets(current);
     });
     _queueBetSend(bet);
     return true;
@@ -1058,6 +1038,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         _bal = math.min(_bal, confirmed.balance).toInt();
         if (_s?.roundId == confirmed.roundId) {
           _s = confirmed;
+          _wheelStateNotifier.value = _withOptimisticBets(confirmed);
         }
         _rememberServerTotals(confirmed);
         _pendingBets.remove(bet);
@@ -1087,6 +1068,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
               if (frozenRemaining == 0) frozen.remove(key); else frozen[key] = frozenRemaining;
             }
           }
+          if (_s?.roundId == bet.roundId) {
+            _wheelStateNotifier.value = _withOptimisticBets(_s!);
+          }
         });
         unawaited(_refresh());
       } else {
@@ -1101,7 +1085,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   @override
   Widget build(BuildContext context) {
     final s = _s;
-    final wheelState = s == null ? null : _withOptimisticBets(s);
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Material(
@@ -1137,7 +1120,12 @@ class _FoodWheelGameState extends State<FoodWheelGame>
                             height: 40,
                             child: Row(children: [_playerBadge(s.player)]),
                           ),
-                          _wheel(wheelState!),
+                          ValueListenableBuilder<RoundState?>(
+                            valueListenable: _wheelStateNotifier,
+                            builder: (context, wheelState, _) => wheelState == null
+                                ? const SizedBox.shrink()
+                                : _wheel(wheelState),
+                          ),
                         ]),
                       ),
                       GestureDetector(
@@ -1243,11 +1231,14 @@ class _FoodWheelGameState extends State<FoodWheelGame>
                   color: const Color(0xFF173C91),
                   border: Border.all(color: const Color(0xFFFFD45A), width: 2),
                 ),
-                child: Text('(${_popupTimeLeft.clamp(1, 4)}) ثانية',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900)),
+                child: ValueListenableBuilder<int>(
+                  valueListenable: _popupTimeLeftNotifier,
+                  builder: (context, seconds, _) => Text('(${seconds.clamp(1, 4)}) ثانية',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900)),
+                ),
               ),
           ),
           Column(children: [
@@ -1517,15 +1508,20 @@ class _FoodWheelGameState extends State<FoodWheelGame>
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(color: const Color(0xFFB36B0F), width: 2),
                           ),
-                          child: Text(
-                              '${_timeLeft}s',
+                          child: ValueListenableBuilder<int>(
+                            valueListenable: _timeLeftNotifier,
+                            builder: (context, seconds, _) => Text(
+                              '${seconds}s',
                               textAlign: TextAlign.center,
                               maxLines: 1,
                               softWrap: false,
                               style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: d * 0.26,
-                                  fontWeight: FontWeight.w900)),
+                                color: Colors.white,
+                                fontSize: d * 0.26,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
                         ),
                         SizedBox(height: d * 0.04),
                         SizedBox(
