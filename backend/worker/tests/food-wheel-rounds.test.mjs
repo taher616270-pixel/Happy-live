@@ -60,7 +60,7 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /final stopAt = resultStartedAt \+ 5000/);
   assert.match(ui, /_popupTimeLeft/);
   assert.match(ui, /placeBet\(\s*bet\.roundId,\s*bet\.slot,\s*bet\.amount,\s*bet\.idempotencyKey/);
-  assert.match(ui, /Future<void> _sendBet\(_PendingWheelBet bet\)/);
+  assert.match(ui, /Future<void> _sendBet\(_PendingWheelBet bet(?:, \{Future<RoundState>\? request\})?\)/);
   assert.match(ui, /unawaited\(_sendBet\(bet\)\)/);
   assert.match(ui, /behavior: HitTestBehavior\.opaque,\s*onPointerDown: \(_\) => _onFoodPointerDown\(i\)/);
   assert.match(ui, /_fmt\(math\.max\(0, _bal - _pendingReserved\)\)/);
