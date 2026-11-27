@@ -103,7 +103,11 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.ok(ui.includes("_lockedBetRounds.contains(current.roundId)"));
   assert.ok(ui.includes("_lockedBetRounds.contains(roundId)"));
   assert.ok(ui.includes("_rememberServerTotals(s)"));
-  assert.match(ui, /final totalsFrozen = a\.roundId == b\.roundId && _finalServerTotalsRounds\.contains\(a\.roundId\)/);
+  assert.ok(ui.includes("final ValueNotifier<int> _timeLeftNotifier"));
+  assert.ok(ui.includes("final ValueNotifier<RoundState?> _wheelStateNotifier"));
+  assert.ok(ui.includes("if (wheelTotalsChanged) _wheelStateNotifier.value = _withOptimisticBets(s)"));
+  assert.ok(ui.includes("ValueListenableBuilder<int>("));
+  assert.doesNotMatch(ui, /myBets:|j\['my_bets'\]/);
   assert.ok(ui.includes("final pools = _serverTotalsForRound(s.roundId)"));
   assert.doesNotMatch(ui, /pendingBySlot|_confirmedPools \+ pending/);
   assert.ok(ui.includes("_serverClockSynced"));
