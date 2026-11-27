@@ -625,7 +625,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     _rememberServerTotals(s);
     for (var i = 0; i < 8; i++) {
       _confirmedMine[i] = _safeSlotValue(s.myBets, i);
-      _roundLockedMine[i] = _safeSlotValue(_myBetsForRound(s.roundId), i);
+      _roundLockedMine[i] = _foodBetForSlot(s.roundId, i);
       _confirmedPools[i] = _safeSlotValue(s.pools, i);
     }
     // الطلبات المقبولة في جولة انتهت لم تعد تحتاج طبقة عرض محلية.
@@ -791,13 +791,13 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       }
       if (!mounted) return;
       if (_spinning && _s != null && _s!.roundId != s.roundId) return;
+      _reconcileOptimisticBets(s);
       if (s.phase == RoundPhase.result || _serverNowMs() >= _bettingDeadline(s)) _freezeMyBets(s.roundId);
       _rememberServerTotals(s);
       final previous = _s;
       final newRound = previous != null && previous.roundId != s.roundId;
       final displayChanged =
           previous == null || _err != null || !_sameDisplayState(previous, s);
-      _reconcileOptimisticBets(s);
       if (displayChanged || newRound) {
         setState(() {
           _s = s;
@@ -952,7 +952,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     setState(() {
       _todayWin += s.myPayout;
       if (mineBets > 0) {
-        _prevBets = List.of(_myBetsForRound(s.roundId));
+        _prevBets = List<int>.generate(kSlotKeys.length, (i) => _foodBetForSlot(s.roundId, i));
         _log.insert(0, _LogEntry(s.roundId, mineBets, s.myPayout, resEmoji));
         if (_log.length > 30) _log.removeLast();
       }
