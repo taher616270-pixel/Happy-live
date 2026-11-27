@@ -22,8 +22,8 @@ test("Food Wheel uses one sequential global round with a server-enforced single 
 
 test("Durable Object alarms advance betting, result, settlement, and the next round without player traffic", () => {
   assert.match(hub, /const BETTING_MS = 20_000/);
-  assert.match(hub, /const ROUND_MS = 31_000/);
-  assert.match(hub, /now\.getTime\(\) \+ 11_000/);
+  assert.match(hub, /const ROUND_MS = 30_000/);
+  assert.match(hub, /now\.getTime\(\) \+ 10_000/);
   assert.match(hub, /async alarm\(\): Promise<void>/);
   assert.match(hub, /this\.ctx\.storage\.setAlarm/);
   assert.match(hub, /private async chooseAndPublishResult/);
@@ -55,19 +55,20 @@ test("wallet debit remains at bet acceptance and wallet payout is deferred to se
 
 test("web client uses server round end time and does not create rounds from taps", () => {
   assert.match(ui, /roundEndAt/);
-  assert.match(ui, /Timer\.periodic\(const Duration\(seconds: 1\)/);
+  assert.match(ui, /Timer\.periodic\(const Duration\(milliseconds: 100\)/);
   assert.match(ui, /_phaseSecondsLeft\(RoundState s\)/);
   assert.match(ui, /_popupSecondsLeft\(RoundState s\)/);
   assert.match(ui, /duration: const Duration\(milliseconds: 5000\)/);
   assert.match(ui, /class _TopTopSpinCurve extends Curve/);
-  assert.match(ui, /_spinController\.forward\(from: 0\)/);
-  assert.doesNotMatch(ui, /_spinController\.forward\(from: progress\)/);
+  assert.match(ui, /_spinController\.value = progress/);
+  assert.match(ui, /await _spinController\.forward\(\)/);
   assert.match(ui, /3 \* math\.pi \* 2/);
   assert.match(ui, /Tween<double>\(begin: startAngle, end: endAngle\)/);
   assert.match(ui, /AnimatedBuilder\(\s*animation: _spinController/);
   assert.match(ui, /_highlightForSlot\(spinAngle, i\)/);
   assert.doesNotMatch(ui, /currentIndex\+\+|step\+\+ % kSlots\.length|_hit = target/);
-  assert.match(ui, /await Future\.delayed\(const Duration\(seconds: 1\)\)/);
+  assert.doesNotMatch(ui, /await Future\.delayed\(const Duration\(seconds: 1\)\)/);
+  assert.doesNotMatch(ui, /_panelTimer|_refreshAfterPopup/);
   assert.match(ui, /resultStartedAt \+ 11000/);
   assert.match(ui, /const frac = 0\.45/);
   assert.doesNotMatch(ui, /AnimatedContainer\(\s*duration: const Duration\(milliseconds: 120\)/);
@@ -116,7 +117,9 @@ test("Food Wheel spin paints only the lower half red with a thick red border", (
 
 test("Food Wheel starts the full spin at chicken and immediately refreshes after popup expiry", () => {
   assert.match(ui, /await _spinController\.forward\(from: 0\)/);
-  assert.match(ui, /unawaited\(_refreshAfterPopup\(s\.roundId\)\)/);
-  assert.match(ui, /for \(var attempt = 0; attempt < 20 && mounted; attempt\+\+\)/);
-  assert.match(ui, /return _popupSecondsLeft\(s\)\.clamp\(1, 5\)\.toInt\(\)/);
+  assert.match(ui, /return 0;/);
+  assert.match(ui, /popupEndsAt = s\.roundEndAt \?\? \(resultAt \+ 10000\)/);
+  assert.match(ui, /s\.phase == RoundPhase\.betting \? 'وقت الرهان' : 'النتيجة القادمة'/);
+  assert.match(ui, /_popupTimeLeft\.clamp\(0, 5\)/);
+  assert.match(ui, /phaseExpired \|\| popupExpired \|\| now - _lastRefreshAt >= 1000/);
 });

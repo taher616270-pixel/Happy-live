@@ -362,7 +362,7 @@ class _PendingWheelBet {
 class _FoodWheelGameState extends State<FoodWheelGame>
     with SingleTickerProviderStateMixin {
   int _betSequence = 0;
-  Timer? _poll, _msgTimer, _panelTimer, _foodTapTimer;
+  Timer? _poll, _msgTimer, _foodTapTimer;
   late final AnimationController _spinController;
   Animation<double>? _spinAnimation;
   double _spinAngle = 0;
@@ -373,6 +373,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   String? _lit, _err, _msg;
   bool _spinning = false, _panel = false;
   bool _fetching = false; // يمنع تراكم طلبات الحالة لو الخادم بطيء
+  int _lastRefreshAt = 0;
+  int _phaseRefreshRequestedRound = -1;
+  int _popupRefreshRequestedRound = -1;
   int _confirmedRoundId = -1;
   final List<int> _confirmedMine = List.filled(8, 0);
   final List<int> _confirmedPools = List.filled(8, 0);
@@ -395,13 +398,22 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       vsync: this,
       duration: const Duration(milliseconds: 5000),
     );
+    _lastRefreshAt = DateTime.now().millisecondsSinceEpoch;
     _refresh();
-    _poll = Timer.periodic(const Duration(seconds: 1), (_) {
+    // A single clock drives countdowns and server synchronization.
+    _poll = Timer.periodic(const Duration(milliseconds: 100), (_) {
       if (!mounted) return;
+      final now = DateTime.now().millisecondsSinceEpoch;
       final current = _s;
+      var phaseExpired = false;
+      var popupExpired = false;
       if (current != null) {
         final next = _phaseSecondsLeft(current);
         final popupNext = _popupSecondsLeft(current);
+        phaseExpired = current.phase == RoundPhase.betting &&
+            next == 0 && _phaseRefreshRequestedRound != current.roundId;
+        popupExpired = current.phase == RoundPhase.result &&
+            popupNext == 0 && _popupRefreshRequestedRound != current.roundId;
         if (next != _timeLeft || popupNext != _popupTimeLeft) {
           setState(() {
             _timeLeft = next;
@@ -409,7 +421,12 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           });
         }
       }
-      _refresh();
+      if (phaseExpired) _phaseRefreshRequestedRound = current!.roundId;
+      if (popupExpired) _popupRefreshRequestedRound = current!.roundId;
+      if (phaseExpired || popupExpired || now - _lastRefreshAt >= 1000) {
+        _lastRefreshAt = now;
+        _refresh();
+      }
     });
   }
 
@@ -417,7 +434,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   void dispose() {
     _poll?.cancel();
     _msgTimer?.cancel();
-    _panelTimer?.cancel();
     _foodTapTimer?.cancel();
     _spinController.dispose();
     super.dispose();
@@ -445,17 +461,16 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     final resultAt = s.resultChosenAt ?? s.bettingEndsAt;
     if (resultAt == null) return s.secondsLeft.clamp(0, 5).toInt();
     final spinEndsAt = resultAt + 5000;
-    if (now < spinEndsAt) {
-      return ((spinEndsAt - now) / 1000).ceil().clamp(1, 5).toInt();
-    }
-    return _popupSecondsLeft(s).clamp(1, 5).toInt();
+    if (now >= spinEndsAt) return 0;
+    return ((spinEndsAt - now) / 1000).ceil().clamp(1, 5).toInt();
   }
 
   int _popupSecondsLeft(RoundState s) {
     if (s.phase == RoundPhase.betting) return 5;
     final resultAt = s.resultChosenAt ?? s.bettingEndsAt;
     if (resultAt == null) return 5;
-    return ((11000 - (DateTime.now().millisecondsSinceEpoch - resultAt)) / 1000)
+    final popupEndsAt = s.roundEndAt ?? (resultAt + 10000);
+    return ((popupEndsAt - DateTime.now().millisecondsSinceEpoch) / 1000)
         .ceil()
         .clamp(0, 5)
         .toInt();
@@ -602,8 +617,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           _lit = null;
           _msg = null;
           _panel = false;
-          _panelTimer?.cancel();
-        }
+              }
       });
       if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
         _animatedRound = s.roundId;
@@ -623,31 +637,34 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         s.bettingEndsAt ??
         DateTime.now().millisecondsSinceEpoch;
     const spinDurationMs = 5000;
-    // Slot zero (chicken) is the fixed starting pointer. The animation itself
-    // travels three complete turns and finishes exactly on the server slot.
     const startAngle = 0.0;
     final targetAngle = target * (math.pi / 4);
     final endAngle = startAngle + (3 * math.pi * 2) + targetAngle;
+    // Anchor spin progress to the server timestamp, not response arrival.
+    final elapsedMs = (DateTime.now().millisecondsSinceEpoch - resultStartedAt)
+        .clamp(0, spinDurationMs)
+        .toInt();
+    final progress = elapsedMs / spinDurationMs;
     _spinController.stop();
     _spinController.duration = const Duration(milliseconds: spinDurationMs);
-    _spinController.value = 0;
+    _spinController.value = progress;
     _spinAnimation = Tween<double>(begin: startAngle, end: endAngle).animate(
       CurvedAnimation(parent: _spinController, curve: const _TopTopSpinCurve()),
     );
     _spinAngle = startAngle;
     _spinHasResult = true;
-    _panelTimer?.cancel();
-
-    await _spinController.forward(from: 0);
+    if (elapsedMs < spinDurationMs) {
+      await _spinController.forward();
+    } else {
+      _spinController.value = 1;
+    }
     if (!mounted) return;
 
-    // Preserve the exact animation endpoint; do not snap to a discrete index.
+    // Stop on the server result and reveal the popup at the same deadline.
     _spinAngle = endAngle;
     _spinning = false;
     setState(() {
-      if (_pendingBets.isEmpty) {
-        _bal = s.balance;
-      }
+      if (_pendingBets.isEmpty) _bal = s.balance;
       _lit = s.special;
       _win = s.special == null
           ? {target}
@@ -655,28 +672,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
               for (var i = 0; i < 8; i++)
                 if (kSlots[i].veg == (s.special == 'salad')) i
             };
-    });
-    // Keep the wheel stopped on the server result for one full second before
-    // revealing the result panel.
-    await Future.delayed(const Duration(seconds: 1));
-    if (!mounted) return;
-    setState(() {
-      _spinHasResult = false;
       _panel = true;
       _popupTimeLeft = _popupSecondsLeft(s);
     });
-    final popupEndsAt = s.roundEndAt ?? (resultStartedAt + 11000);
-    _panelTimer = Timer(
-      Duration(milliseconds: math.max(
-        0,
-        popupEndsAt - DateTime.now().millisecondsSinceEpoch,
-      ).toInt()),
-      () {
-        if (!mounted) return;
-        setState(() => _panel = false);
-        unawaited(_refreshAfterPopup(s.roundId));
-      },
-    );
     final resEmoji = s.special == 'salad'
         ? '🥗'
         : s.special == 'pizza'
@@ -699,14 +697,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     }
     if (s.chestReward > 0) parts.add('🎁 صندوق: +${_fmt(s.chestReward)} 🪙');
     if (parts.isNotEmpty) _say(parts.join('  •  '));
-  }
-
-  Future<void> _refreshAfterPopup(int completedRoundId) async {
-    for (var attempt = 0; attempt < 20 && mounted; attempt++) {
-      await _refresh();
-      if (!mounted || _s?.roundId != completedRoundId) return;
-      await Future.delayed(const Duration(milliseconds: 250));
-    }
   }
 
   String _newBetIdempotencyKey(int roundId) {
@@ -970,7 +960,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
                   color: const Color(0xFF173C91),
                   border: Border.all(color: const Color(0xFFFFD45A), width: 2),
                 ),
-                child: Text('(${_popupTimeLeft.clamp(1, 5)}) ثانية',
+                child: Text('(${_popupTimeLeft.clamp(0, 5)}) ثانية',
                     style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -1232,59 +1222,49 @@ class _FoodWheelGameState extends State<FoodWheelGame>
                 color: const Color(0xFF8A4B2A),
                 border: Border.all(color: const Color(0xFF5A2F16), width: 4),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: d * 0.12, vertical: d * 0.03),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE08F1E),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFB36B0F), width: 2),
-                    ),
-                    child: Text(
-                        '${_timeLeft}s',
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        softWrap: false,
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: d * 0.26,
-                            fontWeight: FontWeight.w900)),
-                  ),
-                  SizedBox(height: d * 0.04),
-                  SizedBox(
-                    width: d * 0.9,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: const Text(
-                        'النتيجة القادمة',
-                        maxLines: 1,
-                        softWrap: false,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          height: 1.0,
+              child: (_panel || _timeLeft == 0)
+                  ? const SizedBox.shrink()
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: d * 0.12, vertical: d * 0.03),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE08F1E),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFFB36B0F), width: 2),
+                          ),
+                          child: Text(
+                              '${_timeLeft}s',
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: d * 0.26,
+                                  fontWeight: FontWeight.w900)),
                         ),
-                      ),
-                    ),
-                  ),
-                  if (s.phase == RoundPhase.result)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Text(
-                        'وقت العرض',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: d * 0.13,
-                          fontWeight: FontWeight.w800,
+                        SizedBox(height: d * 0.04),
+                        SizedBox(
+                          width: d * 0.9,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              s.phase == RoundPhase.betting ? 'وقت الرهان' : 'النتيجة القادمة',
+                              maxLines: 1,
+                              softWrap: false,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                height: 1.0,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                ],
-              ),
             ),
           ),
             ]),
