@@ -613,22 +613,25 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       child: SingleChildScrollView(
         child: Stack(children: [
           Positioned(
-            left: 0,
             top: 0,
-            child: Container(
-              width: 34,
-              height: 34,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF173C91),
-                border: Border.all(color: const Color(0xFFFFD45A), width: 2),
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF173C91),
+                  border: Border.all(color: const Color(0xFFFFD45A), width: 2),
+                ),
+                child: Text('${_timeLeft.clamp(1, 5)}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900)),
               ),
-              child: Text('$_timeLeft',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900)),
             ),
           ),
           Column(children: [
@@ -714,11 +717,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       [Color(0xFFFFB06A), Color(0xFFE0762A)],
     ];
     final size = i == 0 ? 74.0 : 60.0;
-    final initial =
-        w.name.isEmpty ? '?' : String.fromCharCode(w.name.runes.first);
-    final letter = Text(w.isMe ? '⭐' : initial,
-        style: const TextStyle(
-            color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800));
     return Column(mainAxisSize: MainAxisSize.min, children: [
       ColorFiltered(
         colorFilter: ColorFilter.mode(crown[i], BlendMode.modulate),
@@ -739,8 +737,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
               child: (w.avatarUrl ?? '').isNotEmpty
                   ? Image.network(w.avatarUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Center(child: letter))
-                  : Center(child: letter),
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink())
+                  : const SizedBox.shrink(),
             ),
           ),
         ),
@@ -787,65 +785,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       Text('${w.amount} 🪙',
           style: const TextStyle(
               color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
-    ]);
-  }
-
-  /// كرسي فاضي: يظهر لما ما فيه فائز بهذا المركز (نفس أبعاد _podium عشان ما يتغير الترتيب)
-  Widget _emptySeat(int i) {
-    const ring = [Color(0x99FFD400), Color(0x99D7DBE6), Color(0x99E78B3C)];
-    const badge = [Color(0xFFE6A100), Color(0xFF8A93A8), Color(0xFFC4661A)];
-    final size = i == 0 ? 74.0 : 60.0;
-    return Column(mainAxisSize: MainAxisSize.min, children: [
-      Opacity(
-        opacity: 0.5,
-        child: Transform.rotate(
-            angle: -0.2, child: const Text('👑', style: TextStyle(fontSize: 26))),
-      ),
-      Stack(clipBehavior: Clip.none, children: [
-        Container(
-          width: size,
-          height: size,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0x337A5CFF),
-            border: Border.all(color: ring[i], width: 4),
-          ),
-          child: Text('🪑', style: TextStyle(fontSize: size * 0.5)),
-        ),
-        Positioned(
-          right: -6,
-          bottom: -4,
-          child: Container(
-            width: 22,
-            height: 22,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: badge[i],
-              border: Border.all(color: Colors.white, width: 2),
-            ),
-            child: Text('${i + 1}',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold)),
-          ),
-        ),
-      ]),
-      const SizedBox(height: 6),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: const Color(0x33FFFFFF),
-          borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(6), bottom: Radius.circular(14)),
-        ),
-        child: const Text('كرسي فاضي',
-            style: TextStyle(color: Colors.white70, fontSize: 12)),
-      ),
-      const SizedBox(height: 3),
-      const Text('—', style: TextStyle(color: Colors.white54, fontSize: 14)),
     ]);
   }
 
