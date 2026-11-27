@@ -82,7 +82,8 @@ test("Happy Food Wheel can verify an active Happy Live game session without expo
   assert.match(callback, /uid:row\.uid/);
   assert.doesNotMatch(callback, /userId:row\.user_id|internalUserId/);
 });
-\ntest("legacy UTD order history is archived and copied without dropping financial rows", async () => {
+
+test("legacy UTD order history is archived and copied without dropping financial rows", async () => {
   const migration = await readFile(new URL("migrations/0059_platform_game_callback_orders.sql", root), "utf8");
   assert.match(migration, /RENAME TO legacy_game_callback_orders_archive/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS platform_game_callback_orders/);
