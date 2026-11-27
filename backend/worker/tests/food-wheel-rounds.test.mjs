@@ -45,7 +45,8 @@ test("all players join the shared round and state returns live totals and real w
   assert.match(ui, /const kSlotKeys = <String>\[/);
   assert.match(ui, /totals\[key\] = math\.max\(totals\[key\] \?\? 0, value\)/);
   assert.match(api, /total_bets_by_food: totalBetsByFood/);
-  assert.match(api, /SELECT slot, SUM\(stake\) AS amount FROM food_wheel_bets WHERE round_id = \? AND status IN \('accepted', 'settled'\) GROUP BY slot/);
+  assert.match(api, /totals_json AS totalsJson/);
+  assert.ok(api.includes("json_set(totals_json"));
   assert.match(ui, /const kSlotKeys = <String>\[/);
   assert.match(ui, /totals\[key\] = math\.max\(totals\[key\] \?\? 0, value\)/);
   assert.match(ui, /_serverTotalsByRound/);
