@@ -170,7 +170,7 @@ test("rare Pizza and Salad outcomes are public weighted outcomes and pay complet
   assert.match(hub, /RARE_SALAD_WEIGHT = 3/);
   assert.ok(hub.includes("const roll = crypto.getRandomValues"));
   assert.match(hub, /resultSpecial: "pizza" \\| "salad" \\| null/);
-  assert.match(hub, /slot IN \\(1,2,4,6\\) THEN stake \\* 5/);
+  assert.ok(hub.includes("slot IN (1,2,4,6) THEN stake * 5"));
   assert.match(hub, /result_special.*salad/);
   assert.match(api, /special: round\\.resultSpecial/);
   assert.match(rareMigration, /ADD COLUMN result_special/);
