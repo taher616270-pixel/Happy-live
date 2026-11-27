@@ -7,6 +7,8 @@ on:
     paths:
       - ".github/workflows/deploy-food-wheel-worker.yml"
       - "backend/worker/src/**"
+      - "backend/worker/tests/**"
+      - "frontend/lib/games/food_wheel/**"
       - "backend/worker/wrangler.toml"
       - "backend/worker/package.json"
       - "backend/worker/package-lock.json"
