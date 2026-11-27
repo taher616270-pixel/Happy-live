@@ -219,7 +219,7 @@ class RoundState {
 
   const RoundState({
     required this.roundId,
-    required this.secondsLeft,
+    required thi_timeLeft,
     required this.phase,
     required this.pools,
     required this.myBets,
@@ -330,7 +330,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   final _rnd = math.Random();
   Timer? _poll, _msgTimer;
   RoundState? _s;
-  int _bal = 0, _chip = 10, _hit = -1, _animatedRound = -1;
+  int _bal = 0, _chip = 10, _hit = -1, _animatedRound = -1, _timeLeft = 20;
   Set<int> _win = {};
   String? _lit, _err, _msg;
   bool _spinning = false, _busy = false, _panel = false;
@@ -346,7 +346,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   void initState() {
     super.initState();
     _refresh();
-    _poll = Timer.periodic(const Duration(seconds: 1), (_) => _refresh());
+    _poll = Timer.periodic(const Duration(seconds: 1), (_) { if (!mounted) return; if (_timeLeft > 0) setState(() => _timeLeft--); _refresh(); });
   }
 
   @override
@@ -370,9 +370,11 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     try {
       final s = await widget.api.fetchState();
       if (!mounted) return;
+      if (_spinning && _s != null && _s!.roundId != s.roundId) return;
       final newRound = _s != null && _s!.roundId != s.roundId;
       setState(() {
         _s = s;
+        _timeLeft = s.secondsLeft.clamp(0, 20);
         _err = null;
         if (!_spinning) _bal = s.balance;
         if (newRound) {
@@ -441,6 +443,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     }
     if (s.chestReward > 0) parts.add('🎁 صندوق: +${_fmt(s.chestReward)} 🪙');
     if (parts.isNotEmpty) _say(parts.join('  •  '));
+    await _refresh();
   }
 
   Future<void> _bet(int i) async {
@@ -461,7 +464,12 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         setState(() {
           _s = n;
           _bal = n.balance;
+          _timeLeft = n.secondsLeft.clamp(0, 20);
         });
+        if (n.phase == RoundPhase.result && n.roundId != _animatedRound) {
+          _animatedRound = n.roundId;
+          await _spin(n);
+        }
       }
     } catch (e) {
       _say(wheelErrorText(e));

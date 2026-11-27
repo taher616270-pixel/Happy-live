@@ -318,7 +318,7 @@ export async function handleGamesApiRequest(
         return reply({
           round_id: Math.floor(Date.parse(round.createdAt) / 1000),
           round_uuid: round.id,
-          seconds_left: 20,
+          seconds_left: Math.max(0, 20 - Math.floor((Date.now() - Date.parse(round.createdAt)) / 1000)),
           phase: "betting",
           pools: [0, 0, 0, 0, 0, 0, 0, 0],
           my_bets: [0, 0, 0, 0, 0, 0, 0, 0],
