@@ -72,7 +72,7 @@ test("web client uses server round end time and does not create rounds from taps
   assert.doesNotMatch(ui, /currentIndex\+\+|step\+\+ % kSlots\.length|_hit = target/);
   assert.doesNotMatch(ui, /await Future\.delayed\(const Duration\(seconds: 1\)\)/);
   assert.doesNotMatch(ui, /_panelTimer|_refreshAfterPopup/);
-  assert.match(ui, /resultStartedAt \+ 11000/);
+  assert.match(ui, /popupEndsAt = s\.roundEndAt \?\? \(resultAt \+ 10000\)/);
   assert.match(ui, /const frac = 0\.45/);
   assert.doesNotMatch(ui, /AnimatedContainer\(\s*duration: const Duration\(milliseconds: 120\)/);
   assert.match(ui, /الفائز الأكبر لهذه الجولة/);
@@ -119,7 +119,8 @@ test("Food Wheel spin paints only the lower half red with a thick red border", (
 });
 
 test("Food Wheel starts the full spin at chicken and immediately refreshes after popup expiry", () => {
-  assert.match(ui, /await _spinController\.forward\(from: 0\)/);
+  assert.match(ui, /_spinController\.value = progress/);
+  assert.match(ui, /await _spinController\.forward\(\)/);
   assert.match(ui, /return 0;/);
   assert.match(ui, /popupEndsAt = s\.roundEndAt \?\? \(resultAt \+ 10000\)/);
   assert.match(ui, /s\.phase == RoundPhase\.betting \? 'وقت الرهان' : 'النتيجة القادمة'/);
