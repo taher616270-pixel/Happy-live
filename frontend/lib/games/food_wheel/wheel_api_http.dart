@@ -122,8 +122,10 @@ class HttpFoodWheelApi implements FoodWheelApi {
 
   /// The server validates, debits, draws the result and settles atomically.
   @override
-  Future<RoundState> placeBet(int roundId, int slot, int amount) async {
-    final key = 'fw-$roundId-$slot-${DateTime.now().microsecondsSinceEpoch}';
+  Future<RoundState> placeBet(
+      int roundId, int slot, int amount, String idempotencyKey) async {
+    final key = idempotencyKey.trim();
+    if (key.isEmpty) throw const WheelApiException('invalid_bet_data');
     final data = _map(await _post('/game/food-wheel/bet', {
       'roundId': roundId,
       'slot': slot,
@@ -133,6 +135,7 @@ class HttpFoodWheelApi implements FoodWheelApi {
     try {
       return RoundState.fromJson(data);
     } catch (_) {
+      // قد يكون الخادم قبل الرهان بالفعل؛ احتفظ بالمفتاح نفسه وأعد المحاولة.
       throw const WheelApiException('bet_ok_state_failed');
     }
   }
