@@ -139,6 +139,5 @@ test("Food Wheel starts the full spin at chicken and immediately refreshes after
   assert.match(ui, /popupNext <= 1/);
   assert.match(ui, /if \(popupExpired && _panel\) \{/);
   assert.match(ui, /_serverTotalsByRound\.remove\(current\.roundId\)/);
-  assert.match(ui, /_serverTotalsByRound\.remove\(current\.roundId\)/);
   assert.match(ui, /now - _lastRefreshAt >= 1000/);
 });
