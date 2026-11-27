@@ -404,7 +404,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           _panelTimer?.cancel();
         }
       });
-      if (newRound && _auto) _repeatBets();
       if (s.phase == RoundPhase.result && s.roundId != _animatedRound) {
         _animatedRound = s.roundId;
         _spin(s);
@@ -418,18 +417,21 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   Future<void> _spin(RoundState s) async {
     _spinning = true;
-    setState(() => _panel = true);
+    final target = s.resultSlot ?? 0;
+    setState(() {
+      _panel = true;
+      _centerTurns += 4 + (target / 8);
+    });
     _panelTimer?.cancel();
     _panelTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) setState(() => _panel = false);
     });
-    final target = s.resultSlot ?? 0;
     final steps = 4 * 8 + target + 1;
     for (var k = 0; k < steps; k++) {
       if (!mounted) return;
       setState(() => _hit = k % 8);
       final progress = steps <= 1 ? 1.0 : k / (steps - 1);
-      final mean = 5000.0 / steps;
+      final mean = 4200.0 / steps;
       final delayMs = (mean * (0.5 + 1.5 * progress * progress)).round();
       await Future.delayed(Duration(milliseconds: delayMs));
     }
@@ -929,8 +931,9 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                   ),
                   SizedBox(height: d * 0.04),
                   AnimatedRotation(
-                    turns: _spinning ? 4 : 0,
-                    duration: const Duration(seconds: 5),
+                    turns: _centerTurns,
+                    duration: const Duration(milliseconds: 4200),
+                    curve: Curves.easeOutCubic,
                     child: Text(
                       s.phase == RoundPhase.betting ? 'النتيجة قادمة' : '🍽️',
                       style: TextStyle(color: Colors.white, fontSize: d * 0.20),
