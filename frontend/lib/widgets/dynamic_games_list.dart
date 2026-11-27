@@ -37,7 +37,20 @@ class _DynamicGamesListState extends State<DynamicGamesList> {
     }
     return data['sessionToken'] as String;
   }
-  // Keep the approved Chicken Road entry visible even if the catalogue request\n  // is temporarily unavailable or an older Worker returns an empty list.\n  // Authentication and wallet operations still go through Happy Live APIs.\n  static const Map<String, dynamic> _chickenRoadFallback = {\n    'id': 'f21d2c7a-8f1b-4d72-9a63-5c8f7e1d4b90',\n    'name': 'عبور الدجاجة',\n    'description': 'اعبر الطريق بين السيارات واجمع معامل الربح في كل خطوة.',\n    'url': 'https://happy-food-wheel-platform-api.taher616270.workers.dev/embed/app_2760f394cd43da1cc991a3a7a09b268c/chicken-road?parentGameId=f21d2c7a-8f1b-4d72-9a63-5c8f7e1d4b90',\n    'iconUrl': '',\n  };\n\n  List<Map<String, dynamic>> _withFallback(List<Map<String, dynamic>> games) {\n    final hasChickenRoad = games.any((game) =>\n        game['id']?.toString() == _chickenRoadFallback['id']);\n    return hasChickenRoad ? games : <Map<String, dynamic>>[\n      Map<String, dynamic>.from(_chickenRoadFallback),\n      ...games,\n    ];\n  }\n\n  late Future<List<Map<String, dynamic>>> _games;
+  static const Map<String, dynamic> _chickenRoadFallback = {
+    'id': 'f21d2c7a-8f1b-4d72-9a63-5c8f7e1d4b90',
+    'name': 'عبور الدجاجة',
+    'description': 'اعبر الطريق بين السيارات واجمع معامل الربح في كل خطوة.',
+    'url': 'https://happy-food-wheel-platform-api.taher616270.workers.dev/embed/app_2760f394cd43da1cc991a3a7a09b268c/chicken-road?parentGameId=f21d2c7a-8f1b-4d72-9a63-5c8f7e1d4b90',
+    'iconUrl': '',
+  };
+
+  List<Map<String, dynamic>> _withFallback(List<Map<String, dynamic>> games) {
+    final hasChickenRoad = games.any((game) => game['id']?.toString() == _chickenRoadFallback['id']);
+    return hasChickenRoad ? games : <Map<String, dynamic>>[Map<String, dynamic>.from(_chickenRoadFallback), ...games];
+  }
+
+  late Future<List<Map<String, dynamic>>> _games;
 
   @override
   void initState() {
@@ -46,16 +59,17 @@ class _DynamicGamesListState extends State<DynamicGamesList> {
   }
 
   Future<List<Map<String, dynamic>>> _loadGames() async {
-    final response = await http.get(
-      Uri.parse('$_apiBase/games/catalog'),
-    ).timeout(const Duration(seconds: 12));
-    if (response.statusCode != 200) {
-      throw Exception('تعذر تحميل الألعاب');
+    try {
+      final response = await http.get(Uri.parse('$_apiBase/games/catalog')).timeout(const Duration(seconds: 12));
+      if (response.statusCode != 200) return _withFallback([]);
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final rows = decoded['games'];
+      if (rows is! List) return _withFallback([]);
+      final games = rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList();
+      return _withFallback(games);
+    } catch (_) {
+      return _withFallback([]);
     }
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final rows = decoded['games'];
-    if (rows is! List) return [];
-    return rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList();
   }
 
   @override
