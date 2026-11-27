@@ -425,15 +425,12 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   String? _clockDisplayKey, _popupDisplayKey;
   int _clockDisplaySecond = 20, _popupDisplaySecond = 4;
   int _confirmedRoundId = -1;
-  int _lockedMineRoundId = -1;
   final List<int> _confirmedMine = List.filled(8, 0);
-  final List<int> _roundLockedMine = List.filled(8, 0);
   final Map<int, Map<String, int>> _myBetsByRound = {};
   final Map<int, Map<String, int>> _frozenBetsByRound = {};
   final Set<int> _lockedBetRounds = {};
   final Map<int, Map<String, int>> _serverTotalsByRound = {};
   final Set<int> _finalServerTotalsRounds = {};
-  final List<int> _confirmedPools = List.filled(8, 0);
   final List<_PendingWheelBet> _pendingBets = [];
   int get _pendingReserved => _pendingBets
       .where((bet) => bet.status != _PendingBetStatus.accepted)
@@ -621,12 +618,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       };
     }
     _confirmedRoundId = s.roundId;
-    _lockedMineRoundId = s.roundId;
     _rememberServerTotals(s);
-    for (var i = 0; i < 8; i++) {
+    for (var i = 0; i < kSlotKeys.length; i++) {
       _confirmedMine[i] = _safeSlotValue(s.myBets, i);
-      _roundLockedMine[i] = _foodBetForSlot(s.roundId, i);
-      _confirmedPools[i] = _safeSlotValue(s.pools, i);
     }
     // الطلبات المقبولة في جولة انتهت لم تعد تحتاج طبقة عرض محلية.
     _pendingBets.removeWhere((bet) =>
@@ -639,22 +633,12 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       return;
     }
 
-    if (_lockedMineRoundId != s.roundId) {
-      _lockedMineRoundId = s.roundId;
-      for (var i = 0; i < 8; i++) {
-        _roundLockedMine[i] = _safeSlotValue(s.myBets, i);
-      }
-    }
-    for (var slot = 0; slot < 8; slot++) {
+    // Server my_bets only acknowledges requests; it never replaces local bets.
+    for (var slot = 0; slot < kSlotKeys.length; slot++) {
       final previousMine = _confirmedMine[slot];
       final serverMine = _safeSlotValue(s.myBets, slot);
-      _roundLockedMine[slot] = math.max(_roundLockedMine[slot], serverMine).toInt();
-      final serverPool = _safeSlotValue(s.pools, slot);
       var newlyObserved = math.max(0, serverMine - previousMine).toInt();
-      var matchedAmount = 0;
 
-      // A poll can see a committed bet before its POST response arrives.
-      // Mark it as reflected, but keep the request pending until its own ack.
       for (final bet in _pendingBets.where((item) =>
           item.roundId == s.roundId &&
           item.slot == slot &&
@@ -663,31 +647,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         if (newlyObserved < bet.amount) break;
         bet.observedInState = true;
         newlyObserved -= bet.amount;
-        matchedAmount += bet.amount;
       }
 
-      if (serverMine > previousMine) {
-        _confirmedMine[slot] = serverMine;
-        _confirmedPools[slot] = math.max(
-          serverPool,
-          _confirmedPools[slot] + matchedAmount,
-        ).toInt();
-      } else if (matchedAmount > 0) {
-        _confirmedPools[slot] = math.max(
-          serverPool,
-          _confirmedPools[slot] + matchedAmount,
-        ).toInt();
-      }
-      final hasUnobservedPending = _pendingBets.any((bet) =>
-          bet.roundId == s.roundId &&
-          bet.slot == slot &&
-          !bet.observedInState);
-      if (!hasUnobservedPending) {
-        _confirmedPools[slot] =
-            math.max(_confirmedPools[slot], serverPool).toInt();
-      }
+      if (serverMine > previousMine) _confirmedMine[slot] = serverMine;
 
-      // The server state itself has acknowledged these accepted amounts.
       _pendingBets.removeWhere((bet) =>
           bet.roundId == s.roundId &&
           bet.slot == slot &&
@@ -697,8 +660,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   RoundState _withOptimisticBets(RoundState s) {
-    // Always merge local pending bets for the displayed round. This prevents
-    // a freshly saved bet from disappearing when the confirmed baseline is unset.
+    // Display bets only from the local round map (or its frozen snapshot).
     final mine = List<int>.generate(kSlotKeys.length, (i) => _foodBetForSlot(s.roundId, i));
     final pools = _serverTotalsForRound(s.roundId);
     return RoundState(
@@ -755,7 +717,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         a.player?.flag != b.player?.flag ||
         !sameInts(a.pools, b.pools) ||
         a.totalBetsByFood.length != b.totalBetsByFood.length ||
-        !sameInts(a.myBets, b.myBets) ||
         a.topWinners.length != b.topWinners.length ||
         a.recentBets.length != b.recentBets.length) return false;
 
@@ -1028,7 +989,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       setState(() {
         final bets = _myBetsForRound(current.roundId);
         bets[kSlotKeys[i]] = (bets[kSlotKeys[i]] ?? 0) + amount;
-        _roundLockedMine[i] += amount;
         _pendingBets.add(bet);
       });
       _queueBetSend(bet);
@@ -1060,7 +1020,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     setState(() {
       final bets = _myBetsForRound(roundId);
       bets[kSlotKeys[slot]] = (bets[kSlotKeys[slot]] ?? 0) + amount;
-      _roundLockedMine[slot] += amount;
       _pendingBets.add(bet);
     });
     _queueBetSend(bet);
@@ -1137,9 +1096,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             final key = kSlotKeys[bet.slot];
             final remaining = math.max(0, (roundBets[key] ?? 0) - bet.amount).toInt();
             if (remaining == 0) roundBets.remove(key); else roundBets[key] = remaining;
-          }
-          if (_lockedMineRoundId == bet.roundId) {
-            _roundLockedMine[bet.slot] = math.max(0, _roundLockedMine[bet.slot] - bet.amount).toInt();
           }
         });
         unawaited(_refresh());
