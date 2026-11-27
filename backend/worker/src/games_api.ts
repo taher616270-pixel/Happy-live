@@ -323,7 +323,7 @@ export async function handleGamesApiRequest(
           pools[slot] = typeof value === "number" && Number.isFinite(value) ? value : 0;
         }
         for (const row of myRows.results ?? []) {
-          if (row.slot >= 0 && row.slot < 8) myBets[displaySlotByStoredSlot[row.slot]] = Number(row.amount) || 0;
+          if (row.slot >= 0 && row.slot < 8) myBets[row.slot] = Number(row.amount) || 0;
         }
         const now = Date.now();
         const endAt = Date.parse(round.endsAt);
