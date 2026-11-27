@@ -435,7 +435,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   final List<_LogEntry> _log = [];
   List<int> get _chipSet {
     final base = _mode == 'a' ? kChipsAdv : kChips;
-    return base.contains(_chip) ? base : [...base, _chip];
+    return base.contains(_chip) ? base : [...base.take(base.length - 1), _chip];
   }
 
   @override
