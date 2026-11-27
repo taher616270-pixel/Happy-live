@@ -320,9 +320,11 @@ export async function handleGamesApiRequest(
 
         const pools = Array(8).fill(0) as number[];
         const myBets = Array(8).fill(0) as number[];
+        const foodKeys = ["chicken", "tomato", "goat", "chili", "fish", "carrot", "shrimp", "corn"] as const;
         for (const row of poolRows.results ?? []) {
-          if (row.slot >= 0 && row.slot < 8) pools[row.slot] = Number(row.amount) || 0;
+          if (row.slot >= 0 && row.slot < foodKeys.length) pools[row.slot] = Number(row.amount) || 0;
         }
+        const totalBetsByFood = Object.fromEntries(foodKeys.map((food, slot) => [food, pools[slot]]));
         for (const row of myRows.results ?? []) {
           if (row.slot >= 0 && row.slot < 8) myBets[row.slot] = Number(row.amount) || 0;
         }
@@ -356,6 +358,7 @@ export async function handleGamesApiRequest(
           phase: round.status === "betting" ? "betting" : "result",
           pools,
           total_bets: pools,
+          total_bets_by_food: totalBetsByFood,
           my_bets: myBets,
           balance: wallet?.balance ?? 0,
           my_payout: Number(payoutRow?.amount) || 0,
