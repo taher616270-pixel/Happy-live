@@ -316,9 +316,69 @@ async function handleHappyFoodWheelGameSessionCallback(
   }
 }
 
+
+async function handleHappyFoodWheelGameSessionRefreshCallback(
+  request: Request, db: D1Database | undefined, reply: JsonReply
+): Promise<Response | null> {
+  if (new URL(request.url).pathname !== "/v1/platform/game-session/refresh") return null;
+  if (request.method !== "POST") return reply({error:"method_not_allowed"},405);
+  if (!db) return reply({error:"database_unavailable"},503);
+  let body: Record<string,unknown>;
+  try {
+    const parsed = await request.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return reply({error:"invalid_payload"},400);
+    body = parsed as Record<string,unknown>;
+  } catch { return reply({error:"invalid_payload"},400); }
+  const appId = typeof body.appId === "string" ? body.appId : "";
+  if (!(await happyFoodWheelCredential(db,request,appId))) return reply({error:"invalid_application_credential"},401);
+  const sessionId = field(body,"sessionId");
+  const gameId = field(body,"gameId");
+  const gameOrigin = field(body,"gameOrigin");
+  const parentOrigin = field(body,"parentOrigin");
+  if (!/^[0-9a-f-]{36}$/i.test(sessionId) || !/^[0-9a-f-]{36}$/i.test(gameId)
+    || parentOrigin !== "https://happy-live.pages.dev") return reply({error:"invalid_game_session_payload"},400);
+  let expectedGameOrigin = "";
+  try {
+    const parsed = new URL(gameOrigin);
+    if (parsed.protocol !== "https:" || parsed.origin !== gameOrigin || parsed.username || parsed.password) return reply({error:"invalid_game_origin"},400);
+    expectedGameOrigin = parsed.origin;
+  } catch { return reply({error:"invalid_game_origin"},400); }
+  try {
+    const now = new Date().toISOString();
+    const row = await db.prepare(
+      "SELECT s.id AS sessionId,s.game_id AS gameId,s.game_origin AS gameOrigin,s.expires_at AS expiresAt," +
+      "app.expires_at AS appExpiresAt,g.game_url AS gameUrl,u.status AS userStatus " +
+      "FROM game_sessions s " +
+      "JOIN game_session_app_bindings binding ON binding.game_session_id=s.id " +
+      "JOIN user_sessions app ON app.id=binding.app_session_id AND app.user_id=s.user_id AND app.revoked_at IS NULL AND julianday(app.expires_at)>julianday(?) " +
+      "JOIN game_registry g ON g.id=s.game_id AND g.enabled=1 " +
+      "JOIN game_registry_lifecycle lifecycle ON lifecycle.game_id=g.id AND lifecycle.status='active' " +
+      "JOIN users u ON u.id=s.user_id " +
+      "WHERE s.id=? AND s.game_id=? AND s.game_origin=? AND s.revoked_at IS NULL AND julianday(s.expires_at)>julianday(?) LIMIT 1"
+    ).bind(now,sessionId,gameId,expectedGameOrigin,now).first<{
+      sessionId:string;gameId:string;gameOrigin:string;expiresAt:string;appExpiresAt:string;gameUrl:string;userStatus:string;
+    }>();
+    if (!row || row.userStatus !== "active") return reply({error:"game_session_expired_or_invalid"},401);
+    let registeredOrigin = "";
+    try { registeredOrigin = new URL(row.gameUrl).origin; } catch { return reply({error:"game_origin_mismatch"},403); }
+    if (registeredOrigin !== expectedGameOrigin || row.gameOrigin !== expectedGameOrigin) return reply({error:"game_origin_mismatch"},403);
+    const parentExpiry = Date.parse(row.appExpiresAt);
+    if (!Number.isFinite(parentExpiry) || parentExpiry <= Date.now()) return reply({error:"app_session_expired"},401);
+    const expiresAt = new Date(Math.min(Date.now() + 15 * 60_000,parentExpiry)).toISOString();
+    await db.prepare("UPDATE game_sessions SET expires_at=?,last_seen_at=? WHERE id=? AND revoked_at IS NULL")
+      .bind(expiresAt,now,sessionId).run();
+    return reply({ok:true,appId,sessionId,gameId,expiresAt},200);
+  } catch (error) {
+    console.error("[happy-food-wheel.game-session] refresh failed",error instanceof Error?error.message:"unknown");
+    return reply({error:"game_session_refresh_unavailable"},503);
+  }
+}
+
 export async function handlePlatformCallbackRequest(
   request: Request, db: D1Database | undefined, reply: JsonReply
 ): Promise<Response | null> {
+  const gameSessionRefresh=await handleHappyFoodWheelGameSessionRefreshCallback(request,db,reply);
+  if (gameSessionRefresh) return gameSessionRefresh;
   const gameSession=await handleHappyFoodWheelGameSessionCallback(request,db,reply);
   if (gameSession) return gameSession;
   const foodWheelWallet=await handleHappyFoodWheelWalletCallback(request,db,reply);
