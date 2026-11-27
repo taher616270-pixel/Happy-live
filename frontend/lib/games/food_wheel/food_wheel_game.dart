@@ -347,8 +347,7 @@ class _SpinAccelerationCurve extends Curve {
   static const double _firstArea =
       _slowPart * (_initialSpeed + (_maxSpeed - _initialSpeed) * 0.5);
   static const double _middleArea = _fastPart * _maxSpeed;
-  static const double _totalArea =
-      _firstArea + _middleArea + _fastPart * _maxSpeed * 0.5;
+  static const double _totalArea = _firstArea + _maxSpeed * (1 - _slowPart);
 
   @override
   double transformInternal(double t) {
@@ -361,8 +360,6 @@ class _SpinAccelerationCurve extends Curve {
           (_initialSpeed * u +
               (_maxSpeed - _initialSpeed) *
                   (u * u * u - 0.5 * u * u * u * u));
-    } else if (t <= _slowPart + _fastPart) {
-      area = _firstArea + _maxSpeed * (t - _slowPart);
     } else {
       area = _firstArea + _maxSpeed * (t - _slowPart);
     }
@@ -881,7 +878,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     setState(() {
       _todayWin += s.myPayout;
       if (mineBets > 0) {
-        _prevBets = List.of(s.myBets);
+        _prevBets = List.of(_myBetsForRound(s.roundId));
         _log.insert(0, _LogEntry(s.roundId, mineBets, s.myPayout, resEmoji));
         if (_log.length > 30) _log.removeLast();
       }
@@ -890,7 +887,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     final parts = <String>[];
     if (s.myPayout > 0) {
       parts.add('ربحت ${_fmt(s.myPayout)} 🎉');
-    } else if (s.myBets.any((b) => b > 0)) {
+    } else if (_myBetTotalForRound(s.roundId) > 0) {
       parts.add('حظ أوفر في الجولة القادمة');
     }
     if (s.chestReward > 0) parts.add('🎁 صندوق: +${_fmt(s.chestReward)} 🪙');
