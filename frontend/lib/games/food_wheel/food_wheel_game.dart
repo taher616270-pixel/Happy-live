@@ -18,6 +18,8 @@ class WheelApiException implements Exception {
 String wheelErrorText(Object e) {
   if (e is! WheelApiException) return 'حدث خطأ غير متوقع';
   switch (e.code) {
+    case 'max_foods_per_round':
+      return 'مسموح تراهن على 6 أكلات فقط';
     case 'insufficient_balance':
       return 'رصيدك لا يكفي';
     case 'round_closed':
@@ -72,15 +74,15 @@ class WheelSlot {
 
 const kSlots = [
   WheelSlot('🐔', 45, false),
+  WheelSlot('🌽', 5, true),
   WheelSlot('🍅', 5, true),
   WheelSlot('🐐', 15, false),
   WheelSlot('🌶️', 5, true),
   WheelSlot('🐟', 25, false),
   WheelSlot('🥕', 5, true),
   WheelSlot('🦐', 10, false),
-  WheelSlot('🌽', 5, true),
 ];
-const kSlotKeys = <String>['chicken', 'tomato', 'goat', 'chili', 'fish', 'carrot', 'shrimp', 'corn'];
+const kSlotKeys = <String>['chicken', 'corn', 'tomato', 'goat', 'chili', 'fish', 'carrot', 'shrimp'];
 
 Map<String, int> _foodTotalsFromJson(Map<String, dynamic> json) {
   final named = json['total_bets_by_food'];
@@ -98,11 +100,10 @@ Map<String, int> _foodTotalsFromJson(Map<String, dynamic> json) {
 }
 
 int getSpinDelay(double remaining) {
-  if (remaining > 4) return 220;
-  if (remaining > 3) return 150;
-  if (remaining > 2) return 90;
-  if (remaining > 1) return 55;
-  return 55;
+  if (remaining > 4) return 650;
+  if (remaining > 3) return 400;
+  if (remaining > 2) return 180;
+  return 80;
 }
 
 const kChips = [10, 500, 6000, 30000, 100000];
@@ -760,18 +761,22 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   static const int _spinDurationMs = 5000;
-  static const double _spinStep = math.pi / 4;
+  static const double _spinStep = math.pi * 2 / 10;
   static const double _spinBaseAngle = 3 * math.pi * 2;
 
   double _spinAngleForElapsed(double elapsedMs) {
-    var remainingMs = elapsedMs.clamp(0.0, _spinDurationMs.toDouble()).toDouble();
-    var angle = _spinBaseAngle; // modulo one turn this is chicken (slot 0).
-    for (var second = 0; second < 5 && remainingMs > 0; second++) {
-      final segmentMs = math.min(1000.0, remainingMs).toDouble();
-      angle += (segmentMs / getSpinDelay(5.0 - second)) * _spinStep;
-      remainingMs -= segmentMs;
+    final p = (elapsedMs / _spinDurationMs).clamp(0.0, 1.0).toDouble();
+    double integral;
+    if (p <= 0.2) {
+      integral = 1.2 * p + 2.5 * p * p;
+    } else if (p <= 0.6) {
+      integral = 0.34 + 2.2 * (p - 0.2) + 7.5 * math.pow(p - 0.2, 2);
+    } else if (p <= 0.9) {
+      integral = 2.42 + 8 * (p - 0.6) + 10 * math.pow(p - 0.6, 2);
+    } else {
+      integral = 5.72 + 14 * (p - 0.9);
     }
-    return angle;
+    return _spinBaseAngle + integral * 5 * _spinStep;
   }
 
   double _landingArcToWinner(double startAngle, int target, double remainingMs) {
@@ -779,7 +784,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     final targetAngle = target * _spinStep;
     var arc = (targetAngle - (startAngle % fullTurn)) % fullTurn;
     if (arc < 0) arc += fullTurn;
-    final minimumArc = (remainingMs / 55.0) * _spinStep;
+    final minimumArc = (remainingMs / 1000.0) * 14.0 * _spinStep;
     if (arc < minimumArc) arc += ((minimumArc - arc) / fullTurn).ceil() * fullTurn;
     return arc;
   }
@@ -830,7 +835,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   Future<void> _spin(RoundState s) async {
     _freezeMyBets(s.roundId);
     if (_spinStartedRoundId != s.roundId) _startProvisionalSpin(s);
-    final target = (s.resultSlot ?? 0).clamp(0, kSlots.length - 1).toInt();
+    final target = s.special == 'pizza' ? 8 : s.special == 'salad' ? 9 : (s.resultSlot ?? 0).clamp(0, kSlots.length - 1).toInt();
 
     // A result received before the last second is held for landing.
     // A late result anchors at the exact current angle without a snap.
@@ -870,7 +875,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           ? {target}
           : {
               for (var i = 0; i < 8; i++)
-                if (kSlots[i].veg == (s.special == 'salad')) i
+                if (kSlots[i].veg == (s.special == 'pizza')) i
             };
       _panel = true;
       _popupRoundState = s;
@@ -944,6 +949,11 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         return;
       }
       final amount = _chip;
+      final existingFoodCount = _myBetsForRound(current.roundId).entries.where((entry) => entry.value > 0).length;
+      if ((_myBetsForRound(current.roundId)[kSlotKeys[i]] ?? 0) == 0 && existingFoodCount >= 6) {
+        _say('مسموح تراهن على 6 أكلات فقط');
+        return;
+      }
       if (amount <= 0) return;
       final player = current.player;
       if (player != null && player.status.isNotEmpty && player.status != 'active') {
@@ -1328,7 +1338,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text('${s.roundId} نتيجة الجولة', textAlign: TextAlign.center, style: t),
+                Text(s.special == 'pizza' ? 'بيتزا! فازت كل الخضروات' : s.special == 'salad' ? 'سلطة! فازت كل اللحوم' : '${s.roundId} نتيجة الجولة', textAlign: TextAlign.center, style: t),
                 Text('رهانك في هذه الجولة: $mine', textAlign: TextAlign.center, style: t),
                 Text('الفائز في هذه الجولة: ${s.myPayout}', textAlign: TextAlign.center, style: t),
               ],
@@ -1496,13 +1506,13 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             height: w,
             child: Stack(children: [
           Positioned.fill(child: CustomPaint(painter: _SpokesPainter(d))),
-          for (var i = 0; i < 8; i++)
+          for (var i = 0; i < 10; i++)
             Positioned(
-              left: w / 2 + w * 0.37 * math.sin(i * math.pi / 4) - ds / 2,
-              top: w / 2 - w * 0.37 * math.cos(i * math.pi / 4) - ds / 2,
+              left: w / 2 + w * 0.37 * math.sin(i * math.pi * 2 / 10) - ds / 2,
+              top: w / 2 - w * 0.37 * math.cos(i * math.pi * 2 / 10) - ds / 2,
               width: ds,
               height: ds,
-              child: _slot(i, s, ds, spinAngle),
+              child: i < 8 ? _slot(i, s, ds, spinAngle) : _specialWheelSlot(i, ds, spinAngle),
             ),
           Center(
             child: Container(
@@ -1577,9 +1587,30 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   double _highlightForSlot(double angle, int slot) {
     if (!_spinHasResult) return 0;
-    const step = math.pi / 4;
-    final activeSlot = (angle / step).round() % kSlots.length;
+    const step = math.pi * 2 / 10;
+    final activeSlot = (angle / step).floor() % 10;
     return activeSlot == slot ? 1.0 : 0.0;
+  }
+
+  Widget _specialWheelSlot(int index, double d, double spinAngle) {
+    final pizza = index == 8;
+    final active = _highlightForSlot(spinAngle, index) >= 0.5;
+    return IgnorePointer(
+      child: Container(
+        width: d,
+        height: d,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFFFFF3C4),
+          border: Border.all(
+            color: active ? const Color(0xFFFF0000) : const Color(0xFF8A4B2A),
+            width: active ? 8 : 4,
+          ),
+        ),
+        child: Text(pizza ? '🍕' : '🥗', style: TextStyle(fontSize: d * 0.58)),
+      ),
+    );
   }
 
   Widget _slot(int i, RoundState s, double d, double spinAngle) {
@@ -1669,27 +1700,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
                   child: Text(slot.emoji,
                       style: TextStyle(fontSize: d * 0.38))),
             ),
-            if (mx > 0 && s.pools[i] == mx)
-              Positioned(
-                top: -d * 0.1,
-                right: -d * 0.12,
-                child: Transform.rotate(
-                  angle: -0.14,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE5251B),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Text('Hot',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: d * 0.15,
-                            fontWeight: FontWeight.w900)),
-                  ),
-                ),
-              ),
           ]),
         ),
       ),
