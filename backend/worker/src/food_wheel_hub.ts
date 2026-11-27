@@ -16,8 +16,9 @@ interface FoodWheelRound {
 
 const MULTIPLIERS = [45, 5, 15, 5, 25, 5, 10, 5] as const;
 const BETTING_MS = 20_000;
-// 20s betting + 5s server-result spin + 5s popup.
-const ROUND_MS = 30_000;
+// 20s betting + 5s server-result spin + popup countdown 4,3,2,1.
+// The next round starts exactly when the popup reaches 1s.
+const ROUND_MS = 28_000;
 const MAX_CATCH_UP_ROUNDS = 100;
 
 function chooseResultSlot(): number {
@@ -97,7 +98,7 @@ export class FoodWheelRoundsHub extends DurableObject<FoodWheelEnv> {
     // Anchor the result phase to the exact betting deadline so a delayed
     // alarm cannot steal seconds from the five-second result countdown.
     const chosenAt = round.bettingEndsAt;
-    const resultEndsAt = new Date(Date.parse(round.bettingEndsAt) + 10_000).toISOString();
+    const resultEndsAt = new Date(Date.parse(round.bettingEndsAt) + 8_000).toISOString();
     // The chosen slot and all winning payouts commit together. If an alarm is
     // retried or races an ensure request, the first persisted result always wins.
     await db.batch([
