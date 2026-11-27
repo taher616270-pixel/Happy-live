@@ -760,7 +760,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       if (_spinning && _s != null && _s!.roundId != s.roundId) return;
       final previous = _s;
       final newRound = previous != null && previous.roundId != s.roundId;
-      final displayChanged = previous == null || !_sameDisplayState(previous, s);
+      final displayChanged =
+          previous == null || _err != null || !_sameDisplayState(previous, s);
       _reconcileOptimisticBets(s);
       if (displayChanged || newRound) {
         setState(() {
