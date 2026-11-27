@@ -627,8 +627,9 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     final rawUserId = _s?.player?.id ?? 'player';
     final sanitizedUserId =
         rawUserId.replaceAll(RegExp(r'[^A-Za-z0-9._:-]'), '_');
-    final safeUserId =
-        sanitizedUserId.substring(0, math.min(24, sanitizedUserId.length));
+    final safeUserId = sanitizedUserId.length <= 24
+        ? sanitizedUserId
+        : sanitizedUserId.substring(0, 24);
     final stamp = DateTime.now().microsecondsSinceEpoch;
     final random = _rnd.nextInt(1 << 32).toRadixString(16).padLeft(8, '0');
     return 'fw-$safeUserId-$roundId-$stamp-$random';
