@@ -1319,7 +1319,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     final slot = kSlots[i];
     final myBet = _displayMyBet(s, i);
     final highlight = _highlightForSlot(spinAngle, i);
-    final hit = highlight > 0.001, win = _win.contains(i), mine = myBet > 0;
+    final win = _win.contains(i), mine = myBet > 0;
     final mx = s.pools.reduce((a, b) => a > b ? a : b);
     const frac = 0.45; // Fixed fill: never changes with bets or totals.
     const dark = Color(0xFF5A3A00);
