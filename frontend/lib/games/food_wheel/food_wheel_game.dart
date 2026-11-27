@@ -460,8 +460,14 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           _confirmedPools[slot] + matchedAmount,
         ).toInt();
       }
-      _confirmedPools[slot] =
-          math.max(_confirmedPools[slot], s.pools[slot]).toInt();
+      final hasUnobservedPending = _pendingBets.any((bet) =>
+          bet.roundId == s.roundId &&
+          bet.slot == slot &&
+          !bet.observedInState);
+      if (!hasUnobservedPending) {
+        _confirmedPools[slot] =
+            math.max(_confirmedPools[slot], s.pools[slot]).toInt();
+      }
 
       // The server state itself has acknowledged these accepted amounts.
       _pendingBets.removeWhere((bet) =>
