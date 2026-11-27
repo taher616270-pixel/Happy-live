@@ -55,7 +55,11 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /Timer\.periodic\(const Duration\(seconds: 1\)/);
   assert.match(ui, /roundEndAt! - DateTime\.now\(\)\.millisecondsSinceEpoch/);
   assert.match(ui, /placeBet\(\s*bet\.roundId,\s*bet\.slot,\s*bet\.amount,\s*bet\.idempotencyKey/);
-  assert.match(ui, /Future<void> _drainBetQueue\(\)/);
+  assert.match(ui, /Future<void> _sendBet\(_PendingWheelBet bet\)/);
+  assert.match(ui, /unawaited\(_sendBet\(bet\)\)/);
+  assert.match(ui, /behavior: HitTestBehavior\.opaque,\\s*onTap: \(\) => _bet\(i\)/);
+  assert.match(ui, /_fmt\(math\.max\(0, _bal - _pendingReserved\)\)/);
+  assert.doesNotMatch(ui, /_drainBetQueue|_betQueueRunning/);
   assert.match(ui, /final List<_PendingWheelBet> _pendingBets/);
   assert.match(ui, /bool observedInState = false/);
   assert.match(api, /SELECT slot, SUM\(stake\) AS amount FROM food_wheel_bets/);
