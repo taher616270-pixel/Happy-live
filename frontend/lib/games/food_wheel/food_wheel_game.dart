@@ -442,7 +442,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     if (s.phase == RoundPhase.betting) return 5;
     final resultAt = s.resultChosenAt ?? s.bettingEndsAt;
     if (resultAt == null) return 5;
-    return ((10000 - (DateTime.now().millisecondsSinceEpoch - resultAt)) / 1000)
+    return ((11000 - (DateTime.now().millisecondsSinceEpoch - resultAt)) / 1000)
         .ceil()
         .clamp(0, 5)
         .toInt();
@@ -633,10 +633,16 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
               for (var i = 0; i < 8; i++)
                 if (kSlots[i].veg == (s.special == 'salad')) i
             };
+    });
+    // Keep the wheel stopped on the server result for one full second before
+    // revealing the result panel.
+    await Future.delayed(const Duration(seconds: 1));
+    if (!mounted) return;
+    setState(() {
       _panel = true;
       _popupTimeLeft = _popupSecondsLeft(s);
     });
-    final popupEndsAt = s.roundEndAt ?? (resultStartedAt + 10000);
+    final popupEndsAt = s.roundEndAt ?? (resultStartedAt + 11000);
     _panelTimer = Timer(
       Duration(milliseconds: math.max(
         0,
@@ -926,9 +932,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           Positioned(
             top: 0,
             left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
+            child: Container(
                 width: 92,
                 height: 34,
                 alignment: Alignment.center,
@@ -943,7 +947,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                         fontSize: 12,
                         fontWeight: FontWeight.w900)),
               ),
-            ),
           ),
           Column(children: [
             SizedBox(
@@ -1010,25 +1013,17 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                 ),
               ),
             ),
-            Row(children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(child: Text('نتيجة الجولة ${s.roundId}', style: t)),
-                    const SizedBox(height: 4),
-                    Row(children: [
-                      Expanded(child: Text('رهانك في هذه الجولة: $mine', textAlign: TextAlign.center, style: t)),
-                      Expanded(child: Text('الفائز في هذه الجولة: ${s.myPayout}', textAlign: TextAlign.center, style: t)),
-                    ]),
-                  ],
-                ),
-              ),
-              Text(s.myPayout > 0 ? '🥳' : '😿',
-                  style: const TextStyle(fontSize: 44)),
-            ]),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text('${s.roundId} نتيجة الجولة', textAlign: TextAlign.center, style: t),
+                Text('رهانك في هذه الجولة: $mine', textAlign: TextAlign.center, style: t),
+                Text('الفائز في هذه الجولة: ${s.myPayout}', textAlign: TextAlign.center, style: t),
+              ],
+            ),
             const SizedBox(height: 4),
-            const Text('الفائز الأكثر لهذه الجولة',
+            const Text('الفائز الأكبر لهذه الجولة',
                 style: TextStyle(
                     color: Color(0xFFFFD400),
                     fontWeight: FontWeight.w800,
@@ -1283,7 +1278,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     final myBet = _displayMyBet(s, i);
     final hit = _hit == i, win = _win.contains(i), mine = myBet > 0;
     final mx = s.pools.reduce((a, b) => a > b ? a : b);
-    final frac = mx == 0 ? 0.45 : 0.45 + 0.35 * (s.pools[i] / mx);
+    const frac = 0.45; // Fixed fill: never changes with bets or totals.
     const dark = Color(0xFF5A3A00);
     return Material(
       type: MaterialType.transparency,
@@ -1292,8 +1287,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         onPointerDown: (_) => _onFoodPointerDown(i),
         child: SizedBox.expand(
           child: Stack(clipBehavior: Clip.none, children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
+        Container(
           width: d,
           height: d,
           transform: Matrix4.identity()..scale(hit || win ? 1.12 : 1.0),
@@ -1345,26 +1339,30 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                     style: TextStyle(color: dark, fontSize: d * 0.14)),
               ),
               Align(
-                alignment: const Alignment(0, 0.18),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(_fmt(s.pools[i]),
-                      style: TextStyle(
-                          color: dark,
-                          fontSize: d * 0.17,
-                          fontWeight: FontWeight.bold)),
-                  SizedBox(width: d * 0.04),
-                  Text('🪙', style: TextStyle(fontSize: d * 0.14)),
-                ]),
-              ),
-              if (mine)
-                Align(
-                  alignment: const Alignment(0, 0.04),
-                  child: Text('🪙 ${_fmt(myBet)}',
-                      style: TextStyle(
-                          color: const Color(0xFF1458D4), // كومة عملات زرقاء
-                          fontSize: d * 0.14,
-                          fontWeight: FontWeight.w800)),
+                alignment: const Alignment(0, 0.20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('${_fmt(s.pools[i])} 🪙',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                            color: dark,
+                            fontSize: d * 0.15,
+                            fontWeight: FontWeight.bold)),
+                    if (mine) ...[
+                      SizedBox(height: d * 0.025),
+                      Text('🪙 ${_fmt(myBet)}',
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                              color: const Color(0xFF1458D4),
+                              fontSize: d * 0.14,
+                              fontWeight: FontWeight.w800)),
+                    ],
+                  ],
                 ),
+              ),
             ]),
           ),
         ),
