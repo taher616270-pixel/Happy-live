@@ -36,6 +36,7 @@ test("all players join the shared round and state returns live totals and real w
   assert.match(api, /FOOD_WHEEL_ROUNDS\.idFromName\("food-wheel-global"\)/);
   assert.match(api, /round_end_at: endAt/);
   assert.match(api, /result_chosen_at: resultChosenAt/);
+  assert.match(api, /server_time: now/);
   assert.match(api, /Math.min\(20, Math.ceil\(\(bettingEndAt - now\) \/ 1000\)\)/);
   assert.match(api, /total_bets: pools/);
   assert.match(api, /my_bets: myBets/);
@@ -57,6 +58,8 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /roundEndAt/);
   assert.match(ui, /Timer\.periodic\(const Duration\(milliseconds: 100\)/);
   assert.match(ui, /_phaseSecondsLeft\(RoundState s\)/);
+  assert.match(ui, /_serverNowMs\(\)/);
+  assert.match(ui, /_serverClockOffsetMs = s\.serverTime!/);
   assert.match(ui, /_popupSecondsLeft\(RoundState s\)/);
   assert.match(ui, /duration: const Duration\(milliseconds: 5000\)/);
   assert.match(ui, /class _TopTopSpinCurve extends Curve/);

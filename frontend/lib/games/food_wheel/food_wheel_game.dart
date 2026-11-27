@@ -204,7 +204,7 @@ class MyRoundRecord {
 
 class RoundState {
   final int roundId, secondsLeft, balance, myPayout;
-  final int? roundEndAt, bettingEndsAt, resultChosenAt;
+  final int? roundEndAt, bettingEndsAt, resultChosenAt, serverTime;
   final RoundPhase phase;
   final List<int> pools, myBets;
   final int? resultSlot; // رقم الوجبة الفائزة، أو null لو كانت سلطة/بيتزا
@@ -224,6 +224,7 @@ class RoundState {
     this.roundEndAt,
     this.bettingEndsAt,
     this.resultChosenAt,
+    this.serverTime,
     required this.phase,
     required this.pools,
     required this.myBets,
@@ -251,6 +252,7 @@ class RoundState {
         roundEndAt: (j['round_end_at'] as num?)?.toInt(),
         bettingEndsAt: (j['betting_ends_at'] as num?)?.toInt(),
         resultChosenAt: (j['result_chosen_at'] as num?)?.toInt(),
+        serverTime: (j['server_time'] as num?)?.toInt(),
         phase: j['phase'] == 'result' ? RoundPhase.result : RoundPhase.betting,
         pools: (j['pools'] as List).map((e) => (e as num).toInt()).toList(),
         myBets: (j['my_bets'] as List).map((e) => (e as num).toInt()).toList(),
@@ -374,6 +376,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   bool _spinning = false, _panel = false;
   bool _fetching = false; // يمنع تراكم طلبات الحالة لو الخادم بطيء
   int _lastRefreshAt = 0;
+  int _serverClockOffsetMs = 0;
   int _phaseRefreshRequestedRound = -1;
   int _popupRefreshRequestedRound = -1;
   int _confirmedRoundId = -1;
@@ -447,11 +450,13 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     });
   }
 
+  int _serverNowMs() => DateTime.now().millisecondsSinceEpoch + _serverClockOffsetMs;
+
   int _safeSlotValue(List<int> values, int slot) =>
       slot >= 0 && slot < values.length ? values[slot] : 0;
 
   int _phaseSecondsLeft(RoundState s) {
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = _serverNowMs();
     if (s.phase == RoundPhase.betting) {
       final endAt = s.bettingEndsAt ?? s.roundEndAt;
       return endAt == null
@@ -470,7 +475,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     final resultAt = s.resultChosenAt ?? s.bettingEndsAt;
     if (resultAt == null) return 5;
     final popupEndsAt = s.roundEndAt ?? (resultAt + 10000);
-    return ((popupEndsAt - DateTime.now().millisecondsSinceEpoch) / 1000)
+    return ((popupEndsAt - _serverNowMs()) / 1000)
         .ceil()
         .clamp(0, 5)
         .toInt();
@@ -569,6 +574,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       roundEndAt: s.roundEndAt,
       bettingEndsAt: s.bettingEndsAt,
       resultChosenAt: s.resultChosenAt,
+      serverTime: s.serverTime,
       phase: s.phase,
       pools: pools,
       myBets: mine,
@@ -594,7 +600,12 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     if (_fetching) return;
     _fetching = true;
     try {
+      final requestStartedAt = DateTime.now().millisecondsSinceEpoch;
       final s = await widget.api.fetchState();
+      final responseReceivedAt = DateTime.now().millisecondsSinceEpoch;
+      if (s.serverTime != null) {
+        _serverClockOffsetMs = s.serverTime! - ((requestStartedAt + responseReceivedAt) ~/ 2);
+      }
       if (!mounted) return;
       if (_spinning && _s != null && _s!.roundId != s.roundId) return;
       final newRound = _s != null && _s!.roundId != s.roundId;
@@ -641,7 +652,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     final targetAngle = target * (math.pi / 4);
     final endAngle = startAngle + (3 * math.pi * 2) + targetAngle;
     // Anchor spin progress to the server timestamp, not response arrival.
-    final elapsedMs = (DateTime.now().millisecondsSinceEpoch - resultStartedAt)
+    final elapsedMs = (_serverNowMs() - resultStartedAt)
         .clamp(0, spinDurationMs)
         .toInt();
     final progress = elapsedMs / spinDurationMs;
