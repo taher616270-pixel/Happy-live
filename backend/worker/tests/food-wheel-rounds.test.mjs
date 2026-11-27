@@ -168,7 +168,7 @@ test("Food Wheel starts the full spin at chicken and immediately refreshes after
 test("rare Pizza and Salad outcomes are public weighted outcomes and pay complete food groups", () => {
   assert.match(hub, /RARE_PIZZA_WEIGHT = 3/);
   assert.match(hub, /RARE_SALAD_WEIGHT = 3/);
-  assert.match(hub, /const roll = crypto\\.getRandomValues/);
+  assert.ok(hub.includes("const roll = crypto.getRandomValues"));
   assert.match(hub, /resultSpecial: "pizza" \\| "salad" \\| null/);
   assert.match(hub, /slot IN \\(1,2,4,6\\) THEN stake \\* 5/);
   assert.match(hub, /result_special.*salad/);
@@ -178,7 +178,7 @@ test("rare Pizza and Salad outcomes are public weighted outcomes and pay complet
 
 test("Food Wheel accepts arbitrary positive integer stakes and rejects a seventh distinct food", () => {
   assert.match(api, /Number\\.isSafeInteger\\(amount\\) \\|\\| amount <= 0/);
-  assert.match(api, /COUNT\\(DISTINCT slot\\)/);
+  assert.ok(api.includes("COUNT(DISTINCT slot)"));
   assert.match(api, /max_foods_per_round/);
   assert.ok(ui.includes("for (var i = 0; i < 10; i++)"));
   assert.ok(!ui.includes("Text('Hot'"));
