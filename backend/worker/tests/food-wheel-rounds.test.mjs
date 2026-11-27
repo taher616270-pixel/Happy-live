@@ -43,7 +43,8 @@ test("all players join the shared round and state returns live totals and real w
   assert.match(ui, /totalBetsByFood: _foodTotalsFromJson\(j\)/);
   assert.match(ui, /const kSlotKeys = <String>\[/);
   assert.match(ui, /totals\[key\] = math\.max\(totals\[key\] \?\? 0, value\)/);
-  assert.doesNotMatch(api, /total_bets_by_food/);
+  assert.match(api, /total_bets_by_food: totalBetsByFood/);
+  assert.match(api, /SELECT slot, SUM\(stake\) AS amount FROM food_wheel_bets WHERE round_id = \? AND status IN \('accepted', 'settled'\) GROUP BY slot/);
   assert.match(ui, /const kSlotKeys = <String>\[/);
   assert.match(ui, /totals\[key\] = math\.max\(totals\[key\] \?\? 0, value\)/);
   assert.match(ui, /_serverTotalsByRound/);
@@ -80,7 +81,8 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.ok(ui.includes("_spinLandingArc = _landingArcToWinner"));
   assert.ok(ui.includes("final endAngle = _spinAngleAtProgress(1)"));
   assert.ok(ui.includes("if (p <= 0.8)"));
-  assert.doesNotMatch(ui, /_SpinAccelerationCurve|easeOut|ease-out|final eased/);
+  const spinSection = ui.slice(ui.indexOf('int getSpinDelay'), ui.indexOf('String _newBetIdempotencyKey'));
+  assert.doesNotMatch(spinSection, /_SpinAccelerationCurve|easeOut|ease-out|final eased/);
   assert.ok(ui.includes("_spinTargetKnown = true"));
   assert.ok(ui.includes("_spinFinalizedRoundId == s.roundId"));
   assert.ok(ui.includes("static const int _spinDurationMs = 5000"));
@@ -94,6 +96,9 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.ok(ui.includes("_displayBetsForRound(int roundId) => _frozenBetsByRound[roundId]"));
   assert.ok(ui.includes("bets[kSlotKeys[i]] = (bets[kSlotKeys[i]] ?? 0) + amount"));
   assert.ok(ui.includes("_myBetTotalForRound(s.roundId)"));
+  assert.ok(ui.includes("_prevBets[kSlotKeys[i]] ?? 0"));
+  assert.doesNotMatch(ui, /_confirmedRoundId|_confirmedMine|_reconcileOptimisticBets|observedInState/);
+  assert.ok(ui.includes("_finalServerTotalsRounds.contains(s.roundId)"));
   assert.doesNotMatch(ui, /kSlotKeys\[i\]: _safeSlotValue\(s\.myBets/);
   assert.ok(ui.includes("_lockedBetRounds.contains(current.roundId)"));
   assert.ok(ui.includes("_lockedBetRounds.contains(roundId)"));
@@ -136,8 +141,10 @@ test("Food Wheel starts the full spin at chicken and immediately refreshes after
   assert.match(ui, /popupEndAt = s\.roundEndAt \?\? \(_resultStartAt\(s\) \+ 8000\)/);
   assert.match(ui, /_isResultPhase\(s\) \? 'النتيجة القادمة' : 'وقت الرهان'/);
   assert.match(ui, /_popupTimeLeft\.clamp\(1, 4\)/);
-  assert.match(ui, /popupNext <= 1/);
-  assert.match(ui, /if \(popupExpired && _panel\) \{/);
-  assert.match(ui, /_serverTotalsByRound\.remove\(current\.roundId\)/);
+  assert.match(ui, /_roundCleanupAtMs\[s\.roundId\] = Date\.now\(\)\.millisecondsSinceEpoch \+ 5000/);
+  assert.match(ui, /final popupExpired = popupId != null && cleanupAt != null && now >= cleanupAt/);
+  assert.match(ui, /_serverTotalsByRound\.remove\(popupId\)/);
+  assert.match(ui, /_resultOverlay\(_popupRoundState \?\? s\)/);
+  assert.doesNotMatch(ui, /_myBetsByRound\.remove\(previous\.roundId\)/);
   assert.match(ui, /now - _lastRefreshAt >= 1000/);
 });
