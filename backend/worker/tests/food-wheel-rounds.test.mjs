@@ -98,6 +98,7 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.ok(ui.includes("_lockedBetRounds.contains(current.roundId)"));
   assert.ok(ui.includes("_lockedBetRounds.contains(roundId)"));
   assert.ok(ui.includes("_rememberServerTotals(s)"));
+  assert.match(ui, /final totalsFrozen = a\.roundId == b\.roundId && _lockedBetRounds\.contains\(a\.roundId\)/);
   assert.ok(ui.includes("final pools = _serverTotalsForRound(s.roundId)"));
   assert.doesNotMatch(ui, /pendingBySlot|_confirmedPools \+ pending/);
   assert.ok(ui.includes("_serverClockSynced"));
@@ -136,7 +137,8 @@ test("Food Wheel starts the full spin at chicken and immediately refreshes after
   assert.match(ui, /_isResultPhase\(s\) \? 'النتيجة القادمة' : 'وقت الرهان'/);
   assert.match(ui, /_popupTimeLeft\.clamp\(1, 4\)/);
   assert.match(ui, /popupNext <= 1/);
-  assert.match(ui, /if \(popupExpired\) \{/);
+  assert.match(ui, /if \(popupExpired && _panel\) \{/);
+  assert.match(ui, /_serverTotalsByRound\.remove\(current\.roundId\)/);
   assert.match(ui, /_serverTotalsByRound\.remove\(current\.roundId\)/);
   assert.match(ui, /now - _lastRefreshAt >= 1000/);
 });
