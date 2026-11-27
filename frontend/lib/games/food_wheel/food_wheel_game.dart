@@ -359,7 +359,7 @@ class _PendingWheelBet {
 
 class _FoodWheelGameState extends State<FoodWheelGame> {
   final _rnd = math.Random();
-  Timer? _poll, _msgTimer, _panelTimer, _foodTapTimer, _foodFeedbackTimer;
+  Timer? _poll, _msgTimer, _panelTimer, _foodTapTimer, _foodFeedbackTimer, _foodDiagnosticTimer;
   int _foodTapDebug = -1, _foodFeedbackSlot = -1;
   String? _foodFeedback;
   RoundState? _s;
@@ -407,6 +407,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     _panelTimer?.cancel();
     _foodTapTimer?.cancel();
     _foodFeedbackTimer?.cancel();
+    _foodDiagnosticTimer?.cancel();
     super.dispose();
   }
 
@@ -653,34 +654,58 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   }
 
   void _onFoodPointerDown(int i) {
-    // Visible proof that the food's own hit target received this pointer.
+    // Diagnostic sequence: leave TAP visible before entering _bet.
+    _showFoodFeedback(i, 'TAP $i');
     _foodTapTimer?.cancel();
     if (mounted) setState(() => _foodTapDebug = i);
     _foodTapTimer = Timer(const Duration(milliseconds: 1200), () {
       if (mounted) setState(() => _foodTapDebug = -1);
     });
-    _bet(i);
+    _foodDiagnosticTimer?.cancel();
+    _foodDiagnosticTimer = Timer(const Duration(milliseconds: 450), () {
+      if (mounted) _bet(i);
+    });
   }
 
   void _bet(int i) {
-    final s = _s;
-    if (s == null || s.phase != RoundPhase.betting) {
-      _showFoodFeedback(i, 'round closed');
-      return;
-    }
-    final pl = s.player;
-    if (pl != null && pl.status.isNotEmpty && pl.status != 'active') {
-      _showFoodFeedback(i, 'account not activated: ${pl.status}');
-      return;
-    }
-    _enqueueBet(s.roundId, i, _chip);
+    // This is deliberately shown before any state read or early return.
+    _showFoodFeedback(
+      i,
+      'BET CALLED, chip=$_chip, bal=${_s?.balance ?? _bal}',
+    );
+    _foodDiagnosticTimer?.cancel();
+    _foodDiagnosticTimer = Timer(const Duration(milliseconds: 450), () {
+      if (!mounted) return;
+      final s = _s;
+      if (s == null) {
+        _showFoodFeedback(i, 'return: no state');
+        return;
+      }
+      if (s.phase != RoundPhase.betting) {
+        _showFoodFeedback(i, 'return: round closed');
+        return;
+      }
+      if (_chip <= 0) {
+        _showFoodFeedback(i, 'return: no chip');
+        return;
+      }
+      final pl = s.player;
+      if (pl != null && pl.status.isNotEmpty && pl.status != 'active') {
+        _showFoodFeedback(i, 'return: not active (${pl.status})');
+        return;
+      }
+      if (!_enqueueBet(s.roundId, i, _chip)) {
+        // _enqueueBet reports the precise local balance rejection itself.
+        return;
+      }
+    });
   }
 
   bool _enqueueBet(int roundId, int slot, int amount) {
     final availableBalance = _s?.balance ?? _bal;
     if (availableBalance - _pendingReserved < amount) {
       _showFoodFeedback(slot,
-          'insufficient balance (${availableBalance - _pendingReserved} available)');
+          'return: low bal (${availableBalance - _pendingReserved} available, need $amount)');
       return false;
     }
     if (_confirmedRoundId != roundId && _s != null && _s!.roundId == roundId) {
@@ -745,26 +770,17 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       });
     } catch (error) {
       if (!mounted) return;
+      final detail = error is WheelApiException
+          ? 'server error${error.status == null ? '' : ' HTTP ${error.status}'}: ${error.code}'
+              '${error.body == null || error.body!.isEmpty ? '' : ' | ${error.body}'}'
+          : 'server error: $error';
+      _showFoodFeedback(bet.slot, detail);
       if (_isDefinitiveBetRejection(error)) {
-        setState(() {
-          _pendingBets.remove(bet);
-          // Removing this pending entry restores only this tap in the displayed balance.
-        });
-        final detail = error is WheelApiException
-            ? 'server rejected${error.status == null ? '' : ' HTTP ${error.status}'}: ${error.code}'
-                '${error.body == null || error.body!.isEmpty ? '' : ' | ${error.body}'}'
-            : 'server rejected: $error';
-        _showFoodFeedback(bet.slot, detail);
+        setState(() => _pendingBets.remove(bet));
         unawaited(_refresh());
       } else {
-        // Keep the optimistic amount visible and retry this same request/key
-        // independently. It cannot hold up any subsequent click.
+        // Keep the optimistic amount and retry with the same idempotency key.
         setState(() => bet.status = _PendingBetStatus.queued);
-        final detail = error is WheelApiException
-            ? 'server pending${error.status == null ? '' : ' HTTP ${error.status}'}: ${error.code}'
-                '${error.body == null || error.body!.isEmpty ? '' : ' | ${error.body}'}'
-            : 'server pending: $error';
-        _showFoodFeedback(bet.slot, detail);
         Timer(const Duration(seconds: 1), () {
           if (mounted) unawaited(_sendBet(bet));
         });
