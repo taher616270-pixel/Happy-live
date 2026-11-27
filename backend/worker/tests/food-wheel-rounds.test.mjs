@@ -72,7 +72,7 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /_fmt\(math\.max\(0, _bal - _pendingReserved\)\)/);
   assert.match(ui, /\x27رهانك في هذه الجولة:/);
   assert.match(ui, /\x27الفائز في هذه الجولة:/);
-  assert.match(ui, /الفائز الأكثر لهذه الجولة/);
+  assert.match(ui, /الفائز الأكبر لهذه الجولة/);
   assert.match(ui, /for \(final i in \[2, 0, 1\]\)/);
   assert.doesNotMatch(ui, /_drainBetQueue|_betQueueRunning/);
   assert.match(ui, /final List<_PendingWheelBet> _pendingBets/);
