@@ -539,8 +539,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                 .ceil()
                 .clamp(0, 20);
         _err = null;
-        if (!_spinning &&
-            !_pendingBets.any((bet) => bet.status != _PendingBetStatus.accepted)) {
+        if (!_spinning && _pendingBets.isEmpty) {
           _bal = s.balance;
         }
         if (newRound) {
@@ -586,8 +585,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     _spinning = false;
     setState(() {
       _hit = -1;
-      if (!_pendingBets.any(
-          (bet) => bet.status != _PendingBetStatus.accepted)) {
+      if (_pendingBets.isEmpty) {
         _bal = s.balance;
       }
       _lit = s.special;
