@@ -23,7 +23,8 @@ test("Food Wheel uses one sequential global round with a server-enforced single 
 test("Durable Object alarms advance betting, result, settlement, and the next round without player traffic", () => {
   assert.match(hub, /const BETTING_MS = 20_000/);
   assert.match(hub, /const ROUND_MS = 30_000/);
-  assert.match(hub, /now\.getTime\(\) \+ 10_000/);
+  assert.match(hub, /const chosenAt = round\.bettingEndsAt/);
+  assert.match(hub, /Date\.parse\(round\.bettingEndsAt\) \+ 10_000/);
   assert.match(hub, /async alarm\(\): Promise<void>/);
   assert.match(hub, /this\.ctx\.storage\.setAlarm/);
   assert.match(hub, /private async chooseAndPublishResult/);
@@ -58,6 +59,9 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /roundEndAt/);
   assert.match(ui, /Timer\.periodic\(const Duration\(milliseconds: 100\)/);
   assert.match(ui, /_phaseSecondsLeft\(RoundState s\)/);
+  assert.match(ui, /_isResultPhase\(RoundState s\)/);
+  assert.match(ui, /_bettingOpen\(RoundState s\)/);
+  assert.match(ui, /_serverNowMs\(\) >= current\.bettingEndsAt!/);
   assert.match(ui, /_serverNowMs\(\)/);
   assert.match(ui, /_serverClockOffsetMs = s\.serverTime!/);
   assert.match(ui, /_popupSecondsLeft\(RoundState s\)/);
@@ -88,6 +92,12 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /for \(final i in \[2, 0, 1\]\)/);
   assert.doesNotMatch(ui, /_drainBetQueue|_betQueueRunning/);
   assert.match(ui, /final List<_PendingWheelBet> _pendingBets/);
+  assert.match(ui, /final List<int> _roundLockedMine = List\.filled\(8, 0\)/);
+  assert.match(ui, /_roundLockedMine\[i\] \+= amount/);
+  assert.match(ui, /_lockedMineRoundId == s\.roundId \? _roundLockedMine\[i\] : 0/);
+  assert.match(ui, /انتهت الجولة انتظر الجولة القادمة/);
+  assert.match(ui, /Duration\(seconds: 2\)/);
+  assert.match(ui, /ignoring: !_bettingOpen\(s\)/);
   assert.match(ui, /bool observedInState = false/);
   assert.match(api, /SELECT slot, SUM\(stake\) AS amount FROM food_wheel_bets/);
   assert.match(api, /const priorGlobalBet = await db\.prepare/);

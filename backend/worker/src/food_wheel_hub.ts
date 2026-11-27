@@ -94,10 +94,10 @@ export class FoodWheelRoundsHub extends DurableObject<FoodWheelEnv> {
     const db = this.requireDb();
     const resultSlot = chooseResultSlot();
     const now = new Date();
-    const chosenAt = now.toISOString();
-    // Start the result phases from the actual server result timestamp:
-    // 5s spin + 5s popup, even if the alarm wakes late.
-    const resultEndsAt = new Date(now.getTime() + 10_000).toISOString();
+    // Anchor the result phase to the exact betting deadline so a delayed
+    // alarm cannot steal seconds from the five-second result countdown.
+    const chosenAt = round.bettingEndsAt;
+    const resultEndsAt = new Date(Date.parse(round.bettingEndsAt) + 10_000).toISOString();
     // The chosen slot and all winning payouts commit together. If an alarm is
     // retried or races an ensure request, the first persisted result always wins.
     await db.batch([
