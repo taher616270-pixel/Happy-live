@@ -22,7 +22,8 @@ test("Food Wheel uses one sequential global round with a server-enforced single 
 
 test("Durable Object alarms advance betting, result, settlement, and the next round without player traffic", () => {
   assert.match(hub, /const BETTING_MS = 20_000/);
-  assert.match(hub, /const ROUND_MS = 30_000/);
+  assert.match(hub, /const ROUND_MS = 31_000/);
+  assert.match(hub, /now\.getTime\(\) \+ 11_000/);
   assert.match(hub, /async alarm\(\): Promise<void>/);
   assert.match(hub, /this\.ctx\.storage\.setAlarm/);
   assert.match(hub, /private async chooseAndPublishResult/);
@@ -58,6 +59,11 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /_phaseSecondsLeft\(RoundState s\)/);
   assert.match(ui, /_popupSecondsLeft\(RoundState s\)/);
   assert.match(ui, /final stopAt = resultStartedAt \+ 5000/);
+  assert.match(ui, /await Future\.delayed\(const Duration\(seconds: 1\)\)/);
+  assert.match(ui, /resultStartedAt \+ 11000/);
+  assert.match(ui, /const frac = 0\.45/);
+  assert.doesNotMatch(ui, /AnimatedContainer\(\s*duration: const Duration\(milliseconds: 120\)/);
+  assert.match(ui, /الفائز الأكبر لهذه الجولة/);
   assert.match(ui, /_popupTimeLeft/);
   assert.match(ui, /placeBet\(\s*bet\.roundId,\s*bet\.slot,\s*bet\.amount,\s*bet\.idempotencyKey/);
   assert.match(ui, /Future<void> _sendBet\(_PendingWheelBet bet(?:, \{Future<RoundState>\? request\})?\)/);
