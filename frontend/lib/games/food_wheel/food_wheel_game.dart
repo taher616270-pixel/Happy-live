@@ -975,7 +975,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         return;
       }
 
-      if (_confirmedRoundId != current.roundId) _startOptimisticRound(current);
+      _startOptimisticRound(current);
       final bet = _PendingWheelBet(
         idempotencyKey: _newBetIdempotencyKey(current.roundId),
         roundId: current.roundId,
@@ -1004,9 +1004,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       _say('رصيدك لا يكفي');
       return false;
     }
-    if (_confirmedRoundId != roundId && _s != null && _s!.roundId == roundId) {
-      _startOptimisticRound(_s!);
-    }
+    _startOptimisticRound(current);
     final bet = _PendingWheelBet(
       idempotencyKey: _newBetIdempotencyKey(roundId),
       roundId: roundId,
