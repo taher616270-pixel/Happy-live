@@ -63,9 +63,9 @@ test("web client uses server round end time and does not create rounds from taps
   assert.ok(api.indexOf("const priorGlobalBet") < api.indexOf("if (globalRound.status !== \"betting\""));
   assert.match(api, /reason: "betting_window_closed"/);
   const topBar = ui.slice(ui.indexOf("Widget _topBar(RoundState s)"), ui.indexOf("Widget _wheel(RoundState s)"));
-  assert.ok(topBar.indexOf("_openMore") < topBar.indexOf("_trophyBtn()"));
+  assert.ok(topBar.indexOf("_modeToggle()") < topBar.indexOf("_trophyBtn()"));
   assert.ok(topBar.indexOf("_trophyBtn()") < topBar.indexOf("_openLog"));
   assert.ok(topBar.indexOf("_openLog") < topBar.indexOf("_openSettings"));
-  assert.ok(topBar.indexOf("_openSettings") < topBar.indexOf("_modeToggle()"));
+  assert.ok(topBar.indexOf("_openSettings") < topBar.indexOf("_openMore"));
   assert.doesNotMatch(ui, /food-wheel-state-/);
 });
