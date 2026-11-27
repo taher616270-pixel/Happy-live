@@ -769,6 +769,14 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             _bal = s.balance;
           }
           if (newRound) {
+            if (previous != null) {
+              // The prior result panel has closed at the round boundary.
+              _myBetsByRound.remove(previous.roundId);
+              _frozenBetsByRound.remove(previous.roundId);
+              _lockedBetRounds.remove(previous.roundId);
+              _serverTotalsByRound.remove(previous.roundId);
+              _finalServerTotalsRounds.remove(previous.roundId);
+            }
             _win = {};
             _spinController.stop();
             _spinController.value = 0;
@@ -1096,6 +1104,11 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             final key = kSlotKeys[bet.slot];
             final remaining = math.max(0, (roundBets[key] ?? 0) - bet.amount).toInt();
             if (remaining == 0) roundBets.remove(key); else roundBets[key] = remaining;
+            final frozen = _frozenBetsByRound[bet.roundId];
+            if (frozen != null) {
+              final frozenRemaining = math.max(0, (frozen[key] ?? 0) - bet.amount).toInt();
+              if (frozenRemaining == 0) frozen.remove(key); else frozen[key] = frozenRemaining;
+            }
           }
         });
         unawaited(_refresh());
