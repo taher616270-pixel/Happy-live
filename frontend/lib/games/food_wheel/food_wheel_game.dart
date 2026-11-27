@@ -700,7 +700,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         return;
       }
 
-      // Mark the server stage, then save locally before the request can complete.
+      // Start the server request, then save locally without waiting for its reply.
       _showFoodFeedback(i, 'STEP2 calling server');
       if (_confirmedRoundId != current.roundId) _startOptimisticRound(current);
       final bet = _PendingWheelBet(
@@ -709,11 +709,14 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         slot: i,
         amount: amount,
       );
-      setState(() => _pendingBets.add(bet));
+      final serverRequest = widget.api.placeBet(
+        bet.roundId, bet.slot, bet.amount, bet.idempotencyKey,
+      );
       _showFoodFeedback(i, 'STEP4 saving');
-      // The UI reads s.myBets from _withOptimisticBets; pending is merged there.
+      setState(() => _pendingBets.add(bet));
+      // The UI reads s.myBets from _withOptimisticBets; pending is merged now.
       _showFoodFeedback(i, 'STEP5 saved, bet=$amount');
-      unawaited(_sendBet(bet));
+      unawaited(_sendBet(bet, request: serverRequest));
     } catch (error) {
       if (mounted) _showFoodFeedback(i, 'EXCEPTION: $error');
     }
@@ -761,17 +764,17 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   }
 
   // Each tap is sent independently: one slow request can never block later taps.
-  Future<void> _sendBet(_PendingWheelBet bet) async {
+  Future<void> _sendBet(_PendingWheelBet bet, {Future<RoundState>? request}) async {
     if (!mounted || !_pendingBets.contains(bet) ||
         bet.status != _PendingBetStatus.queued) return;
     setState(() => bet.status = _PendingBetStatus.sending);
     try {
-      final confirmed = await widget.api.placeBet(
+      final confirmed = await (request ?? widget.api.placeBet(
         bet.roundId,
         bet.slot,
         bet.amount,
         bet.idempotencyKey,
-      ).timeout(const Duration(seconds: 3));
+      )).timeout(const Duration(seconds: 3));
       if (!mounted) return;
       _showFoodFeedback(bet.slot, 'STEP3 server done, status=accepted');
       setState(() {
