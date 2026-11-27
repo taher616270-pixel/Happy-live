@@ -303,7 +303,7 @@ export async function handleGamesApiRequest(
             "SELECT fb.user_id AS userId, COALESCE(p.display_name, '') AS name, p.avatar_key AS avatar, SUM(fb.payout) AS amount, CASE WHEN fb.user_id = ? THEN 1 ELSE 0 END AS isMe FROM food_wheel_bets fb LEFT JOIN profiles p ON p.user_id = fb.user_id WHERE fb.round_id = ? AND fb.payout > 0 AND fb.status IN ('accepted', 'settled') GROUP BY fb.user_id, p.display_name, p.avatar_key ORDER BY amount DESC, fb.user_id ASC LIMIT 3"
           ).bind(user.id, round.id).all<{ userId: string; name: string; avatar: string | null; amount: number; isMe: number }>(),
           db.prepare(
-            "SELECT COALESCE(p.display_name, '') AS name, p.avatar_key AS avatar, fb.slot, fb.stake AS amount, CASE WHEN fb.user_id = ? THEN 1 ELSE 0 END AS isMe FROM food_wheel_bets fb LEFT JOIN profiles p ON p.user_id = fb.user_id WHERE fb.round_id = ? AND fb.status IN ('accepted', 'settled') ORDER BY fb.created_at DESC, fb.id DESC LIMIT 12"
+            "SELECT COALESCE(p.display_name, '') AS name, p.avatar_key AS avatar, CASE fb.slot WHEN 0 THEN 0 WHEN 1 THEN 2 WHEN 2 THEN 3 WHEN 3 THEN 4 WHEN 4 THEN 5 WHEN 5 THEN 6 WHEN 6 THEN 7 ELSE 1 END AS slot, fb.stake AS amount, CASE WHEN fb.user_id = ? THEN 1 ELSE 0 END AS isMe FROM food_wheel_bets fb LEFT JOIN profiles p ON p.user_id = fb.user_id WHERE fb.round_id = ? AND fb.status IN ('accepted', 'settled') ORDER BY fb.created_at DESC, fb.id DESC LIMIT 12"
           ).bind(user.id, round.id).all<{ name: string; avatar: string | null; slot: number; amount: number; isMe: number }>(),
           db.prepare(
             "SELECT COUNT(DISTINCT user_id) AS count FROM food_wheel_bets WHERE round_id = ? AND status IN ('accepted', 'settled')"
@@ -320,11 +320,12 @@ export async function handleGamesApiRequest(
 
         const pools = Array(8).fill(0) as number[];
         const myBets = Array(8).fill(0) as number[];
+        const displaySlotByStoredSlot = [0, 2, 3, 4, 5, 6, 7, 1] as const;
         for (const row of poolRows.results ?? []) {
-          if (row.slot >= 0 && row.slot < 8) pools[row.slot] = Number(row.amount) || 0;
+          if (row.slot >= 0 && row.slot < 8) pools[displaySlotByStoredSlot[row.slot]] = Number(row.amount) || 0;
         }
         for (const row of myRows.results ?? []) {
-          if (row.slot >= 0 && row.slot < 8) myBets[row.slot] = Number(row.amount) || 0;
+          if (row.slot >= 0 && row.slot < 8) myBets[displaySlotByStoredSlot[row.slot]] = Number(row.amount) || 0;
         }
         const now = Date.now();
         const endAt = Date.parse(round.endsAt);
@@ -395,7 +396,7 @@ export async function handleGamesApiRequest(
 
       if (isFoodWheelTopWins) {
         const rows = await db.prepare(
-          "SELECT COALESCE(p.display_name, '') AS name, p.avatar_key AS avatar, p.country_flag AS flag, SUM(fb.payout) AS amount, CASE WHEN r.result_special = 'pizza' THEN '🍕' WHEN r.result_special = 'salad' THEN '🥗' WHEN r.result_slot = 0 THEN '🐔' WHEN r.result_slot = 1 THEN '🌽' WHEN r.result_slot = 2 THEN '🍅' WHEN r.result_slot = 3 THEN '🐐' WHEN r.result_slot = 4 THEN '🌶️' WHEN r.result_slot = 5 THEN '🐟' WHEN r.result_slot = 6 THEN '🥕' ELSE '🦐' END AS food, CASE WHEN fb.user_id = ? THEN 1 ELSE 0 END AS isMe FROM food_wheel_bets fb INNER JOIN food_wheel_rounds r ON r.id = fb.round_id LEFT JOIN profiles p ON p.user_id = fb.user_id WHERE fb.status = 'settled' AND fb.payout > 0 AND r.settled_at >= strftime('%Y-%m-%dT00:00:00Z', 'now') GROUP BY fb.user_id, p.display_name, p.avatar_key, p.country_flag, r.result_slot ORDER BY amount DESC LIMIT 20"
+          "SELECT COALESCE(p.display_name, '') AS name, p.avatar_key AS avatar, p.country_flag AS flag, SUM(fb.payout) AS amount, CASE WHEN r.result_special = 'pizza' THEN '🍕' WHEN r.result_special = 'salad' THEN '🥗' WHEN r.result_slot = 0 THEN '🐔' WHEN r.result_slot = 1 THEN '🌽' WHEN r.result_slot = 2 THEN '🍅' WHEN r.result_slot = 3 THEN '🐐' WHEN r.result_slot = 4 THEN '🌶️' WHEN r.result_slot = 5 THEN '🐟' WHEN r.result_slot = 6 THEN '🥕' ELSE '🦐' END AS food, CASE WHEN fb.user_id = ? THEN 1 ELSE 0 END AS isMe FROM food_wheel_bets fb INNER JOIN food_wheel_rounds r ON r.id = fb.round_id LEFT JOIN profiles p ON p.user_id = fb.user_id WHERE fb.status = 'settled' AND fb.payout > 0 AND r.settled_at >= strftime('%Y-%m-%dT00:00:00Z', 'now') GROUP BY fb.user_id, p.display_name, p.avatar_key, p.country_flag, r.result_slot, r.result_special ORDER BY amount DESC LIMIT 20"
         ).bind(user.id).all();
         return reply({
           ok: true,
