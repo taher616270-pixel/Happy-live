@@ -379,7 +379,6 @@ class _PendingWheelBet {
   final String idempotencyKey;
   final int roundId, slot, amount;
   _PendingBetStatus status;
-  bool observedInState = false;
 
   _PendingWheelBet({
     required this.idempotencyKey,
@@ -412,12 +411,13 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   int _spinStartedRoundId = -1;
   bool _fetching = false; // يمنع تراكم طلبات الحالة لو الخادم بطيء
   int _lastRefreshAt = 0;
+  RoundState? _popupRoundState;
+  int? _popupRoundId;
+  final Map<int, int> _roundCleanupAtMs = <int, int>{};
   int _serverClockOffsetMs = 0;
   bool _serverClockSynced = false;
   String? _clockDisplayKey, _popupDisplayKey;
   int _clockDisplaySecond = 20, _popupDisplaySecond = 4;
-  int _confirmedRoundId = -1;
-  final List<int> _confirmedMine = List.filled(8, 0);
   final Map<int, Map<String, int>> _myBetsByRound = {};
   final Map<int, Map<String, int>> _frozenBetsByRound = {};
   final Set<int> _lockedBetRounds = {};
@@ -429,7 +429,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       .fold(0, (sum, bet) => sum + bet.amount);
   String _mode = 'n'; // n = عادي، a = متقدم
   bool _auto = false, _sound = true, _showBets = true;
-  List<int> _prevBets = List.filled(8, 0); // رهانات الجولة السابقة (للتكرار)
+  Map<String, int> _prevBets = <String, int>{}; // رهانات الجولة السابقة حسب اسم الطعام
   int _todayWin = 0;
   final List<_LogEntry> _log = [];
   List<int> get _chipSet => kChips;
@@ -450,38 +450,55 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       if (!mounted) return;
       final now = DateTime.now().millisecondsSinceEpoch;
       final current = _s;
-      var popupExpired = false;
+      final popupId = _popupRoundId;
+      final cleanupAt = popupId == null ? null : _roundCleanupAtMs[popupId];
+      final popupNext = cleanupAt == null
+          ? (current == null ? _popupTimeLeft : _monotonicPopupSecond(current))
+          : ((cleanupAt - now) / 1000).ceil().clamp(0, 4).toInt();
+      final popupExpired = popupId != null && cleanupAt != null && now >= cleanupAt;
       final clearMessage = _msg != null && now >= _msgExpiresAtMs;
       final clearToast = _roundClosedToast != null && now >= _toastExpiresAtMs;
       if (current != null) {
         final next = _monotonicPhaseSecond(current);
-        final popupNext = _monotonicPopupSecond(current);
-        // Begin the five-second visual spin at the exact local deadline,
-        // even while the result request is still travelling to the server.
         if (_isResultPhase(current)) _freezeMyBets(current.roundId);
         if (_isResultPhase(current) && _spinStartedRoundId != current.roundId) {
           _startProvisionalSpin(current);
         }
-        popupExpired = current.phase == RoundPhase.result && popupNext <= 1;
         if (next != _timeLeft || popupNext != _popupTimeLeft ||
-            (popupExpired && _panel) || clearMessage || clearToast) {
+            popupExpired || clearMessage || clearToast) {
           setState(() {
             _timeLeft = next;
             _popupTimeLeft = popupNext;
-            if (popupExpired && _panel) {
-              _panel = false;
-              _myBetsByRound.remove(current.roundId);
-              _frozenBetsByRound.remove(current.roundId);
-              _lockedBetRounds.remove(current.roundId);
-              _serverTotalsByRound.remove(current.roundId);
-              _finalServerTotalsRounds.remove(current.roundId);
+            if (popupExpired && popupId != null) {
+              if (_popupRoundId == null) _panel = false;
+              _popupRoundState = null;
+              _popupRoundId = null;
+              _roundCleanupAtMs.remove(popupId);
+              _myBetsByRound.remove(popupId);
+              _frozenBetsByRound.remove(popupId);
+              _lockedBetRounds.remove(popupId);
+              _serverTotalsByRound.remove(popupId);
+              _finalServerTotalsRounds.remove(popupId);
+              _pendingBets.removeWhere((bet) =>
+                  bet.roundId == popupId && bet.status == _PendingBetStatus.accepted);
             }
             if (clearMessage) _msg = null;
             if (clearToast) _roundClosedToast = null;
           });
         }
-      } else if (clearMessage || clearToast) {
+      } else if (popupExpired || clearMessage || clearToast) {
         setState(() {
+          if (popupExpired && popupId != null) {
+            _panel = false;
+            _popupRoundState = null;
+            _popupRoundId = null;
+            _roundCleanupAtMs.remove(popupId);
+            _myBetsByRound.remove(popupId);
+            _frozenBetsByRound.remove(popupId);
+            _lockedBetRounds.remove(popupId);
+            _serverTotalsByRound.remove(popupId);
+            _finalServerTotalsRounds.remove(popupId);
+          }
           if (clearMessage) _msg = null;
           if (clearToast) _roundClosedToast = null;
         });
@@ -566,14 +583,21 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     return _popupDisplaySecond;
   }
 
-  Map<String, int> _myBetsForRound(int roundId) => _myBetsByRound.putIfAbsent(roundId, () => <String, int>{});
-  Map<String, int> _displayBetsForRound(int roundId) => _frozenBetsByRound[roundId] ?? _myBetsForRound(roundId);
-  int _foodBetForSlot(int roundId, int slot) => slot >= 0 && slot < kSlotKeys.length ? (_displayBetsForRound(roundId)[kSlotKeys[slot]] ?? 0) : 0;
-  int _myBetTotalForRound(int roundId) => _displayBetsForRound(roundId).values.fold<int>(0, (sum, amount) => sum + amount);
+  Map<String, int> _myBetsForRound(int roundId) =>
+      _myBetsByRound.putIfAbsent(roundId, () => <String, int>{});
+  Map<String, int> _displayBetsForRound(int roundId) =>
+      _frozenBetsByRound[roundId] ?? _myBetsForRound(roundId);
+  int _foodBetForSlot(int roundId, int slot) =>
+      slot >= 0 && slot < kSlotKeys.length
+          ? (_displayBetsForRound(roundId)[kSlotKeys[slot]] ?? 0)
+          : 0;
+  int _myBetTotalForRound(int roundId) =>
+      _displayBetsForRound(roundId).values.fold<int>(0, (sum, amount) => sum + amount);
 
   void _freezeMyBets(int roundId) {
     if (_lockedBetRounds.contains(roundId)) return;
-    _frozenBetsByRound[roundId] = Map<String, int>.from(_myBetsForRound(roundId));
+    _frozenBetsByRound[roundId] =
+        Map<String, int>.from(_myBetsForRound(roundId));
     _lockedBetRounds.add(roundId);
   }
 
@@ -587,63 +611,21 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     if (_lockedBetRounds.contains(s.roundId) || _finalServerTotalsRounds.contains(s.roundId)) return;
     if (s.phase == RoundPhase.result) _finalServerTotalsRounds.add(s.roundId);
     final totals = _serverTotalsByRound.putIfAbsent(s.roundId, () => <String, int>{});
-    if (s.totalBetsByFood.isNotEmpty) {
-      for (final key in kSlotKeys) {
-        final value = s.totalBetsByFood[key];
-        if (value != null) totals[key] = math.max(totals[key] ?? 0, value).toInt();
+    for (var i = 0; i < kSlotKeys.length; i++) {
+      final key = kSlotKeys[i];
+      final value = s.totalBetsByFood[key] ??
+          (i < s.pools.length ? s.pools[i] : null);
+      if (value != null) {
+        totals[key] = math.max(totals[key] ?? 0, value).toInt();
       }
-    } else {
-      for (var i = 0; i < kSlotKeys.length && i < s.pools.length; i++) {
-        final key = kSlotKeys[i];
-        totals[key] = math.max(totals[key] ?? 0, s.pools[i]).toInt();
-      }
+      // Missing server fields retain the last known total for this food.
     }
   }
 
   void _startOptimisticRound(RoundState s) {
-    if (!_myBetsByRound.containsKey(s.roundId)) {
-      _myBetsByRound[s.roundId] = <String, int>{};
-    }
-    _confirmedRoundId = s.roundId;
+    // Player bets are created and retained only in the local round-keyed map.
+    _myBetsForRound(s.roundId);
     _rememberServerTotals(s);
-    for (var i = 0; i < kSlotKeys.length; i++) {
-      _confirmedMine[i] = _safeSlotValue(s.myBets, i);
-    }
-    // الطلبات المقبولة في جولة انتهت لم تعد تحتاج طبقة عرض محلية.
-    _pendingBets.removeWhere((bet) =>
-        bet.roundId != s.roundId && bet.status == _PendingBetStatus.accepted);
-  }
-
-  void _reconcileOptimisticBets(RoundState s) {
-    if (_confirmedRoundId != s.roundId) {
-      _startOptimisticRound(s);
-      return;
-    }
-
-    // Server my_bets only acknowledges requests; it never replaces local bets.
-    for (var slot = 0; slot < kSlotKeys.length; slot++) {
-      final previousMine = _confirmedMine[slot];
-      final serverMine = _safeSlotValue(s.myBets, slot);
-      var newlyObserved = math.max(0, serverMine - previousMine).toInt();
-
-      for (final bet in _pendingBets.where((item) =>
-          item.roundId == s.roundId &&
-          item.slot == slot &&
-          item.status != _PendingBetStatus.queued &&
-          !item.observedInState)) {
-        if (newlyObserved < bet.amount) break;
-        bet.observedInState = true;
-        newlyObserved -= bet.amount;
-      }
-
-      if (serverMine > previousMine) _confirmedMine[slot] = serverMine;
-
-      _pendingBets.removeWhere((bet) =>
-          bet.roundId == s.roundId &&
-          bet.slot == slot &&
-          bet.status == _PendingBetStatus.accepted &&
-          bet.observedInState);
-    }
   }
 
   RoundState _withOptimisticBets(RoundState s) {
@@ -747,7 +729,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       if (newRound && previous != null) _freezeMyBets(previous.roundId);
       _rememberServerTotals(s);
       if (s.phase == RoundPhase.result || _serverNowMs() >= _bettingDeadline(s)) _freezeMyBets(s.roundId);
-      _reconcileOptimisticBets(s);
       final displayChanged =
           previous == null || _err != null || !_sameDisplayState(previous, s);
       if (displayChanged || newRound) {
@@ -761,12 +742,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           }
           if (newRound) {
             if (previous != null) {
-              // The prior result panel has closed at the round boundary.
-              _myBetsByRound.remove(previous.roundId);
-              _frozenBetsByRound.remove(previous.roundId);
-              _lockedBetRounds.remove(previous.roundId);
-              _serverTotalsByRound.remove(previous.roundId);
-              _finalServerTotalsRounds.remove(previous.roundId);
+              // Keep the previous round's local records until its popup closes.
             }
             _win = {};
             _spinController.stop();
@@ -914,7 +890,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
                 if (kSlots[i].veg == (s.special == 'salad')) i
             };
       _panel = true;
-      _popupTimeLeft = _popupSecondsLeft(s);
+      _popupRoundState = s;
+      _popupRoundId = s.roundId;
+      _roundCleanupAtMs[s.roundId] = DateTime.now().millisecondsSinceEpoch + 5000;
+      _popupTimeLeft = 4;
     });
     final resEmoji = s.special == 'salad'
         ? '🥗'
@@ -925,7 +904,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     setState(() {
       _todayWin += s.myPayout;
       if (mineBets > 0) {
-        _prevBets = List<int>.generate(kSlotKeys.length, (i) => _foodBetForSlot(s.roundId, i));
+        _prevBets = Map<String, int>.from(_displayBetsForRound(s.roundId));
         _log.insert(0, _LogEntry(s.roundId, mineBets, s.myPayout, resEmoji));
         if (_log.length > 30) _log.removeLast();
       }
@@ -1084,10 +1063,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         if (_s?.roundId == confirmed.roundId) {
           _s = confirmed;
         }
-        _reconcileOptimisticBets(confirmed);
-        if (_s?.roundId != bet.roundId || bet.observedInState) {
-          _pendingBets.remove(bet);
-        }
+        _rememberServerTotals(confirmed);
+        _pendingBets.remove(bet);
       });
     } catch (error, stackTrace) {
       if (!mounted) return;
@@ -1178,7 +1155,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
                       _redFloor(s),
                     ]),
                   ),
-                  _resultOverlay(s),
+                  _resultOverlay(_popupRoundState ?? s),
                   if (_roundClosedToast != null)
                     Positioned.fill(
                       child: IgnorePointer(
@@ -2028,13 +2005,13 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     if (s == null || s.phase != RoundPhase.betting) {
       return _say('انتظر الجولة القادمة');
     }
-    if (!_prevBets.any((b) => b > 0)) return _say('ما فيه رهان سابق');
-    if (s.myBets.any((b) => b > 0) ||
+    if (!_prevBets.values.any((b) => b > 0)) return _say('ما فيه رهان سابق');
+    if (_myBetTotalForRound(s.roundId) > 0 ||
         _pendingBets.any((bet) => bet.roundId == s.roundId)) {
       return _say('رهانك موجود في هذه الجولة');
     }
-    for (var i = 0; i < 8; i++) {
-      final amount = _prevBets[i];
+    for (var i = 0; i < kSlotKeys.length; i++) {
+      final amount = _prevBets[kSlotKeys[i]] ?? 0;
       if (amount <= 0) continue;
       if (!_enqueueBet(s.roundId, i, amount)) break;
     }
