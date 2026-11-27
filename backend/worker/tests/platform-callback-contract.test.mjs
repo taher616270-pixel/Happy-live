@@ -83,6 +83,17 @@ test("Happy Food Wheel can verify an active Happy Live game session without expo
   assert.doesNotMatch(callback, /userId:row\.user_id|internalUserId/);
 });
 
+
+test("Happy Food Wheel can refresh a bridged game session without exposing the parent token", () => {
+  assert.ok(callback.includes('"/v1/platform/game-session/refresh"'));
+  assert.match(callback, /happyFoodWheelCredential\(db,request,appId\)/);
+  assert.match(callback, /UPDATE game_sessions SET expires_at=\?,last_seen_at=\?/);
+  assert.match(callback, /game_session_app_bindings/);
+  assert.match(callback, /lifecycle\.status='active'/);
+  assert.match(callback, /parentOrigin !== "https:\/\/happy-live\.pages\.dev"/);
+  assert.match(callback, /julianday\(app\.expires_at\)>julianday\(\?\)/);
+});
+
 test("legacy UTD order history is archived and copied without dropping financial rows", async () => {
   const migration = await readFile(new URL("migrations/0059_platform_game_callback_orders.sql", root), "utf8");
   assert.match(migration, /RENAME TO legacy_game_callback_orders_archive/);
