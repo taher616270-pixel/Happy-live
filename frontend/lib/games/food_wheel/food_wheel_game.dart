@@ -344,6 +344,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   Set<int> _win = {};
   String? _lit, _err, _msg;
   bool _spinning = false, _busy = false, _panel = false;
+  double _centerTurns = 0;
   bool _fetching = false; // يمنع تراكم طلبات الحالة لو الخادم بطيء
   String _mode = 'n'; // n = عادي، a = متقدم
   bool _auto = false, _sound = true, _showBets = true;
