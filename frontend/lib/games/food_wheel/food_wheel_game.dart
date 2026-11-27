@@ -401,6 +401,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   Future<void>? _spinRun;
   int _spinTargetSlot = 0, _spinFinalizedRoundId = -1;
   bool _spinTargetKnown = false;
+  double? _spinLandingStartAngle, _spinLandingStartProgress;
+  int? _spinLandingSteps;
   Future<void> _betSendChain = Future<void>.value();
   late final AnimationController _spinController;
   double _spinAngle = 0;
@@ -424,7 +426,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   final Map<int, Map<String, int>> _myBetsByRound = {};
   final Map<int, Map<String, int>> _frozenBetsByRound = {};
   final Set<int> _lockedBetRounds = {};
-  final Map<int, List<int>> _serverTotalsByRound = {};
+  final Map<int, Map<String, int>> _serverTotalsByRound = {};
   final Set<int> _finalServerTotalsRounds = {};
   final List<int> _confirmedPools = List.filled(8, 0);
   final List<_PendingWheelBet> _pendingBets = [];
@@ -477,7 +479,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
               _myBetsByRound.remove(current.roundId);
               _frozenBetsByRound.remove(current.roundId);
               _lockedBetRounds.remove(current.roundId);
-              _serverTotalsByRound.remove(current.roundId);
               _finalServerTotalsRounds.remove(current.roundId);
             }
             if (clearMessage) _msg = null;
@@ -582,8 +583,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   List<int> _serverTotalsForRound(int roundId) {
-    final totals = _serverTotalsByRound[roundId] ?? const <int>[];
-    return List<int>.generate(kSlotKeys.length, (i) => i < totals.length ? totals[i] : 0);
+    final totals = _serverTotalsByRound[roundId] ?? const <String, int>{};
+    return List<int>.generate(kSlotKeys.length, (i) => totals[kSlotKeys[i]] ?? 0);
   }
 
   void _rememberServerTotals(RoundState s) {
@@ -593,9 +594,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     } else if (_lockedBetRounds.contains(s.roundId)) {
       return;
     }
-    final totals = _serverTotalsByRound.putIfAbsent(s.roundId, () => List<int>.filled(kSlotKeys.length, 0));
+    final totals = _serverTotalsByRound.putIfAbsent(s.roundId, () => <String, int>{});
     for (var i = 0; i < kSlotKeys.length && i < s.pools.length; i++) {
-      totals[i] = math.max(totals[i], s.pools[i]).toInt();
+      final key = kSlotKeys[i];
+      totals[key] = math.max(totals[key] ?? 0, s.pools[i]).toInt();
     }
   }
 
@@ -797,6 +799,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             _spinStartedRoundId = -1;
             _spinFinalizedRoundId = -1;
             _spinTargetKnown = false;
+            _spinLandingStartAngle = null;
+            _spinLandingStartProgress = null;
+            _spinLandingSteps = null;
             _spinRun = null;
             _lit = null;
             _msg = null;
@@ -829,6 +834,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       // maintain maximum speed; no deceleration at the end.
       return _spinBaseAngle * const _SpinAccelerationCurve().transform(p / 0.8);
     }
+    if (_spinLandingStartAngle != null && _spinLandingStartProgress != null && _spinLandingSteps != null) {
+      final u = ((p - _spinLandingStartProgress!) / (1 - _spinLandingStartProgress!)).clamp(0.0, 1.0);
+      return _spinLandingStartAngle! + _spinLandingSteps! * _spinStep * u;
+    }
     if (!_spinTargetKnown) {
       final elapsedFinalMs = ((p - 0.8) * _spinDurationMs).clamp(0.0, 1000.0);
       final fallbackSteps = (elapsedFinalMs / 55).floor();
@@ -850,6 +859,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     _spinController.stop();
     _spinController.duration = const Duration(milliseconds: _spinDurationMs);
     _spinTargetKnown = false;
+    _spinLandingStartAngle = null;
+    _spinLandingStartProgress = null;
+    _spinLandingSteps = null;
     _spinHasResult = true;
     final elapsedMs = (_serverNowMs() - _resultStartAt(s))
         .clamp(0, _spinDurationMs)
@@ -870,6 +882,18 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
     // Store the server result, but _spinAngleAtProgress deliberately ignores
     // it until progress reaches 80% (the final one-second landing window).
+    if (!_spinTargetKnown && _spinController.value > 0.8 && _spinController.value < 1) {
+      final progress = _spinController.value;
+      final currentAngle = _spinAngleAtProgress(progress);
+      final currentIndex = (currentAngle / _spinStep).round() % kSlots.length;
+      final requiredModulo = (target - currentIndex + kSlots.length) % kSlots.length;
+      final remainingMs = (1 - progress) * _spinDurationMs;
+      final minimumSteps = math.max(1, (remainingMs / 55).ceil()).toInt();
+      final landingSteps = minimumSteps + ((requiredModulo - minimumSteps) % kSlots.length + kSlots.length) % kSlots.length;
+      _spinLandingStartAngle = currentAngle;
+      _spinLandingStartProgress = progress;
+      _spinLandingSteps = landingSteps;
+    }
     _spinTargetSlot = target;
     _spinTargetKnown = true;
 
@@ -881,9 +905,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     }
     if (!mounted || _spinFinalizedRoundId == s.roundId) return;
 
-    final clockwiseSteps = target % kSlots.length;
-    final steps = 18 + ((clockwiseSteps - 18) % kSlots.length + kSlots.length) % kSlots.length;
-    final endAngle = _spinBaseAngle + steps * _spinStep;
+    final endAngle = _spinAngleAtProgress(1);
     _spinController.stop();
     _spinController.value = 1;
     _spinAngle = endAngle;
