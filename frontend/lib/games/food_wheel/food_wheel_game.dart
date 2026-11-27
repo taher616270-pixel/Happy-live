@@ -804,7 +804,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     }
     if (!_spinTargetKnown) return _spinBaseAngle;
     final clockwiseSteps = (_spinTargetSlot - 7 + 8) % 8;
-    final steps = clockwiseSteps == 0 ? 8 : clockwiseSteps;
+    // Keep the final second fast: choose at least 18 clockwise steps,
+    // adding whole revolutions as needed to align exactly with the winner.
+    final steps = 18 + ((clockwiseSteps - 18) % 8 + 8) % 8;
     final landingArc = steps * _spinStep;
     final u = ((p - 0.8) / 0.2).clamp(0.0, 1.0);
     return _spinBaseAngle + landingArc * u; // constant-speed landing; no ease-out
@@ -848,7 +850,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     if (!mounted || _spinFinalizedRoundId == s.roundId) return;
 
     final clockwiseSteps = (target - 7 + 8) % 8;
-    final steps = clockwiseSteps == 0 ? 8 : clockwiseSteps;
+    final steps = 18 + ((clockwiseSteps - 18) % 8 + 8) % 8;
     final endAngle = _spinBaseAngle + steps * _spinStep;
     _spinController.stop();
     _spinController.value = 1;
