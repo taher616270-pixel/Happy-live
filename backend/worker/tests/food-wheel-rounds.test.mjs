@@ -40,9 +40,10 @@ test("all players join the shared round and state returns live totals and real w
   assert.match(api, /server_time: now/);
   assert.match(api, /Math.min\(20, Math.ceil\(\(bettingEndAt - now\) \/ 1000\)\)/);
   assert.match(api, /total_bets: pools/);
-  assert.match(ui, /totalBetsByFood: j\['total_bets_by_food'\] is Map/);
-  assert.match(api, /total_bets_by_food: totalBetsByFood/);
-  assert.match(api, /const foodKeys = \[\"chicken\", \"tomato\", \"goat\", \"chili\", \"fish\", \"carrot\", \"shrimp\", \"corn\"\]/);
+  assert.match(ui, /totalBetsByFood: _foodTotalsFromJson\(j\)/);
+  assert.match(ui, /const kSlotKeys = <String>\[/);
+  assert.match(ui, /totals\[key\] = math\.max\(totals\[key\] \?\? 0, value\)/);
+  assert.doesNotMatch(api, /total_bets_by_food/);
   assert.match(ui, /const kSlotKeys = <String>\[/);
   assert.match(ui, /totals\[key\] = math\.max\(totals\[key\] \?\? 0, value\)/);
   assert.match(ui, /_serverTotalsByRound/);
