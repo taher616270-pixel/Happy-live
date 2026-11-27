@@ -232,7 +232,7 @@ class RoundState {
   final int roundId, secondsLeft, balance, myPayout;
   final int? roundEndAt, bettingEndsAt, resultChosenAt, serverTime;
   final RoundPhase phase;
-  final List<int> pools, myBets;
+  final List<int> pools;
   final Map<String, int> totalBetsByFood;
   final int? resultSlot; // رقم الوجبة الفائزة، أو null لو كانت سلطة/بيتزا
   final String? special; // 'salad' | 'pizza' | null
@@ -254,7 +254,6 @@ class RoundState {
     this.serverTime,
     required this.phase,
     required this.pools,
-    required this.myBets,
     required this.balance,
     this.myPayout = 0,
     this.totalBetsByFood = const <String, int>{},
@@ -283,7 +282,6 @@ class RoundState {
         serverTime: (j['server_time'] as num?)?.toInt(),
         phase: j['phase'] == 'result' ? RoundPhase.result : RoundPhase.betting,
         pools: (j['pools'] as List).map((e) => (e as num).toInt()).toList(),
-        myBets: (j['my_bets'] as List).map((e) => (e as num).toInt()).toList(),
         balance: (j['balance'] as num).toInt(),
         myPayout: (j['my_payout'] as num?)?.toInt() ?? 0,
         totalBetsByFood: _foodTotalsFromJson(j),
@@ -630,7 +628,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   RoundState _withOptimisticBets(RoundState s) {
     // Display bets only from the local round map (or its frozen snapshot).
-    final mine = List<int>.generate(kSlotKeys.length, (i) => _foodBetForSlot(s.roundId, i));
     final pools = _serverTotalsForRound(s.roundId);
     return RoundState(
       roundId: s.roundId,
@@ -641,7 +638,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       serverTime: s.serverTime,
       phase: s.phase,
       pools: pools,
-      myBets: mine,
       balance: s.balance,
       myPayout: s.myPayout,
       totalBetsByFood: s.totalBetsByFood,
