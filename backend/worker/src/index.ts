@@ -419,14 +419,20 @@ function json(data: unknown, status = 200, origin?: string, env?: Env): Response
 }
 
 export default {
-  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    if (!env.FOOD_WHEEL_ROUNDS) return;
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    console.log("[food-wheel.cron] tick", controller.cron);
+    if (!env.FOOD_WHEEL_ROUNDS) {
+      console.error("[food-wheel.cron] missing FOOD_WHEEL_ROUNDS binding");
+      return;
+    }
     const hub = env.FOOD_WHEEL_ROUNDS.get(env.FOOD_WHEEL_ROUNDS.idFromName("food-wheel-global"));
     ctx.waitUntil((async () => {
       try {
         const response = await hub.fetch("https://food-wheel.internal/ensure", { method: "POST" });
         if (!response.ok) {
-          console.error("[food-wheel.cron] scheduler bootstrap returned", response.status);
+          console.error("[food-wheel.cron] scheduler bootstrap returned", response.status, await response.text());
+        } else {
+          console.log("[food-wheel.cron] scheduler bootstrap succeeded", await response.text());
         }
       } catch (error) {
         console.error("[food-wheel.cron] scheduler bootstrap failed", error instanceof Error ? error.message : "UnknownError");
