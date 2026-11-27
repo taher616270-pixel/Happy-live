@@ -106,7 +106,7 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.match(api, /ORDER BY fb\.created_at DESC, fb\.id DESC LIMIT 12/);
   assert.doesNotMatch(ui, /Future\.delayed\(const Duration\(seconds: 5\)/);
   assert.ok(ui.includes("heightFactor: 0.45"));
-  assert.ok(ui.includes("AnimatedBuilder(\n         animation: _spinController"));
+  assert.match(ui, /AnimatedBuilder\(\s*animation: _spinController/);
   assert.ok(ui.includes("_highlightForSlot(spinAngle, i)"));
   assert.ok(ui.includes("popupEndAt = s.roundEndAt ?? (_resultStartAt(s) + 8000)"));
 });
