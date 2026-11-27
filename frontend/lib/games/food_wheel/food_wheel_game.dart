@@ -688,6 +688,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       return true;
     }
 
+    final totalsFrozen = a.roundId == b.roundId && _lockedBetRounds.contains(a.roundId);
     if (a.roundId != b.roundId ||
         a.phase != b.phase ||
         a.balance != b.balance ||
@@ -702,13 +703,15 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         a.player?.status != b.player?.status ||
         a.player?.avatarUrl != b.player?.avatarUrl ||
         a.player?.flag != b.player?.flag ||
-        !sameInts(a.pools, b.pools) ||
-        a.totalBetsByFood.length != b.totalBetsByFood.length ||
+        (!totalsFrozen && (!sameInts(a.pools, b.pools) ||
+            a.totalBetsByFood.length != b.totalBetsByFood.length)) ||
         a.topWinners.length != b.topWinners.length ||
         a.recentBets.length != b.recentBets.length) return false;
 
-    for (final key in a.totalBetsByFood.keys) {
-      if (a.totalBetsByFood[key] != b.totalBetsByFood[key]) return false;
+    if (!totalsFrozen) {
+      for (final key in a.totalBetsByFood.keys) {
+        if (a.totalBetsByFood[key] != b.totalBetsByFood[key]) return false;
+      }
     }
     for (var i = 0; i < a.topWinners.length; i++) {
       final x = a.topWinners[i], y = b.topWinners[i];
