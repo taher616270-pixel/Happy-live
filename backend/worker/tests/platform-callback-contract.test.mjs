@@ -71,16 +71,19 @@ test("Happy Food Wheel wallet adjustments are idempotent, app-scoped, and balanc
 
 
 test("Happy Food Wheel can verify an active Happy Live game session without exposing internal user IDs", () => {
+  const start = callback.indexOf("async function handleHappyFoodWheelGameSessionCallback(");
+  const end = callback.indexOf("async function handleHappyFoodWheelGameSessionRefreshCallback(", start);
+  const verify = callback.slice(start, end);
   assert.ok(callback.includes('"/v1/platform/game-session/verify"'));
-  assert.match(callback, /happyFoodWheelCredential\(db,request,appId\)/);
-  assert.match(callback, /game_session_app_bindings/);
-  assert.match(callback, /app\.revoked_at IS NULL AND julianday\(app\.expires_at\)>julianday\(\?\)/);
-  assert.match(callback, /s\.revoked_at IS NULL AND julianday\(s\.expires_at\)>julianday\(\?\)/);
-  assert.match(callback, /lifecycle\.status='active'/);
-  assert.match(callback, /parentOrigin !== "https:\/\/happy-live\.pages\.dev"/);
-  assert.match(callback, /game_origin AS gameOrigin/);
-  assert.match(callback, /uid:row\.uid/);
-  assert.doesNotMatch(callback, /userId:row\.user_id|internalUserId/);
+  assert.match(verify, /happyFoodWheelCredential\(db,request,appId\)/);
+  assert.match(verify, /game_session_app_bindings/);
+  assert.match(verify, /app\.revoked_at IS NULL AND julianday\(app\.expires_at\)>julianday\(\?\)/);
+  assert.match(verify, /s\.revoked_at IS NULL AND julianday\(s\.expires_at\)>julianday\(\?\)/);
+  assert.match(verify, /lifecycle\.status='active'/);
+  assert.match(verify, /parentOrigin !== "https:\/\/happy-live\.pages\.dev"/);
+  assert.match(verify, /game_origin AS gameOrigin/);
+  assert.match(verify, /uid:row\.uid/);
+  assert.doesNotMatch(verify, /userId:row\.user_id|internalUserId/);
 });
 
 
