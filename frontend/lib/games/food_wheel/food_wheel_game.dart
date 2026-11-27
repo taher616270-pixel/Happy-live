@@ -204,7 +204,7 @@ class MyRoundRecord {
 
 class RoundState {
   final int roundId, secondsLeft, balance, myPayout;
-  final int? roundEndAt, bettingEndsAt;
+  final int? roundEndAt, bettingEndsAt, resultChosenAt;
   final RoundPhase phase;
   final List<int> pools, myBets;
   final int? resultSlot; // رقم الوجبة الفائزة، أو null لو كانت سلطة/بيتزا
@@ -223,6 +223,7 @@ class RoundState {
     required this.secondsLeft,
     this.roundEndAt,
     this.bettingEndsAt,
+    this.resultChosenAt,
     required this.phase,
     required this.pools,
     required this.myBets,
@@ -249,6 +250,7 @@ class RoundState {
         secondsLeft: (j['seconds_left'] as num).toInt(),
         roundEndAt: (j['round_end_at'] as num?)?.toInt(),
         bettingEndsAt: (j['betting_ends_at'] as num?)?.toInt(),
+        resultChosenAt: (j['result_chosen_at'] as num?)?.toInt(),
         phase: j['phase'] == 'result' ? RoundPhase.result : RoundPhase.betting,
         pools: (j['pools'] as List).map((e) => (e as num).toInt()).toList(),
         myBets: (j['my_bets'] as List).map((e) => (e as num).toInt()).toList(),
@@ -362,7 +364,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   Timer? _poll, _msgTimer, _panelTimer, _foodTapTimer;
   int _foodTapDebug = -1;
   RoundState? _s;
-  int _bal = 0, _chip = 10, _hit = -1, _animatedRound = -1, _timeLeft = 20;
+  int _bal = 0, _chip = 10, _hit = -1, _animatedRound = -1, _timeLeft = 20, _popupTimeLeft = 5;
   Set<int> _win = {};
   String? _lit, _err, _msg;
   bool _spinning = false, _panel = false;
@@ -388,13 +390,17 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     _refresh();
     _poll = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      final endAt = _s?.roundEndAt;
-      final next = endAt == null
-          ? (_timeLeft > 0 ? _timeLeft - 1 : 0)
-          : ((endAt - DateTime.now().millisecondsSinceEpoch) / 1000)
-              .ceil()
-              .clamp(0, 20);
-      if (next != _timeLeft) setState(() => _timeLeft = next);
+      final current = _s;
+      if (current != null) {
+        final next = _phaseSecondsLeft(current);
+        final popupNext = _popupSecondsLeft(current);
+        if (next != _timeLeft || popupNext != _popupTimeLeft) {
+          setState(() {
+            _timeLeft = next;
+            _popupTimeLeft = popupNext;
+          });
+        }
+      }
       _refresh();
     });
   }
@@ -418,6 +424,28 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   int _safeSlotValue(List<int> values, int slot) =>
       slot >= 0 && slot < values.length ? values[slot] : 0;
+
+  int _phaseSecondsLeft(RoundState s) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (s.phase == RoundPhase.betting) {
+      final endAt = s.bettingEndsAt ?? s.roundEndAt;
+      return endAt == null
+          ? s.secondsLeft.clamp(0, 20)
+          : ((endAt - now) / 1000).ceil().clamp(0, 20);
+    }
+    final resultAt = s.resultChosenAt ?? s.bettingEndsAt;
+    if (resultAt == null) return s.secondsLeft.clamp(0, 5);
+    return ((5000 - (now - resultAt)) / 1000).ceil().clamp(0, 5);
+  }
+
+  int _popupSecondsLeft(RoundState s) {
+    if (s.phase == RoundPhase.betting) return 5;
+    final resultAt = s.resultChosenAt ?? s.bettingEndsAt;
+    if (resultAt == null) return 5;
+    return ((10000 - (DateTime.now().millisecondsSinceEpoch - resultAt)) / 1000)
+        .ceil()
+        .clamp(0, 5);
+  }
 
   void _startOptimisticRound(RoundState s) {
     _confirmedRoundId = s.roundId;
@@ -511,6 +539,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       secondsLeft: s.secondsLeft,
       roundEndAt: s.roundEndAt,
       bettingEndsAt: s.bettingEndsAt,
+      resultChosenAt: s.resultChosenAt,
       phase: s.phase,
       pools: pools,
       myBets: mine,
@@ -543,11 +572,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       setState(() {
         _reconcileOptimisticBets(s);
         _s = s;
-        _timeLeft = s.roundEndAt == null
-            ? s.secondsLeft.clamp(0, 20)
-            : ((s.roundEndAt! - DateTime.now().millisecondsSinceEpoch) / 1000)
-                .ceil()
-                .clamp(0, 20);
+        _timeLeft = _phaseSecondsLeft(s);
+        _popupTimeLeft = _popupSecondsLeft(s);
         _err = null;
         if (!_spinning && _pendingBets.isEmpty) {
           _bal = s.balance;
@@ -574,27 +600,28 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   Future<void> _spin(RoundState s) async {
     _spinning = true;
-    final target = s.resultSlot ?? 0;
-    setState(() {
-      _panel = true;
-    });
-    _panelTimer?.cancel();
-    _panelTimer = Timer(const Duration(seconds: 5), () {
-      if (mounted) setState(() => _panel = false);
-    });
-    final steps = 4 * 8 + target + 1;
-    for (var k = 0; k < steps; k++) {
-      if (!mounted) return;
-      setState(() => _hit = k % 8);
-      final progress = steps <= 1 ? 1.0 : k / (steps - 1);
-      final mean = 4200.0 / steps;
-      final delayMs = (mean * (0.5 + 1.5 * progress * progress)).round();
-      await Future.delayed(Duration(milliseconds: delayMs));
+    final target = (s.resultSlot ?? 0).clamp(0, kSlots.length - 1);
+    final resultStartedAt = s.resultChosenAt ??
+        s.bettingEndsAt ??
+        DateTime.now().millisecondsSinceEpoch;
+    final stopAt = resultStartedAt + 5000;
+    var step = 0;
+    while (mounted) {
+      final remaining = stopAt - DateTime.now().millisecondsSinceEpoch;
+      if (remaining <= 0) break;
+      final elapsed = (DateTime.now().millisecondsSinceEpoch - resultStartedAt)
+          .clamp(0, 5000);
+      final progress = elapsed / 5000;
+      setState(() => _hit = step++ % kSlots.length);
+      final delayMs = (65 + 300 * progress * progress * progress).round();
+      await Future.delayed(Duration(milliseconds: math.min(delayMs, remaining)));
     }
     if (!mounted) return;
     _spinning = false;
+    _panelTimer?.cancel();
     setState(() {
-      _hit = -1;
+      // The server-selected result is the final highlighted food; never choose locally.
+      _hit = target;
       if (_pendingBets.isEmpty) {
         _bal = s.balance;
       }
@@ -605,7 +632,19 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
               for (var i = 0; i < 8; i++)
                 if (kSlots[i].veg == (s.special == 'salad')) i
             };
+      _panel = true;
+      _popupTimeLeft = _popupSecondsLeft(s);
     });
+    final popupEndsAt = s.roundEndAt ?? (resultStartedAt + 10000);
+    _panelTimer = Timer(
+      Duration(milliseconds: math.max(
+        0,
+        popupEndsAt - DateTime.now().millisecondsSinceEpoch,
+      )),
+      () {
+        if (mounted) setState(() => _panel = false);
+      },
+    );
     final resEmoji = s.special == 'salad'
         ? '🥗'
         : s.special == 'pizza'
@@ -889,7 +928,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
             right: 0,
             child: Center(
               child: Container(
-                width: 34,
+                width: 92,
                 height: 34,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
@@ -897,27 +936,60 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                   color: const Color(0xFF173C91),
                   border: Border.all(color: const Color(0xFFFFD45A), width: 2),
                 ),
-                child: Text('${_timeLeft.clamp(1, 5)}',
+                child: Text('(${_popupTimeLeft.clamp(1, 5)}) ثانية',
                     style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 15,
+                        fontSize: 12,
                         fontWeight: FontWeight.w900)),
               ),
             ),
           ),
           Column(children: [
             SizedBox(
-              height: 62,
+              height: 72,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CustomPaint(
-                      size: const Size(20, 54), painter: _CutleryPainter(true)),
-                  const SizedBox(width: 14),
-                  Text(food, style: const TextStyle(fontSize: 48)),
-                  const SizedBox(width: 14),
+                      size: const Size(20, 58), painter: _CutleryPainter(true)),
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 68,
+                    height: 68,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFFFFDF5),
+                      border: Border.all(
+                          color: const Color(0xFFD9E2F0), width: 5),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x550B1740),
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                        BoxShadow(
+                          color: Color(0xFFFFD45A),
+                          blurRadius: 0,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Container(
+                      width: 54,
+                      height: 54,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: const Color(0xFFE7D8B7), width: 1.5),
+                      ),
+                      child: Text(food, style: const TextStyle(fontSize: 42)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   CustomPaint(
-                      size: const Size(20, 54), painter: _CutleryPainter(false)),
+                      size: const Size(20, 58), painter: _CutleryPainter(false)),
                 ],
               ),
             ),
@@ -945,8 +1017,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                     Center(child: Text('نتيجة الجولة ${s.roundId}', style: t)),
                     const SizedBox(height: 4),
                     Row(children: [
-                      Expanded(child: Text('رهانك: $mine', textAlign: TextAlign.center, style: t)),
-                      Expanded(child: Text('فوزك: ${s.myPayout}', textAlign: TextAlign.center, style: t)),
+                      Expanded(child: Text('رهانك في هذه الجولة: $mine', textAlign: TextAlign.center, style: t)),
+                      Expanded(child: Text('الفائز في هذه الجولة: ${s.myPayout}', textAlign: TextAlign.center, style: t)),
                     ]),
                   ],
                 ),
@@ -955,7 +1027,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                   style: const TextStyle(fontSize: 44)),
             ]),
             const SizedBox(height: 4),
-            const Text('الفائز الاكبر لهذه الجولة',
+            const Text('الفائز الأكثر لهذه الجولة',
                 style: TextStyle(
                     color: Color(0xFFFFD400),
                     fontWeight: FontWeight.w800,
@@ -964,7 +1036,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                for (final i in [1, 0, 2])
+                for (final i in [2, 0, 1])
                   Expanded(
                     child: i < s.topWinners.length
                         ? _podium(i, s.topWinners[i])
@@ -1157,7 +1229,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: const Text(
-                        'النتيجة قادمة',
+                        'النتيجة القادمة',
                         maxLines: 1,
                         softWrap: false,
                         textAlign: TextAlign.center,
@@ -1170,6 +1242,18 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                       ),
                     ),
                   ),
+                  if (s.phase == RoundPhase.result)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text(
+                        'وقت العرض',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: d * 0.13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
