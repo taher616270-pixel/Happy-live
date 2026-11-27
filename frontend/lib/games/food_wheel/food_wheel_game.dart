@@ -30,6 +30,8 @@ String wheelErrorText(Object e) {
       return 'انتهت الجلسة، أعد فتح اللعبة';
     case 'backend_not_implemented':
       return 'الخادم ما يدعم عجلة الأطعمة بعد';
+    case 'settlement_disabled':
+      return 'اللعب متوقف مؤقتًا حتى تفعيل التسوية من الخادم';
     case 'forbidden':
       return 'حسابك غير مسموح له باللعب';
     case 'rate_limited':
@@ -53,7 +55,6 @@ String wheelErrorText(Object e) {
 // هذا الملف هو اللعبة نفسها: الواجهة والقواعد والمضاعفات والرهانات والصناديق.
 // الاتصال بالخادم يمر فقط عبر FoodWheelApi:
 //   - HttpFoodWheelApi (ملف wheel_api_http.dart): التشغيل الحقيقي مع Happy Live
-//   - MockFoodWheelApi (آخر هذا القسم): للتطوير المحلي فقط، ولا يُستخدم في release
 //
 // الخادم هو المسؤول عن: الرصيد، قبول الرهان، نتيجة الجولة، الأرباح، التسوية.
 // هذا الملف ما يحدد فائزًا ولا يعدّل رصيدًا بنفسه، وما يعرض نجاح رهان قبل تأكيد الخادم.
@@ -104,8 +105,6 @@ class WheelWinner {
         isMe: j['is_me'] == true,
       );
 }
-
-const _botNames = ['السيد', 'النجم', 'الملك', 'الزعيم', 'الصقر'];
 
 /// سجل في جدول أقوى الفائزين: أكبر ربح في رهان واحد اليوم
 class WinRecord {
@@ -282,205 +281,6 @@ abstract class FoodWheelApi {
   Future<RoundState> placeBet(int roundId, int slot, int amount); // POST /bet
   Future<List<WinRecord>> fetchTopWins(); // أقوى الفائزين اليوم
   Future<List<MyRoundRecord>> fetchMyHistory(); // سجل جولاتي
-}
-
-// ---------- خادم وهمي: للتطوير المحلي فقط. ممنوع في التشغيل الحقيقي (release) ----------
-class MockFoodWheelApi implements FoodWheelApi {
-  static const _betSecs = 30, _resSecs = 8;
-  final _rnd = math.Random();
-  int _balance, _round = 330554;
-  DateTime _start = DateTime.now();
-  late List<int> _pools;
-  List<int> _bets = List.filled(8, 0);
-  int? _slot;
-  String? _special;
-  int _payout = 0;
-  bool _settled = false;
-  int _chestIdx = 0, _chestTotal = 0, _chestReward = 0;
-  List<WheelWinner> _winners = [];
-  final List<BetEvent> _feed = []; // رهانات اللاعبين (وهمية في التجربة)
-  final List<MyRoundRecord> _myLog = [];
-  final List<WinRecord> _topWins = [
-    const WinRecord(name: 'AQER', amount: 99000000, food: '🐔'),
-    const WinRecord(name: 'شـشعّوب', amount: 40500000, food: '🐔', flag: '🇦🇪'),
-    const WinRecord(name: 'اللورد', amount: 27000000, food: '🐔'),
-    const WinRecord(name: 'النسر', amount: 25000000, food: '🐟'),
-    const WinRecord(name: 'خـبــ', amount: 22500000, food: '🐟', flag: '🇸🇦'),
-    const WinRecord(name: 'AN', amount: 21000000, food: '🌶️', flag: '🇹🇷'),
-  ];
-  final List<String> _hist = [];
-
-  MockFoodWheelApi({int balance = 500000}) : _balance = balance {
-    _pools = _freshPools();
-  }
-
-  List<int> _freshPools() =>
-      List.generate(8, (_) => 300000 + _rnd.nextInt(2000000));
-
-  int get _elapsed => DateTime.now().difference(_start).inSeconds;
-
-  void _tick() {
-    final el = _elapsed;
-    if (el >= _betSecs + _resSecs) {
-      _round++;
-      _start = DateTime.now();
-      _pools = _freshPools();
-      _bets = List.filled(8, 0);
-      _slot = null;
-      _special = null;
-      _payout = 0;
-      _settled = false;
-      _chestReward = 0;
-      _feed.clear();
-    } else if (el >= _betSecs && !_settled) {
-      _settle();
-    } else if (el < _betSecs) {
-      final n = _rnd.nextInt(3); // 0 إلى 2 رهان من لاعبين ثانيين
-      for (var k = 0; k < n; k++) {
-        final slot = _rnd.nextInt(8);
-        final amt = kChips[1 + _rnd.nextInt(4)] * (1 + _rnd.nextInt(3));
-        _pools[slot] += amt;
-        _feed.insert(
-            0,
-            BetEvent(
-                name: _botNames[_rnd.nextInt(_botNames.length)],
-                slot: slot,
-                amount: amt));
-      }
-      if (_feed.length > 20) _feed.removeRange(20, _feed.length);
-    }
-  }
-
-  void _settle() {
-    _settled = true;
-    final r = _rnd.nextDouble();
-    if (r < .06) {
-      _special = 'salad';
-    } else if (r < .12) {
-      _special = 'pizza';
-    } else {
-      final w = kSlots.map((s) => 1 / s.mult).toList();
-      var x = _rnd.nextDouble() * w.reduce((a, b) => a + b);
-      _slot = 0;
-      for (var i = 0; i < 8; i++) {
-        x -= w[i];
-        if (x <= 0) {
-          _slot = i;
-          break;
-        }
-      }
-    }
-    final wins = _special == null
-        ? [_slot!]
-        : [
-            for (var i = 0; i < 8; i++)
-              if (kSlots[i].veg == (_special == 'salad')) i
-          ];
-    _payout = wins.fold(0, (a, i) => a + _bets[i] * kSlots[i].mult);
-    _balance += _payout;
-    // أكبر ربح لي في رهان واحد يدخل جدول أقوى الفائزين
-    var best = 0;
-    var bestFood = '';
-    for (final i in wins) {
-      final v = _bets[i] * kSlots[i].mult;
-      if (v > best) {
-        best = v;
-        bestFood = kSlots[i].emoji;
-      }
-    }
-    if (best > 0) {
-      _topWins.add(WinRecord(name: 'أنت', amount: best, food: bestFood, isMe: true));
-      _topWins.sort((a, b) => b.amount.compareTo(a.amount));
-      if (_topWins.length > 20) _topWins.removeRange(20, _topWins.length);
-    }
-    // الصناديق: تُحسب الرهانات بعد نهاية الجولة، وكل 1 مليون يفتح صندوق
-    _chestTotal += _bets.fold(0, (a, b) => a + b);
-    _chestReward = 0;
-    while (_chestIdx < kChestThresholds.length &&
-        _chestTotal >= kChestThresholds[_chestIdx]) {
-      _chestReward += kChestRewards[_chestIdx];
-      _chestIdx++;
-    }
-    _balance += _chestReward;
-    // أكبر 3 فائزين (لاعبون وهميون + أنا لو ربحت)
-    final nBots = _rnd.nextInt(5); // 0 إلى 4 (للتجربة: ممكن تطلع الكراسي فاضية)
-    final all = <WheelWinner>[
-      for (var i = 0; i < nBots; i++)
-        WheelWinner(
-            name: _botNames[i % _botNames.length] +
-                (i >= _botNames.length ? '$i' : ''),
-            amount: ((2000000 - _rnd.nextInt(1600000)) ~/ 10000) * 10000),
-      if (_payout > 0) WheelWinner(name: 'أنت', amount: _payout, isMe: true),
-    ]..sort((a, b) => b.amount.compareTo(a.amount));
-    _winners = all.take(3).toList();
-    _hist.insert(
-        0,
-        _special == 'salad'
-            ? '🥗'
-            : _special == 'pizza'
-                ? '🍕'
-                : kSlots[_slot!].emoji);
-    if (_hist.length > 9) _hist.removeLast();
-    final mineSum = _bets.fold(0, (a, b) => a + b);
-    if (mineSum > 0) {
-      _myLog.insert(
-          0,
-          MyRoundRecord(
-              round: _round, bet: mineSum, payout: _payout, result: _hist.first));
-      if (_myLog.length > 20) _myLog.removeLast();
-    }
-  }
-
-  RoundState _state() {
-    final el = _elapsed;
-    final betting = el < _betSecs;
-    return RoundState(
-      roundId: _round,
-      secondsLeft: betting ? _betSecs - el : _betSecs + _resSecs - el,
-      phase: betting ? RoundPhase.betting : RoundPhase.result,
-      pools: List.of(_pools),
-      myBets: List.of(_bets),
-      balance: _balance,
-      myPayout: betting ? 0 : _payout,
-      resultSlot: betting ? null : _slot,
-      special: betting ? null : _special,
-      history: List.of(_hist),
-      chestIndex: _chestIdx,
-      chestTotal: _chestTotal,
-      chestReward: betting ? 0 : _chestReward,
-      topWinners: betting ? const [] : _winners,
-      recentBets: List.of(_feed),
-      players: 18 + (_round % 9),
-      roundUuid: 'mock-$_round',
-      player: const WheelPlayer(id: 'mock', name: 'لاعب تجريبي'),
-    );
-  }
-
-  @override
-  Future<RoundState> fetchState() async {
-    _tick();
-    return _state();
-  }
-
-  @override
-  Future<RoundState> placeBet(int roundId, int slot, int amount) async {
-    _tick();
-    if (roundId != _round || _elapsed >= _betSecs) {
-      throw const WheelApiException('round_closed');
-    }
-    if (amount > _balance) throw const WheelApiException('insufficient_balance');
-    _balance -= amount;
-    _bets[slot] += amount;
-    _pools[slot] += amount;
-    _feed.insert(0, BetEvent(name: 'أنت', slot: slot, amount: amount, isMe: true));
-    return _state();
-  }
-
-  @override
-  Future<List<WinRecord>> fetchTopWins() async => List.of(_topWins);
-
-  @override
-  Future<List<MyRoundRecord>> fetchMyHistory() async => List.of(_myLog);
 }
 
 // ---------- الفتح ----------
