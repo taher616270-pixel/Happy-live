@@ -319,7 +319,9 @@ async function handleHappyFoodWheelGameSessionCallback(
 export async function handlePlatformCallbackRequest(
   request: Request, db: D1Database | undefined, reply: JsonReply
 ): Promise<Response | null> {
-  const gameSession=await handleHappyFoodWheelGameSessionCallback(request,db,reply);\n  if (gameSession) return gameSession;\n  const foodWheelWallet=await handleHappyFoodWheelWalletCallback(request,db,reply);
+  const gameSession=await handleHappyFoodWheelGameSessionCallback(request,db,reply);
+  if (gameSession) return gameSession;
+  const foodWheelWallet=await handleHappyFoodWheelWalletCallback(request,db,reply);
   if (foodWheelWallet) return foodWheelWallet;
   return handleHappyFoodWheelHandshake(request,db,reply);
 }
