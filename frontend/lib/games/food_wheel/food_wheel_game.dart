@@ -718,8 +718,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       if (_isDefinitiveBetRejection(error)) {
         setState(() {
           _pendingBets.remove(bet);
-          // Roll back only this rejected tap; all other optimistic taps remain.
-          _bal = math.max(_bal, (_s?.balance ?? _bal)).toInt();
+          // Removing this pending entry restores only this tap in the displayed balance.
         });
         _say(wheelErrorText(error));
         unawaited(_refresh());
