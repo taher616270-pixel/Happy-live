@@ -834,8 +834,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       if (mounted) _showRoundClosedToast();
       return;
     }
-    unawaited(HapticFeedback.selectionClick());
-    if (_sound) unawaited(SystemSound.play(SystemSoundType.click));
+    unawaited(HapticFeedback.selectionClick().catchError((_) {}));
+    if (_sound) {
+      unawaited(SystemSound.play(SystemSoundType.click).catchError((_) {}));
+    }
     unawaited(_bet(i));
   }
 
