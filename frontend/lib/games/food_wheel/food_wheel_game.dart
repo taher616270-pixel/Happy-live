@@ -1321,8 +1321,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     final slot = kSlots[i];
     final myBet = _displayMyBet(s, i);
     final highlight = _highlightForSlot(spinAngle, i);
+    final isSpinPosition = highlight >= 0.5;
     final mx = s.pools.reduce((a, b) => a > b ? a : b);
-    const frac = 0.45;
     const dark = Color(0xFF5A3A00);
     return Material(
       type: MaterialType.transparency,
@@ -1334,24 +1334,15 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             Container(
               width: d,
               height: d,
-              transform: Matrix4.identity()
-                ..scale(1.0 + 0.12 * highlight),
-              transformAlignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: const Color(0xFFFFF3C4),
                 border: Border.all(
-                    color: const Color(0xFF8A4B2A), width: 4),
-                boxShadow: highlight > 0
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFFFF0000)
-                              .withOpacity(highlight),
-                          blurRadius: 22 * highlight,
-                          spreadRadius: 4 * highlight,
-                        )
-                      ]
-                    : null,
+                  color: isSpinPosition
+                      ? const Color(0xFFFF0000)
+                      : const Color(0xFF8A4B2A),
+                  width: isSpinPosition ? 8 : 4,
+                ),
               ),
               child: ClipOval(
                 child: Stack(children: [
@@ -1361,9 +1352,13 @@ class _FoodWheelGameState extends State<FoodWheelGame>
                   Align(
                     alignment: Alignment.bottomCenter,
                     child: FractionallySizedBox(
-                      heightFactor: frac,
+                      heightFactor: 0.45,
                       widthFactor: 1,
-                      child: const ColoredBox(color: Color(0xFFFFD84D)),
+                      child: ColoredBox(
+                        color: isSpinPosition
+                            ? const Color(0xFFFF0000)
+                            : const Color(0xFFFFD84D),
+                      ),
                     ),
                   ),
                   Align(
@@ -1377,17 +1372,19 @@ class _FoodWheelGameState extends State<FoodWheelGame>
                             fontWeight: FontWeight.w800)),
                   ),
                   Align(
-                    alignment: Alignment.center,
+                    alignment: const Alignment(0, 0.20),
                     child: Text('${s.pools[i]} 🪙',
                         maxLines: 1,
                         softWrap: false,
                         style: TextStyle(
-                            color: dark,
+                            color: isSpinPosition
+                                ? Colors.white
+                                : dark,
                             fontSize: d * 0.17,
                             fontWeight: FontWeight.bold)),
                   ),
                   Align(
-                    alignment: const Alignment(0, 0.58),
+                    alignment: const Alignment(0, 0.67),
                     child: Text('$myBet',
                         maxLines: 1,
                         softWrap: false,
