@@ -22,9 +22,9 @@ test("Food Wheel uses one sequential global round with a server-enforced single 
 
 test("Durable Object alarms advance betting, result, settlement, and the next round without player traffic", () => {
   assert.match(hub, /const BETTING_MS = 20_000/);
-  assert.match(hub, /const ROUND_MS = 30_000/);
+  assert.match(hub, /const ROUND_MS = 28_000/);
   assert.match(hub, /const chosenAt = round\.bettingEndsAt/);
-  assert.match(hub, /Date\.parse\(round\.bettingEndsAt\) \+ 10_000/);
+  assert.match(hub, /Date\.parse\(round\.bettingEndsAt\) \+ 8_000/);
   assert.match(hub, /async alarm\(\): Promise<void>/);
   assert.match(hub, /this\.ctx\.storage\.setAlarm/);
   assert.match(hub, /private async chooseAndPublishResult/);
@@ -57,8 +57,12 @@ test("wallet debit remains at bet acceptance and wallet payout is deferred to se
 
 test("web client uses server round end time and does not create rounds from taps", () => {
   assert.match(ui, /roundEndAt/);
-  assert.match(ui, /Timer\.periodic\(const Duration\(milliseconds: 100\)/);
+  assert.match(ui, /Timer\.periodic\(const Duration\(milliseconds: 200\)/);
   assert.match(ui, /_phaseSecondsLeft\(RoundState s\)/);
+  assert.match(ui, /_clockDisplaySecond = math\.min/);
+  assert.match(ui, /_serverClockSynced/);
+  assert.match(ui, /void _queueBetSend\(_PendingWheelBet bet\)/);
+  assert.doesNotMatch(ui, /Future\.delayed\(const Duration\(milliseconds: 450\)\)/);
   assert.match(ui, /int _resultStartAt\(RoundState s\)/);
   assert.match(ui, /final resultStartedAt = _resultStartAt\(s\)/);
   assert.match(ui, /_resultStartAt\(s\) \+ 5000 - now/);
@@ -79,14 +83,14 @@ test("web client uses server round end time and does not create rounds from taps
   assert.doesNotMatch(ui, /currentIndex\+\+|step\+\+ % kSlots\.length|_hit = target/);
   assert.doesNotMatch(ui, /await Future\.delayed\(const Duration\(seconds: 1\)\)/);
   assert.doesNotMatch(ui, /_panelTimer|_refreshAfterPopup/);
-  assert.match(ui, /popupEndsAt = s\.roundEndAt \?\? \(resultAt \+ 10000\)/);
+  assert.match(ui, /popupEndAt = s\.roundEndAt \?\? \(_resultStartAt\(s\) \+ 8000\)/);
   assert.match(ui, /heightFactor: 0\.45/);
   assert.doesNotMatch(ui, /AnimatedContainer\(\s*duration: const Duration\(milliseconds: 120\)/);
   assert.match(ui, /الفائز الأكبر لهذه الجولة/);
   assert.match(ui, /_popupTimeLeft/);
   assert.match(ui, /placeBet\(\s*bet\.roundId,\s*bet\.slot,\s*bet\.amount,\s*bet\.idempotencyKey/);
   assert.match(ui, /Future<void> _sendBet\(_PendingWheelBet bet(?:, \{Future<RoundState>\? request\})?\)/);
-  assert.match(ui, /unawaited\(_sendBet\(bet\)\)/);
+  assert.match(ui, /_queueBetSend\(bet\)/);
   assert.match(ui, /behavior: HitTestBehavior\.opaque,\s*onPointerDown: \(_\) => _onFoodPointerDown\(i\)/);
   assert.match(ui, /_fmt\(math\.max\(0, _bal - _pendingReserved\)\)/);
   assert.match(ui, /\x27رهانك في هذه الجولة:/);
@@ -137,6 +141,8 @@ test("Food Wheel starts the full spin at chicken and immediately refreshes after
   assert.match(ui, /return 0;/);
   assert.match(ui, /popupEndsAt = s\.roundEndAt \?\? \(resultAt \+ 10000\)/);
   assert.match(ui, /_isResultPhase\(s\) \? 'النتيجة القادمة' : 'وقت الرهان'/);
-  assert.match(ui, /_popupTimeLeft\.clamp\(0, 5\)/);
+  assert.match(ui, /_popupTimeLeft\.clamp\(1, 4\)/);
+  assert.match(ui, /popupNext <= 1/);
+  assert.match(ui, /if \(popupExpired\) _panel = false/);
   assert.match(ui, /phaseExpired \|\| popupExpired \|\| now - _lastRefreshAt >= 1000/);
 });
