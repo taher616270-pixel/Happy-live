@@ -470,7 +470,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             _timeLeft = next;
             _popupTimeLeft = popupNext;
             if (popupExpired && popupId != null) {
-              if (_popupRoundId == null) _panel = false;
+              _panel = false;
               _popupRoundState = null;
               _popupRoundId = null;
               _roundCleanupAtMs.remove(popupId);
@@ -735,7 +735,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         setState(() {
           _s = s;
           _timeLeft = _monotonicPhaseSecond(s);
-          _popupTimeLeft = _monotonicPopupSecond(s);
+          if (_popupRoundId == null) {
+            _popupTimeLeft = _monotonicPopupSecond(s);
+          }
           _err = null;
           if (!_spinning && _pendingBets.isEmpty) {
             _bal = s.balance;
@@ -758,7 +760,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             _spinRun = null;
             _lit = null;
             _msg = null;
-            _panel = false;
+            if (_popupRoundId == null) _panel = false;
           }
         });
       }
