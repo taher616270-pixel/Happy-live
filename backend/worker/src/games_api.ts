@@ -407,9 +407,10 @@ export async function handleGamesApiRequest(
       if (isFoodWheelState || isFoodWheelBet) {
         // Normal state polls do not enter the single Durable Object queue.
         // The alarm owns round progression; only bootstrap a round if none exists.
+        const serverNowIso = new Date().toISOString();
         const activeRound = await db.prepare(
-          "SELECT 1 AS active FROM food_wheel_rounds WHERE status IN ('betting', 'result') LIMIT 1"
-        ).first<{ active: number }>();
+          "SELECT 1 AS active FROM food_wheel_rounds WHERE (status = 'betting' AND betting_ends_at > ?) OR (status = 'result' AND ends_at > ?) LIMIT 1"
+        ).bind(serverNowIso, serverNowIso).first<{ active: number }>();
         if (!activeRound) {
           if (!env.FOOD_WHEEL_ROUNDS) {
             return reply({ error: "food_wheel_scheduler_unavailable" }, 503, origin, env);
