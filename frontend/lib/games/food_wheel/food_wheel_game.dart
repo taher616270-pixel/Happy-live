@@ -346,14 +346,12 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   Set<int> _win = {};
   String? _lit, _err, _msg;
   bool _spinning = false, _busy = false, _panel = false;
-  double _centerTurns = 0;
   bool _fetching = false; // يمنع تراكم طلبات الحالة لو الخادم بطيء
   int _optimisticRoundId = -1;
   final List<int> _optimisticBaseMine = List.filled(8, 0);
   final List<int> _optimisticBasePools = List.filled(8, 0);
   final List<int> _optimisticBetDelta = List.filled(8, 0);
   int _optimisticReserved = 0;
-  int _betRequestSequence = 0;
   String _mode = 'n'; // n = عادي، a = متقدم
   bool _auto = false, _sound = true, _showBets = true;
   List<int> _prevBets = List.filled(8, 0); // رهانات الجولة السابقة (للتكرار)
@@ -416,7 +414,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         _optimisticBasePools[i] = s.pools[i];
       } else if (s.myBets[i] >= _optimisticBaseMine[i] + delta) {
         _optimisticBetDelta[i] = 0;
-        _optimisticReserved = math.max(0, _optimisticReserved - delta);
+        _optimisticReserved = math.max(0, _optimisticReserved - delta).toInt();
         _optimisticBaseMine[i] = s.myBets[i];
         _optimisticBasePools[i] = s.pools[i];
       }
@@ -427,11 +425,11 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     if (_optimisticRoundId != s.roundId) return s;
     final mine = List<int>.generate(
       8,
-      (i) => math.max(s.myBets[i], _optimisticBaseMine[i] + _optimisticBetDelta[i]),
+      (i) => math.max(s.myBets[i], _optimisticBaseMine[i] + _optimisticBetDelta[i]).toInt(),
     );
     final pools = List<int>.generate(
       8,
-      (i) => math.max(s.pools[i], _optimisticBasePools[i] + _optimisticBetDelta[i]),
+      (i) => math.max(s.pools[i], _optimisticBasePools[i] + _optimisticBetDelta[i]).toInt(),
     );
     return RoundState(
       roundId: s.roundId,
@@ -502,7 +500,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     final target = s.resultSlot ?? 0;
     setState(() {
       _panel = true;
-      _centerTurns += 4 + (target / 8);
     });
     _panelTimer?.cancel();
     _panelTimer = Timer(const Duration(seconds: 5), () {
@@ -579,12 +576,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       _optimisticBetDelta[i] += amount;
       _optimisticReserved += amount;
     });
-    final requestId = ++_betRequestSequence;
-    unawaited(_submitBet(requestId, roundId, i, amount));
+    unawaited(_submitBet(roundId, i, amount));
   }
 
-  Future<void> _submitBet(
-      int requestId, int roundId, int slot, int amount) async {
+  Future<void> _submitBet(int roundId, int slot, int amount) async {
     try {
       await widget.api.placeBet(roundId, slot, amount);
       if (!mounted) return;
@@ -594,9 +589,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       if (!mounted) return;
       if (_optimisticRoundId == roundId && _s?.roundId == roundId) {
         setState(() {
-          _optimisticBetDelta[slot] =
-              math.max(0, _optimisticBetDelta[slot] - amount);
-          _optimisticReserved = math.max(0, _optimisticReserved - amount);
+          final rollback = math.min(amount, _optimisticBetDelta[slot]).toInt();
+          _optimisticBetDelta[slot] -= rollback;
+          _optimisticReserved =
+              math.max(0, _optimisticReserved - rollback).toInt();
         });
       }
       _say(wheelErrorText(e));
