@@ -359,9 +359,8 @@ class _PendingWheelBet {
 
 class _FoodWheelGameState extends State<FoodWheelGame> {
   int _betSequence = 0;
-  Timer? _poll, _msgTimer, _panelTimer, _foodTapTimer, _foodFeedbackTimer, _foodDiagnosticTimer;
-  int _foodTapDebug = -1, _foodFeedbackSlot = -1;
-  String? _foodFeedback;
+  Timer? _poll, _msgTimer, _panelTimer, _foodTapTimer;
+  int _foodTapDebug = -1;
   RoundState? _s;
   int _bal = 0, _chip = 10, _hit = -1, _animatedRound = -1, _timeLeft = 20;
   Set<int> _win = {};
@@ -406,8 +405,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     _msgTimer?.cancel();
     _panelTimer?.cancel();
     _foodTapTimer?.cancel();
-    _foodFeedbackTimer?.cancel();
-    _foodDiagnosticTimer?.cancel();
     super.dispose();
   }
 
@@ -416,20 +413,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     setState(() => _msg = m);
     _msgTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) setState(() => _msg = null);
-    });
-  }
-
-  void _showFoodFeedback(int slot, String message) {
-    _foodFeedbackTimer?.cancel();
-    setState(() {
-      _foodFeedbackSlot = slot;
-      _foodFeedback = message;
-    });
-    _foodFeedbackTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) setState(() {
-        _foodFeedbackSlot = -1;
-        _foodFeedback = null;
-      });
     });
   }
 
@@ -662,53 +645,33 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   }
 
   void _onFoodPointerDown(int i) {
-    // Diagnostic sequence: leave TAP visible before entering _bet.
-    _showFoodFeedback(i, 'TAP $i');
     _foodTapTimer?.cancel();
     if (mounted) setState(() => _foodTapDebug = i);
     _foodTapTimer = Timer(const Duration(milliseconds: 1200), () {
       if (mounted) setState(() => _foodTapDebug = -1);
     });
-    _foodDiagnosticTimer?.cancel();
-    _foodDiagnosticTimer = Timer(const Duration(milliseconds: 450), () {
+    Timer(const Duration(milliseconds: 450), () {
       if (mounted) _bet(i);
     });
   }
 
   Future<void> _bet(int i) async {
-    // Keep the existing visible entry marker, then expose every subsequent stage.
-    _showFoodFeedback(i, 'BET CALLED, chip=$_chip, bal=${_s?.balance ?? _bal}');
-    _foodDiagnosticTimer?.cancel();
     try {
       await Future<void>.delayed(const Duration(milliseconds: 450));
       if (!mounted) return;
-      _showFoodFeedback(i, 'STEP1');
       final current = _s;
-      if (current == null) {
-        _showFoodFeedback(i, 'return: no state');
-        return;
-      }
-      if (current.phase != RoundPhase.betting) {
-        _showFoodFeedback(i, 'return: round closed');
-        return;
-      }
+      if (current == null || current.phase != RoundPhase.betting) return;
       final amount = _chip;
-      if (amount <= 0) {
-        _showFoodFeedback(i, 'return: no chip');
-        return;
-      }
+      if (amount <= 0) return;
       final player = current.player;
       if (player != null && player.status.isNotEmpty && player.status != 'active') {
-        _showFoodFeedback(i, 'return: not active (${player.status})');
         return;
       }
       if (current.balance - _pendingReserved < amount) {
-        _showFoodFeedback(i, 'return: low bal');
+        _say('رصيدك لا يكفي');
         return;
       }
 
-      // Save the pending bet locally before starting the server request.
-      _showFoodFeedback(i, 'STEP2 calling server');
       if (_confirmedRoundId != current.roundId) _startOptimisticRound(current);
       final bet = _PendingWheelBet(
         idempotencyKey: _newBetIdempotencyKey(current.roundId),
@@ -716,25 +679,18 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         slot: i,
         amount: amount,
       );
-      _showFoodFeedback(i, 'STEP4 saving');
+      // Save locally and rebuild immediately; the circle reads this same pending list.
       setState(() => _pendingBets.add(bet));
-      // The UI reads s.myBets from _withOptimisticBets; pending is merged now.
-      _showFoodFeedback(i, 'STEP5 saved, bet=$amount');
-      // The pending bet is already in the exact list consumed by the UI.
-      // _sendBet starts the POST only after this synchronous local save.
       unawaited(_sendBet(bet));
-    } catch (error, stackTrace) {
-      if (mounted) {
-        _showFoodFeedback(i, 'EXCEPTION: $error\n$stackTrace');
-      }
+    } catch (error) {
+      if (mounted) _say(wheelErrorText(error));
     }
   }
 
   bool _enqueueBet(int roundId, int slot, int amount) {
     final availableBalance = _s?.balance ?? _bal;
     if (availableBalance - _pendingReserved < amount) {
-      _showFoodFeedback(slot,
-          'return: low bal (${availableBalance - _pendingReserved} available, need $amount)');
+      _say('رصيدك لا يكفي');
       return false;
     }
     if (_confirmedRoundId != roundId && _s != null && _s!.roundId == roundId) {
@@ -782,9 +738,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         bet.slot,
         bet.amount,
         bet.idempotencyKey,
-      )).timeout(const Duration(seconds: 3));
+      )).timeout(const Duration(seconds: 8));
       if (!mounted) return;
-      _showFoodFeedback(bet.slot, 'STEP3 server done, status=accepted');
       setState(() {
         bet.status = _PendingBetStatus.accepted;
         // Concurrent responses may arrive out of order; never restore an older,
@@ -801,19 +756,15 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     } catch (error, stackTrace) {
       if (!mounted) return;
       if (error is TimeoutException) {
-        _showFoodFeedback(bet.slot, 'TIMEOUT');
         // Keep the local pending bet visible; retry with the same idempotency key.
+        // No timeout diagnostic is shown; a late accepted response remains idempotent.
         setState(() => bet.status = _PendingBetStatus.queued);
         Timer(const Duration(seconds: 1), () {
           if (mounted) unawaited(_sendBet(bet));
         });
         return;
       }
-      final detail = error is WheelApiException
-          ? 'EXCEPTION: ${error.status == null ? '' : 'HTTP ${error.status} '}${error.code}'
-              '${error.body == null || error.body!.isEmpty ? '' : ' | ${error.body}'}'
-          : 'EXCEPTION: $error\\n$stackTrace';
-      _showFoodFeedback(bet.slot, detail);
+      _say(wheelErrorText(error));
       if (_isDefinitiveBetRejection(error)) {
         setState(() => _pendingBets.remove(bet));
         unawaited(_refresh());
@@ -1228,9 +1179,24 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     });
   }
 
+  int _displayMyBet(RoundState s, int slot) {
+    final serverBet = _safeSlotValue(s.myBets, slot);
+    final confirmedBet = _confirmedRoundId == s.roundId
+        ? _safeSlotValue(_confirmedMine, slot)
+        : 0;
+    final pendingBet = _pendingBets
+        .where((bet) =>
+            bet.roundId == s.roundId &&
+            bet.slot == slot &&
+            !bet.observedInState)
+        .fold<int>(0, (sum, bet) => sum + bet.amount);
+    return math.max(serverBet, confirmedBet + pendingBet).toInt();
+  }
+
   Widget _slot(int i, RoundState s, double d) {
     final slot = kSlots[i];
-    final hit = _hit == i, win = _win.contains(i), mine = s.myBets[i] > 0;
+    final myBet = _displayMyBet(s, i);
+    final hit = _hit == i, win = _win.contains(i), mine = myBet > 0;
     final mx = s.pools.reduce((a, b) => a > b ? a : b);
     final frac = mx == 0 ? 0.45 : 0.45 + 0.35 * (s.pools[i] / mx);
     const dark = Color(0xFF5A3A00);
@@ -1308,7 +1274,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
               if (mine)
                 Align(
                   alignment: const Alignment(0, 0.04),
-                  child: Text('🪙 ${_fmt(s.myBets[i])}',
+                  child: Text('🪙 ${_fmt(myBet)}',
                       style: TextStyle(
                           color: const Color(0xFF1458D4), // كومة عملات زرقاء
                           fontSize: d * 0.14,
@@ -1341,30 +1307,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                         color: Colors.white,
                         fontSize: d * 0.15,
                         fontWeight: FontWeight.w900)),
-              ),
-            ),
-          ),
-        if (_foodFeedbackSlot == i && _foodFeedback != null)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xF01B2638),
-                  borderRadius: BorderRadius.circular(d / 2),
-                  border: Border.all(color: const Color(0xFFFFD34E), width: 2),
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: Text(
-                      _foodFeedback!,
-                      textAlign: TextAlign.center,
-                      maxLines: 5,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, height: 1.15),
-                    ),
-                  ),
-                ),
               ),
             ),
           ),
