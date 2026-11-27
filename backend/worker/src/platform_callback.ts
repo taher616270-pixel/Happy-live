@@ -365,8 +365,9 @@ async function handleHappyFoodWheelGameSessionRefreshCallback(
     const parentExpiry = Date.parse(row.appExpiresAt);
     if (!Number.isFinite(parentExpiry) || parentExpiry <= Date.now()) return reply({error:"app_session_expired"},401);
     const expiresAt = new Date(Math.min(Date.now() + 15 * 60_000,parentExpiry)).toISOString();
-    await db.prepare("UPDATE game_sessions SET expires_at=?,last_seen_at=? WHERE id=? AND revoked_at IS NULL")
-      .bind(expiresAt,now,sessionId).run();
+    const updated = await db.prepare("UPDATE game_sessions SET expires_at=?,last_seen_at=? WHERE id=? AND revoked_at IS NULL AND julianday(expires_at)>julianday(?)")
+      .bind(expiresAt,now,sessionId,now).run();
+    if (Number(updated.meta?.changes ?? 0) !== 1) return reply({error:"game_session_refresh_denied"},401);
     return reply({ok:true,appId,sessionId,gameId,expiresAt},200);
   } catch (error) {
     console.error("[happy-food-wheel.game-session] refresh failed",error instanceof Error?error.message:"unknown");
