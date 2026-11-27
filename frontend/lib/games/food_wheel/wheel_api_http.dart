@@ -86,13 +86,15 @@ class HttpFoodWheelApi implements FoodWheelApi {
     try {
       data = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
     } catch (_) {
-      throw const WheelApiException('bad_response');
+      throw WheelApiException('bad_response', status: response.statusCode, body: response.body);
     }
     if (response.statusCode >= 200 && response.statusCode < 300) return data;
     final code = data is Map ? (data['error'] ?? data['code'] ?? '').toString() : '';
-    if (response.statusCode == 401) throw WheelApiException('session_expired', status: response.statusCode);
-    if (response.statusCode == 403) throw WheelApiException('forbidden', status: response.statusCode);
-    throw WheelApiException(code.isEmpty ? 'server_error' : code, status: response.statusCode);
+    throw WheelApiException(
+      code.isEmpty ? 'server_error' : code,
+      status: response.statusCode,
+      body: response.body,
+    );
   }
 
   Map<String, dynamic> _map(dynamic value) {
