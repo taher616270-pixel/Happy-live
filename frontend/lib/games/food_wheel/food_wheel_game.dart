@@ -430,12 +430,12 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     if (s.phase == RoundPhase.betting) {
       final endAt = s.bettingEndsAt ?? s.roundEndAt;
       return endAt == null
-          ? s.secondsLeft.clamp(0, 20)
-          : ((endAt - now) / 1000).ceil().clamp(0, 20);
+          ? s.secondsLeft.clamp(0, 20).toInt()
+          : ((endAt - now) / 1000).ceil().clamp(0, 20).toInt();
     }
     final resultAt = s.resultChosenAt ?? s.bettingEndsAt;
-    if (resultAt == null) return s.secondsLeft.clamp(0, 5);
-    return ((5000 - (now - resultAt)) / 1000).ceil().clamp(0, 5);
+    if (resultAt == null) return s.secondsLeft.clamp(0, 5).toInt();
+    return ((5000 - (now - resultAt)) / 1000).ceil().clamp(0, 5).toInt();
   }
 
   int _popupSecondsLeft(RoundState s) {
@@ -444,7 +444,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     if (resultAt == null) return 5;
     return ((10000 - (DateTime.now().millisecondsSinceEpoch - resultAt)) / 1000)
         .ceil()
-        .clamp(0, 5);
+        .clamp(0, 5)
+        .toInt();
   }
 
   void _startOptimisticRound(RoundState s) {
@@ -600,7 +601,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   Future<void> _spin(RoundState s) async {
     _spinning = true;
-    final target = (s.resultSlot ?? 0).clamp(0, kSlots.length - 1);
+    final target = (s.resultSlot ?? 0).clamp(0, kSlots.length - 1).toInt();
     final resultStartedAt = s.resultChosenAt ??
         s.bettingEndsAt ??
         DateTime.now().millisecondsSinceEpoch;
@@ -614,7 +615,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       final progress = elapsed / 5000;
       setState(() => _hit = step++ % kSlots.length);
       final delayMs = (65 + 300 * progress * progress * progress).round();
-      await Future.delayed(Duration(milliseconds: math.min(delayMs, remaining)));
+      await Future.delayed(Duration(milliseconds: math.min(delayMs, remaining).toInt()));
     }
     if (!mounted) return;
     _spinning = false;
@@ -640,7 +641,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       Duration(milliseconds: math.max(
         0,
         popupEndsAt - DateTime.now().millisecondsSinceEpoch,
-      )),
+      ).toInt()),
       () {
         if (mounted) setState(() => _panel = false);
       },
@@ -932,7 +933,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                 height: 34,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(18),
                   color: const Color(0xFF173C91),
                   border: Border.all(color: const Color(0xFFFFD45A), width: 2),
                 ),
