@@ -59,6 +59,9 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /roundEndAt/);
   assert.match(ui, /Timer\.periodic\(const Duration\(milliseconds: 100\)/);
   assert.match(ui, /_phaseSecondsLeft\(RoundState s\)/);
+  assert.match(ui, /int _resultStartAt\(RoundState s\)/);
+  assert.match(ui, /final resultStartedAt = _resultStartAt\(s\)/);
+  assert.match(ui, /_resultStartAt\(s\) \+ 5000 - now/);
   assert.match(ui, /_isResultPhase\(RoundState s\)/);
   assert.match(ui, /_bettingOpen\(RoundState s\)/);
   assert.match(ui, /_serverNowMs\(\) >= current\.bettingEndsAt!/);
