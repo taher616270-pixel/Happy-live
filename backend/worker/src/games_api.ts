@@ -343,6 +343,16 @@ export async function handleGamesApiRequest(
           amount: Number(row.amount) || 0,
           is_me: Number(row.isMe) === 1
         }));
+        // Explicit food-name keys prevent clients from mixing positional
+        // totals with the player's separate local bet map.
+        const slotKeys = [
+          "chicken", "tomato", "goat", "chili",
+          "fish", "carrot", "shrimp", "corn"
+        ] as const;
+        const totalBetsByFood: Record<string, number> = {};
+        for (let slot = 0; slot < slotKeys.length; slot++) {
+          totalBetsByFood[slotKeys[slot]] = pools[slot] ?? 0;
+        }
         return {
           ok: true,
           round_id: round.roundNo,
@@ -356,6 +366,7 @@ export async function handleGamesApiRequest(
           phase: round.status === "betting" ? "betting" : "result",
           pools,
           total_bets: pools,
+          total_bets_by_food: totalBetsByFood,
           my_bets: myBets,
           balance: wallet?.balance ?? 0,
           my_payout: Number(payoutRow?.amount) || 0,
