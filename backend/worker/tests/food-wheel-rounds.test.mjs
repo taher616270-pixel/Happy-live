@@ -120,6 +120,8 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.doesNotMatch(ui, /pendingBySlot|_confirmedPools \+ pending/);
   assert.ok(ui.includes("_serverClockSynced"));
   assert.ok(ui.includes("void _queueBetSend(_PendingWheelBet bet)"));
+  assert.ok(ui.includes("unawaited(_sendBet(bet))"));
+  assert.doesNotMatch(ui, /_betSendChain/);
   assert.ok(ui.includes("bet.roundId,\n        bet.slot,\n        bet.amount,\n        bet.idempotencyKey"));
   assert.ok(ui.includes("_isResultPhase(current) && _spinStartedRoundId != current.roundId"));
   assert.match(api, /ORDER BY fb\.created_at DESC, fb\.id DESC LIMIT 12/);
