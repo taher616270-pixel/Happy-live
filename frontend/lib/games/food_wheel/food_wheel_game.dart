@@ -21,8 +21,6 @@ String wheelErrorText(Object e) {
     case 'round_closed':
     case 'round_changed':
       return 'انتهى وقت الرهان، انتظر الجولة القادمة';
-    case 'round_changed':
-      return 'بدأت جولة جديدة، حاول مرة ثانية';
     case 'duplicate_bet':
       return 'هذا الرهان مسجّل مسبقًا';
     case 'session_missing':
@@ -204,6 +202,7 @@ class MyRoundRecord {
 
 class RoundState {
   final int roundId, secondsLeft, balance, myPayout;
+  final int? roundEndAt, bettingEndsAt;
   final RoundPhase phase;
   final List<int> pools, myBets;
   final int? resultSlot; // رقم الوجبة الفائزة، أو null لو كانت سلطة/بيتزا
@@ -220,6 +219,8 @@ class RoundState {
   const RoundState({
     required this.roundId,
     required this.secondsLeft,
+    this.roundEndAt,
+    this.bettingEndsAt,
     required this.phase,
     required this.pools,
     required this.myBets,
@@ -244,6 +245,8 @@ class RoundState {
   factory RoundState.fromJson(Map<String, dynamic> j) => RoundState(
         roundId: (j['round_id'] as num).toInt(),
         secondsLeft: (j['seconds_left'] as num).toInt(),
+        roundEndAt: (j['round_end_at'] as num?)?.toInt(),
+        bettingEndsAt: (j['betting_ends_at'] as num?)?.toInt(),
         phase: j['phase'] == 'result' ? RoundPhase.result : RoundPhase.betting,
         pools: (j['pools'] as List).map((e) => (e as num).toInt()).toList(),
         myBets: (j['my_bets'] as List).map((e) => (e as num).toInt()).toList(),
@@ -328,7 +331,7 @@ class FoodWheelGame extends StatefulWidget {
 
 class _FoodWheelGameState extends State<FoodWheelGame> {
   final _rnd = math.Random();
-  Timer? _poll, _msgTimer;
+  Timer? _poll, _msgTimer, _panelTimer;
   RoundState? _s;
   int _bal = 0, _chip = 10, _hit = -1, _animatedRound = -1, _timeLeft = 20;
   Set<int> _win = {};
@@ -346,13 +349,24 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   void initState() {
     super.initState();
     _refresh();
-    _poll = Timer.periodic(const Duration(seconds: 1), (_) { if (!mounted) return; if (_timeLeft > 0) setState(() => _timeLeft--); _refresh(); });
+    _poll = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final endAt = _s?.roundEndAt;
+      final next = endAt == null
+          ? (_timeLeft > 0 ? _timeLeft - 1 : 0)
+          : ((endAt - DateTime.now().millisecondsSinceEpoch) / 1000)
+              .ceil()
+              .clamp(0, 20);
+      if (next != _timeLeft) setState(() => _timeLeft = next);
+      _refresh();
+    });
   }
 
   @override
   void dispose() {
     _poll?.cancel();
     _msgTimer?.cancel();
+    _panelTimer?.cancel();
     super.dispose();
   }
 
@@ -374,7 +388,11 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       final newRound = _s != null && _s!.roundId != s.roundId;
       setState(() {
         _s = s;
-        _timeLeft = s.secondsLeft.clamp(0, 20);
+        _timeLeft = s.roundEndAt == null
+            ? s.secondsLeft.clamp(0, 20)
+            : ((s.roundEndAt! - DateTime.now().millisecondsSinceEpoch) / 1000)
+                .ceil()
+                .clamp(0, 20);
         _err = null;
         if (!_spinning) _bal = s.balance;
         if (newRound) {
@@ -383,6 +401,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           _lit = null;
           _msg = null;
           _panel = false;
+          _panelTimer?.cancel();
         }
       });
       if (newRound && _auto) _repeatBets();
@@ -399,18 +418,24 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   Future<void> _spin(RoundState s) async {
     _spinning = true;
-    // الفائز الحقيقي يجي من الخادم، والدوران يبدأ من الدجاجة (0) وينتهي عنده بالضبط
-    final target = s.resultSlot ?? _rnd.nextInt(8);
-    final steps = 3 * 8 + target + 1; // 3 لفّات كاملة ثم يكمل لين الفائز
+    setState(() => _panel = true);
+    _panelTimer?.cancel();
+    _panelTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _panel = false);
+    });
+    final target = s.resultSlot ?? 0;
+    final steps = 4 * 8 + target + 1;
     for (var k = 0; k < steps; k++) {
       if (!mounted) return;
-      setState(() => _hit = k % 8); // k=0 → الدجاجة، وآخر خطوة (steps-1) % 8 == target
-      await Future.delayed(Duration(milliseconds: 45 + (k * k * 0.2).round()));
+      setState(() => _hit = k % 8);
+      final progress = steps <= 1 ? 1.0 : k / (steps - 1);
+      final mean = 5000.0 / steps;
+      final delayMs = (mean * (0.5 + 1.5 * progress * progress)).round();
+      await Future.delayed(Duration(milliseconds: delayMs));
     }
     if (!mounted) return;
     _spinning = false;
     setState(() {
-      _panel = true;
       _hit = -1;
       _bal = s.balance;
       _lit = s.special;
@@ -443,7 +468,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     }
     if (s.chestReward > 0) parts.add('🎁 صندوق: +${_fmt(s.chestReward)} 🪙');
     if (parts.isNotEmpty) _say(parts.join('  •  '));
-    await _refresh();
   }
 
   Future<void> _bet(int i) async {
@@ -464,7 +488,11 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         setState(() {
           _s = n;
           _bal = n.balance;
-          _timeLeft = n.secondsLeft.clamp(0, 20);
+          _timeLeft = n.roundEndAt == null
+              ? n.secondsLeft.clamp(0, 20)
+              : ((n.roundEndAt! - DateTime.now().millisecondsSinceEpoch) / 1000)
+                  .ceil()
+                  .clamp(0, 20);
         });
         if (n.phase == RoundPhase.result && n.roundId != _animatedRound) {
           _animatedRound = n.roundId;
@@ -532,22 +560,33 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   }
 
   // نافذة النتيجة: تنزلق من تحت بعد كل جولة
-  Widget _resultOverlay(RoundState s) => Align(
-        alignment: Alignment.bottomCenter,
-        child: FractionallySizedBox(
-          heightFactor: 0.6,
-          widthFactor: 1,
+  Widget _resultOverlay(RoundState s) => Stack(children: [
+        Positioned.fill(
           child: IgnorePointer(
-            ignoring: !_panel,
-            child: AnimatedSlide(
-              offset: _panel ? Offset.zero : const Offset(0, 1.05),
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOutCubic,
-              child: _resultPanel(s),
+            child: AnimatedOpacity(
+              opacity: _panel ? 0.42 : 0,
+              duration: const Duration(milliseconds: 450),
+              child: const ColoredBox(color: Colors.black),
             ),
           ),
         ),
-      );
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: FractionallySizedBox(
+            heightFactor: 0.6,
+            widthFactor: 1,
+            child: IgnorePointer(
+              ignoring: !_panel,
+              child: AnimatedSlide(
+                offset: _panel ? Offset.zero : const Offset(0, 1.05),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOutCubic,
+                child: _resultPanel(s),
+              ),
+            ),
+          ),
+        ),
+      ]);
 
   Widget _resultPanel(RoundState s) {
     final food = s.special == 'salad'
@@ -574,11 +613,21 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           Positioned(
             left: 0,
             top: 0,
-            child: Text('($_timeLeft) ثانية',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold)),
+            child: Container(
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF173C91),
+                border: Border.all(color: const Color(0xFFFFD45A), width: 2),
+              ),
+              child: Text('$_timeLeft',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900)),
+            ),
           ),
           Column(children: [
             SizedBox(
@@ -617,9 +666,12 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('نتيجة الجولة ${s.roundId} $food', style: t),
-                    Text('رهانك في هذه الجولة: ${_fmt(mine)}', style: t),
-                    Text('الفائز في هذه الجولة: ${_fmt(s.myPayout)}', style: t),
+                    Center(child: Text('نتيجة الجولة ${s.roundId}', style: t)),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      Expanded(child: Text('رهانك: ${_fmt(mine)}', textAlign: TextAlign.center, style: t)),
+                      Expanded(child: Text('فوزك: ${_fmt(s.myPayout)}', textAlign: TextAlign.center, style: t)),
+                    ]),
                   ],
                 ),
               ),
@@ -640,7 +692,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                   Expanded(
                     child: i < s.topWinners.length
                         ? _podium(i, s.topWinners[i])
-                        : _emptySeat(i),
+                        : const SizedBox.shrink(),
                   ),
               ],
             ),
@@ -880,8 +932,14 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                             fontWeight: FontWeight.w900)),
                   ),
                   SizedBox(height: d * 0.04),
-                  Text(s.phase == RoundPhase.betting ? 'النتيجة قادمة' : 'النتيجة',
-                      style: TextStyle(color: Colors.white, fontSize: d * 0.12)),
+                  AnimatedRotation(
+                    turns: _spinning ? 4 : 0,
+                    duration: const Duration(seconds: 5),
+                    child: Text(
+                      s.phase == RoundPhase.betting ? 'النتيجة قادمة' : '🍽️',
+                      style: TextStyle(color: Colors.white, fontSize: d * 0.20),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -904,7 +962,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           duration: const Duration(milliseconds: 120),
           width: d,
           height: d,
-          transform: Matrix4.identity()..scale(hit ? 1.12 : 1.0),
+          transform: Matrix4.identity()..scale(hit || win ? 1.12 : 1.0),
           transformAlignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
@@ -961,7 +1019,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                   alignment: const Alignment(0, 0.74),
                   child: Text(_fmt(s.myBets[i]),
                       style: TextStyle(
-                          color: const Color(0xCCE53935), // أحمر شفاف
+                          color: const Color(0xFF1458D4), // كومة عملات زرقاء
                           fontSize: d * 0.17,
                           fontWeight: FontWeight.w800)),
                 ),
