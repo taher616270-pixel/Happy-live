@@ -693,6 +693,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       _rememberServerTotals(s);
       final nextTotals = _serverTotalsForRound(s.roundId);
       final wheelTotalsChanged = previous == null || newRound ||
+          previous.phase != s.phase ||
+          previous.resultSlot != s.resultSlot ||
+          previous.special != s.special ||
           previousTotals.length != nextTotals.length ||
           List<int>.generate(nextTotals.length, (i) => nextTotals[i] == previousTotals[i] ? 0 : 1).any((v) => v != 0);
       if (wheelTotalsChanged) _wheelStateNotifier.value = _withOptimisticBets(s);
@@ -1036,11 +1039,11 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         // Concurrent responses may arrive out of order; never restore an older,
         // higher balance over a newer lower balance.
         _bal = math.min(_bal, confirmed.balance).toInt();
+        _rememberServerTotals(confirmed);
         if (_s?.roundId == confirmed.roundId) {
           _s = confirmed;
           _wheelStateNotifier.value = _withOptimisticBets(confirmed);
         }
-        _rememberServerTotals(confirmed);
         _pendingBets.remove(bet);
       });
     } catch (error, stackTrace) {
