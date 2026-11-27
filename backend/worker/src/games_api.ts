@@ -1,5 +1,6 @@
-type GameApiUser = { id: string; session_id: string; display_name: string | null; happy_id: string | null };
 import type { FoodWheelRoundsHub } from "./food_wheel_hub";
+
+type GameApiUser = { id: string; session_id: string; display_name: string | null; happy_id: string | null };
 type GameApiEnv = { DB?: D1Database; FOOD_WHEEL_ROUNDS?: DurableObjectNamespace<FoodWheelRoundsHub> };
 type GameApiJson = (data: unknown, status?: number, origin?: string, env?: any) => Response;
 const GAME_SESSION_TTL_SECONDS = 15 * 60;
@@ -284,7 +285,7 @@ export async function handleGamesApiRequest(
       const readGlobalState = async () => {
         const round = await db.prepare(
           "SELECT id, round_no AS roundNo, status, started_at AS startedAt, betting_ends_at AS bettingEndsAt, ends_at AS endsAt, result_slot AS resultSlot FROM food_wheel_rounds WHERE status IN ('betting', 'result') ORDER BY round_no DESC LIMIT 1"
-        ).bind().first<{
+        ).first<{
           id: string; roundNo: number; status: string; startedAt: string;
           bettingEndsAt: string; endsAt: string; resultSlot: number | null;
         }>();
