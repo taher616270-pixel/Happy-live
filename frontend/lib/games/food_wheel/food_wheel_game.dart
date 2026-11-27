@@ -700,7 +700,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         return;
       }
 
-      // Establish the baseline and add the pending amount before any network await.
+      // Mark the server stage, then save locally before the request can complete.
+      _showFoodFeedback(i, 'STEP2 calling server');
       if (_confirmedRoundId != current.roundId) _startOptimisticRound(current);
       final bet = _PendingWheelBet(
         idempotencyKey: _newBetIdempotencyKey(current.roundId),
@@ -765,7 +766,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         bet.status != _PendingBetStatus.queued) return;
     setState(() => bet.status = _PendingBetStatus.sending);
     try {
-      _showFoodFeedback(bet.slot, 'STEP2 calling server');
       final confirmed = await widget.api.placeBet(
         bet.roundId,
         bet.slot,
