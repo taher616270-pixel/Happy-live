@@ -57,7 +57,15 @@ test("wallet debit remains at bet acceptance and wallet payout is deferred to se
 
 test("web client uses server round end time and does not create rounds from taps", () => {
   assert.match(ui, /roundEndAt/);
-  assert.match(ui, /Timer\.periodic\(const Duration\(milliseconds: 200\)/);
+  assert.match(ui, /Timer\\.periodic\\(const Duration\\(milliseconds: 200\\)/);
+  assert.doesNotMatch(ui, /Timer\\.periodic\\(const Duration\\(milliseconds: (?:50|100)\\)/);
+  assert.match(ui, /int _spinDurationMs = 5000/);
+  assert.match(ui, /if \\(p <= 0\\.8\\)/);
+  assert.match(ui, /if \\(!_spinTargetKnown\\) return _spinBaseAngle/);
+  assert.match(ui, /final eased = 1 - math\\.pow\\(1 - u, 3\\)/);
+  assert.match(ui, /_spinTargetKnown = true/);
+  assert.match(ui, /_spinFinalizedRoundId == s\\.roundId/);
+  assert.doesNotMatch(ui, /_spinAnimation|_msgTimer|_toastTimer/);
   assert.match(ui, /_phaseSecondsLeft\(RoundState s\)/);
   assert.match(ui, /_clockDisplaySecond = math\.min/);
   assert.match(ui, /_serverClockSynced/);
