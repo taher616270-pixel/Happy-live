@@ -716,9 +716,17 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     if (a.roundId != b.roundId ||
         a.phase != b.phase ||
         a.balance != b.balance ||
+        a.myPayout != b.myPayout ||
         a.resultSlot != b.resultSlot ||
         a.special != b.special ||
         a.players != b.players ||
+        a.chestIndex != b.chestIndex ||
+        a.chestTotal != b.chestTotal ||
+        a.chestReward != b.chestReward ||
+        a.player?.id != b.player?.id ||
+        a.player?.status != b.player?.status ||
+        a.player?.avatarUrl != b.player?.avatarUrl ||
+        a.player?.flag != b.player?.flag ||
         !sameInts(a.pools, b.pools) ||
         !sameInts(a.myBets, b.myBets) ||
         a.topWinners.length != b.topWinners.length ||
