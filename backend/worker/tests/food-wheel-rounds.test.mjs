@@ -58,7 +58,14 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /Timer\.periodic\(const Duration\(seconds: 1\)/);
   assert.match(ui, /_phaseSecondsLeft\(RoundState s\)/);
   assert.match(ui, /_popupSecondsLeft\(RoundState s\)/);
-  assert.match(ui, /final stopAt = resultStartedAt \+ 5000/);
+  assert.match(ui, /duration: const Duration\(milliseconds: 5000\)/);
+  assert.match(ui, /class _TopTopSpinCurve extends Curve/);
+  assert.match(ui, /_spinController\.forward\(from: progress\)/);
+  assert.match(ui, /3 \* math\.pi \* 2/);
+  assert.match(ui, /Tween<double>\(begin: startAngle, end: endAngle\)/);
+  assert.match(ui, /AnimatedBuilder\(\s*animation: _spinController/);
+  assert.match(ui, /_highlightForSlot\(spinAngle, i\)/);
+  assert.doesNotMatch(ui, /currentIndex\+\+|step\+\+ % kSlots\.length|_hit = target/);
   assert.match(ui, /await Future\.delayed\(const Duration\(seconds: 1\)\)/);
   assert.match(ui, /resultStartedAt \+ 11000/);
   assert.match(ui, /const frac = 0\.45/);
