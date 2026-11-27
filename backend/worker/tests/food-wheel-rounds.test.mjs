@@ -93,7 +93,15 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.ok(ui.includes("final Map<int, Map<String, int>> _myBetsByRound"));
   assert.ok(ui.includes("final Map<int, Map<String, int>> _frozenBetsByRound"));
   assert.ok(ui.includes("void _freezeMyBets(int roundId)"));
+  assert.ok(ui.includes("Map<String, int>.unmodifiable(Map<String, int>.from(_myBetsForRound(roundId)))"));
   assert.match(ui, /_displayBetsForRound\(int roundId\) =>\s*_frozenBetsByRound\[roundId\]/);
+  assert.ok(ui.includes("final mine = _myBetTotalForRound(s.roundId)"));
+  assert.ok(ui.includes("_popupRoundState ?? s"));
+  assert.ok(ui.includes("if (s.phase == RoundPhase.result) _finalServerTotalsRounds.add(s.roundId)"));
+  assert.ok(ui.includes("final hasNamedTotals = s.totalBetsByFood.isNotEmpty"));
+  assert.ok(ui.includes("final value = hasNamedTotals"));
+  assert.ok(ui.includes("Map<String, int>.unmodifiable(revisedFrozen)"));
+  assert.ok(ui.includes("if (_isResultPhase(current)) _freezeMyBets(current.roundId)"));
   assert.ok(ui.includes("bets[kSlotKeys[i]] = (bets[kSlotKeys[i]] ?? 0) + amount"));
   assert.ok(ui.includes("_myBetTotalForRound(s.roundId)"));
   assert.ok(ui.includes("_prevBets[kSlotKeys[i]] ?? 0"));
