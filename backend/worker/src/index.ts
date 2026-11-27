@@ -6,6 +6,8 @@ import { handleRoomTools } from "./room_tools";
 export { RoomSeatsHub } from "./room_seats_hub";
 export { GlobalGiftHub } from "./global_gift_hub";
 import type { GlobalGiftHub } from "./global_gift_hub";
+export { FoodWheelRoundsHub } from "./food_wheel_hub";
+import type { FoodWheelRoundsHub } from "./food_wheel_hub";
 const GLOBAL_GIFT_SHARD_COUNT = 16;
 
 function globalGiftShardForUser(userId: string): number {
@@ -22,6 +24,7 @@ export interface Env {
   ROOM_CHAT?: DurableObjectNamespace;
   ROOM_SEATS?: DurableObjectNamespace;
   GLOBAL_GIFTS?: DurableObjectNamespace<GlobalGiftHub>;
+  FOOD_WHEEL_ROUNDS?: DurableObjectNamespace<FoodWheelRoundsHub>;
   APP_ENV?: string;
   ALLOWED_ORIGINS?: string;
   IMAGEKIT_PUBLIC_KEY?: string;
@@ -416,6 +419,21 @@ function json(data: unknown, status = 200, origin?: string, env?: Env): Response
 }
 
 export default {
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    if (!env.FOOD_WHEEL_ROUNDS) return;
+    const hub = env.FOOD_WHEEL_ROUNDS.get(env.FOOD_WHEEL_ROUNDS.idFromName("food-wheel-global"));
+    ctx.waitUntil((async () => {
+      try {
+        const response = await hub.fetch("https://food-wheel.internal/ensure", { method: "POST" });
+        if (!response.ok) {
+          console.error("[food-wheel.cron] scheduler bootstrap returned", response.status);
+        }
+      } catch (error) {
+        console.error("[food-wheel.cron] scheduler bootstrap failed", error instanceof Error ? error.message : "UnknownError");
+      }
+    })());
+  },
+
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") ?? undefined;
