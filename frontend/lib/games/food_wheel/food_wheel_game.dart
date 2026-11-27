@@ -1139,9 +1139,11 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     final mx = s.pools.reduce((a, b) => a > b ? a : b);
     final frac = mx == 0 ? 0.45 : 0.45 + 0.35 * (s.pools[i] / mx);
     const dark = Color(0xFF5A3A00);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return InkWell(
       onTap: () => _bet(i),
+      customBorder: const CircleBorder(),
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
       child: Stack(clipBehavior: Clip.none, children: [
         AnimatedContainer(
           duration: const Duration(milliseconds: 120),
