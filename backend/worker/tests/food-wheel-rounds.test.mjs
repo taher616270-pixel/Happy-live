@@ -21,8 +21,8 @@ test("Food Wheel uses one sequential global round with a server-enforced single 
 });
 
 test("Durable Object alarms advance betting, result, settlement, and the next round without player traffic", () => {
-  assert.match(hub, /const BETTING_MS = 15_000/);
-  assert.match(hub, /const ROUND_MS = 20_000/);
+  assert.match(hub, /const BETTING_MS = 20_000/);
+  assert.match(hub, /const ROUND_MS = 30_000/);
   assert.match(hub, /async alarm\(\): Promise<void>/);
   assert.match(hub, /this\.ctx\.storage\.setAlarm/);
   assert.match(hub, /private async chooseAndPublishResult/);
@@ -34,6 +34,8 @@ test("Durable Object alarms advance betting, result, settlement, and the next ro
 test("all players join the shared round and state returns live totals and real winner identities", () => {
   assert.match(api, /FOOD_WHEEL_ROUNDS\.idFromName\("food-wheel-global"\)/);
   assert.match(api, /round_end_at: endAt/);
+  assert.match(api, /result_chosen_at: resultChosenAt/);
+  assert.match(api, /Math.min\(20, Math.ceil\(\(bettingEndAt - now\) \/ 1000\)\)/);
   assert.match(api, /total_bets: pools/);
   assert.match(api, /my_bets: myBets/);
   assert.match(api, /top_winners: topWinners/);
@@ -53,12 +55,19 @@ test("wallet debit remains at bet acceptance and wallet payout is deferred to se
 test("web client uses server round end time and does not create rounds from taps", () => {
   assert.match(ui, /roundEndAt/);
   assert.match(ui, /Timer\.periodic\(const Duration\(seconds: 1\)/);
-  assert.match(ui, /roundEndAt! - DateTime\.now\(\)\.millisecondsSinceEpoch/);
+  assert.match(ui, /_phaseSecondsLeft\(RoundState s\)/);
+  assert.match(ui, /_popupSecondsLeft\(RoundState s\)/);
+  assert.match(ui, /final stopAt = resultStartedAt \+ 5000/);
+  assert.match(ui, /_popupTimeLeft/);
   assert.match(ui, /placeBet\(\s*bet\.roundId,\s*bet\.slot,\s*bet\.amount,\s*bet\.idempotencyKey/);
   assert.match(ui, /Future<void> _sendBet\(_PendingWheelBet bet\)/);
   assert.match(ui, /unawaited\(_sendBet\(bet\)\)/);
-  assert.match(ui, /behavior: HitTestBehavior\.opaque,\s*onTap: \(\) => _bet\(i\)/);
+  assert.match(ui, /behavior: HitTestBehavior\.opaque,\s*onPointerDown: \(_\) => _onFoodPointerDown\(i\)/);
   assert.match(ui, /_fmt\(math\.max\(0, _bal - _pendingReserved\)\)/);
+  assert.match(ui, /\x27رهانك في هذه الجولة:/);
+  assert.match(ui, /\x27الفائز في هذه الجولة:/);
+  assert.match(ui, /الفائز الأكثر لهذه الجولة/);
+  assert.match(ui, /for \(final i in \[2, 0, 1\]\)/);
   assert.doesNotMatch(ui, /_drainBetQueue|_betQueueRunning/);
   assert.match(ui, /final List<_PendingWheelBet> _pendingBets/);
   assert.match(ui, /bool observedInState = false/);
