@@ -8,6 +8,7 @@ const api = await readFile(new URL("src/games_api.ts", root), "utf8");
 const worker = await readFile(new URL("src/index.ts", root), "utf8");
 const config = await readFile(new URL("wrangler.toml", root), "utf8");
 const migration = await readFile(new URL("migrations/0062_global_food_wheel_rounds.sql", root), "utf8");
+const rareMigration = await readFile(new URL("migrations/0063_food_wheel_rare_groups.sql", root), "utf8");
 const ui = await readFile(new URL("../../../frontend/lib/games/food_wheel/food_wheel_game.dart", import.meta.url), "utf8");
 
 test("Food Wheel uses one sequential global round with a server-enforced single active round", () => {
@@ -22,7 +23,7 @@ test("Food Wheel uses one sequential global round with a server-enforced single 
 
 test("Durable Object alarms advance betting, result, settlement, and the next round without player traffic", () => {
   assert.match(hub, /const BETTING_MS = 20_000/);
-  assert.match(hub, /const ROUND_MS = 28_000/);
+  assert.match(hub, /const ROUND_MS = 30_000/);
   assert.match(hub, /const chosenAt = round\.bettingEndsAt/);
   assert.match(hub, /Date\.parse\(round\.bettingEndsAt\) \+ 8_000/);
   assert.match(hub, /async alarm\(\): Promise<void>/);
@@ -70,11 +71,11 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.ok(ui.includes("pollStartedAt - _lastRefreshAt < 1000"));
 
   assert.ok(ui.includes("int getSpinDelay(double remaining)"));
-  assert.ok(ui.includes("if (remaining > 4) return 220"));
-  assert.ok(ui.includes("if (remaining > 3) return 150"));
-  assert.ok(ui.includes("if (remaining > 2) return 90"));
-  assert.ok(ui.includes("if (remaining > 1) return 55"));
-  assert.ok(ui.includes("return 55"));
+  assert.ok(ui.includes("if (remaining > 4) return 650"));
+  assert.ok(ui.includes("if (remaining > 3) return 400"));
+  assert.ok(ui.includes("if (remaining > 2) return 180"));
+  assert.ok(ui.includes("return 80"));
+  assert.ok(ui.includes("return 80"));
   assert.ok(ui.includes("double _spinAngleForElapsed(double elapsedMs)"));
   assert.ok(ui.includes("getSpinDelay(5.0 - second)"));
   assert.ok(ui.includes("double _landingArcToWinner"));
@@ -87,7 +88,7 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.ok(ui.includes("_spinFinalizedRoundId == s.roundId"));
   assert.ok(ui.includes("static const int _spinDurationMs = 5000"));
   assert.ok(ui.includes("static const double _spinBaseAngle = 3 * math.pi * 2"));
-  assert.ok(ui.includes("final activeSlot = (angle / step).round() % kSlots.length"));
+  assert.ok(ui.includes("final activeSlot = (angle / step).floor() % 10"));
   assert.doesNotMatch(ui, /_spinAnimation|_msgTimer|_toastTimer/);
 
   assert.ok(ui.includes("final Map<int, Map<String, int>> _myBetsByRound"));
@@ -161,4 +162,24 @@ test("Food Wheel starts the full spin at chicken and immediately refreshes after
   assert.match(ui, /_resultOverlay\(_popupRoundState \?\? s\)/);
   assert.doesNotMatch(ui, /_myBetsByRound\.remove\(previous\.roundId\)/);
   assert.match(ui, /now - _lastRefreshAt >= 1000/);
+});
+
+
+test("rare Pizza and Salad outcomes are public weighted outcomes and pay complete food groups", () => {
+  assert.match(hub, /RARE_PIZZA_WEIGHT = 3/);
+  assert.match(hub, /RARE_SALAD_WEIGHT = 3/);
+  assert.match(hub, /const roll = crypto\\.getRandomValues/);
+  assert.match(hub, /resultSpecial: "pizza" \\| "salad" \\| null/);
+  assert.match(hub, /slot IN \\(1,2,4,6\\) THEN stake \\* 5/);
+  assert.match(hub, /result_special.*salad/);
+  assert.match(api, /special: round\\.resultSpecial/);
+  assert.match(rareMigration, /ADD COLUMN result_special/);
+});
+
+test("Food Wheel accepts arbitrary positive integer stakes and rejects a seventh distinct food", () => {
+  assert.match(api, /Number\\.isSafeInteger\\(amount\\) \\|\\| amount <= 0/);
+  assert.match(api, /COUNT\\(DISTINCT slot\\)/);
+  assert.match(api, /max_foods_per_round/);
+  assert.match(ui, /for \\(var i = 0; i < 10; i\\+\\+\\)/);
+  assert.doesNotMatch(ui, /Text\\('Hot'/);
 });
