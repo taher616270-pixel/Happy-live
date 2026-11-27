@@ -2581,19 +2581,10 @@ class _TopWinsDialog extends StatefulWidget {
 
 class _TopWinsDialogState extends State<_TopWinsDialog> {
   late Future<List<WinRecord>> _f;
-  Timer? _t;
-
   @override
   void initState() {
     super.initState();
     _f = widget.api.fetchTopWins();
-    _t = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _t?.cancel();
-    super.dispose();
   }
 
   /// الوقت المتبقي لتصفير الجدول (منتصف الليل بتوقيت UTC+3)
@@ -2929,39 +2920,4 @@ class _TopWinsRules extends StatelessWidget {
 }
 /// Slow start, smooth acceleration through 3s, fastest from 3-4s,
 /// then a gentle one-second deceleration to the exact target.
-class _TopTopSpinCurve extends Curve {
-  const _TopTopSpinCurve();
-
-  static const double _slowPart = 0.6;
-  static const double _fastPart = 0.2;
-  static const double _initialSpeed = 0.05;
-  static const double _maxSpeed = 3.0;
-  static const double _firstArea =
-      _slowPart * (_initialSpeed + (_maxSpeed - _initialSpeed) * 0.5);
-  static const double _middleArea = _fastPart * _maxSpeed;
-  static const double _totalArea = _firstArea + _middleArea + _fastPart * _maxSpeed * 0.5;
-
-  @override
-  double transformInternal(double t) {
-    if (t <= 0) return 0;
-    if (t >= 1) return 1;
-    double area;
-    if (t <= _slowPart) {
-      final u = t / _slowPart;
-      area = _slowPart *
-          (_initialSpeed * u +
-              (_maxSpeed - _initialSpeed) * (u * u * u - 0.5 * u * u * u * u));
-    } else if (t <= _slowPart + _fastPart) {
-      area = _firstArea + _maxSpeed * (t - _slowPart);
-    } else {
-      final u = (t - _slowPart - _fastPart) / _fastPart;
-      area = _firstArea +
-          _middleArea +
-          _maxSpeed *
-              _fastPart *
-              (u - u * u * u + 0.5 * u * u * u * u);
-    }
-    return (area / _totalArea).clamp(0.0, 1.0);
-  }
-}
 
