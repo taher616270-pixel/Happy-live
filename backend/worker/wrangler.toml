@@ -23,6 +23,10 @@ class_name = "RoomSeatsHub"
 name = "GLOBAL_GIFTS"
 class_name = "GlobalGiftHub"
 
+[[previews.durable_objects.bindings]]
+name = "FOOD_WHEEL_ROUNDS"
+class_name = "FoodWheelRoundsHub"
+
 [vars]
 APP_ENV = "production"
 GOOGLE_CLIENT_ID = "999298541545-5i0kn2d1emj2rohuvruj4o8ej49ho9kg.apps.googleusercontent.com"
@@ -45,6 +49,10 @@ class_name = "RoomSeatsHub"
 name = "GLOBAL_GIFTS"
 class_name = "GlobalGiftHub"
 
+[[durable_objects.bindings]]
+name = "FOOD_WHEEL_ROUNDS"
+class_name = "FoodWheelRoundsHub"
+
 [[migrations]]
 tag = "v1-room-chat"
 new_sqlite_classes = ["RoomChatHub"]
@@ -56,3 +64,10 @@ new_sqlite_classes = ["RoomSeatsHub"]
 [[migrations]]
 tag = "v3-global-gift-hub"
 new_sqlite_classes = ["GlobalGiftHub"]
+
+[[migrations]]
+tag = "v4-food-wheel-rounds"
+new_sqlite_classes = ["FoodWheelRoundsHub"]
+
+[triggers]
+crons = ["* * * * *"]
