@@ -461,7 +461,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       final clearToast = _roundClosedToast != null && now >= _toastExpiresAtMs;
       if (current != null) {
         final next = _monotonicPhaseSecond(current);
-        if (_isResultPhase(current)) _freezeMyBets(current.roundId);
+        if (current.phase == RoundPhase.result) _freezeMyBets(current.roundId);
         if (_isResultPhase(current) && _spinStartedRoundId != current.roundId) {
           _startProvisionalSpin(current);
         }
@@ -585,9 +585,11 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       _displayBetsForRound(roundId).values.fold<int>(0, (sum, amount) => sum + amount);
 
   void _freezeMyBets(int roundId) {
-    if (_lockedBetRounds.contains(roundId)) return;
+    if (roundId <= 0 || _lockedBetRounds.contains(roundId)) return;
+    // Snapshot the exact local, food-name-keyed amounts once at lock.
+    // Polls and later rounds never replace this settlement snapshot.
     _frozenBetsByRound[roundId] =
-        Map<String, int>.from(_myBetsForRound(roundId));
+        Map<String, int>.unmodifiable(Map<String, int>.from(_myBetsForRound(roundId)));
     _lockedBetRounds.add(roundId);
   }
 
@@ -600,18 +602,22 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     // Keep accepting authoritative server totals through the final lock snapshot.
     // The local input lock can happen a fraction before the server's result poll.
     if (_finalServerTotalsRounds.contains(s.roundId)) return;
-    final serverLocked =
-        s.phase == RoundPhase.result || _serverNowMs() >= _bettingDeadline(s);
-    if (serverLocked) _finalServerTotalsRounds.add(s.roundId);
+    // Freeze public totals only after the server confirms RESULT.
+    // A local clock reaching zero must not freeze an earlier/stale poll.
+    if (s.phase == RoundPhase.result) _finalServerTotalsRounds.add(s.roundId);
     final totals = _serverTotalsByRound.putIfAbsent(s.roundId, () => <String, int>{});
+    final hasNamedTotals = s.totalBetsByFood.isNotEmpty;
     for (var i = 0; i < kSlotKeys.length; i++) {
       final key = kSlotKeys[i];
-      final value = s.totalBetsByFood[key] ??
-          (i < s.pools.length ? s.pools[i] : null);
-      if (value != null) {
+      // Prefer explicit server food-name totals. Positional pools are only
+      // a compatibility fallback when the named map is wholly unavailable.
+      final value = hasNamedTotals
+          ? s.totalBetsByFood[key]
+          : (i < s.pools.length ? s.pools[i] : null);
+      if (value != null && value >= 0) {
+        // Ignore stale/lower poll responses and never reset a missing food.
         totals[key] = math.max(totals[key] ?? 0, value).toInt();
       }
-      // Missing server fields retain the last known total for this food.
     }
   }
 
@@ -699,7 +705,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           previousTotals.length != nextTotals.length ||
           List<int>.generate(nextTotals.length, (i) => nextTotals[i] == previousTotals[i] ? 0 : 1).any((v) => v != 0);
       if (wheelTotalsChanged) _wheelStateNotifier.value = _withOptimisticBets(s);
-      if (s.phase == RoundPhase.result || _serverNowMs() >= _bettingDeadline(s)) _freezeMyBets(s.roundId);
+      if (s.phase == RoundPhase.result) _freezeMyBets(s.roundId);
       final displayChanged =
           previous == null || _err != null || !_sameDisplayState(previous, s);
       if (displayChanged || newRound) {
