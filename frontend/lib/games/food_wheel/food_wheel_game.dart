@@ -773,9 +773,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     if (p <= 0.2) {
       integral = 1.2 * p + 2.5 * p * p;
     } else if (p <= 0.6) {
-      integral = 0.34 + 2.2 * (p - 0.2) + 7.5 * math.pow(p - 0.2, 2);
+      integral = 0.34 + 2.2 * (p - 0.2) + 7.5 * (p - 0.2) * (p - 0.2);
     } else if (p <= 0.9) {
-      integral = 2.42 + 8 * (p - 0.6) + 10 * math.pow(p - 0.6, 2);
+      integral = 2.42 + 8 * (p - 0.6) + 10 * (p - 0.6) * (p - 0.6);
     } else {
       integral = 5.72 + 14 * (p - 0.9);
     }
