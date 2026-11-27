@@ -365,10 +365,13 @@ class _PendingWheelBet {
 class _FoodWheelGameState extends State<FoodWheelGame>
     with SingleTickerProviderStateMixin {
   int _betSequence = 0;
-  Timer? _clockTimer, _msgTimer, _toastTimer;
+  Timer? _clockTimer;
+  int _msgExpiresAtMs = 0, _toastExpiresAtMs = 0;
+  Future<void>? _spinRun;
+  int _spinTargetSlot = 0, _spinFinalizedRoundId = -1;
+  bool _spinTargetKnown = false;
   Future<void> _betSendChain = Future<void>.value();
   late final AnimationController _spinController;
-  Animation<double>? _spinAnimation;
   double _spinAngle = 0;
   bool _spinHasResult = false;
   RoundState? _s;
@@ -410,7 +413,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     );
     _lastRefreshAt = DateTime.now().millisecondsSinceEpoch;
     _refresh();
-    // One 200ms clock; visible seconds always come from server deadlines.
+    // One lifecycle clock drives countdown, transient messages, and the
+    // single throttled state poll. The spin itself uses the controller ticker.
     _clockTimer?.cancel();
     _clockTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
       if (!mounted) return;
@@ -418,6 +422,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       final current = _s;
       var phaseExpired = false;
       var popupExpired = false;
+      final clearMessage = _msg != null && now >= _msgExpiresAtMs;
+      final clearToast = _roundClosedToast != null && now >= _toastExpiresAtMs;
       if (current != null) {
         final next = _monotonicPhaseSecond(current);
         final popupNext = _monotonicPopupSecond(current);
@@ -433,13 +439,20 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             popupNext <= 1 &&
             _popupRefreshRequestedRound != current.roundId;
         if (next != _timeLeft || popupNext != _popupTimeLeft ||
-            (popupExpired && _panel)) {
+            (popupExpired && _panel) || clearMessage || clearToast) {
           setState(() {
             _timeLeft = next;
             _popupTimeLeft = popupNext;
             if (popupExpired) _panel = false;
+            if (clearMessage) _msg = null;
+            if (clearToast) _roundClosedToast = null;
           });
         }
+      } else if (clearMessage || clearToast) {
+        setState(() {
+          if (clearMessage) _msg = null;
+          if (clearToast) _roundClosedToast = null;
+        });
       }
       if (phaseExpired && !_fetching) _phaseRefreshRequestedRound = current!.roundId;
       if (popupExpired && !_fetching) _popupRefreshRequestedRound = current!.roundId;
@@ -453,18 +466,13 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   @override
   void dispose() {
     _clockTimer?.cancel();
-    _msgTimer?.cancel();
-    _toastTimer?.cancel();
     _spinController.dispose();
     super.dispose();
   }
 
   void _say(String m) {
-    _msgTimer?.cancel();
+    _msgExpiresAtMs = DateTime.now().millisecondsSinceEpoch + 3000;
     setState(() => _msg = m);
-    _msgTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _msg = null);
-    });
   }
 
   int _serverNowMs() => DateTime.now().millisecondsSinceEpoch + _serverClockOffsetMs;
@@ -685,10 +693,12 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           _win = {};
           _spinController.stop();
           _spinController.value = 0;
-          _spinAnimation = null;
           _spinAngle = 0;
           _spinHasResult = false;
           _spinStartedRoundId = -1;
+          _spinFinalizedRoundId = -1;
+          _spinTargetKnown = false;
+          _spinRun = null;
           _lit = null;
           _msg = null;
           _panel = false;
@@ -705,71 +715,76 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     }
   }
 
+  static const int _spinDurationMs = 5000;
+  static const double _spinStep = math.pi / 4;
+  static const double _spinBaseAngle = 3 * math.pi * 2 + 7 * _spinStep;
+
+  // The first four seconds are target-independent. The winner is consulted
+  // only in the final second, so receiving it early can never snap the wheel.
+  double _spinAngleAtProgress(double progress) {
+    if (!_spinHasResult) return _spinAngle;
+    final p = progress.clamp(0.0, 1.0);
+    if (p <= 0.8) {
+      final u = p / 0.8;
+      return _spinBaseAngle * u * u;
+    }
+    if (!_spinTargetKnown) return _spinBaseAngle;
+    final clockwiseSteps = (_spinTargetSlot - 7 + 8) % 8;
+    final steps = clockwiseSteps == 0 ? 8 : clockwiseSteps;
+    final landingArc = steps * _spinStep;
+    final u = ((p - 0.8) / 0.2).clamp(0.0, 1.0);
+    final eased = 1 - math.pow(1 - u, 3).toDouble();
+    return _spinBaseAngle + landingArc * eased;
+  }
+
   void _startProvisionalSpin(RoundState s) {
     if (_spinStartedRoundId == s.roundId) return;
     _spinStartedRoundId = s.roundId;
     _spinning = true;
     _spinController.stop();
-    _spinController.duration = const Duration(milliseconds: 5000);
-    _spinController.value = 0;
-    // The server result is not exposed before betting closes. Start the same
-    // five-second motion immediately; _spin retargets it when the result arrives.
-    _spinAnimation = Tween<double>(
-      begin: 0,
-      end: 3 * math.pi * 2,
-    ).animate(
-      CurvedAnimation(parent: _spinController, curve: const _TopTopSpinCurve()),
-    );
-    _spinAngle = 0;
+    _spinController.duration = const Duration(milliseconds: _spinDurationMs);
+    _spinTargetKnown = false;
     _spinHasResult = true;
-    unawaited(_spinController.forward());
+    final elapsedMs = (_serverNowMs() - _resultStartAt(s))
+        .clamp(0, _spinDurationMs)
+        .toInt();
+    _spinController.value = elapsedMs / _spinDurationMs;
+    if (elapsedMs < _spinDurationMs) {
+      _spinRun = _spinController.forward().orCancel.catchError((_) {});
+    } else {
+      _spinController.value = 1;
+      _spinAngle = _spinBaseAngle;
+    }
   }
 
   Future<void> _spin(RoundState s) async {
-    _spinning = true;
+    if (_spinStartedRoundId != s.roundId) _startProvisionalSpin(s);
     final target = (s.resultSlot ?? 0).clamp(0, kSlots.length - 1).toInt();
-    const spinDurationMs = 5000;
-    final targetAngle = target * (math.pi / 4);
-    final endAngle = (3 * math.pi * 2) + targetAngle;
 
-    if (_spinStartedRoundId != s.roundId) {
-      // Joining an already-running result round: catch up to its server clock.
-      _spinStartedRoundId = s.roundId;
-      final elapsedMs = (_serverNowMs() - _resultStartAt(s))
-          .clamp(0, spinDurationMs)
-          .toInt();
-      _spinController.stop();
-      _spinController.duration = const Duration(milliseconds: spinDurationMs);
-      _spinController.value = elapsedMs / spinDurationMs;
-      _spinAnimation = Tween<double>(begin: 0, end: endAngle).animate(
-        CurvedAnimation(parent: _spinController, curve: const _TopTopSpinCurve()),
-      );
-      _spinAngle = 0;
-      _spinHasResult = true;
-    } else if (_spinController.value < 1) {
-      // Preserve the exact current angle while changing only the final target.
-      final progress = _spinController.value;
-      final curveValue = const _TopTopSpinCurve().transform(progress);
-      final currentAngle = _spinAnimation?.value ?? _spinAngle;
-      final denominator = 1 - curveValue;
-      final beginAngle = denominator > 0.0001
-          ? (currentAngle - endAngle * curveValue) / denominator
-          : currentAngle;
-      _spinAnimation = Tween<double>(begin: beginAngle, end: endAngle).animate(
-        CurvedAnimation(parent: _spinController, curve: const _TopTopSpinCurve()),
-      );
-    } else {
-      // If the result arrived after the five-second deadline, reveal it now.
-      _spinAnimation = AlwaysStoppedAnimation<double>(endAngle);
-      _spinAngle = endAngle;
+    // Store the server result, but _spinAngleAtProgress deliberately ignores
+    // it until progress reaches 80% (the final one-second landing window).
+    _spinTargetSlot = target;
+    _spinTargetKnown = true;
+
+    if (_spinController.value < 1) {
+      if (!_spinController.isAnimating) {
+        _spinRun = _spinController.forward().orCancel.catchError((_) {});
+      }
+      await _spinRun;
     }
+    if (!mounted || _spinFinalizedRoundId == s.roundId) return;
 
-    if (_spinController.value < 1) await _spinController.forward();
-    if (!mounted) return;
-
-    // Stop on the server result and reveal the popup at the same deadline.
+    final clockwiseSteps = (target - 7 + 8) % 8;
+    final steps = clockwiseSteps == 0 ? 8 : clockwiseSteps;
+    final endAngle = _spinBaseAngle + steps * _spinStep;
+    _spinController.stop();
+    _spinController.value = 1;
     _spinAngle = endAngle;
+    _spinFinalizedRoundId = s.roundId;
     _spinning = false;
+
+    // Popup and final highlighted food are committed together on the same
+    // server-aligned five-second boundary.
     setState(() {
       if (_pendingBets.isEmpty) _bal = s.balance;
       _lit = s.special;
@@ -821,11 +836,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   void _showRoundClosedToast() {
-    _toastTimer?.cancel();
+    _toastExpiresAtMs = DateTime.now().millisecondsSinceEpoch + 2000;
     setState(() => _roundClosedToast = 'انتهت الجولة انتظر الجولة القادمة');
-    _toastTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _roundClosedToast = null);
-    });
   }
 
   void _onFoodPointerDown(int i) {
@@ -1367,7 +1379,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       return AnimatedBuilder(
         animation: _spinController,
         builder: (context, _) {
-          final spinAngle = _spinAnimation?.value ?? _spinAngle;
+          final spinAngle = _spinAngleAtProgress(_spinController.value);
           return SizedBox(
             width: w,
             height: w,
