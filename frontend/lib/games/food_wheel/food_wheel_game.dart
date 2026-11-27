@@ -56,7 +56,8 @@ String wheelErrorText(Object e) {
 //   - HttpFoodWheelApi (ملف wheel_api_http.dart): التشغيل الحقيقي مع Happy Live
 //
 // الخادم هو المسؤول عن: الرصيد، قبول الرهان، نتيجة الجولة، الأرباح، التسوية.
-// هذا الملف ما يحدد فائزًا ولا يعدّل رصيدًا بنفسه، وما يعرض نجاح رهان قبل تأكيد الخادم.
+// هذا الملف لا يحدد فائزًا ولا يعدّل رصيدًا بنفسه؛ يعرض الرهان محليًا كـ pending
+// ويحتفظ به حتى يؤكد الخادم قبوله أو يرفضه صراحة.
 // ======================================================================
 
 // ---------- البيانات ----------
@@ -344,6 +345,7 @@ class _PendingWheelBet {
   final String idempotencyKey;
   final int roundId, slot, amount;
   _PendingBetStatus status;
+  bool observedInState = false;
 
   _PendingWheelBet({
     required this.idempotencyKey,
@@ -361,7 +363,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
   int _bal = 0, _chip = 10, _hit = -1, _animatedRound = -1, _timeLeft = 20;
   Set<int> _win = {};
   String? _lit, _err, _msg;
-  bool _spinning = false, _busy = false, _panel = false;
+  bool _spinning = false, _panel = false;
   bool _fetching = false; // يمنع تراكم طلبات الحالة لو الخادم بطيء
   bool _betQueueRunning = false;
   int _confirmedRoundId = -1;
@@ -429,37 +431,44 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     }
 
     for (var slot = 0; slot < 8; slot++) {
-      final accepted = _pendingBets
-          .where((bet) =>
-              bet.roundId == s.roundId &&
-              bet.slot == slot &&
-              bet.status == _PendingBetStatus.accepted)
-          .toList();
-      final acceptedTotal =
-          accepted.fold<int>(0, (sum, bet) => sum + bet.amount);
+      final previousMine = _confirmedMine[slot];
+      var newlyObserved = math.max(0, s.myBets[slot] - previousMine).toInt();
+      var matchedAmount = 0;
 
-      if (acceptedTotal == 0) {
-        _confirmedMine[slot] =
-            math.max(_confirmedMine[slot], s.myBets[slot]).toInt();
-        _confirmedPools[slot] =
-            math.max(_confirmedPools[slot], s.pools[slot]).toInt();
-        continue;
+      // A poll can see a committed bet before its POST response arrives.
+      // Mark it as reflected, but keep the request pending until its own ack.
+      for (final bet in _pendingBets.where((item) =>
+          item.roundId == s.roundId &&
+          item.slot == slot &&
+          item.status != _PendingBetStatus.queued &&
+          !item.observedInState)) {
+        if (newlyObserved < bet.amount) break;
+        bet.observedInState = true;
+        newlyObserved -= bet.amount;
+        matchedAmount += bet.amount;
       }
 
-      // لا نزيل الرهانات المقبولة حتى يتضمن مجموع الخادم كامل قيمتها.
-      final expectedMine = _confirmedMine[slot] + acceptedTotal;
-      if (s.myBets[slot] >= expectedMine) {
-        _confirmedMine[slot] =
-            math.max(s.myBets[slot], expectedMine).toInt();
+      if (s.myBets[slot] > previousMine) {
+        _confirmedMine[slot] = s.myBets[slot];
         _confirmedPools[slot] = math.max(
           s.pools[slot],
-          _confirmedPools[slot] + acceptedTotal,
+          _confirmedPools[slot] + matchedAmount,
         ).toInt();
-        _pendingBets.removeWhere((bet) =>
-            bet.roundId == s.roundId &&
-            bet.slot == slot &&
-            bet.status == _PendingBetStatus.accepted);
+      } else if (matchedAmount > 0) {
+        _confirmedPools[slot] = math.max(
+          s.pools[slot],
+          _confirmedPools[slot] + matchedAmount,
+        ).toInt();
       }
+      _confirmedPools[slot] =
+          math.max(_confirmedPools[slot], s.pools[slot]).toInt();
+
+      // The server state itself has acknowledged these accepted amounts.
+      _pendingBets.removeWhere((bet) =>
+          bet.roundId == s.roundId &&
+          bet.slot == slot &&
+          bet.status == _PendingBetStatus.accepted &&
+          bet.observedInState);
     }
   }
 
@@ -468,7 +477,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
     final pendingBySlot = List<int>.generate(
       8,
       (slot) => _pendingBets
-          .where((bet) => bet.roundId == s.roundId && bet.slot == slot)
+          .where((bet) =>
+              bet.roundId == s.roundId &&
+              bet.slot == slot &&
+              !bet.observedInState)
           .fold<int>(0, (sum, bet) => sum + bet.amount),
     );
     final mine = List<int>.generate(
@@ -601,9 +613,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   String _newBetIdempotencyKey(int roundId) {
     final rawUserId = _s?.player?.id ?? 'player';
-    final safeUserId = rawUserId
-        .replaceAll(RegExp(r'[^A-Za-z0-9._:-]'), '_')
-        .substring(0, math.min(24, rawUserId.length));
+    final sanitizedUserId =
+        rawUserId.replaceAll(RegExp(r'[^A-Za-z0-9._:-]'), '_');
+    final safeUserId =
+        sanitizedUserId.substring(0, math.min(24, sanitizedUserId.length));
     final stamp = DateTime.now().microsecondsSinceEpoch;
     final random = _rnd.nextInt(1 << 32).toRadixString(16).padLeft(8, '0');
     return 'fw-$safeUserId-$roundId-$stamp-$random';
@@ -644,7 +657,10 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
 
   bool _isDefinitiveBetRejection(Object error) {
     if (error is! WheelApiException) return false;
-    if (error.code == 'bet_processing') return false;
+    if (error.code == 'bet_processing' ||
+        error.status == 408 ||
+        error.status == 425 ||
+        error.status == 429) return false;
     if (error.status != null && error.status! >= 400 && error.status! < 500) {
       return true;
     }
@@ -687,7 +703,8 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
               _s = confirmed;
             }
             _reconcileOptimisticBets(confirmed);
-            if (_s?.roundId != bet.roundId) {
+            if (_s?.roundId != bet.roundId ||
+                bet.observedInState) {
               _pendingBets.remove(bet);
             }
           });
