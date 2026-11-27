@@ -367,7 +367,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   Animation<double>? _spinAnimation;
   double _spinAngle = 0;
   bool _spinHasResult = false;
-  int _foodTapDebug = -1;
   RoundState? _s;
   int _bal = 0, _chip = 10, _animatedRound = -1, _timeLeft = 20, _popupTimeLeft = 5;
   Set<int> _win = {};
@@ -445,7 +444,11 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     }
     final resultAt = s.resultChosenAt ?? s.bettingEndsAt;
     if (resultAt == null) return s.secondsLeft.clamp(0, 5).toInt();
-    return ((5000 - (now - resultAt)) / 1000).ceil().clamp(0, 5).toInt();
+    final spinEndsAt = resultAt + 5000;
+    if (now < spinEndsAt) {
+      return ((spinEndsAt - now) / 1000).ceil().clamp(1, 5).toInt();
+    }
+    return _popupSecondsLeft(s).clamp(1, 5).toInt();
   }
 
   int _popupSecondsLeft(RoundState s) {
@@ -620,10 +623,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         s.bettingEndsAt ??
         DateTime.now().millisecondsSinceEpoch;
     const spinDurationMs = 5000;
-    final elapsedMs = (DateTime.now().millisecondsSinceEpoch - resultStartedAt)
-        .clamp(0, spinDurationMs);
-    final progress = elapsedMs / spinDurationMs;
-
     // Slot zero (chicken) is the fixed starting pointer. The animation itself
     // travels three complete turns and finishes exactly on the server slot.
     const startAngle = 0.0;
@@ -639,11 +638,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     _spinHasResult = true;
     _panelTimer?.cancel();
 
-    if (progress < 1) {
-      await _spinController.forward(from: progress);
-    } else {
-      _spinController.value = 1;
-    }
+    await _spinController.forward(from: 0);
     if (!mounted) return;
 
     // Preserve the exact animation endpoint; do not snap to a discrete index.
@@ -666,6 +661,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
     setState(() {
+      _spinHasResult = false;
       _panel = true;
       _popupTimeLeft = _popupSecondsLeft(s);
     });
@@ -676,7 +672,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         popupEndsAt - DateTime.now().millisecondsSinceEpoch,
       ).toInt()),
       () {
-        if (mounted) setState(() => _panel = false);
+        if (!mounted) return;
+        setState(() => _panel = false);
+        unawaited(_refreshAfterPopup(s.roundId));
       },
     );
     final resEmoji = s.special == 'salad'
@@ -703,6 +701,14 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     if (parts.isNotEmpty) _say(parts.join('  •  '));
   }
 
+  Future<void> _refreshAfterPopup(int completedRoundId) async {
+    for (var attempt = 0; attempt < 20 && mounted; attempt++) {
+      await _refresh();
+      if (!mounted || _s?.roundId != completedRoundId) return;
+      await Future.delayed(const Duration(milliseconds: 250));
+    }
+  }
+
   String _newBetIdempotencyKey(int roundId) {
     final rawUserId = _s?.player?.id ?? 'player';
     final sanitizedUserId =
@@ -719,11 +725,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   void _onFoodPointerDown(int i) {
     _foodTapTimer?.cancel();
-    if (mounted) setState(() => _foodTapDebug = i);
-    _foodTapTimer = Timer(const Duration(milliseconds: 1200), () {
-      if (mounted) setState(() => _foodTapDebug = -1);
-    });
-    Timer(const Duration(milliseconds: 450), () {
+    _foodTapTimer = Timer(const Duration(milliseconds: 450), () {
       if (mounted) _bet(i);
     });
   }
@@ -1319,9 +1321,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     final slot = kSlots[i];
     final myBet = _displayMyBet(s, i);
     final highlight = _highlightForSlot(spinAngle, i);
-    final win = _win.contains(i), mine = myBet > 0;
     final mx = s.pools.reduce((a, b) => a > b ? a : b);
-    const frac = 0.45; // Fixed fill: never changes with bets or totals.
+    const frac = 0.45;
     const dark = Color(0xFF5A3A00);
     return Material(
       type: MaterialType.transparency,
@@ -1330,120 +1331,101 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         onPointerDown: (_) => _onFoodPointerDown(i),
         child: SizedBox.expand(
           child: Stack(clipBehavior: Clip.none, children: [
-        Container(
-          width: d,
-          height: d,
-          transform: Matrix4.identity()
-            ..scale(win ? 1.12 : 1.0 + 0.12 * highlight),
-          transformAlignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _foodTapDebug == i
-                ? const Color(0xFF39FF68)
-                : const Color(0xFFFFF3C4),
-            border: Border.all(
-                color: _foodTapDebug == i
-                    ? const Color(0xFF087A2B)
-                    : const Color(0xFF8A4B2A),
-                width: 4),
-            boxShadow: win
-                ? [
-                    const BoxShadow(
-                        color: Color(0xFF3DFF7A),
-                        blurRadius: 22,
-                        spreadRadius: 4)
-                  ]
-                : highlight > 0
+            Container(
+              width: d,
+              height: d,
+              transform: Matrix4.identity()
+                ..scale(1.0 + 0.12 * highlight),
+              transformAlignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFFF3C4),
+                border: Border.all(
+                    color: const Color(0xFF8A4B2A), width: 4),
+                boxShadow: highlight > 0
                     ? [
                         BoxShadow(
-                          color: const Color(0xFFFFD400)
+                          color: const Color(0xFFFF0000)
                               .withOpacity(highlight),
                           blurRadius: 22 * highlight,
                           spreadRadius: 4 * highlight,
                         )
                       ]
                     : null,
-          ),
-          child: ClipOval(
-            child: Stack(children: [
-              Positioned.fill(
-                  child: ColoredBox(
-                      color: _foodTapDebug == i
-                          ? const Color(0xFF39FF68)
-                          : win
-                              ? const Color(0xFFBFFFB8)
-                              : const Color(0xFFFFF3C4))),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: FractionallySizedBox(
-                  heightFactor: frac,
-                  widthFactor: 1,
-                  child: ColoredBox(
-                      color: win
-                          ? const Color(0xFF4DE06A)
-                          : const Color(0xFFFFD84D)),
-                ),
               ),
-              Align(
-                alignment: const Alignment(0, -0.42),
-                child: Text('${slot.mult} اضعاف',
-                    style: TextStyle(color: dark, fontSize: d * 0.14)),
-              ),
-              Align(
-                alignment: const Alignment(0, 0.20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('${_fmt(s.pools[i])} 🪙',
-                        maxLines: 1,
-                        softWrap: false,
-                        style: TextStyle(
-                            color: dark,
-                            fontSize: d * 0.15,
-                            fontWeight: FontWeight.bold)),
-                    if (mine) ...[
-                      SizedBox(height: d * 0.025),
-                      Text('🪙 ${_fmt(myBet)}',
-                          maxLines: 1,
-                          softWrap: false,
-                          style: TextStyle(
-                              color: const Color(0xFF1458D4),
-                              fontSize: d * 0.14,
-                              fontWeight: FontWeight.w800)),
-                    ],
-                  ],
-                ),
-              ),
-            ]),
-          ),
-        ),
-        Positioned(
-          top: -d * 0.22,
-          left: 0,
-          right: 0,
-          child: Center(
-              child: Text(slot.emoji, style: TextStyle(fontSize: d * 0.38))),
-        ),
-        if (mx > 0 && s.pools[i] == mx)
-          Positioned(
-            top: -d * 0.1,
-            right: -d * 0.12,
-            child: Transform.rotate(
-              angle: -0.14,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                decoration: BoxDecoration(
-                    color: const Color(0xFFE5251B),
-                    borderRadius: BorderRadius.circular(5)),
-                child: Text('Hot',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: d * 0.15,
-                        fontWeight: FontWeight.w900)),
+              child: ClipOval(
+                child: Stack(children: [
+                  const Positioned.fill(
+                    child: ColoredBox(color: Color(0xFFFFF3C4)),
+                  ),
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: FractionallySizedBox(
+                      heightFactor: frac,
+                      widthFactor: 1,
+                      child: const ColoredBox(color: Color(0xFFFFD84D)),
+                    ),
+                  ),
+                  Align(
+                    alignment: const Alignment(0, -0.42),
+                    child: Text('\${slot.mult} اضعاف',
+                        style: TextStyle(color: dark, fontSize: d * 0.14)),
+                  ),
+                  Align(
+                    alignment: const Alignment(0, 0.20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('\${_fmt(s.pools[i])} 🪙',
+                            maxLines: 1,
+                            softWrap: false,
+                            style: TextStyle(
+                                color: dark,
+                                fontSize: d * 0.15,
+                                fontWeight: FontWeight.bold)),
+                        SizedBox(height: d * 0.025),
+                        Text(_fmt(myBet),
+                            maxLines: 1,
+                            softWrap: false,
+                            style: TextStyle(
+                                color: const Color(0xFF1458D4),
+                                fontSize: d * 0.14,
+                                fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                  ),
+                ]),
               ),
             ),
-          ),
+            Positioned(
+              top: -d * 0.22,
+              left: 0,
+              right: 0,
+              child: Center(
+                  child: Text(slot.emoji,
+                      style: TextStyle(fontSize: d * 0.38))),
+            ),
+            if (mx > 0 && s.pools[i] == mx)
+              Positioned(
+                top: -d * 0.1,
+                right: -d * 0.12,
+                child: Transform.rotate(
+                  angle: -0.14,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 7, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5251B),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text('Hot',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: d * 0.15,
+                            fontWeight: FontWeight.w900)),
+                  ),
+                ),
+              ),
           ]),
         ),
       ),

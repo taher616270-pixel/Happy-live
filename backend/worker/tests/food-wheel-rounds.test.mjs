@@ -60,7 +60,8 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /_popupSecondsLeft\(RoundState s\)/);
   assert.match(ui, /duration: const Duration\(milliseconds: 5000\)/);
   assert.match(ui, /class _TopTopSpinCurve extends Curve/);
-  assert.match(ui, /_spinController\.forward\(from: progress\)/);
+  assert.match(ui, /_spinController\.forward\(from: 0\)/);
+  assert.doesNotMatch(ui, /_spinController\.forward\(from: progress\)/);
   assert.match(ui, /3 \* math\.pi \* 2/);
   assert.match(ui, /Tween<double>\(begin: startAngle, end: endAngle\)/);
   assert.match(ui, /AnimatedBuilder\(\s*animation: _spinController/);
@@ -94,4 +95,22 @@ test("web client uses server round end time and does not create rounds from taps
   assert.ok(topBar.indexOf("_openLog") < topBar.indexOf("_openSettings"));
   assert.ok(topBar.indexOf("_openSettings") < topBar.indexOf("_modeToggle()"));
   assert.doesNotMatch(ui, /food-wheel-state-/);
+});
+
+
+test("Food Wheel spin glow is red only, bet circles stay neutral, and amount rows never shift", () => {
+  const wheel = ui.slice(ui.indexOf("Widget _slot("), ui.indexOf("Widget _special("));
+  assert.match(wheel, /Color\(0xFFFF0000\)/);
+  assert.doesNotMatch(wheel, /0xFF3DFF7A|0xFF4DE06A|0xFF39FF68|0xFFBFFFB8|_foodTapDebug/);
+  assert.match(wheel, /Text\('\$\{_fmt\(s\.pools\[i\]\)\} 🪙'/);
+  assert.match(wheel, /SizedBox\(height: d \* 0\.025\)/);
+  assert.match(wheel, /Text\(_fmt\(myBet\)/);
+  assert.doesNotMatch(wheel, /🪙 \$\{_fmt\(myBet\)\}/);
+});
+
+test("Food Wheel starts the full spin at chicken and immediately refreshes after popup expiry", () => {
+  assert.match(ui, /await _spinController\.forward\(from: 0\)/);
+  assert.match(ui, /unawaited\(_refreshAfterPopup\(s\.roundId\)\)/);
+  assert.match(ui, /for \(var attempt = 0; attempt < 20 && mounted; attempt\+\+\)/);
+  assert.match(ui, /return _popupSecondsLeft\(s\)\.clamp\(1, 5\)\.toInt\(\)/);
 });
