@@ -292,6 +292,7 @@ export async function handleGamesApiRequest(
         if (!round) throw new Error("food_wheel_round_missing");
 
         const [poolRows, myRows, winnerRows, recentRows, playersRow, payoutRow, wallet, profile] = await Promise.all([
+          // Each accepted tap is stored as its own bet row; totals must always be SUMs.
           db.prepare(
             "SELECT slot, SUM(stake) AS amount FROM food_wheel_bets WHERE round_id = ? AND status IN ('accepted', 'settled') GROUP BY slot"
           ).bind(round.id).all<{ slot: number; amount: number }>(),
@@ -424,8 +425,46 @@ export async function handleGamesApiRequest(
       const globalRound = await db.prepare(
         "SELECT id, round_no AS roundNo, status, betting_ends_at AS bettingEndsAt FROM food_wheel_rounds WHERE round_no = ? LIMIT 1"
       ).bind(roundId).first<{ id: string; roundNo: number; status: string; bettingEndsAt: string }>();
-      if (!globalRound || globalRound.status !== "betting" || Date.now() >= Date.parse(globalRound.bettingEndsAt)) {
-        return reply({ error: "round_closed" }, 409, origin, env);
+      if (!globalRound) {
+        return reply({
+          error: "round_not_found",
+          rejected: true,
+          reason: "round_not_found"
+        }, 404, origin, env);
+      }
+
+      // Check the stable request key before checking the round clock. A retry
+      // after a lost response must acknowledge the original accepted bet.
+      const priorGlobalBet = await db.prepare(
+        "SELECT fb.slot, fb.stake, fb.status, gb.status AS gameBetStatus FROM food_wheel_bets fb INNER JOIN game_bets gb ON gb.id = fb.game_bet_id WHERE fb.round_id = ? AND fb.user_id = ? AND gb.idempotency_key = ? LIMIT 1"
+      ).bind(globalRound.id, user.id, idempotencyKey).first<{
+        slot: number; stake: number; status: string; gameBetStatus: string;
+      }>();
+      if (priorGlobalBet) {
+        if (priorGlobalBet.stake !== amount || priorGlobalBet.slot !== slot) {
+          return reply({
+            error: "idempotency_key_reused",
+            rejected: true,
+            reason: "idempotency_key_reused"
+          }, 409, origin, env);
+        }
+        if (priorGlobalBet.status === "accepted" || priorGlobalBet.status === "settled" ||
+            priorGlobalBet.gameBetStatus === "accepted" || priorGlobalBet.gameBetStatus === "settled") {
+          return reply(await readGlobalState(), 200, origin, env);
+        }
+        return reply({
+          error: "bet_processing",
+          retryable: true,
+          reason: "bet_is_still_processing"
+        }, 409, origin, env);
+      }
+
+      if (globalRound.status !== "betting" || Date.now() >= Date.parse(globalRound.bettingEndsAt)) {
+        return reply({
+          error: "round_closed",
+          rejected: true,
+          reason: "betting_window_closed"
+        }, 409, origin, env);
       }
 
       const financialKey = "food-wheel-global-" + globalRound.roundNo;
@@ -436,7 +475,11 @@ export async function handleGamesApiRequest(
         "SELECT id, status FROM game_rounds WHERE game_id = ? AND user_id = ? AND idempotency_key = ? LIMIT 1"
       ).bind(foodWheelGameId, user.id, financialKey).first<{ id: string; status: string }>();
       if (!financialRound || financialRound.status !== "open") {
-        return reply({ error: "round_closed" }, 409, origin, env);
+        return reply({
+          error: "round_closed",
+          rejected: true,
+          reason: "financial_round_closed"
+        }, 409, origin, env);
       }
 
       const selectionJson = JSON.stringify({ slot });
@@ -447,12 +490,20 @@ export async function handleGamesApiRequest(
       }>();
       if (prior) {
         if (prior.stake !== amount || prior.selectionJson !== selectionJson) {
-          return reply({ error: "idempotency_key_reused" }, 409, origin, env);
+          return reply({
+            error: "idempotency_key_reused",
+            rejected: true,
+            reason: "idempotency_key_reused"
+          }, 409, origin, env);
         }
         if (prior.status === "accepted" || prior.status === "settled") {
           return reply(await readGlobalState(), 200, origin, env);
         }
-        return reply({ error: "bet_processing" }, 409, origin, env);
+        return reply({
+          error: "bet_processing",
+          retryable: true,
+          reason: "bet_is_still_processing"
+        }, 409, origin, env);
       }
 
       const betId = crypto.randomUUID();
@@ -494,10 +545,24 @@ export async function handleGamesApiRequest(
           "SELECT status, betting_ends_at AS bettingEndsAt FROM food_wheel_rounds WHERE id = ? LIMIT 1"
         ).bind(globalRound.id).first<{ status: string; bettingEndsAt: string }>();
         if (!latest || latest.status !== "betting" || Date.now() >= Date.parse(latest.bettingEndsAt)) {
-          return reply({ error: "round_closed" }, 409, origin, env);
+          return reply({
+            error: "round_closed",
+            rejected: true,
+            reason: "betting_window_closed"
+          }, 409, origin, env);
         }
-        if ((wallet?.balance ?? 0) < amount) return reply({ error: "insufficient_balance" }, 409, origin, env);
-        return reply({ error: "bet_processing" }, 409, origin, env);
+        if ((wallet?.balance ?? 0) < amount) {
+          return reply({
+            error: "insufficient_balance",
+            rejected: true,
+            reason: "insufficient_balance"
+          }, 409, origin, env);
+        }
+        return reply({
+          error: "bet_processing",
+          retryable: true,
+          reason: "bet_is_still_processing"
+        }, 409, origin, env);
       }
       return reply(await readGlobalState(), 200, origin, env);
     }
