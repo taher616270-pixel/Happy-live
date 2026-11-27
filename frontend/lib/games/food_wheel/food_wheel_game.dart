@@ -481,7 +481,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         ).toInt();
       } else if (matchedAmount > 0) {
         _confirmedPools[slot] = math.max(
-          s.pools[slot],
+          serverPool,
           _confirmedPools[slot] + matchedAmount,
         ).toInt();
       }
@@ -707,7 +707,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         return;
       }
 
-      // Start the server request, then save locally without waiting for its reply.
+      // Save the pending bet locally before starting the server request.
       _showFoodFeedback(i, 'STEP2 calling server');
       if (_confirmedRoundId != current.roundId) _startOptimisticRound(current);
       final bet = _PendingWheelBet(
@@ -725,7 +725,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
       unawaited(_sendBet(bet));
     } catch (error, stackTrace) {
       if (mounted) {
-        _showFoodFeedback(i, 'EXCEPTION: $error\\n$stackTrace');
+        _showFoodFeedback(i, 'EXCEPTION: $error\n$stackTrace');
       }
     }
   }
