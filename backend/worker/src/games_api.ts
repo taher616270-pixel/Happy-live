@@ -350,7 +350,7 @@ export async function handleGamesApiRequest(
           round_end_at: endAt,
           betting_ends_at: bettingEndAt,
           result_chosen_at: resultChosenAt,
-          seconds_left: Math.max(0, Math.min(30, Math.ceil((endAt - now) / 1000))),
+          seconds_left: Math.max(0, Math.min(31, Math.ceil((endAt - now) / 1000))),
           betting_seconds_left: Math.max(0, Math.min(20, Math.ceil((bettingEndAt - now) / 1000))),
           phase: round.status === "betting" ? "betting" : "result",
           pools,
