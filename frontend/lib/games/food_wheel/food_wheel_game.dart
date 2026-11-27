@@ -455,7 +455,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       final cleanupAt = popupId == null ? null : _roundCleanupAtMs[popupId];
       final popupNext = cleanupAt == null
           ? (current == null ? _popupTimeLeft : _monotonicPopupSecond(current))
-          : ((cleanupAt - now) / 1000).ceil().clamp(0, 4).toInt();
+          : ((cleanupAt - now) / 1000).ceil().clamp(0, 5).toInt();
       final popupExpired = popupId != null && cleanupAt != null && now >= cleanupAt;
       final clearMessage = _msg != null && now >= _msgExpiresAtMs;
       final clearToast = _roundClosedToast != null && now >= _toastExpiresAtMs;
@@ -537,8 +537,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   int _popupSecondsLeft(RoundState s) {
     if (s.phase == RoundPhase.betting) return 4;
     final popupEndAt = s.roundEndAt ?? (_resultStartAt(s) + 8000);
-    return (((popupEndAt - _serverNowMs()) / 1000).ceil() + 1)
-        .clamp(1, 4)
+    return (((popupEndAt - _serverNowMs()) / 1000).ceil())
+        .clamp(1, 5)
         .toInt();
   }
 
@@ -881,8 +881,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       _popupRoundState = s;
       _popupRoundId = s.roundId;
       _roundCleanupAtMs[s.roundId] = DateTime.now().millisecondsSinceEpoch + 5000;
-      _popupTimeLeft = 4;
-      _popupTimeLeftNotifier.value = 4;
+      _popupTimeLeft = 5;
+      _popupTimeLeftNotifier.value = 5;
     });
     final resEmoji = s.special == 'salad'
         ? '🥗'
@@ -1261,7 +1261,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
                 ),
                 child: ValueListenableBuilder<int>(
                   valueListenable: _popupTimeLeftNotifier,
-                  builder: (context, seconds, _) => Text('(${seconds.clamp(1, 4)}) ثانية',
+                  builder: (context, seconds, _) => Text('(${seconds.clamp(1, 5)}) ثانية',
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
