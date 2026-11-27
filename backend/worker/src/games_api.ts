@@ -284,18 +284,14 @@ export async function handleGamesApiRequest(
 
       const readGlobalState = async () => {
         const round = await db.prepare(
-          "SELECT id, round_no AS roundNo, status, started_at AS startedAt, betting_ends_at AS bettingEndsAt, ends_at AS endsAt, result_slot AS resultSlot, result_special AS resultSpecial, result_chosen_at AS resultChosenAt FROM food_wheel_rounds WHERE status IN ('betting', 'result') ORDER BY round_no DESC LIMIT 1"
+          "SELECT id, round_no AS roundNo, status, started_at AS startedAt, betting_ends_at AS bettingEndsAt, ends_at AS endsAt, result_slot AS resultSlot, result_special AS resultSpecial, totals_json AS totalsJson, result_chosen_at AS resultChosenAt FROM food_wheel_rounds WHERE status IN ('betting', 'result') ORDER BY round_no DESC LIMIT 1"
         ).first<{
           id: string; roundNo: number; status: string; startedAt: string;
-          bettingEndsAt: string; endsAt: string; resultSlot: number | null; resultSpecial: "pizza" | "salad" | null; resultChosenAt: string | null;
+          bettingEndsAt: string; endsAt: string; resultSlot: number | null; resultSpecial: "pizza" | "salad" | null; totalsJson: string; resultChosenAt: string | null;
         }>();
         if (!round) throw new Error("food_wheel_round_missing");
 
-        const [poolRows, myRows, winnerRows, recentRows, playersRow, payoutRow, wallet, profile] = await Promise.all([
-          // Each accepted tap is stored as its own bet row; totals must always be SUMs.
-          db.prepare(
-            "SELECT slot, SUM(stake) AS amount FROM food_wheel_bets WHERE round_id = ? AND status IN ('accepted', 'settled') GROUP BY slot"
-          ).bind(round.id).all<{ slot: number; amount: number }>(),
+        const [myRows, winnerRows, recentRows, playersRow, payoutRow, wallet, profile] = await Promise.all([
           db.prepare(
             "SELECT slot, SUM(stake) AS amount FROM food_wheel_bets WHERE round_id = ? AND user_id = ? AND status IN ('accepted', 'settled') GROUP BY slot"
           ).bind(round.id, user.id).all<{ slot: number; amount: number }>(),
@@ -320,9 +316,11 @@ export async function handleGamesApiRequest(
 
         const pools = Array(8).fill(0) as number[];
         const myBets = Array(8).fill(0) as number[];
-        const displaySlotByStoredSlot = [0, 2, 3, 4, 5, 6, 7, 1] as const;
-        for (const row of poolRows.results ?? []) {
-          if (row.slot >= 0 && row.slot < 8) pools[displaySlotByStoredSlot[row.slot]] = Number(row.amount) || 0;
+        const storedTotals = JSON.parse(round.totalsJson || "{}") as Record<string, unknown>;
+        const orderedKeys = ["chicken", "corn", "tomato", "goat", "chili", "fish", "carrot", "shrimp"] as const;
+        for (let slot = 0; slot < orderedKeys.length; slot++) {
+          const value = storedTotals[orderedKeys[slot]];
+          pools[slot] = typeof value === "number" && Number.isFinite(value) ? value : 0;
         }
         for (const row of myRows.results ?? []) {
           if (row.slot >= 0 && row.slot < 8) myBets[displaySlotByStoredSlot[row.slot]] = Number(row.amount) || 0;
@@ -557,6 +555,9 @@ export async function handleGamesApiRequest(
         db.prepare(
           "UPDATE food_wheel_bets SET status = 'accepted' WHERE id = ? AND status = 'processing' AND EXISTS (SELECT 1 FROM game_bets WHERE id = ? AND status = 'accepted')"
         ).bind(wheelBetId, betId),
+        db.prepare(
+          "UPDATE food_wheel_rounds SET totals_json = json_set(totals_json, '$.' || ?, COALESCE(json_extract(totals_json, '$.' || ?), 0) + ?) WHERE id = ? AND EXISTS (SELECT 1 FROM food_wheel_bets WHERE id = ? AND status = 'accepted')"
+        ).bind(["chicken", "corn", "tomato", "goat", "chili", "fish", "carrot", "shrimp"][slot], ["chicken", "corn", "tomato", "goat", "chili", "fish", "carrot", "shrimp"][slot], amount, globalRound.id, wheelBetId),
         db.prepare(
           "UPDATE game_rounds SET total_stake = total_stake + ? WHERE id = ? AND status = 'open' AND EXISTS (SELECT 1 FROM food_wheel_bets WHERE id = ? AND status = 'accepted')"
         ).bind(amount, financialRound.id, wheelBetId),
