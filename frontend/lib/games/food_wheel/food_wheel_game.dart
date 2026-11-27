@@ -337,6 +337,44 @@ String _fmt(int n) {
 // ---------- شاشة اللعبة ----------
 
 // ---------- شاشة اللعبة ----------
+class _SpinAccelerationCurve extends Curve {
+  const _SpinAccelerationCurve();
+
+  static const double _slowPart = 0.6;
+  static const double _fastPart = 0.2;
+  static const double _initialSpeed = 0.05;
+  static const double _maxSpeed = 3.0;
+  static const double _firstArea =
+      _slowPart * (_initialSpeed + (_maxSpeed - _initialSpeed) * 0.5);
+  static const double _middleArea = _fastPart * _maxSpeed;
+  static const double _totalArea =
+      _firstArea + _middleArea + _fastPart * _maxSpeed * 0.5;
+
+  @override
+  double transformInternal(double t) {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    double area;
+    if (t <= _slowPart) {
+      final u = t / _slowPart;
+      area = _slowPart *
+          (_initialSpeed * u +
+              (_maxSpeed - _initialSpeed) *
+                  (u * u * u - 0.5 * u * u * u * u));
+    } else if (t <= _slowPart + _fastPart) {
+      area = _firstArea + _maxSpeed * (t - _slowPart);
+    } else {
+      final u = (t - _slowPart - _fastPart) / _fastPart;
+      area = _firstArea +
+          _middleArea +
+          _maxSpeed *
+              _fastPart *
+              (u - u * u * u + 0.5 * u * u * u * u);
+    }
+    return (area / _totalArea).clamp(0.0, 1.0);
+  }
+}
+
 class FoodWheelGame extends StatefulWidget {
   final FoodWheelApi api;
   const FoodWheelGame({super.key, required this.api});
@@ -762,15 +800,16 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     if (!_spinHasResult) return _spinAngle;
     final p = progress.clamp(0.0, 1.0);
     if (p <= 0.8) {
-      final u = p / 0.8;
-      return _spinBaseAngle * u * u;
+      // First 4 seconds: gradual acceleration, a short fastest section,
+      // then deceleration as the wheel approaches its landing window.
+      return _spinBaseAngle * const _SpinAccelerationCurve().transform(p / 0.8);
     }
     if (!_spinTargetKnown) return _spinBaseAngle;
     final clockwiseSteps = (_spinTargetSlot - 7 + 8) % 8;
     final steps = clockwiseSteps == 0 ? 8 : clockwiseSteps;
     final landingArc = steps * _spinStep;
     final u = ((p - 0.8) / 0.2).clamp(0.0, 1.0);
-    final eased = 1 - math.pow(1 - u, 3).toDouble();
+    final eased = u * u * (3 - 2 * u);
     return _spinBaseAngle + landingArc * eased;
   }
 
