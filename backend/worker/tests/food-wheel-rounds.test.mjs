@@ -73,7 +73,7 @@ test("web client uses server round end time and does not create rounds from taps
   assert.doesNotMatch(ui, /await Future\.delayed\(const Duration\(seconds: 1\)\)/);
   assert.doesNotMatch(ui, /_panelTimer|_refreshAfterPopup/);
   assert.match(ui, /popupEndsAt = s\.roundEndAt \?\? \(resultAt \+ 10000\)/);
-  assert.match(ui, /const frac = 0\.45/);
+  assert.match(ui, /heightFactor: 0\.45/);
   assert.doesNotMatch(ui, /AnimatedContainer\(\s*duration: const Duration\(milliseconds: 120\)/);
   assert.match(ui, /الفائز الأكبر لهذه الجولة/);
   assert.match(ui, /_popupTimeLeft/);
