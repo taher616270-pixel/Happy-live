@@ -156,7 +156,7 @@ test("Food Wheel starts the full spin at chicken and immediately refreshes after
   assert.match(ui, /popupEndAt = s\.roundEndAt \?\? \(_resultStartAt\(s\) \+ 10000\)/);
   assert.match(ui, /_isResultPhase\(s\) \? 'النتيجة القادمة' : 'وقت الرهان'/);
   assert.ok(ui.includes("seconds.clamp(1, 5)"));
-  assert.match(ui, /_roundCleanupAtMs\[s\.roundId\] = DateTime\.now\(\)\.millisecondsSinceEpoch \+ 5000/);
+  assert.ok(ui.includes("_roundCleanupAtMs[s.roundId] = s.roundEndAt"));
   assert.match(ui, /final popupExpired = popupId != null && cleanupAt != null && now >= cleanupAt/);
   assert.match(ui, /_serverTotalsByRound\.remove\(popupId\)/);
   assert.match(ui, /_resultOverlay\(_popupRoundState \?\? s\)/);
