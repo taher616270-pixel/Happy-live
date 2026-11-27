@@ -316,8 +316,16 @@ class _LogEntry {
 
 String _fmt(int n) {
   if (n >= 1000000) {
-    final value = (n / 1000000).toStringAsFixed(3);
-    return '${value.replaceFirst(RegExp(r'0+
+    var value = (n / 1000000).toStringAsFixed(3);
+    while (value.contains('.') && value.endsWith('0')) {
+      value = value.substring(0, value.length - 1);
+    }
+    if (value.endsWith('.')) value = value.substring(0, value.length - 1);
+    return value + 'M';
+  }
+  if (n >= 1000) return (n / 1000).toStringAsFixed(1) + 'K';
+  return n.toString();
+}
 
 // ---------- شاشة اللعبة ----------
 class FoodWheelGame extends StatefulWidget {
