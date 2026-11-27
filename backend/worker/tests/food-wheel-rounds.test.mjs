@@ -81,14 +81,25 @@ test("web client uses server round end time and does not create rounds from taps
   assert.match(ui, /_serverClockOffsetMs = s\.serverTime!/);
   assert.match(ui, /_popupSecondsLeft\(RoundState s\)/);
   assert.match(ui, /duration: const Duration\(milliseconds: 5000\)/);
-  assert.match(ui, /class _TopTopSpinCurve extends Curve/);
-  assert.match(ui, /_spinController\.value = elapsedMs / spinDurationMs/);
+  assert.match(ui, /static const int _spinDurationMs = 5000/);
+  assert.match(ui, /static const double _spinBaseAngle/);
+  assert.match(ui, /if \(p <= 0\.8\)/);
+  assert.match(ui, /if \(!_spinTargetKnown\) return _spinBaseAngle/);
+  assert.match(ui, /final eased = 1 - math\.pow\(1 - u, 3\)/);
+  assert.match(ui, /_spinTargetKnown = true/);
+  assert.match(ui, /_spinFinalizedRoundId == s\.roundId/);
+  assert.doesNotMatch(ui, /_spinAnimation|_TopTopSpinCurve|_msgTimer|_toastTimer/);
+  assert.equal((ui.match(/Timer\.periodic\(/g) || []).length, 1);
+  assert.match(ui, /_sameDisplayState\(RoundState a, RoundState b\)/);
+  assert.match(api, /ORDER BY fb\.created_at DESC, fb\.id DESC LIMIT 12/);
+
+
   assert.match(ui, /void _startProvisionalSpin\(RoundState s\)/);
   assert.match(ui, /_isResultPhase\(current\) && _spinStartedRoundId != current\.roundId/);
-  assert.match(ui, /final beginAngle = denominator > 0\.0001/);
-  assert.match(ui, /await _spinController\.forward\(\)/);
+
+
   assert.match(ui, /3 \* math\.pi \* 2/);
-  assert.match(ui, /Tween<double>\(begin: 0, end: endAngle\)/);
+
   assert.match(ui, /AnimatedBuilder\(\s*animation: _spinController/);
   assert.match(ui, /_highlightForSlot\(spinAngle, i\)/);
   assert.doesNotMatch(ui, /currentIndex\+\+|step\+\+ % kSlots\.length|_hit = target/);
@@ -148,8 +159,8 @@ test("Food Wheel spin paints only the lower half red with a thick red border", (
 });
 
 test("Food Wheel starts the full spin at chicken and immediately refreshes after popup expiry", () => {
-  assert.match(ui, /_spinController\.value = elapsedMs / spinDurationMs/);
-  assert.match(ui, /await _spinController\.forward\(\)/);
+
+
   assert.match(ui, /return 0;/);
   assert.match(ui, /popupEndAt = s\.roundEndAt \?\? \(_resultStartAt\(s\) \+ 8000\)/);
   assert.match(ui, /_isResultPhase\(s\) \? 'النتيجة القادمة' : 'وقت الرهان'/);
