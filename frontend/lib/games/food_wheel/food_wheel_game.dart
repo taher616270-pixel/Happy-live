@@ -219,7 +219,7 @@ class RoundState {
 
   const RoundState({
     required this.roundId,
-    required thi_timeLeft,
+    required this.secondsLeft,
     required this.phase,
     required this.pools,
     required this.myBets,
@@ -574,7 +574,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
           Positioned(
             left: 0,
             top: 0,
-            child: Text('(${s.secondsLeft}) ثانية',
+            child: Text('($_timeLeft) ثانية',
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 15,
@@ -873,7 +873,7 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                       border: Border.all(color: const Color(0xFFB36B0F), width: 2),
                     ),
                     child: Text(
-                        s.phase == RoundPhase.betting ? '${s.secondsLeft}s' : '🎡',
+                        s.phase == RoundPhase.betting ? '${_timeLeft}s' : '🎡',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: d * 0.26,
