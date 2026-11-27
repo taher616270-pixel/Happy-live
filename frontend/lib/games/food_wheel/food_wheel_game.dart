@@ -1186,30 +1186,6 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
         onPointerDown: (_) => _onFoodPointerDown(i),
         child: SizedBox.expand(
           child: Stack(clipBehavior: Clip.none, children: [
-        if (_foodFeedbackSlot == i && _foodFeedback != null)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xF01B2638),
-                  borderRadius: BorderRadius.circular(d / 2),
-                  border: Border.all(color: const Color(0xFFFFD34E), width: 2),
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: Text(
-                      _foodFeedback!,
-                      textAlign: TextAlign.center,
-                      maxLines: 5,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, height: 1.15),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           width: d,
@@ -1310,6 +1286,30 @@ class _FoodWheelGameState extends State<FoodWheelGame> {
                         color: Colors.white,
                         fontSize: d * 0.15,
                         fontWeight: FontWeight.w900)),
+              ),
+            ),
+          ),
+        if (_foodFeedbackSlot == i && _foodFeedback != null)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xF01B2638),
+                  borderRadius: BorderRadius.circular(d / 2),
+                  border: Border.all(color: const Color(0xFFFFD34E), width: 2),
+                ),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(5),
+                    child: Text(
+                      _foodFeedback!,
+                      textAlign: TextAlign.center,
+                      maxLines: 5,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, height: 1.15),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
