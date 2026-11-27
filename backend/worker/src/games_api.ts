@@ -405,14 +405,21 @@ export async function handleGamesApiRequest(
       }
 
       if (isFoodWheelState || isFoodWheelBet) {
-        if (!env.FOOD_WHEEL_ROUNDS) {
-          return reply({ error: "food_wheel_scheduler_unavailable" }, 503, origin, env);
+        // Normal state polls do not enter the single Durable Object queue.
+        // The alarm owns round progression; only bootstrap a round if none exists.
+        const activeRound = await db.prepare(
+          "SELECT 1 AS active FROM food_wheel_rounds WHERE status IN ('betting', 'result') LIMIT 1"
+        ).first<{ active: number }>();
+        if (!activeRound) {
+          if (!env.FOOD_WHEEL_ROUNDS) {
+            return reply({ error: "food_wheel_scheduler_unavailable" }, 503, origin, env);
+          }
+          const scheduler = env.FOOD_WHEEL_ROUNDS.get(
+            env.FOOD_WHEEL_ROUNDS.idFromName("food-wheel-global")
+          );
+          const ensured = await scheduler.fetch("https://food-wheel.internal/ensure", { method: "POST" });
+          if (!ensured.ok) return reply({ error: "food_wheel_scheduler_unavailable" }, 503, origin, env);
         }
-        const scheduler = env.FOOD_WHEEL_ROUNDS.get(
-          env.FOOD_WHEEL_ROUNDS.idFromName("food-wheel-global")
-        );
-        const ensured = await scheduler.fetch("https://food-wheel.internal/ensure", { method: "POST" });
-        if (!ensured.ok) return reply({ error: "food_wheel_scheduler_unavailable" }, 503, origin, env);
       }
 
       if (isFoodWheelState) {
