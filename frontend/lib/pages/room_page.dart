@@ -3496,6 +3496,7 @@ class _RoomPageState extends State<RoomPage> {
           : null,
       onUpgradeRoom: upgradeRoom,
       onOpenGifts: _openRoomGiftPicker,
+      onOpenGames: () => _openRoomGames(context),
       onOpenCannonRoom: _openCannonBannerRoom,
       onRoomSettingsChanged: _refreshSeats,
       onRoomCoverChanged: _applyRoomCoverUpdate,
