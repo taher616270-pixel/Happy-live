@@ -99,7 +99,7 @@ export class FoodWheelRoundsHub extends DurableObject<FoodWheelEnv> {
       ).bind(resultSlot, now, round.id),
       db.prepare(
         "UPDATE food_wheel_bets SET payout = CASE slot WHEN 0 THEN stake * 45 WHEN 1 THEN stake * 5 WHEN 2 THEN stake * 15 WHEN 3 THEN stake * 5 WHEN 4 THEN stake * 25 WHEN 5 THEN stake * 5 WHEN 6 THEN stake * 10 ELSE stake * 5 END WHERE round_id = ? AND status = 'accepted' AND slot = ?"
-      ).bind(round.id, resultSlot, round.id, resultSlot),
+      ).bind(round.id, resultSlot),
       db.prepare(
         "UPDATE game_bets SET payout = COALESCE((SELECT fb.payout FROM food_wheel_bets fb WHERE fb.game_bet_id = game_bets.id), 0) WHERE status = 'accepted' AND id IN (SELECT game_bet_id FROM food_wheel_bets WHERE round_id = ? AND status = 'accepted')"
       ).bind(round.id)
