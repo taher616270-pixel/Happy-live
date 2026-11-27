@@ -98,14 +98,18 @@ test("web client uses server round end time and does not create rounds from taps
 });
 
 
-test("Food Wheel spin glow is red only, bet circles stay neutral, and amount rows never shift", () => {
+test("Food Wheel circles render three fixed English-only rows without literal template syntax", () => {
   const wheel = ui.slice(ui.indexOf("Widget _slot("), ui.indexOf("Widget _special("));
   assert.match(wheel, /Color\(0xFFFF0000\)/);
   assert.doesNotMatch(wheel, /0xFF3DFF7A|0xFF4DE06A|0xFF39FF68|0xFFBFFFB8|_foodTapDebug/);
-  assert.match(wheel, /Text\('\$\{_fmt\(s\.pools\[i\]\)\} 🪙'/);
-  assert.match(wheel, /SizedBox\(height: d \* 0\.025\)/);
-  assert.match(wheel, /Text\(_fmt\(myBet\)/);
-  assert.doesNotMatch(wheel, /🪙 \$\{_fmt\(myBet\)\}/);
+  assert.match(wheel, /Text\('x\$\{slot\.mult\}'/);
+  assert.match(wheel, /Text\('\$\{s\.pools\[i\]\} 🪙'/);
+  assert.match(wheel, /Text\('\$myBet'/);
+  assert.match(wheel, /Alignment\(0, -0\.58\)/);
+  assert.match(wheel, /alignment: Alignment\.center/);
+  assert.match(wheel, /Alignment\(0, 0\.58\)/);
+  assert.doesNotMatch(wheel, /\\\$\\\{|\{slot\.mult\}|\{_fmt|اضعاف|أضعاف/);
+  assert.doesNotMatch(wheel, /_fmt\(s\.pools|_fmt\(myBet/);
 });
 
 test("Food Wheel starts the full spin at chicken and immediately refreshes after popup expiry", () => {

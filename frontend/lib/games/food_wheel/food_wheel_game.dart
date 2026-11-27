@@ -1367,32 +1367,34 @@ class _FoodWheelGameState extends State<FoodWheelGame>
                     ),
                   ),
                   Align(
-                    alignment: const Alignment(0, -0.42),
-                    child: Text('\${slot.mult} اضعاف',
-                        style: TextStyle(color: dark, fontSize: d * 0.14)),
+                    alignment: const Alignment(0, -0.58),
+                    child: Text('x${slot.mult}',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                            color: dark,
+                            fontSize: d * 0.15,
+                            fontWeight: FontWeight.w800)),
                   ),
                   Align(
-                    alignment: const Alignment(0, 0.20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('\${_fmt(s.pools[i])} 🪙',
-                            maxLines: 1,
-                            softWrap: false,
-                            style: TextStyle(
-                                color: dark,
-                                fontSize: d * 0.15,
-                                fontWeight: FontWeight.bold)),
-                        SizedBox(height: d * 0.025),
-                        Text(_fmt(myBet),
-                            maxLines: 1,
-                            softWrap: false,
-                            style: TextStyle(
-                                color: const Color(0xFF1458D4),
-                                fontSize: d * 0.14,
-                                fontWeight: FontWeight.w800)),
-                      ],
-                    ),
+                    alignment: Alignment.center,
+                    child: Text('${s.pools[i]} 🪙',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                            color: dark,
+                            fontSize: d * 0.17,
+                            fontWeight: FontWeight.bold)),
+                  ),
+                  Align(
+                    alignment: const Alignment(0, 0.58),
+                    child: Text('$myBet',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                            color: const Color(0xFF1458D4),
+                            fontSize: d * 0.15,
+                            fontWeight: FontWeight.w800)),
                   ),
                 ]),
               ),
