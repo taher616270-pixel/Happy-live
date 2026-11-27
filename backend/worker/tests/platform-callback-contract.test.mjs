@@ -74,8 +74,8 @@ test("Happy Food Wheel can verify an active Happy Live game session without expo
   assert.ok(callback.includes('"/v1/platform/game-session/verify"'));
   assert.match(callback, /happyFoodWheelCredential\(db,request,appId\)/);
   assert.match(callback, /game_session_app_bindings/);
-  assert.match(callback, /app\.revoked_at IS NULL AND app\.expires_at>\?/);
-  assert.match(callback, /s\.revoked_at IS NULL AND s\.expires_at>\?/);
+  assert.match(callback, /app\.revoked_at IS NULL AND julianday\(app\.expires_at\)>julianday\(\?\)/);
+  assert.match(callback, /s\.revoked_at IS NULL AND julianday\(s\.expires_at\)>julianday\(\?\)/);
   assert.match(callback, /lifecycle\.status='active'/);
   assert.match(callback, /parentOrigin !== "https:\/\/happy-live\.pages\.dev"/);
   assert.match(callback, /game_origin AS gameOrigin/);
