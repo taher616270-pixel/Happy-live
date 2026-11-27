@@ -284,10 +284,10 @@ export async function handleGamesApiRequest(
 
       const readGlobalState = async () => {
         const round = await db.prepare(
-          "SELECT id, round_no AS roundNo, status, started_at AS startedAt, betting_ends_at AS bettingEndsAt, ends_at AS endsAt, result_slot AS resultSlot FROM food_wheel_rounds WHERE status IN ('betting', 'result') ORDER BY round_no DESC LIMIT 1"
+          "SELECT id, round_no AS roundNo, status, started_at AS startedAt, betting_ends_at AS bettingEndsAt, ends_at AS endsAt, result_slot AS resultSlot, result_chosen_at AS resultChosenAt FROM food_wheel_rounds WHERE status IN ('betting', 'result') ORDER BY round_no DESC LIMIT 1"
         ).first<{
           id: string; roundNo: number; status: string; startedAt: string;
-          bettingEndsAt: string; endsAt: string; resultSlot: number | null;
+          bettingEndsAt: string; endsAt: string; resultSlot: number | null; resultChosenAt: string | null;
         }>();
         if (!round) throw new Error("food_wheel_round_missing");
 
@@ -329,6 +329,7 @@ export async function handleGamesApiRequest(
         const now = Date.now();
         const endAt = Date.parse(round.endsAt);
         const bettingEndAt = Date.parse(round.bettingEndsAt);
+        const resultChosenAt = round.resultChosenAt ? Date.parse(round.resultChosenAt) : null;
         const topWinners = (winnerRows.results ?? []).map((row) => ({
           name: row.name,
           avatar: row.avatar,
@@ -348,8 +349,9 @@ export async function handleGamesApiRequest(
           round_uuid: round.id,
           round_end_at: endAt,
           betting_ends_at: bettingEndAt,
-          seconds_left: Math.max(0, Math.min(20, Math.ceil((endAt - now) / 1000))),
-          betting_seconds_left: Math.max(0, Math.min(15, Math.ceil((bettingEndAt - now) / 1000))),
+          result_chosen_at: resultChosenAt,
+          seconds_left: Math.max(0, Math.min(30, Math.ceil((endAt - now) / 1000))),
+          betting_seconds_left: Math.max(0, Math.min(20, Math.ceil((bettingEndAt - now) / 1000))),
           phase: round.status === "betting" ? "betting" : "result",
           pools,
           total_bets: pools,
