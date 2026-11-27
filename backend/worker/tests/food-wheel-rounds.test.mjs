@@ -180,6 +180,6 @@ test("Food Wheel accepts arbitrary positive integer stakes and rejects a seventh
   assert.match(api, /Number\\.isSafeInteger\\(amount\\) \\|\\| amount <= 0/);
   assert.match(api, /COUNT\\(DISTINCT slot\\)/);
   assert.match(api, /max_foods_per_round/);
-  assert.match(ui, /for \\(var i = 0; i < 10; i\\+\\+\\)/);
-  assert.doesNotMatch(ui, /Text\\('Hot'/);
+  assert.ok(ui.includes("for (var i = 0; i < 10; i++)"));
+  assert.ok(!ui.includes("Text('Hot'"));
 });
