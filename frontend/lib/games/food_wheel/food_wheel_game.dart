@@ -365,36 +365,6 @@ String _fmt(int n) {
 // ---------- شاشة اللعبة ----------
 
 // ---------- شاشة اللعبة ----------
-class _SpinAccelerationCurve extends Curve {
-  const _SpinAccelerationCurve();
-
-  static const double _slowPart = 0.6;
-  static const double _fastPart = 0.2;
-  static const double _initialSpeed = 0.05;
-  static const double _maxSpeed = 3.0;
-  static const double _firstArea =
-      _slowPart * (_initialSpeed + (_maxSpeed - _initialSpeed) * 0.5);
-  static const double _middleArea = _fastPart * _maxSpeed;
-  static const double _totalArea = _firstArea + _maxSpeed * (1 - _slowPart);
-
-  @override
-  double transformInternal(double t) {
-    if (t <= 0) return 0;
-    if (t >= 1) return 1;
-    double area;
-    if (t <= _slowPart) {
-      final u = t / _slowPart;
-      area = _slowPart *
-          (_initialSpeed * u +
-              (_maxSpeed - _initialSpeed) *
-                  (u * u * u - 0.5 * u * u * u * u));
-    } else {
-      area = _firstArea + _maxSpeed * (t - _slowPart);
-    }
-    return (area / _totalArea).clamp(0.0, 1.0);
-  }
-}
-
 class FoodWheelGame extends StatefulWidget {
   final FoodWheelApi api;
   const FoodWheelGame({super.key, required this.api});
@@ -828,7 +798,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         _spin(s);
       }
     } catch (e) {
-      if (mounted) setState(() => _err = wheelErrorText(e));
+      if (mounted) {
+        final message = wheelErrorText(e);
+        if (_err != message) setState(() => _err = message);
+      }
     } finally {
       _fetching = false;
     }
@@ -839,10 +812,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   static const double _spinBaseAngle = 3 * math.pi * 2;
 
   double _spinAngleForElapsed(double elapsedMs) {
-    var remainingMs = elapsedMs.clamp(0.0, _spinDurationMs.toDouble());
+    var remainingMs = elapsedMs.clamp(0.0, _spinDurationMs.toDouble()).toDouble();
     var angle = _spinBaseAngle; // modulo one turn this is chicken (slot 0).
     for (var second = 0; second < 5 && remainingMs > 0; second++) {
-      final segmentMs = math.min(1000.0, remainingMs);
+      final segmentMs = math.min(1000.0, remainingMs).toDouble();
       angle += (segmentMs / getSpinDelay(5.0 - second)) * _spinStep;
       remainingMs -= segmentMs;
     }
@@ -861,20 +834,21 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   double _spinAngleAtProgress(double progress) {
     if (!_spinHasResult) return _spinAngle;
-    final p = progress.clamp(0.0, 1.0);
+    final p = progress.clamp(0.0, 1.0).toDouble();
     if (p <= 0.8) return _spinAngleForElapsed(p * _spinDurationMs);
     if (_spinLandingStartAngle != null &&
         _spinLandingStartProgress != null &&
         _spinLandingArc != null) {
       final u = ((p - _spinLandingStartProgress!) /
               (1 - _spinLandingStartProgress!))
-          .clamp(0.0, 1.0);
+          .clamp(0.0, 1.0)
+          .toDouble();
       return _spinLandingStartAngle! + _spinLandingArc! * u;
     }
     if (!_spinTargetKnown) return _spinAngleForElapsed(p * _spinDurationMs);
     final startAngle = _spinAngleForElapsed(4000);
     final arc = _landingArcToWinner(startAngle, _spinTargetSlot, 1000);
-    final u = ((p - 0.8) / 0.2).clamp(0.0, 1.0);
+    final u = ((p - 0.8) / 0.2).clamp(0.0, 1.0).toDouble();
     return startAngle + arc * u;
   }
 
