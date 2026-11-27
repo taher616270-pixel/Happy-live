@@ -461,7 +461,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       final clearToast = _roundClosedToast != null && now >= _toastExpiresAtMs;
       if (current != null) {
         final next = _monotonicPhaseSecond(current);
-        if (current.phase == RoundPhase.result) _freezeMyBets(current.roundId);
+        if (_isResultPhase(current)) _freezeMyBets(current.roundId);
         if (_isResultPhase(current) && _spinStartedRoundId != current.roundId) {
           _startProvisionalSpin(current);
         }
@@ -705,7 +705,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           previousTotals.length != nextTotals.length ||
           List<int>.generate(nextTotals.length, (i) => nextTotals[i] == previousTotals[i] ? 0 : 1).any((v) => v != 0);
       if (wheelTotalsChanged) _wheelStateNotifier.value = _withOptimisticBets(s);
-      if (s.phase == RoundPhase.result) _freezeMyBets(s.roundId);
+      if (s.phase == RoundPhase.result || _serverNowMs() >= _bettingDeadline(s)) _freezeMyBets(s.roundId);
       final displayChanged =
           previous == null || _err != null || !_sameDisplayState(previous, s);
       if (displayChanged || newRound) {
@@ -1073,8 +1073,18 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             if (remaining == 0) roundBets.remove(key); else roundBets[key] = remaining;
             final frozen = _frozenBetsByRound[bet.roundId];
             if (frozen != null) {
-              final frozenRemaining = math.max(0, (frozen[key] ?? 0) - bet.amount).toInt();
-              if (frozenRemaining == 0) frozen.remove(key); else frozen[key] = frozenRemaining;
+              // A definitive server rejection is the only event allowed to
+              // subtract an unaccepted tap from the frozen settlement record.
+              final revisedFrozen = Map<String, int>.from(frozen);
+              final frozenRemaining =
+                  math.max(0, (revisedFrozen[key] ?? 0) - bet.amount).toInt();
+              if (frozenRemaining == 0) {
+                revisedFrozen.remove(key);
+              } else {
+                revisedFrozen[key] = frozenRemaining;
+              }
+              _frozenBetsByRound[bet.roundId] =
+                  Map<String, int>.unmodifiable(revisedFrozen);
             }
           }
           if (_s?.roundId == bet.roundId) {
