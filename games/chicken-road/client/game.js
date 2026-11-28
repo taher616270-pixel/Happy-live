@@ -3,6 +3,7 @@
   const C = CR_CONFIG, E = CR_Engine, Net = CR_Net, A = CR_CLIENT.ASSETS || {};
   const $ = (id) => document.getElementById(id);
   const S = { diff: 'easy', bet: 0, state: 'idle', step: 0, pos: 0, lock: false, music: true, first: true, tile: 80, side: 44 };
+  const motion = { chickenX: 0, chickenFromX: 0, chickenToX: 0, chickenStart: 0, chickenDuration: 200, chickenMoving: false, cars: [], lastSpawn: 0, raf: 0 };
   const EMO_CARS = ['🚕', '🚗', '🚙', '🚌', '🏎️', '🚓', '🚚'];
   const fmt = (n) => Math.floor(n).toLocaleString('en-US');
   const SFX = {};
@@ -36,11 +37,20 @@
   const cx = (i) => (i === 0 ? S.side * 0.5 : S.side + (i - 1) * S.tile + S.tile / 2);
   function place(i, instant) {
     S.pos = i;
-    chicken.style.transition = instant ? 'none' : '';
-    chicken.style.left = cx(i) - 24 + 'px';
-    road.style.transform = `translateX(${-Math.max(0, i - 2) * S.tile}px)`;
-    if (instant) requestAnimationFrame(() => (chicken.style.transition = ''));
-    chicken.classList.add('hop'); setTimeout(() => chicken.classList.remove('hop'), 250);
+    const nextX = cx(i) - 24;
+    if (instant) {
+      motion.chickenX = motion.chickenFromX = motion.chickenToX = nextX;
+      motion.chickenMoving = false;
+      chicken.style.transform = 'translate3d(' + nextX + 'px, 0, 0)';
+    } else {
+      motion.chickenFromX = motion.chickenX;
+      motion.chickenToX = nextX;
+      motion.chickenStart = performance.now();
+      motion.chickenDuration = 200;
+      motion.chickenMoving = true;
+      ensureFrameLoop();
+    }
+    road.style.transform = 'translate3d(' + (-Math.max(0, i - 2) * S.tile) + 'px, 0, 0)';
   }
   function skin(state) {                                                  // صورة أو إيموجي
     const url = state === 'dead' ? A.chickenDead || A.chicken : state === 'win' ? A.chickenWin || A.chicken : A.chicken;
@@ -50,29 +60,62 @@
   }
 
   // ---------- السيارات ----------
+  function ensureFrameLoop() {
+    if (!motion.raf) motion.raf = requestAnimationFrame(gameFrame);
+  }
   function car(tile, ms, delay) {
     const c = document.createElement('div'); c.className = 'car';
-    if (A.cars && A.cars.length) { c.classList.add('img'); c.style.backgroundImage = `url(${A.cars[(Math.random() * A.cars.length) | 0]})`; }
-    else c.textContent = EMO_CARS[(Math.random() * EMO_CARS.length) | 0];
+    if (A.cars && A.cars.length) {
+      c.classList.add('img');
+      c.style.backgroundImage = 'url(' + A.cars[(Math.random() * A.cars.length) | 0] + ')';
+    } else c.textContent = EMO_CARS[(Math.random() * EMO_CARS.length) | 0];
     tile.appendChild(c);
     const h = view.clientHeight, up = Math.random() < 0.4;
-    const a = c.animate([{ transform: `translateY(${up ? h + 80 : -110}px)` }, { transform: `translateY(${up ? -110 : h + 80}px)` }],
-      { duration: ms, delay: delay || 0, easing: 'linear', fill: 'both' });
-    a.onfinish = () => c.remove();
+    motion.cars.push({
+      el: c, fromY: up ? h + 80 : -110, toY: up ? -110 : h + 80,
+      start: performance.now() + (delay || 0), duration: ms
+    });
+    ensureFrameLoop();
     return c;
   }
-  setInterval(() => {                                                      // سيارات ديكور بعيدة عن الدجاجة
-    if (document.hidden) return;
-    const i = Math.max(1, S.pos - 3) + ((Math.random() * 9) | 0);
-    if (i > C.MAX_STEPS || i === S.pos || i === S.pos + 1) return;
-    car(tiles[i], 1300 + Math.random() * 900);
-  }, 420);
+  function gameFrame(now) {
+    motion.raf = 0;
+    if (document.hidden) { motion.lastSpawn = now; ensureFrameLoop(); return; }
+    if (motion.chickenMoving) {
+      const t = Math.min(1, (now - motion.chickenStart) / motion.chickenDuration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      motion.chickenX = motion.chickenFromX + (motion.chickenToX - motion.chickenFromX) * eased;
+      chicken.style.transform = 'translate3d(' + motion.chickenX + 'px, ' + (-Math.sin(Math.PI * t) * 11) + 'px, 0)';
+      if (t >= 1) {
+        motion.chickenMoving = false;
+        motion.chickenX = motion.chickenToX;
+        chicken.style.transform = 'translate3d(' + motion.chickenX + 'px, 0, 0)';
+      }
+    }
+    for (let i = motion.cars.length - 1; i >= 0; i--) {
+      const item = motion.cars[i];
+      if (now < item.start) continue;
+      const t = Math.min(1, (now - item.start) / item.duration);
+      const y = item.fromY + (item.toY - item.fromY) * t;
+      item.el.style.transform = 'translate3d(0, ' + y + 'px, 0)';
+      if (t >= 1) { item.el.remove(); motion.cars.splice(i, 1); }
+    }
+    if (!motion.lastSpawn) motion.lastSpawn = now;
+    if (now - motion.lastSpawn >= 650) {
+      motion.lastSpawn = now;
+      const index = Math.max(1, S.pos - 3) + ((Math.random() * 9) | 0);
+      if (index <= C.MAX_STEPS && index !== S.pos && index !== S.pos + 1) car(tiles[index], 1500 + Math.random() * 500);
+    }
+    ensureFrameLoop();
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) ensureFrameLoop(); });
+  ensureFrameLoop();
   // الدعس: الدجاجة تنزل على المسار ثم تدخل سيارة وتصدمها في منتصف الشاشة بالضبط
   function runOver(step) {
     tiles[step].querySelectorAll('.car').forEach((c) => c.remove());
-    place(step);
-    const ms = 420, delay = 260;                                           // تعبر المنتصف عند delay + ms/2
-    car(tiles[step], ms, delay);
+    motion.cars = motion.cars.filter((item) => { if (item.el.parentElement === tiles[step]) { item.el.remove(); return false; } return true; });
+    place(step, true);
+    const ms = 420, delay = 260; car(tiles[step], ms, delay);
     setTimeout(() => { skin('dead'); sfx('hit'); }, delay + ms / 2);
   }
 
@@ -90,6 +133,14 @@
     $('hint').hidden = !(active && S.step === 0 && S.first);
     labels();
   }
+  function updateProgressUi() {
+    const active = S.state === 'active';
+    $('go').className = 'play' + (active ? ' cash' : '');
+    $('go').textContent = active ? 'سحب ' + fmt(S.bet * E.multiplier(S.diff, S.step)) : 'لعب';
+    $('go').disabled = !active || S.step < 1;
+    $('mult').textContent = (active && S.step ? fmtM(E.multiplier(S.diff, S.step)) : '0') + 'x';
+    $('hint').hidden = !(active && S.step === 0 && S.first);
+  }
   C.CHIPS.forEach((v) => {
     const b = document.createElement('button'); b.innerHTML = '<i class="coin"></i>' + v;
     b.onclick = () => { S.bet = v; ui(); }; $('chips').appendChild(b);
@@ -102,11 +153,17 @@
 
   // ---------- اللعب ----------
   $('go').onclick = () => { sfx('click'); S.state === 'active' ? Net.send({ t: 'cash' }) : Net.send({ t: 'play', amount: S.bet, diff: S.diff }); };
-  view.onclick = () => {                                                   // اضغط في أي مكان للخطوة التالية
-    if (S.state !== 'active' || S.lock) return;
-    S.lock = true; setTimeout(() => (S.lock = false), C.STEP_MIN_MS + 30);
-    S.first = false; Net.send({ t: 'step' });
-  };
+  view.addEventListener('pointerdown', (event) => {
+    if (S.state !== 'active' || S.lock || !Net.connected) return;
+    event.preventDefault();
+    S.lock = true;
+    setTimeout(() => (S.lock = false), C.STEP_MIN_MS + 30);
+    S.first = false;
+    const predictedStep = S.step + 1;
+    place(predictedStep);
+    tiles[predictedStep].querySelectorAll('.car').forEach((c) => c.remove());
+    if (!Net.send({ t: 'step' })) { place(S.step, true); S.lock = false; }
+  }, { passive: false });
 
   Net.on('init', (d) => {
     $('bal').textContent = fmt(d.balance);
@@ -115,14 +172,14 @@
   });
   Net.on('balance', (d) => ($('bal').textContent = fmt(d.balance)));
   Net.on('error', (d) => toast(d.message, 'bad'));
-  Net.on('offline', () => toast('الخادم غير متصل', 'bad'));
+  Net.on('offline', () => { S.lock = false; toast('الخادم غير متصل', 'bad'); });
   Net.on('started', (d) => { Object.assign(S, { state: 'active', step: 0, bet: d.amount, diff: d.diff }); skin('idle'); place(0, true); ui(); });
-  Net.on('step', (d) => { sfx('hop'); S.step = d.step; tiles[d.step].querySelectorAll('.car').forEach((c) => c.remove()); place(d.step); ui(); });
+  Net.on('step', (d) => { S.lock = false; sfx('hop'); S.step = d.step; tiles[d.step].querySelectorAll('.car').forEach((c) => c.remove()); place(d.step); updateProgressUi(); });
   Net.on('dead', (d) => {
-    S.state = 'over'; S.step = d.step; runOver(d.step);
+    S.lock = false; S.state = 'over'; S.step = d.step; runOver(d.step);
     setTimeout(() => toast('دعستك سيارة 💥 خسرت ' + fmt(d.amount), 'bad'), 700); ui();
   });
-  Net.on('cashed', (d) => { S.state = 'over'; skin('win'); sfx('win'); toast(`ربحت ${fmt(d.payout)} 🎉  (${fmtM(d.mult)}x)`, 'good'); ui(); });
+  Net.on('cashed', (d) => { S.lock = false; S.state = 'over'; skin('win'); sfx('win'); toast(`ربحت ${fmt(d.payout)} 🎉  (${fmtM(d.mult)}x)`, 'good'); ui(); });
 
   // ---------- النوافذ ----------
   function modal(title, html) { $('mtitle').textContent = title; $('mbody').innerHTML = html; $('modal').hidden = false; }

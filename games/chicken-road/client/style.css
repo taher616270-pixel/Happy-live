@@ -23,12 +23,12 @@ button{font-family:inherit;cursor:pointer;color:#fff}button:disabled{opacity:.55
 .m{position:absolute;top:50%;left:50%;width:min(52px,70%);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;
   background:radial-gradient(circle,#2a2f66 55%,#3b4180 56% 70%,#1a1d44 72%);border:2px solid #0b0d2b;display:flex;align-items:center;justify-content:center}
 .m span{font-size:10px;font-weight:800;color:#cfd4ff}
-.car{position:absolute;left:50%;margin-left:-17px;top:0;font-size:34px;z-index:3;will-change:transform}
-.car.img,#chicken.img{background-size:contain;background-repeat:no-repeat;background-position:center;width:40px;height:84px;margin-left:-20px}
-#chicken{position:absolute;top:50%;margin-top:-26px;width:48px;height:48px;font-size:40px;line-height:48px;text-align:center;z-index:5;transition:left .25s ease}
+.car{position:absolute;left:50%;top:0;margin-left:-17px;font-size:34px;z-index:3;will-change:transform}
+.car.img{background-size:contain;background-repeat:no-repeat;background-position:center;width:40px;height:84px;margin-left:-20px}
+#chicken{position:absolute;top:50%;margin-top:-26px;width:48px;height:48px;font-size:40px;line-height:48px;text-align:center;z-index:5;will-change:transform}
 #chicken.img{width:52px;height:52px;margin-left:0}
-#chicken.hop{filter:drop-shadow(0 10px 4px #0007)}
-#chicken.hit{transform:scaleY(.8)}
+
+#chicken.hit{filter:none}
 #badge{position:absolute;top:8px;right:8px;z-index:6;background:linear-gradient(#37d158,#12923a);border:2px solid #fff;border-radius:10px;padding:3px 9px;font-size:14px}
 #hint{position:absolute;top:34%;right:6%;left:20%;z-index:6;display:flex;gap:8px;align-items:center;font-size:12px;text-shadow:0 1px 3px #000;pointer-events:none}
 #hint b{font-size:30px}

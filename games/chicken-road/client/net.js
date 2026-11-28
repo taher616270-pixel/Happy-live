@@ -19,6 +19,7 @@
   };
 
   let sessionToken = '', expiresAt = 0, socket = null;
+  let isSocketConnected = false, isWalletReady = false, initReceived = false;
   let walletSnapshot = null;
   let refreshTimer = 0, reconnectTimer = 0, readyTimer = 0;
   let stopped = false, refreshPromise = null, connectStarted = false;
@@ -32,7 +33,8 @@
     (console[level] || console.log).call(console, '[ChickenRoad]', payload);
   }
 
-  function setConnectionUi(ready) {
+  function setConnectionUi(status) {
+    const ready = isSocketConnected && isWalletReady && initReceived;
     ['bal', 'go', 'bTop', 'bLog', 'bSync', 'clear'].forEach((id) => {
       const element = document.getElementById(id);
       if (element && 'disabled' in element) element.disabled = !ready;
@@ -46,20 +48,26 @@
     const balance = document.getElementById('bal');
     if (!ready && balance) balance.textContent = '---';
     const toast = document.getElementById('toast');
-    if (!ready && toast) {
-      toast.textContent = 'الخادم غير متصل';
-      toast.className = 'bad';
-      toast.hidden = false;
-    }
+    if (!toast) return;
+    if (status === 'connecting') {
+      toast.textContent = 'جار الاتصال'; toast.className = ''; toast.hidden = false;
+    } else if (status === 'connected') {
+      toast.textContent = 'متصل'; toast.className = 'good'; toast.hidden = false;
+      clearTimeout(setConnectionUi.connectedTimer);
+      setConnectionUi.connectedTimer = setTimeout(() => { toast.hidden = true; }, 900);
+    } else if (status === 'offline') {
+      toast.textContent = 'الخادم غير متصل'; toast.className = 'bad'; toast.hidden = false;
+    } else if (ready) toast.hidden = true;
   }
 
   function showFatal(message, code, details) {
     stopped = true;
     Net.connected = false;
+    isSocketConnected = false; isWalletReady = false; initReceived = false;
     clearTimeout(refreshTimer);
     clearTimeout(reconnectTimer);
     clearTimeout(readyTimer);
-    setConnectionUi(false);
+    setConnectionUi('offline');
     log('error', 'connection_stopped', Object.assign({ code: code || 'unknown', attempts: connectAttempts, message }, details || {}));
     if (socket && socket.readyState < WebSocket.CLOSING) {
       try { socket.close(4002, 'connection_failed'); } catch (_) {}
@@ -229,6 +237,8 @@
     clearTimeout(reconnectTimer);
     clearTimeout(readyTimer);
     connectAttempts += 1;
+    isSocketConnected = false; isWalletReady = Boolean(walletSnapshot); initReceived = false; Net.connected = false;
+    setConnectionUi('connecting');
     log('info', 'websocket_connecting', { attempt: connectAttempts, maxAttempts: MAX_CONNECT_ATTEMPTS, tokenPresent: true, tokenLength: sessionToken.length });
     let ws;
     try {
@@ -242,6 +252,7 @@
     socket = ws;
     ws.onopen = () => {
       if (socket !== ws || stopped) return;
+      isSocketConnected = true; Net.connected = false; setConnectionUi('connected');
       log('info', 'websocket_open', { attempt: connectAttempts, protocol: ws.protocol });
       readyTimer = setTimeout(() => {
         if (socket === ws && !Net.connected && ws.readyState < WebSocket.CLOSING) {
@@ -275,25 +286,25 @@
         clearTimeout(readyTimer);
         Net.me = data.userCode;
         Net.player = data.player || null;
-        Net.connected = true;
-        connectAttempts = 0;
-        setConnectionUi(true);
+        isSocketConnected = ws.readyState === WebSocket.OPEN; isWalletReady = true; initReceived = true;
+        Net.connected = isSocketConnected && isWalletReady && initReceived;
+        connectAttempts = 0; setConnectionUi(Net.connected ? 'ready' : 'offline');
         log('info', 'game_ready', { happyId: data.userCode, walletBalanceReceived: true });
       }
       Net.fire(message.t, message.data);
     };
     ws.onerror = (event) => {
       if (socket === ws) {
-        Net.connected = false;
-        setConnectionUi(false);
+        Net.connected = false; isSocketConnected = false; initReceived = false;
+        setConnectionUi('offline');
         log('error', 'websocket_error', { attempt: connectAttempts, readyState: ws.readyState, eventType: event && event.type });
         Net.fire('offline');
       }
     };
     ws.onclose = (event) => {
       if (socket !== ws || stopped) return;
-      Net.connected = false;
-      setConnectionUi(false);
+      Net.connected = false; isSocketConnected = false; initReceived = false;
+      setConnectionUi('offline');
       clearTimeout(readyTimer);
       log('error', 'websocket_closed', { attempt: connectAttempts, code: event.code, reason: event.reason || '', wasClean: event.wasClean });
       if (event.code === 4001 || Date.now() >= expiresAt) return failSession('WS_UNAUTHORIZED', { closeCode: event.code, reason: event.reason });
@@ -339,7 +350,7 @@
   Net.connect = () => {
     if (connectStarted) return;
     connectStarted = true;
-    setConnectionUi(false);
+    isSocketConnected = false; isWalletReady = false; initReceived = false; setConnectionUi('connecting');
     window.addEventListener('message', receiveSession);
     log('info', 'client_started', { apiConfigured: API_BASE.startsWith('https://'), websocketConfigured: typeof cfg.WS_URL === 'string' && cfg.WS_URL.startsWith('wss://') });
     setTimeout(() => {
