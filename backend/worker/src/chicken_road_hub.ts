@@ -60,9 +60,54 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
     return walletBalance(this.requireDb(), this.playerId);
   }
   private async activeRound(): Promise<ActiveRound | null> {
-    return this.requireDb().prepare(
-      "SELECT r.id, r.total_stake AS amount, s.difficulty AS diff, s.current_step AS step, s.crash_step AS crashStep, s.seed, s.commit_hash AS commit, s.last_step_at AS lastStepAt FROM game_rounds r INNER JOIN chicken_road_round_state s ON s.round_id = r.id WHERE r.game_id = ? AND r.user_id = ? AND r.status = 'open' ORDER BY r.created_at DESC LIMIT 1"
-    ).bind(GAME_ID, this.playerId).first<ActiveRound>();
+    let db: D1Database;
+    try {
+      db = this.requireDb();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw Object.assign(new Error(message), {
+        diagnostic: { code: "D1_BINDING_MISSING", message, table: null, tableMissing: false, columnMissing: false, bindingMissing: true }
+      });
+    }
+
+    // Probe each table independently so an init failure identifies the exact
+    // missing table/column before the joined active-round query is attempted.
+    const probes = [
+      { table: "game_rounds", sql: "SELECT id, total_stake, game_id, user_id, status, created_at FROM game_rounds LIMIT 0" },
+      { table: "chicken_road_round_state", sql: "SELECT round_id, difficulty, current_step, crash_step, seed, commit_hash, last_step_at FROM chicken_road_round_state LIMIT 0" }
+    ];
+    for (const probe of probes) {
+      try {
+        await db.prepare(probe.sql).all();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const lower = message.toLowerCase();
+        const tableMissing = /no such table|does not exist|unknown table/.test(lower);
+        const columnMissing = /no such column|has no column|unknown column/.test(lower);
+        const code = tableMissing ? "D1_TABLE_MISSING" : columnMissing ? "D1_COLUMN_MISSING" : "D1_QUERY_FAILED";
+        throw Object.assign(new Error(message), {
+          diagnostic: { code, message, table: probe.table, tableMissing, columnMissing, bindingMissing: false }
+        });
+      }
+    }
+
+    try {
+      return await db.prepare(
+        "SELECT r.id, r.total_stake AS amount, s.difficulty AS diff, s.current_step AS step, s.crash_step AS crashStep, s.seed, s.commit_hash AS commit, s.last_step_at AS lastStepAt FROM game_rounds r INNER JOIN chicken_road_round_state s ON s.round_id = r.id WHERE r.game_id = ? AND r.user_id = ? AND r.status = 'open' ORDER BY r.created_at DESC LIMIT 1"
+      ).bind(GAME_ID, this.playerId).first<ActiveRound>();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const lower = message.toLowerCase();
+      const tableMissing = /no such table|does not exist|unknown table/.test(lower);
+      const columnMissing = /no such column|has no column|unknown column/.test(lower);
+      throw Object.assign(new Error(message), {
+        diagnostic: {
+          code: tableMissing ? "D1_TABLE_MISSING" : columnMissing ? "D1_COLUMN_MISSING" : "D1_ACTIVE_ROUND_QUERY_FAILED",
+          message, table: "game_rounds + chicken_road_round_state",
+          tableMissing, columnMissing, bindingMissing: false
+        }
+      });
+    }
   }
   private async init(ws: WebSocket): Promise<void> {
     // Wallet and public profile are loaded by the client from the same unified,
@@ -254,8 +299,15 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
       await this.init(server);
     } catch (error) {
       const code = error instanceof Error ? error.message : String(error);
+      const diagnostic = (error as any)?.diagnostic ?? {};
       const details = {
         stage: "restore_active_round",
+        code: diagnostic.code ?? "D1_INIT_FAILED",
+        message: diagnostic.message ?? code,
+        table: diagnostic.table ?? "game_rounds + chicken_road_round_state",
+        tableMissing: diagnostic.tableMissing ?? false,
+        columnMissing: diagnostic.columnMissing ?? false,
+        bindingMissing: diagnostic.bindingMissing ?? false,
         request: {
           url: "/api/v1/game/chicken-road/ws",
           method: "GET",

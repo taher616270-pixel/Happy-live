@@ -64,6 +64,14 @@
     if (socket && socket.readyState < WebSocket.CLOSING) {
       try { socket.close(4002, 'connection_failed'); } catch (_) {}
     }
+    const initBox = document.getElementById('initError');
+    if (initBox && (code === 'GAME_INIT_FAILED' || details && details.stage === 'restore_active_round')) {
+      const actualCode = details && details.code ? details.code : (code || 'INIT_FAILED');
+      const actualMessage = details && details.message ? details.message : message;
+      const table = details && details.table ? ' | table: ' + details.table : '';
+      initBox.textContent = 'INIT_ERROR: [' + actualCode + '] - ' + actualMessage + table;
+      initBox.hidden = false;
+    }
     const toast = document.getElementById('toast');
     if (toast) {
       toast.textContent = message;
@@ -258,7 +266,7 @@
       if (message.t === 'init_error') {
         const details = message.data || {};
         log('error', 'websocket_init_error', { details, fullMessage: message });
-        return showFatal('اتصلت اللعبة بالخادم، لكن تعذر تهيئة حالة اللعبة. لا يمكن بدء اللعب.', details.code || 'GAME_INIT_FAILED', details);
+        return showFatal('تعذر تهيئة حالة اللعبة.', 'GAME_INIT_FAILED', details);
       }
       if (message.t === 'init') {
         const data = message.data || {};
