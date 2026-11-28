@@ -33,7 +33,7 @@ function unauthorizedChickenRoadSocket(): Response {
   const client = pair[0], server = pair[1];
   server.accept();
   server.close(4001, "unauthorized");
-  return new Response(null, { status: 101, webSocket: client });
+  return new Response(null, { status: 101, webSocket: client, headers: { "Sec-WebSocket-Protocol": "happy-live-game" } });
 }
 
 function send(ws: WebSocket, t: string, data: unknown): void {
@@ -225,7 +225,7 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
       });
     });
     await this.init(server);
-    return new Response(null, { status: 101, webSocket: client });
+    return new Response(null, { status: 101, webSocket: client, headers: { "Sec-WebSocket-Protocol": "happy-live-game" } });
   }
 }
 function sendAll(sockets: Set<WebSocket>, type: string, data: unknown): void {
