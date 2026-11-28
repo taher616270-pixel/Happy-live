@@ -796,7 +796,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   static const int _spinDurationMs = 5000;
-  static const double _spinStep = math.pi * 2 / kSlots.length;
+  static const double _spinStep = math.pi * 2 / 8;
   static const double _spinBaseAngle = 3 * math.pi * 2;
 
   double _spinAngleForElapsed(double elapsedMs) {
@@ -1646,7 +1646,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   double _highlightForSlot(double angle, int slot) {
     if (!_spinHasResult) return 0;
-    const step = math.pi * 2 / kSlots.length;
+    const step = math.pi * 2 / 8;
     final activeSlot = (angle / step).floor() % kSlots.length;
     return activeSlot == slot ? 1.0 : 0.0;
   }
