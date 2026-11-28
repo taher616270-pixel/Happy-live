@@ -55,7 +55,10 @@ jobs:
 
       - name: Build Flutter Web
         working-directory: frontend
-        run: flutter build web --release
+        run: |
+          flutter build web --release
+          cp web/_headers build/web/_headers
+          cp web/_redirects build/web/_redirects
 
       - name: Verify built admin console
         working-directory: frontend
