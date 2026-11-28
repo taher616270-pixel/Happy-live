@@ -141,19 +141,26 @@
       return `<div class="tr"><span>${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}</span>
         <span class="${x.win ? 'g' : 'r'}">${fmt(x.win ? x.payout - x.amount : -x.amount)}</span><span>${x.win ? '✔' : '✘'}</span><span>${fmt(x.amount)}</span></div>`; }).join('');
   });
-  function openTop(range) {
-    modal('الترتيب', `<div class="tabs">${[['yesterday', 'أمس'], ['today', 'اليوم'], ['week', 'أسبوعي']].map(([k, l]) =>
-      `<button data-r="${k}" class="${k === range ? 'on' : ''}">${l}</button>`).join('')}</div><div id="top"></div>`);
-    document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => openTop(b.dataset.r)));
-    Net.send({ t: 'top', range });
+  function openTop() {
+    modal('الفائزون اليوم', '<div id="top"></div>');
+    Net.send({ t: 'top', range: 'today' });
   }
-  $('bTop').onclick = () => openTop('today');
+  $('bTop').onclick = () => openTop();
   Net.on('top', (d) => {
     const t = $('top'); if (!t) return;
-    t.innerHTML = d.rows.length ? d.rows.map((x) => `<div class="rk r${Math.min(x.rank, 4)}"><b class="no">${x.rank}</b>
-      <div class="av" style="${x.avatar ? `background-image:url(${x.avatar})` : ''}">${x.avatar ? '' : (x.name || '?')[0]}</div>
-      <span class="nm">${x.name || ''}</span><span class="cn">${fmt(x.coins)}<i class="coin"></i></span></div>`).join('')
-      : '<p class="empty">لا يوجد فائزون بعد</p>';
+    const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[ch]);
+    t.innerHTML = (d.rows || []).length ? d.rows.map((x) => {
+      const name = esc(x.name || 'لاعب');
+      const code = esc(x.userCode || '');
+      const avatar = typeof x.avatar === 'string' && /^https:\/\//i.test(x.avatar)
+        ? ' style="background-image:url(' + x.avatar.replace(/["\\]/g, '') + ')"' : '';
+      return '<div class="rk r' + Math.min(Number(x.rank) || 4, 4) + '"><b class="no">' + esc(x.rank) +
+        '</b><div class="av"' + avatar + '>' + (avatar ? '' : name.slice(0, 1)) +
+        '</div><span class="nm">' + name + (code ? '<small class="user-code"> #' + code + '</small>' : '') +
+        '</span><span class="cn">' + fmt(x.coins) + '<i class="coin"></i></span></div>';
+    }).join('') : '<p class="empty">لا يوجد فائزون منذ الساعة 12:00 صباحاً</p>';
   });
 
   window.addEventListener('resize', size); size(); skin('idle'); place(0, true); ui(); Net.connect();
