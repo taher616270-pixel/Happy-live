@@ -82,9 +82,10 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.ok(ui.includes("double _landingArcToWinner"));
   assert.ok(ui.includes("_spinLandingArc = _landingArcToWinner"));
   assert.ok(ui.includes("final endAngle = _spinAngleAtProgress(1)"));
-  assert.ok(ui.includes("if (p <= 0.8)"));
+  assert.ok(ui.includes("if (p <= 0.6 || !_spinTargetKnown)"));
   const spinSection = ui.slice(ui.indexOf('int getSpinDelay'), ui.indexOf('String _newBetIdempotencyKey'));
-  assert.doesNotMatch(spinSection, /_SpinAccelerationCurve|easeOut|ease-out|final eased/);
+  assert.match(spinSection, /Cubic ease-out/);
+  assert.match(spinSection, /math\.pow\(1 - u, 3\)/);
   assert.ok(ui.includes("_spinTargetKnown = true"));
   assert.ok(ui.includes("_spinFinalizedRoundId == s.roundId"));
   assert.ok(ui.includes("static const int _spinDurationMs = 5000"));
@@ -166,25 +167,28 @@ test("Food Wheel starts the full spin at chicken and immediately refreshes after
 });
 
 
-test("wheel has exactly eight food outcomes; Pizza and Salad are group bets only", () => {
-  assert.match(hub, /function chooseResult\(\): \{ resultSlot: number; resultSpecial: null \}/);
-  assert.match(hub, /MULTIPLIERS\.map\(\(value\) => 1 \/ value\)/);
-  assert.doesNotMatch(hub, /RARE_PIZZA_WEIGHT|RARE_SALAD_WEIGHT/);
-  assert.match(hub, /slot = 8 AND .* IN \(1,2,4,6\).*stake \* 2/);
-  assert.match(hub, /slot = 9 AND .* IN \(0,3,5,7\).*stake \* 2/);
-  assert.match(api, /slot < 0 \|\| slot > 9/);
-  assert.match(api, /slot BETWEEN 0 AND 7 AND status IN/);
-  assert.match(api, /pizza_group/);
-  assert.match(api, /salad_group/);
-  assert.match(groupMigration, /slot BETWEEN 0 AND 9/);
-  assert.match(ui, /const kBetKeys = <String>\[\.\.\.kSlotKeys, \.\.\.kGroupBetKeys\]/);
-  assert.match(ui, /_special\('pizza_group', 'البيتزا', s\)/);
-  assert.match(ui, /_special\('salad_group', 'السلطة', s\)/);
-  assert.match(ui, /_onGroupPointerDown\(key\)/);
-  assert.match(ui, /static const double _spinStep = math\.pi \* 2 \/ 8/);
-  assert.doesNotMatch(ui, /_specialWheelSlot/);
+test("wheel has eight food betting slots and rare non-bet Pizza/Salad jackpots", () => {
+  assert.match(hub, /resultSpecial: "pizza" \| "salad" \| null/);
+  assert.match(hub, /random < 0\.03.*resultSpecial: "salad"/);
+  assert.match(hub, /random < 0\.06.*resultSpecial: "pizza"/);
+  assert.match(hub, /\(random - 0\.06\) \/ 0\.94/);
+  assert.match(hub, /result_special.*= 'pizza'.*slot IN \(1,2,4,6\)/);
+  assert.match(hub, /result_special.*= 'salad'.*slot IN \(0,3,5,7\)/);
+  assert.match(api, /slot < 0 \|\| slot > 7/);
+  assert.match(api, /pizza_group: 0/);
+  assert.match(api, /salad_group: 0/);
+  assert.match(ui, /const kBetKeys = kSlotKeys/);
+  assert.match(ui, /_special\('salad', 'السلطة', s\)/);
+  assert.match(ui, /_special\('pizza', 'البيتزا', s\)/);
+  assert.match(ui, /return IgnorePointer\(/);
+  assert.match(ui, /_lit = s\.special == 'pizza'/);
+  assert.match(ui, /_spinTargetSpecial \? <int>\{\} : <int>\{target\}/);
+  assert.match(ui, /سلطة! فازت كل اللحوم/);
+  assert.match(ui, /بيتزا! فازت كل الخضروات/);
+  assert.match(ui, /if \(!_spinHasResult \|\| _spinTargetSpecial\) return 0/);
+  assert.match(ui, /final targetAngle = target \* _spinStep \+ \(_spinTargetSpecial \? _spinStep \* 0\.5 : 0\)/);
+  assert.doesNotMatch(ui, /_special\('pizza_group'|_special\('salad_group'/);
 });
-
 test("Food Wheel accepts arbitrary positive integer stakes and rejects a seventh distinct food", () => {
   assert.match(api, /Number\\.isSafeInteger\\(amount\\) \\|\\| amount <= 0/);
   assert.ok(api.includes("COUNT(DISTINCT slot)"));
