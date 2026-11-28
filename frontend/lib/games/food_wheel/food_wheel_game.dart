@@ -238,6 +238,7 @@ class RoundState {
   final List<int> pools;
   final Map<String, int> totalBetsByFood;
   final Map<String, int> totalBetsByGroup;
+  final Map<String, int> myBetsByKey;
   final int? resultSlot; // رقم الوجبة الفائزة، أو null لو كانت سلطة/بيتزا
   final String? special; // 'salad' | 'pizza' | null
   final List<String> history;
@@ -262,6 +263,7 @@ class RoundState {
     this.myPayout = 0,
     this.totalBetsByFood = const <String, int>{},
     this.totalBetsByGroup = const <String, int>{},
+    this.myBetsByKey = const <String, int>{},
     this.resultSlot,
     this.special,
     this.history = const [],
@@ -292,6 +294,9 @@ class RoundState {
         totalBetsByFood: _foodTotalsFromJson(j),
         totalBetsByGroup: (j['total_bets_by_group'] is Map)
             ? Map<String, int>.from((j['total_bets_by_group'] as Map).map((key, value) => MapEntry('$key', (value as num).toInt())))
+            : const <String, int>{},
+        myBetsByKey: (j['my_bets_by_key'] is Map)
+            ? Map<String, int>.from((j['my_bets_by_key'] as Map).map((key, value) => MapEntry('$key', (value as num).toInt())))
             : const <String, int>{},
         resultSlot: (j['result_slot'] as num?)?.toInt(),
         special: j['special'] as String?,
@@ -663,6 +668,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       myPayout: s.myPayout,
       totalBetsByFood: s.totalBetsByFood,
       totalBetsByGroup: s.totalBetsByGroup,
+      myBetsByKey: s.myBetsByKey,
       resultSlot: s.resultSlot,
       special: s.special,
       history: s.history,
@@ -719,12 +725,17 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       final newRound = previous != null && previous.roundId != s.roundId;
       if (newRound && previous != null) _freezeMyBets(previous.roundId);
       _rememberServerTotals(s);
+      final personalBets = _myBetsForRound(s.roundId);
+      for (final entry in s.myBetsByKey.entries) {
+        if (entry.value > (personalBets[entry.key] ?? 0)) personalBets[entry.key] = entry.value;
+      }
       final nextTotals = _serverTotalsForRound(s.roundId);
       final wheelTotalsChanged = previous == null || newRound ||
           previous.phase != s.phase ||
           previous.resultSlot != s.resultSlot ||
           previous.special != s.special ||
           !mapEquals(previous.totalBetsByGroup, s.totalBetsByGroup) ||
+          !mapEquals(previous.myBetsByKey, s.myBetsByKey) ||
           previousTotals.length != nextTotals.length ||
           List<int>.generate(nextTotals.length, (i) => nextTotals[i] == previousTotals[i] ? 0 : 1).any((v) => v != 0);
       if (wheelTotalsChanged) _wheelStateNotifier.value = _withOptimisticBets(s);
