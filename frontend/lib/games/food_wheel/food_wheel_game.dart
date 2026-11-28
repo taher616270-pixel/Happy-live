@@ -83,6 +83,8 @@ const kSlots = [
   WheelSlot('🦐', 10, false),
 ];
 const kSlotKeys = <String>['chicken', 'corn', 'tomato', 'goat', 'chili', 'fish', 'carrot', 'shrimp'];
+const kGroupBetKeys = <String>['pizza_group', 'salad_group'];
+const kBetKeys = <String>[...kSlotKeys, ...kGroupBetKeys];
 
 Map<String, int> _foodTotalsFromJson(Map<String, dynamic> json) {
   final named = json['total_bets_by_food'];
@@ -235,6 +237,7 @@ class RoundState {
   final RoundPhase phase;
   final List<int> pools;
   final Map<String, int> totalBetsByFood;
+  final Map<String, int> totalBetsByGroup;
   final int? resultSlot; // رقم الوجبة الفائزة، أو null لو كانت سلطة/بيتزا
   final String? special; // 'salad' | 'pizza' | null
   final List<String> history;
@@ -258,6 +261,7 @@ class RoundState {
     required this.balance,
     this.myPayout = 0,
     this.totalBetsByFood = const <String, int>{},
+    this.totalBetsByGroup = const <String, int>{},
     this.resultSlot,
     this.special,
     this.history = const [],
@@ -286,6 +290,9 @@ class RoundState {
         balance: (j['balance'] as num).toInt(),
         myPayout: (j['my_payout'] as num?)?.toInt() ?? 0,
         totalBetsByFood: _foodTotalsFromJson(j),
+        totalBetsByGroup: (j['total_bets_by_group'] is Map)
+            ? Map<String, int>.from((j['total_bets_by_group'] as Map).map((key, value) => MapEntry('$key', (value as num).toInt())))
+            : const <String, int>{},
         resultSlot: (j['result_slot'] as num?)?.toInt(),
         special: j['special'] as String?,
         history: ((j['history'] as List?) ?? []).map((e) => '$e').toList(),
@@ -584,6 +591,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       slot >= 0 && slot < kSlotKeys.length
           ? (_displayBetsForRound(roundId)[kSlotKeys[slot]] ?? 0)
           : 0;
+  int _groupBetForRound(int roundId, String key) =>
+      _displayBetsForRound(roundId)[key] ?? 0;
+  int _serverGroupTotalForRound(int roundId, String key) =>
+      _serverTotalsByRound[roundId]?[key] ?? 0;
   int _myBetTotalForRound(int roundId) =>
       _displayBetsForRound(roundId).values.fold<int>(0, (sum, amount) => sum + amount);
 
@@ -622,6 +633,12 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         totals[key] = math.max(totals[key] ?? 0, value).toInt();
       }
     }
+    for (final key in kGroupBetKeys) {
+      final value = s.totalBetsByGroup[key];
+      if (value != null && value >= 0) {
+        totals[key] = math.max(totals[key] ?? 0, value).toInt();
+      }
+    }
   }
 
   void _startOptimisticRound(RoundState s) {
@@ -645,6 +662,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       balance: s.balance,
       myPayout: s.myPayout,
       totalBetsByFood: s.totalBetsByFood,
+      totalBetsByGroup: s.totalBetsByGroup,
       resultSlot: s.resultSlot,
       special: s.special,
       history: s.history,
@@ -670,6 +688,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         a.myPayout == b.myPayout &&
         a.resultSlot == b.resultSlot &&
         a.special == b.special &&
+        mapEquals(a.totalBetsByGroup, b.totalBetsByGroup) &&
         a.chestIndex == b.chestIndex &&
         a.chestTotal == b.chestTotal &&
         a.chestReward == b.chestReward &&
@@ -764,7 +783,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   static const int _spinDurationMs = 5000;
-  static const double _spinStep = math.pi * 2 / 10;
+  static const double _spinStep = math.pi * 2 / 8;
   static const double _spinBaseAngle = 3 * math.pi * 2;
 
   double _spinAngleForElapsed(double elapsedMs) {
@@ -930,6 +949,19 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     setState(() => _roundClosedToast = 'انتهت الجولة انتظر الجولة القادمة');
   }
 
+  void _onGroupPointerDown(String key) {
+    final slot = kBetKeys.indexOf(key);
+    if (slot < kSlotKeys.length || slot < 0) return;
+    final current = _s;
+    if (current == null || current.roundId <= 0 || _lockedBetRounds.contains(current.roundId) || !_bettingOpen(current)) {
+      if (mounted) _showRoundClosedToast();
+      return;
+    }
+    unawaited(HapticFeedback.selectionClick().catchError((_) {}));
+    if (_sound) unawaited(SystemSound.play(SystemSoundType.click).catchError((_) {}));
+    unawaited(_bet(slot));
+  }
+
   void _onFoodPointerDown(int i) {
     final current = _s;
     if (current == null || current.roundId <= 0 || _lockedBetRounds.contains(current.roundId) || !_bettingOpen(current)) {
@@ -952,8 +984,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         return;
       }
       final amount = _chip;
-      final existingFoodCount = _myBetsForRound(current.roundId).entries.where((entry) => entry.value > 0).length;
-      if ((_myBetsForRound(current.roundId)[kSlotKeys[i]] ?? 0) == 0 && existingFoodCount >= 6) {
+      final existingFoodCount = _myBetsForRound(current.roundId).entries
+          .where((entry) => kSlotKeys.contains(entry.key) && entry.value > 0).length;
+      final betKey = kBetKeys[i];
+      if (i < kSlotKeys.length && (_myBetsForRound(current.roundId)[betKey] ?? 0) == 0 && existingFoodCount >= 6) {
         _say('مسموح تراهن على 6 أكلات فقط');
         return;
       }
@@ -976,7 +1010,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       );
       setState(() {
         final bets = _myBetsForRound(current.roundId);
-        bets[kSlotKeys[i]] = (bets[kSlotKeys[i]] ?? 0) + amount;
+        bets[betKey] = (bets[betKey] ?? 0) + amount;
         _pendingBets.add(bet);
         _wheelStateNotifier.value = _withOptimisticBets(current);
       });
@@ -988,12 +1022,14 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   bool _enqueueBet(int roundId, int slot, int amount) {
     final current = _s;
-    if (current == null || roundId <= 0 || slot < 0 || slot >= kSlotKeys.length || current.roundId != roundId || _lockedBetRounds.contains(roundId) || !_bettingOpen(current)) {
+    if (current == null || roundId <= 0 || slot < 0 || slot >= kBetKeys.length || current.roundId != roundId || _lockedBetRounds.contains(roundId) || !_bettingOpen(current)) {
       _showRoundClosedToast();
       return false;
     }
-    final currentFoodCount = _myBetsForRound(roundId).entries.where((entry) => entry.value > 0).length;
-    if ((_myBetsForRound(roundId)[kSlotKeys[slot]] ?? 0) == 0 && currentFoodCount >= 6) {
+    final currentFoodCount = _myBetsForRound(roundId).entries
+        .where((entry) => kSlotKeys.contains(entry.key) && entry.value > 0).length;
+    final betKey = kBetKeys[slot];
+    if (slot < kSlotKeys.length && (_myBetsForRound(roundId)[betKey] ?? 0) == 0 && currentFoodCount >= 6) {
       _say('مسموح تراهن على 6 أكلات فقط');
       return false;
     }
@@ -1011,7 +1047,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     );
     setState(() {
       final bets = _myBetsForRound(roundId);
-      bets[kSlotKeys[slot]] = (bets[kSlotKeys[slot]] ?? 0) + amount;
+      bets[betKey] = (bets[betKey] ?? 0) + amount;
       _pendingBets.add(bet);
       _wheelStateNotifier.value = _withOptimisticBets(current);
     });
@@ -1514,13 +1550,13 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             height: w,
             child: Stack(children: [
           Positioned.fill(child: CustomPaint(painter: _SpokesPainter(d))),
-          for (var i = 0; i < 10; i++)
+          for (var i = 0; i < 8; i++)
             Positioned(
-              left: w / 2 + w * 0.37 * math.sin(i * math.pi * 2 / 10) - ds / 2,
-              top: w / 2 - w * 0.37 * math.cos(i * math.pi * 2 / 10) - ds / 2,
+              left: w / 2 + w * 0.37 * math.sin(i * math.pi * 2 / 8) - ds / 2,
+              top: w / 2 - w * 0.37 * math.cos(i * math.pi * 2 / 8) - ds / 2,
               width: ds,
               height: ds,
-              child: i < 8 ? _slot(i, s, ds, spinAngle) : _specialWheelSlot(i, ds, spinAngle),
+              child: _slot(i, s, ds, spinAngle),
             ),
           Center(
             child: Container(
@@ -1595,30 +1631,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   double _highlightForSlot(double angle, int slot) {
     if (!_spinHasResult) return 0;
-    const step = math.pi * 2 / 10;
-    final activeSlot = (angle / step).floor() % 10;
+    const step = math.pi * 2 / 8;
+    final activeSlot = (angle / step).floor() % 8;
     return activeSlot == slot ? 1.0 : 0.0;
-  }
-
-  Widget _specialWheelSlot(int index, double d, double spinAngle) {
-    final pizza = index == 8;
-    final active = _highlightForSlot(spinAngle, index) >= 0.5;
-    return IgnorePointer(
-      child: Container(
-        width: d,
-        height: d,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFFFFF3C4),
-          border: Border.all(
-            color: active ? const Color(0xFFFF0000) : const Color(0xFF8A4B2A),
-            width: active ? 8 : 4,
-          ),
-        ),
-        child: Text(pizza ? '🍕' : '🥗', style: TextStyle(fontSize: d * 0.58)),
-      ),
-    );
   }
 
   Widget _slot(int i, RoundState s, double d, double spinAngle) {
@@ -1713,32 +1728,32 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     );
   }
 
-  Widget _special(String key, String label) {
+  Widget _special(String key, String label, RoundState s) {
     final on = _lit == key;
-    return Column(mainAxisSize: MainAxisSize.min, children: [
-      Text(key == 'salad' ? '🥗' : '🍕',
-          style: TextStyle(
-              fontSize: 46,
-              shadows: on
-                  ? const [Shadow(color: Color(0xFFFFD400), blurRadius: 18)]
-                  : null)),
-      Transform.translate(
-        offset: const Offset(0, -6),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-          decoration: BoxDecoration(
-            color: on ? const Color(0xFFFFD400) : const Color(0xFFFFF5DE),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFF6B3A1E), width: 2),
-          ),
-          child: Text(label,
-              style: const TextStyle(
-                  color: Color(0xFF4A2A10),
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14)),
+    final total = _serverGroupTotalForRound(s.roundId, key);
+    final mine = _groupBetForRound(s.roundId, key);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _onGroupPointerDown(key),
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 112),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: on ? const Color(0xFFFFD400) : const Color(0xFFFFF5DE),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF6B3A1E), width: 2),
         ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text(key == 'salad_group' ? '🥗' : '🍕', style: const TextStyle(fontSize: 30)),
+            const SizedBox(width: 4),
+            Text(label, style: const TextStyle(color: Color(0xFF4A2A10), fontWeight: FontWeight.w800, fontSize: 14)),
+          ]),
+          Text('${_fmt(total)} 🪙', maxLines: 1, style: const TextStyle(color: Color(0xFF5A3A00), fontSize: 13, fontWeight: FontWeight.bold)),
+          Text(_fmt(mine), maxLines: 1, style: const TextStyle(color: Color(0xFF1458D4), fontSize: 12, fontWeight: FontWeight.w800)),
+        ]),
       ),
-    ]);
+    );
   }
 
   Widget _platform(RoundState s) => Stack(clipBehavior: Clip.none, children: [
@@ -1762,8 +1777,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _special('salad', 'السلطة'),
-              _special('pizza', 'البيتزا'),
+              _special('pizza_group', 'البيتزا', s),
+              _special('salad_group', 'السلطة', s),
             ],
           ),
         ),
