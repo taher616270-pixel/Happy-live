@@ -324,7 +324,10 @@ export async function handleGamesApiRequest(
           pools[slot] = typeof value === "number" && Number.isFinite(value) ? value : 0;
         }
         for (const row of myRows.results ?? []) {
-          if (row.slot >= 0 && row.slot < 8) myBets[row.slot] = Number(row.amount) || 0;
+          if (row.slot >= 0 && row.slot < 8) {
+            myBets[row.slot] = Number(row.amount) || 0;
+            myBetsByKey[["chicken", "corn", "tomato", "goat", "chili", "fish", "carrot", "shrimp"][row.slot]] = Number(row.amount) || 0;
+          }
           if (row.slot === 8) myBetsByKey.pizza_group = Number(row.amount) || 0;
           if (row.slot === 9) myBetsByKey.salad_group = Number(row.amount) || 0;
         }
