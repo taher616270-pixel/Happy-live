@@ -502,7 +502,7 @@ export async function handleGamesApiRequest(
       const sameFood = await db.prepare(
         "SELECT 1 AS found FROM food_wheel_bets WHERE round_id = ? AND user_id = ? AND slot = ? AND status IN ('accepted', 'settled') LIMIT 1"
       ).bind(globalRound.id, user.id, slot).first<{ found: number }>();
-      if (!sameFood && Number(existingFoods?.count ?? 0) >= 6) {
+      if (slot < 8 && !sameFood && Number(existingFoods?.count ?? 0) >= 6) {
         return reply({ error: "max_foods_per_round", rejected: true }, 409, origin, env);
       }
 
@@ -553,8 +553,8 @@ export async function handleGamesApiRequest(
           "INSERT OR IGNORE INTO game_bets (id, round_id, game_id, user_id, idempotency_key, stake, selection_json, payout, status, created_at) SELECT ?, ?, ?, ?, ?, ?, ?, 0, 'processing', ? WHERE EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'open') AND EXISTS (SELECT 1 FROM food_wheel_rounds WHERE id = ? AND round_no = ? AND status = 'betting' AND betting_ends_at > ?)"
         ).bind(betId, financialRound.id, foodWheelGameId, user.id, idempotencyKey, amount, selectionJson, now, financialRound.id, globalRound.id, roundId, now),
         db.prepare(
-          "INSERT INTO food_wheel_bets (id, round_id, game_round_id, game_bet_id, user_id, slot, stake, payout, status, created_at) SELECT ?, ?, ?, ?, ?, ?, ?, 0, 'processing', ? FROM game_bets b WHERE b.id = ? AND b.status = 'processing' AND EXISTS (SELECT 1 FROM food_wheel_rounds WHERE id = ? AND status = 'betting' AND betting_ends_at > ?) AND (EXISTS (SELECT 1 FROM food_wheel_bets WHERE round_id = ? AND user_id = ? AND slot = ? AND status IN ('accepted', 'settled')) OR (SELECT COUNT(DISTINCT slot) FROM food_wheel_bets WHERE round_id = ? AND user_id = ? AND slot BETWEEN 0 AND 7 AND status IN ('accepted', 'settled')) < 6)"
-        ).bind(wheelBetId, globalRound.id, financialRound.id, betId, user.id, slot, amount, now, betId, globalRound.id, now, globalRound.id, user.id, slot, globalRound.id, user.id),
+          "INSERT INTO food_wheel_bets (id, round_id, game_round_id, game_bet_id, user_id, slot, stake, payout, status, created_at) SELECT ?, ?, ?, ?, ?, ?, ?, 0, 'processing', ? FROM game_bets b WHERE b.id = ? AND b.status = 'processing' AND EXISTS (SELECT 1 FROM food_wheel_rounds WHERE id = ? AND status = 'betting' AND betting_ends_at > ?) AND (EXISTS (SELECT 1 FROM food_wheel_bets WHERE round_id = ? AND user_id = ? AND slot = ? AND status IN ('accepted', 'settled')) OR ? >= 8 OR (SELECT COUNT(DISTINCT slot) FROM food_wheel_bets WHERE round_id = ? AND user_id = ? AND slot BETWEEN 0 AND 7 AND status IN ('accepted', 'settled')) < 6)"
+        ).bind(wheelBetId, globalRound.id, financialRound.id, betId, user.id, slot, amount, now, betId, globalRound.id, now, globalRound.id, user.id, slot, slot, globalRound.id, user.id),
         db.prepare(
           "UPDATE user_wallets SET balance = balance - ?, updated_at = ? WHERE user_id = ? AND balance >= ? AND EXISTS (SELECT 1 FROM food_wheel_bets WHERE id = ? AND status = 'processing') AND EXISTS (SELECT 1 FROM food_wheel_rounds WHERE id = ? AND status = 'betting' AND betting_ends_at > ?)"
         ).bind(amount, now, user.id, amount, wheelBetId, globalRound.id, now),
