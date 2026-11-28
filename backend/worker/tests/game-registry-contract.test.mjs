@@ -82,7 +82,7 @@ test("room Game Center keeps Food Wheel and opens Chicken Road below it inside t
   const chickenLauncherIndex = roomPage.indexOf("showChickenRoadGame");
   assert.ok(foodLabel >= 0);
   assert.ok(wheelLauncher >= 0);
-  assert.ok(chickenLauncherIndex > wheelLauncher);
+  assert.ok(chickenLauncherIndex > wheelLauncher);\n  assert.match(roomPage, /Chicken Road/);
   assert.match(roomPage, /_createChickenRoadSession/);
   assert.match(chickenLauncher, /HtmlElementView/);
   assert.match(chickenLauncher, /\/games\/chicken-road\/client\/index\.html/);
