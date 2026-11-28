@@ -32,10 +32,8 @@ import '../room_settings/my_workers_api.dart';
 import '../room_settings/pages/room_settings_page.dart';
 import '../widgets/mic_count_sheet.dart';
 import '../models/mic_layout.dart';
-import '../widgets/dynamic_games_list.dart';
 import '../games/food_wheel/food_wheel_game.dart';
 import '../games/food_wheel/wheel_api_http.dart';
-import '../services/game_link_launcher.dart';
 import '../cannon/cannon_service.dart';
 import '../cannon/cannon_sheet.dart';
 import '../pk/pk_sheet.dart';
@@ -2754,10 +2752,9 @@ class _RoomPageState extends State<RoomPage> {
                     Navigator.of(sheetContext).pop();
                     if (!host.mounted) return;
                     try {
-                      await launchFixedGame(
+                      await showChickenRoadGame(
                         host,
-                        '${Uri.base.origin}/games/chicken-road/client/index.html',
-                        _createChickenRoadSession(),
+                        sessionToken: _createChickenRoadSession(),
                       );
                     } catch (_) {
                       if (host.mounted) {
@@ -2794,7 +2791,7 @@ class _RoomPageState extends State<RoomPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Expanded(child: SingleChildScrollView(child: DynamicGamesList())),
+              const Spacer(),
             ],
           ),
         ),
