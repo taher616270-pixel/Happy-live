@@ -84,6 +84,11 @@
         data.sessionToken.length > 512 || sessionToken) return;
     sessionToken = data.sessionToken;
     window.CR_SESSION_TOKEN = sessionToken;
+    // Tell the Flutter host that the iframe received its one-time session.
+    window.parent.postMessage(
+      { type: 'happy-live-game-session-received' },
+      window.location.origin
+    );
     expiresAt = Date.now() + 14 * 60 * 1000;
     window.removeEventListener('message', receiveSession);
     scheduleRefresh();
