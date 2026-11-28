@@ -299,7 +299,7 @@ export async function handleGamesApiRequest(
             "SELECT fb.user_id AS userId, COALESCE(p.display_name, '') AS name, p.avatar_key AS avatar, SUM(fb.payout) AS amount, CASE WHEN fb.user_id = ? THEN 1 ELSE 0 END AS isMe FROM food_wheel_bets fb LEFT JOIN profiles p ON p.user_id = fb.user_id WHERE fb.round_id = ? AND fb.payout > 0 AND fb.status IN ('accepted', 'settled') GROUP BY fb.user_id, p.display_name, p.avatar_key ORDER BY amount DESC, fb.user_id ASC LIMIT 3"
           ).bind(user.id, round.id).all<{ userId: string; name: string; avatar: string | null; amount: number; isMe: number }>(),
           db.prepare(
-            "SELECT COALESCE(p.display_name, '') AS name, p.avatar_key AS avatar, fb.slot AS slot, fb.stake AS amount, CASE WHEN fb.user_id = ? THEN 1 ELSE 0 END AS isMe FROM food_wheel_bets fb LEFT JOIN profiles p ON p.user_id = fb.user_id WHERE fb.round_id = ? AND fb.status IN ('accepted', 'settled') ORDER BY fb.created_at DESC, fb.id DESC LIMIT 12"
+            "SELECT COALESCE(p.display_name, '') AS name, p.avatar_key AS avatar, fb.slot AS slot, fb.stake AS amount, CASE WHEN fb.user_id = ? THEN 1 ELSE 0 END AS isMe FROM food_wheel_bets fb LEFT JOIN profiles p ON p.user_id = fb.user_id WHERE fb.round_id = ? AND fb.slot BETWEEN 0 AND 7 AND fb.status IN ('accepted', 'settled') ORDER BY fb.created_at DESC, fb.id DESC LIMIT 12"
           ).bind(user.id, round.id).all<{ name: string; avatar: string | null; slot: number; amount: number; isMe: number }>(),
           db.prepare(
             "SELECT COUNT(DISTINCT user_id) AS count FROM food_wheel_bets WHERE round_id = ? AND status IN ('accepted', 'settled')"
