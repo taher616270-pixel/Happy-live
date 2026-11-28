@@ -81,17 +81,19 @@ test("temporary game tokens are invalidated after a game URL origin change", () 
 });
 
 test("web game launcher exchanges the app session and never puts the game token in its URL", async () => {
-  const widget = await readFile(new URL("../../../frontend/lib/widgets/dynamic_games_list.dart", import.meta.url), "utf8");
-  const launcher = await readFile(new URL("../../../frontend/lib/services/game_link_launcher_web.dart", import.meta.url), "utf8");
-  assert.match(widget, /SessionTokenStore\.read\(\)/);
-  assert.match(widget, /\/game\/auth/);
-  assert.match(widget, /launchExternalGame\(context, url/);
+  const roomPage = await readFile(new URL("../../../frontend/lib/pages/room_page.dart", import.meta.url), "utf8");
+  const launcher = await readFile(new URL("../../../frontend/lib/games/chicken_road/chicken_road_launcher_web.dart", import.meta.url), "utf8");
+  assert.match(roomPage, /_createChickenRoadSession/);
+  assert.match(roomPage, /\/api\/v1\/game\/auth/);
+  assert.match(roomPage, /showFoodWheelGame/);
+  assert.match(roomPage, /showChickenRoadGame/);
   assert.match(launcher, /postMessage/);
+  assert.match(launcher, /happy-live-game-session/);
   assert.match(launcher, /HtmlElementView/);
-  assert.match(launcher, /frame.contentWindow/);
+  assert.match(launcher, /frame\.contentWindow/);
   assert.match(launcher, /referrerpolicy/);
-  assert.doesNotMatch(launcher, /window.open/);
-  assert.match(launcher, /parsed\.origin/);
+  assert.match(launcher, /\/games\/chicken-road\/client\/index\.html/);
+  assert.doesNotMatch(launcher, /window\.open/);
   assert.doesNotMatch(launcher, /searchParams\.set|\.fragment\b|\.queryParameters\b/);
 });
 
