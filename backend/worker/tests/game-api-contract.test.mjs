@@ -214,14 +214,14 @@ test("Chicken Road is production-only and uses the canonical Happy Live wallet",
 });
 
 test("Chicken Road rules are fixed in shared configuration and client sends only server commands", () => {
-  assert.match(chickenConfig, /RTP:\.97/);
-  assert.match(chickenConfig, /MAX_STEPS:25/);
-  assert.match(chickenConfig, /STEP_MIN_MS:300/);
-  assert.match(chickenConfig, /MIN_BET:100/);
-  assert.match(chickenConfig, /MAX_BET:1000000/);
-  assert.match(chickenConfig, /easy:Object\.freeze\(\{death:\.06/);
-  assert.match(chickenConfig, /medium:Object\.freeze\(\{death:\.14/);
-  assert.match(chickenConfig, /hard:Object\.freeze\(\{death:\.22/);
+  assert.match(chickenConfig, /RTP:\s*0\.97/);
+  assert.match(chickenConfig, /MAX_STEPS:\s*25/);
+  assert.match(chickenConfig, /STEP_MIN_MS:\s*300/);
+  assert.match(chickenConfig, /MIN_BET:\s*100/);
+  assert.match(chickenConfig, /MAX_BET:\s*1000000/);
+  assert.match(chickenConfig, /easy:\s*\{\s*label: 'سهل',\s*death: 0\.06/);
+  assert.match(chickenConfig, /medium:\s*\{\s*label: 'عادي',\s*death: 0\.14/);
+  assert.match(chickenConfig, /hard:\s*\{\s*label: 'صعب',\s*death: 0\.22/);
   assert.match(chickenEngine, /function multiplier/);
   assert.doesNotMatch(chickenEngine, /class Engine|crashAt|wallet\.debit|wallet\.credit/);
   assert.match(chickenClient, /\{t:'play',amount:S\.bet,diff:S\.diff\}/);
