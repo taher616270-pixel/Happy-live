@@ -795,7 +795,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   static const int _spinDurationMs = 5000;
-  static const double _spinStep = math.pi * 2 / 8;
+  static const double _spinStep = math.pi * 2 / kSlots.length;
   static const double _spinBaseAngle = 3 * math.pi * 2;
 
   double _spinAngleForElapsed(double elapsedMs) {
@@ -1393,7 +1393,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(s.special == 'pizza' ? 'بيتزا! فازت كل الخضروات' : s.special == 'salad' ? 'سلطة! فازت كل اللحوم' : '${s.roundId} نتيجة الجولة', textAlign: TextAlign.center, style: t),
+                Text('${s.roundId} نتيجة الجولة — $food', textAlign: TextAlign.center, style: t),
                 Text('رهانك في هذه الجولة: $mine', textAlign: TextAlign.center, style: t),
                 Text(groupResultText, textAlign: TextAlign.center, style: t),
                 Text('الفائز في هذه الجولة: ${s.myPayout}', textAlign: TextAlign.center, style: t),
@@ -1562,10 +1562,12 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             height: w,
             child: Stack(children: [
           Positioned.fill(child: CustomPaint(painter: _SpokesPainter(d))),
-          for (var i = 0; i < 8; i++)
+          // Exactly one evenly spaced wheel node for each playable food.
+          // Group bets (pizza/salad) are rendered only in _platform below.
+          for (var i = 0; i < kSlots.length; i++)
             Positioned(
-              left: w / 2 + w * 0.37 * math.sin(i * math.pi * 2 / 8) - ds / 2,
-              top: w / 2 - w * 0.37 * math.cos(i * math.pi * 2 / 8) - ds / 2,
+              left: w / 2 + w * 0.37 * math.sin(i * math.pi * 2 / kSlots.length) - ds / 2,
+              top: w / 2 - w * 0.37 * math.cos(i * math.pi * 2 / kSlots.length) - ds / 2,
               width: ds,
               height: ds,
               child: _slot(i, s, ds, spinAngle),
@@ -1643,8 +1645,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   double _highlightForSlot(double angle, int slot) {
     if (!_spinHasResult) return 0;
-    const step = math.pi * 2 / 8;
-    final activeSlot = (angle / step).floor() % 8;
+    const step = math.pi * 2 / kSlots.length;
+    final activeSlot = (angle / step).floor() % kSlots.length;
     return activeSlot == slot ? 1.0 : 0.0;
   }
 
