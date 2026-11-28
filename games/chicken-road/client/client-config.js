@@ -1,1 +1,18 @@
-(function(){'use strict';const API='wss://happy-live-api.taher616270.workers.dev/api/v1/game/chicken-road/ws';window.APP_USER_TOKEN='';window.CR_CLIENT=Object.freeze({WS_URL:API,TOKEN:()=>window.APP_USER_TOKEN||'',ASSETS:Object.freeze({chicken:'../assets/chicken.svg',chickenDead:'../assets/chicken-dead.svg',chickenWin:'../assets/chicken-win.svg',cars:['../assets/car-blue.svg','../assets/car-red.svg','../assets/car-gold.svg','../assets/car-violet.svg'],music:'../assets/music.mp3'})});window.addEventListener('message',e=>{if(e.origin!==location.origin)return;const d=e.data;if(!d||d.type!=='happy-live-game-session'||typeof d.sessionToken!=='string'||d.sessionToken.length<32||d.sessionToken.length>512)return;window.APP_USER_TOKEN=d.sessionToken;if(window.CR_Net)window.CR_Net.connect();});})();
+// ===== نقطة الربط مع Happy Live (واجهة) =====
+// المسارات نسبية لـ client/index.html. لو عرضت اللعبة من مسار مختلف عدّل ASSET_BASE فقط.
+(function () {
+  const B = window.CR_ASSET_BASE || '../assets/';
+  window.CR_CLIENT = {
+    // رابط WebSocket الكامل لـ Durable Object / Worker (فاضي = وضع تجريبي بدون خادم)
+    // مثال: 'wss://YOUR-WORKER.workers.dev/api/games/chicken-road/ws'
+    WS_URL: window.CR_WS_URL || '',
+    // توكن المستخدم الحالي (يمرره Flutter قبل تحميل الصفحة: window.APP_USER_TOKEN = '...')
+    TOKEN: () => window.APP_USER_TOKEN || 'guest',
+    ASSETS: {
+      chicken: B + 'chicken.svg', chickenDead: B + 'chicken-dead.svg', chickenWin: B + 'chicken-win.svg',
+      cars: [B + 'car-1.svg', B + 'car-2.svg', B + 'car-3.svg'],
+      music: B + 'music.mp3',
+      sfx: { hop: B + 'hop.mp3', hit: B + 'hit.mp3', win: B + 'win.mp3', click: B + 'click.mp3' }
+    }
+  };
+})();

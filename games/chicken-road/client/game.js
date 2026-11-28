@@ -1,1 +1,160 @@
-(function(){'use strict';const C=CR_CONFIG,E=CR_Engine,N=CR_Net,A=CR_CLIENT.ASSETS,$=id=>document.getElementById(id),S={diff:'easy',bet:0,state:'idle',step:0,pos:0,lock:false,musicOn:false,audio:null,commit:'',reveal:''};const fmt=n=>Math.floor(Number(n)||0).toLocaleString('en-US'),fmtM=n=>Number(n)>=100?String(Math.round(n)):Number(n||0).toFixed(2),view=$('view'),road=$('road'),tiles=[];const chicken=document.createElement('img');chicken.id='chicken';chicken.alt='الدجاجة';chicken.draggable=false;road.appendChild(chicken);for(let i=0;i<=C.MAX_STEPS;i++){const t=document.createElement('div');t.className=i===0?'tile side':'tile';if(i)t.innerHTML='<div class="m"><span></span></div>';road.appendChild(t);tiles.push(t);}function skin(s){chicken.src=s==='dead'?A.chickenDead:s==='win'?A.chickenWin:A.chicken;chicken.classList.toggle('hit',s==='dead');}function labels(){tiles.forEach((t,i)=>{if(i)t.querySelector('span').textContent=fmtM(E.multiplier(S.diff,i))+'x';});}function center(i){return i===0?S.side*.5:S.side+(i-1)*S.tile+S.tile*.5;}function place(i,instant){S.pos=i;chicken.style.transition=instant?'none':'';chicken.style.left=(center(i)-25)+'px';road.style.transform='translateX('+(-Math.max(0,i-2)*S.tile)+'px)';if(instant)requestAnimationFrame(()=>chicken.style.transition='');chicken.classList.remove('hop');void chicken.offsetWidth;chicken.classList.add('hop');}function size(){S.side=42;S.tile=(view.clientWidth-S.side)/3.4;road.style.setProperty('--tile',S.tile+'px');road.style.setProperty('--side',S.side+'px');road.style.width=(S.side+C.MAX_STEPS*S.tile)+'px';place(S.pos,true);}function spawnCar(tile,ms){const img=document.createElement('img');img.className='car';img.alt='';img.src=A.cars[Math.floor(Math.random()*A.cars.length)];tile.appendChild(img);const h=view.clientHeight,up=Math.random()<.4,anim=img.animate([{transform:'translate(-50%,'+(up?h+90:-100)+'px)'},{transform:'translate(-50%,'+(up?-100:h+90)+'px)'}],{duration:ms,easing:'linear',fill:'both'});anim.onfinish=()=>img.remove();}const traffic=setInterval(()=>{if(document.hidden||S.state!=='active')return;const i=Math.max(1,S.pos-3)+Math.floor(Math.random()*9);if(i>C.MAX_STEPS||i===S.pos||i===S.pos+1)return;spawnCar(tiles[i],1500+Math.random()*800);},520);function toast(m,k){$('toast').textContent=m;$('toast').className=k||'';$('toast').hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').hidden=true,2800);}function ui(){const active=S.state==='active',pending=S.state==='pending';$('betv').textContent=fmt(S.bet);$('go').className='play'+(active?' cash':'');$('go').textContent=pending?'جارٍ...':active?'سحب '+fmt(S.bet*E.multiplier(S.diff,S.step)):'لعب';$('go').disabled=pending||(active?S.step<1:S.bet<C.MIN_BET);document.querySelectorAll('#diffs button').forEach(b=>{b.classList.toggle('on',b.dataset.d===S.diff);b.disabled=active||pending;});document.querySelectorAll('#chips button').forEach(b=>{b.classList.toggle('on',Number(b.dataset.amount)===S.bet);b.disabled=active||pending;});$('mult').textContent=fmtM(active?E.multiplier(S.diff,S.step):1)+'x';$('hint').hidden=!(active&&S.step===0);$('commit').textContent=S.commit?S.commit.slice(0,14)+'…':'—';}C.CHIPS.forEach(n=>{const b=document.createElement('button');b.type='button';b.dataset.amount=n;b.textContent=fmt(n);b.onclick=()=>{if(S.state==='active'||S.state==='pending')return;S.bet=n;ui();};$('chips').appendChild(b);});Object.entries(C.DIFFICULTIES).forEach(([k,v])=>{const b=document.createElement('button');b.type='button';b.dataset.d=k;b.textContent=v.label;b.onclick=()=>{if(S.state==='active'||S.state==='pending')return;S.diff=k;labels();ui();};$('diffs').appendChild(b);});$('go').onclick=()=>{if(S.state==='active'){N.send({t:'cash'});return;}if(S.state==='pending'||S.bet<C.MIN_BET||S.bet>C.MAX_BET)return;S.state='pending';ui();if(!N.send({t:'play',amount:S.bet,diff:S.diff})){S.state='idle';ui();toast('انتظر اتصال الخادم','bad');}};view.addEventListener('click',()=>{if(S.state!=='active'||S.lock)return;S.lock=true;setTimeout(()=>S.lock=false,C.STEP_MIN_MS+40);N.send({t:'step'});});N.on('init',d=>{$('bal').textContent=fmt(d.balance);if(d.game){Object.assign(S,{state:'active',diff:d.game.diff,bet:d.game.amount,step:d.game.step,commit:d.game.commit||''});place(S.step,true);}else if(S.state==='pending')S.state='idle';ui();});N.on('balance',d=>$('bal').textContent=fmt(d.balance));N.on('started',d=>{Object.assign(S,{state:'active',step:0,bet:d.amount,diff:d.diff,commit:d.commit||'',reveal:''});skin('idle');place(0,true);$('reveal').textContent='تم تثبيت الالتزام قبل اللعب';ui();});N.on('step',d=>{S.step=Number(d.step)||S.step;tiles[S.step].querySelectorAll('.car').forEach(x=>x.remove());place(S.step,false);ui();});N.on('dead',d=>{S.state='over';S.step=Number(d.step)||S.step;S.reveal=d.reveal||'';tiles[S.step].querySelectorAll('.car').forEach(x=>x.remove());place(S.step,false);setTimeout(()=>skin('dead'),350);$('reveal').textContent='كشف البذرة: '+(S.reveal||'—');toast('اصطدمت السيارة — خسرت '+fmt(d.amount),'bad');ui();});N.on('cashed',d=>{S.state='over';S.reveal=d.reveal||'';skin('win');$('reveal').textContent='كشف البذرة: '+(S.reveal||'—');toast('ربحت '+fmt(d.payout)+' ('+fmtM(d.mult)+'x)','good');ui();});N.on('error',d=>{if(S.state==='pending')S.state='idle';toast(d.message||'تعذر تنفيذ الطلب','bad');ui();});N.on('offline',()=>{if(S.state==='pending')S.state='idle';toast('الاتصال بالخادم غير متاح','bad');ui();});N.on('unauthorized',()=>{S.state='idle';toast('انتهت جلسة Happy Live، أعد فتح اللعبة','bad');ui();});function modal(t,h){$('mtitle').textContent=t;$('mbody').innerHTML=h;$('modal').hidden=false;}$('mclose').onclick=()=>$('modal').hidden=true;$('bHelp').onclick=()=>modal('القواعد','<ol class="rules"><li>اختر الصعوبة وقيمة الرهان من رصيد Happy Live الحقيقي.</li><li>اضغط على الطريق للانتقال خطوة واحدة؛ كل خطوة ترفع المضاعف.</li><li>اضغط «سحب» لتحصيل العائد، أو تابع حتى 25 خطوة حيث يتم السحب تلقائياً.</li><li>إذا اصطدمت الدجاجة بالسيارة تخسر رهان الجولة.</li><li>يظهر Hash الالتزام قبل اللعب وتُكشف البذرة بعد انتهاء الجولة.</li></ol>');$('bMusic').onclick=()=>{S.musicOn=!S.musicOn;$('bMusic').classList.toggle('off',!S.musicOn);if(!S.audio){S.audio=new Audio(A.music);S.audio.loop=true;S.audio.volume=.2;}if(S.musicOn)S.audio.play().catch(()=>{S.musicOn=false;$('bMusic').classList.add('off');});else S.audio.pause();};$('bSync').onclick=()=>N.send({t:'sync'});$('bLog').onclick=()=>{modal('سجل الجولات','<div class="tbl"><div class="th"><span>الوقت</span><span>الصافي</span><span>النتيجة</span><span>الرهان</span></div><div id="rows"></div></div>');N.send({t:'history'});};N.on('history',d=>{const target=$('rows');if(!target)return;target.innerHTML=(d.rows||[]).map(r=>{const net=Number(r.payout)-Number(r.amount);return '<div class="tr"><span>'+CR_Stats.formatTime(r.ts)+'</span><span class="'+(net>=0?'g':'r')+'">'+fmt(net)+'</span><span>'+(r.win?'فوز':'خسارة')+'</span><span>'+fmt(r.amount)+'</span></div>';}).join('')||'<p class="empty">لا توجد جولات مسجلة</p>';});function top(range){modal('لوحة المتصدرين','<div class="tabs"><button data-r="yesterday">أمس</button><button data-r="today">اليوم</button><button data-r="week">أسبوعي</button></div><div id="top"></div>');document.querySelectorAll('.tabs button').forEach(b=>{b.classList.toggle('on',b.dataset.r===range);b.onclick=()=>top(b.dataset.r);});N.send({t:'top',range});}$('bTop').onclick=()=>top('today');N.on('top',d=>{const target=$('top');if(!target)return;target.innerHTML=(d.rows||[]).map(r=>{const avatar=typeof r.avatar==='string'&&/^https:\/\//i.test(r.avatar)?' style="background-image:url('+r.avatar.replace(/["\\]/g,'')+')"':'';const name=String(r.name||'').replace(/[<>&"]/g,'');return '<div class="rk"><b class="no">'+r.rank+'</b><div class="av"'+avatar+'>'+(avatar?'':name.slice(0,1))+'</div><span class="nm">'+name+'</span><span class="cn">'+fmt(r.coins)+'</span></div>';}).join('')||'<p class="empty">لا يوجد فائزون بعد</p>';});window.addEventListener('resize',size);size();skin('idle');place(0,true);labels();ui();N.connect();})();
+// واجهة اللعبة: الطريق، الدجاجة، السيارات، الأزرار، النوافذ.
+(function () {
+  const C = CR_CONFIG, E = CR_Engine, Net = CR_Net, A = CR_CLIENT.ASSETS || {};
+  const $ = (id) => document.getElementById(id);
+  const S = { diff: 'easy', bet: 0, state: 'idle', step: 0, pos: 0, lock: false, music: true, first: true, tile: 80, side: 44 };
+  const EMO_CARS = ['🚕', '🚗', '🚙', '🚌', '🏎️', '🚓', '🚚'];
+  const fmt = (n) => Math.floor(n).toLocaleString('en-US');
+  const SFX = {};
+  function sfx(n) {                                                       // مؤثرات صوتية
+    const u = (A.sfx || {})[n]; if (!S.music || !u) return;
+    const a = (SFX[n] = SFX[n] || new Audio(u)).cloneNode(); a.volume = 0.6; a.play().catch(() => {});
+  }
+  function startMusic() {                                                  // تشتغل بعد أول لمسة (شرط المتصفح)
+    if (!A.music) return;
+    S.audio = S.audio || Object.assign(new Audio(A.music), { loop: true, volume: 0.35 });
+    if (S.music) S.audio.play().catch(() => {});
+  }
+  document.addEventListener('pointerdown', startMusic, { once: true });
+  const fmtM = (n) => (n >= 100 ? Math.round(n) : n.toFixed(2));   // مضاعف: خانتين، وبدون كسور فوق 100
+
+  // ---------- الطريق ----------
+  const view = $('view'), road = $('road'), tiles = [];
+  const chicken = document.createElement('div'); chicken.id = 'chicken'; road.appendChild(chicken);
+  for (let i = 0; i <= C.MAX_STEPS; i++) {
+    const t = document.createElement('div');
+    t.className = i === 0 ? 'tile side' : 'tile';
+    if (i > 0) t.innerHTML = '<div class="m"><span></span></div>';
+    road.appendChild(t); tiles.push(t);
+  }
+  const labels = () => tiles.forEach((t, i) => { if (i) t.querySelector('span').textContent = fmtM(E.multiplier(S.diff, i)) + 'X'; });
+  function size() {                                                       // أربع مسارات ظاهرة تقريباً
+    S.tile = (view.clientWidth - S.side) / 3.4;
+    road.style.setProperty('--tile', S.tile + 'px'); road.style.setProperty('--side', S.side + 'px');
+    road.style.width = S.side + C.MAX_STEPS * S.tile + 'px'; place(S.pos, true);
+  }
+  const cx = (i) => (i === 0 ? S.side * 0.5 : S.side + (i - 1) * S.tile + S.tile / 2);
+  function place(i, instant) {
+    S.pos = i;
+    chicken.style.transition = instant ? 'none' : '';
+    chicken.style.left = cx(i) - 24 + 'px';
+    road.style.transform = `translateX(${-Math.max(0, i - 2) * S.tile}px)`;
+    if (instant) requestAnimationFrame(() => (chicken.style.transition = ''));
+    chicken.classList.add('hop'); setTimeout(() => chicken.classList.remove('hop'), 250);
+  }
+  function skin(state) {                                                  // صورة أو إيموجي
+    const url = state === 'dead' ? A.chickenDead || A.chicken : state === 'win' ? A.chickenWin || A.chicken : A.chicken;
+    chicken.className = (url ? 'img ' : '') + (state === 'dead' ? 'hit' : '');
+    if (url) { chicken.style.backgroundImage = `url(${url})`; chicken.textContent = ''; }
+    else { chicken.style.backgroundImage = ''; chicken.textContent = state === 'dead' ? '💥' : state === 'win' ? '😎' : '🐔'; }
+  }
+
+  // ---------- السيارات ----------
+  function car(tile, ms, delay) {
+    const c = document.createElement('div'); c.className = 'car';
+    if (A.cars && A.cars.length) { c.classList.add('img'); c.style.backgroundImage = `url(${A.cars[(Math.random() * A.cars.length) | 0]})`; }
+    else c.textContent = EMO_CARS[(Math.random() * EMO_CARS.length) | 0];
+    tile.appendChild(c);
+    const h = view.clientHeight, up = Math.random() < 0.4;
+    const a = c.animate([{ transform: `translateY(${up ? h + 80 : -110}px)` }, { transform: `translateY(${up ? -110 : h + 80}px)` }],
+      { duration: ms, delay: delay || 0, easing: 'linear', fill: 'both' });
+    a.onfinish = () => c.remove();
+    return c;
+  }
+  setInterval(() => {                                                      // سيارات ديكور بعيدة عن الدجاجة
+    if (document.hidden) return;
+    const i = Math.max(1, S.pos - 3) + ((Math.random() * 9) | 0);
+    if (i > C.MAX_STEPS || i === S.pos || i === S.pos + 1) return;
+    car(tiles[i], 1300 + Math.random() * 900);
+  }, 420);
+  // الدعس: الدجاجة تنزل على المسار ثم تدخل سيارة وتصدمها في منتصف الشاشة بالضبط
+  function runOver(step) {
+    tiles[step].querySelectorAll('.car').forEach((c) => c.remove());
+    place(step);
+    const ms = 420, delay = 260;                                           // تعبر المنتصف عند delay + ms/2
+    car(tiles[step], ms, delay);
+    setTimeout(() => { skin('dead'); sfx('hit'); }, delay + ms / 2);
+  }
+
+  // ---------- واجهة ----------
+  function toast(t, cls) { const e = $('toast'); e.textContent = t; e.className = cls || ''; e.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (e.hidden = true), 2200); }
+  function ui() {
+    const active = S.state === 'active';
+    $('betv').textContent = fmt(S.bet);
+    $('go').className = 'play' + (active ? ' cash' : '');
+    $('go').textContent = active ? 'سحب ' + fmt(S.bet * E.multiplier(S.diff, S.step)) : 'لعب';
+    $('go').disabled = active ? S.step < 1 : S.bet < C.MIN_BET;
+    document.querySelectorAll('#diffs button').forEach((b) => { b.classList.toggle('on', b.dataset.d === S.diff); b.disabled = active; });
+    document.querySelectorAll('#chips button,#clear').forEach((b) => (b.disabled = active));
+    $('mult').textContent = (active && S.step ? fmtM(E.multiplier(S.diff, S.step)) : '0') + 'x';
+    $('hint').hidden = !(active && S.step === 0 && S.first);
+    labels();
+  }
+  C.CHIPS.forEach((v) => {
+    const b = document.createElement('button'); b.innerHTML = '<i class="coin"></i>' + v;
+    b.onclick = () => { S.bet = v; ui(); }; $('chips').appendChild(b);
+  });
+  $('clear').onclick = () => { S.bet = 0; ui(); };
+  Object.entries(C.DIFFICULTIES).reverse().forEach(([k, d]) => {          // صعب · عادي · سهل
+    const b = document.createElement('button'); b.dataset.d = k; b.textContent = d.label;
+    b.onclick = () => { S.diff = k; ui(); }; $('diffs').appendChild(b);
+  });
+
+  // ---------- اللعب ----------
+  $('go').onclick = () => { sfx('click'); S.state === 'active' ? Net.send({ t: 'cash' }) : Net.send({ t: 'play', amount: S.bet, diff: S.diff }); };
+  view.onclick = () => {                                                   // اضغط في أي مكان للخطوة التالية
+    if (S.state !== 'active' || S.lock) return;
+    S.lock = true; setTimeout(() => (S.lock = false), C.STEP_MIN_MS + 30);
+    S.first = false; Net.send({ t: 'step' });
+  };
+
+  Net.on('init', (d) => {
+    $('bal').textContent = fmt(d.balance);
+    if (d.game) { Object.assign(S, { state: 'active', diff: d.game.diff, bet: d.game.amount, step: d.game.step }); place(d.game.step, true); }
+    ui();
+  });
+  Net.on('balance', (d) => ($('bal').textContent = fmt(d.balance)));
+  Net.on('error', (d) => toast(d.message, 'bad'));
+  Net.on('offline', () => toast('انقطع الاتصال.. إعادة المحاولة', 'bad'));
+  Net.on('started', (d) => { Object.assign(S, { state: 'active', step: 0, bet: d.amount, diff: d.diff }); skin('idle'); place(0, true); ui(); });
+  Net.on('step', (d) => { sfx('hop'); S.step = d.step; tiles[d.step].querySelectorAll('.car').forEach((c) => c.remove()); place(d.step); ui(); });
+  Net.on('dead', (d) => {
+    S.state = 'over'; S.step = d.step; runOver(d.step);
+    setTimeout(() => toast('دعستك سيارة 💥 خسرت ' + fmt(d.amount), 'bad'), 700); ui();
+  });
+  Net.on('cashed', (d) => { S.state = 'over'; skin('win'); sfx('win'); toast(`ربحت ${fmt(d.payout)} 🎉  (${fmtM(d.mult)}x)`, 'good'); ui(); });
+
+  // ---------- النوافذ ----------
+  function modal(title, html) { $('mtitle').textContent = title; $('mbody').innerHTML = html; $('modal').hidden = false; }
+  $('mclose').onclick = () => ($('modal').hidden = true);
+  $('bHelp').onclick = () => modal('القواعد', `<ol class="rules"><li>اختر مبلغ لعبك ومستوى الصعوبة المطلوب</li>
+    <li>تحرك عبر المسارات، وتجنب الاصطدامات لزيادة معامل الربح الخاص بك</li><li>قرر متى تفوز بناء على مدى تحملك للمخاطر</li></ol>`);
+  $('bMusic').onclick = () => {
+    S.music = !S.music; $('bMusic').classList.toggle('off', !S.music);
+    if (S.music) startMusic(); else if (S.audio) S.audio.pause();
+  };
+  $('bSync').onclick = () => Net.send({ t: 'sync' });
+  $('bLog').onclick = () => { modal('سجل اللعبة', '<div class="tbl"><div class="th"><span>الوقت</span><span>الأرباح</span><span>فوز</span><span>لعب</span></div><div id="rows"></div></div>'); Net.send({ t: 'history' }); };
+  Net.on('history', (d) => {
+    const r = $('rows'); if (!r) return;
+    r.innerHTML = d.rows.map((x) => { const t = new Date(x.ts);
+      return `<div class="tr"><span>${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}</span>
+        <span class="${x.win ? 'g' : 'r'}">${fmt(x.win ? x.payout - x.amount : -x.amount)}</span><span>${x.win ? '✔' : '✘'}</span><span>${fmt(x.amount)}</span></div>`; }).join('');
+  });
+  function openTop(range) {
+    modal('الترتيب', `<div class="tabs">${[['yesterday', 'أمس'], ['today', 'اليوم'], ['week', 'أسبوعي']].map(([k, l]) =>
+      `<button data-r="${k}" class="${k === range ? 'on' : ''}">${l}</button>`).join('')}</div><div id="top"></div>`);
+    document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => openTop(b.dataset.r)));
+    Net.send({ t: 'top', range });
+  }
+  $('bTop').onclick = () => openTop('today');
+  Net.on('top', (d) => {
+    const t = $('top'); if (!t) return;
+    t.innerHTML = d.rows.length ? d.rows.map((x) => `<div class="rk r${Math.min(x.rank, 4)}"><b class="no">${x.rank}</b>
+      <div class="av" style="${x.avatar ? `background-image:url(${x.avatar})` : ''}">${x.avatar ? '' : (x.name || '?')[0]}</div>
+      <span class="nm">${x.name || ''}</span><span class="cn">${fmt(x.coins)}<i class="coin"></i></span></div>`).join('')
+      : '<p class="empty">لا يوجد فائزون بعد</p>';
+  });
+
+  window.addEventListener('resize', size); size(); skin('idle'); place(0, true); ui(); Net.connect();
+})();

@@ -1,1 +1,19 @@
-(function(){'use strict';window.CR_CONFIG=Object.freeze({RTP:.97,MAX_STEPS:25,STEP_MIN_MS:300,MIN_BET:100,MAX_BET:1000000,CHIPS:Object.freeze([100,1000,10000,100000,1000000]),DIFFICULTIES:Object.freeze({easy:Object.freeze({death:.06,label:'سهل'}),medium:Object.freeze({death:.14,label:'عادي'}),hard:Object.freeze({death:.22,label:'صعب'})})});})();
+// الإعدادات المشتركة (سيرفر + واجهة). عدّل الأرقام من هنا فقط.
+(function (root) {
+  const CONFIG = {
+    RTP: 0.97,              // نسبة العائد
+    MAX_STEPS: 25,          // آخر خطوة = سحب تلقائي
+    STEP_MIN_MS: 300,       // أقل وقت بين خطوتين (يمنع الضغط السريع)
+    MIN_BET: 100,
+    MAX_BET: 1000000,
+    CHIPS: [100, 1000, 10000, 100000, 1000000],
+    // death = احتمال أن تدعسك سيارة في كل خطوة
+    DIFFICULTIES: {
+      easy:   { label: 'سهل',  death: 0.06 },
+      medium: { label: 'عادي', death: 0.14 },
+      hard:   { label: 'صعب',  death: 0.22 }
+    }
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = CONFIG;
+  else root.CR_CONFIG = CONFIG;
+})(typeof window !== 'undefined' ? window : globalThis);
