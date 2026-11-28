@@ -1,22 +1,55 @@
-// اتصال إنتاجي فقط: جلسة Happy Live المؤقتة + WebSocket خاص بالمستخدم.
+// Production-only Happy Live integration: authenticated session + canonical wallet.
 (function () {
-  const cfg = window.CR_CLIENT, H = {};
+  const cfg = window.CR_CLIENT || {};
+  const H = {};
   const API = 'https://happy-live-api.taher616270.workers.dev/api/v1/game';
+  const MAX_CONNECT_ATTEMPTS = 3;
+  const CONNECT_RETRY_DELAY_MS = 1500;
+  const READY_TIMEOUT_MS = 10000;
   const Net = {
     me: null, player: null, connected: false,
     on(t, f) { (H[t] = H[t] || []).push(f); },
     fire(t, d) { (H[t] || []).forEach((f) => f(d)); },
     send() { return false; }
   };
-  let sessionToken = '', expiresAt = 0, socket = null, refreshTimer = 0, reconnectTimer = 0;
-  let stopped = false, refreshPromise = null, connectStarted = false;
 
-  function failSession() {
+  let sessionToken = '', expiresAt = 0, socket = null;
+  let refreshTimer = 0, reconnectTimer = 0, readyTimer = 0;
+  let stopped = false, refreshPromise = null, connectStarted = false;
+  let connectAttempts = 0;
+
+  function setConnectionUi(ready) {
+    const balance = document.getElementById('bal');
+    const play = document.getElementById('go');
+    const top = document.getElementById('bTop');
+    const history = document.getElementById('bLog');
+    if (!ready && balance) balance.textContent = '—';
+    if (play) play.disabled = !ready;
+    if (top) top.disabled = !ready;
+    if (history) history.disabled = !ready;
+  }
+
+  function showFatal(message) {
     stopped = true;
+    Net.connected = false;
     clearTimeout(refreshTimer);
     clearTimeout(reconnectTimer);
-    if (socket && socket.readyState < WebSocket.CLOSING) socket.close(4001, 'session_expired');
-    Net.connected = false;
+    clearTimeout(readyTimer);
+    setConnectionUi(false);
+    if (socket && socket.readyState < WebSocket.CLOSING) {
+      try { socket.close(4002, 'connection_failed'); } catch (_) {}
+    }
+    const toast = document.getElementById('toast');
+    if (toast) {
+      toast.textContent = message;
+      toast.className = 'bad';
+      toast.hidden = false;
+    }
+    Net.fire('connection-failed', { message });
+  }
+
+  function failSession() {
+    showFatal('انتهت جلسة Happy Live أو لم تعد صالحة. أغلق اللعبة وافتحها مجدداً.');
     Net.fire('unauthorized', { message: 'انتهت جلسة Happy Live، أعد فتح اللعبة' });
   }
 
@@ -28,9 +61,13 @@
         headers: { Authorization: 'Bearer ' + sessionToken }
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || typeof data.expiresAt !== 'string') throw new Error(data.error || 'game_session_refresh_failed');
+      if (!response.ok || typeof data.expiresAt !== 'string') {
+        throw new Error(data.error || 'game_session_refresh_failed');
+      }
       const nextExpiry = Date.parse(data.expiresAt);
-      if (!Number.isFinite(nextExpiry) || nextExpiry <= Date.now()) throw new Error('invalid_game_session_expiry');
+      if (!Number.isFinite(nextExpiry) || nextExpiry <= Date.now()) {
+        throw new Error('invalid_game_session_expiry');
+      }
       expiresAt = nextExpiry;
       scheduleRefresh();
     })();
@@ -46,31 +83,88 @@
     }, Math.max(1000, expiresAt - Date.now() - 60000));
   }
 
+  function connectionFailed() {
+    showFatal('تعذر الاتصال بخادم Chicken Road بعد 3 محاولات. تحقق من اتصالك ثم أغلق اللعبة وافتحها مجدداً.');
+  }
+
   function connectSocket() {
-    if (stopped || !sessionToken || Date.now() >= expiresAt) return failSession();
+    if (stopped) return;
+    if (!sessionToken || !expiresAt || Date.now() >= expiresAt) return failSession();
+    if (typeof cfg.WS_URL !== 'string' || !cfg.WS_URL.startsWith('wss://')) {
+      return showFatal('رابط اتصال اللعبة غير صالح. حدّث التطبيق ثم حاول مجدداً.');
+    }
+    if (connectAttempts >= MAX_CONNECT_ATTEMPTS) return connectionFailed();
+
     clearTimeout(reconnectTimer);
-    const ws = new WebSocket(cfg.WS_URL, ['happy-live-game', 'session.' + sessionToken]);
+    clearTimeout(readyTimer);
+    connectAttempts += 1;
+
+    let ws;
+    try {
+      ws = new WebSocket(cfg.WS_URL, ['happy-live-game', 'session.' + sessionToken]);
+    } catch (_) {
+      if (connectAttempts >= MAX_CONNECT_ATTEMPTS) return connectionFailed();
+      reconnectTimer = setTimeout(connectSocket, CONNECT_RETRY_DELAY_MS);
+      return;
+    }
     socket = ws;
-    ws.onopen = () => { if (socket === ws) Net.connected = true; };
+
+    ws.onopen = () => {
+      if (socket !== ws || stopped) return;
+      readyTimer = setTimeout(() => {
+        if (socket === ws && !Net.connected && ws.readyState < WebSocket.CLOSING) {
+          try { ws.close(4000, 'init_timeout'); } catch (_) {}
+        }
+      }, READY_TIMEOUT_MS);
+    };
+
     ws.onmessage = (event) => {
+      if (socket !== ws || stopped) return;
       let message;
       try { message = JSON.parse(event.data); } catch (_) { return; }
+
       if (message.t === 'init') {
-        Net.me = message.data?.userCode || '';
-        Net.player = message.data?.player || null;
+        const data = message.data || {};
+        const balance = Number(data.balance);
+        if (!Number.isFinite(balance) || balance < 0) {
+          return showFatal('اتصلت اللعبة بالخادم، لكن تعذرت قراءة رصيد محفظة Happy Live. لم يتم عرض رصيد افتراضي.');
+        }
+        clearTimeout(readyTimer);
+        Net.me = data.userCode || data.playerId || '';
+        Net.player = data.player || null;
+        Net.connected = true;
+        connectAttempts = 0;
+        setConnectionUi(true);
       }
       Net.fire(message.t, message.data);
     };
-    ws.onerror = () => Net.fire('offline');
-    ws.onclose = (event) => {
-      if (socket === ws) Net.connected = false;
-      if (stopped) return;
-      if (event.code === 4001 || Date.now() >= expiresAt) return failSession();
-      Net.fire('offline');
-      reconnectTimer = setTimeout(connectSocket, 1500);
+
+    ws.onerror = () => {
+      if (socket === ws) {
+        Net.connected = false;
+        setConnectionUi(false);
+        Net.fire('offline');
+      }
     };
+
+    ws.onclose = (event) => {
+      if (socket !== ws || stopped) return;
+      Net.connected = false;
+      setConnectionUi(false);
+      clearTimeout(readyTimer);
+
+      if (event.code === 4001 || Date.now() >= expiresAt) return failSession();
+      if (event.code === 4002) {
+        return showFatal('تعذر التحقق من محفظة Happy Live أو بيانات اللاعب. أعد فتح اللعبة، وإذا استمرت المشكلة تواصل مع الدعم.');
+      }
+
+      Net.fire('offline', { code: event.code, reason: event.reason || '' });
+      if (connectAttempts >= MAX_CONNECT_ATTEMPTS) return connectionFailed();
+      reconnectTimer = setTimeout(connectSocket, CONNECT_RETRY_DELAY_MS);
+    };
+
     Net.send = (message) => {
-      if (ws.readyState !== WebSocket.OPEN || stopped) return false;
+      if (!Net.connected || ws.readyState !== WebSocket.OPEN || stopped) return false;
       ws.send(JSON.stringify(message));
       return true;
     };
@@ -82,9 +176,9 @@
     if (!data || data.type !== 'happy-live-game-session' ||
         typeof data.sessionToken !== 'string' || data.sessionToken.length < 32 ||
         data.sessionToken.length > 512 || sessionToken) return;
+
     sessionToken = data.sessionToken;
     window.CR_SESSION_TOKEN = sessionToken;
-    // Tell the Flutter host that the iframe received its one-time session.
     window.parent.postMessage(
       { type: 'happy-live-game-session-received' },
       window.location.origin
@@ -98,13 +192,16 @@
   Net.connect = () => {
     if (connectStarted) return;
     connectStarted = true;
+    setConnectionUi(false);
+    const balance = document.getElementById('bal');
+    if (balance) balance.textContent = '—';
     window.addEventListener('message', receiveSession);
     setTimeout(() => {
       if (!sessionToken && !stopped) {
-        stopped = true;
-        Net.fire('unauthorized', { message: 'تعذر استلام جلسة Happy Live. أغلق اللعبة وافتحها مجدداً.' });
+        showFatal('لم تصل جلسة تسجيل الدخول من Happy Live. أغلق اللعبة وافتحها مجدداً من داخل الغرفة.');
       }
     }, 12000);
   };
+
   window.CR_Net = Net;
 })();
