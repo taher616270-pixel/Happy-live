@@ -32,6 +32,7 @@ import '../room_settings/my_workers_api.dart';
 import '../room_settings/pages/room_settings_page.dart';
 import '../widgets/mic_count_sheet.dart';
 import '../models/mic_layout.dart';
+import '../games/chicken_road/chicken_road_launcher.dart';
 import '../games/food_wheel/food_wheel_game.dart';
 import '../games/food_wheel/wheel_api_http.dart';
 import '../cannon/cannon_service.dart';
