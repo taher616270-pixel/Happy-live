@@ -22,12 +22,17 @@ const BETTING_MS = 20_000;
 const ROUND_MS = 30_000;
 const MAX_CATCH_UP_ROUNDS = 100;
 
-function chooseResult(): { resultSlot: number; resultSpecial: null } {
-  // Every spin lands on one of the eight food segments. Outcomes use
-  // inverse-multiplier weighting normalized across the eight foods.
+function chooseResult(): { resultSlot: number | null; resultSpecial: "pizza" | "salad" | null } {
+  const random = crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
+  // Rare jackpot results: 3% Salad, 3% Pizza, and 94% normal foods.
+  if (random < 0.03) return { resultSlot: null, resultSpecial: "salad" };
+  if (random < 0.06) return { resultSlot: null, resultSpecial: "pizza" };
+
+  // The remaining 94% is distributed across the eight foods using the
+  // existing inverse-multiplier weighting.
   const weights = MULTIPLIERS.map((value) => 1 / value);
   const total = weights.reduce((sum, value) => sum + value, 0);
-  let cursor = crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296 * total;
+  let cursor = ((random - 0.06) / 0.94) * total;
   for (let index = 0; index < weights.length; index++) {
     cursor -= weights[index];
     if (cursor < 0) return { resultSlot: index, resultSpecial: null };
@@ -108,8 +113,8 @@ export class FoodWheelRoundsHub extends DurableObject<FoodWheelEnv> {
         "UPDATE food_wheel_rounds SET status = 'result', result_slot = ?, result_special = ?, result_chosen_at = ?, ends_at = ? WHERE id = ? AND status = 'betting'"
       ).bind(resultSlot, resultSpecial, chosenAt, resultEndsAt, round.id),
       db.prepare(
-        "UPDATE food_wheel_bets SET payout = CASE WHEN slot = 8 AND (SELECT result_slot FROM food_wheel_rounds WHERE id = ? AND status = 'result') IN (1,2,4,6) THEN stake * 2 WHEN slot = 9 AND (SELECT result_slot FROM food_wheel_rounds WHERE id = ? AND status = 'result') IN (0,3,5,7) THEN stake * 2 WHEN slot BETWEEN 0 AND 7 AND slot = (SELECT result_slot FROM food_wheel_rounds WHERE id = ? AND status = 'result') THEN CASE slot WHEN 0 THEN stake * 45 WHEN 1 THEN stake * 5 WHEN 2 THEN stake * 5 WHEN 3 THEN stake * 15 WHEN 4 THEN stake * 5 WHEN 5 THEN stake * 25 WHEN 6 THEN stake * 5 ELSE stake * 10 END ELSE 0 END WHERE round_id = ? AND status = 'accepted'"
-      ).bind(round.id, round.id, round.id, round.id),
+        "UPDATE food_wheel_bets SET payout = CASE WHEN slot BETWEEN 0 AND 7 AND ((SELECT result_special FROM food_wheel_rounds WHERE id = ? AND status = 'result') = 'pizza' AND slot IN (1,2,4,6) OR (SELECT result_special FROM food_wheel_rounds WHERE id = ? AND status = 'result') = 'salad' AND slot IN (0,3,5,7) OR (SELECT result_special FROM food_wheel_rounds WHERE id = ? AND status = 'result') IS NULL AND slot = (SELECT result_slot FROM food_wheel_rounds WHERE id = ? AND status = 'result')) THEN CASE slot WHEN 0 THEN stake * 45 WHEN 1 THEN stake * 5 WHEN 2 THEN stake * 5 WHEN 3 THEN stake * 15 WHEN 4 THEN stake * 5 WHEN 5 THEN stake * 25 WHEN 6 THEN stake * 5 ELSE stake * 10 END ELSE 0 END WHERE round_id = ? AND status = 'accepted'"
+      ).bind(round.id, round.id, round.id, round.id, round.id),
       db.prepare(
         "UPDATE game_bets SET payout = COALESCE((SELECT fb.payout FROM food_wheel_bets fb WHERE fb.game_bet_id = game_bets.id), 0) WHERE status = 'accepted' AND id IN (SELECT game_bet_id FROM food_wheel_bets WHERE round_id = ? AND status = 'accepted')"
       ).bind(round.id)
