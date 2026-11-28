@@ -77,7 +77,9 @@ test("admin dashboard can create, edit, enable and disable registry entries", ()
 });
 
 test("room Game Center keeps Food Wheel and opens Chicken Road below it inside the app", () => {
-  const center = roomPage.slice(roomPage.indexOf("void _openRoomGames"), roomPage.indexOf("void _showRoomCounter"));
+  const start = roomPage.indexOf("void _openRoomGames");
+  const center = roomPage.slice(start, start + 6500);
+  assert.ok(start >= 0);
   assert.ok(center.indexOf("عجلة الأطعمة") >= 0);
   assert.ok(center.indexOf("showFoodWheelGame") >= 0);
   assert.ok(center.indexOf("showChickenRoadGame") > center.indexOf("showFoodWheelGame"));

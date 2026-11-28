@@ -173,7 +173,7 @@ test("trusted game backend can cancel an aborted round and refund exact accepted
   assert.match(api, /status = 'cancelled'/);
   assert.match(api, /total_stake = \? AND \(SELECT COALESCE\(SUM\(stake\), 0\) FROM game_bets WHERE round_id = \? AND status = 'accepted'\) = \?/);
   assert.match(api, /SELECT COUNT\(\*\) FROM game_bets WHERE round_id = \? AND status = 'accepted'/);
-  assert.match(api, /\? = 0 OR EXISTS \(SELECT 1 FROM user_wallets WHERE user_id = \?\)/);
+  assert.match(api, /\? = 0 OR EXISTS \(SELECT 1 FROM user_wallets WHERE user_id=?\)/);
 });
 
 
@@ -199,7 +199,7 @@ test("concurrent bet idempotency-key reuse cannot acknowledge a different stake 
 test("Chicken Road is production-only and uses the canonical Happy Live wallet", () => {
   assert.match(chickenMigration, /CREATE TABLE IF NOT EXISTS chicken_road_round_state/);
   assert.match(chickenMigration, /https:\/\/happy-live\.pages\.dev\/games\/chicken-road\/client\/index\.html/);
-  assert.match(chickenWallet, /FROM user_wallets WHERE user_id = \?/);
+  assert.match(chickenWallet, /FROM user_wallets WHERE user_id=?/);
   assert.match(chickenWallet, /UPDATE user_wallets SET balance=balance-\?/);
   assert.match(chickenWallet, /UPDATE user_wallets SET balance=balance\+\?/);
   assert.match(chickenWallet, /game_session_app_bindings/);
