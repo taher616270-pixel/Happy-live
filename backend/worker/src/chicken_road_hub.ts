@@ -68,7 +68,7 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
     const [balance, game, player] = await Promise.all([
       this.balance(), this.activeRound(), walletProfile(this.requireDb(), this.playerId)
     ]);
-    send(ws, "init", { playerId: this.playerId, balance, player: player ?? null, game: game ? {
+    send(ws, "init", { playerId: player?.happyId ?? "", userCode: player?.happyId ?? "", player: player ?? null, balance, game: game ? {
       amount: game.amount, diff: game.diff, step: game.step, commit: game.commit
     } : null });
   }
