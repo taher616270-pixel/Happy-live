@@ -2759,7 +2759,7 @@ class _RoomPageState extends State<RoomPage> {
                       );
                     } catch (_) {
                       if (host.mounted) {
-                        showCenteredNotification(host, const SnackBar(content: Text('تعذر فتح عبور الدجاجة داخل التطبيق.')));
+                        showCenteredNotification(host, const SnackBar(content: Text('تعذر فتح Chicken Road داخل التطبيق.')));
                       }
                     }
                   },
@@ -2779,7 +2779,7 @@ class _RoomPageState extends State<RoomPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('عبور الدجاجة', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+                              Text('Chicken Road', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
                               SizedBox(height: 4),
                               Text('رهان حقيقي من محفظة Happy Live', style: TextStyle(color: Color(0xFFE4D5B8), fontSize: 11)),
                             ],
