@@ -638,12 +638,6 @@ class _FoodWheelGameState extends State<FoodWheelGame>
         totals[key] = math.max(totals[key] ?? 0, value).toInt();
       }
     }
-    for (final key in kGroupBetKeys) {
-      final value = s.totalBetsByGroup[key];
-      if (value != null && value >= 0) {
-        totals[key] = math.max(totals[key] ?? 0, value).toInt();
-      }
-    }
   }
 
   void _startOptimisticRound(RoundState s) {
