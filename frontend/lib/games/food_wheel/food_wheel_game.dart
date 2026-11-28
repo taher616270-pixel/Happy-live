@@ -84,8 +84,7 @@ const kSlots = [
   WheelSlot('🦐', 10, false),
 ];
 const kSlotKeys = <String>['chicken', 'corn', 'tomato', 'goat', 'chili', 'fish', 'carrot', 'shrimp'];
-const kGroupBetKeys = <String>['pizza_group', 'salad_group'];
-const kBetKeys = <String>[...kSlotKeys, ...kGroupBetKeys];
+const kBetKeys = kSlotKeys;
 
 Map<String, int> _foodTotalsFromJson(Map<String, dynamic> json) {
   final named = json['total_bets_by_food'];
@@ -408,7 +407,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   int _msgExpiresAtMs = 0, _toastExpiresAtMs = 0;
   Future<void>? _spinRun;
   int _spinTargetSlot = 0, _spinFinalizedRoundId = -1;
-  bool _spinTargetKnown = false;
+  bool _spinTargetKnown = false, _spinTargetSpecial = false;
   double? _spinLandingStartAngle, _spinLandingStartProgress;
   double? _spinLandingArc;
   late final AnimationController _spinController;
@@ -816,32 +815,31 @@ class _FoodWheelGameState extends State<FoodWheelGame>
 
   double _landingArcToWinner(double startAngle, int target, double remainingMs) {
     const fullTurn = math.pi * 2;
-    final targetAngle = target * _spinStep;
+    final targetAngle = target * _spinStep + (_spinTargetSpecial ? _spinStep * 0.5 : 0);
     var arc = (targetAngle - (startAngle % fullTurn)) % fullTurn;
     if (arc < 0) arc += fullTurn;
-    final minimumArc = (remainingMs / 1000.0) * 14.0 * _spinStep;
-    if (arc < minimumArc) arc += ((minimumArc - arc) / fullTurn).ceil() * fullTurn;
+    // Keep at least one complete clockwise revolution for a visible,
+    // deliberate braking sequence over the final two seconds.
+    if (arc < fullTurn) arc += fullTurn;
     return arc;
   }
 
   double _spinAngleAtProgress(double progress) {
     if (!_spinHasResult) return _spinAngle;
     final p = progress.clamp(0.0, 1.0).toDouble();
-    if (p <= 0.8) return _spinAngleForElapsed(p * _spinDurationMs);
-    if (_spinLandingStartAngle != null &&
-        _spinLandingStartProgress != null &&
-        _spinLandingArc != null) {
-      final u = ((p - _spinLandingStartProgress!) /
-              (1 - _spinLandingStartProgress!))
-          .clamp(0.0, 1.0)
-          .toDouble();
-      return _spinLandingStartAngle! + _spinLandingArc! * u;
+    if (p <= 0.6 || !_spinTargetKnown) {
+      return _spinAngleForElapsed(p * _spinDurationMs);
     }
-    if (!_spinTargetKnown) return _spinAngleForElapsed(p * _spinDurationMs);
-    final startAngle = _spinAngleForElapsed(4000);
-    final arc = _landingArcToWinner(startAngle, _spinTargetSlot, 1000);
-    final u = ((p - 0.8) / 0.2).clamp(0.0, 1.0).toDouble();
-    return startAngle + arc * u;
+    final startProgress = _spinLandingStartProgress ?? 0.6;
+    final startAngle = _spinLandingStartAngle ?? _spinAngleForElapsed(3000);
+    final arc = _spinLandingArc ??
+        _landingArcToWinner(startAngle, _spinTargetSlot, 2000);
+    final u = ((p - startProgress) / (1 - startProgress))
+        .clamp(0.0, 1.0)
+        .toDouble();
+    // Cubic ease-out: angular velocity decreases continuously to zero.
+    final eased = 1 - math.pow(1 - u, 3).toDouble();
+    return startAngle + arc * eased;
   }
 
   void _startProvisionalSpin(RoundState s) {
@@ -851,6 +849,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     _spinController.stop();
     _spinController.duration = const Duration(milliseconds: _spinDurationMs);
     _spinTargetKnown = false;
+    _spinTargetSpecial = false;
     _spinLandingStartAngle = null;
     _spinLandingStartProgress = null;
     _spinLandingArc = null;
@@ -872,11 +871,16 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     if (_spinStartedRoundId != s.roundId) _startProvisionalSpin(s);
     final target = (s.resultSlot ?? 0).clamp(0, kSlots.length - 1).toInt();
 
-    // A result received before the last second is held for landing.
-    // A late result anchors at the exact current angle without a snap.
-    if (!_spinTargetKnown && _spinController.value > 0.8 && _spinController.value < 1) {
+    // Rare jackpot outcomes stop between food positions; no food is shown
+    // as the winner and the matching bottom indicator receives the glow.
+    _spinTargetSpecial = s.special == 'pizza' || s.special == 'salad';
+
+    // The final two seconds are reserved for a continuous, eased landing.
+    // If the server result arrives late, anchor to the currently rendered
+    // angle so there is no snap or teleport.
+    if (!_spinTargetKnown && _spinController.value > 0.6 && _spinController.value < 1) {
       final progress = _spinController.value;
-      final currentAngle = _spinAngleForElapsed(progress * _spinDurationMs);
+      final currentAngle = _spinAngleAtProgress(progress);
       _spinLandingStartAngle = currentAngle;
       _spinLandingStartProgress = progress;
       _spinLandingArc = _landingArcToWinner(
@@ -907,8 +911,12 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       if (_pendingBets.isEmpty) _bal = s.balance;
       // The wheel has exactly eight food outcomes. The matching group bet
       // is highlighted only in the two separate controls below the wheel.
-      _lit = kSlots[target].veg ? 'pizza_group' : 'salad_group';
-      _win = {target};
+      _lit = s.special == 'pizza'
+          ? 'pizza'
+          : s.special == 'salad'
+              ? 'salad'
+              : null;
+      _win = _spinTargetSpecial ? <int>{} : <int>{target};
       _panel = true;
       _popupRoundState = s;
       _popupRoundId = s.roundId;
@@ -916,7 +924,11 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       _popupTimeLeft = 5;
       _popupTimeLeftNotifier.value = 5;
     });
-    final resEmoji = kSlots[target].emoji;
+    final resEmoji = s.special == 'pizza'
+        ? '🍕'
+        : s.special == 'salad'
+            ? '🥗'
+            : kSlots[target].emoji;
     final mineBets = _myBetTotalForRound(s.roundId);
     setState(() {
       _todayWin += s.myPayout;
@@ -1276,18 +1288,17 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       ]);
 
   Widget _resultPanel(RoundState s) {
-    final food = kSlots[(s.resultSlot ?? 0).clamp(0, kSlots.length - 1)].emoji;
+    final food = s.special == 'pizza'
+        ? '🍕'
+        : s.special == 'salad'
+            ? '🥗'
+            : kSlots[(s.resultSlot ?? 0).clamp(0, kSlots.length - 1)].emoji;
     final mine = _myBetTotalForRound(s.roundId);
-    final winningGroupKey = (s.resultSlot != null && const [1, 2, 4, 6].contains(s.resultSlot))
-        ? 'pizza_group'
-        : 'salad_group';
-    final winningGroupName = winningGroupKey == 'pizza_group' ? 'البيتزا' : 'السلطة';
-    final winningGroupBet = _groupBetForRound(s.roundId, winningGroupKey);
-    final groupResultText = winningGroupBet > 0
-        ? '$winningGroupName: رهانك ${_fmt(winningGroupBet)} × 2 = ${_fmt(winningGroupBet * 2)}'
-        : (winningGroupKey == 'pizza_group'
-            ? 'البيتزا تفوز مع أي خضار — ×2'
-            : 'السلطة تفوز مع أي لحم — ×2');
+    final specialMessage = s.special == 'salad'
+        ? 'سلطة! فازت كل اللحوم'
+        : s.special == 'pizza'
+            ? 'بيتزا! فازت كل الخضروات'
+            : null;
     const t = TextStyle(
         color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, height: 1.8);
     return Container(
@@ -1394,10 +1405,9 @@ class _FoodWheelGameState extends State<FoodWheelGame>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text('${s.roundId} نتيجة الجولة — $food', textAlign: TextAlign.center, style: t),
+                Text(specialMessage ?? '${s.roundId} نتيجة الجولة — $food', textAlign: TextAlign.center, style: t),
                 Text('رهانك في هذه الجولة: $mine', textAlign: TextAlign.center, style: t),
-                Text(groupResultText, textAlign: TextAlign.center, style: t),
-                Text('الفائز في هذه الجولة: ${s.myPayout}', textAlign: TextAlign.center, style: t),
+                Text('إجمالي فوزك: ${s.myPayout}', textAlign: TextAlign.center, style: t),
               ],
             ),
             const SizedBox(height: 4),
@@ -1645,7 +1655,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   double _highlightForSlot(double angle, int slot) {
-    if (!_spinHasResult) return 0;
+    if (!_spinHasResult || _spinTargetSpecial) return 0;
     const step = math.pi * 2 / 8;
     final activeSlot = (angle / step).floor() % kSlots.length;
     return activeSlot == slot ? 1.0 : 0.0;
@@ -1744,28 +1754,31 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   }
 
   Widget _special(String key, String label, RoundState s) {
+    final isPizza = key == 'pizza';
     final on = _lit == key;
-    final total = _serverGroupTotalForRound(s.roundId, key);
-    final mine = _groupBetForRound(s.roundId, key);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _onGroupPointerDown(key),
+    return IgnorePointer(
       child: Container(
         constraints: const BoxConstraints(minWidth: 112),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: on ? const Color(0xFFFFD400) : const Color(0xFFFFF5DE),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF6B3A1E), width: 2),
+          border: Border.all(
+            color: on ? const Color(0xFFFF8C00) : const Color(0xFF6B3A1E),
+            width: on ? 4 : 2,
+          ),
+          boxShadow: on
+              ? const [BoxShadow(color: Color(0xFFFFD400), blurRadius: 18, spreadRadius: 4)]
+              : const [],
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(key == 'salad_group' ? '🥗' : '🍕', style: const TextStyle(fontSize: 30)),
+            Text(isPizza ? '🍕' : '🥗', style: const TextStyle(fontSize: 30)),
             const SizedBox(width: 4),
             Text(label, style: const TextStyle(color: Color(0xFF4A2A10), fontWeight: FontWeight.w800, fontSize: 14)),
           ]),
-          Text('${_fmt(total)} 🪙', maxLines: 1, style: const TextStyle(color: Color(0xFF5A3A00), fontSize: 13, fontWeight: FontWeight.bold)),
-          Text(_fmt(mine), maxLines: 1, style: const TextStyle(color: Color(0xFF1458D4), fontSize: 12, fontWeight: FontWeight.w800)),
+          const Text('0', style: TextStyle(color: Color(0xFF5A3A00), fontSize: 13, fontWeight: FontWeight.bold)),
+          const Text('0', style: TextStyle(color: Color(0xFF1458D4), fontSize: 12, fontWeight: FontWeight.w800)),
         ]),
       ),
     );
@@ -1792,8 +1805,8 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _special('pizza_group', 'البيتزا', s),
-              _special('salad_group', 'السلطة', s),
+              _special('salad', 'السلطة', s),
+              _special('pizza', 'البيتزا', s),
             ],
           ),
         ),
