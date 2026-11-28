@@ -1,0 +1,69 @@
+name: Extract Chicken Road
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "games/chicken-road-upload/games-chicken-road.zip"
+      - ".github/workflows/extract-chicken-road.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: extract-chicken-road
+  cancel-in-progress: false
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify ZIP exists
+        run: |
+          test -f games/chicken-road-upload/games-chicken-road.zip
+
+      - name: Extract game
+        run: |
+          mkdir -p games/chicken-road
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+
+          archive = Path("games/chicken-road-upload/games-chicken-road.zip")
+          destination = Path("games/chicken-road").resolve()
+
+          with zipfile.ZipFile(archive) as z:
+              for item in z.infolist():
+                  target = (destination / item.filename).resolve()
+
+                  if target != destination and destination not in target.parents:
+                      raise RuntimeError(f"Unsafe ZIP path: {item.filename}")
+
+              z.extractall(destination)
+
+          print("Extraction completed.")
+          PY
+
+      - name: Commit extracted game
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add games/chicken-road
+
+          if git diff --cached --quiet; then
+            echo "No extracted file changes."
+            exit 0
+          fi
+
+          git commit -m "Add Chicken Road game files"
+          git push origin HEAD:main
