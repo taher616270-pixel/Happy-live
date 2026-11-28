@@ -813,7 +813,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     return _spinBaseAngle + integral * 5 * _spinStep;
   }
 
-  double _landingArcToWinner(double startAngle, int target, double remainingMs) {
+  double _landingArcToWinner(double startAngle, int target) {
     const fullTurn = math.pi * 2;
     final targetAngle = target * _spinStep + (_spinTargetSpecial ? _spinStep * 0.5 : 0);
     var arc = (targetAngle - (startAngle % fullTurn)) % fullTurn;
@@ -833,7 +833,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     final startProgress = _spinLandingStartProgress ?? 0.6;
     final startAngle = _spinLandingStartAngle ?? _spinAngleForElapsed(3000);
     final arc = _spinLandingArc ??
-        _landingArcToWinner(startAngle, _spinTargetSlot, 2000);
+        _landingArcToWinner(startAngle, _spinTargetSlot);
     final u = ((p - startProgress) / (1 - startProgress))
         .clamp(0.0, 1.0)
         .toDouble();
@@ -884,7 +884,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       _spinLandingStartAngle = currentAngle;
       _spinLandingStartProgress = progress;
       _spinLandingArc = _landingArcToWinner(
-        currentAngle, target, (1 - progress) * _spinDurationMs,
+        currentAngle, target,
       );
     }
     _spinTargetSlot = target;
