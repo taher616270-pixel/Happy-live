@@ -64,14 +64,6 @@
     if (socket && socket.readyState < WebSocket.CLOSING) {
       try { socket.close(4002, 'connection_failed'); } catch (_) {}
     }
-    const initBox = document.getElementById('initError');
-    if (initBox && (code === 'GAME_INIT_FAILED' || details && details.stage === 'restore_active_round')) {
-      const actualCode = details && details.code ? details.code : (code || 'INIT_FAILED');
-      const actualMessage = details && details.message ? details.message : message;
-      const table = details && details.table ? ' | table: ' + details.table : '';
-      initBox.textContent = 'INIT_ERROR: [' + actualCode + '] - ' + actualMessage + table;
-      initBox.hidden = false;
-    }
     const toast = document.getElementById('toast');
     if (toast) {
       toast.textContent = message;
