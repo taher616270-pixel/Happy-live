@@ -26,7 +26,8 @@ export interface Env {
   ROOM_CHAT?: DurableObjectNamespace;
   ROOM_SEATS?: DurableObjectNamespace;
   GLOBAL_GIFTS?: DurableObjectNamespace<GlobalGiftHub>;
-  FOOD_WHEEL_ROUNDS?: DurableObjectNamespace<FoodWheelRoundsHub>;\n  CHICKEN_ROAD?: DurableObjectNamespace<ChickenRoadHub>;
+  FOOD_WHEEL_ROUNDS?: DurableObjectNamespace<FoodWheelRoundsHub>;
+  CHICKEN_ROAD?: DurableObjectNamespace<ChickenRoadHub>;
   APP_ENV?: string;
   ALLOWED_ORIGINS?: string;
   IMAGEKIT_PUBLIC_KEY?: string;
