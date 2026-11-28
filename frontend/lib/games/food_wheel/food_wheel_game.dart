@@ -798,11 +798,11 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     if (p <= 0.2) {
       integral = 1.2 * p + 2.5 * p * p;
     } else if (p <= 0.6) {
-      integral = 0.34 + 2.2 * (p - 0.2) + 7.5 * (p - 0.2) * (p - 0.2);
-    } else if (p <= 0.9) {
-      integral = 2.42 + 8 * (p - 0.6) + 10 * (p - 0.6) * (p - 0.6);
+      // Reach 18 food-steps/second smoothly at the braking boundary.
+      integral = 0.34 + 2.2 * (p - 0.2) + 19.75 * (p - 0.2) * (p - 0.2);
     } else {
-      integral = 5.72 + 14 * (p - 0.9);
+      // Hold that speed only until the authoritative result is known.
+      integral = 4.38 + 18 * (p - 0.6);
     }
     return _spinBaseAngle + integral * 5 * _spinStep;
   }
@@ -812,9 +812,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     final targetAngle = target * _spinStep + (_spinTargetSpecial ? _spinStep * 0.5 : 0);
     var arc = (targetAngle - (startAngle % fullTurn)) % fullTurn;
     if (arc < 0) arc += fullTurn;
-    // Keep at least one complete clockwise revolution for a visible,
-    // deliberate braking sequence over the final two seconds.
-    if (arc < fullTurn) arc += fullTurn;
+    // Ensure at least four visible food steps in the final two seconds.
+    // A half-turn is the minimum; add one full turn only when the winner
+    // would otherwise be reached too soon.
+    if (arc < fullTurn * 0.5) arc += fullTurn;
     return arc;
   }
 
