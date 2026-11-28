@@ -49,7 +49,7 @@
   function connectSocket() {
     if (stopped || !sessionToken || Date.now() >= expiresAt) return failSession();
     clearTimeout(reconnectTimer);
-    const ws = new WebSocket(cfg.WS_URL + '?token=' + encodeURIComponent(sessionToken));
+    const ws = new WebSocket(cfg.WS_URL, ['happy-live-game', 'session.' + sessionToken]);
     socket = ws;
     ws.onopen = () => { if (socket === ws) Net.connected = true; };
     ws.onmessage = (event) => {
