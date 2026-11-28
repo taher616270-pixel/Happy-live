@@ -43,6 +43,7 @@ function send(ws: WebSocket, t: string, data: unknown): void {
 export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
   private readonly db?: D1Database;
   private readonly sockets = new Set<WebSocket>();
+  private readonly socketSessions = new Map<WebSocket, string>();
   private queue: Promise<void> = Promise.resolve();
   private readonly playerId: string;
 
@@ -138,16 +139,16 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
       return send(ws, "history", { rows: rows.results ?? [] });
     }
     if (message.t === "top") {
-      const range = ["yesterday", "today", "week"].includes(message.range) ? message.range : "today";
-      const now = new Date(), start = new Date(now);
-      if (range === "yesterday") { start.setUTCHours(0,0,0,0); start.setUTCDate(start.getUTCDate()-1); }
-      else if (range === "today") start.setUTCHours(0,0,0,0);
-      else { start.setUTCHours(0,0,0,0); start.setUTCDate(start.getUTCDate()-6); }
-      const end = range === "yesterday" ? new Date(start.getTime()+86400000).toISOString() : new Date(now.getTime()+1).toISOString();
+      // Saudi calendar day: 00:00 Asia/Riyadh (UTC+3) through the current instant.
+      const nowMs = Date.now();
+      const saudiNow = new Date(nowMs + 3 * 60 * 60 * 1000);
+      const startUtcMs = Date.UTC(saudiNow.getUTCFullYear(), saudiNow.getUTCMonth(), saudiNow.getUTCDate()) - 3 * 60 * 60 * 1000;
+      const start = new Date(startUtcMs).toISOString();
+      const end = new Date(nowMs + 1).toISOString();
       const rows = await this.requireDb().prepare(
-        "SELECT p.display_name AS name, p.avatar_key AS avatar, COALESCE(p.happy_id, '') AS userCode, SUM(r.total_payout - r.total_stake) AS coins FROM game_rounds r INNER JOIN users u ON u.id = r.user_id LEFT JOIN profiles p ON p.user_id = r.user_id WHERE r.game_id = ? AND r.status = 'settled' AND r.settled_at >= ? AND r.settled_at < ? GROUP BY r.user_id, p.display_name, p.avatar_key, p.happy_id HAVING SUM(r.total_payout - r.total_stake) > 0 ORDER BY coins DESC LIMIT 20"
-      ).bind(GAME_ID, start.toISOString(), end).all();
-      return send(ws, "top", { range, rows: (rows.results ?? []).map((row: any, index: number) => ({ ...row, rank: index + 1 })) });
+        "SELECT p.display_name AS name, p.avatar_key AS avatar, COALESCE(p.happy_id, '') AS userCode, SUM(r.total_payout - r.total_stake) AS coins FROM game_rounds r INNER JOIN users u ON u.id = r.user_id AND u.status = 'active' LEFT JOIN profiles p ON p.user_id = r.user_id WHERE r.game_id = ? AND r.status = 'settled' AND r.settled_at >= ? AND r.settled_at < ? GROUP BY r.user_id, p.display_name, p.avatar_key, p.happy_id HAVING SUM(r.total_payout - r.total_stake) > 0 ORDER BY coins DESC LIMIT 20"
+      ).bind(GAME_ID, start, end).all();
+      return send(ws, "top", { range: "today", resetsAt: new Date(startUtcMs + 24 * 60 * 60 * 1000).toISOString(), rows: (rows.results ?? []).map((row: any, index: number) => ({ ...row, rank: index + 1 })) });
     }
     if (message.t === "play") {
       const amount = Number(message.amount), diff = message.diff as Diff;
@@ -183,6 +184,15 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
       return this.cash(round, false);
     }
   }
+  private async isSessionActive(sessionId: string): Promise<boolean> {
+    if (!sessionId) return false;
+    const now = new Date().toISOString();
+    const row = await this.requireDb().prepare(
+      "SELECT 1 AS active FROM game_sessions s INNER JOIN game_session_app_bindings b ON b.game_session_id = s.id INNER JOIN user_sessions app ON app.id = b.app_session_id AND app.user_id = s.user_id INNER JOIN users u ON u.id = s.user_id INNER JOIN game_registry g ON g.id = s.game_id INNER JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE s.id = ? AND s.user_id = ? AND s.game_id = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND app.revoked_at IS NULL AND app.expires_at > ? AND u.status = 'active' AND g.enabled = 1 AND l.status = 'active' LIMIT 1"
+    ).bind(sessionId, this.playerId, GAME_ID, now, now).first();
+    return !!row;
+  }
+
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname !== "/connect" || request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
@@ -192,15 +202,26 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
     if (!uid || uid !== this.playerId) return unauthorizedChickenRoadSocket();
     const pair = new WebSocketPair(), client = pair[0], server = pair[1];
     server.accept();
+    const gameSessionId = request.headers.get("x-hl-game-session-id") ?? "";
+    if (!gameSessionId) return unauthorizedChickenRoadSocket();
     this.sockets.add(server);
-    server.addEventListener("close", () => this.sockets.delete(server));
-    server.addEventListener("error", () => this.sockets.delete(server));
+    this.socketSessions.set(server, gameSessionId);
+    server.addEventListener("close", () => { this.sockets.delete(server); this.socketSessions.delete(server); });
+    server.addEventListener("error", () => { this.sockets.delete(server); this.socketSessions.delete(server); });
     server.addEventListener("message", (event) => {
       this.queue = this.queue.then(async () => {
         let message: any;
         try { message = JSON.parse(String(event.data)); } catch { return; }
-        try { await this.handle(server, message); }
-        catch (error) { send(server, "error", { message: "تعذر إكمال الطلب، حاول مجدداً" }); console.error("[chicken-road]", error instanceof Error ? error.message : "unknown"); }
+        try {
+          if (!(await this.isSessionActive(this.socketSessions.get(server) ?? ""))) {
+            send(server, "unauthorized", { message: "انتهت جلسة Happy Live" });
+            server.close(4001, "session_expired");
+            this.sockets.delete(server);
+            this.socketSessions.delete(server);
+            return;
+          }
+          await this.handle(server, message);
+        } catch (error) { send(server, "error", { message: "تعذر إكمال الطلب، حاول مجدداً" }); console.error("[chicken-road]", error instanceof Error ? error.message : "unknown"); }
       });
     });
     await this.init(server);
