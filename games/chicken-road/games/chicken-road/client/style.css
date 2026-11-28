@@ -1,0 +1,71 @@
+:root{--p1:#3b2fa8;--p2:#5b45e0;--gold:#ffc83d;--good:#2fcf4e}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;height:100%;background:#14102e;color:#fff;font-family:system-ui,"Segoe UI",Tahoma,sans-serif}
+button{font-family:inherit;cursor:pointer;color:#fff}button:disabled{opacity:.55}
+[hidden]{display:none!important}
+/* نافذة اللعبة بنسبة 360×545 */
+#win{position:relative;width:min(100%,420px);aspect-ratio:360/545;max-height:100vh;margin:0 auto;display:flex;flex-direction:column;
+  overflow:hidden;background:#241c63;direction:rtl}
+.coin{display:inline-block;width:1.1em;height:1.1em;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3a0,#f5a900 70%);
+  border:2px solid #b97a00;vertical-align:-.2em;margin:0 3px}
+/* الشريط العلوي */
+#bar{display:flex;direction:ltr;align-items:center;gap:6px;padding:7px 8px;background:linear-gradient(#5a46e6,#3b2fa8);border-bottom:3px solid #2a2085}
+.ib{width:38px;height:38px;border:0;border-radius:50%;font-size:18px;font-weight:800;background:radial-gradient(circle at 35% 30%,#7fb2ff,#2f6fe0);box-shadow:0 2px 0 #1b3f93}
+.ib.sm{width:26px;height:26px;font-size:14px;background:radial-gradient(circle,#4be07a,#169a40);box-shadow:none}
+#bMusic.off{filter:grayscale(1)}
+#balpill{flex:1;display:flex;align-items:center;justify-content:space-between;background:#1b1458;border-radius:20px;padding:4px 8px;font-size:17px;border:2px solid #3f33a8}
+/* الطريق */
+#view{position:relative;flex:1;overflow:hidden;background:#1d2354;touch-action:manipulation}
+#road{position:absolute;inset:0 auto 0 0;display:flex;height:100%;transition:transform .35s ease;direction:ltr}
+.tile{flex:none;width:var(--tile);height:100%;position:relative;overflow:hidden;
+  background:repeating-linear-gradient(#0000 0 18px,#0000 18px 36px),#23295e;border-right:3px dashed #ffffff55}
+.tile.side{width:var(--side);background:linear-gradient(90deg,#1d8f77 0 55%,#cfd8f3 55% 78%,#8e9bc9 78%);border-right:0}
+.m{position:absolute;top:50%;left:50%;width:min(52px,70%);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle,#2a2f66 55%,#3b4180 56% 70%,#1a1d44 72%);border:2px solid #0b0d2b;display:flex;align-items:center;justify-content:center}
+.m span{font-size:10px;font-weight:800;color:#cfd4ff}
+.car{position:absolute;left:50%;margin-left:-17px;top:0;font-size:34px;z-index:3;will-change:transform}
+.car.img,#chicken.img{background-size:contain;background-repeat:no-repeat;background-position:center;width:40px;height:84px;margin-left:-20px}
+#chicken{position:absolute;top:50%;margin-top:-26px;width:48px;height:48px;font-size:40px;line-height:48px;text-align:center;z-index:5;transition:left .25s ease}
+#chicken.img{width:52px;height:52px;margin-left:0}
+#chicken.hop{filter:drop-shadow(0 10px 4px #0007)}
+#chicken.hit{transform:scaleY(.8)}
+#badge{position:absolute;top:8px;right:8px;z-index:6;background:linear-gradient(#37d158,#12923a);border:2px solid #fff;border-radius:10px;padding:3px 9px;font-size:14px}
+#hint{position:absolute;top:34%;right:6%;left:20%;z-index:6;display:flex;gap:8px;align-items:center;font-size:12px;text-shadow:0 1px 3px #000;pointer-events:none}
+#hint b{font-size:30px}
+#toast{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:7;background:#000b;border-radius:20px;padding:8px 16px;font-weight:700;font-size:14px;white-space:nowrap}
+#toast.good{background:#16a34a}#toast.bad{background:#c0262d}
+/* لوحة الرهان */
+#panel{background:linear-gradient(#4a38c8,#2e2390);padding:8px 8px 10px;border-top:3px solid #7a68ff;text-align:center}
+#betpill{display:inline-flex;align-items:center;gap:10px;background:#16104f;border:2px solid #4b3fc4;border-radius:24px;padding:3px 12px 3px 5px;font-size:16px;font-weight:800;direction:ltr}
+#clear{width:24px;height:24px;border:0;border-radius:50%;background:#2e4fd8;font-size:12px;padding:0}
+#lbl{font-size:11px;color:#b8b0ff;margin:3px 0}
+#chips{display:flex;direction:ltr;gap:4px;margin-bottom:8px}
+#chips button{flex:1;min-width:0;border:2px solid #7f72ff;border-radius:16px;background:linear-gradient(#5b48ea,#3a2ec0);padding:4px 0;font-size:11px;font-weight:800;white-space:nowrap}
+#chips .coin{width:12px;height:12px;margin:0 1px}
+#actions{display:flex;direction:ltr;gap:8px;align-items:center}
+.play{width:30%;padding:11px 0;border:0;border-radius:18px;font-size:20px;font-weight:900;color:#5a3300;background:linear-gradient(#ffd24d,#f59a00);box-shadow:0 3px 0 #a86100;white-space:nowrap}
+.play.cash{background:linear-gradient(#4be07a,#169a40);color:#fff;box-shadow:0 3px 0 #0b6a27;font-size:15px}
+#diffs{flex:1;display:flex;gap:6px}
+#diffs button{flex:1;padding:9px 0;border:2px solid #7fb2ff;border-radius:18px;font-size:15px;font-weight:800;background:linear-gradient(#4a8bf0,#2556c8)}
+#diffs button.on{background:linear-gradient(#4be07a,#169a40);border-color:#b7ffc9}
+/* النوافذ */
+#modal{position:absolute;inset:0;z-index:20;background:#0009;display:flex;align-items:center;justify-content:center;padding:14px}
+#sheet{position:relative;width:100%;max-height:92%;display:flex;flex-direction:column;background:linear-gradient(#37a9ff,#4a39d4 40%,#3a2a9e);
+  border:3px solid #fff;border-radius:22px;padding:42px 12px 14px;box-shadow:0 10px 30px #000a}
+#mtitle{position:absolute;top:-14px;left:50%;transform:translateX(-50%);min-width:55%;text-align:center;background:linear-gradient(#c26bff,#8b3bdc);
+  border:2px solid #f0d4ff;border-radius:8px;padding:6px 18px;font-size:19px;font-weight:900}
+#mclose{position:absolute;top:-10px;right:-6px;width:34px;height:34px;border:2px solid #fff;border-radius:50%;background:radial-gradient(#7fb2ff,#2f6fe0);font-size:15px}
+#mbody{overflow:auto;background:#1d1670;border-radius:14px;padding:10px;min-height:150px;max-height:62vh}
+.rules{margin:0;padding:0 22px;line-height:2;font-size:14px;text-align:right}
+.tbl .th,.tbl .tr{display:flex;direction:ltr}.tbl span{flex:1;text-align:center;padding:6px 2px;font-size:13px}
+.th{background:#2c22a0;border-radius:6px;font-weight:800}.tr{border-bottom:1px solid #ffffff22}.g{color:#5dff8b}.r{color:#ff6b6b}
+.tabs{display:flex;direction:ltr;background:#1a1360;border-radius:20px;padding:3px;margin-bottom:10px;position:sticky;top:0}
+.tabs button{flex:1;border:0;border-radius:16px;background:none;padding:7px 0;font-weight:800;font-size:14px;color:#8fb5ff}
+.tabs button.on{background:linear-gradient(#5cb0ff,#2f6fe0);color:#fff}
+.rk{display:flex;direction:ltr;align-items:center;gap:8px;border-radius:14px;padding:7px 10px;margin-bottom:8px;border:2px solid #fff6;background:linear-gradient(#4a8bf0,#2556c8)}
+.rk.r1{background:linear-gradient(#ffc83d,#f59a00)}.rk.r2{background:linear-gradient(#7fb2ff,#4a7fe8)}.rk.r3{background:linear-gradient(#f08a52,#d5562a)}
+.cn{background:#0003;border-radius:14px;padding:2px 8px;font-weight:800;font-size:14px;min-width:34%;text-align:center}
+.nm{flex:1;text-align:right;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl}
+.av{width:38px;height:38px;border-radius:50%;background:#2a2f66 center/cover;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+.no{width:30px;height:30px;border-radius:8px;background:#0004;display:flex;align-items:center;justify-content:center}
+.empty{text-align:center;opacity:.7;padding:30px 0}
