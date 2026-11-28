@@ -1,0 +1,1 @@
+(function(){'use strict';window.CR_Stats=Object.freeze({formatCoins(v){return Math.floor(Number(v)||0).toLocaleString('en-US');},formatTime(v){const d=new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleString('ar-SA',{hour:'2-digit',minute:'2-digit'});}});})();

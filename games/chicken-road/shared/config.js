@@ -1,0 +1,1 @@
+(function(){'use strict';window.CR_CONFIG=Object.freeze({RTP:.97,MAX_STEPS:25,STEP_MIN_MS:300,MIN_BET:100,MAX_BET:1000000,CHIPS:Object.freeze([100,1000,10000,100000,1000000]),DIFFICULTIES:Object.freeze({easy:Object.freeze({death:.06,label:'سهل'}),medium:Object.freeze({death:.14,label:'عادي'}),hard:Object.freeze({death:.22,label:'صعب'})})});})();

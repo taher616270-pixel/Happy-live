@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { balance as walletBalance, profile as walletProfile, debitStatement, creditStatement } from "../../../games/chicken-road/server/wallet.js";
 
 interface ChickenRoadEnv { DB?: D1Database; }
 type Diff = "easy" | "medium" | "hard";
@@ -47,9 +48,7 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
     return this.db;
   }
   private async balance(): Promise<number> {
-    const row = await this.requireDb().prepare("SELECT balance FROM user_wallets WHERE user_id = ? LIMIT 1")
-      .bind(this.playerId).first<{ balance: number }>();
-    return Number(row?.balance ?? 0);
+    return walletBalance(this.requireDb(), this.playerId);
   }
   private async activeRound(): Promise<ActiveRound | null> {
     return this.requireDb().prepare(
@@ -57,8 +56,10 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
     ).bind(GAME_ID, this.playerId).first<ActiveRound>();
   }
   private async init(ws: WebSocket): Promise<void> {
-    const [balance, game] = await Promise.all([this.balance(), this.activeRound()]);
-    send(ws, "init", { playerId: this.playerId, balance, game: game ? {
+    const [balance, game, player] = await Promise.all([
+      this.balance(), this.activeRound(), walletProfile(this.requireDb(), this.playerId)
+    ]);
+    send(ws, "init", { playerId: this.playerId, balance, player: player ?? null, game: game ? {
       amount: game.amount, diff: game.diff, step: game.step, commit: game.commit
     } : null });
   }
@@ -71,8 +72,7 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
     const statements = [
       db.prepare("INSERT INTO game_rounds (id, game_id, user_id, idempotency_key, status, total_stake, total_payout, created_at) SELECT ?, ?, ?, ?, 'open', ?, 0, ? WHERE EXISTS (SELECT 1 FROM user_wallets WHERE user_id = ? AND balance >= ?) AND NOT EXISTS (SELECT 1 FROM game_rounds WHERE game_id = ? AND user_id = ? AND status = 'open')")
         .bind(roundId, GAME_ID, this.playerId, roundId, amount, now, this.playerId, amount, GAME_ID, this.playerId),
-      db.prepare("UPDATE user_wallets SET balance = balance - ?, updated_at = ? WHERE user_id = ? AND balance >= ? AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'open')")
-        .bind(amount, now, this.playerId, amount, roundId),
+      debitStatement(db, this.playerId, amount, now, roundId),
       db.prepare("INSERT INTO game_bets (id, round_id, game_id, user_id, idempotency_key, stake, selection_json, payout, status, created_at) SELECT ?, ?, ?, ?, ?, ?, ?, 0, 'accepted', ? WHERE EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'open')")
         .bind(betId, roundId, GAME_ID, this.playerId, betId, amount, JSON.stringify({ difficulty: diff }), now, roundId),
       db.prepare("INSERT INTO game_wallet_ledger (id, game_id, round_id, bet_id, user_id, entry_type, amount, balance_after, idempotency_key, created_at) SELECT ?, ?, ?, ?, ?, 'bet_debit', ?, w.balance, ?, ? FROM user_wallets w JOIN game_bets b ON b.round_id = ? AND b.id = ? WHERE w.user_id = ? AND b.status = 'accepted' AND NOT EXISTS (SELECT 1 FROM game_wallet_ledger WHERE idempotency_key = ?)")
@@ -109,8 +109,7 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
         .bind(payout, result, now, settlementId, round.id),
       db.prepare("UPDATE game_bets SET status = 'settled', payout = ?, settled_at = ? WHERE round_id = ? AND status = 'accepted' AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling' AND settlement_id = ?)")
         .bind(payout, now, round.id, round.id, settlementId),
-      db.prepare("UPDATE user_wallets SET balance = balance + ?, updated_at = ? WHERE user_id = ? AND ? > 0 AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling' AND settlement_id = ?)")
-        .bind(payout, now, this.playerId, payout, round.id, settlementId),
+      creditStatement(db, this.playerId, payout, now, round.id, settlementId),
       db.prepare("INSERT INTO game_wallet_ledger (id, game_id, round_id, bet_id, user_id, entry_type, amount, balance_after, idempotency_key, created_at) SELECT ?, ?, ?, b.id, w.user_id, 'payout_credit', ?, w.balance, ?, ? FROM user_wallets w JOIN game_bets b ON b.round_id = ? AND b.status = 'settled' WHERE w.user_id = ? AND ? > 0 AND EXISTS (SELECT 1 FROM game_rounds WHERE id = ? AND status = 'settling' AND settlement_id = ?) AND NOT EXISTS (SELECT 1 FROM game_wallet_ledger WHERE idempotency_key = ?)")
         .bind(crypto.randomUUID(), GAME_ID, round.id, payout, "chicken-road-payout:" + round.id, now, round.id, this.playerId, payout, round.id, settlementId, "chicken-road-payout:" + round.id),
       db.prepare("UPDATE game_rounds SET status = 'settled' WHERE id = ? AND status = 'settling' AND settlement_id = ?")

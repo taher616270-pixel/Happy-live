@@ -1,6 +1,7 @@
 import { RtcTokenBuilder } from "agora-token";
 import { handleGamesApiRequest, isRegisteredGameOrigin } from "./games_api";
 import { ChickenRoadHub } from "./chicken_road_hub";
+import { auth as authenticateChickenRoadSession } from "../../../games/chicken-road/server/wallet.js";
 import { addCannonEnergy, handleCannonRequest } from "./cannon_api";
 import { addRoomContribution, handleRoomContrib } from "./room_contrib";
 import { handleRoomTools } from "./room_tools";
@@ -498,12 +499,8 @@ export default {
         request.headers.get("Upgrade")?.toLowerCase() === "websocket") {
       if (!env.DB || !env.CHICKEN_ROAD) return new Response("game_unavailable", { status: 503 });
       const token = url.searchParams.get("token") ?? "";
-      if (token.length < 32 || token.length > 512) return new Response("unauthorized", { status: 401 });
-      const tokenHash = await sha256(token);
-      const session = await env.DB.prepare(
-        "SELECT s.id, s.user_id AS userId, s.game_origin AS gameOrigin FROM game_sessions s INNER JOIN game_session_app_bindings b ON b.game_session_id = s.id INNER JOIN user_sessions app ON app.id = b.app_session_id AND app.user_id = s.user_id AND app.revoked_at IS NULL AND app.expires_at > ? INNER JOIN users u ON u.id = s.user_id INNER JOIN game_registry g ON g.id = s.game_id INNER JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND s.game_id = 'f21d2c7a-8f1b-4d72-9a63-5c8f7e1d4b90' AND g.enabled = 1 AND l.status = 'active' AND u.status = 'active' LIMIT 1"
-      ).bind(new Date().toISOString(), tokenHash, new Date().toISOString()).first<{ id: string; userId: string; gameOrigin: string }>();
-      if (!session || !origin || origin !== session.gameOrigin) return new Response("unauthorized", { status: 401 });
+      const session = await authenticateChickenRoadSession(env.DB, token, origin ?? "");
+      if (!session) return new Response("unauthorized", { status: 401 });
       const id = env.CHICKEN_ROAD.idFromName(session.userId);
       const stub = env.CHICKEN_ROAD.get(id);
       const headers = new Headers();

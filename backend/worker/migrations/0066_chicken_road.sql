@@ -1,12 +1,20 @@
 -- Production-only Chicken Road. Uses the existing Happy Live user wallet and game ledger.
 PRAGMA foreign_keys = ON;
 
-INSERT OR IGNORE INTO game_registry
+INSERT INTO game_registry
   (id, name, game_url, icon_url, description, category, enabled, sort_order, created_by_admin_id, created_at, updated_at)
 VALUES
   ('f21d2c7a-8f1b-4d72-9a63-5c8f7e1d4b90', 'عبور الدجاجة', 'https://happy-live.pages.dev/games/chicken-road/client/index.html',
    NULL, 'اعبر الطريق واجمع المضاعفات مع رصيد Happy Live الحقيقي.', 'ألعاب', 1, 31, NULL,
-   strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+   strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+ON CONFLICT(id) DO UPDATE SET
+  name = excluded.name,
+  game_url = excluded.game_url,
+  description = excluded.description,
+  category = excluded.category,
+  enabled = 1,
+  sort_order = excluded.sort_order,
+  updated_at = excluded.updated_at;
 
 INSERT INTO game_registry_lifecycle (game_id, status, updated_at)
 VALUES ('f21d2c7a-8f1b-4d72-9a63-5c8f7e1d4b90', 'active', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
