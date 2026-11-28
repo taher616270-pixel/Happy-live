@@ -36,6 +36,18 @@ class _ChickenRoadScreen extends StatefulWidget {
 
 class _ChickenRoadScreenState extends State<_ChickenRoadScreen> {
   late final String _viewType;
+  html.IFrameElement? _frame;
+  Timer? _sessionDeliveryTimer;
+  StreamSubscription<html.MessageEvent>? _messageSubscription;
+  bool _sessionDelivered = false;
+
+  void _deliverSession() {
+    if (_sessionDelivered) return;
+    _frame?.contentWindow?.postMessage(
+      {'type': 'happy-live-game-session', 'sessionToken': widget.token},
+      html.window.location.origin,
+    );
+  }
 
   @override
   void initState() {
@@ -44,21 +56,42 @@ class _ChickenRoadScreenState extends State<_ChickenRoadScreen> {
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (int id) {
       final frame = html.IFrameElement()
         ..title = 'Chicken Road'
-        ..src = '/games/chicken-road/client/index.html'
         ..style.border = '0'
         ..style.width = '100%'
         ..style.height = '100%'
         ..style.display = 'block';
+      _frame = frame;
       frame.setAttribute('allow', 'autoplay');
       frame.setAttribute('referrerpolicy', 'same-origin');
       frame.onLoad.listen((_) {
-        frame.contentWindow?.postMessage(
-          {'type': 'happy-live-game-session', 'sessionToken': widget.token},
-          html.window.location.origin,
+        _sessionDelivered = false;
+        _sessionDeliveryTimer?.cancel();
+        _deliverSession();
+        // Repeat the handshake in case the iframe finishes loading its scripts
+        // just after the browser fires the iframe load event.
+        _sessionDeliveryTimer = Timer.periodic(
+          const Duration(milliseconds: 500),
+          (_) => _deliverSession(),
         );
       });
+      frame.src = '/games/chicken-road/client/index.html';
       return frame;
     });
+    _messageSubscription = html.window.onMessage.listen((event) {
+      if (event.origin != html.window.location.origin ||
+          event.data is! Map ||
+          event.data['type'] != 'happy-live-game-session-received') return;
+      _sessionDelivered = true;
+      _sessionDeliveryTimer?.cancel();
+      _sessionDeliveryTimer = null;
+    });
+  }
+
+  @override
+  void dispose() {
+    _sessionDeliveryTimer?.cancel();
+    _messageSubscription?.cancel();
+    super.dispose();
   }
 
   @override
