@@ -869,7 +869,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
   Future<void> _spin(RoundState s) async {
     _freezeMyBets(s.roundId);
     if (_spinStartedRoundId != s.roundId) _startProvisionalSpin(s);
-    final target = s.special == 'pizza' ? 8 : s.special == 'salad' ? 9 : (s.resultSlot ?? 0).clamp(0, kSlots.length - 1).toInt();
+    final target = (s.resultSlot ?? 0).clamp(0, kSlots.length - 1).toInt();
 
     // A result received before the last second is held for landing.
     // A late result anchors at the exact current angle without a snap.
@@ -904,13 +904,10 @@ class _FoodWheelGameState extends State<FoodWheelGame>
     // server-aligned five-second boundary.
     setState(() {
       if (_pendingBets.isEmpty) _bal = s.balance;
-      _lit = s.special;
-      _win = s.special == null
-          ? {target}
-          : {
-              for (var i = 0; i < 8; i++)
-                if (kSlots[i].veg == (s.special == 'pizza')) i
-            };
+      // The wheel has exactly eight food outcomes. The matching group bet
+      // is highlighted only in the two separate controls below the wheel.
+      _lit = kSlots[target].veg ? 'pizza_group' : 'salad_group';
+      _win = {target};
       _panel = true;
       _popupRoundState = s;
       _popupRoundId = s.roundId;
@@ -918,11 +915,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       _popupTimeLeft = 5;
       _popupTimeLeftNotifier.value = 5;
     });
-    final resEmoji = s.special == 'salad'
-        ? '🥗'
-        : s.special == 'pizza'
-            ? '🍕'
-            : kSlots[target].emoji;
+    final resEmoji = kSlots[target].emoji;
     final mineBets = _myBetTotalForRound(s.roundId);
     setState(() {
       _todayWin += s.myPayout;
@@ -1282,11 +1275,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
       ]);
 
   Widget _resultPanel(RoundState s) {
-    final food = s.special == 'salad'
-        ? '🥗'
-        : s.special == 'pizza'
-            ? '🍕'
-            : kSlots[s.resultSlot ?? 0].emoji;
+    final food = kSlots[(s.resultSlot ?? 0).clamp(0, kSlots.length - 1)].emoji;
     final mine = _myBetTotalForRound(s.roundId);
     final winningGroupKey = (s.resultSlot != null && const [1, 2, 4, 6].contains(s.resultSlot))
         ? 'pizza_group'
