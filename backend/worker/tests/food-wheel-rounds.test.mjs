@@ -90,7 +90,7 @@ test("web client freezes round-keyed bets, renders server-only totals, and eases
   assert.ok(ui.includes("_spinFinalizedRoundId == s.roundId"));
   assert.ok(ui.includes("static const int _spinDurationMs = 5000"));
   assert.ok(ui.includes("static const double _spinBaseAngle = 3 * math.pi * 2"));
-  assert.ok(ui.includes("final activeSlot = (angle / step).floor() % 8"));
+  assert.ok(ui.includes("final activeSlot = (angle / step).floor() % kSlots.length"));
   assert.doesNotMatch(ui, /_spinAnimation|_msgTimer|_toastTimer/);
 
   assert.ok(ui.includes("final Map<int, Map<String, int>> _myBetsByRound"));
