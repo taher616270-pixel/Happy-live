@@ -724,6 +724,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
           previous.phase != s.phase ||
           previous.resultSlot != s.resultSlot ||
           previous.special != s.special ||
+          !mapEquals(previous.totalBetsByGroup, s.totalBetsByGroup) ||
           previousTotals.length != nextTotals.length ||
           List<int>.generate(nextTotals.length, (i) => nextTotals[i] == previousTotals[i] ? 0 : 1).any((v) => v != 0);
       if (wheelTotalsChanged) _wheelStateNotifier.value = _withOptimisticBets(s);
@@ -1276,6 +1277,16 @@ class _FoodWheelGameState extends State<FoodWheelGame>
             ? '🍕'
             : kSlots[s.resultSlot ?? 0].emoji;
     final mine = _myBetTotalForRound(s.roundId);
+    final winningGroupKey = (s.resultSlot != null && const [1, 2, 4, 6].contains(s.resultSlot))
+        ? 'pizza_group'
+        : 'salad_group';
+    final winningGroupName = winningGroupKey == 'pizza_group' ? 'البيتزا' : 'السلطة';
+    final winningGroupBet = _groupBetForRound(s.roundId, winningGroupKey);
+    final groupResultText = winningGroupBet > 0
+        ? '$winningGroupName: رهانك ${_fmt(winningGroupBet)} × 2 = ${_fmt(winningGroupBet * 2)}'
+        : (winningGroupKey == 'pizza_group'
+            ? 'البيتزا تفوز مع أي خضار — ×2'
+            : 'السلطة تفوز مع أي لحم — ×2');
     const t = TextStyle(
         color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, height: 1.8);
     return Container(
@@ -1384,6 +1395,7 @@ class _FoodWheelGameState extends State<FoodWheelGame>
               children: [
                 Text(s.special == 'pizza' ? 'بيتزا! فازت كل الخضروات' : s.special == 'salad' ? 'سلطة! فازت كل اللحوم' : '${s.roundId} نتيجة الجولة', textAlign: TextAlign.center, style: t),
                 Text('رهانك في هذه الجولة: $mine', textAlign: TextAlign.center, style: t),
+                Text(groupResultText, textAlign: TextAlign.center, style: t),
                 Text('الفائز في هذه الجولة: ${s.myPayout}', textAlign: TextAlign.center, style: t),
               ],
             ),
