@@ -228,9 +228,9 @@ test("Chicken Road rules are fixed in shared configuration and client sends only
   assert.match(chickenClient, /\{t:'cash'\}/);
   assert.match(chickenClient, /\{t:'history'\}/);
   assert.match(chickenClient, /range: 'today'/);
-  assert.match(chickenNet, /new WebSocket\\(cfg\\.WS_URL/);
-  assert.match(chickenNet, /setTimeout\\(connectSocket, 1500\\)/);
-  assert.match(chickenNet, /session\\/refresh/);
+  assert.match(chickenNet, /new WebSocket\(cfg\.WS_URL/);
+  assert.match(chickenNet, /setTimeout\(connectSocket, 1500\)/);
+  assert.match(chickenNet, /session\/refresh/);
   assert.match(chickenNet, /happy-live-game-session/);
   assert.doesNotMatch(chickenNet, /function local\(|local\(\)/);
 });
@@ -243,23 +243,23 @@ test("invalid Chicken Road sessions close the websocket with unauthorized code 4
 
 
 test("Chicken Road accepts only a real parent session and refreshes it before expiry", () => {
-  assert.doesNotMatch(chickenNet, /function local\\(|local\\(\\)|1000000\\s*;\\s*\/\/ fake/i);
-  assert.match(chickenNet, /event\\.origin !== window\\.location\\.origin/);
-  assert.match(chickenNet, /event\\.source !== window\\.parent/);
-  assert.match(chickenNet, /session\\/refresh/);
-  assert.match(chickenNet, /expiresAt - Date\\.now\\(\\) - 60000/);
+  assert.doesNotMatch(chickenNet, /function local\(|local\(\)|1000000\s*;\s*\/\/ fake/i);
+  assert.match(chickenNet, /event\.origin !== window\.location\.origin/);
+  assert.match(chickenNet, /event\.source !== window\.parent/);
+  assert.match(chickenNet, /session\/refresh/);
+  assert.match(chickenNet, /expiresAt - Date\.now\(\) - 60000/);
 });
 
 test("Chicken Road player sessions remain bound to the active Happy Live login", () => {
   assert.match(chickenHub, /socketSessions = new WeakMap/);
   assert.match(chickenHub, /isSessionActive/);
-  assert.match(chickenHub, /app\\.revoked_at IS NULL AND app\\.expires_at > \?/);
-  assert.match(chickenHub, /player\\?\\.happyId/);
+  assert.match(chickenHub, /app\.revoked_at IS NULL AND app\.expires_at > \?/);
+  assert.match(chickenHub, /player\?\.happyId/);
 });
 
 test("Chicken Road winners list resets at Saudi midnight and shows the public Happy Live ID", () => {
   assert.match(chickenHub, /Saudi calendar day/);
-  assert.match(chickenHub, /Date\\.UTC\\(saudiNow\\.getUTCFullYear\\(\\), saudiNow\\.getUTCMonth\\(\\), saudiNow\\.getUTCDate\\(\\)\\) - 3 \\* 60 \\* 60 \\* 1000/);
+  assert.match(chickenHub, /Date\.UTC\(saudiNow\.getUTCFullYear\(\), saudiNow\.getUTCMonth\(\), saudiNow\.getUTCDate\(\)\) - 3 \* 60 \* 60 \* 1000/);
   assert.match(chickenHub, /AS userCode/);
   assert.match(chickenClient, /userCode/);
   assert.match(chickenClient, /الفائزون اليوم/);
