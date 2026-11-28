@@ -8,7 +8,7 @@ export async function auth(db,token,origin,now=new Date().toISOString()){
  return row&&row.gameOrigin===origin?row:null;
 }
 export async function profile(db,id){return db.prepare("SELECT COALESCE(p.display_name,'') AS name,COALESCE(p.avatar_key,'') AS avatar,COALESCE(p.happy_id,'') AS happyId FROM users u LEFT JOIN profiles p ON p.user_id=u.id WHERE u.id=? AND u.status='active' LIMIT 1").bind(id).first();}
-export async function balance(db,id){const row=await db.prepare('SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1').bind(id).first();return Number(row?.balance??0);}
+export async function balance(db,id){const row=await db.prepare('SELECT balance FROM user_wallets WHERE user_id=? LIMIT 1').bind(id).first();if(!row)throw new Error('wallet_not_found');const value=Number(row.balance);if(!Number.isSafeInteger(value)||value<0)throw new Error('wallet_balance_invalid');return value;}
 export async function debit(db,id,amount){if(!Number.isSafeInteger(amount)||amount<=0)return false;const r=await db.prepare('UPDATE user_wallets SET balance=balance-?,updated_at=? WHERE user_id=? AND balance>=?').bind(amount,new Date().toISOString(),id,amount).run();return Number(r.meta?.changes??0)===1;}
 export async function credit(db,id,amount){if(!Number.isSafeInteger(amount)||amount<=0)return false;const r=await db.prepare('UPDATE user_wallets SET balance=balance+?,updated_at=? WHERE user_id=?').bind(amount,new Date().toISOString(),id).run();return Number(r.meta?.changes??0)===1;}
 export function debitStatement(db,id,amount,now,roundId){return db.prepare("UPDATE user_wallets SET balance=balance-?,updated_at=? WHERE user_id=? AND balance>=? AND EXISTS(SELECT 1 FROM game_rounds WHERE id=? AND status='open')").bind(amount,now,id,amount,roundId);}

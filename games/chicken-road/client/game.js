@@ -115,7 +115,7 @@
   });
   Net.on('balance', (d) => ($('bal').textContent = fmt(d.balance)));
   Net.on('error', (d) => toast(d.message, 'bad'));
-  Net.on('offline', () => toast('انقطع الاتصال.. إعادة المحاولة', 'bad'));
+  Net.on('offline', () => toast('الخادم غير متصل', 'bad'));
   Net.on('started', (d) => { Object.assign(S, { state: 'active', step: 0, bet: d.amount, diff: d.diff }); skin('idle'); place(0, true); ui(); });
   Net.on('step', (d) => { sfx('hop'); S.step = d.step; tiles[d.step].querySelectorAll('.car').forEach((c) => c.remove()); place(d.step); ui(); });
   Net.on('dead', (d) => {

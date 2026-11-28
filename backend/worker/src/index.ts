@@ -503,14 +503,54 @@ export default {
       }
     }
 
+    if (url.pathname === "/api/v1/game/chicken-road/health" && request.method === "GET") {
+      if (!env.DB) return json({ ok: false, error: "database_unavailable", database: "missing" }, 503, origin, env);
+      try {
+        await env.DB.prepare("SELECT 1 AS ok").first();
+        const game = await env.DB.prepare(
+          "SELECT g.game_url AS gameUrl, g.enabled, l.status FROM game_registry g INNER JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE g.id = ? LIMIT 1"
+        ).bind("f21d2c7a-8f1b-4d72-9a63-5c8f7e1d4b90").first<{ gameUrl: string; enabled: number; status: string }>();
+        let expectedOrigin: string | null = null;
+        try { expectedOrigin = game?.gameUrl ? new URL(game.gameUrl).origin : null; } catch { expectedOrigin = null; }
+        const gameStatus = game?.enabled === 1 && game.status === "active" ? "active" : "inactive";
+        const originMatches = Boolean(origin && expectedOrigin && origin === expectedOrigin);
+        const durableObject = env.CHICKEN_ROAD ? "bound" : "missing";
+        const ok = gameStatus === "active" && durableObject === "bound" && originMatches;
+        return json({
+          ok, service: "happy-live-api", api: "ready", database: "connected",
+          durableObject, gameStatus, originMatches,
+          requestOrigin: origin ?? null, expectedOrigin
+        }, ok ? 200 : 503, origin, env);
+      } catch (error) {
+        console.error("[chicken-road.health] failed", error instanceof Error ? error.message : "unknown");
+        return json({ ok: false, error: "health_check_failed", database: "error" }, 503, origin, env);
+      }
+    }
+
     if (url.pathname === "/api/v1/game/chicken-road/ws" && request.method === "GET" &&
         request.headers.get("Upgrade")?.toLowerCase() === "websocket") {
       if (!env.DB || !env.CHICKEN_ROAD) return new Response("game_unavailable", { status: 503 });
       const offeredProtocols = (request.headers.get("Sec-WebSocket-Protocol") ?? "").split(",").map((value) => value.trim());
       const tokenProtocol = offeredProtocols.find((value) => value.startsWith("session."));
       const token = tokenProtocol?.slice("session.".length) ?? "";
-      const session = await authenticateChickenRoadSession(env.DB, token, origin ?? "");
-      if (!session) return unauthorizedChickenRoadSocket();
+      console.info("[chicken-road.ws] handshake", {
+        origin: origin ?? null, tokenPresent: Boolean(token), tokenLength: token.length,
+        databaseBound: Boolean(env.DB), durableObjectBound: Boolean(env.CHICKEN_ROAD)
+      });
+      let session: { id: string; userId: string } | null = null;
+      try {
+        session = await authenticateChickenRoadSession(env.DB, token, origin ?? "");
+      } catch (error) {
+        console.error("[chicken-road.ws] session_auth_error", error instanceof Error ? error.message : "unknown");
+        return new Response("game_session_auth_failed", { status: 500 });
+      }
+      if (!session) {
+        console.error("[chicken-road.ws] session_rejected", {
+          origin: origin ?? null, tokenPresent: Boolean(token), tokenLength: token.length
+        });
+        return unauthorizedChickenRoadSocket();
+      }
+      console.info("[chicken-road.ws] session_authorized", { userId: session.userId, sessionId: session.id });
       const id = env.CHICKEN_ROAD.idFromName(session.userId);
       const stub = env.CHICKEN_ROAD.get(id);
       const headers = new Headers();
@@ -518,7 +558,14 @@ export default {
       headers.set("x-hl-user-id", session.userId);
       headers.set("x-hl-game-session-id", session.id);
       headers.set("Sec-WebSocket-Protocol", "happy-live-game");
-      return stub.fetch(new Request("https://chicken-road.internal/connect", { method: "GET", headers }));
+      try {
+        const response = await stub.fetch(new Request("https://chicken-road.internal/connect", { method: "GET", headers }));
+        if (response.status !== 101) console.error("[chicken-road.ws] durable_object_rejected", { status: response.status });
+        return response;
+      } catch (error) {
+        console.error("[chicken-road.ws] durable_object_error", error instanceof Error ? error.message : "unknown");
+        return new Response("chicken_road_durable_object_failed", { status: 500 });
+      }
     }
 
     const gamesApiResponse = await handleGamesApiRequest(request, env, origin, authenticatedUser, json, authenticatedAdmin);

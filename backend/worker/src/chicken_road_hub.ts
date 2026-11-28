@@ -224,7 +224,14 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
         } catch (error) { send(server, "error", { message: "تعذر إكمال الطلب، حاول مجدداً" }); console.error("[chicken-road]", error instanceof Error ? error.message : "unknown"); }
       });
     });
-    await this.init(server);
+    try {
+      await this.init(server);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "wallet_initialization_failed";
+      console.error("[chicken-road.init] wallet initialization failed", code);
+      send(server, "init_error", { code });
+      try { server.close(1011, "wallet_initialization_failed"); } catch { /* closed */ }
+    }
     return new Response(null, { status: 101, webSocket: client, headers: { "Sec-WebSocket-Protocol": "happy-live-game" } });
   }
 }

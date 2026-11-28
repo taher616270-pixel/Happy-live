@@ -1,11 +1,14 @@
-// Production-only Happy Live integration: authenticated session + canonical wallet.
+// Production-only Happy Live integration with explicit API/session/WS diagnostics.
 (function () {
   const cfg = window.CR_CLIENT || {};
   const H = {};
-  const API = 'https://happy-live-api.taher616270.workers.dev/api/v1/game';
+  const API_BASE = 'https://happy-live-api.taher616270.workers.dev/api/v1/game';
+  const HEALTH_URL = API_BASE + '/chicken-road/health';
+  const SESSION_URL = API_BASE + '/session';
   const MAX_CONNECT_ATTEMPTS = 3;
   const CONNECT_RETRY_DELAY_MS = 1500;
   const READY_TIMEOUT_MS = 10000;
+  const REQUEST_TIMEOUT_MS = 10000;
   const Net = {
     me: null, player: null, connected: false,
     on(t, f) { (H[t] = H[t] || []).push(f); },
@@ -18,24 +21,43 @@
   let stopped = false, refreshPromise = null, connectStarted = false;
   let connectAttempts = 0;
 
-  function setConnectionUi(ready) {
-    const balance = document.getElementById('bal');
-    const play = document.getElementById('go');
-    const top = document.getElementById('bTop');
-    const history = document.getElementById('bLog');
-    if (!ready && balance) balance.textContent = '—';
-    if (play) play.disabled = !ready;
-    if (top) top.disabled = !ready;
-    if (history) history.disabled = !ready;
+  function log(level, event, details) {
+    const payload = Object.assign({
+      event, api: API_BASE, websocket: cfg.WS_URL || '(missing)',
+      origin: window.location.origin
+    }, details || {});
+    (console[level] || console.log).call(console, '[ChickenRoad]', payload);
   }
 
-  function showFatal(message) {
+  function setConnectionUi(ready) {
+    ['bal', 'go', 'bTop', 'bLog', 'bSync', 'clear'].forEach((id) => {
+      const element = document.getElementById(id);
+      if (element && 'disabled' in element) element.disabled = !ready;
+    });
+    ['chips', 'diffs'].forEach((id) => {
+      const element = document.getElementById(id);
+      if (element) Array.from(element.querySelectorAll('button')).forEach((button) => { button.disabled = !ready; });
+    });
+    const view = document.getElementById('view');
+    if (view) view.style.pointerEvents = ready ? 'auto' : 'none';
+    const balance = document.getElementById('bal');
+    if (!ready && balance) balance.textContent = '---';
+    const toast = document.getElementById('toast');
+    if (!ready && toast) {
+      toast.textContent = 'الخادم غير متصل';
+      toast.className = 'bad';
+      toast.hidden = false;
+    }
+  }
+
+  function showFatal(message, code, details) {
     stopped = true;
     Net.connected = false;
     clearTimeout(refreshTimer);
     clearTimeout(reconnectTimer);
     clearTimeout(readyTimer);
     setConnectionUi(false);
+    log('error', 'connection_stopped', Object.assign({ code: code || 'unknown', attempts: connectAttempts, message }, details || {}));
     if (socket && socket.readyState < WebSocket.CLOSING) {
       try { socket.close(4002, 'connection_failed'); } catch (_) {}
     }
@@ -45,29 +67,83 @@
       toast.className = 'bad';
       toast.hidden = false;
     }
-    Net.fire('connection-failed', { message });
+    Net.fire('connection-failed', { message, code });
   }
 
-  function failSession() {
-    showFatal('انتهت جلسة Happy Live أو لم تعد صالحة. أغلق اللعبة وافتحها مجدداً.');
-    Net.fire('unauthorized', { message: 'انتهت جلسة Happy Live، أعد فتح اللعبة' });
+  function failSession(code, details) {
+    showFatal('تعذر التحقق من جلسة Happy Live. أغلق اللعبة وافتحها مجدداً من داخل الغرفة.', code || 'SESSION_INVALID', details);
+    Net.fire('unauthorized', { message: 'جلسة Happy Live غير صالحة' });
+  }
+
+  async function requestJson(url, options, label) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const response = await fetch(url, Object.assign({}, options || {}, {
+        cache: 'no-store', signal: controller.signal
+      }));
+      const raw = await response.text();
+      let data = {};
+      try { data = raw ? JSON.parse(raw) : {}; } catch (_) {}
+      log(response.ok ? 'info' : 'error', 'http_response', {
+        request: label, status: response.status, statusText: response.statusText,
+        error: data.error || null, response: raw.slice(0, 500)
+      });
+      return { response, data };
+    } catch (error) {
+      const name = error && error.name ? error.name : 'NetworkError';
+      const message = error && error.message ? error.message : String(error);
+      const code = name === 'AbortError' ? 'TIMEOUT' : 'CORS_OR_NETWORK';
+      log('error', 'http_request_failed', { request: label, code, errorName: name, message });
+      throw Object.assign(new Error(message), { diagnosticCode: code });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function verifyServerAndSession() {
+    const health = await requestJson(HEALTH_URL, { method: 'GET' }, 'health');
+    if (!health.response.ok || health.data.ok !== true) {
+      throw Object.assign(new Error(health.data.error || 'chicken_road_worker_unavailable'), {
+        diagnosticCode: health.data.error || 'HEALTH_HTTP_' + health.response.status,
+        details: health.data
+      });
+    }
+    if (health.data.database !== 'connected' || health.data.durableObject !== 'bound' ||
+        health.data.gameStatus !== 'active' || health.data.originMatches !== true) {
+      throw Object.assign(new Error('chicken_road_backend_not_ready'), {
+        diagnosticCode: 'BACKEND_CONFIGURATION', details: health.data
+      });
+    }
+    if (!sessionToken || sessionToken.length < 32 || sessionToken.length > 512) {
+      throw Object.assign(new Error('missing_or_invalid_game_session_token'), { diagnosticCode: 'TOKEN_MISSING' });
+    }
+    log('info', 'session_token_received', { present: true, length: sessionToken.length });
+    const session = await requestJson(SESSION_URL, {
+      method: 'GET', headers: { Authorization: 'Bearer ' + sessionToken }
+    }, 'session');
+    if (!session.response.ok || session.data.ok !== true) {
+      const status = session.response.status;
+      const code = session.data.error || 'SESSION_HTTP_' + status;
+      throw Object.assign(new Error(code), { diagnosticCode: code, details: { status, response: session.data } });
+    }
+    if (!session.data.game || session.data.game.id !== 'f21d2c7a-8f1b-4d72-9a63-5c8f7e1d4b90') {
+      throw Object.assign(new Error('wrong_game_session'), { diagnosticCode: 'GAME_SESSION_MISMATCH' });
+    }
+    log('info', 'session_verified', { gameId: session.data.game.id, expiresAt: session.data.expiresAt });
   }
 
   async function refreshSession() {
     if (refreshPromise) return refreshPromise;
     refreshPromise = (async () => {
-      const response = await fetch(API + '/session/refresh', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + sessionToken }
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || typeof data.expiresAt !== 'string') {
-        throw new Error(data.error || 'game_session_refresh_failed');
+      const result = await requestJson(API_BASE + '/session/refresh', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + sessionToken }
+      }, 'session_refresh');
+      if (!result.response.ok || typeof result.data.expiresAt !== 'string') {
+        throw new Error(result.data.error || 'game_session_refresh_failed');
       }
-      const nextExpiry = Date.parse(data.expiresAt);
-      if (!Number.isFinite(nextExpiry) || nextExpiry <= Date.now()) {
-        throw new Error('invalid_game_session_expiry');
-      }
+      const nextExpiry = Date.parse(result.data.expiresAt);
+      if (!Number.isFinite(nextExpiry) || nextExpiry <= Date.now()) throw new Error('invalid_game_session_expiry');
       expiresAt = nextExpiry;
       scheduleRefresh();
     })();
@@ -79,129 +155,134 @@
     if (!expiresAt || stopped) return;
     refreshTimer = setTimeout(async () => {
       try { await refreshSession(); }
-      catch (_) { failSession(); }
+      catch (error) { failSession('SESSION_REFRESH_FAILED', { error: String(error) }); }
     }, Math.max(1000, expiresAt - Date.now() - 60000));
   }
 
-  function connectionFailed() {
-    showFatal('تعذر الاتصال بخادم Chicken Road بعد 3 محاولات. تحقق من اتصالك ثم أغلق اللعبة وافتحها مجدداً.');
+  function connectionFailed(code, details) {
+    showFatal('الخادم غير متصل. تعذر إنشاء اتصال آمن مع Chicken Road؛ لا يمكن اللعب أو المراهنة حالياً.', code || 'WEBSOCKET_FAILED', details);
   }
 
-  function connectSocket() {
+  async function connectSocket() {
     if (stopped) return;
-    if (!sessionToken || !expiresAt || Date.now() >= expiresAt) return failSession();
+    if (!sessionToken || !expiresAt || Date.now() >= expiresAt) return failSession('TOKEN_EXPIRED');
     if (typeof cfg.WS_URL !== 'string' || !cfg.WS_URL.startsWith('wss://')) {
-      return showFatal('رابط اتصال اللعبة غير صالح. حدّث التطبيق ثم حاول مجدداً.');
+      return showFatal('رابط اتصال Chicken Road غير صالح. لا يمكن بدء اللعب.', 'INVALID_WEBSOCKET_URL');
     }
-    if (connectAttempts >= MAX_CONNECT_ATTEMPTS) return connectionFailed();
-
+    if (connectAttempts >= MAX_CONNECT_ATTEMPTS) return connectionFailed('RETRY_LIMIT');
     clearTimeout(reconnectTimer);
     clearTimeout(readyTimer);
     connectAttempts += 1;
-
+    log('info', 'websocket_connecting', { attempt: connectAttempts, maxAttempts: MAX_CONNECT_ATTEMPTS, tokenPresent: true, tokenLength: sessionToken.length });
     let ws;
     try {
       ws = new WebSocket(cfg.WS_URL, ['happy-live-game', 'session.' + sessionToken]);
-    } catch (_) {
-      if (connectAttempts >= MAX_CONNECT_ATTEMPTS) return connectionFailed();
-      reconnectTimer = setTimeout(connectSocket, CONNECT_RETRY_DELAY_MS);
+    } catch (error) {
+      log('error', 'websocket_constructor_failed', { attempt: connectAttempts, error: String(error) });
+      if (connectAttempts >= MAX_CONNECT_ATTEMPTS) return connectionFailed('WEBSOCKET_CONSTRUCTOR');
+      reconnectTimer = setTimeout(connectSocket, 1500);
       return;
     }
     socket = ws;
-
     ws.onopen = () => {
       if (socket !== ws || stopped) return;
+      log('info', 'websocket_open', { attempt: connectAttempts, protocol: ws.protocol });
       readyTimer = setTimeout(() => {
         if (socket === ws && !Net.connected && ws.readyState < WebSocket.CLOSING) {
+          log('error', 'websocket_init_timeout', { attempt: connectAttempts });
           try { ws.close(4000, 'init_timeout'); } catch (_) {}
         }
       }, READY_TIMEOUT_MS);
     };
-
     ws.onmessage = (event) => {
       if (socket !== ws || stopped) return;
       let message;
-      try { message = JSON.parse(event.data); } catch (_) { return; }
-
+      try { message = JSON.parse(event.data); }
+      catch (error) { log('error', 'invalid_websocket_message', { error: String(error) }); return; }
+      if (message.t === 'init_error') {
+        return showFatal('اتصلت اللعبة بالخادم، لكن تعذر تحميل محفظة Happy Live. لا يمكن بدء اللعب.', message.data && message.data.code || 'WALLET_INIT_FAILED');
+      }
       if (message.t === 'init') {
         const data = message.data || {};
         const balance = Number(data.balance);
-        if (!Number.isFinite(balance) || balance < 0) {
-          return showFatal('اتصلت اللعبة بالخادم، لكن تعذرت قراءة رصيد محفظة Happy Live. لم يتم عرض رصيد افتراضي.');
+        if (!Number.isFinite(balance) || balance < 0 || !data.userCode) {
+          return showFatal('تعذر تحميل رصيد محفظة Happy Live أو بيانات الحساب. لم يتم السماح باللعب.', 'INVALID_WALLET_INIT');
         }
         clearTimeout(readyTimer);
-        Net.me = data.userCode || data.playerId || '';
+        Net.me = data.userCode;
         Net.player = data.player || null;
         Net.connected = true;
         connectAttempts = 0;
         setConnectionUi(true);
+        log('info', 'game_ready', { happyId: data.userCode, walletBalanceReceived: true });
       }
       Net.fire(message.t, message.data);
     };
-
-    ws.onerror = () => {
+    ws.onerror = (event) => {
       if (socket === ws) {
         Net.connected = false;
         setConnectionUi(false);
+        log('error', 'websocket_error', { attempt: connectAttempts, readyState: ws.readyState, eventType: event && event.type });
         Net.fire('offline');
       }
     };
-
     ws.onclose = (event) => {
       if (socket !== ws || stopped) return;
       Net.connected = false;
       setConnectionUi(false);
       clearTimeout(readyTimer);
-
-      if (event.code === 4001 || Date.now() >= expiresAt) return failSession();
-      if (event.code === 4002) {
-        return showFatal('تعذر التحقق من محفظة Happy Live أو بيانات اللاعب. أعد فتح اللعبة، وإذا استمرت المشكلة تواصل مع الدعم.');
-      }
-
+      log('error', 'websocket_closed', { attempt: connectAttempts, code: event.code, reason: event.reason || '', wasClean: event.wasClean });
+      if (event.code === 4001 || Date.now() >= expiresAt) return failSession('WS_UNAUTHORIZED', { closeCode: event.code, reason: event.reason });
+      if (event.code === 4002) return connectionFailed('WS_SERVER_REJECTED', { closeCode: event.code, reason: event.reason });
       Net.fire('offline', { code: event.code, reason: event.reason || '' });
-      if (connectAttempts >= MAX_CONNECT_ATTEMPTS) return connectionFailed();
+      if (connectAttempts >= MAX_CONNECT_ATTEMPTS) return connectionFailed(event.code === 1006 ? 'WS_HANDSHAKE_OR_SERVER_FAILURE' : 'WS_RETRY_LIMIT', { closeCode: event.code, reason: event.reason });
       reconnectTimer = setTimeout(connectSocket, CONNECT_RETRY_DELAY_MS);
     };
-
     Net.send = (message) => {
-      if (!Net.connected || ws.readyState !== WebSocket.OPEN || stopped) return false;
+      if (!Net.connected || ws.readyState !== WebSocket.OPEN || stopped) {
+        log('warn', 'game_action_blocked', { action: message && message.t || 'unknown', connected: Net.connected });
+        return false;
+      }
       ws.send(JSON.stringify(message));
       return true;
     };
   }
 
   function receiveSession(event) {
-    if (event.origin !== window.location.origin || event.source !== window.parent) return;
+    if (event.source !== window.parent || event.origin !== window.location.origin) {
+      log('warn', 'session_message_rejected', { sourceIsParent: event.source === window.parent, messageOrigin: event.origin });
+      return;
+    }
     const data = event.data;
-    if (!data || data.type !== 'happy-live-game-session' ||
-        typeof data.sessionToken !== 'string' || data.sessionToken.length < 32 ||
-        data.sessionToken.length > 512 || sessionToken) return;
-
+    if (!data || data.type !== 'happy-live-game-session') return;
+    if (typeof data.sessionToken !== 'string' || data.sessionToken.length < 32 || data.sessionToken.length > 512) {
+      log('error', 'session_token_invalid', { present: Boolean(data.sessionToken), type: typeof data.sessionToken, length: typeof data.sessionToken === 'string' ? data.sessionToken.length : 0 });
+      return;
+    }
+    if (sessionToken) return;
     sessionToken = data.sessionToken;
     window.CR_SESSION_TOKEN = sessionToken;
-    window.parent.postMessage(
-      { type: 'happy-live-game-session-received' },
-      window.location.origin
-    );
-    expiresAt = Date.now() + 14 * 60 * 1000;
+    log('info', 'session_token_received_from_parent', { present: true, length: sessionToken.length, origin: event.origin });
+    window.parent.postMessage({ type: 'happy-live-game-session-received' }, window.location.origin);
     window.removeEventListener('message', receiveSession);
+    expiresAt = Date.now() + 14 * 60 * 1000;
     scheduleRefresh();
-    connectSocket();
+    verifyServerAndSession().then(connectSocket).catch((error) => {
+      showFatal('الخادم غير متصل: ' + (error.diagnosticCode || 'تعذر التحقق من الاتصال') + '. لا يمكن اللعب حالياً.', error.diagnosticCode || 'SERVER_CHECK_FAILED', error.details || { error: String(error) });
+    });
   }
 
   Net.connect = () => {
     if (connectStarted) return;
     connectStarted = true;
     setConnectionUi(false);
-    const balance = document.getElementById('bal');
-    if (balance) balance.textContent = '—';
     window.addEventListener('message', receiveSession);
+    log('info', 'client_started', { apiConfigured: API_BASE.startsWith('https://'), websocketConfigured: typeof cfg.WS_URL === 'string' && cfg.WS_URL.startsWith('wss://') });
     setTimeout(() => {
       if (!sessionToken && !stopped) {
-        showFatal('لم تصل جلسة تسجيل الدخول من Happy Live. أغلق اللعبة وافتحها مجدداً من داخل الغرفة.');
+        showFatal('الخادم غير متصل: لم تصل جلسة تسجيل الدخول من Happy Live. أغلق اللعبة وافتحها مجدداً من داخل الغرفة.', 'SESSION_NOT_DELIVERED');
       }
     }, 12000);
   };
-
   window.CR_Net = Net;
 })();

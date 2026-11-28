@@ -42,8 +42,9 @@ class _ChickenRoadScreenState extends State<_ChickenRoadScreen> {
   bool _sessionDelivered = false;
 
   void _deliverSession() {
-    if (_sessionDelivered) return;
-    _frame?.contentWindow?.postMessage(
+    final frame = _frame;
+    if (_sessionDelivered || frame == null) return;
+    frame.contentWindow?.postMessage(
       {'type': 'happy-live-game-session', 'sessionToken': widget.token},
       html.window.location.origin,
     );
