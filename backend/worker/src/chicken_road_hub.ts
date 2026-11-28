@@ -93,7 +93,7 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
 
     try {
       return await db.prepare(
-        "SELECT r.id, r.total_stake AS amount, s.difficulty AS diff, s.current_step AS step, s.crash_step AS crashStep, s.seed, s.commit_hash AS "commit", s.last_step_at AS lastStepAt FROM game_rounds r INNER JOIN chicken_road_round_state s ON s.round_id = r.id WHERE r.game_id = ? AND r.user_id = ? AND r.status = 'open' ORDER BY r.created_at DESC LIMIT 1"
+        `SELECT r.id, r.total_stake AS amount, s.difficulty AS diff, s.current_step AS step, s.crash_step AS crashStep, s.seed, s.commit_hash AS "commit", s.last_step_at AS lastStepAt FROM game_rounds r INNER JOIN chicken_road_round_state s ON s.round_id = r.id WHERE r.game_id = ? AND r.user_id = ? AND r.status = 'open' ORDER BY r.created_at DESC LIMIT 1`
       ).bind(GAME_ID, this.playerId).first<ActiveRound>();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -314,7 +314,7 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
           body: null,
           note: "The WebSocket init frame restores the user's active round; it does not accept bet or difficulty fields."
         },
-        code,
+        errorMessage: code,
         name: error instanceof Error ? error.name : typeof error,
         stack: error instanceof Error ? error.stack : null,
         playerId: this.playerId,
