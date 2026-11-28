@@ -222,7 +222,7 @@ test("Chicken Road rules are fixed in shared configuration and client sends only
   assert.match(chickenConfig, /easy:Object\.freeze\(\{death:\.06/);
   assert.match(chickenConfig, /medium:Object\.freeze\(\{death:\.14/);
   assert.match(chickenConfig, /hard:Object\.freeze\(\{death:\.22/);
-  assert.match(chickenEngine, /function crashAt/);
+  assert.match(chickenEngine, /function multiplier/);\n  assert.doesNotMatch(chickenEngine, /class Engine|crashAt|wallet\.debit|wallet\.credit/);
   assert.match(chickenClient, /\{t:'play',amount:S\.bet,diff:S\.diff\}/);
   assert.match(chickenClient, /\{t:'step'\}/);
   assert.match(chickenClient, /\{t:'cash'\}/);
