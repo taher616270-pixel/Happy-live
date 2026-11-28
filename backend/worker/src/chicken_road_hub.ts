@@ -28,6 +28,14 @@ function crashAt(diff: Diff, u: number): number {
 function seedHex(): string {
   return hex(crypto.getRandomValues(new Uint8Array(32)));
 }
+function unauthorizedChickenRoadSocket(): Response {
+  const pair = new WebSocketPair();
+  const client = pair[0], server = pair[1];
+  server.accept();
+  server.close(4001, "unauthorized");
+  return new Response(null, { status: 101, webSocket: client });
+}
+
 function send(ws: WebSocket, t: string, data: unknown): void {
   try { ws.send(JSON.stringify({ t, data })); } catch { /* closed */ }
 }
@@ -181,7 +189,7 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
       return Response.json({ error: "not_found" }, { status: 404 });
     }
     const uid = request.headers.get("x-hl-user-id") ?? "";
-    if (!uid || uid !== this.playerId) return new Response("unauthorized", { status: 401 });
+    if (!uid || uid !== this.playerId) return unauthorizedChickenRoadSocket();
     const pair = new WebSocketPair(), client = pair[0], server = pair[1];
     server.accept();
     this.sockets.add(server);

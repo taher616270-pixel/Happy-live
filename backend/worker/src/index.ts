@@ -22,6 +22,14 @@ function globalGiftShardForUser(userId: string): number {
   return (hash >>> 0) % GLOBAL_GIFT_SHARD_COUNT;
 }
 
+function unauthorizedChickenRoadSocket(): Response {
+  const pair = new WebSocketPair();
+  const client = pair[0], server = pair[1];
+  server.accept();
+  server.close(4001, "unauthorized");
+  return new Response(null, { status: 101, webSocket: client });
+}
+
 export interface Env {
   DB?: D1Database;
   ROOM_CHAT?: DurableObjectNamespace;
@@ -500,7 +508,7 @@ export default {
       if (!env.DB || !env.CHICKEN_ROAD) return new Response("game_unavailable", { status: 503 });
       const token = url.searchParams.get("token") ?? "";
       const session = await authenticateChickenRoadSession(env.DB, token, origin ?? "");
-      if (!session) return new Response("unauthorized", { status: 401 });
+      if (!session) return unauthorizedChickenRoadSocket();
       const id = env.CHICKEN_ROAD.idFromName(session.userId);
       const stub = env.CHICKEN_ROAD.get(id);
       const headers = new Headers();

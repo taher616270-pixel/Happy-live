@@ -173,7 +173,7 @@ test("trusted game backend can cancel an aborted round and refund exact accepted
   assert.match(api, /status = 'cancelled'/);
   assert.match(api, /total_stake = \? AND \(SELECT COALESCE\(SUM\(stake\), 0\) FROM game_bets WHERE round_id = \? AND status = 'accepted'\) = \?/);
   assert.match(api, /SELECT COUNT\(\*\) FROM game_bets WHERE round_id = \? AND status = 'accepted'/);
-  assert.match(api, /\? = 0 OR EXISTS \(SELECT 1 FROM user_wallets WHERE user_id=?\)/);
+  assert.match(api, /\? = 0 OR EXISTS \(SELECT 1 FROM user_wallets WHERE user_id\s*=\s*\?\)/);
 });
 
 
@@ -229,4 +229,10 @@ test("Chicken Road rules are fixed in shared configuration and client sends only
   assert.match(chickenNet, /new WebSocket\(cfg\.WS_URL\+'\?token='/);
   assert.match(chickenNet, /setTimeout\(\(\)=>N\.connect\(\),2000\)/);
   assert.doesNotMatch(chickenNet, /function local\(|local\(\)/);
+});
+
+test("invalid Chicken Road sessions close the websocket with unauthorized code 4001", () => {
+  assert.match(worker, /return unauthorizedChickenRoadSocket\(\)/);
+  assert.match(worker, /server\.close\(4001, "unauthorized"\)/);
+  assert.match(chickenHub, /server\.close\(4001, "unauthorized"\)/);
 });

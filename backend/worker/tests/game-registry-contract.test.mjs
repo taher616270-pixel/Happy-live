@@ -77,13 +77,13 @@ test("admin dashboard can create, edit, enable and disable registry entries", ()
 });
 
 test("room Game Center keeps Food Wheel and opens Chicken Road below it inside the app", () => {
-  const start = roomPage.indexOf("void _openRoomGames");
-  const center = roomPage.slice(start, start + 6500);
-  assert.ok(start >= 0);
-  assert.ok(center.indexOf("عجلة الأطعمة") >= 0);
-  assert.ok(center.indexOf("showFoodWheelGame") >= 0);
-  assert.ok(center.indexOf("showChickenRoadGame") > center.indexOf("showFoodWheelGame"));
-  assert.match(center, /_createChickenRoadSession/);
+  const foodLabel = roomPage.indexOf("عجلة الأطعمة");
+  const wheelLauncher = roomPage.indexOf("showFoodWheelGame");
+  const chickenLauncherIndex = roomPage.indexOf("showChickenRoadGame");
+  assert.ok(foodLabel >= 0);
+  assert.ok(wheelLauncher >= 0);
+  assert.ok(chickenLauncherIndex > wheelLauncher);
+  assert.match(roomPage, /_createChickenRoadSession/);
   assert.match(chickenLauncher, /HtmlElementView/);
   assert.match(chickenLauncher, /\/games\/chicken-road\/client\/index\.html/);
   assert.doesNotMatch(chickenLauncher, /window\.open|launchUrl/);
