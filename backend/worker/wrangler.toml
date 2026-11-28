@@ -71,3 +71,4 @@ new_sqlite_classes = ["FoodWheelRoundsHub"]
 
 [triggers]
 crons = ["* * * * *"]
+\n[[migrations]]\ntag = "v5-chicken-road"\nnew_sqlite_classes = ["ChickenRoadHub"]\n
