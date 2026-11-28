@@ -35,6 +35,7 @@ import '../models/mic_layout.dart';
 import '../widgets/dynamic_games_list.dart';
 import '../games/food_wheel/food_wheel_game.dart';
 import '../games/food_wheel/wheel_api_http.dart';
+import '../services/game_link_launcher.dart';
 import '../cannon/cannon_service.dart';
 import '../cannon/cannon_sheet.dart';
 import '../pk/pk_sheet.dart';
@@ -2672,6 +2673,20 @@ class _RoomPageState extends State<RoomPage> {
     );
   }
 
+  Future<String> _createChickenRoadSession() async {
+    final response = await http.post(
+      Uri.parse('https://happy-live-api.taher616270.workers.dev/api/v1/game/auth'),
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ${widget.accessToken}'},
+      body: jsonEncode({'gameId': 'f21d2c7a-8f1b-4d72-9a63-5c8f7e1d4b90'}),
+    ).timeout(const Duration(seconds: 12));
+    Map<String, dynamic> payload = {};
+    try { payload = jsonDecode(response.body) as Map<String, dynamic>; } catch (_) {}
+    if (response.statusCode != 201 || payload['ok'] != true || payload['sessionToken'] is! String) {
+      throw StateError((payload['error'] ?? 'chicken_road_session_failed').toString());
+    }
+    return payload['sessionToken'] as String;
+  }
+
   void _openRoomGames(BuildContext host) {
     showModalBottomSheet<void>(
       context: host,
@@ -2721,6 +2736,54 @@ class _RoomPageState extends State<RoomPage> {
                               Text('عجلة الأطعمة', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
                               SizedBox(height: 4),
                               Text('لعبة داخل الغرفة', style: TextStyle(color: Color(0xFFE4D5B8), fontSize: 11)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_left_rounded, color: Color(0xFFFFD36A)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(18),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    if (!host.mounted) return;
+                    try {
+                      await launchFixedGame(
+                        host,
+                        '${Uri.base.origin}/games/chicken-road/client/index.html',
+                        _createChickenRoadSession(),
+                      );
+                    } catch (_) {
+                      if (host.mounted) {
+                        showCenteredNotification(host, const SnackBar(content: Text('تعذر فتح عبور الدجاجة داخل التطبيق.')));
+                      }
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3B2C1B),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFFD8B56D)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.directions_run_rounded, color: Color(0xFFFFD36A), size: 30),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('عبور الدجاجة', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+                              SizedBox(height: 4),
+                              Text('رهان حقيقي من محفظة Happy Live', style: TextStyle(color: Color(0xFFE4D5B8), fontSize: 11)),
                             ],
                           ),
                         ),
