@@ -43,7 +43,7 @@ function send(ws: WebSocket, t: string, data: unknown): void {
 export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
   private readonly db?: D1Database;
   private readonly sockets = new Set<WebSocket>();
-  private readonly socketSessions = new Map<WebSocket, string>();
+  private readonly socketSessions = new WeakMap<WebSocket, string>();
   private queue: Promise<void> = Promise.resolve();
   private readonly playerId: string;
 
