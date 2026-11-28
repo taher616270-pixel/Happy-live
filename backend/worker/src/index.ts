@@ -27,7 +27,7 @@ function unauthorizedChickenRoadSocket(): Response {
   const client = pair[0], server = pair[1];
   server.accept();
   server.close(4001, "unauthorized");
-  return new Response(null, { status: 101, webSocket: client });
+  return new Response(null, { status: 101, webSocket: client, headers: { "Sec-WebSocket-Protocol": "happy-live-game" } });
 }
 
 export interface Env {
@@ -506,7 +506,9 @@ export default {
     if (url.pathname === "/api/v1/game/chicken-road/ws" && request.method === "GET" &&
         request.headers.get("Upgrade")?.toLowerCase() === "websocket") {
       if (!env.DB || !env.CHICKEN_ROAD) return new Response("game_unavailable", { status: 503 });
-      const token = url.searchParams.get("token") ?? "";
+      const offeredProtocols = (request.headers.get("Sec-WebSocket-Protocol") ?? "").split(",").map((value) => value.trim());
+      const tokenProtocol = offeredProtocols.find((value) => value.startsWith("session."));
+      const token = tokenProtocol?.slice("session.".length) ?? "";
       const session = await authenticateChickenRoadSession(env.DB, token, origin ?? "");
       if (!session) return unauthorizedChickenRoadSocket();
       const id = env.CHICKEN_ROAD.idFromName(session.userId);
@@ -515,6 +517,7 @@ export default {
       headers.set("Upgrade", "websocket");
       headers.set("x-hl-user-id", session.userId);
       headers.set("x-hl-game-session-id", session.id);
+      headers.set("Sec-WebSocket-Protocol", "happy-live-game");
       return stub.fetch(new Request("https://chicken-road.internal/connect", { method: "GET", headers }));
     }
 
