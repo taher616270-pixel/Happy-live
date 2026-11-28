@@ -5,6 +5,8 @@
   const API_BASE = 'https://happy-live-api.taher616270.workers.dev/api/v1/game';
   const HEALTH_URL = API_BASE + '/chicken-road/health';
   const SESSION_URL = API_BASE + '/session';
+  const PROFILE_URL = API_BASE + '/profile';
+  const WALLET_URL = API_BASE + '/wallet';
   const MAX_CONNECT_ATTEMPTS = 3;
   const CONNECT_RETRY_DELAY_MS = 1500;
   const READY_TIMEOUT_MS = 10000;
@@ -17,6 +19,7 @@
   };
 
   let sessionToken = '', expiresAt = 0, socket = null;
+  let walletSnapshot = null;
   let refreshTimer = 0, reconnectTimer = 0, readyTimer = 0;
   let stopped = false, refreshPromise = null, connectStarted = false;
   let connectAttempts = 0;
@@ -142,6 +145,48 @@
       throw Object.assign(new Error('wrong_game_session'), { diagnosticCode: 'GAME_SESSION_MISMATCH' });
     }
     log('info', 'session_verified', { gameId: session.data.game.id, expiresAt: session.data.expiresAt });
+
+    const authHeaders = { Authorization: 'Bearer ' + sessionToken };
+    const [profile, wallet] = await Promise.all([
+      requestJson(PROFILE_URL, { method: 'GET', headers: authHeaders }, 'profile'),
+      requestJson(WALLET_URL, { method: 'GET', headers: authHeaders }, 'wallet')
+    ]);
+    if (!profile.response.ok || profile.data.ok !== true || !profile.data.player) {
+      const status = profile.response.status;
+      const code = profile.data.error || 'PROFILE_HTTP_' + status;
+      throw Object.assign(new Error(code), {
+        diagnosticCode: code,
+        details: { request: 'profile', status, statusText: profile.response.statusText, response: profile.data }
+      });
+    }
+    const player = profile.data.player;
+    const userCode = String(player.userCode || player.id || '').trim();
+    if (!userCode || player.accountStatus !== 'active') {
+      throw Object.assign(new Error('profile_identity_invalid'), {
+        diagnosticCode: 'PROFILE_INVALID',
+        details: { userCodePresent: Boolean(userCode), accountStatus: player.accountStatus, player }
+      });
+    }
+    if (!wallet.response.ok || wallet.data.ok !== true) {
+      const status = wallet.response.status;
+      const code = wallet.data.error || 'WALLET_HTTP_' + status;
+      throw Object.assign(new Error(code), {
+        diagnosticCode: code,
+        details: { request: 'wallet', status, statusText: wallet.response.statusText, response: wallet.data }
+      });
+    }
+    const balance = wallet.data.balance;
+    if (typeof balance !== 'number' || !Number.isSafeInteger(balance) || balance < 0 || wallet.data.currency !== 'coins') {
+      throw Object.assign(new Error('wallet_response_invalid'), {
+        diagnosticCode: 'WALLET_RESPONSE_INVALID',
+        details: { request: 'wallet', status: wallet.response.status, response: wallet.data }
+      });
+    }
+    walletSnapshot = { balance, player };
+    log('info', 'unified_wallet_loaded', {
+      endpoint: WALLET_URL, balanceReceived: true, balance,
+      currency: wallet.data.currency, happyId: userCode
+    });
   }
 
   async function refreshSession() {
@@ -211,13 +256,21 @@
       try { message = JSON.parse(event.data); }
       catch (error) { log('error', 'invalid_websocket_message', { error: String(error) }); return; }
       if (message.t === 'init_error') {
-        return showFatal('اتصلت اللعبة بالخادم، لكن تعذر تحميل محفظة Happy Live. لا يمكن بدء اللعب.', message.data && message.data.code || 'WALLET_INIT_FAILED');
+        const details = message.data || {};
+        log('error', 'websocket_init_error', { details, fullMessage: message });
+        return showFatal('اتصلت اللعبة بالخادم، لكن تعذر تهيئة حالة اللعبة. لا يمكن بدء اللعب.', details.code || 'GAME_INIT_FAILED', details);
       }
       if (message.t === 'init') {
         const data = message.data || {};
+        if (!walletSnapshot) {
+          return showFatal('لم يتم تحميل محفظة Happy Live الرئيسية. لم يتم السماح باللعب.', 'WALLET_NOT_LOADED');
+        }
+        data.balance = walletSnapshot.balance;
+        data.player = walletSnapshot.player;
+        data.userCode = walletSnapshot.player.userCode || walletSnapshot.player.id;
         const balance = Number(data.balance);
-        if (!Number.isFinite(balance) || balance < 0 || !data.userCode) {
-          return showFatal('تعذر تحميل رصيد محفظة Happy Live أو بيانات الحساب. لم يتم السماح باللعب.', 'INVALID_WALLET_INIT');
+        if (!Number.isSafeInteger(balance) || balance < 0 || !data.userCode) {
+          return showFatal('تعذر تحميل رصيد محفظة Happy Live أو بيانات الحساب. لم يتم السماح باللعب.', 'INVALID_WALLET_INIT', { walletSnapshot });
         }
         clearTimeout(readyTimer);
         Net.me = data.userCode;

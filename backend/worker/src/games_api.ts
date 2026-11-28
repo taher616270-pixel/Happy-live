@@ -65,6 +65,23 @@ async function gameOriginForId(db: D1Database, gameId: string): Promise<string |
   }
 }
 
+function isAllowedSessionOrigin(registeredOrigin: string, requestOrigin: string): boolean {
+  if (registeredOrigin === requestOrigin) return true;
+  try {
+    const registered = new URL(registeredOrigin);
+    const requested = new URL(requestOrigin);
+    return registered.protocol === "https:" &&
+      registered.hostname === "happy-live.pages.dev" &&
+      registered.port === "" &&
+      requested.protocol === "https:" &&
+      requested.port === "" &&
+      requested.hostname.endsWith(".happy-live.pages.dev") &&
+      requested.hostname !== "happy-live.pages.dev";
+  } catch {
+    return false;
+  }
+}
+
 export async function isRegisteredGameOrigin(db: D1Database, origin: string): Promise<boolean> {
   try {
     const parsed = new URL(origin);
@@ -687,7 +704,12 @@ export async function handleGamesApiRequest(
     }
     const currentGameOrigin = await gameOriginForId(db, session.gameId);
     if (!currentGameOrigin || currentGameOrigin !== session.gameOrigin) return reply({ error: "game_origin_changed" }, 403, origin, env);
-    if (origin && origin !== session.gameOrigin) return reply({ error: "game_origin_mismatch" }, 403, origin, env);
+    if (origin && !isAllowedSessionOrigin(session.gameOrigin, origin)) {
+      console.warn("[games.api] game session origin rejected", {
+        gameId: session.gameId, registeredOrigin: session.gameOrigin, requestOrigin: origin
+      });
+      return reply({ error: "game_origin_mismatch" }, 403, origin, env);
+    }
     const nowSeconds = Math.floor(Date.now() / 1000);
     const rate = await db.prepare(
       "UPDATE game_sessions SET rate_window_started_at = CASE WHEN ? - rate_window_started_at >= ? THEN ? ELSE rate_window_started_at END, request_count = CASE WHEN ? - rate_window_started_at >= ? THEN 1 ELSE request_count + 1 END, last_seen_at = ? WHERE id = ? AND revoked_at IS NULL AND expires_at > ? RETURNING request_count"

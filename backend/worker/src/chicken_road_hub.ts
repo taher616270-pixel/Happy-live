@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { balance as walletBalance, profile as walletProfile, debitStatement, creditStatement } from "../../../games/chicken-road/server/wallet.js";
+import { balance as walletBalance, debitStatement, creditStatement } from "../../../games/chicken-road/server/wallet.js";
 
 interface ChickenRoadEnv { DB?: D1Database; }
 type Diff = "easy" | "medium" | "hard";
@@ -65,10 +65,11 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
     ).bind(GAME_ID, this.playerId).first<ActiveRound>();
   }
   private async init(ws: WebSocket): Promise<void> {
-    const [balance, game, player] = await Promise.all([
-      this.balance(), this.activeRound(), walletProfile(this.requireDb(), this.playerId)
-    ]);
-    send(ws, "init", { playerId: player?.happyId ?? "", userCode: player?.happyId ?? "", player: player ?? null, balance, game: game ? {
+    // Wallet and public profile are loaded by the client from the same unified,
+    // bearer-authenticated Happy Live endpoints used by the other registered games.
+    // The Durable Object only restores Chicken Road's authoritative round state.
+    const game = await this.activeRound();
+    send(ws, "init", { playerId: "", userCode: "", player: null, balance: null, game: game ? {
       amount: game.amount, diff: game.diff, step: game.step, commit: game.commit
     } : null });
   }
@@ -227,9 +228,15 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
     try {
       await this.init(server);
     } catch (error) {
-      const code = error instanceof Error ? error.message : "wallet_initialization_failed";
-      console.error("[chicken-road.init] wallet initialization failed", code);
-      send(server, "init_error", { code });
+      const code = error instanceof Error ? error.message : String(error);
+      console.error("[chicken-road.init] initialization failed", {
+        code,
+        name: error instanceof Error ? error.name : typeof error,
+        stack: error instanceof Error ? error.stack : null,
+        playerId: this.playerId,
+        sessionId: this.socketSessions.get(server) ?? null
+      });
+      send(server, "init_error", { code, message: code });
       try { server.close(1011, "wallet_initialization_failed"); } catch { /* closed */ }
     }
     return new Response(null, { status: 101, webSocket: client, headers: { "Sec-WebSocket-Protocol": "happy-live-game" } });
