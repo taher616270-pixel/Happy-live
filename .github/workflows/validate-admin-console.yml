@@ -66,4 +66,4 @@ jobs:
           test -f build/web/admin/index.html
           grep -q "لوحة إدارة Happy Live" build/web/admin/index.html
           test -f build/web/_headers
-          grep -q "script-src 'self'" build/web/_headers
+          grep -q "X-Content-Type-Options: nosniff" build/web/_headers
