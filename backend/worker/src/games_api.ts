@@ -328,8 +328,6 @@ export async function handleGamesApiRequest(
             myBets[row.slot] = Number(row.amount) || 0;
             myBetsByKey[["chicken", "corn", "tomato", "goat", "chili", "fish", "carrot", "shrimp"][row.slot]] = Number(row.amount) || 0;
           }
-          if (row.slot === 8) myBetsByKey.pizza_group = Number(row.amount) || 0;
-          if (row.slot === 9) myBetsByKey.salad_group = Number(row.amount) || 0;
         }
         const now = Date.now();
         const endAt = Date.parse(round.endsAt);
@@ -355,9 +353,10 @@ export async function handleGamesApiRequest(
           "chili", "fish", "carrot", "shrimp"
         ] as const;
         const totalBetsByFood: Record<string, number> = {};
+        // Pizza and Salad are rare result indicators, never bet targets.
         const totalBetsByGroup: Record<string, number> = {
-          pizza_group: Number(storedTotals.pizza_group) || 0,
-          salad_group: Number(storedTotals.salad_group) || 0
+          pizza_group: 0,
+          salad_group: 0
         };
         for (let slot = 0; slot < slotKeys.length; slot++) {
           totalBetsByFood[slotKeys[slot]] = pools[slot] ?? 0;
@@ -448,7 +447,7 @@ export async function handleGamesApiRequest(
       const amount = body?.amount;
       const idempotencyKey = typeof body?.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
       if (!body || typeof roundId !== "number" || !Number.isSafeInteger(roundId) ||
-          typeof slot !== "number" || !Number.isSafeInteger(slot) || slot < 0 || slot > 9 ||
+          typeof slot !== "number" || !Number.isSafeInteger(slot) || slot < 0 || slot > 7 ||
           typeof amount !== "number" || !Number.isSafeInteger(amount) || amount <= 0 ||
           !/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) {
         return reply({ error: "invalid_bet_data" }, 400, origin, env);
