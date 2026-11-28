@@ -222,22 +222,55 @@ export class ChickenRoadHub extends DurableObject<ChickenRoadEnv> {
             return;
           }
           await this.handle(server, message);
-        } catch (error) { send(server, "error", { message: "تعذر إكمال الطلب، حاول مجدداً" }); console.error("[chicken-road]", error instanceof Error ? error.message : "unknown"); }
+        } catch (error) {
+          const code = error instanceof Error ? error.message : String(error);
+          const details = {
+            stage: "handle_websocket_action",
+            action: typeof message?.t === "string" ? message.t : "unknown",
+            request: {
+              type: typeof message?.t === "string" ? message.t : null,
+              amount: Number.isSafeInteger(message?.amount) ? message.amount : null,
+              diff: typeof message?.diff === "string" ? message.diff : null
+            },
+            code,
+            name: error instanceof Error ? error.name : typeof error,
+            stack: error instanceof Error ? error.stack : null,
+            playerId: this.playerId,
+            sessionId: this.socketSessions.get(server) ?? null
+          };
+          console.error("[chicken-road.request] action failed", details);
+          send(server, "error", {
+            message: "تعذر إكمال الطلب، حاول مجدداً",
+            code,
+            stage: details.stage,
+            request: details.request,
+            name: details.name,
+            stack: details.stack
+          });
+        }
       });
     });
     try {
       await this.init(server);
     } catch (error) {
       const code = error instanceof Error ? error.message : String(error);
-      console.error("[chicken-road.init] initialization failed", {
+      const details = {
+        stage: "restore_active_round",
+        request: {
+          url: "/api/v1/game/chicken-road/ws",
+          method: "GET",
+          body: null,
+          note: "The WebSocket init frame restores the user's active round; it does not accept bet or difficulty fields."
+        },
         code,
         name: error instanceof Error ? error.name : typeof error,
         stack: error instanceof Error ? error.stack : null,
         playerId: this.playerId,
         sessionId: this.socketSessions.get(server) ?? null
-      });
-      send(server, "init_error", { code, message: code });
-      try { server.close(1011, "wallet_initialization_failed"); } catch { /* closed */ }
+      };
+      console.error("[chicken-road.init] game state initialization failed", details);
+      send(server, "init_error", details);
+      try { server.close(1011, "game_state_init_failed"); } catch { /* closed */ }
     }
     return new Response(null, { status: 101, webSocket: client, headers: { "Sec-WebSocket-Protocol": "happy-live-game" } });
   }
