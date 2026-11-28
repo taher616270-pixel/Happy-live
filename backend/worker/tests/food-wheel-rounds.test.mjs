@@ -8,7 +8,7 @@ const api = await readFile(new URL("src/games_api.ts", root), "utf8");
 const worker = await readFile(new URL("src/index.ts", root), "utf8");
 const config = await readFile(new URL("wrangler.toml", root), "utf8");
 const migration = await readFile(new URL("migrations/0062_global_food_wheel_rounds.sql", root), "utf8");
-const rareMigration = await readFile(new URL("migrations/0063_food_wheel_rare_groups.sql", root), "utf8");
+const groupMigration = await readFile(new URL("migrations/0065_food_wheel_group_bets.sql", root), "utf8");
 const ui = await readFile(new URL("../../../frontend/lib/games/food_wheel/food_wheel_game.dart", import.meta.url), "utf8");
 
 test("Food Wheel uses one sequential global round with a server-enforced single active round", () => {
@@ -89,7 +89,7 @@ test("web client freezes round-keyed bets, renders server-only totals, and lands
   assert.ok(ui.includes("_spinFinalizedRoundId == s.roundId"));
   assert.ok(ui.includes("static const int _spinDurationMs = 5000"));
   assert.ok(ui.includes("static const double _spinBaseAngle = 3 * math.pi * 2"));
-  assert.ok(ui.includes("final activeSlot = (angle / step).floor() % 10"));
+  assert.ok(ui.includes("final activeSlot = (angle / step).floor() % 8"));
   assert.doesNotMatch(ui, /_spinAnimation|_msgTimer|_toastTimer/);
 
   assert.ok(ui.includes("final Map<int, Map<String, int>> _myBetsByRound"));
@@ -166,21 +166,29 @@ test("Food Wheel starts the full spin at chicken and immediately refreshes after
 });
 
 
-test("rare Pizza and Salad outcomes are public weighted outcomes and pay complete food groups", () => {
-  assert.match(hub, /RARE_PIZZA_WEIGHT = 3/);
-  assert.match(hub, /RARE_SALAD_WEIGHT = 3/);
-  assert.ok(hub.includes("const roll = crypto.getRandomValues"));
-  assert.match(hub, /resultSpecial: "pizza" \\| "salad" \\| null/);
-  assert.ok(hub.includes("slot IN (1,2,4,6) THEN stake * 5"));
-  assert.match(hub, /result_special.*salad/);
-  assert.ok(api.includes("special: round.resultSpecial"));
-  assert.match(rareMigration, /ADD COLUMN result_special/);
+test("wheel has exactly eight food outcomes; Pizza and Salad are group bets only", () => {
+  assert.match(hub, /function chooseResult\(\): \{ resultSlot: number; resultSpecial: null \}/);
+  assert.match(hub, /MULTIPLIERS\.map\(\(value\) => 1 \/ value\)/);
+  assert.doesNotMatch(hub, /RARE_PIZZA_WEIGHT|RARE_SALAD_WEIGHT/);
+  assert.match(hub, /slot = 8 AND .* IN \(1,2,4,6\).*stake \* 2/);
+  assert.match(hub, /slot = 9 AND .* IN \(0,3,5,7\).*stake \* 2/);
+  assert.match(api, /slot < 0 \|\| slot > 9/);
+  assert.match(api, /slot BETWEEN 0 AND 7 AND status IN/);
+  assert.match(api, /pizza_group/);
+  assert.match(api, /salad_group/);
+  assert.match(groupMigration, /slot BETWEEN 0 AND 9/);
+  assert.match(ui, /const kBetKeys = <String>\[\.\.\.kSlotKeys, \.\.\.kGroupBetKeys\]/);
+  assert.match(ui, /_special\('pizza_group', 'البيتزا', s\)/);
+  assert.match(ui, /_special\('salad_group', 'السلطة', s\)/);
+  assert.match(ui, /_onGroupPointerDown\(key\)/);
+  assert.match(ui, /static const double _spinStep = math\.pi \* 2 \/ 8/);
+  assert.doesNotMatch(ui, /_specialWheelSlot/);
 });
 
 test("Food Wheel accepts arbitrary positive integer stakes and rejects a seventh distinct food", () => {
   assert.match(api, /Number\\.isSafeInteger\\(amount\\) \\|\\| amount <= 0/);
   assert.ok(api.includes("COUNT(DISTINCT slot)"));
   assert.match(api, /max_foods_per_round/);
-  assert.ok(ui.includes("for (var i = 0; i < 10; i++)"));
+  assert.ok(ui.includes("for (var i = 0; i < 8; i++)"));
   assert.ok(!ui.includes("Text('Hot'"));
 });
