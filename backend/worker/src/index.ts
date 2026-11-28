@@ -504,27 +504,55 @@ export default {
     }
 
     if (url.pathname === "/api/v1/game/chicken-road/health" && request.method === "GET") {
-      if (!env.DB) return json({ ok: false, error: "database_unavailable", database: "missing" }, 503, origin, env);
-      try {
-        await env.DB.prepare("SELECT 1 AS ok").first();
-        const game = await env.DB.prepare(
-          "SELECT g.game_url AS gameUrl, g.enabled, l.status FROM game_registry g INNER JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE g.id = ? LIMIT 1"
-        ).bind("f21d2c7a-8f1b-4d72-9a63-5c8f7e1d4b90").first<{ gameUrl: string; enabled: number; status: string }>();
-        let expectedOrigin: string | null = null;
-        try { expectedOrigin = game?.gameUrl ? new URL(game.gameUrl).origin : null; } catch { expectedOrigin = null; }
-        const gameStatus = game?.enabled === 1 && game.status === "active" ? "active" : "inactive";
-        const originMatches = Boolean(origin && expectedOrigin && origin === expectedOrigin);
-        const durableObject = env.CHICKEN_ROAD ? "bound" : "missing";
-        const ok = gameStatus === "active" && durableObject === "bound" && originMatches;
-        return json({
-          ok, service: "happy-live-api", api: "ready", database: "connected",
-          durableObject, gameStatus, originMatches,
-          requestOrigin: origin ?? null, expectedOrigin
-        }, ok ? 200 : 503, origin, env);
-      } catch (error) {
-        console.error("[chicken-road.health] failed", error instanceof Error ? error.message : "unknown");
-        return json({ ok: false, error: "health_check_failed", database: "error" }, 503, origin, env);
+      // Liveness is deliberately independent from D1, the game registry, and the
+      // Durable Object. A reachable Worker must not be reported as HTTP 503 just
+      // because one dependency is degraded; the authenticated WebSocket init is
+      // the authoritative readiness check before the UI enables play.
+      const diagnostics: Record<string, unknown> = {
+        ok: true, service: "happy-live-api", api: "ready", status: "ready",
+        database: env.DB ? "unknown" : "missing",
+        durableObject: env.CHICKEN_ROAD ? "bound" : "missing",
+        gameStatus: "unknown", originMatches: null,
+        requestOrigin: origin ?? null, expectedOrigin: null
+      };
+      const issues: string[] = [];
+      if (!env.DB) {
+        issues.push("D1 binding DB is missing");
+        console.error("[chicken-road.health] D1 binding missing", { hasDB: false, hasChickenRoad: Boolean(env.CHICKEN_ROAD), origin: origin ?? null });
+      } else {
+        try {
+          await env.DB.prepare("SELECT 1 AS ok").first();
+          diagnostics.database = "connected";
+          const game = await env.DB.prepare(
+            "SELECT g.game_url AS gameUrl, g.enabled, l.status FROM game_registry g LEFT JOIN game_registry_lifecycle l ON l.game_id = g.id WHERE g.id = ? LIMIT 1"
+          ).bind("f21d2c7a-8f1b-4d72-9a63-5c8f7e1d4b90").first<{ gameUrl: string; enabled: number; status: string | null }>();
+          let expectedOrigin: string | null = null;
+          try { expectedOrigin = game?.gameUrl ? new URL(game.gameUrl).origin : null; } catch { expectedOrigin = null; }
+          const gameStatus = game?.enabled === 1 && game.status === "active" ? "active" : "inactive";
+          const originMatches = Boolean(origin && expectedOrigin && origin === expectedOrigin);
+          diagnostics.gameStatus = gameStatus;
+          diagnostics.originMatches = originMatches;
+          diagnostics.expectedOrigin = expectedOrigin;
+          if (gameStatus !== "active") issues.push("Chicken Road registry is not active");
+          if (!originMatches) issues.push("Request origin differs from registered game origin");
+        } catch (error) {
+          diagnostics.database = "error";
+          issues.push("D1 health query failed");
+          console.error("[chicken-road.health] D1/registry check failed", {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : null,
+            name: error instanceof Error ? error.name : typeof error,
+            origin: origin ?? null
+          });
+        }
       }
+      if (!env.CHICKEN_ROAD) issues.push("CHICKEN_ROAD Durable Object binding is missing");
+      if (issues.length) {
+        diagnostics.status = "degraded";
+        diagnostics.issues = issues;
+        console.warn("[chicken-road.health] degraded liveness response", diagnostics);
+      }
+      return json(diagnostics, 200, origin, env);
     }
 
     if (url.pathname === "/api/v1/game/chicken-road/ws" && request.method === "GET" &&

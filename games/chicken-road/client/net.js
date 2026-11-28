@@ -109,10 +109,21 @@
         details: health.data
       });
     }
-    if (health.data.database !== 'connected' || health.data.durableObject !== 'bound' ||
-        health.data.gameStatus !== 'active' || health.data.originMatches !== true) {
-      throw Object.assign(new Error('chicken_road_backend_not_ready'), {
-        diagnosticCode: 'BACKEND_CONFIGURATION', details: health.data
+    // Health is a Worker liveness endpoint, not a wallet/readiness gate.
+    // Dependency readiness is established by the authenticated WebSocket init;
+    // keep play controls locked until that init includes a real wallet balance.
+    if (health.data.api !== 'ready') {
+      throw Object.assign(new Error('chicken_road_api_not_ready'), {
+        diagnosticCode: 'API_NOT_READY', details: health.data
+      });
+    }
+    if (health.data.status === 'degraded') {
+      log('warn', 'health_degraded_but_api_alive', {
+        database: health.data.database,
+        durableObject: health.data.durableObject,
+        gameStatus: health.data.gameStatus,
+        originMatches: health.data.originMatches,
+        issues: health.data.issues || []
       });
     }
     if (!sessionToken || sessionToken.length < 32 || sessionToken.length > 512) {
