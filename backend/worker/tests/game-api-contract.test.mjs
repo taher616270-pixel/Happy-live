@@ -8,6 +8,14 @@ const worker = await readFile(new URL("src/index.ts", root), "utf8");
 const migration = await readFile(new URL("migrations/0041_game_sessions.sql", root), "utf8");
 const bindingMigration = await readFile(new URL("migrations/0042_game_session_app_binding.sql", root), "utf8");
 const happyIdMigration = await readFile(new URL("migrations/0043_rename_gabo_id_to_happy_id.sql", root), "utf8");
+const chickenMigration = await readFile(new URL("migrations/0066_chicken_road.sql", root), "utf8");
+const chickenWallet = await readFile(new URL("../../../games/chicken-road/server/wallet.js", import.meta.url), "utf8");
+const chickenHub = await readFile(new URL("src/chicken_road_hub.ts", root), "utf8");
+const chickenConfig = await readFile(new URL("../../../games/chicken-road/shared/config.js", import.meta.url), "utf8");
+const chickenEngine = await readFile(new URL("../../../games/chicken-road/shared/engine.js", import.meta.url), "utf8");
+const chickenNet = await readFile(new URL("../../../games/chicken-road/client/net.js", import.meta.url), "utf8");
+const chickenClient = await readFile(new URL("../../../games/chicken-road/client/game.js", import.meta.url), "utf8");
+
 const economyMigration = await readFile(new URL("migrations/0045_game_economy_foundation.sql", root), "utf8");
 
 test("temporary game sessions are isolated, expiring, revocable, and indexed", () => {
@@ -186,4 +194,39 @@ test("admin round history is scoped to one game and exposes public player identi
 test("concurrent bet idempotency-key reuse cannot acknowledge a different stake or selection", () => {
   assert.match(api, /accepted\.stake !== Number\(stake\) \|\| accepted\.selectionJson !== selectionJson/);
   assert.match(api, /error: "idempotency_key_reused"/);
+});
+
+test("Chicken Road is production-only and uses the canonical Happy Live wallet", () => {
+  assert.match(chickenMigration, /CREATE TABLE IF NOT EXISTS chicken_road_round_state/);
+  assert.match(chickenMigration, /https:\/\/happy-live\.pages\.dev\/games\/chicken-road\/client\/index\.html/);
+  assert.match(chickenWallet, /FROM user_wallets WHERE user_id = \?/);
+  assert.match(chickenWallet, /UPDATE user_wallets SET balance=balance-\?/);
+  assert.match(chickenWallet, /UPDATE user_wallets SET balance=balance\+\?/);
+  assert.match(chickenWallet, /game_session_app_bindings/);
+  assert.match(chickenHub, /debitStatement\(db, this\.playerId, amount, now, roundId\)/);
+  assert.match(chickenHub, /creditStatement\(db, this\.playerId, payout, now, round\.id, settlementId\)/);
+  assert.match(chickenHub, /INSERT INTO game_wallet_ledger/);
+  assert.match(chickenHub, /INSERT INTO game_rounds/);
+  assert.match(chickenHub, /INSERT INTO game_bets/);
+  assert.doesNotMatch(chickenWallet + chickenHub + chickenNet, /new Map\(|local\(\)|1000000\s*\)\s*;?\s*\/\/ fake/i);
+});
+
+test("Chicken Road rules are fixed in shared configuration and client sends only server commands", () => {
+  assert.match(chickenConfig, /RTP:\.97/);
+  assert.match(chickenConfig, /MAX_STEPS:25/);
+  assert.match(chickenConfig, /STEP_MIN_MS:300/);
+  assert.match(chickenConfig, /MIN_BET:100/);
+  assert.match(chickenConfig, /MAX_BET:1000000/);
+  assert.match(chickenConfig, /easy:Object\.freeze\(\{death:\.06/);
+  assert.match(chickenConfig, /medium:Object\.freeze\(\{death:\.14/);
+  assert.match(chickenConfig, /hard:Object\.freeze\(\{death:\.22/);
+  assert.match(chickenEngine, /function crashAt/);
+  assert.match(chickenClient, /\{t:'play',amount:S\.bet,diff:S\.diff\}/);
+  assert.match(chickenClient, /\{t:'step'\}/);
+  assert.match(chickenClient, /\{t:'cash'\}/);
+  assert.match(chickenClient, /\{t:'history'\}/);
+  assert.match(chickenClient, /\{t:'top',range\}/);
+  assert.match(chickenNet, /new WebSocket\(cfg\.WS_URL\+'\?token='/);
+  assert.match(chickenNet, /setTimeout\(\(\)=>N\.connect\(\),2000\)/);
+  assert.doesNotMatch(chickenNet, /function local\(|local\(\)/);
 });

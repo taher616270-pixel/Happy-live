@@ -6,7 +6,8 @@ const worker = await readFile(new URL("../src/index.ts", import.meta.url), "utf8
 const migration = await readFile(new URL("../migrations/0039_game_registry.sql", import.meta.url), "utf8");
 const statusMigration = await readFile(new URL("../migrations/0040_game_registry_status.sql", import.meta.url), "utf8");
 const adminUi = await readFile(new URL("../../../frontend/web/admin/index.html", import.meta.url), "utf8");
-const gamesWidget = await readFile(new URL("../../../frontend/lib/widgets/dynamic_games_list.dart", import.meta.url), "utf8");
+const roomPage = await readFile(new URL("../../../frontend/lib/pages/room_page.dart", import.meta.url), "utf8");
+const chickenLauncher = await readFile(new URL("../../../frontend/lib/games/chicken_road/chicken_road_launcher_web.dart", import.meta.url), "utf8");
 
 test("game registry migration is additive and does not touch wallet or existing game ledgers", () => {
   assert.match(migration, /CREATE TABLE IF NOT EXISTS game_registry/);
@@ -75,13 +76,15 @@ test("admin dashboard can create, edit, enable and disable registry entries", ()
   assert.match(adminUi, /esc\(g\.name\)/);
 });
 
-test("web app loads published games dynamically from the configured unified API base", () => {
-  assert.match(gamesWidget, /HAPPY_LIVE_API_BASE/);
-  assert.match(gamesWidget, /Uri\.parse\('\$_apiBase\/games\/catalog'\)/);
-  assert.match(gamesWidget, /Uri\.parse\('\$_apiBase\/game\/auth'\)/);
-  assert.match(gamesWidget, /launchExternalGame\(context, url, _createGameSession\(gameId\)\)/);
-  assert.match(gamesWidget, /إعادة المحاولة/);
-  assert.doesNotMatch(gamesWidget, /wallet|bet|reward|accessToken/i);
+test("room Game Center keeps Food Wheel and opens Chicken Road below it inside the app", () => {
+  const center = roomPage.slice(roomPage.indexOf("void _openRoomGames"), roomPage.indexOf("void _showRoomCounter"));
+  assert.ok(center.indexOf("عجلة الأطعمة") >= 0);
+  assert.ok(center.indexOf("showFoodWheelGame") >= 0);
+  assert.ok(center.indexOf("showChickenRoadGame") > center.indexOf("showFoodWheelGame"));
+  assert.match(center, /_createChickenRoadSession/);
+  assert.match(chickenLauncher, /HtmlElementView/);
+  assert.match(chickenLauncher, /\/games\/chicken-road\/client\/index\.html/);
+  assert.doesNotMatch(chickenLauncher, /window\.open|launchUrl/);
 });
 
 test("admin game catalogue exposes economy configuration and server-key rotation", () => {
