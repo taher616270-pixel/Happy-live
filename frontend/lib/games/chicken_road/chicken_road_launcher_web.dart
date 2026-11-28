@@ -25,7 +25,7 @@ class _ChickenRoadScreenState extends State<_ChickenRoadScreen> {
     _viewType = 'happy-live-chicken-road-${DateTime.now().microsecondsSinceEpoch}';
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (int id) {
       final frame = html.IFrameElement()
-        ..title = 'عبور الدجاجة'
+        ..title = 'Chicken Road'
         ..src = '/games/chicken-road/client/index.html'
         ..style.border = '0'
         ..style.width = '100%'
