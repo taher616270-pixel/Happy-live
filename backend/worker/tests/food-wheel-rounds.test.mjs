@@ -65,7 +65,7 @@ test("wallet debit remains at bet acceptance and wallet payout is deferred to se
   assert.match(hub, /status = 'result'/);
 });
 
-test("web client freezes round-keyed bets, renders server-only totals, and lands the 5-second spin without easing", () => {
+test("web client freezes round-keyed bets, renders server-only totals, and eases the 5-second spin to the result", () => {
   assert.ok(ui.includes("roundEndAt"));
   assert.ok(ui.includes("Timer.periodic(const Duration(milliseconds: 200)"));
   assert.equal((ui.match(/Timer\.periodic\(/g) || []).length, 1);
