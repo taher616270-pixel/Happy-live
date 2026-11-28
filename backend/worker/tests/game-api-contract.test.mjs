@@ -224,10 +224,10 @@ test("Chicken Road rules are fixed in shared configuration and client sends only
   assert.match(chickenConfig, /hard:\s*\{\s*label: 'صعب',\s*death: 0\.22/);
   assert.match(chickenEngine, /function multiplier/);
   assert.doesNotMatch(chickenEngine, /class Engine|crashAt|wallet\.debit|wallet\.credit/);
-  assert.match(chickenClient, /\{t:'play',amount:S\.bet,diff:S\.diff\}/);
-  assert.match(chickenClient, /\{t:'step'\}/);
-  assert.match(chickenClient, /\{t:'cash'\}/);
-  assert.match(chickenClient, /\{t:'history'\}/);
+  assert.match(chickenClient, /t: 'play', amount: S\.bet, diff: S\.diff/);
+  assert.match(chickenClient, /t: 'step'/);
+  assert.match(chickenClient, /t: 'cash'/);
+  assert.match(chickenClient, /t: 'history'/);
   assert.match(chickenClient, /range: 'today'/);
   assert.match(chickenNet, /new WebSocket\(cfg\.WS_URL/);
   assert.match(chickenNet, /setTimeout\(connectSocket, 1500\)/);
